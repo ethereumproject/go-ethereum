@@ -770,7 +770,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 			}
 			p.MarkTransaction(tx.Hash())
 		}
-		pm.txpool.AddTransactions(txs)
+		pm.txpool.AddBatch(txs)
 
 	default:
 		err = errResp(ErrInvalidMsgCode, "%v", msg.Code)

@@ -1037,7 +1037,7 @@ func getTransaction(chainDb ethdb.Database, txPool *core.TxPool, txHash common.H
 		}
 	} else {
 		// pending transaction?
-		tx = txPool.GetTransaction(txHash)
+		tx = txPool.Get(txHash)
 		isPending = true
 	}
 
@@ -1536,16 +1536,14 @@ func (s *PublicTransactionPoolAPI) SignTransaction(args SignTransactionArgs) (*S
 // PendingTransactions returns the transactions that are in the transaction pool and have a from address that is one of
 // the accounts this node manages.
 func (s *PublicTransactionPoolAPI) PendingTransactions() []*RPCTransaction {
-	pending := s.txPool.GetTransactions()
+	pending := s.txPool.Pending()
 	transactions := make([]*RPCTransaction, 0, len(pending))
-	for _, tx := range pending {
-		var signer types.Signer = types.BasicSigner{}
-		if tx.Protected() {
-			signer = types.NewChainIdSigner(tx.ChainId())
-		}
-		from, _ := types.Sender(signer, tx)
-		if s.am.HasAddress(from) {
-			transactions = append(transactions, newRPCPendingTransaction(tx))
+	for _, batch := range pending {
+		for _, tx := range batch {
+			from, _ := tx.From()
+			if s.am.HasAddress(from) {
+				transactions = append(transactions, newRPCPendingTransaction(tx))
+			}
 		}
 	}
 	return transactions
@@ -1579,40 +1577,41 @@ func (s *PublicTransactionPoolAPI) NewPendingTransactions(ctx context.Context) (
 // Resend accepts an existing transaction and a new gas price and limit. It will remove the given transaction from the
 // pool and reinsert it with the new gas price and limit.
 func (s *PublicTransactionPoolAPI) Resend(tx Tx, gasPrice, gasLimit *rpc.HexNumber) (common.Hash, error) {
-
-	pending := s.txPool.GetTransactions()
-	for _, p := range pending {
-		var signer types.Signer = types.BasicSigner{}
-		if p.Protected() {
-			signer = types.NewChainIdSigner(p.ChainId())
-		}
-
-		if pFrom, err := types.Sender(signer, p); err == nil && pFrom == tx.From && signer.Hash(p) == signer.Hash(tx.tx) {
-			if gasPrice == nil {
-				gasPrice = rpc.NewHexNumber(tx.tx.GasPrice())
-			}
-			if gasLimit == nil {
-				gasLimit = rpc.NewHexNumber(tx.tx.Gas())
+	pending := s.txPool.Pending()
+	for _, batch := range pending {
+		for _, p := range batch {
+			var signer types.Signer = types.BasicSigner{}
+			if p.Protected() {
+				signer = types.NewChainIdSigner(p.ChainId())
 			}
 
-			var newTx *types.Transaction
-			if tx.tx.To() == nil {
-				newTx = types.NewContractCreation(tx.tx.Nonce(), tx.tx.Value(), gasPrice.BigInt(), gasLimit.BigInt(), tx.tx.Data())
-			} else {
-				newTx = types.NewTransaction(tx.tx.Nonce(), *tx.tx.To(), tx.tx.Value(), gasPrice.BigInt(), gasLimit.BigInt(), tx.tx.Data())
-			}
+			if pFrom, err := types.Sender(signer, p); err == nil && pFrom == tx.From && signer.Hash(p) == signer.Hash(tx.tx) {
+				if gasPrice == nil {
+					gasPrice = rpc.NewHexNumber(tx.tx.GasPrice())
+				}
+				if gasLimit == nil {
+					gasLimit = rpc.NewHexNumber(tx.tx.Gas())
+				}
 
-			signedTx, err := s.sign(tx.From, newTx)
-			if err != nil {
-				return common.Hash{}, err
-			}
+				var newTx *types.Transaction
+				if tx.tx.To() == nil {
+					newTx = types.NewContractCreation(tx.tx.Nonce(), tx.tx.Value(), gasPrice.BigInt(), gasLimit.BigInt(), tx.tx.Data())
+				} else {
+					newTx = types.NewTransaction(tx.tx.Nonce(), *tx.tx.To(), tx.tx.Value(), gasPrice.BigInt(), gasLimit.BigInt(), tx.tx.Data())
+				}
 
-			s.txPool.RemoveTx(tx.Hash)
-			if err = s.txPool.Add(signedTx); err != nil {
-				return common.Hash{}, err
-			}
+				signedTx, err := s.sign(tx.From, newTx)
+				if err != nil {
+					return common.Hash{}, err
+				}
 
-			return signedTx.Hash(), nil
+				s.txPool.Remove(tx.Hash)
+				if err = s.txPool.Add(signedTx); err != nil {
+					return common.Hash{}, err
+				}
+
+				return signedTx.Hash(), nil
+			}
 		}
 	}
 
