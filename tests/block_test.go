@@ -211,11 +211,3 @@ func TestHomesteadBcState(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-
-// DAO hard-fork tests
-func TestDAOBcTheDao(t *testing.T) {
-	err := RunBlockTest(big.NewInt(5), big.NewInt(8), filepath.Join(blockTestDir, "TestNetwork", "bcTheDaoTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}

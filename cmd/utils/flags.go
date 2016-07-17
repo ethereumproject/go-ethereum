@@ -157,15 +157,6 @@ var (
 		Name:  "lightkdf",
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
 	}
-	// Fork settings
-	SupportDAOFork = cli.BoolFlag{
-		Name:  "support-dao-fork",
-		Usage: "Updates the chain rules to support the DAO hard-fork",
-	}
-	OpposeDAOFork = cli.BoolFlag{
-		Name:  "oppose-dao-fork",
-		Usage: "Updates the chain rules to oppose the DAO hard-fork",
-	}
 	// Miner settings
 	// TODO: refactor CPU vs GPU mining flags
 	MiningEnabledFlag = cli.BoolFlag{
