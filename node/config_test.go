@@ -24,7 +24,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
 // Tests that datadirs can be successfully created, be them manually configured

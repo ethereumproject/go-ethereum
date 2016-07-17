@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereumproject/go-ethereum/rpc"
 )
 
 // Tests that a node embedded within a console can be started up properly and
