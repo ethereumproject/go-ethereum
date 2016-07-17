@@ -20,8 +20,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/console"
+	"github.com/ethereumproject/go-ethereum/cmd/utils"
+	"github.com/ethereumproject/go-ethereum/console"
 	"gopkg.in/urfave/cli.v1"
 )
 

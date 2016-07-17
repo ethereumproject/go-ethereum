@@ -23,8 +23,8 @@ import (
 
 	checker "gopkg.in/check.v1"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/ethdb"
 )
 
 type StateSuite struct {
