@@ -31,17 +31,17 @@ RUN git checkout v1
 RUN go install -v
 
 # this is a workaround, to make sure that docker's cache is invalidated whenever the git repo changes
-ADD https://api.github.com/repos/ethereum/go-ethereum/git/refs/heads/develop unused.txt 
+ADD https://api.github.com/repos/ethereumproject/go-ethereum/git/refs/heads/develop unused.txt 
 
 ## Fetch and install go-ethereum
-RUN go get -u -v -d github.com/ethereum/go-ethereum/...
-WORKDIR $GOPATH/src/github.com/ethereum/go-ethereum
+RUN go get -u -v -d github.com/ethereumproject/go-ethereum/...
+WORKDIR $GOPATH/src/github.com/ethereumproject/go-ethereum
 
 RUN git checkout develop
 RUN git pull
 
 
-RUN ETH_DEPS=$(go list -f '{{.Imports}} {{.TestImports}} {{.XTestImports}}' github.com/ethereum/go-ethereum/... | sed -e 's/\[//g' | sed -e 's/\]//g' | sed -e 's/C //g'); if [ "$ETH_DEPS" ]; then go get $ETH_DEPS; fi
+RUN ETH_DEPS=$(go list -f '{{.Imports}} {{.TestImports}} {{.XTestImports}}' github.com/ethereumproject/go-ethereum/... | sed -e 's/\[//g' | sed -e 's/\]//g' | sed -e 's/C //g'); if [ "$ETH_DEPS" ]; then go get $ETH_DEPS; fi
 RUN go install -v ./cmd/ethtest
 
 ENTRYPOINT ["ethtest"]

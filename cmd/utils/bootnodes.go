@@ -16,7 +16,9 @@
 
 package utils
 
-import "github.com/ethereum/go-ethereum/p2p/discover"
+import "github.com/ethereumproject/go-ethereum/p2p/discover"
+
+// !EPROJECT We will need to use different P2P boostrap nodes
 
 // FrontierBootNodes are the enode URLs of the P2P bootstrap nodes running on
 // the Frontier network.

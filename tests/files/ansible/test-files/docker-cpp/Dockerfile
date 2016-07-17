@@ -16,6 +16,7 @@ RUN apt-get install -qy libncurses5-dev
 # Qt-based GUI
 # RUN apt-get install -qy qtbase5-dev qt5-default qtdeclarative5-dev libqt5webkit5-dev
 
+# !EPROJECT A new PPA will be necessary
 # Ethereum PPA
 RUN apt-get install -qy software-properties-common
 RUN add-apt-repository ppa:ethereum/ethereum
@@ -23,7 +24,7 @@ RUN apt-get update
 RUN apt-get install -qy libcryptopp-dev libjson-rpc-cpp-dev
 
 # Build Ethereum (HEADLESS)
-RUN git clone --depth=1 --branch develop https://github.com/ethereum/cpp-ethereum
+RUN git clone --depth=1 --branch develop https://github.com/ethereumproject/cpp-ethereum
 RUN mkdir -p cpp-ethereum/build
 RUN cd cpp-ethereum/build && cmake .. -DCMAKE_BUILD_TYPE=Release -DHEADLESS=1 && make -j $(cat /proc/cpuinfo | grep processor | wc -l) && make install
 RUN ldconfig
