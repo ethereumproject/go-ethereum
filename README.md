@@ -1,8 +1,25 @@
 ## Ethereum Go (ORIGINAL BLOCKCHAIN)
 
+*Migration in progress, this will be removed when it is ready to be
+used. Until this client is ready please use the client provided by the
+Ethereum foundation with the flag --oppose-fork or wait to upgrade.*
+
 Official golang implementation of the Ethereum protocol supporting the
 original chain. A version which can **honestly** offer both censorship
 resistant unstoppable application platform for developers.
+
+This is a project migrated from the Ethereum Fork github project, we
+will need to slowly migrate peices of the infrastructure required to
+maintain the project.
+
+Comments are being made in the codebase with the tag !EPROJECT
+recommending actions that must be taken to help complete the migration.
+
+For example, the links below are to build.ethdev.com, we will need our
+own build/status continuous development setup in order for it to work
+properly.
+
+
 
           | Linux   | OSX | ARM | Windows | Tests
 ----------|---------|-----|-----|---------|------
