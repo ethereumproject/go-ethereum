@@ -17,7 +17,6 @@
 package miner
 
 import (
-	"bytes"
 	"fmt"
 	"math/big"
 	"sync"
