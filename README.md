@@ -1,8 +1,6 @@
 ## Ethereum Go (ORIGINAL BLOCKCHAIN)
 
-*Migration in progress, this will be removed when it is ready to be
-used. Until this client is ready please use the client provided by the
-Ethereum foundation with the flag --oppose-dao-fork or wait to upgrade.*
+*Migration in progress, this master has all the DAO specific hardcoding removed and can successfully build all binaries but much of the documentation is derived from the forked version of Ethereum and needs to be updated. If you have any issues please create an issue*
 
 Official golang implementation of the Ethereum protocol supporting the
 original chain. A version which can **honestly** offer both a censorship
