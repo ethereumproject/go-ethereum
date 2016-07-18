@@ -10,7 +10,8 @@ resistant and unstoppable application platform for developers.
 
 This is a project migrated from the now hard forked Ethereum (ETHHF or ETHF) github project, we
 will need to slowly migrate peices of the infrastructure required to
-maintain the project.
+maintain the project. We will apply all upstream patches unrelated to the DAO HF while organizing
+development.
 
 Comments are being made in the codebase with the tag !EPROJECT
 recommending actions that must be taken to help complete the migration.
