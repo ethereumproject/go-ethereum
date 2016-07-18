@@ -103,7 +103,7 @@ type btTransaction struct {
 	Value    string
 }
 
-func RunBlockTestWithReader(homesteadBlock, r io.Reader, skipTests []string) error {
+func RunBlockTestWithReader(homesteadBlock *big.Int, r io.Reader, skipTests []string) error {
 	btjs := make(map[string]*btJSON)
 	if err := readJson(r, &btjs); err != nil {
 		return err
@@ -120,7 +120,7 @@ func RunBlockTestWithReader(homesteadBlock, r io.Reader, skipTests []string) err
 	return nil
 }
 
-func RunBlockTest(homesteadBlock, file string, skipTests []string) error {
+func RunBlockTest(homesteadBlock *big.Int, file string, skipTests []string) error {
 	btjs := make(map[string]*btJSON)
 	if err := readJsonFile(file, &btjs); err != nil {
 		return err
@@ -136,7 +136,7 @@ func RunBlockTest(homesteadBlock, file string, skipTests []string) error {
 	return nil
 }
 
-func runBlockTests(homesteadBlock, bt map[string]*BlockTest, skipTests []string) error {
+func runBlockTests(homesteadBlock *big.Int, bt map[string]*BlockTest, skipTests []string) error {
 	skipTest := make(map[string]bool, len(skipTests))
 	for _, name := range skipTests {
 		skipTest[name] = true
@@ -157,7 +157,7 @@ func runBlockTests(homesteadBlock, bt map[string]*BlockTest, skipTests []string)
 	return nil
 }
 
-func runBlockTest(homesteadBlock, test *BlockTest) error {
+func runBlockTest(homesteadBlock *big.Int, test *BlockTest) error {
 	// import pre accounts & construct test genesis block & state root
 	db, _ := ethdb.NewMemDatabase()
 	if _, err := test.InsertPreState(db); err != nil {
