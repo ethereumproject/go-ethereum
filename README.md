@@ -8,7 +8,7 @@ Official golang implementation of the Ethereum protocol supporting the
 original chain. A version which can **honestly** offer both a censorship
 resistant and unstoppable application platform for developers.
 
-This is a project migrated from the now hard forked Ethereum (ETHHF) github project, we
+This is a project migrated from the now hard forked Ethereum (ETHHF or ETHF) github project, we
 will need to slowly migrate peices of the infrastructure required to
 maintain the project.
 
