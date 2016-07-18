@@ -248,7 +248,7 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 		}
 	}
 	// If all checks passed, validate the extra-data field for hard forks
-	return ValidateDAOHeaderExtraData(config, header)
+	return nil
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
