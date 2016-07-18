@@ -2,7 +2,7 @@
 
 *Migration in progress, this will be removed when it is ready to be
 used. Until this client is ready please use the client provided by the
-Ethereum foundation with the flag --oppose-fork or wait to upgrade.*
+Ethereum foundation with the flag --oppose-dao-fork or wait to upgrade.*
 
 Official golang implementation of the Ethereum protocol supporting the
 original chain. A version which can **honestly** offer both a censorship
