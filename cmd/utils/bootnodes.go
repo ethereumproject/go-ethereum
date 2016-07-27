@@ -25,7 +25,7 @@ var FrontierBootNodes = []*discover.Node{
 	discover.MustParseNode("enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303"), //bar-
 	discover.MustParseNode("enode://687be94c3a7beaa3d2fde82fa5046cdeb3e8198354e05b29d6e0d4e276713e3707ac10f784a7904938b06b46c764875c241b0337dd853385a4d8bfcbf8190647@95.183.51.229:30303"),  //tre-
 	discover.MustParseNode("enode://6e538e7c1280f0a31ff08b382db5302480f775480b8e68f8febca0ceff81e4b19153c6f8bf60313b93bef2cc34d34e1df41317de0ce613a201d1660a788a03e2@52.206.67.235:30303"),  //ela-
-	discover.MustParseNode("enode://217ebe27e89bf4fec8ce06509323ff095b1014378deb75ab2e5f6759a4e875 0a3bd8254b8c6833136e4d5e58230d65ee8ab34a5db5abf0640408c4288af3c8a7@188.138.1.237:30303"), //lec-
+	discover.MustParseNode("enode://217ebe27e89bf4fec8ce06509323ff095b1014378deb75ab2e5f6759a4e8750a3bd8254b8c6833136e4d5e58230d65ee8ab34a5db5abf0640408c4288af3c8a7@188.138.1.237:30303"),  //lec-
 }
 
 // TestNetBootNodes are the enode URLs of the P2P bootstrap nodes running on the
