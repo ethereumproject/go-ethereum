@@ -1,5 +1,7 @@
 ## Ethereum Go (ORIGINAL BLOCKCHAIN)
 
+[![Join the chat at https://gitter.im/ethereumproject/go-ethereum](https://badges.gitter.im/ethereumproject/go-ethereum.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 *Migration in progress, this master has all the DAO specific hardcoding removed and can successfully build all binaries but much of the documentation is derived from the forked version of Ethereum and needs to be updated. If you have any issues please create an issue*
 
 Official golang implementation of the Ethereum protocol supporting the
