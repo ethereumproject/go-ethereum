@@ -111,7 +111,7 @@ var (
 	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "networkid",
-		Usage: "Network identifier (integer, 0=Olympic, 1=Frontier, 2=Morden)",
+		Usage: "Network identifier (integer, 0=Olympic, 1=Homestead, 2=Morden)",
 		Value: eth.NetworkId,
 	}
 	OlympicFlag = cli.BoolFlag{
@@ -471,7 +471,7 @@ func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 		if ctx.GlobalBool(TestNetFlag.Name) {
 			return TestNetBootNodes
 		}
-		return FrontierBootNodes
+		return HomesteadBootNodes
 	}
 	// Otherwise parse and use the CLI bootstrap nodes
 	bootnodes := []*discover.Node{}

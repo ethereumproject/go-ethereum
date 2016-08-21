@@ -16,17 +16,21 @@
 
 package params
 
-import "math/big"
+import (
+	"math/big"
+
+	"github.com/ethereumproject/go-ethereum/common"
+)
 
 var (
 	// Legacy
 	TestNetHomesteadBlock = big.NewInt(494000)  // Testnet homestead block
 	MainNetHomesteadBlock = big.NewInt(1150000) // Mainnet homestead block
 	// Initialize Forks
-	DAOFork = Fork{TestNetBlock: big.NewInt(494000),
+	HomesteadFork = Fork{TestNetBlock: big.NewInt(494000),
 		MainNetBlock: big.NewInt(1150000),
 	}
-	DAOFork = Fork{TestNetBlock: nil,
+	DAOFork = Fork{TestNetBlock: big.NewInt(137),
 		MainNetBlock:   big.NewInt(1920000),
 		ForkBlockExtra: common.FromHex("0x64616f2d686172642d666f726b"),
 		ForkExtraRange: big.NewInt(10),

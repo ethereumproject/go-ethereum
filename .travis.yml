@@ -1,5 +1,5 @@
 language: go
-go_import_path: github.com/ethereum/go-ethereum
+go_import_path: github.com/ethereumproject/go-ethereum
 sudo: false
 matrix:
   include:
@@ -40,6 +40,6 @@ after_success:
 notifications:
   webhooks:
     urls:
-      - https://webhooks.gitter.im/e/e09ccdce1048c5e03445
+      - https://webhooks.gitter.im/#
     on_success: change
     on_failure: always
