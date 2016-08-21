@@ -31,8 +31,17 @@ var ChainConfigNotFoundErr = errors.New("ChainConfig not found") // general conf
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
-	HomesteadBlock *big.Int  `json:"homesteadBlock"` // Homestead switch block (nil = no fork, 0 = already homestead)
-	VmConfig       vm.Config `json:"-"`
+	// Legacy
+	HomesteadBlock *big.Int `json:"homesteadBlock"` // Homestead switch block (nil = no fork, 0 = already homestead)
+	// big.NewInt(1920000)
+	DAOForkBlock *big.Int `json:"daoForkBlock"` // ETF switch block (nil = no fork)
+	// false
+	DAOForkSupport bool `json:"daoForkSupport"` // ETF switch bool, ok ...
+
+	// Initialize forks from params
+	//Forks []params.Fork
+
+	VmConfig vm.Config `json:"-"`
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
