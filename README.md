@@ -20,7 +20,7 @@ properly.
 
           | Linux   | OSX | ARM | Windows | Tests
 ----------|---------|-----|-----|---------|------
-develop   | (TBD) | (TBD) | (TBD) | (TBD) | (TBD)
+develop   | [![Build Status](http://ec2-54-81-112-125.compute-1.amazonaws.com/GoEthereumClassic_BuildLinux/status.png)](http://ec2-54-81-112-125.compute-1.amazonaws.com/GoEthereumClassic_BuildLinux) | (TBD) | (TBD) | (TBD) | (TBD)
 master    | (TBD) | (TBD) | (TBD) | (TBD) | (TBD)
 
 [![API Reference](
