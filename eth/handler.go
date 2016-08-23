@@ -276,28 +276,31 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	pm.syncTransactions(p)
 
 	// Drop Network Split Fork Connections
-	// EPROJECT Expand to be non-specific and check all forks and drop invalid peers
-	ETFork := pm.chainconfig.Fork("ETF")
-	if ETFork.NetworkSplit {
-		// Request the peer's fork header for extra-dat ForkBlock
-		if err := p.RequestHeadersByNumber(ETFork.MainNetBlock.Uint64(), 1, 0, false); err != nil {
-			glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
-			return err
-		}
-		if ETFork.Support {
-			// Start a timer to disconnect if the peer doesn't reply in time
-			p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
-				glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
-				pm.removePeer(p.id)
-			})
-		}
-		// Make sure it's cleaned up if the peer dies off
-		defer func() {
-			if p.timeout != nil {
-				p.timeout.Stop()
-				p.timeout = nil
+	// EPROJECT Expand to be non-specific and check all netsplit forks and drop invalid peers
+	var fork fork.Fork
+	for i := 0; i < len(pm.chainconfig.Forks); i++ {
+		fork = pm.chainconfig.Forks[i]
+		if fork.NetworkSplit {
+			// Request the peer's fork header for extra-dat ForkBlock
+			if err := p.RequestHeadersByNumber(fork.MainNetBlock.Uint64(), 1, 0, false); err != nil {
+				glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
+				return err
 			}
-		}()
+			if fork.Support {
+				// Start a timer to disconnect if the peer doesn't reply in time
+				p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
+					glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
+					pm.removePeer(p.id)
+				})
+			}
+			// Make sure it's cleaned up if the peer dies off
+			defer func() {
+				if p.timeout != nil {
+					p.timeout.Stop()
+					p.timeout = nil
+				}
+			}()
+		}
 	}
 	// main loop. handle incoming messages.
 	for {
