@@ -25,7 +25,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	//"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p"
@@ -188,6 +188,26 @@ func (p *peer) SendNodeData(data [][]byte) error {
 // ones requested from an already RLP encoded format.
 func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 	return p2p.Send(p.rw, ReceiptsMsg, receipts)
+}
+
+// RequestHashes fetches a batch of hashes from a peer, starting at from, going
+// towards the genesis block.
+func (p *peer) RequestHashes(from common.Hash) error {
+	glog.V(logger.Debug).Infof("%v fetching hashes (%d) from %x...", p, downloader.MaxHashFetch, from[:4])
+	return p2p.Send(p.rw, GetBlockHashesMsg, getBlockHashesData{from, uint64(downloader.MaxHashFetch)})
+}
+
+// RequestHashesFromNumber fetches a batch of hashes from a peer, starting at
+// the requested block number, going upwards towards the genesis block.
+func (p *peer) RequestHashesFromNumber(from uint64, count int) error {
+	glog.V(logger.Debug).Infof("%v fetching hashes (%d) from #%d...", p, count, from)
+	return p2p.Send(p.rw, GetBlockHashesFromNumberMsg, getBlockHashesFromNumberData{from, uint64(count)})
+}
+
+// RequestBlocks fetches a batch of blocks corresponding to the specified hashes.
+func (p *peer) RequestBlocks(hashes []common.Hash) error {
+	glog.V(logger.Debug).Infof("%v fetching %v blocks", p, len(hashes))
+	return p2p.Send(p.rw, GetBlocksMsg, hashes)
 }
 
 // RequestHeaders is a wrapper around the header query functions to fetch a

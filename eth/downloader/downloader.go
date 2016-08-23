@@ -249,12 +249,13 @@ func (d *Downloader) Synchronising() bool {
 
 // RegisterPeer injects a new download peer into the set of block source to be
 // used for fetching hashes and blocks from.
-func (d *Downloader) RegisterPeer(id string, version int, currentHead currentHeadRetrievalFn,
+func (d *Downloader) RegisterPeer(id string, version int, head common.Hash,
+	getRelHashes relativeHashFetcherFn, getAbsHashes absoluteHashFetcherFn, getBlocks blockFetcherFn, // eth/61 callbacks, remove when upgrading
 	getRelHeaders relativeHeaderFetcherFn, getAbsHeaders absoluteHeaderFetcherFn, getBlockBodies blockBodyFetcherFn,
 	getReceipts receiptFetcherFn, getNodeData stateFetcherFn) error {
 
 	glog.V(logger.Detail).Infoln("Registering peer", id)
-	if err := d.peers.Register(newPeer(id, version, currentHead, getRelHeaders, getAbsHeaders, getBlockBodies, getReceipts, getNodeData)); err != nil {
+	if err := d.peers.Register(newPeer(id, version, head, getRelHashes, getAbsHashes, getBlocks, getRelHeaders, getAbsHeaders, getBlockBodies, getReceipts, getNodeData)); err != nil {
 		glog.V(logger.Error).Infoln("Register failed:", err)
 		return err
 	}

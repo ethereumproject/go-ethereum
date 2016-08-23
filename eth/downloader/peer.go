@@ -102,7 +102,33 @@ type peer struct {
 
 // newPeer create a new downloader peer, with specific hash and block retrieval
 // mechanisms.
-func newPeer(id string, version int, currentHead currentHeadRetrievalFn,
+func newPeer(id string, version int, head common.Hash,
+	getRelHashes relativeHashFetcherFn, getAbsHashes absoluteHashFetcherFn, getBlocks blockFetcherFn, // eth/61 callbacks, remove when upgrading
+	getRelHeaders relativeHeaderFetcherFn, getAbsHeaders absoluteHeaderFetcherFn, getBlockBodies blockBodyFetcherFn,
+	getReceipts receiptFetcherFn, getNodeData stateFetcherFn) *peer {
+	return &peer{
+		id:      id,
+		head:    head,
+		lacking: make(map[common.Hash]struct{}),
+
+		getRelHashes: getRelHashes,
+		getAbsHashes: getAbsHashes,
+		getBlocks:    getBlocks,
+
+		getRelHeaders:  getRelHeaders,
+		getAbsHeaders:  getAbsHeaders,
+		getBlockBodies: getBlockBodies,
+
+		getReceipts: getReceipts,
+		getNodeData: getNodeData,
+
+		version: version,
+	}
+}
+
+// newPeer create a new downloader peer, with specific hash and block retrieval
+// mechanisms.
+func newPeer63(id string, version int, currentHead currentHeadRetrievalFn,
 	getRelHeaders relativeHeaderFetcherFn, getAbsHeaders absoluteHeaderFetcherFn, getBlockBodies blockBodyFetcherFn,
 	getReceipts receiptFetcherFn, getNodeData stateFetcherFn) *peer {
 	return &peer{
