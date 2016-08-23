@@ -275,16 +275,16 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	// Drop ETF Fork Connections
+	// Drop Network Split Fork Connections
 	// EPROJECT Expand to be non-specific and check all forks and drop invalid peers
 	ETFork := pm.chainconfig.Fork("ETF")
-	if ETFork.MainNetBlock != nil {
+	if ETFork.NetworkSplit {
 		// Request the peer's fork header for extra-dat ForkBlock
 		if err := p.RequestHeadersByNumber(ETFork.MainNetBlock.Uint64(), 1, 0, false); err != nil {
 			glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
 			return err
 		}
-		if ETFork.Support == true {
+		if ETFork.Support {
 			// Start a timer to disconnect if the peer doesn't reply in time
 			p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
 				glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
