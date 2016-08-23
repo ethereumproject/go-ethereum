@@ -27,6 +27,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/fork"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/eth/fetcher"
