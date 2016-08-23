@@ -800,9 +800,9 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	homesteadFork := config.Fork("Homestead")
 	if homesteadFork.MainNetBlock == nil {
 		if ctx.GlobalBool(TestNetFlag.Name) {
-			homesteadFork.TestNetBlock = params.HomesteadFork.TestNetBlock
+			homesteadFork.TestNetBlock = params.TestNetHomesteadBlock
 		} else {
-			homesteadFork.MainNetBlock = params.HomesteadFork.MainNetBlock
+			homesteadFork.MainNetBlock = params.MainNetHomesteadBlock
 		}
 	}
 	return config

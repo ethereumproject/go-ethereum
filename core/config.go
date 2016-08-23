@@ -20,7 +20,6 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/core/fork"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
@@ -32,7 +31,7 @@ var ChainConfigNotFoundErr = errors.New("ChainConfig not found") // general conf
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
-	Forks []fork.Fork
+	Forks []Fork
 
 	VmConfig vm.Config `json:"-"`
 }
@@ -43,7 +42,7 @@ func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 }
 
 func (c *ChainConfig) IsETF(num *big.Int) bool {
-	return c.IsForkIndex(0, num)
+	return c.IsForkIndex(1, num)
 }
 
 func (c *ChainConfig) IsForkIndex(i int, num *big.Int) bool {
@@ -57,8 +56,8 @@ func (c *ChainConfig) IsForkIndex(i int, num *big.Int) bool {
 	return false
 }
 
-func (c *ChainConfig) Fork(name string) (fork fork.Fork) {
-	for i := 0; i < len(c.Forks); i++ {
+func (c *ChainConfig) Fork(name string) (fork Fork) {
+	for i := range c.Forks {
 		if c.Forks[i].Name == name {
 			fork = c.Forks[i]
 		}

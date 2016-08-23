@@ -22,5 +22,6 @@ import "github.com/ethereumproject/go-ethereum/common"
 var BadHashes = map[common.Hash]bool{
 	common.HexToHash("05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"): true,
 	// ETFork #1920000 Block Hash
+	// EPROJECT Base this on netsplit forks
 	common.HexToHash("4985f5ca3d2afbec36529aa96f74de3cc10a2a4a6c44f2157a57d2c6059a11bb"): true,
 }

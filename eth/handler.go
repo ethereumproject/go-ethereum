@@ -27,7 +27,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/fork"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/eth/fetcher"
@@ -277,9 +276,8 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	pm.syncTransactions(p)
 
 	// Drop Network Split Fork Connections
-	// EPROJECT Expand to be non-specific and check all netsplit forks and drop invalid peers
-	var fork fork.Fork
-	for i := 0; i < len(pm.chainconfig.Forks); i++ {
+	var fork core.Fork
+	for i := range pm.chainconfig.Forks {
 		fork = pm.chainconfig.Forks[i]
 		if fork.NetworkSplit {
 			// Request the peer's fork header for extra-dat ForkBlock
@@ -404,42 +402,51 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&headers); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+		glog.V(logger.Debug).Infof("No BlockHeadersMsg is msg.Code")
 		// If no headers were received, but we're expending a fork check, maybe it's that
 		if len(headers) == 0 && p.timeout != nil {
+			glog.V(logger.Debug).Infof("No headers received")
 			// Possibly an empty reply to the fork header checks, sanity check total difficulty
 			forkPeer := true
 			// If we already have a header, we can check the peer's total difficulty against it. If
 			// the peer's ahead of this, it too must have a reply to the check
 			// DAO Split big.NewInt(1920000)
-			if splitHeader := pm.blockchain.GetHeaderByNumber((big.NewInt(1920000)).Uint64()); splitHeader != nil {
+			if splitHeader := pm.blockchain.GetHeaderByNumber(pm.chainconfig.Fork("ETF").MainNetBlock.Uint64()); splitHeader != nil {
+				glog.V(logger.Debug).Infof("A split header.")
 				if _, td := p.Head(); td.Cmp(pm.blockchain.GetTd(splitHeader.Hash())) >= 0 {
 					forkPeer = false
 				}
 			}
 			// If we're seemingly on the same chain, disable the drop timer
 			if forkPeer {
+				glog.V(logger.Debug).Infof("Is a fork peer.")
 				glog.V(logger.Debug).Infof("%v: seems to be on the same side of a fork", p)
 				// Disable the fork drop timeout
 				p.timeout.Stop()
 				p.timeout = nil
 				return nil
+			} else {
+				glog.V(logger.Debug).Infof("Is NOT a fork peer.")
 			}
 		}
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
 		filter := len(headers) == 1
 		if filter {
+			glog.V(logger.Debug).Infof("has filter")
 			// If it's a potential fork check, validate against the rules
-			// !EPROJECT This data is moved into a Fork struct and needs to be updated
-			if p.timeout != nil && pm.chainconfig.Fork("ETF").MainNetBlock.Cmp(headers[0].Number) == 0 {
+			// EPROJECT Make generic based on network split in fork struct
+			var fork core.Fork
+			fork = pm.chainconfig.Fork("ETF")
+			if p.timeout != nil && fork.MainNetBlock.Cmp(headers[0].Number) == 0 {
+				glog.V(logger.Debug).Infof("Disabling the fork droptimeout")
 				// Disable the fork drop timeout
 				p.timeout.Stop()
 				p.timeout = nil
 				// Validate the header and either drop the peer or continue
-				// !EPROJECT This function does not exist
-				//if err := core.ValidateDAOHeaderExtraData(pm.chainconfig, headers[0]); err != nil {
-				//	glog.V(logger.Debug).Infof("%v: verified to be on the other side of a fork, dropping", p)
-				//	return err
-				//}
+				if err := fork.ValidateForkHeaderExtraData(headers[0]); err != nil {
+					glog.V(logger.Debug).Infof("%v: verified to be on the other side of a fork, dropping", p)
+					return err
+				}
 				glog.V(logger.Debug).Infof("%v: verified to be on the same side of a fork", p)
 				return nil
 			}
@@ -760,7 +767,7 @@ func (self *ProtocolManager) txBroadcastLoop() {
 // EthNodeInfo represents a short summary of the Ethereum sub-protocol metadata known
 // about the host peer.
 type EthNodeInfo struct {
-	Network    int         `json:"network"`    // Ethereum network ID (0=Olympic, 1=Frontier, 2=Morden, 3=ETF)
+	Network    int         `json:"network"`    // Ethereum network ID (0=Olympic, 1=Frontier, 2=Morden)
 	Difficulty *big.Int    `json:"difficulty"` // Total difficulty of the host's blockchain
 	Genesis    common.Hash `json:"genesis"`    // SHA3 hash of the host's genesis block
 	Head       common.Hash `json:"head"`       // SHA3 hash of the host's best owned block

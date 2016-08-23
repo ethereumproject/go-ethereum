@@ -16,27 +16,9 @@
 
 package params
 
-import (
-	"math/big"
-
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/fork"
-)
+import "math/big"
 
 var (
-	// Init
-	HomesteadFork = fork.Fork{Name: "Homestead",
-		NetworkSplit: false,
-		Support:      true,
-		TestNetBlock: big.NewInt(494000),
-		MainNetBlock: big.NewInt(1150000),
-	}
-	ETFork = fork.Fork{Name: "ETF",
-		NetworkSplit:   true,
-		Support:        false,
-		TestNetBlock:   big.NewInt(137),
-		MainNetBlock:   big.NewInt(1920000),
-		ForkBlockExtra: common.FromHex("0x64616f2d686172642d666f726b"),
-		ForkExtraRange: big.NewInt(10),
-	}
+	TestNetHomesteadBlock = big.NewInt(494000)  // Testnet homestead block
+	MainNetHomesteadBlock = big.NewInt(1150000) // Mainnet homestead block
 )
