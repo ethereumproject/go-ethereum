@@ -20,6 +20,7 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ethereumproject/go-ethereum/core/fork"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
@@ -31,23 +32,36 @@ var ChainConfigNotFoundErr = errors.New("ChainConfig not found") // general conf
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
-	// Legacy
-	HomesteadBlock *big.Int `json:"homesteadBlock"` // Homestead switch block (nil = no fork, 0 = already homestead)
-	// big.NewInt(1920000)
-	DAOForkBlock *big.Int `json:"daoForkBlock"` // ETF switch block (nil = no fork)
-	// false
-	DAOForkSupport bool `json:"daoForkSupport"` // ETF switch bool, ok ...
-
-	// Initialize forks from params
-	//Forks []params.Fork
+	Forks []fork.Fork
 
 	VmConfig vm.Config `json:"-"`
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
 func (c *ChainConfig) IsHomestead(num *big.Int) bool {
-	if c.HomesteadBlock == nil || num == nil {
-		return false
+	return c.IsForkIndex(0, num)
+}
+
+func (c *ChainConfig) IsETF(num *big.Int) bool {
+	return c.IsForkIndex(0, num)
+}
+
+func (c *ChainConfig) IsForkIndex(i int, num *big.Int) bool {
+	if len(c.Forks) > 0 {
+		fork := c.Forks[i]
+		if fork.MainNetBlock == nil || num == nil {
+			return false
+		}
+		return num.Cmp(fork.MainNetBlock) >= num.Cmp(num)
 	}
-	return num.Cmp(c.HomesteadBlock) >= 0
+	return false
+}
+
+func (c *ChainConfig) Fork(name string) (fork fork.Fork) {
+	for i := 0; i < len(c.Forks); i++ {
+		if c.Forks[i].Name == name {
+			fork = c.Forks[i]
+		}
+	}
+	return fork
 }

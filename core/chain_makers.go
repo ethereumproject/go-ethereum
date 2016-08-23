@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/fork"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
@@ -31,12 +32,16 @@ import (
 
 /*
  * TODO: move this to another package.
+ * EPROJECT Similar information exists in params/util, share a blockchain config
  */
 
 // MakeChainConfig returns a new ChainConfig with the ethereum default chain settings.
 func MakeChainConfig() *ChainConfig {
 	return &ChainConfig{
-		HomesteadBlock: big.NewInt(0),
+		Forks: []fork.Fork{
+			fork.Fork{Name: "Homestead", MainNetBlock: big.NewInt(0), Support: true},
+			fork.Fork{Name: "ETF", MainNetBlock: big.NewInt(1920000), Support: false},
+		},
 	}
 }
 

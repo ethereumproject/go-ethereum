@@ -28,6 +28,7 @@ import (
 
 // Constants to match up protocol versions and messages
 const (
+	eth61 = 61
 	eth62 = 62
 	eth63 = 63
 )
@@ -48,15 +49,26 @@ const (
 
 // eth protocol message codes
 const (
+	// Protocol messages belonging to eth/61
+	StatusMsg                   = 0x00
+	NewBlockHashesMsg           = 0x01
+	TxMsg                       = 0x02
+	GetBlockHashesMsg           = 0x03
+	BlockHashesMsg              = 0x04
+	GetBlocksMsg                = 0x05
+	BlocksMsg                   = 0x06
+	NewBlockMsg                 = 0x07
+	GetBlockHashesFromNumberMsg = 0x08
+
 	// Protocol messages belonging to eth/62
-	StatusMsg          = 0x00
-	NewBlockHashesMsg  = 0x01
-	TxMsg              = 0x02
+	//StatusMsg          = 0x00
+	//NewBlockHashesMsg  = 0x01
+	//TxMsg              = 0x02
 	GetBlockHeadersMsg = 0x03
 	BlockHeadersMsg    = 0x04
 	GetBlockBodiesMsg  = 0x05
 	BlockBodiesMsg     = 0x06
-	NewBlockMsg        = 0x07
+	//NewBlockMsg        = 0x07
 
 	// Protocol messages belonging to eth/63
 	GetNodeDataMsg = 0x0d

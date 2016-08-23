@@ -275,25 +275,30 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	// Drop Fork Connections
-	// Request the peer's fork header for extra-dat ForkBlock
-	if err := p.RequestHeadersByNumber((big.NewInt(1920000)).Uint64(), 1, 0, false); err != nil {
-		glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
-		return err
-	}
-	// Start a timer to disconnect if the peer doesn't reply in time
-	p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
-		glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
-		pm.removePeer(p.id)
-	})
-	// Make sure it's cleaned up if the peer dies off
-	defer func() {
-		if p.timeout != nil {
-			p.timeout.Stop()
-			p.timeout = nil
+	// Drop ETF Fork Connections
+	// EPROJECT Expand to be non-specific and check all forks and drop invalid peers
+	ETFork := pm.chainconfig.Fork("ETF")
+	if ETFork.MainNetBlock != nil {
+		// Request the peer's fork header for extra-dat ForkBlock
+		if err := p.RequestHeadersByNumber(ETFork.MainNetBlock.Uint64(), 1, 0, false); err != nil {
+			glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
+			return err
 		}
-	}()
-
+		if ETFork.Support == true {
+			// Start a timer to disconnect if the peer doesn't reply in time
+			p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
+				glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
+				pm.removePeer(p.id)
+			})
+		}
+		// Make sure it's cleaned up if the peer dies off
+		defer func() {
+			if p.timeout != nil {
+				p.timeout.Stop()
+				p.timeout = nil
+			}
+		}()
+	}
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
@@ -421,7 +426,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if filter {
 			// If it's a potential fork check, validate against the rules
 			// !EPROJECT This data is moved into a Fork struct and needs to be updated
-			if p.timeout != nil && pm.chainconfig.DAOForkBlock.Cmp(headers[0].Number) == 0 {
+			if p.timeout != nil && pm.chainconfig.Fork("ETF").MainNetBlock.Cmp(headers[0].Number) == 0 {
 				// Disable the fork drop timeout
 				p.timeout.Stop()
 				p.timeout = nil
@@ -751,7 +756,7 @@ func (self *ProtocolManager) txBroadcastLoop() {
 // EthNodeInfo represents a short summary of the Ethereum sub-protocol metadata known
 // about the host peer.
 type EthNodeInfo struct {
-	Network    int         `json:"network"`    // Ethereum network ID (0=Olympic, 1=Frontier, 2=Morden)
+	Network    int         `json:"network"`    // Ethereum network ID (0=Olympic, 1=Frontier, 2=Morden, 3=ETF)
 	Difficulty *big.Int    `json:"difficulty"` // Total difficulty of the host's blockchain
 	Genesis    common.Hash `json:"genesis"`    // SHA3 hash of the host's genesis block
 	Head       common.Hash `json:"head"`       // SHA3 hash of the host's best owned block

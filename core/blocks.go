@@ -21,6 +21,6 @@ import "github.com/ethereumproject/go-ethereum/common"
 // Set of manually tracked bad hashes (usually hard forks)
 var BadHashes = map[common.Hash]bool{
 	common.HexToHash("05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"): true,
-	// ETHF #1920000 Block Hash
+	// ETFork #1920000 Block Hash
 	common.HexToHash("4985f5ca3d2afbec36529aa96f74de3cc10a2a4a6c44f2157a57d2c6059a11bb"): true,
 }

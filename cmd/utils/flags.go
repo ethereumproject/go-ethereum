@@ -797,11 +797,12 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		}
 	}
 	// Set any missing fields due to them being unset or system upgrade
-	if config.HomesteadBlock == nil {
+	homesteadFork := config.Fork("Homestead")
+	if homesteadFork.MainNetBlock == nil {
 		if ctx.GlobalBool(TestNetFlag.Name) {
-			config.HomesteadBlock = params.TestNetHomesteadBlock
+			homesteadFork.TestNetBlock = params.HomesteadFork.TestNetBlock
 		} else {
-			config.HomesteadBlock = params.MainNetHomesteadBlock
+			homesteadFork.MainNetBlock = params.HomesteadFork.MainNetBlock
 		}
 	}
 	return config

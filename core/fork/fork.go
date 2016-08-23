@@ -5,7 +5,9 @@ import (
 )
 
 type Fork struct {
-	Name string
+	Name         string
+	NetworkSplit bool
+	Support      bool
 	// TestNetBlock is the block number where a hard-fork commences on
 	// the Ethereum test network. It's enforced nil since it was decided not to do a
 	// testnet transition.
