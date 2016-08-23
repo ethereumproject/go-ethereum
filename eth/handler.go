@@ -432,23 +432,24 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
 		filter := len(headers) == 1
 		if filter {
-			glog.V(logger.Debug).Infof("has filter")
+			glog.V(logger.Debug).Infof("Filtering out explicitly requested headers")
 			// If it's a potential fork check, validate against the rules
-			// EPROJECT Make generic based on network split in fork struct
 			var fork core.Fork
-			fork = pm.chainconfig.Fork("ETF")
-			if p.timeout != nil && fork.MainNetBlock.Cmp(headers[0].Number) == 0 {
-				glog.V(logger.Debug).Infof("Disabling the fork droptimeout")
-				// Disable the fork drop timeout
-				p.timeout.Stop()
-				p.timeout = nil
-				// Validate the header and either drop the peer or continue
-				if err := fork.ValidateForkHeaderExtraData(headers[0]); err != nil {
-					glog.V(logger.Debug).Infof("%v: verified to be on the other side of a fork, dropping", p)
-					return err
+			for i := range pm.chainconfig.Forks {
+				fork = pm.chainconfig.Forks[i]
+				if p.timeout != nil && fork.MainNetBlock.Cmp(headers[0].Number) == 0 {
+					glog.V(logger.Debug).Infof("Disabling the fork drop timeout")
+					// Disable the fork drop timeout
+					p.timeout.Stop()
+					p.timeout = nil
+					// Validate the header and either drop the peer or continue
+					if err := fork.ValidateForkHeaderExtraData(headers[0]); err != nil {
+						glog.V(logger.Debug).Infof("%v: verified to be on the other side of a fork, dropping", p)
+						return err
+					}
+					glog.V(logger.Debug).Infof("%v: verified to be on the same side of a fork", p)
+					return nil
 				}
-				glog.V(logger.Debug).Infof("%v: verified to be on the same side of a fork", p)
-				return nil
 			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
 			headers = pm.fetcher.FilterHeaders(headers, time.Now())

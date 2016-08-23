@@ -38,22 +38,10 @@ type ChainConfig struct {
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
 func (c *ChainConfig) IsHomestead(num *big.Int) bool {
-	return c.IsForkIndex(0, num)
-}
-
-func (c *ChainConfig) IsETF(num *big.Int) bool {
-	return c.IsForkIndex(1, num)
-}
-
-func (c *ChainConfig) IsForkIndex(i int, num *big.Int) bool {
-	if len(c.Forks) > 0 {
-		fork := c.Forks[i]
-		if fork.MainNetBlock == nil || num == nil {
-			return false
-		}
-		return num.Cmp(fork.MainNetBlock) >= num.Cmp(num)
+	if c.Fork("Homestead").MainNetBlock == nil || num == nil {
+		return false
 	}
-	return false
+	return num.Cmp(c.Fork("Homestead").MainNetBlock) >= 0
 }
 
 func (c *ChainConfig) Fork(name string) (fork Fork) {

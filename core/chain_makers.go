@@ -40,9 +40,9 @@ func MakeChainConfig() *ChainConfig {
 			Fork{
 				Name:         "Homestead",
 				NetworkSplit: false,
-				Support:      false,
-				MainNetBlock: big.NewInt(0),
-				TestNetBlock: big.NewInt(0),
+				Support:      true,
+				MainNetBlock: big.NewInt(1150000),
+				TestNetBlock: big.NewInt(494000),
 			},
 			Fork{
 				Name:           "ETF",
