@@ -117,6 +117,12 @@ type txPool interface {
 	GetTransactions() types.Transactions
 }
 
+type chainManager interface {
+	GetBlockHashesFromHash(hash common.Hash, amount uint64) (hashes []common.Hash)
+	GetBlock(hash common.Hash) (block *types.Block)
+	Status() (td *big.Int, currentBlock common.Hash, genesisBlock common.Hash)
+}
+
 // statusData is the network packet for the status message.
 type statusData struct {
 	ProtocolVersion uint32
@@ -203,3 +209,8 @@ type blockBody struct {
 
 // blockBodiesData is the network packet for block content distribution.
 type blockBodiesData []*blockBody
+
+// nodeDataData is the network response packet for a node data retrieval.
+type nodeDataData []struct {
+	Value []byte
+}
