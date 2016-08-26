@@ -113,6 +113,14 @@ func (p *peer) SetHead(hash common.Hash, td *big.Int) {
 	p.td.Set(td)
 }
 
+// Td retrieves the current total difficulty of a peer.
+func (p *peer) Td() *big.Int {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return new(big.Int).Set(p.td)
+}
+
 // MarkBlock marks a block as known for the peer, ensuring that the block will
 // never be propagated to this particular peer.
 func (p *peer) MarkBlock(hash common.Hash) {
@@ -140,6 +148,25 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 		p.knownTxs.Add(tx.Hash())
 	}
 	return p2p.Send(p.rw, TxMsg, txs)
+}
+
+// SendBlockHashes sends a batch of known hashes to the remote peer.
+func (p *peer) SendBlockHashes(hashes []common.Hash) error {
+	return p2p.Send(p.rw, BlockHashesMsg, hashes)
+}
+
+// SendBlocks sends a batch of blocks to the remote peer.
+func (p *peer) SendBlocks(blocks []*types.Block) error {
+	return p2p.Send(p.rw, BlocksMsg, blocks)
+}
+
+// SendNewBlockHashes61 announces the availability of a number of blocks through
+// a hash notification.
+func (p *peer) SendNewBlockHashes61(hashes []common.Hash) error {
+	for _, hash := range hashes {
+		p.knownBlocks.Add(hash)
+	}
+	return p2p.Send(p.rw, NewBlockHashesMsg, hashes)
 }
 
 // SendNewBlockHashes announces the availability of a number of blocks through
