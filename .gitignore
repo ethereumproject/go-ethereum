@@ -37,3 +37,7 @@ profile.cov
 
 # vagrant
 .vagrant
+
+# vim
+*.swp
+*.swo
