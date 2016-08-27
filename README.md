@@ -28,6 +28,9 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 )](https://godoc.org/github.com/ethereumproject/go-ethereum)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
+## Automated development builds
+Build servers still need to be set up. If you are interested in managing a build server, please open an issue.
+
 ## Building the source
 
 For prerequisites and detailed build instructions please read the
