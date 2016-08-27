@@ -28,18 +28,6 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 )](https://godoc.org/github.com/ethereumproject/go-ethereum)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
-## Automated development builds
-
-The following builds are build automatically by our build servers after each push to the [develop](https://github.com/ethereumproject/go-ethereum/tree/develop) branch.
-
-* [Docker](https://registry.hub.docker.com/u/ethereumproject/client-go/)
-* [OS X](https://github.com/ethereumproject/go-ethereum)
-* Ubuntu
-  [trusty](https://github.com/ethereumproject/go-ethereum) |
-  [utopic](https://github.com/ethereumproject/go-ethereum)
-* [Windows 64-bit](https://github.com/ethereumproject/go-ethereum)
-* [ARM](https://github.com/ethereumproject/go-ethereum)
-
 ## Building the source
 
 For prerequisites and detailed build instructions please read the
