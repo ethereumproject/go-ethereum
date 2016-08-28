@@ -72,8 +72,7 @@ func (self *Filter) SetTopics(topics [][]common.Hash) {
 
 // Run filters logs with the current parameters set
 func (self *Filter) Find() vm.Logs {
-	latestHash := core.GetHeadBlockHash(self.db)
-	latestBlock := core.GetBlock(self.db, latestHash)
+	latestBlock := core.GetBlock(self.db, core.GetHeadBlockHash(self.db))
 	if latestBlock == nil {
 		return vm.Logs{}
 	}
