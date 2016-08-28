@@ -18,12 +18,17 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
-var ChainConfigNotFoundErr = errors.New("ChainConfig not found") // general config not found error
+var (
+	ChainConfigNotFoundErr     = errors.New("ChainConfig not found")
+	ChainConfigForkNotFoundErr = errors.New("ChainConfig fork not found")
+)
 
 // ChainConfig is the core config which determines the blockchain settings.
 //
@@ -31,24 +36,28 @@ var ChainConfigNotFoundErr = errors.New("ChainConfig not found") // general conf
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
-	Forks []Fork
-
 	VmConfig vm.Config `json:"-"`
+	// ForkConfig fork.Config
+	Forks []*Fork `json:"forks"`
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
 func (c *ChainConfig) IsHomestead(num *big.Int) bool {
-	if c.Fork("Homestead").MainNetBlock == nil || num == nil {
+	if c.Fork("Homestead").Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(c.Fork("Homestead").MainNetBlock) >= 0
+	return num.Cmp(c.Fork("Homestead").Block) > 0
 }
 
-func (c *ChainConfig) Fork(name string) (fork Fork) {
+func (c *ChainConfig) Fork(name string) *Fork {
 	for i := range c.Forks {
 		if c.Forks[i].Name == name {
-			fork = c.Forks[i]
+			return c.Forks[i]
 		}
 	}
-	return fork
+	return &Fork{}
+}
+
+func (c *ChainConfig) LoadForkConfig() {
+	c.Forks = LoadForks()
 }

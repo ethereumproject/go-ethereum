@@ -157,8 +157,13 @@ var (
 		Name:  "lightkdf",
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
 	}
+	// Network Split settings
+	ETFSplit = cli.BoolFlag{
+		Name:  "etf",
+		Usage: "Updates the chain rules to support the DAO hard-fork",
+	}
 	// Miner settings
-	// TODO: refactor CPU vs GPU mining flags
+	// TODO Refactor CPU vs GPU mining flags
 	MiningEnabledFlag = cli.BoolFlag{
 		Name:  "mine",
 		Usage: "Enable mining",
@@ -782,30 +787,37 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
 	// If the chain is already initialized, use any existing chain configs
-	config := new(core.ChainConfig)
+	c := new(core.ChainConfig)
 
 	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
 	if genesis != nil {
 		storedConfig, err := core.GetChainConfig(db, genesis.Hash())
 		switch err {
 		case nil:
-			config = storedConfig
+			c = storedConfig
 		case core.ChainConfigNotFoundErr:
 			// No configs found, use empty, will populate below
 		default:
 			Fatalf("Could not make chain configuration: %v", err)
 		}
 	}
+
 	// Set any missing fields due to them being unset or system upgrade
-	homesteadFork := config.Fork("Homestead")
-	if homesteadFork.MainNetBlock == nil {
-		if ctx.GlobalBool(TestNetFlag.Name) {
-			homesteadFork.TestNetBlock = params.TestNetHomesteadBlock
-		} else {
-			homesteadFork.MainNetBlock = params.MainNetHomesteadBlock
+	if c.Forks == nil {
+		c.LoadForkConfig()
+		for i := range c.Forks {
+			// Reassign paramters since they could be custom arguments
+			if c.Forks[i].Name == "Homestead" {
+				if ctx.GlobalBool(TestNetFlag.Name) {
+					c.Forks[i].Block = params.TestNetHomesteadBlock
+				} else {
+					c.Forks[i].Block = params.MainNetHomesteadBlock
+				}
+			}
 		}
 	}
-	return config
+
+	return c
 }
 
 // MakeChainDatabase open an LevelDB using the flags passed to the client and will hard crash if it fails.
