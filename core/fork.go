@@ -59,15 +59,15 @@ func LoadForks() []*Fork {
 	return []*Fork{
 		&Fork{
 			Name:         "Homestead",
+			Block:        big.NewInt(1150000),
 			NetworkSplit: false,
 			Support:      true,
-			Block:        big.NewInt(1150000),
 		},
 		&Fork{
 			Name:         "ETF",
+			Block:        big.NewInt(1920000),
 			NetworkSplit: true,
 			Support:      false,
-			Block:        big.NewInt(1920000),
 			BlockExtra:   common.FromHex("0x64616f2d686172642d666f726b"),
 			ExtraRange:   big.NewInt(10),
 		},

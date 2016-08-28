@@ -158,9 +158,9 @@ var (
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
 	}
 	// Network Split settings
-	ETFSplit = cli.BoolFlag{
+	ETFChain = cli.BoolFlag{
 		Name:  "etf",
-		Usage: "Updates the chain rules to support the DAO hard-fork",
+		Usage: "Updates the chain rules to use the ETF hard-fork blockchain",
 	}
 	// Miner settings
 	// TODO Refactor CPU vs GPU mining flags
@@ -806,7 +806,7 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	if c.Forks == nil {
 		c.LoadForkConfig()
 		for i := range c.Forks {
-			// Reassign paramters since they could be custom arguments
+			// Force override any existing configs if explicitly requested
 			if c.Forks[i].Name == "Homestead" {
 				if ctx.GlobalBool(TestNetFlag.Name) {
 					c.Forks[i].Block = params.TestNetHomesteadBlock
@@ -814,9 +814,34 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 					c.Forks[i].Block = params.MainNetHomesteadBlock
 				}
 			}
+			if c.Forks[i].Name == "ETF" {
+				if ctx.GlobalBool(ETFChain.Name) {
+					c.Forks[i].Support = true
+				}
+			}
 		}
 	}
-
+	// Temporarilly display a proper message so the user knows which side of the network split is loading
+	if !ctx.GlobalBool(TestNetFlag.Name) && (genesis == nil || genesis.Hash() == common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")) {
+		separator := strings.Repeat("-", 95)
+		glog.V(logger.Warn).Info(separator)
+		glog.V(logger.Warn).Info(fmt.Sprintf("Geth is aware of %v blockchain hard-forks associated with this genesis block.", len(c.Forks)))
+		netsplitChoice := ""
+		for i := range c.Forks {
+			if c.Forks[i].NetworkSplit {
+				netsplitChoice = "resulted in a network split."
+			} else {
+				netsplitChoice = ""
+			}
+			glog.V(logger.Warn).Info(fmt.Sprintf("%v) %v hard-fork at block %v %v", i, c.Forks[i].Name, c.Forks[i].Block, netsplitChoice))
+		}
+		if !c.Fork("ETF").Support {
+			glog.V(logger.Warn).Info("Geth is currently configured to use the Ethereum classic/original (ETC) blockchain!")
+		} else {
+			glog.V(logger.Warn).Info("Geth is currently configured to use the Ethereum DAO hard-fork (ETF) blockchain!")
+		}
+		glog.V(logger.Warn).Info(separator)
+	}
 	return c
 }
 
