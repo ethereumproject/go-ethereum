@@ -200,6 +200,8 @@ func New(stateDb ethdb.Database, mux *event.TypeMux, hasHeader headerCheckFn, ha
 		rollback:         rollback,
 		dropPeer:         dropPeer,
 		newPeerCh:        make(chan *peer, 1),
+		hashCh:           make(chan dataPack, 1),
+		blockCh:          make(chan dataPack, 1),
 		headerCh:         make(chan dataPack, 1),
 		bodyCh:           make(chan dataPack, 1),
 		receiptCh:        make(chan dataPack, 1),
@@ -249,13 +251,13 @@ func (d *Downloader) Synchronising() bool {
 
 // RegisterPeer injects a new download peer into the set of block source to be
 // used for fetching hashes and blocks from.
-func (d *Downloader) RegisterPeer(id string, version int, head common.Hash,
+func (d *Downloader) RegisterPeer(id string, version int, currentHead currentHeadRetrievalFn, head common.Hash,
 	getRelHashes relativeHashFetcherFn, getAbsHashes absoluteHashFetcherFn, getBlocks blockFetcherFn, // eth/61 callbacks, remove when upgrading
 	getRelHeaders relativeHeaderFetcherFn, getAbsHeaders absoluteHeaderFetcherFn, getBlockBodies blockBodyFetcherFn,
 	getReceipts receiptFetcherFn, getNodeData stateFetcherFn) error {
 
 	glog.V(logger.Detail).Infoln("Registering peer", id)
-	if err := d.peers.Register(newPeer(id, version, head, getRelHashes, getAbsHashes, getBlocks, getRelHeaders, getAbsHeaders, getBlockBodies, getReceipts, getNodeData)); err != nil {
+	if err := d.peers.Register(newPeer(id, version, currentHead, head, getRelHashes, getAbsHashes, getBlocks, getRelHeaders, getAbsHeaders, getBlockBodies, getReceipts, getNodeData)); err != nil {
 		glog.V(logger.Error).Infoln("Register failed:", err)
 		return err
 	}
@@ -300,7 +302,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 	case errBusy:
 		glog.V(logger.Detail).Infof("Synchronisation already in progress")
 
-	case errTimeout, errBadPeer, errStallingPeer,
+	case errTimeout, errBadPeer, errStallingPeer, errEmptyHashSet,
 		errEmptyHeaderSet, errPeersUnavailable, errTooOld,
 		errInvalidAncestor, errInvalidChain:
 		glog.V(logger.Debug).Infof("Removing peer %v: %v", id, err)
@@ -313,7 +315,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 }
 
 // synchronise will select the peer and use it for synchronising. If an empty string is given
-// it will use the best peer possible and synchronize if it's TD is higher than our own. If any of the
+// it will use the best peer possible and synchronise if it's TD is higher than our own. If any of the
 // checks fail an error will be returned. This method is synchronous
 func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode SyncMode) error {
 	// Mock out the synchronisation if testing
@@ -334,13 +336,13 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	d.queue.Reset()
 	d.peers.Reset()
 
-	for _, ch := range []chan bool{d.bodyWakeCh, d.receiptWakeCh, d.stateWakeCh} {
+	for _, ch := range []chan bool{d.blockWakeCh, d.bodyWakeCh, d.receiptWakeCh, d.stateWakeCh} {
 		select {
 		case <-ch:
 		default:
 		}
 	}
-	for _, ch := range []chan dataPack{d.headerCh, d.bodyCh, d.receiptCh, d.stateCh} {
+	for _, ch := range []chan dataPack{d.hashCh, d.blockCh, d.headerCh, d.bodyCh, d.receiptCh, d.stateCh} {
 		for empty := false; !empty; {
 			select {
 			case <-ch:
@@ -397,6 +399,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 
 	switch {
 	case p.version == 61:
+		glog.V(logger.Debug).Infoln("Synchronising with eth/61 peer.")
 		// Look up the sync boundaries: the common ancestor and the target block
 		latest, err := d.fetchHeight61(p)
 		if err != nil {
@@ -424,6 +427,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		)
 
 	case p.version >= 62:
+		glog.V(logger.Debug).Infoln("Synchronising with eth/62 peer.")
 		// Look up the sync boundaries: the common ancestor and the target block
 		latest, err := d.fetchHeight(p)
 		if err != nil {
@@ -484,6 +488,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		)
 
 	case p.version >= 63:
+		glog.V(logger.Debug).Infoln("Synchronising with eth/63 peer.")
 		// Look up the sync boundaries: the common ancestor and the target block
 		latest, err := d.fetchHeight(p)
 		if err != nil {
@@ -1064,8 +1069,7 @@ func (d *Downloader) fetchHeight(p *peer) (*types.Header, error) {
 	glog.V(logger.Debug).Infof("%v: retrieving remote chain height", p)
 
 	// Request the advertised remote head block and wait for the response
-	head, _ := p.currentHead()
-	go p.getRelHeaders(head, 1, 0, false)
+	go p.getRelHeaders(p.head, 1, 0, false)
 
 	timeout := time.After(d.requestTTL())
 	for {
@@ -1928,6 +1932,19 @@ func (d *Downloader) processContent() error {
 			results = results[items:]
 		}
 	}
+}
+
+// DeliverHashes injects a new batch of hashes received from a remote node into
+// the download schedule. This is usually invoked through the BlockHashesMsg by
+// the protocol handler.
+func (d *Downloader) DeliverHashes(id string, hashes []common.Hash) (err error) {
+	return d.deliver(id, d.hashCh, &hashPack{id, hashes}, hashInMeter, hashDropMeter)
+}
+
+// DeliverBlocks injects a new batch of blocks received from a remote node.
+// This is usually invoked through the BlocksMsg by the protocol handler.
+func (d *Downloader) DeliverBlocks(id string, blocks []*types.Block) (err error) {
+	return d.deliver(id, d.blockCh, &blockPack{id, blocks}, blockInMeter, blockDropMeter)
 }
 
 // DeliverHeaders injects a new batch of block headers received from a remote

@@ -770,14 +770,6 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	localTd := self.GetTd(self.currentBlock.Hash())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
-	// Irrelevant of the canonical status, write the block itself to the database
-	if err := self.hc.WriteTd(block.Hash(), externTd); err != nil {
-		glog.Fatalf("failed to write block total difficulty: %v", err)
-	}
-	if err := WriteBlock(self.chainDb, block); err != nil {
-		glog.Fatalf("failed to write block contents: %v", err)
-	}
-
 	// If the total difficulty is higher than our known, add it to the canonical chain
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
 	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
@@ -793,6 +785,14 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	} else {
 		status = SideStatTy
 	}
+	// Irrelevant of the canonical status, write the block itself to the database
+	if err := self.hc.WriteTd(block.Hash(), externTd); err != nil {
+		glog.Fatalf("failed to write block total difficulty: %v", err)
+	}
+	if err := WriteBlock(self.chainDb, block); err != nil {
+		glog.Fatalf("failed to write block contents: %v", err)
+	}
+
 	self.futureBlocks.Remove(block.Hash())
 
 	return

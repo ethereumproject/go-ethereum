@@ -96,6 +96,9 @@ func (fs *FilterSystem) Unlock() {
 // Add adds a filter to the filter manager
 // Expects filterMu to be locked.
 func (fs *FilterSystem) Add(filter *Filter, filterType FilterType) (int, error) {
+	// protocol version eth/61
+	//fs.filterMu.Lock()
+	//defer fs.filterMu.Unlock()
 	id := fs.filterId
 	filter.created = time.Now()
 
