@@ -18,10 +18,8 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
