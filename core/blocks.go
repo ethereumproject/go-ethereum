@@ -20,9 +20,26 @@ import "github.com/ethereumproject/go-ethereum/common"
 
 // Set of manually tracked bad hashes (usually hard forks)
 var BadHashes = map[common.Hash]bool{
+	// consensus issue that occurred on the Frontier network at block 116,522, mined on 2015-08-20 at 14:59:16+02:00
+	// https://blog.ethereum.org/2015/08/20/security-alert-consensus-issue
 	common.HexToHash("05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"): true,
 	// ETFork #1920000 Block Hash
-	// EPROJECT Base this on netsplit forks
+	//common.HexToHash("4985f5ca3d2afbec36529aa96f74de3cc10a2a4a6c44f2157a57d2c6059a11bb"): true,
+}
+
+func LoadForkHashes() {
+	c := NewChainConfig()
 	for i := range c.Forks {
-		common.HexToHash("4985f5ca3d2afbec36529aa96f74de3cc10a2a4a6c44f2157a57d2c6059a11bb"): true,
+		if c.Forks[i].NetworkSplit {
+			if c.Forks[i].Support {
+				BadHashes[common.HexToHash(c.Forks[i].OrigSplitHash)] = true
+			} else {
+				BadHashes[common.HexToHash(c.Forks[i].ForkSplitHash)] = true
+			}
+		} else {
+			if c.Forks[i].OrigSplitHash != "" {
+				BadHashes[common.HexToHash(c.Forks[i].OrigSplitHash)] = true
+			}
+		}
+	}
 }

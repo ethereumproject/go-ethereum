@@ -39,6 +39,12 @@ type ChainConfig struct {
 	Forks []*Fork `json:"forks"`
 }
 
+func NewChainConfig() *ChainConfig {
+	return &ChainConfig{
+		Forks: LoadForks(),
+	}
+}
+
 // IsHomestead returns whether num is either equal to the homestead block or greater.
 func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 	if c.Fork("Homestead").Block == nil || num == nil {

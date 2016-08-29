@@ -35,12 +35,6 @@ import (
 // a and switch between known blockchains
 //
 
-// NewChainConfig returns a new ChainConfig with the ethereum default chain settings.
-func NewChainConfig() *ChainConfig {
-	chain := &ChainConfig{}
-	return chain.LoadForks()
-}
-
 // FakePow is a non-validating proof of work implementation.
 // It returns true from Verify for any block.
 type FakePow struct{}

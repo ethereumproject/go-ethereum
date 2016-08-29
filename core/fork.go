@@ -17,9 +17,7 @@ type Fork struct {
 	Block *big.Int
 	// SplitHash to derive BadHashes to assist in avoiding sync issues
 	// after network split.
-	// ETC Block+1 "94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"
-	SplitHash string
-	// ETF Block+1 "4985f5ca3d2afbec36529aa96f74de3cc10a2a4a6c44f2157a57d2c6059a11bb"
+	OrigSplitHash string
 	ForkSplitHash string
 	// ForkBlockExtra is the block header extra-data field to set for a fork
 	// point and a number of consecutive blocks to allow fast/light syncers to correctly
@@ -70,6 +68,10 @@ func LoadForks() []*Fork {
 			Support:      false,
 			BlockExtra:   common.FromHex("0x64616f2d686172642d666f726b"),
 			ExtraRange:   big.NewInt(10),
+			// ETC Block+1
+			OrigSplitHash: "94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f",
+			// ETF Block+1
+			ForkSplitHash: "4985f5ca3d2afbec36529aa96f74de3cc10a2a4a6c44f2157a57d2c6059a11bb",
 		},
 	}
 }
