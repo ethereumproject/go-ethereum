@@ -825,21 +825,24 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	if !ctx.GlobalBool(TestNetFlag.Name) && (genesis == nil || genesis.Hash() == common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")) {
 		separator := strings.Repeat("-", 95)
 		glog.V(logger.Warn).Info(separator)
-		glog.V(logger.Warn).Info(fmt.Sprintf("Geth is aware of %v blockchain hard-forks associated with this genesis block.", len(c.Forks)))
+		glog.V(logger.Warn).Info("Loading blockchain with genesis block \"\x1b[32m0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3\x1b[39m\".")
+		glog.V(logger.Warn).Info(fmt.Sprintf("Aware of %v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
 		netsplitChoice := ""
+		splitSetting := ""
 		for i := range c.Forks {
 			if c.Forks[i].NetworkSplit {
 				netsplitChoice = "resulted in a network split."
+				if c.Forks[i].Support {
+					splitSetting = "Geth is configured to use the Ethereum (%v) hard-fork blockchain!"
+				} else {
+					splitSetting = "Geth is configured to use the \x1b[32mEthereum (ETC) classic/original\x1b[39m blockchain!"
+				}
 			} else {
 				netsplitChoice = ""
 			}
-			glog.V(logger.Warn).Info(fmt.Sprintf("%v) %v hard-fork at block %v %v", i, c.Forks[i].Name, c.Forks[i].Block, netsplitChoice))
+			glog.V(logger.Warn).Info(fmt.Sprintf("%v hard-fork at block %v %v", i, c.Forks[i].Name, c.Forks[i].Block, netsplitChoice))
 		}
-		if !c.Fork("ETF").Support {
-			glog.V(logger.Warn).Info("Geth is currently configured to use the Ethereum classic/original (ETC) blockchain!")
-		} else {
-			glog.V(logger.Warn).Info("Geth is currently configured to use the Ethereum DAO hard-fork (ETF) blockchain!")
-		}
+		glog.V(logger.Warn).Info(splitSetting)
 		glog.V(logger.Warn).Info(separator)
 	}
 	return c

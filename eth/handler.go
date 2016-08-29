@@ -62,7 +62,7 @@ type ProtocolManager struct {
 	txpool      txPool
 	blockchain  *core.BlockChain
 	chaindb     ethdb.Database
-	chainconfig *core.ChainConfig
+	chainConfig *core.ChainConfig
 
 	downloader *downloader.Downloader
 	fetcher    *fetcher.Fetcher
@@ -97,7 +97,7 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 		txpool:      txpool,
 		blockchain:  blockchain,
 		chaindb:     chaindb,
-		chainconfig: config,
+		chainConfig: config,
 		peers:       newPeerSet(),
 		newPeerCh:   make(chan *peer),
 		noMorePeers: make(chan struct{}),
@@ -278,17 +278,17 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	// Drop Network Split Fork Connections
+	// Drop connections on opposite side of network split
 	var fork *core.Fork
-	for i := range pm.chainconfig.Forks {
-		fork = pm.chainconfig.Forks[i]
+	for i := range pm.chainConfig.Forks {
+		fork = pm.chainConfig.Forks[i]
 		if fork.NetworkSplit {
 			// Request the peer's fork block header for extra-dat
-			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
-				glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
-				return err
-			}
 			if fork.Support {
+				if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
+					glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
+					return err
+				}
 				// Start a timer to disconnect if the peer doesn't reply in time
 				p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
 					glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
@@ -514,7 +514,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// If we already have a header, we can check the peer's total difficulty against it. If
 			// the peer's ahead of this, it too must have a reply to the check
 			// DAO Split big.NewInt(1920000)
-			if splitHeader := pm.blockchain.GetHeaderByNumber(pm.chainconfig.Fork("ETF").Block.Uint64()); splitHeader != nil {
+			if splitHeader := pm.blockchain.GetHeaderByNumber(pm.chainConfig.Fork("ETF").Block.Uint64()); splitHeader != nil {
 				glog.V(logger.Debug).Infof("A split header.")
 				if _, td := p.Head(); td.Cmp(pm.blockchain.GetTd(splitHeader.Hash())) >= 0 {
 					forkPeer = false
@@ -538,8 +538,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			glog.V(logger.Debug).Infof("Filtering out explicitly requested headers")
 			// If it's a potential fork check, validate against the rules
 			var fork *core.Fork
-			for i := range pm.chainconfig.Forks {
-				fork = pm.chainconfig.Forks[i]
+			for i := range pm.chainConfig.Forks {
+				fork = pm.chainConfig.Forks[i]
 				if p.timeout != nil && fork.Block.Cmp(headers[0].Number) == 0 {
 					glog.V(logger.Debug).Infof("Disabling the fork drop timeout")
 					// Disable the fork drop timeout
@@ -763,7 +763,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 		// Mark the peer as owning the block and schedule it for import
 		p.MarkBlock(request.Block.Hash())
-		glog.V(logger.Info).Infof("Setting Head: %v", request.Block.ParentHash())
+		glog.V(logger.Info).Infof("Setting Head: %v", request.Block.ParentHash().Hex())
 		p.SetHead(request.Block.ParentHash(), request.TD)
 		pm.fetcher.Enqueue(p.id, request.Block)
 

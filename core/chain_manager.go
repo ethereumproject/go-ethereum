@@ -37,9 +37,8 @@ import (
 
 // NewChainConfig returns a new ChainConfig with the ethereum default chain settings.
 func NewChainConfig() *ChainConfig {
-	return &ChainConfig{
-		Forks: LoadForks(),
-	}
+	chain := &ChainConfig{}
+	return chain.LoadForks()
 }
 
 // FakePow is a non-validating proof of work implementation.

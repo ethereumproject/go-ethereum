@@ -53,7 +53,7 @@ func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core
 		pow           = new(core.FakePow)
 		db, _         = ethdb.NewMemDatabase()
 		genesis       = core.WriteGenesisBlockForTesting(db, testBank)
-		chainConfig   = &core.ChainConfig{HomesteadBlock: big.NewInt(0)} // homestead set to 0 because of chain maker
+		chainConfig   = &core.ChainConfig{}
 		blockchain, _ = core.NewBlockChain(db, chainConfig, pow, evmux)
 	)
 	chain, _ := core.GenerateChain(nil, genesis, db, blocks, generator)
@@ -61,6 +61,7 @@ func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core
 		panic(err)
 	}
 
+	chainConfig.LoadForks()
 	pm, err := NewProtocolManager(chainConfig, fastSync, NetworkId, evmux, &testTxPool{added: newtx}, pow, blockchain, db)
 	if err != nil {
 		return nil, err

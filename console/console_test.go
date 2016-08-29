@@ -100,7 +100,7 @@ func newTester(t *testing.T, confOverride func(*eth.Config)) *tester {
 		t.Fatalf("failed to create node: %v", err)
 	}
 	ethConf := &eth.Config{
-		ChainConfig:    &core.ChainConfig{HomesteadBlock: new(big.Int)},
+		ChainConfig:    &core.ChainConfig{},
 		Etherbase:      common.HexToAddress(testAddress),
 		AccountManager: accman,
 		PowTest:        true,
