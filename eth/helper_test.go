@@ -49,11 +49,18 @@ var (
 // channels for different events.
 func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) (*ProtocolManager, error) {
 	var (
-		evmux         = new(event.TypeMux)
-		pow           = new(core.FakePow)
-		db, _         = ethdb.NewMemDatabase()
-		genesis       = core.WriteGenesisBlockForTesting(db, testBank)
-		chainConfig   = &core.ChainConfig{}
+		evmux       = new(event.TypeMux)
+		pow         = new(core.FakePow)
+		db, _       = ethdb.NewMemDatabase()
+		genesis     = core.WriteGenesisBlockForTesting(db, testBank)
+		chainConfig = &core.ChainConfig{
+			Forks: []*Fork{
+				&Fork{
+					Name:  "Homestead",
+					Block: big.NewInt(0),
+				},
+			},
+		}
 		blockchain, _ = core.NewBlockChain(db, chainConfig, pow, evmux)
 	)
 	chain, _ := core.GenerateChain(nil, genesis, db, blocks, generator)
@@ -61,7 +68,6 @@ func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core
 		panic(err)
 	}
 
-	chainConfig.LoadForks()
 	pm, err := NewProtocolManager(chainConfig, fastSync, NetworkId, evmux, &testTxPool{added: newtx}, pow, blockchain, db)
 	if err != nil {
 		return nil, err

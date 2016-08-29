@@ -169,7 +169,7 @@ func runBlockTest(homesteadBlock *big.Int, test *BlockTest) error {
 	core.WriteCanonicalHash(db, test.Genesis.Hash(), test.Genesis.NumberU64())
 	core.WriteHeadBlockHash(db, test.Genesis.Hash())
 	evmux := new(event.TypeMux)
-	config := &core.ChainConfig{}
+	config := core.NewChainConfig()
 	chain, err := core.NewBlockChain(db, config, ethash.NewShared(), evmux)
 	if err != nil {
 		return err

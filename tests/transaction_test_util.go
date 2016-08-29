@@ -164,8 +164,7 @@ func verifyTxFields(txTest TransactionTest, decodedTx *types.Transaction) (err e
 		decodedSender common.Address
 	)
 
-	chainConfig := &core.ChainConfig{}
-	chainConfig.LoadForks()
+	chainConfig := core.NewChainConfig()
 	if chainConfig.IsHomestead(common.String2Big(txTest.Blocknumber)) {
 		decodedSender, err = decodedTx.From()
 	} else {

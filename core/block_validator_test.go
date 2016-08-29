@@ -31,8 +31,14 @@ import (
 )
 
 func testChainConfig() *ChainConfig {
-	chain := &ChainConfig{}
-	return chain.LoadForks()
+	return &core.ChainConfig{
+		Forks: []*Fork{
+			&Fork{
+				Name:  "Homestead",
+				Block: big.NewInt(0),
+			},
+		},
+	}
 }
 
 func proc() (Validator, *BlockChain) {

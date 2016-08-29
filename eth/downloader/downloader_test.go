@@ -399,6 +399,8 @@ func (dl *downloadTester) newSlowPeer(id string, version int, hashes []common.Ha
 
 	var err error
 	switch version {
+	case 61:
+		err = dl.downloader.RegisterPeer(id, version, hashes[0], dl.peerGetRelHashesFn(id, delay), dl.peerGetAbsHashesFn(id, delay), dl.peerGetBlocksFn(id, delay), nil, nil, nil, nil, nil)
 	case 62:
 		err = dl.downloader.RegisterPeer(id, version, dl.peerCurrentHeadFn(id), dl.peerGetRelHeadersFn(id, delay), dl.peerGetAbsHeadersFn(id, delay), dl.peerGetBodiesFn(id, delay), nil, nil)
 	case 63:
@@ -461,6 +463,63 @@ func (dl *downloadTester) dropPeer(id string) {
 	delete(dl.peerChainTds, id)
 
 	dl.downloader.UnregisterPeer(id)
+}
+
+// peerGetRelHashesFn constructs a GetHashes function associated with a specific
+// peer in the download tester. The returned function can be used to retrieve
+// batches of hashes from the particularly requested peer.
+func (dl *downloadTester) peerGetRelHashesFn(id string, delay time.Duration) func(head common.Hash) error {
+	return func(head common.Hash) error {
+		time.Sleep(delay)
+
+		dl.lock.RLock()
+		defer dl.lock.RUnlock()
+
+		// Gather the next batch of hashes
+		hashes := dl.peerHashes[id]
+		result := make([]common.Hash, 0, MaxHashFetch)
+		for i, hash := range hashes {
+			if hash == head {
+				i++
+				for len(result) < cap(result) && i < len(hashes) {
+					result = append(result, hashes[i])
+					i++
+				}
+				break
+			}
+		}
+		// Delay delivery a bit to allow attacks to unfold
+		go func() {
+			time.Sleep(time.Millisecond)
+			dl.downloader.DeliverHashes(id, result)
+		}()
+		return nil
+	}
+}
+
+// peerGetAbsHashesFn constructs a GetHashesFromNumber function associated with
+// a particular peer in the download tester. The returned function can be used to
+// retrieve batches of hashes from the particularly requested peer.
+func (dl *downloadTester) peerGetAbsHashesFn(id string, delay time.Duration) func(uint64, int) error {
+	return func(head uint64, count int) error {
+		time.Sleep(delay)
+
+		dl.lock.RLock()
+		defer dl.lock.RUnlock()
+
+		// Gather the next batch of hashes
+		hashes := dl.peerHashes[id]
+		result := make([]common.Hash, 0, count)
+		for i := 0; i < count && len(hashes)-int(head)-1-i >= 0; i++ {
+			result = append(result, hashes[len(hashes)-int(head)-1-i])
+		}
+		// Delay delivery a bit to allow attacks to unfold
+		go func() {
+			time.Sleep(time.Millisecond)
+			dl.downloader.DeliverHashes(id, result)
+		}()
+		return nil
+	}
 }
 
 // peerCurrentHeadFn constructs a function to retrieve a peer's current head hash

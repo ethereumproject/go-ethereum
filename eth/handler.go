@@ -169,8 +169,7 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 	manager.fetcher = fetcher.New(blockchain.GetBlock, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 
 	if blockchain.Genesis().Hash().Hex() == defaultGenesisHash && networkId == 1 {
-		glog.V(logger.Debug).Infoln("Bad Block Reporting is enabled")
-		manager.badBlockReportingEnabled = true
+		manager.badBlockReportingEnabled = false
 	}
 
 	return manager, nil
@@ -283,8 +282,9 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	for i := range pm.chainConfig.Forks {
 		fork = pm.chainConfig.Forks[i]
 		if fork.NetworkSplit {
-			// Request the peer's fork block header for extra-dat
+			glog.V(logger.Warn).Infof("PeerInfo Version: %v", p.version)
 			if fork.Support {
+				// Request the peer's fork block header for extra-dat
 				if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
 					glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
 					return err
@@ -500,48 +500,40 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return p.SendBlockHeaders(headers)
 
 	case p.version >= eth62 && msg.Code == BlockHeadersMsg:
+		glog.V(logger.Warn).Infof("Peer 63 and BlockHeaderMsg: %v", p.version)
 		// A batch of headers arrived to one of our previous requests
 		var headers []*types.Header
 		if err := msg.Decode(&headers); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		glog.V(logger.Debug).Infof("No BlockHeadersMsg is msg.Code")
 		// If no headers were received, but we're expending a fork check, maybe it's that
 		if len(headers) == 0 && p.timeout != nil {
-			glog.V(logger.Debug).Infof("No headers received")
 			// Possibly an empty reply to the fork header checks, sanity check total difficulty
 			forkPeer := true
 			// If we already have a header, we can check the peer's total difficulty against it. If
 			// the peer's ahead of this, it too must have a reply to the check
 			// DAO Split big.NewInt(1920000)
 			if splitHeader := pm.blockchain.GetHeaderByNumber(pm.chainConfig.Fork("ETF").Block.Uint64()); splitHeader != nil {
-				glog.V(logger.Debug).Infof("A split header.")
 				if _, td := p.Head(); td.Cmp(pm.blockchain.GetTd(splitHeader.Hash())) >= 0 {
 					forkPeer = false
 				}
 			}
 			// If we're seemingly on the same chain, disable the drop timer
 			if forkPeer {
-				glog.V(logger.Debug).Infof("Is a fork peer.")
-				glog.V(logger.Debug).Infof("%v: seems to be on the same side of a fork", p)
 				// Disable the fork drop timeout
 				p.timeout.Stop()
 				p.timeout = nil
 				return nil
-			} else {
-				glog.V(logger.Debug).Infof("Is NOT a fork peer.")
 			}
 		}
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
 		filter := len(headers) == 1
 		if filter {
-			glog.V(logger.Debug).Infof("Filtering out explicitly requested headers")
 			// If it's a potential fork check, validate against the rules
 			var fork *core.Fork
 			for i := range pm.chainConfig.Forks {
 				fork = pm.chainConfig.Forks[i]
 				if p.timeout != nil && fork.Block.Cmp(headers[0].Number) == 0 {
-					glog.V(logger.Debug).Infof("Disabling the fork drop timeout")
 					// Disable the fork drop timeout
 					p.timeout.Stop()
 					p.timeout = nil
@@ -763,7 +755,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 		// Mark the peer as owning the block and schedule it for import
 		p.MarkBlock(request.Block.Hash())
-		glog.V(logger.Info).Infof("Setting Head: %v", request.Block.ParentHash().Hex())
 		p.SetHead(request.Block.ParentHash(), request.TD)
 		pm.fetcher.Enqueue(p.id, request.Block)
 
@@ -773,12 +764,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			trueHead = request.Block.ParentHash()
 			trueTD   = request.TD
 		)
-		glog.V(logger.Info).Infof("Updating peers TD if better than previous")
 		// Update the peers total difficulty if better than the previous
 		if _, td := p.Head(); trueTD.Cmp(td) > 0 {
-			glog.V(logger.Info).Infof("Schedule a sync if TD above ours")
-			glog.V(logger.Info).Infof("trueHead: %v", trueHead)
-			glog.V(logger.Info).Infof("trueTD: %v", trueTD)
 			p.SetHead(trueHead, trueTD)
 
 			// Schedule a sync if above ours. Note, this will not fire a sync for a gap of

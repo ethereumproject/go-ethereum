@@ -30,7 +30,14 @@ import (
 )
 
 // Default chain configuration which sets homestead phase at block 0 (i.e. no frontier)
-var chainConfig = &core.ChainConfig{}
+var chainConfig = &core.ChainConfig{
+	Forks: []*Fork{
+		&Fork{
+			Name:  "Homestead",
+			Block: big.NewInt(0),
+		},
+	},
+}
 
 // This nil assignment ensures compile time that SimulatedBackend implements bind.ContractBackend.
 var _ bind.ContractBackend = (*SimulatedBackend)(nil)
@@ -50,7 +57,6 @@ type SimulatedBackend struct {
 func NewSimulatedBackend(accounts ...core.GenesisAccount) *SimulatedBackend {
 	database, _ := ethdb.NewMemDatabase()
 	core.WriteGenesisBlockForTesting(database, accounts...)
-	chainConfig.LoadForks()
 	blockchain, _ := core.NewBlockChain(database, chainConfig, new(core.FakePow), new(event.TypeMux))
 
 	backend := &SimulatedBackend{
