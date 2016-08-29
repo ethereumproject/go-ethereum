@@ -54,10 +54,10 @@ func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core
 		db, _       = ethdb.NewMemDatabase()
 		genesis     = core.WriteGenesisBlockForTesting(db, testBank)
 		chainConfig = &core.ChainConfig{
-			Forks: []*Fork{
-				&Fork{
+			Forks: []*core.Fork{
+				&core.Fork{
 					Name:  "Homestead",
-					Block: big.NewInt(0),
+					Block: big.NewInt(1150000),
 				},
 			},
 		}

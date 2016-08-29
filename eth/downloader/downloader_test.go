@@ -399,8 +399,6 @@ func (dl *downloadTester) newSlowPeer(id string, version int, hashes []common.Ha
 
 	var err error
 	switch version {
-	case 61:
-		err = dl.downloader.RegisterPeer(id, version, hashes[0], dl.peerGetRelHashesFn(id, delay), dl.peerGetAbsHashesFn(id, delay), dl.peerGetBlocksFn(id, delay), nil, nil, nil, nil, nil)
 	case 62:
 		err = dl.downloader.RegisterPeer(id, version, dl.peerCurrentHeadFn(id), dl.peerGetRelHeadersFn(id, delay), dl.peerGetAbsHeadersFn(id, delay), dl.peerGetBodiesFn(id, delay), nil, nil)
 	case 63:
@@ -528,84 +526,7 @@ func (dl *downloadTester) peerCurrentHeadFn(id string) func() (common.Hash, *big
 	return func() (common.Hash, *big.Int) {
 		dl.lock.RLock()
 		defer dl.lock.RUnlock()
-
 		return dl.peerHashes[id][0], nil
-	}
-}
-
-// peerGetRelHeadersFn constructs a GetBlockHeaders function based on a hashed
-// origin; associated with a particular peer in the download tester. The returned
-// function can be used to retrieve batches of headers from the particular peer.
-func (dl *downloadTester) peerGetRelHeadersFn(id string, delay time.Duration) func(common.Hash, int, int, bool) error {
-	return func(origin common.Hash, amount int, skip int, reverse bool) error {
-		// Find the canonical number of the hash
-		dl.lock.RLock()
-		number := uint64(0)
-		for num, hash := range dl.peerHashes[id] {
-			if hash == origin {
-				number = uint64(len(dl.peerHashes[id]) - num - 1)
-				break
-			}
-		}
-		dl.lock.RUnlock()
-
-		// Use the absolute header fetcher to satisfy the query
-		return dl.peerGetAbsHeadersFn(id, delay)(number, amount, skip, reverse)
-	}
-}
-
-// peerGetAbsHeadersFn constructs a GetBlockHeaders function based on a numbered
-// origin; associated with a particular peer in the download tester. The returned
-// function can be used to retrieve batches of headers from the particular peer.
-func (dl *downloadTester) peerGetAbsHeadersFn(id string, delay time.Duration) func(uint64, int, int, bool) error {
-	return func(origin uint64, amount int, skip int, reverse bool) error {
-		time.Sleep(delay)
-
-		dl.lock.RLock()
-		defer dl.lock.RUnlock()
-
-		// Gather the next batch of headers
-		hashes := dl.peerHashes[id]
-		headers := dl.peerHeaders[id]
-		result := make([]*types.Header, 0, amount)
-		for i := 0; i < amount && len(hashes)-int(origin)-1-i*(skip+1) >= 0; i++ {
-			if header, ok := headers[hashes[len(hashes)-int(origin)-1-i*(skip+1)]]; ok {
-				result = append(result, header)
-			}
-		}
-		// Delay delivery a bit to allow attacks to unfold
-		go func() {
-			time.Sleep(time.Millisecond)
-			dl.downloader.DeliverHeaders(id, result)
-		}()
-		return nil
-	}
-}
-
-// peerGetBodiesFn constructs a getBlockBodies method associated with a particular
-// peer in the download tester. The returned function can be used to retrieve
-// batches of block bodies from the particularly requested peer.
-func (dl *downloadTester) peerGetBodiesFn(id string, delay time.Duration) func([]common.Hash) error {
-	return func(hashes []common.Hash) error {
-		time.Sleep(delay)
-
-		dl.lock.RLock()
-		defer dl.lock.RUnlock()
-
-		blocks := dl.peerBlocks[id]
-
-		transactions := make([][]*types.Transaction, 0, len(hashes))
-		uncles := make([][]*types.Header, 0, len(hashes))
-
-		for _, hash := range hashes {
-			if block, ok := blocks[hash]; ok {
-				transactions = append(transactions, block.Transactions())
-				uncles = append(uncles, block.Uncles())
-			}
-		}
-		go dl.downloader.DeliverBodies(id, transactions, uncles)
-
-		return nil
 	}
 }
 
@@ -902,7 +823,6 @@ func testHeavyForkedSync(t *testing.T, protocol int, mode SyncMode) {
 // Tests that chain forks are contained within a certain interval of the current
 // chain head, ensuring that malicious peers cannot waste resources by feeding
 // long dead chains.
-func TestBoundedForkedSync61(t *testing.T)      { testBoundedForkedSync(t, 61, FullSync) }
 func TestBoundedForkedSync62(t *testing.T)      { testBoundedForkedSync(t, 62, FullSync) }
 func TestBoundedForkedSync63Full(t *testing.T)  { testBoundedForkedSync(t, 63, FullSync) }
 func TestBoundedForkedSync63Fast(t *testing.T)  { testBoundedForkedSync(t, 63, FastSync) }
@@ -1208,7 +1128,6 @@ func testMissingHeaderAttack(t *testing.T, protocol int, mode SyncMode) {
 
 // Tests that if requested headers are shifted (i.e. first is missing), the queue
 // detects the invalid numbering.
-func TestShiftedHeaderAttack61(t *testing.T)      { testShiftedHeaderAttack(t, 61, FullSync) }
 func TestShiftedHeaderAttack62(t *testing.T)      { testShiftedHeaderAttack(t, 62, FullSync) }
 func TestShiftedHeaderAttack63Full(t *testing.T)  { testShiftedHeaderAttack(t, 63, FullSync) }
 func TestShiftedHeaderAttack63Fast(t *testing.T)  { testShiftedHeaderAttack(t, 63, FastSync) }

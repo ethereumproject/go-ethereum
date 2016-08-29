@@ -52,7 +52,7 @@ var (
 type fetchRequest struct {
 	Peer    *peer               // Peer to which the request was sent
 	From    uint64              // [eth/62] Requested chain element index (used for skeleton fills only)
-	Hashes  map[common.Hash]int // [eth/61] Requested hashes with their insertion index (priority)
+	Hashes  map[common.Hash]int // [eth/62] Requested hashes with their insertion index (priority)
 	Headers []*types.Header     // [eth/62] Requested headers, sorted by request order
 	Time    time.Time           // Time when the request was made
 }
@@ -73,10 +73,7 @@ type queue struct {
 	mode          SyncMode // Synchronisation mode to decide on the block parts to schedule for fetching
 	fastSyncPivot uint64   // Block number where the fast sync pivots into archive synchronisation mode
 
-	hashPool    map[common.Hash]int // [eth/61] Pending hashes, mapping to their insertion index (priority)
-	hashQueue   *prque.Prque        // [eth/61] Priority queue of the block hashes to fetch
-	hashCounter int                 // [eth/61] Counter indexing the added hashes to ensure retrieval order
-
+	// headerHead? Could use a more description name
 	headerHead common.Hash // [eth/62] Hash of the last queued header to verify order
 
 	// Headers are "special", they download in batches, supported by a skeleton chain
@@ -122,8 +119,6 @@ type queue struct {
 func newQueue(stateDb ethdb.Database) *queue {
 	lock := new(sync.Mutex)
 	return &queue{
-		hashPool:         make(map[common.Hash]int),
-		hashQueue:        prque.New(),
 		headerPendPool:   make(map[string]*fetchRequest),
 		headerContCh:     make(chan bool),
 		blockTaskPool:    make(map[common.Hash]*types.Header),
@@ -155,10 +150,6 @@ func (q *queue) Reset() {
 	q.closed = false
 	q.mode = FullSync
 	q.fastSyncPivot = 0
-
-	q.hashPool = make(map[common.Hash]int)
-	q.hashQueue.Reset()
-	q.hashCounter = 0
 
 	q.headerHead = common.Hash{}
 
@@ -319,34 +310,6 @@ func (q *queue) ShouldThrottleReceipts() bool {
 	}
 	// Throttle if more receipts are in-flight than free space in the cache
 	return pending >= len(q.resultCache)-len(q.receiptDonePool)
-}
-
-// Schedule61 adds a set of hashes for the download queue for scheduling, returning
-// the new hashes encountered.
-func (q *queue) Schedule61(hashes []common.Hash, fifo bool) []common.Hash {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-
-	// Insert all the hashes prioritised in the arrival order
-	inserts := make([]common.Hash, 0, len(hashes))
-	for _, hash := range hashes {
-		// Skip anything we already have
-		if old, ok := q.hashPool[hash]; ok {
-			glog.V(logger.Warn).Infof("Hash %x already scheduled at index %v", hash, old)
-			continue
-		}
-		// Update the counters and insert the hash
-		q.hashCounter = q.hashCounter + 1
-		inserts = append(inserts, hash)
-
-		q.hashPool[hash] = q.hashCounter
-		if fifo {
-			q.hashQueue.Push(hash, -float32(q.hashCounter)) // Lowest gets schedules first
-		} else {
-			q.hashQueue.Push(hash, float32(q.hashCounter)) // Highest gets schedules first
-		}
-	}
-	return inserts
 }
 
 // ScheduleSkeleton adds a batch of header retrieval tasks to the queue to fill
@@ -546,15 +509,6 @@ func (q *queue) ReserveHeaders(p *peer, count int) *fetchRequest {
 	}
 	q.headerPendPool[p.id] = request
 	return request
-}
-
-// ReserveBlocks reserves a set of block hashes for the given peer, skipping any
-// previously failed download.
-func (q *queue) ReserveBlocks(p *peer, count int) *fetchRequest {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-
-	return q.reserveHashes(p, count, q.hashQueue, nil, q.blockPendPool, len(q.resultCache)-len(q.blockDonePool))
 }
 
 // ReserveNodeData reserves a set of node data hashes for the given peer, skipping
@@ -822,15 +776,6 @@ func (q *queue) ExpireHeaders(timeout time.Duration) map[string]int {
 	return q.expire(timeout, q.headerPendPool, q.headerTaskQueue, headerTimeoutMeter)
 }
 
-// ExpireBlocks checks for in flight requests that exceeded a timeout allowance,
-// canceling them and returning the responsible peers for penalisation.
-func (q *queue) ExpireBlocks(timeout time.Duration) map[string]int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-
-	return q.expire(timeout, q.blockPendPool, q.hashQueue, blockTimeoutMeter)
-}
-
 // ExpireBodies checks for in flight block body requests that exceeded a timeout
 // allowance, canceling them and returning the responsible peers for penalisation.
 func (q *queue) ExpireBodies(timeout time.Duration) map[string]int {
@@ -895,74 +840,6 @@ func (q *queue) expire(timeout time.Duration, pendPool map[string]*fetchRequest,
 		delete(pendPool, id)
 	}
 	return expiries
-}
-
-// DeliverBlocks injects a block retrieval response into the download queue. The
-// method returns the number of blocks accepted from the delivery and also wakes
-// any threads waiting for data delivery.
-func (q *queue) DeliverBlocks(id string, blocks []*types.Block) (int, error) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-
-	// Short circuit if the blocks were never requested
-	request := q.blockPendPool[id]
-	if request == nil {
-		return 0, errNoFetchesPending
-	}
-	blockReqTimer.UpdateSince(request.Time)
-	delete(q.blockPendPool, id)
-
-	// If no blocks were retrieved, mark them as unavailable for the origin peer
-	if len(blocks) == 0 {
-		for hash, _ := range request.Hashes {
-			request.Peer.MarkLacking(hash)
-		}
-	}
-	// Iterate over the downloaded blocks and add each of them
-	accepted, errs := 0, make([]error, 0)
-	for _, block := range blocks {
-		// Skip any blocks that were not requested
-		hash := block.Hash()
-		if _, ok := request.Hashes[hash]; !ok {
-			errs = append(errs, fmt.Errorf("non-requested block %x", hash))
-			continue
-		}
-		// Reconstruct the next result if contents match up
-		index := int(block.Number().Int64() - int64(q.resultOffset))
-		if index >= len(q.resultCache) || index < 0 {
-			errs = []error{errInvalidChain}
-			break
-		}
-		q.resultCache[index] = &fetchResult{
-			Header:       block.Header(),
-			Transactions: block.Transactions(),
-			Uncles:       block.Uncles(),
-		}
-		q.blockDonePool[block.Hash()] = struct{}{}
-
-		delete(request.Hashes, hash)
-		delete(q.hashPool, hash)
-		accepted++
-	}
-	// Return all failed or missing fetches to the queue
-	for hash, index := range request.Hashes {
-		q.hashQueue.Push(hash, float32(index))
-	}
-	// Wake up WaitResults
-	if accepted > 0 {
-		q.active.Signal()
-	}
-	// If none of the blocks were good, it's a stale delivery
-	switch {
-	case len(errs) == 0:
-		return accepted, nil
-	case len(errs) == 1 && (errs[0] == errInvalidChain || errs[0] == errInvalidBlock):
-		return accepted, errs[0]
-	case len(errs) == len(blocks):
-		return accepted, errStaleDelivery
-	default:
-		return accepted, fmt.Errorf("multiple failures: %v", errs)
-	}
 }
 
 // DeliverHeaders injects a header retrieval response into the header results

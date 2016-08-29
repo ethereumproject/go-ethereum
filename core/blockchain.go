@@ -312,7 +312,6 @@ func (self *BlockChain) CurrentFastBlock() *types.Block {
 func (self *BlockChain) Status() (td *big.Int, currentBlock common.Hash, genesisBlock common.Hash) {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
-
 	return self.GetTd(self.currentBlock.Hash()), self.currentBlock.Hash(), self.genesisBlock.Hash()
 }
 
@@ -362,7 +361,6 @@ func (bc *BlockChain) Reset() {
 func (bc *BlockChain) ResetWithGenesisBlock(genesis *types.Block) {
 	// Dump the entire block chain and purge the caches
 	bc.SetHead(0)
-
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
@@ -844,6 +842,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 		}
 
 		if BadHashes[block.Hash()] {
+			glog.Infof("Found bad hash")
 			err := BadHashError(block.Hash())
 			reportBlock(block, err)
 			return i, err
@@ -865,7 +864,6 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 				if block.Time().Cmp(max) == 1 {
 					return i, fmt.Errorf("%v: BlockFutureErr, %v > %v", BlockFutureErr, block.Time(), max)
 				}
-
 				self.futureBlocks.Add(block.Hash(), block)
 				stats.queued++
 				continue

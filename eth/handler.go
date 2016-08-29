@@ -267,10 +267,10 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	defer pm.removePeer(p.id)
 
 	// Register the peer in the downloader. If the downloader considers it banned, we disconnect
-	peerHash, _ := p.Head()
-	if err := pm.downloader.RegisterPeer(p.id, p.version, p.Head, peerHash,
-		p.RequestHashes, p.RequestHashesFromNumber, p.RequestBlocks, p.RequestHeadersByHash,
-		p.RequestHeadersByNumber, p.RequestBodies, p.RequestReceipts, p.RequestNodeData); err != nil {
+	// TODO Causing error in tests
+	if err := pm.downloader.RegisterPeer(p.id, p.version, p.Head,
+		p.RequestHeadersByHash, p.RequestHeadersByNumber, p.RequestBodies,
+		p.RequestReceipts, p.RequestNodeData); err != nil {
 		return err
 	}
 	// Propagate existing transactions. new transactions appearing
@@ -282,7 +282,6 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	for i := range pm.chainConfig.Forks {
 		fork = pm.chainConfig.Forks[i]
 		if fork.NetworkSplit {
-			glog.V(logger.Warn).Infof("PeerInfo Version: %v", p.version)
 			if fork.Support {
 				// Request the peer's fork block header for extra-dat
 				if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
@@ -331,107 +330,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == StatusMsg:
 		// Status messages should never arrive after the handshake
 		return errResp(ErrExtraStatusMsg, "uncontrolled status message")
-
-	case p.version < eth62 && msg.Code == GetBlockHashesMsg:
-		// Retrieve the number of hashes to return and from which origin hash
-		var request getBlockHashesData
-		if err := msg.Decode(&request); err != nil {
-			return errResp(ErrDecode, "%v: %v", msg, err)
-		}
-		if request.Amount > uint64(downloader.MaxHashFetch) {
-			request.Amount = uint64(downloader.MaxHashFetch)
-		}
-		// Retrieve the hashes from the block chain and return them
-		hashes := pm.blockchain.GetBlockHashesFromHash(request.Hash, request.Amount)
-		if len(hashes) == 0 {
-			glog.V(logger.Debug).Infof("invalid block hash %x", request.Hash.Bytes()[:4])
-		}
-		return p.SendBlockHashes(hashes)
-
-	case p.version < eth62 && msg.Code == GetBlockHashesFromNumberMsg:
-		// Retrieve and decode the number of hashes to return and from which origin number
-		var request getBlockHashesFromNumberData
-		if err := msg.Decode(&request); err != nil {
-			return errResp(ErrDecode, "%v: %v", msg, err)
-		}
-		if request.Amount > uint64(downloader.MaxHashFetch) {
-			request.Amount = uint64(downloader.MaxHashFetch)
-		}
-		// Calculate the last block that should be retrieved, and short circuit if unavailable
-		last := pm.blockchain.GetBlockByNumber(request.Number + request.Amount - 1)
-		if last == nil {
-			last = pm.blockchain.CurrentBlock()
-			request.Amount = last.NumberU64() - request.Number + 1
-		}
-		if last.NumberU64() < request.Number {
-			return p.SendBlockHashes(nil)
-		}
-		// Retrieve the hashes from the last block backwards, reverse and return
-		hashes := []common.Hash{last.Hash()}
-		hashes = append(hashes, pm.blockchain.GetBlockHashesFromHash(last.Hash(), request.Amount-1)...)
-
-		for i := 0; i < len(hashes)/2; i++ {
-			hashes[i], hashes[len(hashes)-1-i] = hashes[len(hashes)-1-i], hashes[i]
-		}
-		return p.SendBlockHashes(hashes)
-
-	case p.version < eth62 && msg.Code == BlockHashesMsg:
-		// A batch of hashes arrived to one of our previous requests
-		var hashes []common.Hash
-		if err := msg.Decode(&hashes); err != nil {
-			break
-		}
-		// Deliver them all to the downloader for queuing
-		err := pm.downloader.DeliverHashes(p.id, hashes)
-		if err != nil {
-			glog.V(logger.Debug).Infoln(err)
-		}
-
-	case p.version < eth62 && msg.Code == GetBlocksMsg:
-		// Decode the retrieval message
-		msgStream := rlp.NewStream(msg.Payload, uint64(msg.Size))
-		if _, err := msgStream.List(); err != nil {
-			return err
-		}
-		// Gather blocks until the fetch or network limits is reached
-		var (
-			hash   common.Hash
-			bytes  common.StorageSize
-			blocks []*types.Block
-		)
-		for len(blocks) < downloader.MaxBlockFetch && bytes < softResponseLimit {
-			//Retrieve the hash of the next block
-			err := msgStream.Decode(&hash)
-			if err == rlp.EOL {
-				break
-			} else if err != nil {
-				return errResp(ErrDecode, "msg %v: %v", msg, err)
-			}
-			// Retrieve the requested block, stopping if enough was found
-			if block := pm.blockchain.GetBlock(hash); block != nil {
-				blocks = append(blocks, block)
-				bytes += block.Size()
-			}
-		}
-		return p.SendBlocks(blocks)
-
-	case p.version < eth62 && msg.Code == BlocksMsg:
-		// Decode the arrived block message
-		var blocks []*types.Block
-		if err := msg.Decode(&blocks); err != nil {
-			glog.V(logger.Detail).Infoln("Decode error", err)
-			blocks = nil
-		}
-		// Update the receive timestamp of each block
-		for _, block := range blocks {
-			block.ReceivedAt = msg.ReceivedAt
-			block.ReceivedFrom = p
-		}
-		// Filter out any explicitly requested blocks, deliver the rest to the downloader
-		if blocks := pm.fetcher.FilterBlocks(blocks); len(blocks) > 0 {
-			pm.downloader.DeliverBlocks(p.id, blocks)
-		}
-
 	// Block header query, collect the requested headers and reply
 	case p.version >= eth62 && msg.Code == GetBlockHeadersMsg:
 		// Decode the complex header query
@@ -500,7 +398,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return p.SendBlockHeaders(headers)
 
 	case p.version >= eth62 && msg.Code == BlockHeadersMsg:
-		glog.V(logger.Warn).Infof("Peer 63 and BlockHeaderMsg: %v", p.version)
 		// A batch of headers arrived to one of our previous requests
 		var headers []*types.Header
 		if err := msg.Decode(&headers); err != nil {
@@ -724,7 +621,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Mark the hashes as present at the remote node
 		for _, block := range announces {
 			p.MarkBlock(block.Hash)
-			p.SetHead(block.Hash, p.Td())
+			p.SetHead(block.Hash, p.td)
 		}
 		// Schedule all the unknown hashes for retrieval
 		unknown := make([]announce, 0, len(announces))
@@ -734,11 +631,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			}
 		}
 		for _, block := range unknown {
-			if p.version < eth62 {
-				pm.fetcher.Notify(p.id, block.Hash, block.Number, time.Now(), p.RequestBlocks, nil, nil)
-			} else {
-				pm.fetcher.Notify(p.id, block.Hash, block.Number, time.Now(), nil, p.RequestOneHeader, p.RequestBodies)
-			}
+			// TODO Breaking /eth tests
+			pm.fetcher.Notify(p.id, block.Hash, block.Number, time.Now(), p.RequestOneHeader, p.RequestBodies)
 		}
 
 	case msg.Code == NewBlockMsg:
@@ -828,12 +722,7 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 	// Otherwise if the block is indeed in our own chain, announce it
 	if pm.blockchain.HasBlock(hash) {
 		for _, peer := range peers {
-			if peer.version < eth62 {
-				peer.SendNewBlockHashes([]common.Hash{hash}, []uint64{block.NumberU64()})
-				peer.SendNewBlockHashes61([]common.Hash{hash})
-			} else {
-				peer.SendNewBlockHashes([]common.Hash{hash}, []uint64{block.NumberU64()})
-			}
+			peer.SendNewBlockHashes([]common.Hash{hash}, []uint64{block.NumberU64()})
 		}
 		glog.V(logger.Detail).Infof("announced block %x to %d peers in %v", hash[:4], len(peers), time.Since(block.ReceivedAt))
 	}

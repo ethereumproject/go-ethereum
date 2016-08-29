@@ -50,7 +50,7 @@ func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 	if c.Fork("Homestead").Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(c.Fork("Homestead").Block) > 0
+	return num.Cmp(c.Fork("Homestead").Block) >= 0
 }
 
 func (c *ChainConfig) Fork(name string) *Fork {

@@ -28,7 +28,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	//"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/params"
 )
@@ -280,6 +279,7 @@ func testGetBlockBodies(t *testing.T, protocol int) {
 }
 
 // Tests that the node state database can be retrieved based on hashes.
+func TestGetNodeData62(t *testing.T) { testGetNodeData(t, 62) }
 func TestGetNodeData63(t *testing.T) { testGetNodeData(t, 63) }
 
 func testGetNodeData(t *testing.T, protocol int) {
@@ -371,6 +371,7 @@ func testGetNodeData(t *testing.T, protocol int) {
 }
 
 // Tests that the transaction receipts can be retrieved based on hashes.
+func TestGetReceipt62(t *testing.T) { testGetReceipt(t, 62) }
 func TestGetReceipt63(t *testing.T) { testGetReceipt(t, 63) }
 
 func testGetReceipt(t *testing.T, protocol int) {
