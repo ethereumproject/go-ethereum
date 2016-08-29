@@ -6,6 +6,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 type Fork struct {
@@ -29,6 +31,7 @@ type Fork struct {
 }
 
 func (fork *Fork) ValidateForkHeaderExtraData(header *types.Header) error {
+	glog.V(logger.Info).Infof("validate fork header extra data")
 	// Short circuit validation if the node doesn't care about the DAO fork
 	if fork.Block == nil {
 		return nil
@@ -44,6 +47,7 @@ func (fork *Fork) ValidateForkHeaderExtraData(header *types.Header) error {
 			return ValidationError("Fork bad block extra-data: 0x%x", header.Extra)
 		}
 	} else {
+		glog.V(logger.Info).Infof("Dont support during validation")
 		if bytes.Compare(header.Extra, fork.BlockExtra) == 0 {
 			return ValidationError("No-fork bad block extra-data: 0x%x", header.Extra)
 		}
