@@ -84,7 +84,7 @@ func init() {
 	copy(relConfig.Commit[:], commit)
 
 	// Initialize the CLI app and start Geth
-	app = utils.NewApp(verString, "the go-ethereum command line interface")
+	app = utils.NewApp(verString, "the go-ethereum classic command line interface")
 	app.Action = geth
 	app.HideVersion = true // we have a command to print the version
 	app.Commands = []cli.Command{
