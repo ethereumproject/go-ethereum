@@ -149,11 +149,10 @@ func TestSnapshot2(t *testing.T) {
 	so0.balance = big.NewInt(42)
 	so0.nonce = 43
 	so0.SetCode([]byte{'c', 'a', 'f', 'e'})
-	so0.remove = false
+	so0.remove = true
 	so0.deleted = false
-	so0.dirty = true
+	so0.dirty = false
 	state.SetStateObject(so0)
-	state.Commit()
 
 	// and one with deleted == true
 	so1 := state.GetStateObject(stateobjaddr1)
@@ -174,7 +173,6 @@ func TestSnapshot2(t *testing.T) {
 	state.Set(snapshot)
 
 	so0Restored := state.GetStateObject(stateobjaddr0)
-	so0Restored.GetState(storageaddr)
 	so1Restored := state.GetStateObject(stateobjaddr1)
 	// non-deleted is equal (restored)
 	compareStateObjects(so0Restored, so0, t)
