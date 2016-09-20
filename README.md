@@ -12,21 +12,17 @@ development.
 Comments are being made in the codebase with the tag !EPROJECT
 recommending actions that must be taken to help complete the migration.
 
-For example, the links below are to build.ethdev.com, we will need our
-own build/status continuous development setup in order for it to work
-properly.
-
-
 
           | Linux   | OSX | ARM | Windows | Tests
 ----------|---------|-----|-----|---------|------
-develop   | [![Build Status](http://ec2-54-81-112-125.compute-1.amazonaws.com/GoEthereumClassic_BuildLinux/status.png)](http://ec2-54-81-112-125.compute-1.amazonaws.com/GoEthereumClassic_BuildLinux) | (TBD) | (TBD) | (TBD) | (TBD)
-master    | (TBD) | (TBD) | (TBD) | (TBD) | (TBD)
+develop   | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildLinux)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildLinux) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildOSX)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildOSX) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildARM)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildARM) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildWindows)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildWindows) | (TBD)
+master    | (TBD) | (TBD) | (TBD) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_GoEthereumMaster_BuildWindows)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_GoEthereumMaster_BuildWindows) | (TBD)
 
 [![API Reference](
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/ethereumproject/go-ethereum)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[ ![Download](https://api.bintray.com/packages/ethereumproject/GoEthereumClassic/go-ethereum/images/download.svg) ](https://bintray.com/ethereumproject/GoEthereumClassic/go-ethereum/_latestVersion)
 
 ## Automated development builds
 Build servers still need to be set up. If you are interested in managing a build server, please open an issue.
