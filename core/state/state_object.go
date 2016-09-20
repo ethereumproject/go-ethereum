@@ -187,7 +187,8 @@ func (self *StateObject) Copy() *StateObject {
 	stateObject.codeHash = common.CopyBytes(self.codeHash)
 	stateObject.nonce = self.nonce
 	stateObject.trie = self.trie
-	stateObject.code = common.CopyBytes(self.code)
+	// Modified to use bytecode instead of a copy of the bytecode
+	stateObject.code = self.code
 	stateObject.initCode = common.CopyBytes(self.initCode)
 	stateObject.storage = self.storage.Copy()
 	stateObject.remove = self.remove
