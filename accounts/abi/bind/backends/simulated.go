@@ -31,8 +31,8 @@ import (
 
 // Default chain configuration which sets homestead phase at block 0 (i.e. no frontier)
 var chainConfig = &core.ChainConfig{
-	Forks: []*Fork{
-		&Fork{
+	Forks: []*core.Fork{
+		&core.Fork{
 			Name:  "Homestead",
 			Block: big.NewInt(0),
 		},
