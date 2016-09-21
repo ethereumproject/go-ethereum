@@ -463,63 +463,6 @@ func (dl *downloadTester) dropPeer(id string) {
 	dl.downloader.UnregisterPeer(id)
 }
 
-// peerGetRelHashesFn constructs a GetHashes function associated with a specific
-// peer in the download tester. The returned function can be used to retrieve
-// batches of hashes from the particularly requested peer.
-func (dl *downloadTester) peerGetRelHashesFn(id string, delay time.Duration) func(head common.Hash) error {
-	return func(head common.Hash) error {
-		time.Sleep(delay)
-
-		dl.lock.RLock()
-		defer dl.lock.RUnlock()
-
-		// Gather the next batch of hashes
-		hashes := dl.peerHashes[id]
-		result := make([]common.Hash, 0, MaxHashFetch)
-		for i, hash := range hashes {
-			if hash == head {
-				i++
-				for len(result) < cap(result) && i < len(hashes) {
-					result = append(result, hashes[i])
-					i++
-				}
-				break
-			}
-		}
-		// Delay delivery a bit to allow attacks to unfold
-		go func() {
-			time.Sleep(time.Millisecond)
-			dl.downloader.DeliverHashes(id, result)
-		}()
-		return nil
-	}
-}
-
-// peerGetAbsHashesFn constructs a GetHashesFromNumber function associated with
-// a particular peer in the download tester. The returned function can be used to
-// retrieve batches of hashes from the particularly requested peer.
-func (dl *downloadTester) peerGetAbsHashesFn(id string, delay time.Duration) func(uint64, int) error {
-	return func(head uint64, count int) error {
-		time.Sleep(delay)
-
-		dl.lock.RLock()
-		defer dl.lock.RUnlock()
-
-		// Gather the next batch of hashes
-		hashes := dl.peerHashes[id]
-		result := make([]common.Hash, 0, count)
-		for i := 0; i < count && len(hashes)-int(head)-1-i >= 0; i++ {
-			result = append(result, hashes[len(hashes)-int(head)-1-i])
-		}
-		// Delay delivery a bit to allow attacks to unfold
-		go func() {
-			time.Sleep(time.Millisecond)
-			dl.downloader.DeliverHashes(id, result)
-		}()
-		return nil
-	}
-}
-
 // peerCurrentHeadFn constructs a function to retrieve a peer's current head hash
 // and total difficulty.
 func (dl *downloadTester) peerCurrentHeadFn(id string) func() (common.Hash, *big.Int) {
@@ -527,6 +470,82 @@ func (dl *downloadTester) peerCurrentHeadFn(id string) func() (common.Hash, *big
 		dl.lock.RLock()
 		defer dl.lock.RUnlock()
 		return dl.peerHashes[id][0], nil
+	}
+}
+
+// peerGetRelHeadersFn constructs a GetBlockHeaders function based on a hashed
+// origin; associated with a particular peer in the download tester. The returned
+// function can be used to retrieve batches of headers from the particular peer.
+func (dl *downloadTester) peerGetRelHeadersFn(id string, delay time.Duration) func(common.Hash, int, int, bool) error {
+	return func(origin common.Hash, amount int, skip int, reverse bool) error {
+		// Find the canonical number of the hash
+		dl.lock.RLock()
+		number := uint64(0)
+		for num, hash := range dl.peerHashes[id] {
+			if hash == origin {
+				number = uint64(len(dl.peerHashes[id]) - num - 1)
+				break
+			}
+		}
+		dl.lock.RUnlock()
+
+		// Use the absolute header fetcher to satisfy the query
+		return dl.peerGetAbsHeadersFn(id, delay)(number, amount, skip, reverse)
+	}
+}
+
+// peerGetAbsHeadersFn constructs a GetBlockHeaders function based on a numbered
+// origin; associated with a particular peer in the download tester. The returned
+// function can be used to retrieve batches of headers from the particular peer.
+func (dl *downloadTester) peerGetAbsHeadersFn(id string, delay time.Duration) func(uint64, int, int, bool) error {
+	return func(origin uint64, amount int, skip int, reverse bool) error {
+		time.Sleep(delay)
+
+		dl.lock.RLock()
+		defer dl.lock.RUnlock()
+
+		// Gather the next batch of headers
+		hashes := dl.peerHashes[id]
+		headers := dl.peerHeaders[id]
+		result := make([]*types.Header, 0, amount)
+		for i := 0; i < amount && len(hashes)-int(origin)-1-i*(skip+1) >= 0; i++ {
+			if header, ok := headers[hashes[len(hashes)-int(origin)-1-i*(skip+1)]]; ok {
+				result = append(result, header)
+			}
+		}
+		// Delay delivery a bit to allow attacks to unfold
+		go func() {
+			time.Sleep(time.Millisecond)
+			dl.downloader.DeliverHeaders(id, result)
+		}()
+		return nil
+	}
+}
+
+// peerGetBodiesFn constructs a getBlockBodies method associated with a particular
+// peer in the download tester. The returned function can be used to retrieve
+// batches of block bodies from the particularly requested peer.
+func (dl *downloadTester) peerGetBodiesFn(id string, delay time.Duration) func([]common.Hash) error {
+	return func(hashes []common.Hash) error {
+		time.Sleep(delay)
+
+		dl.lock.RLock()
+		defer dl.lock.RUnlock()
+
+		blocks := dl.peerBlocks[id]
+
+		transactions := make([][]*types.Transaction, 0, len(hashes))
+		uncles := make([][]*types.Header, 0, len(hashes))
+
+		for _, hash := range hashes {
+			if block, ok := blocks[hash]; ok {
+				transactions = append(transactions, block.Transactions())
+				uncles = append(uncles, block.Uncles())
+			}
+		}
+		go dl.downloader.DeliverBodies(id, transactions, uncles)
+
+		return nil
 	}
 }
 
