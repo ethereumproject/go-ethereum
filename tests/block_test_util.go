@@ -170,6 +170,7 @@ func runBlockTest(homesteadBlock *big.Int, test *BlockTest) error {
 	core.WriteHeadBlockHash(db, test.Genesis.Hash())
 	evmux := new(event.TypeMux)
 	config := core.NewChainConfig()
+	config.Fork("Homestead").Block = homesteadBlock
 	chain, err := core.NewBlockChain(db, config, ethash.NewShared(), evmux)
 	if err != nil {
 		return err
