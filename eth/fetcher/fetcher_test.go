@@ -321,7 +321,7 @@ func testConcurrentAnnouncements(t *testing.T, protocol int) {
 	tester.fetcher.importedHook = func(block *types.Block) { imported <- block }
 
 	for i := len(hashes) - 2; i >= 0; i-- {
-		tester.fetcher.Notify("valid", hashes[i], uint64(len(hashes)-i-1), time.Now().Add(-arriveTimeout), headerFetcher, bodyFetcher)
+		tester.fetcher.Notify("valid", hashes[i], uint64(len(hashes)-i-1), time.Now().Add(-arriveTimeout), headerWrapper, bodyFetcher)
 		verifyImportEvent(t, imported, true)
 	}
 	verifyImportDone(t, imported)
