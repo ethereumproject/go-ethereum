@@ -29,11 +29,21 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 )
 
-// TODO Full network split support by adding
-// the ability to switch between both sides
-// of a bifurcation. ChainManager will manage
-// a and switch between known blockchains
-//
+/*
+ * TODO: move this to another package.
+ */
+
+// MakeChainConfig returns a new ChainConfig with the ethereum default chain settings.
+func MakeChainConfig() *ChainConfig {
+	return &ChainConfig{
+		Forks: []*Fork{
+			&Fork{
+				Name:  "Homestead",
+				Block: big.NewInt(0),
+			},
+		},
+	}
+}
 
 // FakePow is a non-validating proof of work implementation.
 // It returns true from Verify for any block.
@@ -98,7 +108,7 @@ func (b *BlockGen) AddTx(tx *types.Transaction) {
 		b.SetCoinbase(common.Address{})
 	}
 	b.statedb.StartRecord(tx.Hash(), common.Hash{}, len(b.txs))
-	receipt, _, _, err := ApplyTransaction(NewChainConfig(), nil, b.gasPool, b.statedb, b.header, tx, b.header.GasUsed, vm.Config{})
+	receipt, _, _, err := ApplyTransaction(MakeChainConfig(), nil, b.gasPool, b.statedb, b.header, tx, b.header.GasUsed, vm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -155,7 +165,7 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 	if b.header.Time.Cmp(b.parent.Header().Time) <= 0 {
 		panic("block time out of range")
 	}
-	b.header.Difficulty = CalcDifficulty(NewChainConfig(), b.header.Time.Uint64(), b.parent.Time().Uint64(), b.parent.Number(), b.parent.Difficulty())
+	b.header.Difficulty = CalcDifficulty(MakeChainConfig(), b.header.Time.Uint64(), b.parent.Time().Uint64(), b.parent.Number(), b.parent.Difficulty())
 }
 
 // GenerateChain creates a chain of n blocks. The first block's
@@ -177,7 +187,7 @@ func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, 
 
 		// Mutate the state and block according to any hard-fork specs
 		if config == nil {
-			config = NewChainConfig()
+			config = MakeChainConfig()
 		}
 		// Execute any user modifications to the block and finalize it
 		if gen != nil {
@@ -216,7 +226,7 @@ func makeHeader(parent *types.Block, state *state.StateDB) *types.Header {
 		Root:       state.IntermediateRoot(),
 		ParentHash: parent.Hash(),
 		Coinbase:   parent.Coinbase(),
-		Difficulty: CalcDifficulty(NewChainConfig(), time.Uint64(), new(big.Int).Sub(time, big.NewInt(10)).Uint64(), parent.Number(), parent.Difficulty()),
+		Difficulty: CalcDifficulty(MakeChainConfig(), time.Uint64(), new(big.Int).Sub(time, big.NewInt(10)).Uint64(), parent.Number(), parent.Difficulty()),
 		GasLimit:   CalcGasLimit(parent),
 		GasUsed:    new(big.Int),
 		Number:     new(big.Int).Add(parent.Number(), common.Big1),
@@ -235,7 +245,7 @@ func newCanonical(n int, full bool) (ethdb.Database, *BlockChain, error) {
 	// Initialize a fresh chain with only a genesis block
 	genesis, _ := WriteTestNetGenesisBlock(db)
 
-	blockchain, _ := NewBlockChain(db, NewChainConfig(), FakePow{}, evmux)
+	blockchain, _ := NewBlockChain(db, MakeChainConfig(), FakePow{}, evmux)
 	// Create and inject the requested chain
 	if n == 0 {
 		return db, blockchain, nil
