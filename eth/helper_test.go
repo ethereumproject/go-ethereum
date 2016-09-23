@@ -57,7 +57,7 @@ func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core
 			Forks: []*core.Fork{
 				&core.Fork{
 					Name:  "Homestead",
-					Block: big.NewInt(1150000),
+					Block: big.NewInt(0),
 				},
 			},
 		}
