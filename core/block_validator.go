@@ -259,11 +259,12 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
  	// This is a placeholder for testing. The calcDiff function should 
 	// be determined by a config flag
-	if config.IsGotham(new(big.Int).Add(parentNumber, common.Big1)) {
+	num := new(big.Int).Add(parentNumber, common.Big1)
+	if config.IsGotham(num) {
 		return calcDifficultyGotham(time, parentTime, parentNumber, parentDiff)
-	} else if config.IsExplosion(new(big.Int).Add(parentNumber, common.Big1)) {
+	} else if config.IsExplosion(num) {
 		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff)
-	} else if config.IsHomestead(new(big.Int).Add(parentNumber, common.Big1)) {
+	} else if config.IsHomestead(num) {
 		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
 	} else {
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
