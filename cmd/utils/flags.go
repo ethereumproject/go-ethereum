@@ -814,6 +814,14 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 					c.Forks[i].Block = params.MainNetHomesteadBlock
 				}
 			}
+			if c.Forks[i].Name == "Gotham" {
+				//TODO: Add support for Gotham in Testnet 
+				c.Forks[i].Block = params.GothamBlock
+			}
+			if c.Forks[i].Name == "Explosion" {
+				//TODO: Add support for Explosion in Testnet 
+				c.Forks[i].Block = params.ExplosionBlock
+			}
 			if c.Forks[i].Name == "ETF" {
 				if ctx.GlobalBool(ETFChain.Name) {
 					c.Forks[i].Support = true
