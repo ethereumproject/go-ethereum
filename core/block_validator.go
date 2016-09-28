@@ -263,8 +263,10 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		return calcDifficultyGotham(time, parentTime, parentNumber, parentDiff)
 	} else if config.IsExplosion(new(big.Int).Add(parentNumber, common.Big1)) {
 		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff)
-	} else {
+	} else if config.IsHomestead(new(big.Int).Add(parentNumber, common.Big1)) {
 		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
+	} else {
+		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
 }
 
