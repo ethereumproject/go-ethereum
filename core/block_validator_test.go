@@ -99,3 +99,61 @@ func TestPutReceipt(t *testing.T) {
 		t.Error("expected to get 1 receipt, got none.")
 	}
 }
+
+func TestDifficultyBombFreeze(t *testing.T) {
+	numIgnored := big.NewInt(3000000)
+	var parentTime uint64
+
+	// 20 seconds, parent diff 7654414978364
+	parentTime = 1452838500
+	act := calcDifficultyGotham(parentTime + 20, parentTime, numIgnored, big.NewInt(7654414978364))
+	exp := big.NewInt(7650945906507)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 5 seconds, parent diff 7654414978364
+	act = calcDifficultyGotham(parentTime + 5, parentTime, numIgnored, big.NewInt(7654414978364))
+	exp = big.NewInt(7658420921133)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 80 seconds, parent diff 7654414978364
+	act = calcDifficultyGotham(parentTime + 80, parentTime, numIgnored, big.NewInt(7654414978364))
+	exp = big.NewInt(7628520862629)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 76 seconds, parent diff 12657404717367
+	parentTime = 1469081721
+	act = calcDifficultyGotham(parentTime + 76, parentTime, numIgnored, big.NewInt(12657404717367))
+	exp = big.NewInt(12620590912441)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 1 second, parent diff 12620590912441
+	parentTime = 1469164521
+	act = calcDifficultyGotham(parentTime + 1, parentTime, numIgnored, big.NewInt(12620590912441))
+	exp = big.NewInt(12627021745803)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 10 seconds, parent diff 12627021745803
+	parentTime = 1469164522
+	act = calcDifficultyGotham(parentTime + 10, parentTime, numIgnored, big.NewInt(12627021745803))
+	exp = big.NewInt(12627290181259)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+}
