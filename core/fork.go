@@ -66,6 +66,18 @@ func LoadForks() []*Fork {
 			Support:      true,
 		},
 		&Fork{
+			Name:         "Gotham",
+			Block:        big.NewInt(3000000),
+			NetworkSplit: false,
+			Support:      true,
+		},
+		&Fork{
+			Name:         "Explosion",
+			Block:        big.NewInt(5000000),
+			NetworkSplit: false,
+			Support:      true,
+		},
+		&Fork{
 			Name:         "ETF",
 			Block:        big.NewInt(1920000),
 			NetworkSplit: true,

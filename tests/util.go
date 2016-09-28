@@ -141,10 +141,20 @@ type VmTest struct {
 
 type RuleSet struct {
 	HomesteadBlock *big.Int
+	GothamBlock *big.Int
+	ExplosionBlock *big.Int
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
+}
+
+func (r RuleSet) IsGotham(n *big.Int) bool {
+	return n.Cmp(r.GothamBlock) >= 0
+}
+
+func (r RuleSet) IsExplosion(n *big.Int) bool {
+	return n.Cmp(r.ExplosionBlock) >= 0
 }
 
 type Env struct {
