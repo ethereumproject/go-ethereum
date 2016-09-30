@@ -247,9 +247,7 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 			return &BlockNonceErr{header.Number, header.Hash(), header.Nonce.Uint64()}
 		}
 	}
-	// TODO Iterate over Forks to validate
 	// If all checks passed, validate the extra-data field for hard forks
-	//return config.Fork("ETF").ValidateForkHeaderExtraData(header)
 	return nil
 }
 
