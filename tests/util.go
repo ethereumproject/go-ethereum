@@ -141,6 +141,8 @@ type VmTest struct {
 
 type RuleSet struct {
 	HomesteadBlock *big.Int
+	GothamBlock    *big.Int
+	ExplosionBlock *big.Int
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
