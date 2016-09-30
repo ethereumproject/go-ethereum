@@ -99,3 +99,139 @@ func TestPutReceipt(t *testing.T) {
 		t.Error("expected to get 1 receipt, got none.")
 	}
 }
+
+func TestDifficultyBombFreeze(t *testing.T) {
+	numIgnored := big.NewInt(3000000)
+	var parentTime uint64
+
+	// 20 seconds, parent diff 7654414978364
+	parentTime = 1452838500
+	act := calcDifficultyDiehard(parentTime+20, parentTime, numIgnored, big.NewInt(7654414978364))
+	exp := big.NewInt(7650945906507)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 5 seconds, parent diff 7654414978364
+	act = calcDifficultyDiehard(parentTime+5, parentTime, numIgnored, big.NewInt(7654414978364))
+	exp = big.NewInt(7658420921133)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 80 seconds, parent diff 7654414978364
+	act = calcDifficultyDiehard(parentTime+80, parentTime, numIgnored, big.NewInt(7654414978364))
+	exp = big.NewInt(7628520862629)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 76 seconds, parent diff 12657404717367
+	parentTime = 1469081721
+	act = calcDifficultyDiehard(parentTime+76, parentTime, numIgnored, big.NewInt(12657404717367))
+	exp = big.NewInt(12620590912441)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 1 second, parent diff 12620590912441
+	parentTime = 1469164521
+	act = calcDifficultyDiehard(parentTime+1, parentTime, numIgnored, big.NewInt(12620590912441))
+	exp = big.NewInt(12627021745803)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	// 10 seconds, parent diff 12627021745803
+	parentTime = 1469164522
+	act = calcDifficultyDiehard(parentTime+10, parentTime, numIgnored, big.NewInt(12627021745803))
+	exp = big.NewInt(12627290181259)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+}
+
+func TestDifficultyBombExplode(t *testing.T) {
+	var parentTime uint64
+
+	// 6 seconds, blocks in 5m
+	num := big.NewInt(5000102)
+	parentTime = 1513175023
+	act := calcDifficultyExplosion(parentTime+6, parentTime, num, big.NewInt(22627021745803))
+	exp := big.NewInt(22638338531720)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	num = big.NewInt(5001105)
+	parentTime = 1513189406
+	act = calcDifficultyExplosion(parentTime + 29, parentTime, num, big.NewInt(22727021745803))
+	exp = big.NewInt(22716193002673)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	num = big.NewInt(5100123)
+	parentTime = 1514609324
+	act = calcDifficultyExplosion(parentTime + 41, parentTime, num, big.NewInt(22893437765583))
+	exp = big.NewInt(22860439327271)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	num = big.NewInt(6150001)
+	parentTime = 1529664575
+	act = calcDifficultyExplosion(parentTime + 105, parentTime, num, big.NewInt(53134780363303))
+	exp = big.NewInt(53451033724425)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	num = big.NewInt(6550001)
+	parentTime = 1535431724
+	act = calcDifficultyExplosion(parentTime + 60, parentTime, num, big.NewInt(82893437765583))
+	exp = big.NewInt(91487154230751)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	num = big.NewInt(7000000)
+	parentTime = 1535431724
+	act = calcDifficultyExplosion(parentTime + 180, parentTime, num, big.NewInt(304334879167015))
+	exp = big.NewInt(583283638618965)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	num = big.NewInt(8000000)
+	parentTime = 1535431724
+	act = calcDifficultyExplosion(parentTime + 420, parentTime, num, big.NewInt(78825323605416810))
+	exp = big.NewInt(365477653727918567)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+
+	num = big.NewInt(9000000)
+	parentTime = 1535431724
+	act = calcDifficultyExplosion(parentTime + 2040, parentTime, num, big.NewInt(288253236054168103))
+	exp = big.NewInt(0)
+	exp.SetString("295422224299015703633", 10)
+	if (exp.Cmp(act) != 0) {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+}
