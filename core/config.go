@@ -45,7 +45,7 @@ func NewChainConfig() *ChainConfig {
 	}
 }
 
-// IsHomestead returns whether num is greater than or equal to the homestead block, but less than gotham.
+// IsHomestead returns whether num is either equal to the homestead block or greater.
 func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 	if c.Fork("Homestead").Block == nil || num == nil {
 		return false
@@ -53,32 +53,15 @@ func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 	return num.Cmp(c.Fork("Homestead").Block) >= 0
 }
 
-
-// IsGotham returns whether num is greater than or equal to the gotham block, but less than explosion.
-func (c *ChainConfig) IsGotham(num *big.Int) bool {
-    if c.Fork("Gotham").Block == nil || num == nil {
-        return false
-    }
-    return num.Cmp(c.Fork("Gotham").Block) >= 0 && num.Cmp(c.Fork("Explosion").Block) < 0
-}
-
-// IsExplosion returns whether num is either equal to the explosion block or greater.
-func (c *ChainConfig) IsExplosion(num *big.Int) bool {
-    if c.Fork("Explosion").Block == nil || num == nil {
-        return false
-    }
-    return num.Cmp(c.Fork("Explosion").Block) >= 0
-}
-
 func (c *ChainConfig) Fork(name string) *Fork {
-    for i := range c.Forks {
-        if c.Forks[i].Name == name {
-            return c.Forks[i]
-        }
-    }
-    return &Fork{}
+	for i := range c.Forks {
+		if c.Forks[i].Name == name {
+			return c.Forks[i]
+		}
+	}
+	return &Fork{}
 }
 
 func (c *ChainConfig) LoadForkConfig() {
-    c.Forks = LoadForks()
+	c.Forks = LoadForks()
 }
