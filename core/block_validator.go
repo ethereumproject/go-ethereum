@@ -258,8 +258,8 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	// This is a placeholder for testing. The calcDiff function should
 	// be determined by a config flag
 	num := new(big.Int).Add(parentNumber, common.Big1)
-	if config.IsGotham(num) {
-		return calcDifficultyGotham(time, parentTime, parentNumber, parentDiff)
+	if config.IsDiehard(num) {
+		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff)
 	} else if config.IsExplosion(num) {
 		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff)
 	} else if config.IsHomestead(num) {
@@ -268,7 +268,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
 }
-func calcDifficultyGotham(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
@@ -303,7 +303,7 @@ func calcDifficultyGotham(time, parentTime uint64, parentNumber, parentDiff *big
 	}
 
 	// for the exponential factor
-	fixedCount := new(big.Int).Div(params.GothamBlock, ExpDiffPeriod)
+	fixedCount := new(big.Int).Div(params.DiehardBlock, ExpDiffPeriod)
 
 	// the exponential factor, commonly referred to as "the bomb"
 	// diff = diff + 2^(periodCount - 2)
@@ -353,7 +353,7 @@ func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *
 	// for the exponential factor
 	delayedCount := new(big.Int).Add(parentNumber, common.Big1)
 	delayedCount.Sub(delayedCount, params.ExplosionBlock)
-	delayedCount.Add(delayedCount, params.GothamBlock)
+	delayedCount.Add(delayedCount, params.DiehardBlock)
 	delayedCount.Div(delayedCount, ExpDiffPeriod)
 
 	// the exponential factor, commonly referred to as "the bomb"

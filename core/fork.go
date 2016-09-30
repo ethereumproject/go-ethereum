@@ -66,7 +66,7 @@ func LoadForks() []*Fork {
 			Support:      true,
 		},
 		&Fork{
-			Name:         "Gotham",
+			Name:         "Diehard",
 			Block:        big.NewInt(3000000),
 			NetworkSplit: false,
 			Support:      true,

@@ -141,7 +141,7 @@ type VmTest struct {
 
 type RuleSet struct {
 	HomesteadBlock *big.Int
-	GothamBlock    *big.Int
+	DiehardBlock   *big.Int
 	ExplosionBlock *big.Int
 }
 
