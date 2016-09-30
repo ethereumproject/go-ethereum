@@ -21,6 +21,6 @@ import "math/big"
 var (
 	TestNetHomesteadBlock = big.NewInt(494000)  // Testnet homestead block
 	MainNetHomesteadBlock = big.NewInt(1150000) // Mainnet homestead block
-	GothamBlock           = big.NewInt(3000000)
+	DiehardBlock          = big.NewInt(3000000)
 	ExplosionBlock        = big.NewInt(5000000)
 )

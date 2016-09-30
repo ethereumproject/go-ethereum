@@ -53,12 +53,12 @@ func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 	return num.Cmp(c.Fork("Homestead").Block) >= 0
 }
 
-// IsGotham returns whether num is greater than or equal to the gotham block, but less than explosion.
-func (c *ChainConfig) IsGotham(num *big.Int) bool {
-	if c.Fork("Gotham").Block == nil || num == nil {
+// IsDiehard returns whether num is greater than or equal to the Diehard block, but less than explosion.
+func (c *ChainConfig) IsDiehard(num *big.Int) bool {
+	if c.Fork("Diehard").Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(c.Fork("Gotham").Block) >= 0 && num.Cmp(c.Fork("Explosion").Block) < 0
+	return num.Cmp(c.Fork("Diehard").Block) >= 0 && num.Cmp(c.Fork("Explosion").Block) < 0
 }
 
 // IsExplosion returns whether num is either equal to the explosion block or greater.
