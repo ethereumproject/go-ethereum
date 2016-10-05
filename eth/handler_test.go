@@ -17,6 +17,7 @@
 package eth
 
 import (
+	"math"
 	"math/big"
 	"math/rand"
 	"testing"
