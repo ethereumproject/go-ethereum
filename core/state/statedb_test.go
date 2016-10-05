@@ -202,7 +202,7 @@ func newTestAction(addr common.Address, r *rand.Rand) testAction {
 			},
 		},
 		{
-			name: "Delete",
+			name: "Suicide",
 			fn: func(a testAction, s *StateDB) {
 				s.Suicide(addr)
 			},
