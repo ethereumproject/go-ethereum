@@ -802,8 +802,8 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		}
 	}
 
-	// Set any missing fields due to them being unset or system upgrade
 	if c.Forks == nil {
+		// Set any missing fields due to them being unset or system upgrade
 		c.LoadForkConfig()
 		for i := range c.Forks {
 			// Force override any existing configs if explicitly requested
@@ -828,7 +828,22 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 				}
 			}
 		}
+	} else {
+		// Make sure new forks are added to config
+		allForks := core.LoadForks()
+		for i := range allForks {
+			fork := allForks[i]
+			exists := false
+			for x := range c.Forks {
+				exists = exists || c.Forks[x].Name == fork.Name
+			}
+			if (!exists) {
+				glog.V(logger.Warn).Info(fmt.Sprintf("Enable new fork: %s", fork.Name))
+				c.Forks = append(c.Forks, fork)
+			}
+		}
 	}
+
 	// Temporarilly display a proper message so the user knows which side of the network split is loading
 	if !ctx.GlobalBool(TestNetFlag.Name) && (genesis == nil || genesis.Hash() == common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")) {
 		separator := strings.Repeat("-", 110)
