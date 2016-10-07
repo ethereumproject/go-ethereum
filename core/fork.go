@@ -83,7 +83,7 @@ func LoadForks() []*Fork {
 			Name:         "Diehard",
 			Block:        big.NewInt(3000000),
 			Length:       big.NewInt(2000000),
-			NetworkSplit: true,
+			NetworkSplit: false,
 			Support:      true,
 		},
 	}
