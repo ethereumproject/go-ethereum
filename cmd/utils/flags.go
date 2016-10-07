@@ -850,11 +850,13 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		splitSetting := ""
 		for i := range c.Forks {
 			if c.Forks[i].NetworkSplit {
-				netsplitChoice = "resulted in a network split."
-				if c.Forks[i].Support {
-					splitSetting = "Geth is configured to use the Ethereum (%v) hard-fork blockchain!"
-				} else {
-					splitSetting = "Geth is configured to use the \x1b[32mEthereum (ETC) classic/original\x1b[39m blockchain!"
+				netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
+				if c.Forks[i].Name == "ETF" {
+					if c.Forks[i].Support {
+						splitSetting = "Geth is configured to use the Ethereum hard-fork blockchain!"
+					} else {
+						splitSetting = "Geth is configured to use the \x1b[32mEthereum (ETC) classic/original\x1b[39m blockchain!"
+					}
 				}
 			} else {
 				netsplitChoice = ""
