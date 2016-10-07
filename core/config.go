@@ -55,18 +55,21 @@ func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 
 // IsDiehard returns whether num is greater than or equal to the Diehard block, but less than explosion.
 func (c *ChainConfig) IsDiehard(num *big.Int) bool {
-	if c.Fork("Diehard").Block == nil || num == nil {
+	fork := c.Fork("Diehard")
+	if fork.Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(c.Fork("Diehard").Block) >= 0 && num.Cmp(c.Fork("Explosion").Block) < 0
+	return num.Cmp(fork.Block) >= 0 && num.Cmp(big.NewInt(0).Add(fork.Block, fork.Length)) < 0
 }
 
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
-	if c.Fork("Explosion").Block == nil || num == nil {
+	fork := c.Fork("Diehard")
+	if fork.Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(c.Fork("Explosion").Block) >= 0
+	block := big.NewInt(0).Add(fork.Block, fork.Length)
+	return num.Cmp(block) >= 0
 }
 
 func (c *ChainConfig) Fork(name string) *Fork {

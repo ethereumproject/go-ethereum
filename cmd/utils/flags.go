@@ -815,12 +815,8 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 				}
 			}
 			if c.Forks[i].Name == "Diehard" {
-				//TODO: Add support for Diehard in Testnet
 				c.Forks[i].Block = params.DiehardBlock
-			}
-			if c.Forks[i].Name == "Explosion" {
-				//TODO: Add support for Explosion in Testnet
-				c.Forks[i].Block = params.ExplosionBlock
+				c.Forks[i].Length = big.NewInt(0).Sub(params.ExplosionBlock, params.DiehardBlock)
 			}
 			if c.Forks[i].Name == "ETF" {
 				if ctx.GlobalBool(ETFChain.Name) {
@@ -837,7 +833,7 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 			for x := range c.Forks {
 				exists = exists || c.Forks[x].Name == fork.Name
 			}
-			if (!exists) {
+			if !exists {
 				glog.V(logger.Warn).Info(fmt.Sprintf("Enable new fork: %s", fork.Name))
 				c.Forks = append(c.Forks, fork)
 			}

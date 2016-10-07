@@ -17,6 +17,8 @@ type Fork struct {
 	// Block is the block number where the hard-fork commences on
 	// the Ethereum network.
 	Block *big.Int
+	// Length of fork, if limited
+	Length *big.Int
 	// SplitHash to derive BadHashes to assist in avoiding sync issues
 	// after network split.
 	OrigSplitHash string
@@ -80,13 +82,8 @@ func LoadForks() []*Fork {
 		&Fork{
 			Name:         "Diehard",
 			Block:        big.NewInt(3000000),
+			Length:       big.NewInt(2000000),
 			NetworkSplit: true,
-			Support:      true,
-		},
-		&Fork{
-			Name:         "Explosion",
-			Block:        big.NewInt(5000000),
-			NetworkSplit: false,
 			Support:      true,
 		},
 	}
