@@ -802,8 +802,8 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		}
 	}
 
-	// Set any missing fields due to them being unset or system upgrade
 	if c.Forks == nil {
+		// Set any missing fields due to them being unset or system upgrade
 		c.LoadForkConfig()
 		for i := range c.Forks {
 			// Force override any existing configs if explicitly requested
@@ -815,12 +815,8 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 				}
 			}
 			if c.Forks[i].Name == "Diehard" {
-				//TODO: Add support for Diehard in Testnet
 				c.Forks[i].Block = params.DiehardBlock
-			}
-			if c.Forks[i].Name == "Explosion" {
-				//TODO: Add support for Explosion in Testnet
-				c.Forks[i].Block = params.ExplosionBlock
+				c.Forks[i].Length = big.NewInt(0).Sub(params.ExplosionBlock, params.DiehardBlock)
 			}
 			if c.Forks[i].Name == "ETF" {
 				if ctx.GlobalBool(ETFChain.Name) {
@@ -828,7 +824,22 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 				}
 			}
 		}
+	} else {
+		// Make sure new forks are added to config
+		allForks := core.LoadForks()
+		for i := range allForks {
+			fork := allForks[i]
+			exists := false
+			for x := range c.Forks {
+				exists = exists || c.Forks[x].Name == fork.Name
+			}
+			if !exists {
+				glog.V(logger.Warn).Info(fmt.Sprintf("Enable new fork: %s", fork.Name))
+				c.Forks = append(c.Forks, fork)
+			}
+		}
 	}
+
 	// Temporarilly display a proper message so the user knows which side of the network split is loading
 	if !ctx.GlobalBool(TestNetFlag.Name) && (genesis == nil || genesis.Hash() == common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")) {
 		separator := strings.Repeat("-", 110)
@@ -839,11 +850,13 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		splitSetting := ""
 		for i := range c.Forks {
 			if c.Forks[i].NetworkSplit {
-				netsplitChoice = "resulted in a network split."
-				if c.Forks[i].Support {
-					splitSetting = "Geth is configured to use the Ethereum (%v) hard-fork blockchain!"
-				} else {
-					splitSetting = "Geth is configured to use the \x1b[32mEthereum (ETC) classic/original\x1b[39m blockchain!"
+				netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
+				if c.Forks[i].Name == "ETF" {
+					if c.Forks[i].Support {
+						splitSetting = "Geth is configured to use the Ethereum hard-fork blockchain!"
+					} else {
+						splitSetting = "Geth is configured to use the \x1b[32mEthereum (ETC) classic/original\x1b[39m blockchain!"
+					}
 				}
 			} else {
 				netsplitChoice = ""
