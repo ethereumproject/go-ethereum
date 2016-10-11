@@ -48,11 +48,12 @@ import (
 
 const (
 	clientIdentifier = "Geth"   // Client identifier to advertise over the network
-	versionMajor     = 1        // Major version component of the current release
-	versionMinor     = 4        // Minor version component of the current release
-	versionPatch     = 10       // Patch version component of the current release
+	versionMajor     = 2        // Major version component of the current release
+	versionMinor     = 0        // Minor version component of the current release
+	versionPatch     = 0        // Patch version component of the current release
 	versionMeta      = "stable" // Version metadata to append to the version string
 
+	// !EPROJECT Replace Oracle or remove point of centralization
 	versionOracle = "0xfa7b9770ca4cb04296cac84f37736d4041251cdf" // Ethereum address of the Geth release oracle
 )
 

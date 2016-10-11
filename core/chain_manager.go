@@ -36,7 +36,12 @@ import (
 // MakeChainConfig returns a new ChainConfig with the ethereum default chain settings.
 func MakeChainConfig() *ChainConfig {
 	return &ChainConfig{
-		HomesteadBlock: big.NewInt(0),
+		Forks: []*Fork{
+			&Fork{
+				Name:  "Homestead",
+				Block: big.NewInt(0),
+			},
+		},
 	}
 }
 

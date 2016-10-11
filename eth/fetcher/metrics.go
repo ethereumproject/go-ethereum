@@ -38,7 +38,7 @@ var (
 	bodyFetchMeter   = metrics.NewMeter("eth/fetcher/fetch/bodies")
 
 	blockFilterInMeter   = metrics.NewMeter("eth/fetcher/filter/blocks/in")
-	blockFilterOutMeter  = metrics.NewMeter("eth/fetcher/filter/blocks/out")
+	blockFilterOutMeter  = metrics.NewMeter("eth/fetchercher/filter/blocks/out")
 	headerFilterInMeter  = metrics.NewMeter("eth/fetcher/filter/headers/in")
 	headerFilterOutMeter = metrics.NewMeter("eth/fetcher/filter/headers/out")
 	bodyFilterInMeter    = metrics.NewMeter("eth/fetcher/filter/bodies/in")

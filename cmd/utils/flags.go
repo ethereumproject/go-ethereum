@@ -111,7 +111,7 @@ var (
 	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "networkid",
-		Usage: "Network identifier (integer, 0=Olympic, 1=Frontier, 2=Morden)",
+		Usage: "Network identifier (integer, 0=Olympic, 1=Homestead, 2=Morden)",
 		Value: eth.NetworkId,
 	}
 	OlympicFlag = cli.BoolFlag{
@@ -157,8 +157,13 @@ var (
 		Name:  "lightkdf",
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
 	}
+	// Network Split settings
+	ETFChain = cli.BoolFlag{
+		Name:  "etf",
+		Usage: "Updates the chain rules to use the ETF hard-fork blockchain",
+	}
 	// Miner settings
-	// TODO: refactor CPU vs GPU mining flags
+	// TODO Refactor CPU vs GPU mining flags
 	MiningEnabledFlag = cli.BoolFlag{
 		Name:  "mine",
 		Usage: "Enable mining",
@@ -471,7 +476,7 @@ func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 		if ctx.GlobalBool(TestNetFlag.Name) {
 			return TestNetBootNodes
 		}
-		return FrontierBootNodes
+		return HomesteadBootNodes
 	}
 	// Otherwise parse and use the CLI bootstrap nodes
 	bootnodes := []*discover.Node{}
@@ -782,29 +787,86 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
 	// If the chain is already initialized, use any existing chain configs
-	config := new(core.ChainConfig)
+	c := new(core.ChainConfig)
 
 	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
 	if genesis != nil {
 		storedConfig, err := core.GetChainConfig(db, genesis.Hash())
 		switch err {
 		case nil:
-			config = storedConfig
+			c = storedConfig
 		case core.ChainConfigNotFoundErr:
 			// No configs found, use empty, will populate below
 		default:
 			Fatalf("Could not make chain configuration: %v", err)
 		}
 	}
-	// Set any missing fields due to them being unset or system upgrade
-	if config.HomesteadBlock == nil {
-		if ctx.GlobalBool(TestNetFlag.Name) {
-			config.HomesteadBlock = params.TestNetHomesteadBlock
-		} else {
-			config.HomesteadBlock = params.MainNetHomesteadBlock
+
+	if c.Forks == nil {
+		// Set any missing fields due to them being unset or system upgrade
+		c.LoadForkConfig()
+		for i := range c.Forks {
+			// Force override any existing configs if explicitly requested
+			if c.Forks[i].Name == "Homestead" {
+				if ctx.GlobalBool(TestNetFlag.Name) {
+					c.Forks[i].Block = params.TestNetHomesteadBlock
+				} else {
+					c.Forks[i].Block = params.MainNetHomesteadBlock
+				}
+			}
+			if c.Forks[i].Name == "Diehard" {
+				c.Forks[i].Block = params.DiehardBlock
+				c.Forks[i].Length = big.NewInt(0).Sub(params.ExplosionBlock, params.DiehardBlock)
+			}
+			if c.Forks[i].Name == "ETF" {
+				if ctx.GlobalBool(ETFChain.Name) {
+					c.Forks[i].Support = true
+				}
+			}
+		}
+	} else {
+		// Make sure new forks are added to config
+		allForks := core.LoadForks()
+		for i := range allForks {
+			fork := allForks[i]
+			exists := false
+			for x := range c.Forks {
+				exists = exists || c.Forks[x].Name == fork.Name
+			}
+			if !exists {
+				glog.V(logger.Warn).Info(fmt.Sprintf("Enable new fork: %s", fork.Name))
+				c.Forks = append(c.Forks, fork)
+			}
 		}
 	}
-	return config
+
+	// Temporarilly display a proper message so the user knows which side of the network split is loading
+	if !ctx.GlobalBool(TestNetFlag.Name) && (genesis == nil || genesis.Hash() == common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")) {
+		separator := strings.Repeat("-", 110)
+		glog.V(logger.Warn).Info(separator)
+		glog.V(logger.Warn).Info("Loading blockchain: \x1b[36mgenesis\x1b[39m block \"\x1b[36m0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3\x1b[39m\".")
+		glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
+		netsplitChoice := ""
+		splitSetting := ""
+		for i := range c.Forks {
+			if c.Forks[i].NetworkSplit {
+				netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
+				if c.Forks[i].Name == "ETF" {
+					if c.Forks[i].Support {
+						splitSetting = "Geth is configured to use the Ethereum hard-fork blockchain!"
+					} else {
+						splitSetting = "Geth is configured to use the \x1b[32mEthereum (ETC) classic/original\x1b[39m blockchain!"
+					}
+				}
+			} else {
+				netsplitChoice = ""
+			}
+			glog.V(logger.Warn).Info(fmt.Sprintf(" %v hard-fork at block %v %v", c.Forks[i].Name, c.Forks[i].Block, netsplitChoice))
+		}
+		glog.V(logger.Warn).Info(splitSetting)
+		glog.V(logger.Warn).Info(separator)
+	}
+	return c
 }
 
 // MakeChainDatabase open an LevelDB using the flags passed to the client and will hard crash if it fails.

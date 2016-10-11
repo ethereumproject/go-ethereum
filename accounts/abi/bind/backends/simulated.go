@@ -30,7 +30,14 @@ import (
 )
 
 // Default chain configuration which sets homestead phase at block 0 (i.e. no frontier)
-var chainConfig = &core.ChainConfig{HomesteadBlock: big.NewInt(0)}
+var chainConfig = &core.ChainConfig{
+	Forks: []*core.Fork{
+		&core.Fork{
+			Name:  "Homestead",
+			Block: big.NewInt(0),
+		},
+	},
+}
 
 // This nil assignment ensures compile time that SimulatedBackend implements bind.ContractBackend.
 var _ bind.ContractBackend = (*SimulatedBackend)(nil)
