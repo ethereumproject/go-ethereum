@@ -2,7 +2,7 @@
 # -*- makefile -*-
 
 # Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
+export DH_VERBOSE=1
 
 override_dh_auto_build:
 	build/env.sh /usr/lib/go-1.6/bin/go run build/ci.go install -gitcommit {{.Commit}}

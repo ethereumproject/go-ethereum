@@ -36,8 +36,6 @@ For all commands, -n prevents execution of external programs (dry run mode).
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -120,8 +118,8 @@ func main() {
 		doArchive(os.Args[2:])
 	case "debsrc":
 		doDebianSource(os.Args[2:])
-	case "travis-debsrc":
-		doTravisDebianSource(os.Args[2:])
+	case "tc-debsrc":
+		doTcDebianSource(os.Args[2:])
 	case "xgo":
 		doXgo(os.Args[2:])
 	default:
@@ -271,46 +269,43 @@ func makeArchiveBasename() string {
 
 // Debian Packaging
 
-// CLI entry point for Travis CI.
-func doTravisDebianSource(cmdline []string) {
+// CLI entry point for TeamCity CI.
+func doTcDebianSource(cmdline []string) {
 	flag.CommandLine.Parse(cmdline)
 
 	// Package only whitelisted branches.
 	switch {
-	case os.Getenv("TRAVIS_REPO_SLUG") != "ethereum/go-ethereum":
+	case strings.Contains(os.Getenv("VCS_URL"),"ethereumproject/go-ethereum") == false:
 		log.Printf("skipping because this is a fork build")
 		return
-	case os.Getenv("TRAVIS_PULL_REQUEST") != "false":
-		log.Printf("skipping because this is a PR build")
-		return
-	case os.Getenv("TRAVIS_BRANCH") != "develop" && !strings.HasPrefix(os.Getenv("TRAVIS_TAG"), "v1."):
-		log.Printf("skipping because branch %q tag %q is not on the whitelist",
-			os.Getenv("TRAVIS_BRANCH"),
-			os.Getenv("TRAVIS_TAG"))
+	case os.Getenv("VCS_BRANCH") != "develop" && !strings.HasPrefix(os.Getenv("VCS_BRANCH"), "1.") && !strings.HasPrefix(os.Getenv("VCS_BRANCH"), "2."):
+		log.Printf("skipping because branch/tag %q is not on the whitelist",
+			os.Getenv("VCS_BRANCH"))
 		return
 	}
 
-	// Import the signing key.
-	if b64key := os.Getenv("PPA_SIGNING_KEY"); b64key != "" {
-		key, err := base64.StdEncoding.DecodeString(b64key)
-		if err != nil {
-			log.Fatal("invalid base64 PPA_SIGNING_KEY")
-		}
-		gpg := exec.Command("gpg", "--import")
-		gpg.Stdin = bytes.NewReader(key)
-		build.MustRun(gpg)
-	}
+	// Do not Import the signing key here.  ETC builds use persistent agent boxes and the key is already imported
+	// Re-enable this if we go to a different setup
+	//if b64key := os.Getenv("PPA_SIGNING_KEY"); b64key != "" {
+	//	key, err := base64.StdEncoding.DecodeString(b64key)
+	//	if err != nil {
+	//		log.Fatal("invalid base64 PPA_SIGNING_KEY")
+	//	}
+	//	gpg := exec.Command("gpg", "--import")
+	//	gpg.Stdin = bytes.NewReader(key)
+	//	build.MustRun(gpg)
+	//}
 
 	// Assign unstable status to non-tag builds.
 	unstable := "true"
-	if os.Getenv("TRAVIS_BRANCH") != "develop" && os.Getenv("TRAVIS_TAG") != "" {
+	if strings.HasPrefix(os.Getenv("VCS_BRANCH"), "1.") || strings.HasPrefix(os.Getenv("VCS_BRANCH"), "2.") {
 		unstable = "false"
 	}
 
 	doDebianSource([]string{
-		"-signer", "Felix Lange (Geth CI Testing Key) <fjl@twurst.com>",
-		"-buildnum", os.Getenv("TRAVIS_BUILD_NUMBER"),
-		"-upload", "ppa:lp-fjl/geth-ci-testing",
+		"-signer", "Eric Somdahl (Code signing) <eric.somdahl@ethereumclassic.org>",
+		"-buildnum", os.Getenv("TC_BUILD_NUMBER"),
+		"-upload", "ppa:ethereum-classic/etc-geth",
 		"-unstable", unstable,
 	})
 }
@@ -370,7 +365,7 @@ type debMetadata struct {
 func newDebMetadata(distro, author, buildnum string, unstable bool, t time.Time) debMetadata {
 	if author == "" {
 		// No signing key, use default author.
-		author = "Ethereum Builds <fjl@ethereum.org>"
+		author = "Ethereum Builds <infrastructure@ethereumclassic.org>"
 	}
 	return debMetadata{
 		Unstable:    unstable,
@@ -388,9 +383,9 @@ func newDebMetadata(distro, author, buildnum string, unstable bool, t time.Time)
 // on all executable packages.
 func (meta debMetadata) Name() string {
 	if meta.Unstable {
-		return "ethereum-unstable"
+		return "ethereum-classic-unstable"
 	}
-	return "ethereum"
+	return "ethereum-classic"
 }
 
 // VersionString returns the debian version of the packages.
@@ -434,7 +429,7 @@ func (meta debMetadata) ExeConflicts(exe debExecutable) string {
 		// be preferred and the conflicting files should be handled via
 		// alternates. We might do this eventually but using a conflict is
 		// easier now.
-		return "ethereum, " + exe.Name
+		return "ethereum-classic, " + exe.Name
 	}
 	return ""
 }
