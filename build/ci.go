@@ -36,8 +36,6 @@ For all commands, -n prevents execution of external programs (dry run mode).
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -72,7 +70,7 @@ var (
 	debExecutables = []debExecutable{
 		{
 			Name:        "geth",
-			Description: "Ethereum CLI client.",
+			Description: "Classic version of the Ethereum CLI client.",
 		},
 		{
 			Name:        "rlpdump",
@@ -120,8 +118,6 @@ func main() {
 		doArchive(os.Args[2:])
 	case "debsrc":
 		doDebianSource(os.Args[2:])
-	case "tc-debsrc":
-		doTcDebianSource(os.Args[2:])
 	case "xgo":
 		doXgo(os.Args[2:])
 	default:
@@ -245,10 +241,10 @@ func doArchive(cmdline []string) {
 	maybeSkipArchive(env)
 
 	base := archiveBasename(env)
-	if err := build.WriteArchive("geth-"+base, ext, gethArchiveFiles); err != nil {
+	if err := build.WriteArchive("geth-classic-"+base, ext, gethArchiveFiles); err != nil {
 		log.Fatal(err)
 	}
-	if err := build.WriteArchive("geth-alltools-"+base, ext, allToolsArchiveFiles); err != nil {
+	if err := build.WriteArchive("geth-classic-alltools-"+base, ext, allToolsArchiveFiles); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -269,39 +265,11 @@ func maybeSkipArchive(env build.Environment) {
 		log.Printf("skipping because this is a PR build")
 		os.Exit(0)
 	}
-	if env.Branch != "develop" && !strings.HasPrefix(env.Tag, "v1.") {
+	if env.Branch != "develop" && !strings.HasPrefix(env.Tag, "1.") && !strings.HasPrefix(env.Tag, "2.") {
 		log.Printf("skipping because branch %q, tag %q is not on the whitelist", env.Branch, env.Tag)
 		os.Exit(0)
 	}
 }
-
-// TC Entry pint for Debian Packaging
-func doTcDebianSource(cmdline []string) {
-	flag.CommandLine.Parse(cmdline)
-
-	// Package only whitelisted branches.
-	switch {
-	case strings.Contains(os.Getenv("VCS_URL"),"ethereumproject/go-ethereum") == false:
-		log.Printf("skipping because this is a fork build")
-		return
-	case os.Getenv("VCS_BRANCH") != "develop" && !strings.HasPrefix(os.Getenv("VCS_BRANCH"), "1.") && !strings.HasPrefix(os.Getenv("VCS_BRANCH"), "2."):
-		log.Printf("skipping because branch/tag %q is not on the whitelist",
-			os.Getenv("VCS_BRANCH"))
-		return
-	}
-
-	// Assign unstable status to non-tag builds.
-	unstable := "true"
-	if strings.HasPrefix(os.Getenv("VCS_BRANCH"), "1.") || strings.HasPrefix(os.Getenv("VCS_BRANCH"), "2.") {
-		unstable = "false"
-	}
-
-	doDebianSource([]string{
-		"-signer", "Eric Somdahl (Code signing) <eric.somdahl@ethereumclassic.org>",
-		"-buildnum", os.Getenv("TC_BUILD_NUMBER"),
-		"-upload", "ppa:ethereum-classic/etc-geth",
-		"-unstable", unstable,
-	})
 
 // Debian Packaging
 
@@ -392,7 +360,7 @@ type debExecutable struct {
 func newDebMetadata(distro, author string, env build.Environment, t time.Time) debMetadata {
 	if author == "" {
 		// No signing key, use default author.
-		author = "Ethereum Classic Infrastructure <infrastructure@ethereumclassic.org>"
+		author = "Ethereum Builds <infrastructure@ethereumclassic.org>"
 	}
 	return debMetadata{
 		Env:         env,
@@ -454,7 +422,7 @@ func (meta debMetadata) ExeConflicts(exe debExecutable) string {
 		// be preferred and the conflicting files should be handled via
 		// alternates. We might do this eventually but using a conflict is
 		// easier now.
-		return "ethereum, " + exe.Name
+		return "ethereum-classic, " + exe.Name
 	}
 	return ""
 }
