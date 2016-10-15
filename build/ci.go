@@ -120,6 +120,8 @@ func main() {
 		doArchive(os.Args[2:])
 	case "debsrc":
 		doDebianSource(os.Args[2:])
+	case "tc-debsrc":
+		doTcDebianSource(os.Args[2:])
 	case "xgo":
 		doXgo(os.Args[2:])
 	default:
@@ -273,6 +275,34 @@ func maybeSkipArchive(env build.Environment) {
 	}
 }
 
+// TC Entry pint for Debian Packaging
+func doTcDebianSource(cmdline []string) {
+	flag.CommandLine.Parse(cmdline)
+
+	// Package only whitelisted branches.
+	switch {
+	case strings.Contains(os.Getenv("VCS_URL"),"ethereumproject/go-ethereum") == false:
+		log.Printf("skipping because this is a fork build")
+		return
+	case os.Getenv("VCS_BRANCH") != "develop" && !strings.HasPrefix(os.Getenv("VCS_BRANCH"), "1.") && !strings.HasPrefix(os.Getenv("VCS_BRANCH"), "2."):
+		log.Printf("skipping because branch/tag %q is not on the whitelist",
+			os.Getenv("VCS_BRANCH"))
+		return
+	}
+
+	// Assign unstable status to non-tag builds.
+	unstable := "true"
+	if strings.HasPrefix(os.Getenv("VCS_BRANCH"), "1.") || strings.HasPrefix(os.Getenv("VCS_BRANCH"), "2.") {
+		unstable = "false"
+	}
+
+	doDebianSource([]string{
+		"-signer", "Eric Somdahl (Code signing) <eric.somdahl@ethereumclassic.org>",
+		"-buildnum", os.Getenv("TC_BUILD_NUMBER"),
+		"-upload", "ppa:ethereum-classic/etc-geth",
+		"-unstable", unstable,
+	})
+
 // Debian Packaging
 
 func doDebianSource(cmdline []string) {
@@ -287,16 +317,17 @@ func doDebianSource(cmdline []string) {
 	env := build.Env()
 	maybeSkipArchive(env)
 
+	// Skip import of key for now.  Build agents are persistent and already have keys imported
 	// Import the signing key.
-	if b64key := os.Getenv("PPA_SIGNING_KEY"); b64key != "" {
-		key, err := base64.StdEncoding.DecodeString(b64key)
-		if err != nil {
-			log.Fatal("invalid base64 PPA_SIGNING_KEY")
-		}
-		gpg := exec.Command("gpg", "--import")
-		gpg.Stdin = bytes.NewReader(key)
-		build.MustRun(gpg)
-	}
+	//if b64key := os.Getenv("PPA_SIGNING_KEY"); b64key != "" {
+	//	key, err := base64.StdEncoding.DecodeString(b64key)
+	//	if err != nil {
+	//		log.Fatal("invalid base64 PPA_SIGNING_KEY")
+	//	}
+	//	gpg := exec.Command("gpg", "--import")
+	//	gpg.Stdin = bytes.NewReader(key)
+	//	build.MustRun(gpg)
+	//}
 
 	// Create the packages.
 	for _, distro := range debDistros {
@@ -331,6 +362,10 @@ func makeWorkdir(wdflag string) string {
 }
 
 func isUnstableBuild(env build.Environment) bool {
+	// Upstream uses the convention of prefacing their tag names with a "v" while we simply start with
+	// the version number.  Upstream tags are regularly pushed into our repo so we can't just build any
+	// old tag that comes through.  However -- TeamCity should be NOT running release build jobs for 
+	// "v"-prefaced tags so it should be safe to leave this as-is
 	if env.Branch != "develop" && env.Tag != "" {
 		return false
 	}
@@ -357,7 +392,7 @@ type debExecutable struct {
 func newDebMetadata(distro, author string, env build.Environment, t time.Time) debMetadata {
 	if author == "" {
 		// No signing key, use default author.
-		author = "Ethereum Builds <fjl@ethereum.org>"
+		author = "Ethereum Classic Infrastructure <infrastructure@ethereumclassic.org>"
 	}
 	return debMetadata{
 		Env:         env,
@@ -373,9 +408,9 @@ func newDebMetadata(distro, author string, env build.Environment, t time.Time) d
 // on all executable packages.
 func (meta debMetadata) Name() string {
 	if isUnstableBuild(meta.Env) {
-		return "ethereum-unstable"
+		return "ethereum-classic-unstable"
 	}
-	return "ethereum"
+	return "ethereum-classic"
 }
 
 // VersionString returns the debian version of the packages.

@@ -49,15 +49,15 @@ func (env Environment) String() string {
 // if not running on CI.
 func Env() Environment {
 	switch {
-	case os.Getenv("CI") == "true" && os.Getenv("TRAVIS") == "true":
+	case os.Getenv("CI") == "true" && os.Getenv("TEAMCITY") == "true":
 		return Environment{
-			Name:          "travis",
-			Repo:          os.Getenv("TRAVIS_REPO_SLUG"),
-			Commit:        os.Getenv("TRAVIS_COMMIT"),
-			Branch:        os.Getenv("TRAVIS_BRANCH"),
-			Tag:           os.Getenv("TRAVIS_TAG"),
-			Buildnum:      os.Getenv("TRAVIS_BUILD_NUMBER"),
-			IsPullRequest: os.Getenv("TRAVIS_PULL_REQUEST") != "false",
+			Name:          "teamcity",
+			Repo:          os.Getenv("VCS_URL"),
+			Commit:        os.Getenv("TC_COMMIT"),
+			Branch:        os.Getenv("TC_BRANCH"),
+			Tag:           os.Getenv("TC_TAG"),
+			Buildnum:      os.Getenv("TC_BUILD_NUMBER"),
+			IsPullRequest: "false",  //we will not build PRs.  Later
 		}
 	case os.Getenv("CI") == "True" && os.Getenv("APPVEYOR") == "True":
 		return Environment{
@@ -76,7 +76,7 @@ func Env() Environment {
 
 // LocalEnv returns build environment metadata gathered from git.
 func LocalEnv() Environment {
-	env := applyEnvFlags(Environment{Name: "local", Repo: "ethereum/go-ethereum"})
+	env := applyEnvFlags(Environment{Name: "local", Repo: "ethereumproject/go-ethereum"})
 	if _, err := os.Stat(".git"); err != nil {
 		return env
 	}
