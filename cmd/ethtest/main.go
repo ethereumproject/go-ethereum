@@ -74,7 +74,7 @@ func runTestWithReader(test string, r io.Reader) error {
 	var err error
 	switch strings.ToLower(test) {
 	case "bk", "block", "blocktest", "blockchaintest", "blocktests", "blockchaintests":
-		err = tests.RunBlockTestWithReader(params.MainNetHomesteadBlock, r, skipTests)
+		err = tests.RunBlockTestWithReader(params.MainNetHomesteadBlock, nil, r, skipTests)
 	case "st", "state", "statetest", "statetests":
 		rs := tests.RuleSet{HomesteadBlock: params.MainNetHomesteadBlock}
 		err = tests.RunStateTestWithReader(rs, r, skipTests)

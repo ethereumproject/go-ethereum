@@ -104,7 +104,7 @@ type btTransaction struct {
 	Value    string
 }
 
-func RunBlockTestWithReader(homesteadBlock *big.Int, r io.Reader, skipTests []string) error {
+func RunBlockTestWithReader(homesteadBlock, gasPriceFork *big.Int, r io.Reader, skipTests []string) error {
 	btjs := make(map[string]*btJSON)
 	if err := readJson(r, &btjs); err != nil {
 		return err
@@ -115,13 +115,13 @@ func RunBlockTestWithReader(homesteadBlock *big.Int, r io.Reader, skipTests []st
 		return err
 	}
 
-	if err := runBlockTests(homesteadBlock, bt, skipTests); err != nil {
+	if err := runBlockTests(homesteadBlock, gasPriceFork, bt, skipTests); err != nil {
 		return err
 	}
 	return nil
 }
 
-func RunBlockTest(homesteadBlock *big.Int, file string, skipTests []string) error {
+func RunBlockTest(homesteadBlock, gasPriceFork *big.Int, file string, skipTests []string) error {
 	btjs := make(map[string]*btJSON)
 	if err := readJsonFile(file, &btjs); err != nil {
 		return err
@@ -131,13 +131,13 @@ func RunBlockTest(homesteadBlock *big.Int, file string, skipTests []string) erro
 	if err != nil {
 		return err
 	}
-	if err := runBlockTests(homesteadBlock, bt, skipTests); err != nil {
+	if err := runBlockTests(homesteadBlock, gasPriceFork, bt, skipTests); err != nil {
 		return err
 	}
 	return nil
 }
 
-func runBlockTests(homesteadBlock *big.Int, bt map[string]*BlockTest, skipTests []string) error {
+func runBlockTests(homesteadBlock, gasPriceFork *big.Int, bt map[string]*BlockTest, skipTests []string) error {
 	skipTest := make(map[string]bool, len(skipTests))
 	for _, name := range skipTests {
 		skipTest[name] = true
@@ -149,7 +149,7 @@ func runBlockTests(homesteadBlock *big.Int, bt map[string]*BlockTest, skipTests 
 			continue
 		}
 		// test the block
-		if err := runBlockTest(homesteadBlock, test); err != nil {
+		if err := runBlockTest(homesteadBlock, gasPriceFork, test); err != nil {
 			return fmt.Errorf("%s: %v", name, err)
 		}
 		glog.Infoln("Block test passed: ", name)
@@ -158,7 +158,7 @@ func runBlockTests(homesteadBlock *big.Int, bt map[string]*BlockTest, skipTests 
 	return nil
 }
 
-func runBlockTest(homesteadBlock *big.Int, test *BlockTest) error {
+func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error {
 	// import pre accounts & construct test genesis block & state root
 	db, _ := ethdb.NewMemDatabase()
 	if _, err := test.InsertPreState(db); err != nil {
@@ -172,6 +172,9 @@ func runBlockTest(homesteadBlock *big.Int, test *BlockTest) error {
 	evmux := new(event.TypeMux)
 	config := core.NewChainConfig()
 	config.Fork("Homestead").Block = homesteadBlock
+	if gasPriceFork != nil {
+		config.Fork("GasReprice").Block = gasPriceFork
+	}
 	chain, err := core.NewBlockChain(db, config, ethash.NewShared(), evmux)
 	if err != nil {
 		return err

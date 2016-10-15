@@ -30,6 +30,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -142,13 +143,21 @@ type VmTest struct {
 }
 
 type RuleSet struct {
-	HomesteadBlock *big.Int
-	DiehardBlock   *big.Int
-	ExplosionBlock *big.Int
+	HomesteadBlock           *big.Int
+	HomesteadGasRepriceBlock *big.Int
+	DiehardBlock             *big.Int
+	ExplosionBlock           *big.Int
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
+}
+func (r RuleSet) GasTable(num *big.Int) params.GasTable {
+	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
+		return params.GasTableHomestead
+	}
+
+	return params.GasTableHomesteadGasRepriceFork
 }
 
 type Env struct {

@@ -57,7 +57,7 @@ func Env() Environment {
 			Branch:        os.Getenv("TC_BRANCH"),
 			Tag:           os.Getenv("TC_TAG"),
 			Buildnum:      os.Getenv("TC_BUILD_NUMBER"),
-			IsPullRequest: "false",  //we will not build PRs.  Later
+			IsPullRequest: false, //we will not build PRs.  Later
 		}
 	case os.Getenv("CI") == "True" && os.Getenv("APPVEYOR") == "True":
 		return Environment{

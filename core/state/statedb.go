@@ -263,7 +263,7 @@ func (self *StateDB) GetState(a common.Address, b common.Hash) common.Hash {
 	return common.Hash{}
 }
 
-func (self *StateDB) IsDeleted(addr common.Address) bool {
+func (self *StateDB) HasSuicided(addr common.Address) bool {
 	stateObject := self.GetStateObject(addr)
 	if stateObject != nil {
 		return stateObject.remove
@@ -303,7 +303,7 @@ func (self *StateDB) SetState(addr common.Address, key common.Hash, value common
 	}
 }
 
-func (self *StateDB) Delete(addr common.Address) bool {
+func (self *StateDB) Suicide(addr common.Address) bool {
 	stateObject := self.GetStateObject(addr)
 	if stateObject != nil {
 		stateObject.MarkForDeletion()

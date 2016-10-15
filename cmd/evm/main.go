@@ -33,6 +33,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -222,6 +223,9 @@ func NewEnv(state *state.StateDB, transactor common.Address, value *big.Int, cfg
 type ruleSet struct{}
 
 func (ruleSet) IsHomestead(*big.Int) bool { return true }
+func (ruleSet) GasTable(*big.Int) params.GasTable {
+	return params.GasTableHomesteadGasRepriceFork
+}
 
 func (self *VMEnv) RuleSet() vm.RuleSet        { return ruleSet{} }
 func (self *VMEnv) Vm() vm.Vm                  { return self.evm }

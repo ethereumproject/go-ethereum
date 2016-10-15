@@ -27,6 +27,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow/ezp"
 )
 
@@ -34,8 +35,9 @@ func testChainConfig() *ChainConfig {
 	return &ChainConfig{
 		Forks: []*Fork{
 			&Fork{
-				Name:  "Homestead",
-				Block: big.NewInt(0),
+				Name:     "Homestead",
+				Block:    big.NewInt(0),
+				GasTable: &params.GasTableHomestead,
 			},
 		},
 	}

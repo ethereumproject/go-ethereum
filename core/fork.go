@@ -8,6 +8,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 type Fork struct {
@@ -29,6 +30,8 @@ type Fork struct {
 	// ForkExtraRange is the number of consecutive blocks from the fork point
 	// to override the extra-data in to prevent no-fork attacks.
 	ExtraRange *big.Int
+	// Gas Price table
+	GasTable *params.GasTable
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
 }
 
@@ -66,6 +69,7 @@ func LoadForks() []*Fork {
 			Block:        big.NewInt(1150000),
 			NetworkSplit: false,
 			Support:      true,
+			GasTable:     &params.GasTableHomestead,
 		},
 		&Fork{
 			Name:         "ETF",
@@ -78,6 +82,13 @@ func LoadForks() []*Fork {
 			OrigSplitHash: "94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f",
 			// ETF Block+1
 			ForkSplitHash: "4985f5ca3d2afbec36529aa96f74de3cc10a2a4a6c44f2157a57d2c6059a11bb",
+		},
+		&Fork{
+			Name:         "GasReprice",
+			Block:        big.NewInt(2500000),
+			NetworkSplit: false,
+			Support:      true,
+			GasTable:     &params.GasTableHomesteadGasRepriceFork,
 		},
 		&Fork{
 			Name:         "Diehard",
