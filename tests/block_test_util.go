@@ -31,6 +31,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
@@ -220,7 +221,7 @@ func (t *BlockTest) InsertPreState(db ethdb.Database) (*state.StateDB, error) {
 			return nil, err
 		}
 		obj := statedb.CreateAccount(common.HexToAddress(addrString))
-		obj.SetCode(code)
+		obj.SetCode(crypto.Keccak256Hash(code), code)
 		obj.SetBalance(balance)
 		obj.SetNonce(nonce)
 		for k, v := range acct.Storage {
