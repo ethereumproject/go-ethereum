@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -83,4 +84,20 @@ func (c *ChainConfig) Fork(name string) *Fork {
 
 func (c *ChainConfig) LoadForkConfig() {
 	c.Forks = LoadForks()
+}
+
+// GasTable returns the gas table corresponding to the current fork
+// The returned GasTable's fields shouldn't, under any circumstances, be changed.
+func (c *ChainConfig) GasTable(num *big.Int) params.GasTable {
+	var gasTable = params.GasTableHomestead
+	//TODO avoid loop, remember current fork
+	for i := range c.Forks {
+		fork := c.Forks[i]
+		if fork.Block.Cmp(num) <= 0 {
+			if fork.GasTable != nil {
+				gasTable = *fork.GasTable
+			}
+		}
+	}
+	return gasTable
 }

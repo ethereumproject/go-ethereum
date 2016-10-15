@@ -814,6 +814,13 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 					c.Forks[i].Block = params.MainNetHomesteadBlock
 				}
 			}
+			if c.Forks[i].Name == "GasReprice" {
+				if ctx.GlobalBool(TestNetFlag.Name) {
+					c.Forks[i].Block = params.TestNetHomesteadGasRepriceBlock
+				} else {
+					c.Forks[i].Block = params.MainNetHomesteadGasRepriceBlock
+				}
+			}
 			if c.Forks[i].Name == "Diehard" {
 				c.Forks[i].Block = params.DiehardBlock
 				c.Forks[i].Length = big.NewInt(0).Sub(params.ExplosionBlock, params.DiehardBlock)
