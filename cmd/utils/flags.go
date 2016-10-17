@@ -790,59 +790,31 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	c := new(core.ChainConfig)
 
 	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
-	if genesis != nil {
-		storedConfig, err := core.GetChainConfig(db, genesis.Hash())
-		switch err {
-		case nil:
-			c = storedConfig
-		case core.ChainConfigNotFoundErr:
-			// No configs found, use empty, will populate below
-		default:
-			Fatalf("Could not make chain configuration: %v", err)
-		}
-	}
+	c.LoadForkConfig()
 
-	if c.Forks == nil {
-		// Set any missing fields due to them being unset or system upgrade
-		c.LoadForkConfig()
-		for i := range c.Forks {
-			// Force override any existing configs if explicitly requested
-			if c.Forks[i].Name == "Homestead" {
-				if ctx.GlobalBool(TestNetFlag.Name) {
-					c.Forks[i].Block = params.TestNetHomesteadBlock
-				} else {
-					c.Forks[i].Block = params.MainNetHomesteadBlock
-				}
-			}
-			if c.Forks[i].Name == "GasReprice" {
-				if ctx.GlobalBool(TestNetFlag.Name) {
-					c.Forks[i].Block = params.TestNetHomesteadGasRepriceBlock
-				} else {
-					c.Forks[i].Block = params.MainNetHomesteadGasRepriceBlock
-				}
-			}
-			if c.Forks[i].Name == "Diehard" {
-				c.Forks[i].Block = params.DiehardBlock
-				c.Forks[i].Length = big.NewInt(0).Sub(params.ExplosionBlock, params.DiehardBlock)
-			}
-			if c.Forks[i].Name == "ETF" {
-				if ctx.GlobalBool(ETFChain.Name) {
-					c.Forks[i].Support = true
-				}
+	for i := range c.Forks {
+		// Force override any existing configs if explicitly requested
+		if c.Forks[i].Name == "Homestead" {
+			if ctx.GlobalBool(TestNetFlag.Name) {
+				c.Forks[i].Block = params.TestNetHomesteadBlock
+			} else {
+				c.Forks[i].Block = params.MainNetHomesteadBlock
 			}
 		}
-	} else {
-		// Make sure new forks are added to config
-		allForks := core.LoadForks()
-		for i := range allForks {
-			fork := allForks[i]
-			exists := false
-			for x := range c.Forks {
-				exists = exists || c.Forks[x].Name == fork.Name
+		if c.Forks[i].Name == "GasReprice" {
+			if ctx.GlobalBool(TestNetFlag.Name) {
+				c.Forks[i].Block = params.TestNetHomesteadGasRepriceBlock
+			} else {
+				c.Forks[i].Block = params.MainNetHomesteadGasRepriceBlock
 			}
-			if !exists {
-				glog.V(logger.Warn).Info(fmt.Sprintf("Enable new fork: %s", fork.Name))
-				c.Forks = append(c.Forks, fork)
+		}
+		if c.Forks[i].Name == "Diehard" {
+			c.Forks[i].Block = params.DiehardBlock
+			c.Forks[i].Length = big.NewInt(0).Sub(params.ExplosionBlock, params.DiehardBlock)
+		}
+		if c.Forks[i].Name == "ETF" {
+			if ctx.GlobalBool(ETFChain.Name) {
+				c.Forks[i].Support = true
 			}
 		}
 	}
