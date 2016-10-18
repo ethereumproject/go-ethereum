@@ -51,6 +51,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
+	"sort"
 )
 
 func init() {
@@ -819,33 +820,33 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		}
 	}
 
-	// Temporarilly display a proper message so the user knows which side of the network split is loading
-	if !ctx.GlobalBool(TestNetFlag.Name) && (genesis == nil || genesis.Hash() == common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")) {
-		separator := strings.Repeat("-", 110)
-		glog.V(logger.Warn).Info(separator)
-		glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
-		glog.V(logger.Warn).Info("Loading blockchain: \x1b[36mgenesis\x1b[39m block \"\x1b[36m0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3\x1b[39m\".")
-		glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
-		netsplitChoice := ""
-		splitSetting := ""
-		for i := range c.Forks {
-			if c.Forks[i].NetworkSplit {
-				netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
-				if c.Forks[i].Name == "ETF" {
-					if c.Forks[i].Support {
-						splitSetting = "Geth is configured to use the Ethereum hard-fork blockchain!"
-					} else {
-						splitSetting = "Geth is configured to use the \x1b[32mEthereum (ETC) classic/original\x1b[39m blockchain!"
-					}
-				}
-			} else {
-				netsplitChoice = ""
-			}
+	separator := strings.Repeat("-", 110)
+	glog.V(logger.Warn).Info(separator)
+	glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
+	glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesis.Hash().Hex()))
+	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
+
+	netsplitChoice := ""
+	testnet := []string{"Homestead", "GasReprice"} //TODO create separate chain config for testnet, then remove that
+	sort.Strings(testnet)
+
+	for i := range c.Forks {
+		if c.Forks[i].NetworkSplit {
+			netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
+		} else {
+			netsplitChoice = ""
+		}
+		testnetEnabled := sort.SearchStrings(testnet, c.Forks[i].Name) < len(testnet) && testnet[sort.SearchStrings(testnet, c.Forks[i].Name)] == c.Forks[i].Name
+		if !ctx.GlobalBool(TestNetFlag.Name) || testnetEnabled {
 			glog.V(logger.Warn).Info(fmt.Sprintf(" %v hard-fork at block %v %v", c.Forks[i].Name, c.Forks[i].Block, netsplitChoice))
 		}
-		glog.V(logger.Warn).Info(splitSetting)
-		glog.V(logger.Warn).Info(separator)
 	}
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[33mEthereum (ETC) Testnet\x1b[39m blockchain!")
+	} else {
+		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[32mEthereum (ETC) Classic\x1b[39m blockchain!")
+	}
+	glog.V(logger.Warn).Info(separator)
 	return c
 }
 
