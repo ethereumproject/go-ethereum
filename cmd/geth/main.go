@@ -206,6 +206,7 @@ participating.
 		utils.GpobaseStepUpFlag,
 		utils.GpobaseCorrectionFactorFlag,
 		utils.ExtraDataFlag,
+		utils.Unused1,
 	}
 	app.Flags = append(app.Flags, debug.Flags...)
 
