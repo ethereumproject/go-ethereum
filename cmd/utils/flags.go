@@ -394,6 +394,10 @@ var (
 		Usage: "Suggested gas price base correction factor (%)",
 		Value: 110,
 	}
+	Unused1 = cli.BoolFlag{
+		Name:  "ignore-dao-fork",
+		Usage: "Use classic blockchain (always set, flag is unused and exists for compatibility only)",
+	}
 )
 
 // MustMakeDataDir retrieves the currently requested data directory, terminating
@@ -759,6 +763,11 @@ func MakeSystemNode(name, version string, relconf release.Config, extra []byte, 
 	}); err != nil {
 		Fatalf("Failed to register the Geth release oracle service: %v", err)
 	}
+
+	if ctx.GlobalBool(Unused1.Name) {
+		glog.V(logger.Info).Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
+	}
+
 	return stack
 }
 
