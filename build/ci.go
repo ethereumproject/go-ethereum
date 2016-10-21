@@ -283,7 +283,7 @@ func doDebianSource(cmdline []string) {
 	flag.CommandLine.Parse(cmdline)
 	*workdir = makeWorkdir(*workdir)
 	env := build.Env()
-	//maybeSkipArchive(env)
+	maybeSkipArchive(env)
 
 	// Skip import of key for now.  Build agents are persistent and already have keys imported
 	// Import the signing key.
