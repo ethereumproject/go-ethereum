@@ -308,7 +308,7 @@ func doDebianSource(cmdline []string) {
 		changes := fmt.Sprintf("%s_%s_source.changes", meta.Name(), meta.VersionString())
 		changes = filepath.Join(*workdir, changes)
 		if *signer != "" {
-			build.MustRunCommand("debsign", changes)
+			build.MustRunCommand("debsign","-p gpg2", changes)
 		}
 		if *upload != "" {
 			build.MustRunCommand("dput", *upload, changes)
