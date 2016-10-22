@@ -162,8 +162,12 @@ func (r RuleSet) GasTable(num *big.Int) params.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
 		return params.GasTableHomestead
 	}
+	if r.DiehardBlock == nil || num == nil || num.Cmp(r.DiehardBlock) < 0 {
+		return params.GasTableHomesteadGasRepriceFork
+	}
 
-	return params.GasTableHomesteadGasRepriceFork
+	fmt.Println("diehard")
+	return params.GasTableDiehardFork
 }
 
 type Env struct {

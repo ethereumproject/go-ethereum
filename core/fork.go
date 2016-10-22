@@ -96,6 +96,7 @@ func LoadForks() []*Fork {
 			Length:       big.NewInt(2000000),
 			NetworkSplit: false,
 			Support:      true,
+			GasTable:     &params.GasTableDiehardFork,
 		},
 	}
 }

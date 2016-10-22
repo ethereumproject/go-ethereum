@@ -482,7 +482,8 @@ func TestEIP150HomesteadStateSystemOperations(t *testing.T) {
 func TestEIP150HomesteadStatePreCompiledContracts(t *testing.T) {
 	ruleSet := RuleSet{
 		HomesteadBlock:           new(big.Int),
-		HomesteadGasRepriceBlock: big.NewInt(2457000),
+		HomesteadGasRepriceBlock: big.NewInt(1457000),
+		DiehardBlock:             big.NewInt(2457000),
 	}
 
 	fn := filepath.Join(stateTestDir, "EIP150", "Homestead", "stPreCompiledContracts.json")
@@ -506,7 +507,8 @@ func TestEIP150HomesteadStateRecursiveCreate(t *testing.T) {
 func TestEIP150HomesteadStateRefund(t *testing.T) {
 	ruleSet := RuleSet{
 		HomesteadBlock:           new(big.Int),
-		HomesteadGasRepriceBlock: big.NewInt(2457000),
+		HomesteadGasRepriceBlock: big.NewInt(1457000),
+		DiehardBlock:             big.NewInt(2457000),
 	}
 
 	fn := filepath.Join(stateTestDir, "EIP150", "Homestead", "stRefundTest.json")
@@ -620,7 +622,8 @@ func TestEIP150HomesteadQuadraticComplexity(t *testing.T) {
 func TestEIP150HomesteadWallet(t *testing.T) {
 	ruleSet := RuleSet{
 		HomesteadBlock:           new(big.Int),
-		HomesteadGasRepriceBlock: big.NewInt(2457000),
+		HomesteadGasRepriceBlock: big.NewInt(1457000),
+		DiehardBlock:             big.NewInt(2457000),
 	}
 
 	fn := filepath.Join(stateTestDir, "EIP150", "Homestead", "stWalletTest.json")
