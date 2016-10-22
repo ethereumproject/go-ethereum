@@ -46,7 +46,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
+	"regexp"
 	"../internal/build"
 )
 
@@ -265,7 +265,13 @@ func maybeSkipArchive(env build.Environment) {
 		log.Printf("skipping because this is a PR build")
 		os.Exit(0)
 	}
-	if env.Branch != "develop" && !strings.HasPrefix(env.Tag, "1.") && !strings.HasPrefix(env.Tag, "2.") {
+	// check the incoming tag to see if it is something we should build
+	// tags from upstream are being pushed into our repo but we must try to ignore them.  Now that we have adopted semver
+	// our version numbers will increment more quickly.  Upstream is currently on 1.X so we shall build 2.0 and greater.
+	// if upstream ever reaches 2.x we shall have to change this regex
+	// some of our tags have been prefixed by a "v" and some have not, so we handle that
+	var validBuildTag = regexp.MustCompile(`^[v]?(?:\d{2,}|[2-9])(?:\.\d{1,})*`)
+	if env.Branch != "develop" && !validBuildTag.MatchString(env.Tag) {
 		log.Printf("skipping because branch %q, tag %q is not on the whitelist", env.Branch, env.Tag)
 		os.Exit(0)
 	}
