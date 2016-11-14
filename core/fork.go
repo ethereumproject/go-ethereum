@@ -100,3 +100,22 @@ func LoadForks() []*Fork {
 		},
 	}
 }
+
+func LoadTestnet() []*Fork {
+	return []*Fork{
+		&Fork{
+			Name:         "Homestead",
+			Block:        big.NewInt(494000),
+			NetworkSplit: false,
+			Support:      true,
+			GasTable:     &params.GasTableHomestead,
+		},
+		&Fork{
+			Name:         "GasReprice",
+			Block:        big.NewInt(1783000),
+			NetworkSplit: false,
+			Support:      true,
+			GasTable:     &params.GasTableHomesteadGasRepriceFork,
+		},
+	}
+}
