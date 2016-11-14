@@ -831,11 +831,7 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		} else {
 			netsplitChoice = ""
 		}
-		pad := ""
-		if big.NewInt(1000000).Cmp(c.Forks[i].Block) > 0 {
-			pad = " "
-		}
-		glog.V(logger.Warn).Info(fmt.Sprintf(" %v%v %v hard-fork %v", pad, c.Forks[i].Block, c.Forks[i].Name, netsplitChoice))
+		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v hard-fork %v", c.Forks[i].Block, c.Forks[i].Name, netsplitChoice))
 	}
 
 	if ctx.GlobalBool(TestNetFlag.Name) {
