@@ -51,7 +51,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
-	"sort"
 )
 
 func init() {
@@ -800,28 +799,14 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	c := new(core.ChainConfig)
 
 	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
-	c.LoadForkConfig()
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		c.LoadTestnetConfig()
+	} else {
+		c.LoadForkConfig()
+	}
 
 	for i := range c.Forks {
 		// Force override any existing configs if explicitly requested
-		if c.Forks[i].Name == "Homestead" {
-			if ctx.GlobalBool(TestNetFlag.Name) {
-				c.Forks[i].Block = params.TestNetHomesteadBlock
-			} else {
-				c.Forks[i].Block = params.MainNetHomesteadBlock
-			}
-		}
-		if c.Forks[i].Name == "GasReprice" {
-			if ctx.GlobalBool(TestNetFlag.Name) {
-				c.Forks[i].Block = params.TestNetHomesteadGasRepriceBlock
-			} else {
-				c.Forks[i].Block = params.MainNetHomesteadGasRepriceBlock
-			}
-		}
-		if c.Forks[i].Name == "Diehard" {
-			c.Forks[i].Block = params.DiehardBlock
-			c.Forks[i].Length = big.NewInt(0).Sub(params.ExplosionBlock, params.DiehardBlock)
-		}
 		if c.Forks[i].Name == "ETF" {
 			if ctx.GlobalBool(ETFChain.Name) {
 				c.Forks[i].Support = true
@@ -840,20 +825,15 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
 
 	netsplitChoice := ""
-	testnet := []string{"Homestead", "GasReprice"} //TODO create separate chain config for testnet, then remove that
-	sort.Strings(testnet)
-
 	for i := range c.Forks {
 		if c.Forks[i].NetworkSplit {
 			netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
 		} else {
 			netsplitChoice = ""
 		}
-		testnetEnabled := sort.SearchStrings(testnet, c.Forks[i].Name) < len(testnet) && testnet[sort.SearchStrings(testnet, c.Forks[i].Name)] == c.Forks[i].Name
-		if !ctx.GlobalBool(TestNetFlag.Name) || testnetEnabled {
-			glog.V(logger.Warn).Info(fmt.Sprintf(" %v hard-fork at block %v %v", c.Forks[i].Name, c.Forks[i].Block, netsplitChoice))
-		}
+		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v hard-fork %v", c.Forks[i].Block, c.Forks[i].Name, netsplitChoice))
 	}
+
 	if ctx.GlobalBool(TestNetFlag.Name) {
 		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[33mEthereum (ETC) Testnet\x1b[39m blockchain!")
 	} else {

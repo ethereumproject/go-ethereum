@@ -85,6 +85,9 @@ func (c *ChainConfig) Fork(name string) *Fork {
 func (c *ChainConfig) LoadForkConfig() {
 	c.Forks = LoadForks()
 }
+func (c *ChainConfig) LoadTestnetConfig() {
+	c.Forks = LoadTestnet()
+}
 
 // GasTable returns the gas table corresponding to the current fork
 // The returned GasTable's fields shouldn't, under any circumstances, be changed.
