@@ -20,6 +20,7 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/params"
 )
@@ -80,6 +81,20 @@ func (c *ChainConfig) Fork(name string) *Fork {
 		}
 	}
 	return &Fork{}
+}
+
+func (c *ChainConfig) IsBadFork(num *big.Int, hash common.Hash) bool {
+	for i := range c.Forks {
+		fork := c.Forks[i]
+		if fork.Block.Cmp(num) == 0 {
+			if !fork.Support {
+				return hash != common.HexToHash(fork.OrigSplitHash)
+			} else {
+				return hash != common.HexToHash(fork.ForkSplitHash)
+			}
+		}
+	}
+	return false
 }
 
 func (c *ChainConfig) LoadForkConfig() {

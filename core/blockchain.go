@@ -853,6 +853,13 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 			}
 		}
 
+		if self.config.IsBadFork(block.Number(), block.Hash()) {
+			glog.Infof("Found unsupported fork")
+			err := BadHashError(block.Hash())
+			reportBlock(block, err)
+			return i, err
+		}
+
 		if BadHashes[block.Hash()] {
 			glog.Infof("Found bad hash")
 			err := BadHashError(block.Hash())
