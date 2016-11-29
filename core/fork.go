@@ -117,5 +117,12 @@ func LoadTestnet() []*Fork {
 			Support:      true,
 			GasTable:     &params.GasTableHomesteadGasRepriceFork,
 		},
+		&Fork{
+			Name:          "ETF",
+			Block:         big.NewInt(1885000),
+			NetworkSplit:  true,
+			Support:       false,
+			OrigSplitHash: "2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740",
+		},
 	}
 }
