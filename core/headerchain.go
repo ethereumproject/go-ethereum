@@ -230,8 +230,8 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 			}
 
 			// Short circuit if the header is bad or already known
-			if hc.config.IsBadFork(header.Number, hash) {
-				errs[index] = BadHashError(hash)
+			if err := hc.config.IsBadFork(header.Number, hash); err != nil {
+				errs[index] = err
 				atomic.AddInt32(&failed, 1)
 				return
 			}

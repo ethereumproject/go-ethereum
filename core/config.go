@@ -83,18 +83,22 @@ func (c *ChainConfig) Fork(name string) *Fork {
 	return &Fork{}
 }
 
-func (c *ChainConfig) IsBadFork(num *big.Int, hash common.Hash) bool {
+func (c *ChainConfig) IsBadFork(num *big.Int, hash common.Hash) error {
 	for i := range c.Forks {
 		fork := c.Forks[i]
-		if fork.Block.Cmp(num) == 0 {
+		if fork.Block.Cmp(num) == 0 && fork.OrigSplitHash != "" {
 			if !fork.Support {
-				return hash != common.HexToHash(fork.OrigSplitHash)
+				if hash != common.HexToHash(fork.OrigSplitHash) {
+					return ValidationError("Fork bad block hash: 0x%x at %x", hash, num)
+				}
 			} else {
-				return hash != common.HexToHash(fork.ForkSplitHash)
+				if hash != common.HexToHash(fork.ForkSplitHash) {
+					return ValidationError("Fork bad block hash: 0x%x at %x", hash, num)
+				}
 			}
 		}
 	}
-	return false
+	return nil
 }
 
 func (c *ChainConfig) LoadForkConfig() {

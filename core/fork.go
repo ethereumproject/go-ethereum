@@ -1,13 +1,9 @@
 package core
 
 import (
-	"bytes"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/params"
 )
 
@@ -33,32 +29,6 @@ type Fork struct {
 	// Gas Price table
 	GasTable *params.GasTable
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
-}
-
-func (fork *Fork) ValidateForkHeaderExtraData(header *types.Header) error {
-	glog.V(logger.Info).Infof("validate fork header extra data")
-	// Short circuit validation if the node doesn't care about the DAO fork
-	if fork.Block == nil {
-		return nil
-	}
-	// Make sure the block is within the fork's modified extra-data range
-	limit := new(big.Int).Add(fork.Block, fork.ExtraRange)
-	if header.Number.Cmp(fork.Block) < 0 || header.Number.Cmp(limit) >= 0 {
-		return nil
-	}
-	// Depending whether we support or oppose the fork, validate the extra-data contents
-	if fork.Support {
-		if bytes.Compare(header.Extra, fork.BlockExtra) != 0 {
-			return ValidationError("Fork bad block extra-data: 0x%x", header.Extra)
-		}
-	} else {
-		glog.V(logger.Info).Infof("Dont support during validation")
-		if bytes.Compare(header.Extra, fork.BlockExtra) == 0 {
-			return ValidationError("No-fork bad block extra-data: 0x%x", header.Extra)
-		}
-	}
-	// All ok, header has the same extra-data we expect
-	return nil
 }
 
 // TODO Migrate hardcoded fork config into a json file
