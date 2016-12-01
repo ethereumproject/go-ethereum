@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/params"
 )
@@ -90,18 +91,18 @@ func (c *ChainConfig) Fork(name string) *Fork {
 	return &Fork{}
 }
 
-func (c *ChainConfig) IsBadFork(num *big.Int, hash common.Hash) error {
+func (c *ChainConfig) IsBadFork(header *types.Header) error {
 	for i := range c.Forks {
 		fork := c.Forks[i]
-		if fork.Block.Cmp(num) == 0 && fork.RequiredHash != "" {
-			if hash != common.HexToHash(fork.RequiredHash) {
-				return ValidationError("Fork bad block hash: 0x%x at %x", hash, num)
+		if fork.Block.Cmp(header.Number) == 0 {
+			if !common.EmptyHash(fork.RequiredHash) && header.Hash() != fork.RequiredHash {
+				return ValidationError("Fork bad block hash: 0x%x at %x", header.Hash(), header.Number)
 			}
 		}
 	}
 	for i := range c.BadHashes {
-		if c.BadHashes[i].Block == num && c.BadHashes[i].Hash == hash {
-			return BadHashError(hash)
+		if c.BadHashes[i].Block.Cmp(header.Number) == 0 && c.BadHashes[i].Hash == header.Hash() {
+			return BadHashError(header.Hash())
 		}
 	}
 	return nil

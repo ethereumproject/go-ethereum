@@ -3,6 +3,7 @@ package core
 import (
 	"math/big"
 
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/params"
 )
 
@@ -18,7 +19,7 @@ type Fork struct {
 	Length *big.Int
 	// RequiredHash to assist in avoiding sync issues
 	// after network split.
-	RequiredHash string
+	RequiredHash common.Hash
 	// Gas Price table
 	GasTable *params.GasTable
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
@@ -39,7 +40,7 @@ func LoadForks() []*Fork {
 			Block:        big.NewInt(1920000),
 			NetworkSplit: true,
 			Support:      false,
-			RequiredHash: "94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f",
+			RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
 		},
 		&Fork{
 			Name:         "GasReprice",
@@ -80,7 +81,7 @@ func LoadTestnet() []*Fork {
 			Block:        big.NewInt(1885000),
 			NetworkSplit: true,
 			Support:      false,
-			RequiredHash: "2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740",
+			RequiredHash: common.HexToHash("2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740"),
 		},
 	}
 }

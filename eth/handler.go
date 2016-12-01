@@ -426,7 +426,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
 		filter := len(headers) == 1
 		if filter {
-			if err := pm.chainConfig.IsBadFork(headers[0].Number, headers[0].Hash()); err != nil {
+			if err := pm.chainConfig.IsBadFork(headers[0]); err != nil {
 				if p.timeout != nil {
 					// Disable the fork drop timeout
 					p.timeout.Stop()

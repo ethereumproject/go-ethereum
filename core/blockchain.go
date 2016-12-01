@@ -853,7 +853,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 			}
 		}
 
-		if err := self.config.IsBadFork(block.Number(), block.Hash()); err != nil {
+		if err := self.config.IsBadFork(block.Header()); err != nil {
 			glog.Infof("Found bad block")
 			reportBlock(block, err)
 			return i, err
