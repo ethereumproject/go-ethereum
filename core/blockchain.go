@@ -151,8 +151,8 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux
 		return nil, err
 	}
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
-	for hash, _ := range BadHashes {
-		if header := bc.GetHeader(hash); header != nil {
+	for i := range config.BadHashes {
+		if header := bc.GetHeader(config.BadHashes[i].Hash); header != nil && header.Number.Cmp(config.BadHashes[i].Block) == 0 {
 			glog.V(logger.Error).Infof("Found bad hash, rewinding chain to block #%d [%x…]", header.Number, header.ParentHash[:4])
 			bc.SetHead(header.Number.Uint64() - 1)
 			glog.V(logger.Error).Infoln("Chain rewind was successful, resuming normal operation")
@@ -854,18 +854,11 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 		}
 
 		if err := self.config.IsBadFork(block.Number(), block.Hash()); err != nil {
-			glog.Infof("Found unsupported fork")
-			err := BadHashError(block.Hash())
+			glog.Infof("Found bad block")
 			reportBlock(block, err)
 			return i, err
 		}
 
-		if BadHashes[block.Hash()] {
-			glog.Infof("Found bad hash")
-			err := BadHashError(block.Hash())
-			reportBlock(block, err)
-			return i, err
-		}
 		// Stage 1 validation of the block using the chain's validator
 		// interface.
 		err := self.Validator().ValidateBlock(block)

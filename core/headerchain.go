@@ -235,11 +235,6 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 				atomic.AddInt32(&failed, 1)
 				return
 			}
-			if BadHashes[hash] {
-				errs[index] = BadHashError(hash)
-				atomic.AddInt32(&failed, 1)
-				return
-			}
 			if hc.HasHeader(hash) {
 				continue
 			}

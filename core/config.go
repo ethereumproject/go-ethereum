@@ -39,6 +39,13 @@ type ChainConfig struct {
 	VmConfig vm.Config `json:"-"`
 	// ForkConfig fork.Config
 	Forks []*Fork `json:"forks"`
+	// Optimize downloader to ignore well known blocks with consensus issues
+	BadHashes []*BadHash `json:"bad_hashes"`
+}
+
+type BadHash struct {
+	Block *big.Int
+	Hash  common.Hash
 }
 
 func NewChainConfig() *ChainConfig {
@@ -86,16 +93,15 @@ func (c *ChainConfig) Fork(name string) *Fork {
 func (c *ChainConfig) IsBadFork(num *big.Int, hash common.Hash) error {
 	for i := range c.Forks {
 		fork := c.Forks[i]
-		if fork.Block.Cmp(num) == 0 && fork.OrigSplitHash != "" {
-			if !fork.Support {
-				if hash != common.HexToHash(fork.OrigSplitHash) {
-					return ValidationError("Fork bad block hash: 0x%x at %x", hash, num)
-				}
-			} else {
-				if hash != common.HexToHash(fork.ForkSplitHash) {
-					return ValidationError("Fork bad block hash: 0x%x at %x", hash, num)
-				}
+		if fork.Block.Cmp(num) == 0 && fork.RequiredHash != "" {
+			if hash != common.HexToHash(fork.RequiredHash) {
+				return ValidationError("Fork bad block hash: 0x%x at %x", hash, num)
 			}
+		}
+	}
+	for i := range c.BadHashes {
+		if c.BadHashes[i].Block == num && c.BadHashes[i].Hash == hash {
+			return BadHashError(hash)
 		}
 	}
 	return nil
@@ -103,9 +109,25 @@ func (c *ChainConfig) IsBadFork(num *big.Int, hash common.Hash) error {
 
 func (c *ChainConfig) LoadForkConfig() {
 	c.Forks = LoadForks()
+	c.BadHashes = []*BadHash{
+		{
+			// consensus issue that occurred on the Frontier network at block 116,522, mined on 2015-08-20 at 14:59:16+02:00
+			// https://blog.ethereum.org/2015/08/20/security-alert-consensus-issue
+			Block: big.NewInt(116522),
+			Hash:  common.HexToHash("05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"),
+		},
+	}
 }
 func (c *ChainConfig) LoadTestnetConfig() {
 	c.Forks = LoadTestnet()
+	c.BadHashes = []*BadHash{
+		{
+			// consensus issue at Testnet #383792
+			// http://ethereum.stackexchange.com/questions/10183/upgraded-to-geth-1-5-0-bad-block-383792
+			Block: big.NewInt(383792),
+			Hash:  common.HexToHash("9690db54968a760704d99b8118bf79d565711669cefad24b51b5b1013d827808"),
+		},
+	}
 }
 
 // GasTable returns the gas table corresponding to the current fork
