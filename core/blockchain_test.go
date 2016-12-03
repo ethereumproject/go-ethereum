@@ -472,15 +472,16 @@ func makeBlockChainWithDiff(genesis *types.Block, d []int, seed byte) []*types.B
 
 func chm(genesis *types.Block, db ethdb.Database) *BlockChain {
 	var eventMux event.TypeMux
+	config := testChainConfig()
 	bc := &BlockChain{
 		chainDb:      db,
 		genesisBlock: genesis,
 		eventMux:     &eventMux,
 		pow:          FakePow{},
-		config:       testChainConfig(),
+		config:       config,
 	}
 	valFn := func() HeaderValidator { return bc.Validator() }
-	bc.hc, _ = NewHeaderChain(db, testChainConfig(), valFn, bc.getProcInterrupt)
+	bc.hc, _ = NewHeaderChain(db, config, valFn, bc.getProcInterrupt)
 	bc.bodyCache, _ = lru.New(100)
 	bc.bodyRLPCache, _ = lru.New(100)
 	bc.blockCache, _ = lru.New(100)
@@ -567,11 +568,22 @@ func testBadHashes(t *testing.T, full bool) {
 	var err error
 	if full {
 		blocks := makeBlockChainWithDiff(genesis, []int{1, 2, 4}, 10)
-		BadHashes[blocks[2].Header().Hash()] = true
+
+		bc.config.BadHashes = []*BadHash{
+			{
+				Block: blocks[2].Number(),
+				Hash:  blocks[2].Header().Hash(),
+			},
+		}
 		_, err = bc.InsertChain(blocks)
 	} else {
 		headers := makeHeaderChainWithDiff(genesis, []int{1, 2, 4}, 10)
-		BadHashes[headers[2].Hash()] = true
+		bc.config.BadHashes = []*BadHash{
+			{
+				Block: headers[2].Number,
+				Hash:  headers[2].Hash(),
+			},
+		}
 		_, err = bc.InsertHeaderChain(headers, 1)
 	}
 	if !IsBadHashError(err) {
@@ -601,8 +613,13 @@ func testReorgBadHashes(t *testing.T, full bool) {
 		if bc.CurrentBlock().Hash() != blocks[3].Hash() {
 			t.Errorf("last block hash mismatch: have: %x, want %x", bc.CurrentBlock().Hash(), blocks[3].Header().Hash())
 		}
-		BadHashes[blocks[3].Header().Hash()] = true
-		defer func() { delete(BadHashes, blocks[3].Header().Hash()) }()
+		bc.config.BadHashes = []*BadHash{
+			{
+				Block: blocks[3].Number(),
+				Hash:  blocks[3].Header().Hash(),
+			},
+		}
+		defer func() { bc.config.BadHashes = []*BadHash{} }()
 	} else {
 		if _, err := bc.InsertHeaderChain(headers, 1); err != nil {
 			t.Fatalf("failed to import headers: %v", err)
@@ -610,11 +627,16 @@ func testReorgBadHashes(t *testing.T, full bool) {
 		if bc.CurrentHeader().Hash() != headers[3].Hash() {
 			t.Errorf("last header hash mismatch: have: %x, want %x", bc.CurrentHeader().Hash(), headers[3].Hash())
 		}
-		BadHashes[headers[3].Hash()] = true
-		defer func() { delete(BadHashes, headers[3].Hash()) }()
+		bc.config.BadHashes = []*BadHash{
+			{
+				Block: headers[3].Number,
+				Hash:  headers[3].Hash(),
+			},
+		}
+		defer func() { bc.config.BadHashes = []*BadHash{} }()
 	}
 	// Create a new chain manager and check it rolled back the state
-	ncm, err := NewBlockChain(db, testChainConfig(), FakePow{}, new(event.TypeMux))
+	ncm, err := NewBlockChain(db, bc.config, FakePow{}, new(event.TypeMux))
 	if err != nil {
 		t.Fatalf("failed to create new chain manager: %v", err)
 	}
