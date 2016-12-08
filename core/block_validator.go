@@ -223,7 +223,7 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 
 	expd := CalcDifficulty(config, header.Time.Uint64(), parent.Time.Uint64(), parent.Number, parent.Difficulty)
 	if expd.Cmp(header.Difficulty) != 0 {
-		return fmt.Errorf("Difficulty check failed for header %v, %v", header.Difficulty, expd)
+		return fmt.Errorf("Difficulty check failed for header %v != %v at %v", header.Difficulty, expd, header.Number)
 	}
 
 	a := new(big.Int).Set(parent.GasLimit)
@@ -258,7 +258,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	// This is a placeholder for testing. The calcDiff function should
 	// be determined by a config flag
 	num := new(big.Int).Add(parentNumber, common.Big1)
-	if config.IsDiehard(num) {
+	if config.IsDiehard(num) && !config.IsExplosion(num) {
 		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff)
 	} else if config.IsExplosion(num) {
 		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff)

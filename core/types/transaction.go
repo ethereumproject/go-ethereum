@@ -28,15 +28,14 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
 var ErrInvalidSig = errors.New("invalid v, r, s values")
 
 type Transaction struct {
-	data txdata
+	signer Signer
+	data   txdata
 	// caches
 	hash atomic.Value
 	size atomic.Value
@@ -49,24 +48,28 @@ type txdata struct {
 	Recipient       *common.Address `rlp:"nil"` // nil means contract creation
 	Amount          *big.Int
 	Payload         []byte
-	V               byte     // signature
-	R, S            *big.Int // signature
+	V, R, S         *big.Int // signature
 }
 
 func NewContractCreation(nonce uint64, amount, gasLimit, gasPrice *big.Int, data []byte) *Transaction {
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
 	}
-	return &Transaction{data: txdata{
-		AccountNonce: nonce,
-		Recipient:    nil,
-		Amount:       new(big.Int).Set(amount),
-		GasLimit:     new(big.Int).Set(gasLimit),
-		Price:        new(big.Int).Set(gasPrice),
-		Payload:      data,
-		R:            new(big.Int),
-		S:            new(big.Int),
-	}}
+	return &Transaction{
+		signer: BasicSigner{},
+		data: txdata{
+			AccountNonce: nonce,
+			Recipient:    nil,
+			Amount:       new(big.Int).Set(amount),
+			GasLimit:     new(big.Int).Set(gasLimit),
+			Price:        new(big.Int).Set(gasPrice),
+			Payload:      data,
+			V:            new(big.Int),
+			R:            new(big.Int),
+			S:            new(big.Int),
+		},
+	}
+
 }
 
 func NewTransaction(nonce uint64, to common.Address, amount, gasLimit, gasPrice *big.Int, data []byte) *Transaction {
@@ -80,6 +83,7 @@ func NewTransaction(nonce uint64, to common.Address, amount, gasLimit, gasPrice 
 		Amount:       new(big.Int),
 		GasLimit:     new(big.Int),
 		Price:        new(big.Int),
+		V:            new(big.Int),
 		R:            new(big.Int),
 		S:            new(big.Int),
 	}
@@ -92,7 +96,24 @@ func NewTransaction(nonce uint64, to common.Address, amount, gasLimit, gasPrice 
 	if gasPrice != nil {
 		d.Price.Set(gasPrice)
 	}
-	return &Transaction{data: d}
+	return &Transaction{signer: BasicSigner{}, data: d}
+}
+
+func (tx *Transaction) SetSigner(s Signer) {
+	// reset the cached value incase another value was cached
+	tx.from.Store((*common.Address)(nil))
+
+	tx.signer = s
+}
+
+// ChainId returns which chain id this transaction was signed for (if at all)
+func (tx *Transaction) ChainId() *big.Int {
+	return deriveChainId(tx.data.V)
+}
+
+// Protected returns whether the transaction is protected from replay protection
+func (tx *Transaction) Protected() bool {
+	return isProtectedV(tx.data.V)
 }
 
 func (tx *Transaction) EncodeRLP(w io.Writer) error {
@@ -105,6 +126,7 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 	if err == nil {
 		tx.size.Store(common.StorageSize(rlp.ListSize(size)))
 	}
+	tx.signer = BasicSigner{}
 	return err
 }
 
@@ -137,14 +159,7 @@ func (tx *Transaction) Hash() common.Hash {
 // SigHash returns the hash to be signed by the sender.
 // It does not uniquely identify the transaction.
 func (tx *Transaction) SigHash() common.Hash {
-	return rlpHash([]interface{}{
-		tx.data.AccountNonce,
-		tx.data.Price,
-		tx.data.GasLimit,
-		tx.data.Recipient,
-		tx.data.Amount,
-		tx.data.Payload,
-	})
+	return tx.signer.Hash(tx)
 }
 
 func (tx *Transaction) Size() common.StorageSize {
@@ -195,15 +210,17 @@ func (tx *Transaction) FromFrontier() (common.Address, error) {
 
 func doFrom(tx *Transaction, homestead bool) (common.Address, error) {
 	if from := tx.from.Load(); from != nil {
-		return from.(common.Address), nil
+		if faddr := from.(*common.Address); faddr != nil {
+			return *faddr, nil
+		}
 	}
-	pubkey, err := tx.publicKey(homestead)
+	pubkey, err := tx.signer.PublicKey(tx)
 	if err != nil {
 		return common.Address{}, err
 	}
 	var addr common.Address
 	copy(addr[:], crypto.Keccak256(pubkey[1:])[12:])
-	tx.from.Store(addr)
+	tx.from.Store(&addr)
 	return addr, nil
 }
 
@@ -215,52 +232,20 @@ func (tx *Transaction) Cost() *big.Int {
 }
 
 func (tx *Transaction) SignatureValues() (v byte, r *big.Int, s *big.Int) {
-	return tx.data.V, new(big.Int).Set(tx.data.R), new(big.Int).Set(tx.data.S)
+	return SignatureValues(tx.signer, tx)
 }
 
-func (tx *Transaction) publicKey(homestead bool) ([]byte, error) {
-	if !crypto.ValidateSignatureValues(tx.data.V, tx.data.R, tx.data.S, homestead) {
-		return nil, ErrInvalidSig
-	}
-
-	// encode the signature in uncompressed format
-	r, s := tx.data.R.Bytes(), tx.data.S.Bytes()
-	sig := make([]byte, 65)
-	copy(sig[32-len(r):32], r)
-	copy(sig[64-len(s):64], s)
-	sig[64] = tx.data.V - 27
-
-	// recover the public key from the signature
-	hash := tx.SigHash()
-	pub, err := crypto.Ecrecover(hash[:], sig)
-	if err != nil {
-		glog.V(logger.Error).Infof("Could not get pubkey from signature: ", err)
-		return nil, err
-	}
-	if len(pub) == 0 || pub[0] != 4 {
-		return nil, errors.New("invalid public key")
-	}
-	return pub, nil
+func (tx *Transaction) RawSignatureValues() (v *big.Int, r *big.Int, s *big.Int) {
+	return tx.data.V, tx.data.R, tx.data.S
 }
 
 func (tx *Transaction) WithSignature(sig []byte) (*Transaction, error) {
-	if len(sig) != 65 {
-		panic(fmt.Sprintf("wrong size for signature: got %d, want 65", len(sig)))
-	}
-	cpy := &Transaction{data: tx.data}
-	cpy.data.R = new(big.Int).SetBytes(sig[:32])
-	cpy.data.S = new(big.Int).SetBytes(sig[32:64])
-	cpy.data.V = sig[64] + 27
-	return cpy, nil
+	return tx.signer.WithSignature(tx, sig)
 }
 
 func (tx *Transaction) SignECDSA(prv *ecdsa.PrivateKey) (*Transaction, error) {
-	h := tx.SigHash()
-	sig, err := crypto.Sign(h[:], prv)
-	if err != nil {
-		return nil, err
-	}
-	return tx.WithSignature(sig)
+	tx, err := tx.signer.SignECDSA(tx, prv)
+	return tx, err
 }
 
 func (tx *Transaction) String() string {

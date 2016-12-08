@@ -416,6 +416,7 @@ func (s *PublicAccountAPI) Accounts() []accounts.Account {
 // It offers methods to create, (un)lock en list accounts. Some methods accept
 // passwords and are therefore considered private by default.
 type PrivateAccountAPI struct {
+	bc     *core.BlockChain
 	am     *accounts.Manager
 	txPool *core.TxPool
 	txMu   *sync.Mutex
@@ -425,6 +426,7 @@ type PrivateAccountAPI struct {
 // NewPrivateAccountAPI create a new PrivateAccountAPI.
 func NewPrivateAccountAPI(e *Ethereum) *PrivateAccountAPI {
 	return &PrivateAccountAPI{
+		bc:     e.blockchain,
 		am:     e.accountManager,
 		txPool: e.txPool,
 		txMu:   &e.txMu,
@@ -502,6 +504,8 @@ func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd strin
 	} else {
 		tx = types.NewTransaction(args.Nonce.Uint64(), *args.To, args.Value.BigInt(), args.Gas.BigInt(), args.GasPrice.BigInt(), common.FromHex(args.Data))
 	}
+
+	tx.SetSigner(s.bc.Config().GetSigner(s.bc.CurrentBlock().Number()))
 
 	signature, err := s.am.SignWithPassphrase(args.From, passwd, tx.SigHash().Bytes())
 	if err != nil {
@@ -831,6 +835,9 @@ func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx
 
 		if fullTx {
 			formatTx = func(tx *types.Transaction) (interface{}, error) {
+				if tx.Protected() {
+					tx.SetSigner(types.NewChainIdSigner(s.bc.Config().ChainId))
+				}
 				return newRPCTransaction(b, tx.Hash())
 			}
 		}
@@ -1214,6 +1221,8 @@ func (s *PublicTransactionPoolAPI) SendTransaction(args SendTxArgs) (common.Hash
 	} else {
 		tx = types.NewTransaction(args.Nonce.Uint64(), *args.To, args.Value.BigInt(), args.Gas.BigInt(), args.GasPrice.BigInt(), common.FromHex(args.Data))
 	}
+
+	tx.SetSigner(s.bc.Config().GetSigner(s.bc.CurrentBlock().Number()))
 
 	signature, err := s.am.Sign(args.From, tx.SigHash().Bytes())
 	if err != nil {

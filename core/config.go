@@ -42,6 +42,7 @@ type ChainConfig struct {
 	Forks []*Fork `json:"forks"`
 	// Optimize downloader to ignore well known blocks with consensus issues
 	BadHashes []*BadHash `json:"bad_hashes"`
+	ChainId   *big.Int   `json:"chain_id"`
 }
 
 type BadHash struct {
@@ -51,7 +52,21 @@ type BadHash struct {
 
 func NewChainConfig() *ChainConfig {
 	return &ChainConfig{
-		Forks: LoadForks(),
+		Forks:   LoadForks(),
+		ChainId: params.ChainId,
+	}
+}
+
+func NewTestChainConfig() *ChainConfig {
+	return &ChainConfig{
+		ChainId: big.NewInt(2),
+		Forks: []*Fork{
+			&Fork{
+				Name:     "Homestead",
+				Block:    big.NewInt(0),
+				GasTable: &params.GasTableHomestead,
+			},
+		},
 	}
 }
 
@@ -69,13 +84,13 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 	if fork.Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(fork.Block) >= 0 && num.Cmp(big.NewInt(0).Add(fork.Block, fork.Length)) < 0
+	return num.Cmp(fork.Block) >= 0
 }
 
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	fork := c.Fork("Diehard")
-	if fork.Block == nil || num == nil {
+	if fork.Block == nil || fork.Length == nil || num == nil {
 		return false
 	}
 	block := big.NewInt(0).Add(fork.Block, fork.Length)
@@ -108,8 +123,16 @@ func (c *ChainConfig) IsBadFork(header *types.Header) error {
 	return nil
 }
 
+func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
+	if c.IsDiehard(blockNumber) {
+		return types.NewChainIdSigner(c.ChainId)
+	}
+	return types.BasicSigner{}
+}
+
 func (c *ChainConfig) LoadForkConfig() {
 	c.Forks = LoadForks()
+	c.ChainId = params.ChainId
 	c.BadHashes = []*BadHash{
 		{
 			// consensus issue that occurred on the Frontier network at block 116,522, mined on 2015-08-20 at 14:59:16+02:00
@@ -121,6 +144,7 @@ func (c *ChainConfig) LoadForkConfig() {
 }
 func (c *ChainConfig) LoadTestnetConfig() {
 	c.Forks = LoadTestnet()
+	c.ChainId = params.TestChainId
 	c.BadHashes = []*BadHash{
 		{
 			// consensus issue at Testnet #383792

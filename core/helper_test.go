@@ -21,8 +21,6 @@ import (
 	"fmt"
 
 	"github.com/ethereumproject/go-ethereum/core/types"
-	// "github.com/ethereumproject/go-ethereum/crypto"
-
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 )
