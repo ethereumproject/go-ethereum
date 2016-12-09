@@ -144,7 +144,7 @@ func (c *ChainConfig) LoadForkConfig() {
 }
 func (c *ChainConfig) LoadTestnetConfig() {
 	c.Forks = LoadTestnet()
-	c.ChainId = params.TestChainId
+	c.ChainId = params.TestnetChainId
 	c.BadHashes = []*BadHash{
 		{
 			// consensus issue at Testnet #383792

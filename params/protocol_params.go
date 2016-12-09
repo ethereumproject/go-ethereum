@@ -72,6 +72,6 @@ var (
 	MemoryGas            = big.NewInt(3)      // Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
 	TxDataNonZeroGas     = big.NewInt(68)     // Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions.
 
-	ChainId     = big.NewInt(61)
-	TestChainId = big.NewInt(61)
+	ChainId        = big.NewInt(61)
+	TestnetChainId = big.NewInt(62)
 )
