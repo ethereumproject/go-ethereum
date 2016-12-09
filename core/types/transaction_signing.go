@@ -37,14 +37,29 @@ func isProtectedV(V *big.Int) bool {
 	return true
 }
 
-// SignECDSA signs the transaction using the given signer and private key
-func SignECDSA(s Signer, tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	h := s.Hash(tx)
-	sig, err := crypto.Sign(h[:], prv)
-	if err != nil {
-		return nil, err
+// normaliseV returns the Ethereum version of the V parameter
+func normaliseV(s Signer, v *big.Int) byte {
+	if s, ok := s.(ChainIdSigner); ok {
+		stdV := v.BitLen() <= 8 && (v.Uint64() == 27 || v.Uint64() == 28)
+		if s.chainId.BitLen() > 0 && !stdV {
+			nv := byte((new(big.Int).Sub(v, s.chainIdMul).Uint64()) - 35 + 27)
+			return nv
+		}
 	}
-	return s.WithSignature(tx, sig)
+	return byte(v.Uint64())
+}
+
+// deriveChainId derives the chain id from the given v parameter
+func deriveChainId(v *big.Int) *big.Int {
+	if v.BitLen() <= 64 {
+		v := v.Uint64()
+		if v == 27 || v == 28 {
+			return new(big.Int)
+		}
+		return new(big.Int).SetUint64((v - 35) / 2)
+	}
+	v = new(big.Int).Sub(v, big.NewInt(35))
+	return v.Div(v, big.NewInt(2))
 }
 
 // From derives the sender from the tx using the signer derivation
@@ -105,7 +120,12 @@ func NewChainIdSigner(chainId *big.Int) ChainIdSigner {
 }
 
 func (s ChainIdSigner) SignECDSA(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
-	return SignECDSA(s, tx, prv)
+	h := s.Hash(tx)
+	sig, err := crypto.Sign(h[:], prv)
+	if err != nil {
+		return nil, err
+	}
+	return s.WithSignature(tx, sig)
 }
 
 func (s ChainIdSigner) PublicKey(tx *Transaction) ([]byte, error) {
@@ -245,29 +265,4 @@ func (fs BasicSigner) PublicKey(tx *Transaction) ([]byte, error) {
 		return nil, errors.New("invalid public key")
 	}
 	return pub, nil
-}
-
-// normaliseV returns the Ethereum version of the V parameter
-func normaliseV(s Signer, v *big.Int) byte {
-	if s, ok := s.(ChainIdSigner); ok {
-		stdV := v.BitLen() <= 8 && (v.Uint64() == 27 || v.Uint64() == 28)
-		if s.chainId.BitLen() > 0 && !stdV {
-			nv := byte((new(big.Int).Sub(v, s.chainIdMul).Uint64()) - 35 + 27)
-			return nv
-		}
-	}
-	return byte(v.Uint64())
-}
-
-// deriveChainId derives the chain id from the given v parameter
-func deriveChainId(v *big.Int) *big.Int {
-	if v.BitLen() <= 64 {
-		v := v.Uint64()
-		if v == 27 || v == 28 {
-			return new(big.Int)
-		}
-		return new(big.Int).SetUint64((v - 35) / 2)
-	}
-	v = new(big.Int).Sub(v, big.NewInt(35))
-	return v.Div(v, big.NewInt(2))
 }
