@@ -33,6 +33,7 @@ import (
 
 func testChainConfig() *ChainConfig {
 	return &ChainConfig{
+		ChainId: big.NewInt(2),
 		Forks: []*Fork{
 			&Fork{
 				Name:     "Homestead",
@@ -60,7 +61,7 @@ func TestNumber(t *testing.T) {
 	_, chain := proc()
 
 	statedb, _ := state.New(chain.Genesis().Root(), chain.chainDb)
-	header := makeHeader(chain.Genesis(), statedb)
+	header := makeHeader(chain.config, chain.Genesis(), statedb)
 	header.Number = big.NewInt(3)
 	cfg := testChainConfig()
 	err := ValidateHeader(cfg, pow, header, chain.Genesis().Header(), false, false)
@@ -68,7 +69,7 @@ func TestNumber(t *testing.T) {
 		t.Errorf("expected block number error, got %q", err)
 	}
 
-	header = makeHeader(chain.Genesis(), statedb)
+	header = makeHeader(chain.config, chain.Genesis(), statedb)
 	err = ValidateHeader(cfg, pow, header, chain.Genesis().Header(), false, false)
 	if err == BlockNumberErr {
 		t.Errorf("didn't expect block number error")

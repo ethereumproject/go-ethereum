@@ -83,5 +83,13 @@ func LoadTestnet() []*Fork {
 			Support:      false,
 			RequiredHash: common.HexToHash("2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740"),
 		},
+		&Fork{
+			Name:         "Diehard",
+			Block:        big.NewInt(1915000),
+			Length:       big.NewInt(1500000),
+			NetworkSplit: false,
+			Support:      true,
+			GasTable:     &params.GasTableDiehardFork,
+		},
 	}
 }
