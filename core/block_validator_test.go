@@ -104,12 +104,13 @@ func TestPutReceipt(t *testing.T) {
 }
 
 func TestDifficultyBombFreeze(t *testing.T) {
+	diehardBlock := big.NewInt(3000000)
 	numIgnored := big.NewInt(3000000)
 	var parentTime uint64
 
 	// 20 seconds, parent diff 7654414978364
 	parentTime = 1452838500
-	act := calcDifficultyDiehard(parentTime+20, parentTime, numIgnored, big.NewInt(7654414978364))
+	act := calcDifficultyDiehard(parentTime+20, parentTime, numIgnored, big.NewInt(7654414978364), diehardBlock)
 	exp := big.NewInt(7650945906507)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -117,7 +118,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 	}
 
 	// 5 seconds, parent diff 7654414978364
-	act = calcDifficultyDiehard(parentTime+5, parentTime, numIgnored, big.NewInt(7654414978364))
+	act = calcDifficultyDiehard(parentTime+5, parentTime, numIgnored, big.NewInt(7654414978364), diehardBlock)
 	exp = big.NewInt(7658420921133)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -125,7 +126,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 	}
 
 	// 80 seconds, parent diff 7654414978364
-	act = calcDifficultyDiehard(parentTime+80, parentTime, numIgnored, big.NewInt(7654414978364))
+	act = calcDifficultyDiehard(parentTime+80, parentTime, numIgnored, big.NewInt(7654414978364), diehardBlock)
 	exp = big.NewInt(7628520862629)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -134,7 +135,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 
 	// 76 seconds, parent diff 12657404717367
 	parentTime = 1469081721
-	act = calcDifficultyDiehard(parentTime+76, parentTime, numIgnored, big.NewInt(12657404717367))
+	act = calcDifficultyDiehard(parentTime+76, parentTime, numIgnored, big.NewInt(12657404717367), diehardBlock)
 	exp = big.NewInt(12620590912441)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -143,7 +144,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 
 	// 1 second, parent diff 12620590912441
 	parentTime = 1469164521
-	act = calcDifficultyDiehard(parentTime+1, parentTime, numIgnored, big.NewInt(12620590912441))
+	act = calcDifficultyDiehard(parentTime+1, parentTime, numIgnored, big.NewInt(12620590912441), diehardBlock)
 	exp = big.NewInt(12627021745803)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -152,7 +153,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 
 	// 10 seconds, parent diff 12627021745803
 	parentTime = 1469164522
-	act = calcDifficultyDiehard(parentTime+10, parentTime, numIgnored, big.NewInt(12627021745803))
+	act = calcDifficultyDiehard(parentTime+10, parentTime, numIgnored, big.NewInt(12627021745803), diehardBlock)
 	exp = big.NewInt(12627290181259)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -161,13 +162,27 @@ func TestDifficultyBombFreeze(t *testing.T) {
 
 }
 
+func TestDifficultyBombFreezeTestnet(t *testing.T) {
+	diehardBlock := big.NewInt(1915000)
+
+	act := calcDifficultyDiehard(1481895639, 1481850947, big.NewInt(1915000), big.NewInt(28670444), diehardBlock)
+	exp := big.NewInt(27415615)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+}
+
 func TestDifficultyBombExplode(t *testing.T) {
+	diehardBlock := big.NewInt(3000000)
+	explosionBlock := big.NewInt(5000000)
+
 	var parentTime uint64
 
 	// 6 seconds, blocks in 5m
 	num := big.NewInt(5000102)
 	parentTime = 1513175023
-	act := calcDifficultyExplosion(parentTime+6, parentTime, num, big.NewInt(22627021745803))
+	act := calcDifficultyExplosion(parentTime+6, parentTime, num, big.NewInt(22627021745803), diehardBlock, explosionBlock)
 	exp := big.NewInt(22638338531720)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -176,7 +191,7 @@ func TestDifficultyBombExplode(t *testing.T) {
 
 	num = big.NewInt(5001105)
 	parentTime = 1513189406
-	act = calcDifficultyExplosion(parentTime+29, parentTime, num, big.NewInt(22727021745803))
+	act = calcDifficultyExplosion(parentTime+29, parentTime, num, big.NewInt(22727021745803), diehardBlock, explosionBlock)
 	exp = big.NewInt(22716193002673)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -185,7 +200,7 @@ func TestDifficultyBombExplode(t *testing.T) {
 
 	num = big.NewInt(5100123)
 	parentTime = 1514609324
-	act = calcDifficultyExplosion(parentTime+41, parentTime, num, big.NewInt(22893437765583))
+	act = calcDifficultyExplosion(parentTime+41, parentTime, num, big.NewInt(22893437765583), diehardBlock, explosionBlock)
 	exp = big.NewInt(22860439327271)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -194,7 +209,7 @@ func TestDifficultyBombExplode(t *testing.T) {
 
 	num = big.NewInt(6150001)
 	parentTime = 1529664575
-	act = calcDifficultyExplosion(parentTime+105, parentTime, num, big.NewInt(53134780363303))
+	act = calcDifficultyExplosion(parentTime+105, parentTime, num, big.NewInt(53134780363303), diehardBlock, explosionBlock)
 	exp = big.NewInt(53451033724425)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -203,7 +218,7 @@ func TestDifficultyBombExplode(t *testing.T) {
 
 	num = big.NewInt(6550001)
 	parentTime = 1535431724
-	act = calcDifficultyExplosion(parentTime+60, parentTime, num, big.NewInt(82893437765583))
+	act = calcDifficultyExplosion(parentTime+60, parentTime, num, big.NewInt(82893437765583), diehardBlock, explosionBlock)
 	exp = big.NewInt(91487154230751)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -212,7 +227,7 @@ func TestDifficultyBombExplode(t *testing.T) {
 
 	num = big.NewInt(7000000)
 	parentTime = 1535431724
-	act = calcDifficultyExplosion(parentTime+180, parentTime, num, big.NewInt(304334879167015))
+	act = calcDifficultyExplosion(parentTime+180, parentTime, num, big.NewInt(304334879167015), diehardBlock, explosionBlock)
 	exp = big.NewInt(583283638618965)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -221,7 +236,7 @@ func TestDifficultyBombExplode(t *testing.T) {
 
 	num = big.NewInt(8000000)
 	parentTime = 1535431724
-	act = calcDifficultyExplosion(parentTime+420, parentTime, num, big.NewInt(78825323605416810))
+	act = calcDifficultyExplosion(parentTime+420, parentTime, num, big.NewInt(78825323605416810), diehardBlock, explosionBlock)
 	exp = big.NewInt(365477653727918567)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -230,9 +245,23 @@ func TestDifficultyBombExplode(t *testing.T) {
 
 	num = big.NewInt(9000000)
 	parentTime = 1535431724
-	act = calcDifficultyExplosion(parentTime+2040, parentTime, num, big.NewInt(288253236054168103))
+	act = calcDifficultyExplosion(parentTime+2040, parentTime, num, big.NewInt(288253236054168103), diehardBlock, explosionBlock)
 	exp = big.NewInt(0)
 	exp.SetString("295422224299015703633", 10)
+	if exp.Cmp(act) != 0 {
+		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
+			exp, act, big.NewInt(0).Sub(act, exp))
+	}
+}
+
+func TestDifficultyBombExplodeTestnet(t *testing.T) {
+	diehardBlock := big.NewInt(1915000)
+	explosionBlock := big.NewInt(3415000)
+
+	var parentTime uint64
+	parentTime = 1513175023
+	act := calcDifficultyExplosion(parentTime+20, parentTime, big.NewInt(5200000), big.NewInt(28670444), diehardBlock, explosionBlock)
+	exp := big.NewInt(34388394813)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
 			exp, act, big.NewInt(0).Sub(act, exp))
