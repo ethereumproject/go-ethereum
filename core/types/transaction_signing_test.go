@@ -45,8 +45,8 @@ func TestClassicChainId(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if txs.data.V.Cmp(big.NewInt(157)) != 0 {
-		t.Errorf("V %v != 157", txs.data.V)
+	if txs.data.V.Cmp(big.NewInt(157)) != 0 && txs.data.V.Cmp(big.NewInt(158)) != 0 {
+		t.Errorf("V %v != 157 || 158", txs.data.V)
 	}
 
 	v := normaliseV(NewChainIdSigner(big.NewInt(61)), big.NewInt(157))
@@ -61,6 +61,41 @@ func TestClassicChainId(t *testing.T) {
 
 	if !isProtectedV(big.NewInt(157)) {
 		t.Error("Unprotected for 157")
+	}
+
+}
+
+func TestMordenChainId(t *testing.T) {
+	key, _ := defaultTestKey()
+
+	tx := NewTransaction(0, common.Address{}, new(big.Int), new(big.Int), new(big.Int), nil)
+	tx.SetSigner(NewChainIdSigner(big.NewInt(62)))
+
+	txs, err := tx.SignECDSA(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if txs.data.V.Cmp(big.NewInt(160)) != 0 && txs.data.V.Cmp(big.NewInt(159)) != 0 {
+		t.Errorf("V %v != 159 || 160", txs.data.V)
+	}
+
+	v := normaliseV(NewChainIdSigner(big.NewInt(62)), big.NewInt(160))
+	if v != 28 {
+		t.Errorf("Invalid V %v", v)
+	}
+	v = normaliseV(NewChainIdSigner(big.NewInt(62)), big.NewInt(159))
+	if v != 27 {
+		t.Errorf("Invalid V %v", v)
+	}
+
+	chainId := deriveChainId(big.NewInt(160))
+	if chainId.Cmp(big.NewInt(62)) != 0 {
+		t.Errorf("Invalid ChainId %v", chainId)
+	}
+
+	if !isProtectedV(big.NewInt(160)) {
+		t.Error("Unprotected for 160")
 	}
 
 }

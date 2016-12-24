@@ -512,7 +512,7 @@ func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd strin
 		return common.Hash{}, err
 	}
 
-	return submitTransaction(s.txPool, tx, signature)
+	return submitTransaction(s.bc, s.txPool, tx, signature)
 }
 
 // PublicBlockChainAPI provides an API to access the Ethereum blockchain.
@@ -880,7 +880,7 @@ type RPCTransaction struct {
 
 // newRPCPendingTransaction returns a pending transaction that will serialize to the RPC representation
 func newRPCPendingTransaction(tx *types.Transaction) *RPCTransaction {
-	from, _ := tx.FromFrontier()
+	from, _ := tx.From()
 
 	return &RPCTransaction{
 		From:     from,
@@ -898,10 +898,11 @@ func newRPCPendingTransaction(tx *types.Transaction) *RPCTransaction {
 func newRPCTransactionFromBlockIndex(b *types.Block, txIndex int) (*RPCTransaction, error) {
 	if txIndex >= 0 && txIndex < len(b.Transactions()) {
 		tx := b.Transactions()[txIndex]
-		from, err := tx.FromFrontier()
-		if err != nil {
-			return nil, err
+		var signer types.Signer = types.BasicSigner{}
+		if tx.Protected() {
+			signer = types.NewChainIdSigner(tx.ChainId())
 		}
+		from, _ := types.Sender(signer, tx)
 
 		return &RPCTransaction{
 			BlockHash:        b.Hash(),
@@ -969,7 +970,7 @@ func (s *PublicTransactionPoolAPI) subscriptionLoop() {
 	sub := s.eventMux.Subscribe(core.TxPreEvent{})
 	for event := range sub.Chan() {
 		tx := event.Data.(core.TxPreEvent)
-		if from, err := tx.Tx.FromFrontier(); err == nil {
+		if from, err := tx.Tx.From(); err == nil {
 			if s.am.HasAddress(from) {
 				s.muPendingTxSubs.Lock()
 				for id, sub := range s.pendingTxSubs {
@@ -1114,11 +1115,11 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		return nil, nil
 	}
 
-	from, err := tx.FromFrontier()
-	if err != nil {
-		glog.V(logger.Debug).Infof("%v\n", err)
-		return nil, nil
+	var signer types.Signer = types.BasicSigner{}
+	if tx.Protected() {
+		signer = types.NewChainIdSigner(tx.ChainId())
 	}
+	from, _ := types.Sender(signer, tx)
 
 	fields := map[string]interface{}{
 		"root":              common.Bytes2Hex(receipt.PostState),
@@ -1148,11 +1149,13 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 
 // sign is a helper function that signs a transaction with the private key of the given address.
 func (s *PublicTransactionPoolAPI) sign(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
-	signature, err := s.am.Sign(addr, tx.SigHash().Bytes())
+	signer := s.bc.Config().GetSigner(s.bc.CurrentBlock().Number())
+
+	signature, err := s.am.Sign(addr, signer.Hash(tx).Bytes())
 	if err != nil {
 		return nil, err
 	}
-	return tx.WithSignature(signature)
+	return tx.WithSigner(signer).WithSignature(signature)
 }
 
 // SendTxArgs represents the arguments to sumbit a new transaction into the transaction pool.
@@ -1181,8 +1184,10 @@ func prepareSendTxArgs(args SendTxArgs, gpo *GasPriceOracle) SendTxArgs {
 }
 
 // submitTransaction is a helper function that submits tx to txPool and creates a log entry.
-func submitTransaction(txPool *core.TxPool, tx *types.Transaction, signature []byte) (common.Hash, error) {
-	signedTx, err := tx.WithSignature(signature)
+func submitTransaction(bc *core.BlockChain, txPool *core.TxPool, tx *types.Transaction, signature []byte) (common.Hash, error) {
+	signer := bc.Config().GetSigner(bc.CurrentBlock().Number())
+
+	signedTx, err := tx.WithSigner(signer).WithSignature(signature)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -1222,14 +1227,15 @@ func (s *PublicTransactionPoolAPI) SendTransaction(args SendTxArgs) (common.Hash
 		tx = types.NewTransaction(args.Nonce.Uint64(), *args.To, args.Value.BigInt(), args.Gas.BigInt(), args.GasPrice.BigInt(), common.FromHex(args.Data))
 	}
 
-	tx.SetSigner(s.bc.Config().GetSigner(s.bc.CurrentBlock().Number()))
+	signer := s.bc.Config().GetSigner(s.bc.CurrentBlock().Number())
+	tx.SetSigner(signer)
 
-	signature, err := s.am.Sign(args.From, tx.SigHash().Bytes())
+	signature, err := s.am.Sign(args.From, signer.Hash(tx).Bytes())
 	if err != nil {
 		return common.Hash{}, err
 	}
 
-	return submitTransaction(s.txPool, tx, signature)
+	return submitTransaction(s.bc, s.txPool, tx, signature)
 }
 
 // SendRawTransaction will add the signed transaction to the transaction pool.
@@ -1246,7 +1252,7 @@ func (s *PublicTransactionPoolAPI) SendRawTransaction(encodedTx string) (string,
 	}
 
 	if tx.To() == nil {
-		from, err := tx.FromFrontier()
+		from, err := tx.From()
 		if err != nil {
 			return "", err
 		}
@@ -1350,7 +1356,11 @@ type SignTransactionResult struct {
 }
 
 func newTx(t *types.Transaction) *Tx {
-	from, _ := t.FromFrontier()
+	var signer types.Signer = types.BasicSigner{}
+	if t.Protected() {
+		signer = types.NewChainIdSigner(t.ChainId())
+	}
+	from, _ := types.Sender(signer, t)
 	return &Tx{
 		tx:       t,
 		To:       t.To(),
@@ -1411,7 +1421,11 @@ func (s *PublicTransactionPoolAPI) PendingTransactions() []*RPCTransaction {
 	pending := s.txPool.GetTransactions()
 	transactions := make([]*RPCTransaction, 0, len(pending))
 	for _, tx := range pending {
-		from, _ := tx.FromFrontier()
+		var signer types.Signer = types.BasicSigner{}
+		if tx.Protected() {
+			signer = types.NewChainIdSigner(tx.ChainId())
+		}
+		from, _ := types.Sender(signer, tx)
 		if s.am.HasAddress(from) {
 			transactions = append(transactions, newRPCPendingTransaction(tx))
 		}
@@ -1450,7 +1464,12 @@ func (s *PublicTransactionPoolAPI) Resend(tx Tx, gasPrice, gasLimit *rpc.HexNumb
 
 	pending := s.txPool.GetTransactions()
 	for _, p := range pending {
-		if pFrom, err := p.FromFrontier(); err == nil && pFrom == tx.From && p.SigHash() == tx.tx.SigHash() {
+		var signer types.Signer = types.BasicSigner{}
+		if p.Protected() {
+			signer = types.NewChainIdSigner(p.ChainId())
+		}
+
+		if pFrom, err := types.Sender(signer, p); err == nil && pFrom == tx.From && signer.Hash(p) == signer.Hash(tx.tx) {
 			if gasPrice == nil {
 				gasPrice = rpc.NewHexNumber(tx.tx.GasPrice())
 			}
@@ -1866,7 +1885,7 @@ func (api *PrivateDebugAPI) TraceTransaction(txHash common.Hash, logger *vm.LogC
 	// Mutate the state and trace the selected transaction
 	for idx, tx := range block.Transactions() {
 		// Assemble the transaction call message
-		from, err := tx.FromFrontier()
+		from, err := tx.From()
 		if err != nil {
 			return nil, fmt.Errorf("sender retrieval failed: %v", err)
 		}

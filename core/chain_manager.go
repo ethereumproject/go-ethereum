@@ -45,6 +45,19 @@ func MakeChainConfig() *ChainConfig {
 	}
 }
 
+func MakeDiehardChainConfig() *ChainConfig {
+	return &ChainConfig{
+		ChainId: big.NewInt(63),
+		Forks: []*Fork{
+			&Fork{
+				Name:   "Diehard",
+				Block:  big.NewInt(0),
+				Length: big.NewInt(1000),
+			},
+		},
+	}
+}
+
 // FakePow is a non-validating proof of work implementation.
 // It returns true from Verify for any block.
 type FakePow struct{}

@@ -27,7 +27,6 @@ import (
 	"sync/atomic"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
@@ -100,9 +99,6 @@ func NewTransaction(nonce uint64, to common.Address, amount, gasLimit, gasPrice 
 }
 
 func (tx *Transaction) SetSigner(s Signer) {
-	// reset the cached value incase another value was cached
-	tx.from.Store((*common.Address)(nil))
-
 	tx.signer = s
 }
 
@@ -172,56 +168,8 @@ func (tx *Transaction) Size() common.StorageSize {
 	return common.StorageSize(c)
 }
 
-// From returns the address derived from the signature (V, R, S) using secp256k1
-// elliptic curve and an error if it failed deriving or upon an incorrect
-// signature.
-//
-// From Uses the homestead consensus rules to determine whether the signature is
-// valid.
-//
-// From caches the address, allowing it to be used regardless of
-// Frontier / Homestead. however, the first time called it runs
-// signature validations, so we need two versions. This makes it
-// easier to ensure backwards compatibility of things like package rpc
-// where eth_getblockbynumber uses tx.From() and needs to work for
-// both txs before and after the first homestead block. Signatures
-// valid in homestead are a subset of valid ones in Frontier)
 func (tx *Transaction) From() (common.Address, error) {
-	return doFrom(tx, true)
-}
-
-// FromFrontier returns the address derived from the signature (V, R, S) using
-// secp256k1 elliptic curve and an error if it failed deriving or upon an
-// incorrect signature.
-//
-// FromFrantier uses the frontier consensus rules to determine whether the
-// signature is valid.
-//
-// FromFrontier caches the address, allowing it to be used regardless of
-// Frontier / Homestead. however, the first time called it runs
-// signature validations, so we need two versions. This makes it
-// easier to ensure backwards compatibility of things like package rpc
-// where eth_getblockbynumber uses tx.From() and needs to work for
-// both txs before and after the first homestead block. Signatures
-// valid in homestead are a subset of valid ones in Frontier)
-func (tx *Transaction) FromFrontier() (common.Address, error) {
-	return doFrom(tx, false)
-}
-
-func doFrom(tx *Transaction, homestead bool) (common.Address, error) {
-	if from := tx.from.Load(); from != nil {
-		if faddr := from.(*common.Address); faddr != nil {
-			return *faddr, nil
-		}
-	}
-	pubkey, err := tx.signer.PublicKey(tx)
-	if err != nil {
-		return common.Address{}, err
-	}
-	var addr common.Address
-	copy(addr[:], crypto.Keccak256(pubkey[1:])[12:])
-	tx.from.Store(&addr)
-	return addr, nil
+	return Sender(tx.signer, tx)
 }
 
 // Cost returns amount + gasprice * gaslimit.
@@ -237,6 +185,11 @@ func (tx *Transaction) SignatureValues() (v byte, r *big.Int, s *big.Int) {
 
 func (tx *Transaction) RawSignatureValues() (v *big.Int, r *big.Int, s *big.Int) {
 	return tx.data.V, tx.data.R, tx.data.S
+}
+
+func (tx *Transaction) WithSigner(signer Signer) *Transaction {
+	tx.SetSigner(signer)
+	return tx
 }
 
 func (tx *Transaction) WithSignature(sig []byte) (*Transaction, error) {

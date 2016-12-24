@@ -24,7 +24,6 @@ import (
 	"runtime"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
@@ -163,12 +162,7 @@ func verifyTxFields(txTest TransactionTest, decodedTx *types.Transaction) (err e
 		decodedSender common.Address
 	)
 
-	chainConfig := core.NewChainConfig()
-	if chainConfig.IsHomestead(common.String2Big(txTest.Blocknumber)) {
-		decodedSender, err = decodedTx.From()
-	} else {
-		decodedSender, err = decodedTx.FromFrontier()
-	}
+	decodedSender, err = decodedTx.From()
 	if err != nil {
 		return err
 	}
