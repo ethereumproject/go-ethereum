@@ -24,7 +24,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"reflect"
 )
 
 var ErrInvalidChainId = errors.New("invalid chain id for signer")
@@ -85,7 +84,7 @@ func Sender(signer Signer, tx *Transaction) (common.Address, error) {
 		// If the signer used to derive from in a previous
 		// call is not the same as used current, invalidate
 		// the cache.
-		if reflect.TypeOf(sigCache.signer) == reflect.TypeOf(signer) {
+		if sigCache.signer.Equal(signer) {
 			return sigCache.from, nil
 		}
 	}
@@ -114,6 +113,8 @@ type Signer interface {
 	SignECDSA(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error)
 	// WithSignature returns a copy of the transaction with the given signature
 	WithSignature(tx *Transaction, sig []byte) (*Transaction, error)
+	// Checks for equality on the signers
+	Equal(Signer) bool
 }
 
 // EIP155Transaction implements TransactionInterface using the
@@ -129,6 +130,11 @@ func NewChainIdSigner(chainId *big.Int) ChainIdSigner {
 		chainId:    chainId,
 		chainIdMul: new(big.Int).Mul(chainId, big.NewInt(2)),
 	}
+}
+
+func (s ChainIdSigner) Equal(s2 Signer) bool {
+	other, ok := s2.(ChainIdSigner)
+	return ok && other.chainId.Cmp(s.chainId) == 0
 }
 
 func (s ChainIdSigner) SignECDSA(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
@@ -215,6 +221,11 @@ func (s ChainIdSigner) SigECDSA(tx *Transaction, prv *ecdsa.PrivateKey) (*Transa
 }
 
 type BasicSigner struct{}
+
+func (s BasicSigner) Equal(s2 Signer) bool {
+	_, ok := s2.(BasicSigner)
+	return ok
+}
 
 // WithSignature returns a new transaction with the given snature.
 // This snature needs to be formatted as described in the yellow paper (v+27).
