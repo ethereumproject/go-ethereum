@@ -63,7 +63,6 @@ type StateTransition struct {
 // Message represents a message sent to a contract.
 type Message interface {
 	From() (common.Address, error)
-	FromFrontier() (common.Address, error)
 	To() *common.Address
 
 	GasPrice() *big.Int
@@ -138,11 +137,7 @@ func (self *StateTransition) from() (vm.Account, error) {
 		f   common.Address
 		err error
 	)
-	if self.env.RuleSet().IsHomestead(self.env.BlockNumber()) {
-		f, err = self.msg.From()
-	} else {
-		f, err = self.msg.FromFrontier()
-	}
+	f, err = self.msg.From()
 	if err != nil {
 		return nil, err
 	}

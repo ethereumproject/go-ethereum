@@ -65,15 +65,28 @@ func deriveChainId(v *big.Int) *big.Int {
 // From derives the sender from the tx using the signer derivation
 // functions.
 
+// sigCache is used to cache the derived sender and contains
+// the signer used to derive it.
+type sigCache struct {
+	signer Signer
+	from   common.Address
+}
+
 // From returns the address derived from the signature (V, R, S) using secp256k1
 // elliptic curve and an error if it failed deriving or upon an incorrect
 // signature.
 //
 // From may cache the address, allowing it to be used regardless of
 // signing method.
-func From(signer Signer, tx *Transaction, cache bool) (common.Address, error) {
-	if from := tx.from.Load(); from != nil {
-		return from.(common.Address), nil
+func Sender(signer Signer, tx *Transaction) (common.Address, error) {
+	if sc := tx.from.Load(); sc != nil {
+		sigCache := sc.(sigCache)
+		// If the signer used to derive from in a previous
+		// call is not the same as used current, invalidate
+		// the cache.
+		if sigCache.signer.Equal(signer) {
+			return sigCache.from, nil
+		}
 	}
 
 	pubkey, err := signer.PublicKey(tx)
@@ -82,9 +95,7 @@ func From(signer Signer, tx *Transaction, cache bool) (common.Address, error) {
 	}
 	var addr common.Address
 	copy(addr[:], crypto.Keccak256(pubkey[1:])[12:])
-	if cache {
-		tx.from.Store(addr)
-	}
+	tx.from.Store(sigCache{signer: signer, from: addr})
 	return addr, nil
 }
 
@@ -102,6 +113,8 @@ type Signer interface {
 	SignECDSA(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error)
 	// WithSignature returns a copy of the transaction with the given signature
 	WithSignature(tx *Transaction, sig []byte) (*Transaction, error)
+	// Checks for equality on the signers
+	Equal(Signer) bool
 }
 
 // EIP155Transaction implements TransactionInterface using the
@@ -117,6 +130,11 @@ func NewChainIdSigner(chainId *big.Int) ChainIdSigner {
 		chainId:    chainId,
 		chainIdMul: new(big.Int).Mul(chainId, big.NewInt(2)),
 	}
+}
+
+func (s ChainIdSigner) Equal(s2 Signer) bool {
+	other, ok := s2.(ChainIdSigner)
+	return ok && other.chainId.Cmp(s.chainId) == 0
 }
 
 func (s ChainIdSigner) SignECDSA(tx *Transaction, prv *ecdsa.PrivateKey) (*Transaction, error) {
@@ -203,6 +221,11 @@ func (s ChainIdSigner) SigECDSA(tx *Transaction, prv *ecdsa.PrivateKey) (*Transa
 }
 
 type BasicSigner struct{}
+
+func (s BasicSigner) Equal(s2 Signer) bool {
+	_, ok := s2.(BasicSigner)
+	return ok
+}
 
 // WithSignature returns a new transaction with the given snature.
 // This snature needs to be formatted as described in the yellow paper (v+27).

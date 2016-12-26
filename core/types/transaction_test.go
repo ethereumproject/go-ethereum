@@ -88,7 +88,7 @@ func TestRecipientEmpty(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
-	from, err := tx.From()
+	from, err := Sender(BasicSigner{}, tx)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -107,7 +107,7 @@ func TestRecipientNormal(t *testing.T) {
 		t.FailNow()
 	}
 
-	from, err := tx.From()
+	from, err := Sender(BasicSigner{}, tx)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -138,11 +138,11 @@ func TestTransactionPriceNonceSort(t *testing.T) {
 	// Sort the transactions and cross check the nonce ordering
 	SortByPriceAndNonce(txs)
 	for i, txi := range txs {
-		fromi, _ := txi.From()
+		fromi, _ := Sender(BasicSigner{}, txi)
 
 		// Make sure the nonce order is valid
 		for j, txj := range txs[i+1:] {
-			fromj, _ := txj.From()
+			fromj, _ := Sender(BasicSigner{}, txj)
 
 			if fromi == fromj && txi.Nonce() > txj.Nonce() {
 				t.Errorf("invalid nonce ordering: tx #%d (A=%x N=%v) < tx #%d (A=%x N=%v)", i, fromi[:4], txi.Nonce(), i+j, fromj[:4], txj.Nonce())
@@ -151,13 +151,13 @@ func TestTransactionPriceNonceSort(t *testing.T) {
 		// Find the previous and next nonce of this account
 		prev, next := i-1, i+1
 		for j := i - 1; j >= 0; j-- {
-			if fromj, _ := txs[j].From(); fromi == fromj {
+			if fromj, _ := Sender(BasicSigner{}, txs[j]); fromi == fromj {
 				prev = j
 				break
 			}
 		}
 		for j := i + 1; j < len(txs); j++ {
-			if fromj, _ := txs[j].From(); fromi == fromj {
+			if fromj, _ := Sender(BasicSigner{}, txs[j]); fromi == fromj {
 				next = j
 				break
 			}

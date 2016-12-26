@@ -152,6 +152,11 @@ func (c *ChainConfig) LoadTestnetConfig() {
 			Block: big.NewInt(383792),
 			Hash:  common.HexToHash("9690db54968a760704d99b8118bf79d565711669cefad24b51b5b1013d827808"),
 		},
+		{
+			// chain followed by non-diehard testnet
+			Block: big.NewInt(1915277),
+			Hash:  common.HexToHash("3bef9997340acebc85b84948d849ceeff74384ddf512a20676d424e972a3c3c4"),
+		},
 	}
 }
 

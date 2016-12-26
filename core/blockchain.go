@@ -661,16 +661,18 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 				atomic.AddInt32(&stats.ignored, 1)
 				continue
 			}
+			signer := self.config.GetSigner(block.Number())
 			// Compute all the non-consensus fields of the receipts
 			transactions, logIndex := block.Transactions(), uint(0)
 			for j := 0; j < len(receipts); j++ {
 				// The transaction hash can be retrieved from the transaction itself
 				receipts[j].TxHash = transactions[j].Hash()
+				tx := transactions[j]
+				from, _ := types.Sender(signer, tx)
 
 				// The contract address can be derived from the transaction itself
 				if MessageCreatesContract(transactions[j]) {
-					from, _ := transactions[j].From()
-					receipts[j].ContractAddress = crypto.CreateAddress(from, transactions[j].Nonce())
+					receipts[j].ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 				}
 				// The used gas can be calculated based on previous receipts
 				if j == 0 {

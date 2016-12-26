@@ -123,7 +123,7 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 				nil,
 				nil,
 			)
-			tx, _ = tx.SignECDSA(ringKeys[from])
+			tx, _ = tx.WithSigner(types.BasicSigner{}).SignECDSA(ringKeys[from])
 			gen.AddTx(tx)
 			from = to
 		}
