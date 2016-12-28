@@ -169,7 +169,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if db, ok := dappDb.(*ethdb.LDBDatabase); ok {
 		db.Meter("eth/db/dapp/")
 	}
-	glog.V(logger.Info).Infof("Protocol Versions: %v, Network Id: %v", ProtocolVersions, config.NetworkId)
+	glog.V(logger.Info).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", ProtocolVersions, config.NetworkId, config.ChainConfig.ChainId)
 
 	// Load up any custom genesis block if requested
 	if len(config.Genesis) > 0 {
