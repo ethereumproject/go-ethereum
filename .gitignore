@@ -38,3 +38,6 @@ profile.cov
 # vim
 *.swp
 *.swo
+
+# IntelliJ IDEA
+.idea/
