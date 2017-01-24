@@ -35,6 +35,7 @@ var HomesteadBootNodes = []*discover.Node{
 	discover.MustParseNode("enode://ffea3b01c000cdd89e1e9229fea3e80e95b646f9b2aa55071fc865e2f19543c9b06045cc2e69453e6b78100a119e66be1b5ad50b36f2ffd27293caa28efdd1b2@128.199.93.177:3030"),  //pys-
 	discover.MustParseNode("enode://ee3da491ce6a155eb132708eb0e8d04b0637926ec0ae1b79e63fc97cb9fc3818f49250a0ae0d7f79ed62b66ec677f408c4e01741504dc7a051e274f1e803d454@91.121.65.179:40404"),  //mso-
 	discover.MustParseNode("enode://48e063a6cf5f335b1ef2ed98126bf522cf254396f850c7d442fe2edbbc23398787e14cd4de7968a00175a82762de9cbe9e1407d8ccbcaeca5004d65f8398d759@159.203.255.59:30303"), //mik-
+	discover.MustParseNode("enode://42d8f29d1db5f4b2947cd5c3d76c6d0d3697e6b9b3430c3d41e46b4bb77655433aeedc25d4b4ea9d8214b6a43008ba67199374a9b53633301bca0cd20c6928ab@104.155.176.151:30303"), //boot.gastracker.io
 
 	// Pending & Not Resolving
 	//discover.MustParseNode("enode://b61123cc535d6bac44f9e6ff8637a30a10198f80b5582148dcd84ef8039a4b90e326bb7f6964588a46bcf1ccd8e8bba65db514fc72e3026ff13b20959f45f654@etc.naphex.rocks:30303"), // nap-
@@ -44,7 +45,9 @@ var HomesteadBootNodes = []*discover.Node{
 // TestNetBootNodes are the enode URLs of the P2P bootstrap nodes running on the
 // Morden test network.
 var TestNetBootNodes = []*discover.Node{
-	// !EPROJECT TestNet Bootnodes needed
+	// ETC Nodes
+	discover.MustParseNode("enode://fb28713820e718066a2f5df6250ae9d07cff22f672dbf26be6c75d088f821a9ad230138ba492c533a80407d054b1436ef18e951bb65e6901553516c8dffe8ff0@104.155.176.151:30304"), //boot.gastracker.io
+
 	// ETH/DEV Go Bootnodes
 	discover.MustParseNode("enode://e4533109cc9bd7604e4ff6c095f7a1d807e15b38e9bfeb05d3b7c423ba86af0a9e89abbf40bd9dde4250fef114cd09270fa4e224cbeef8b7bf05a51e8260d6b8@94.242.229.4:40404"),
 	discover.MustParseNode("enode://8c336ee6f03e99613ad21274f269479bf4413fb294d697ef15ab897598afb931f56beb8e97af530aee20ce2bcba5776f4a312bc168545de4d43736992c814592@94.242.229.203:30303"),
