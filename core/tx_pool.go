@@ -60,6 +60,7 @@ type stateFn func() (*state.StateDB, error)
 // two states over time as they are received and processed.
 type TxPool struct {
 	config       *ChainConfig
+	signer       types.Signer
 	currentState stateFn // The state function which will allow us to do some pre checks
 	pendingState *state.ManagedState
 	gasLimit     func() *big.Int // The current gas limit function callback
@@ -79,6 +80,7 @@ type TxPool struct {
 func NewTxPool(config *ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() *big.Int) *TxPool {
 	pool := &TxPool{
 		config:       config,
+		signer:       types.NewChainIdSigner(config.ChainId),
 		pending:      make(map[common.Hash]*types.Transaction),
 		queue:        make(map[common.Address]map[common.Hash]*types.Transaction),
 		eventMux:     eventMux,
@@ -233,14 +235,14 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return err
 	}
 
-	from, err := tx.From()
+	from, err := types.Sender(pool.signer, tx)
 	if err != nil {
 		return ErrInvalidSender
 	}
 
 	// Make sure the account exist. Non existent accounts
 	// haven't got funds and well therefor never pass.
-	if !currentState.HasAccount(from) {
+	if !currentState.Exist(from) {
 		return ErrNonExistentAccount
 	}
 
@@ -298,7 +300,7 @@ func (self *TxPool) add(tx *types.Transaction) error {
 		}
 		// we can ignore the error here because From is
 		// verified in ValidateTransaction.
-		f, _ := tx.From()
+		f, _ := types.Sender(self.signer, tx)
 		from := common.Bytes2Hex(f[:4])
 		glog.Infof("(t) %x => %s (%v) %x\n", from, toname, tx.Value, hash)
 	}
@@ -308,7 +310,7 @@ func (self *TxPool) add(tx *types.Transaction) error {
 
 // queueTx will queue an unknown transaction
 func (self *TxPool) queueTx(hash common.Hash, tx *types.Transaction) {
-	from, _ := tx.From() // already validated
+	from, _ := types.Sender(self.signer, tx) // already validated
 	if self.queue[from] == nil {
 		self.queue[from] = make(map[common.Hash]*types.Transaction)
 	}

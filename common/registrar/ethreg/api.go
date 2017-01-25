@@ -254,11 +254,12 @@ func (be *registryAPIBackend) Transact(fromStr, toStr, nonceStr, valueStr, gasSt
 		tx = types.NewTransaction(nonce, to, value, gas, price, data)
 	}
 
-	signature, err := be.am.Sign(from, tx.SigHash().Bytes())
+	sigHash := (types.BasicSigner{}).Hash(tx)
+	signature, err := be.am.Sign(from, sigHash.Bytes())
 	if err != nil {
 		return "", err
 	}
-	signedTx, err := tx.WithSignature(signature)
+	signedTx, err := tx.WithSigner(types.BasicSigner{}).WithSignature(signature)
 	if err != nil {
 		return "", err
 	}

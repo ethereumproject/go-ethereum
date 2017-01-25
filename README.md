@@ -5,7 +5,7 @@ original chain. A version which can **honestly** offer both a censorship
 resistant and unstoppable application platform for developers.
 
 This is a project migrated from the now hard forked Ethereum (ETHF) github project, we
-will need to slowly migrate peices of the infrastructure required to
+will need to slowly migrate pieces of the infrastructure required to
 maintain the project. We will apply all upstream patches unrelated to the DAO HF while organizing
 development.
 
@@ -241,7 +241,7 @@ instance for mining, run it with all your usual flags, extended by:
 $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x0000000000000000000000000000000000000000
 ```
 
-Which will start mining bocks and transactions on a single CPU thread, crediting all proceedings to
+Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to
 the account specified by `--etherbase`. You can further tune the mining by changing the default gas
 limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
 
@@ -277,5 +277,3 @@ included in our repository in the `COPYING.LESSER` file.
 The go-ethereum binaries (i.e. all code inside of the `cmd` directory) is licensed under the
 [GNU General Public License v3.0](http://www.gnu.org/licenses/gpl-3.0.en.html), also included
 in our repository in the `COPYING` file.
-
-

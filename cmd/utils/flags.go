@@ -22,13 +22,11 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/accounts"
@@ -393,6 +391,10 @@ var (
 		Usage: "Suggested gas price base correction factor (%)",
 		Value: 110,
 	}
+	Unused1 = cli.BoolFlag{
+		Name:  "oppose-dao-fork",
+		Usage: "Use classic blockchain (always set, flag is unused and exists for compatibility only)",
+	}
 )
 
 // MustMakeDataDir retrieves the currently requested data directory, terminating
@@ -664,15 +666,8 @@ func MakeSystemNode(name, version string, relconf release.Config, extra []byte, 
 	// Configure the Ethereum service
 	accman := MakeAccountManager(ctx)
 
-	// initialise new random number generator
-	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// get enabled jit flag
 	jitEnabled := ctx.GlobalBool(VMEnableJitFlag.Name)
-	// if the jit is not enabled enable it for 10 pct of the people
-	if !jitEnabled && rand.Float64() < 0.1 {
-		jitEnabled = true
-		glog.V(logger.Info).Infoln("You're one of the lucky few that will try out the JIT VM (random). If you get a consensus failure please be so kind to report this incident with the block hash that failed. You can switch to the regular VM by setting --jitvm=false")
-	}
 
 	ethConf := &eth.Config{
 		ChainConfig:             MustMakeChainConfig(ctx),
@@ -758,6 +753,11 @@ func MakeSystemNode(name, version string, relconf release.Config, extra []byte, 
 	}); err != nil {
 		Fatalf("Failed to register the Geth release oracle service: %v", err)
 	}
+
+	if ctx.GlobalBool(Unused1.Name) {
+		glog.V(logger.Info).Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
+	}
+
 	return stack
 }
 
@@ -790,82 +790,47 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	c := new(core.ChainConfig)
 
 	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
-	if genesis != nil {
-		storedConfig, err := core.GetChainConfig(db, genesis.Hash())
-		switch err {
-		case nil:
-			c = storedConfig
-		case core.ChainConfigNotFoundErr:
-			// No configs found, use empty, will populate below
-		default:
-			Fatalf("Could not make chain configuration: %v", err)
-		}
-	}
-
-	if c.Forks == nil {
-		// Set any missing fields due to them being unset or system upgrade
-		c.LoadForkConfig()
-		for i := range c.Forks {
-			// Force override any existing configs if explicitly requested
-			if c.Forks[i].Name == "Homestead" {
-				if ctx.GlobalBool(TestNetFlag.Name) {
-					c.Forks[i].Block = params.TestNetHomesteadBlock
-				} else {
-					c.Forks[i].Block = params.MainNetHomesteadBlock
-				}
-			}
-			if c.Forks[i].Name == "Diehard" {
-				c.Forks[i].Block = params.DiehardBlock
-				c.Forks[i].Length = big.NewInt(0).Sub(params.ExplosionBlock, params.DiehardBlock)
-			}
-			if c.Forks[i].Name == "ETF" {
-				if ctx.GlobalBool(ETFChain.Name) {
-					c.Forks[i].Support = true
-				}
-			}
-		}
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		c.LoadTestnetConfig()
 	} else {
-		// Make sure new forks are added to config
-		allForks := core.LoadForks()
-		for i := range allForks {
-			fork := allForks[i]
-			exists := false
-			for x := range c.Forks {
-				exists = exists || c.Forks[x].Name == fork.Name
-			}
-			if !exists {
-				glog.V(logger.Warn).Info(fmt.Sprintf("Enable new fork: %s", fork.Name))
-				c.Forks = append(c.Forks, fork)
+		c.LoadForkConfig()
+	}
+
+	for i := range c.Forks {
+		// Force override any existing configs if explicitly requested
+		if c.Forks[i].Name == "ETF" {
+			if ctx.GlobalBool(ETFChain.Name) {
+				c.Forks[i].Support = true
 			}
 		}
 	}
 
-	// Temporarilly display a proper message so the user knows which side of the network split is loading
-	if !ctx.GlobalBool(TestNetFlag.Name) && (genesis == nil || genesis.Hash() == common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")) {
-		separator := strings.Repeat("-", 110)
-		glog.V(logger.Warn).Info(separator)
-		glog.V(logger.Warn).Info("Loading blockchain: \x1b[36mgenesis\x1b[39m block \"\x1b[36m0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3\x1b[39m\".")
-		glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
-		netsplitChoice := ""
-		splitSetting := ""
-		for i := range c.Forks {
-			if c.Forks[i].NetworkSplit {
-				netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
-				if c.Forks[i].Name == "ETF" {
-					if c.Forks[i].Support {
-						splitSetting = "Geth is configured to use the Ethereum hard-fork blockchain!"
-					} else {
-						splitSetting = "Geth is configured to use the \x1b[32mEthereum (ETC) classic/original\x1b[39m blockchain!"
-					}
-				}
-			} else {
-				netsplitChoice = ""
-			}
-			glog.V(logger.Warn).Info(fmt.Sprintf(" %v hard-fork at block %v %v", c.Forks[i].Name, c.Forks[i].Block, netsplitChoice))
-		}
-		glog.V(logger.Warn).Info(splitSetting)
-		glog.V(logger.Warn).Info(separator)
+	separator := strings.Repeat("-", 110)
+	glog.V(logger.Warn).Info(separator)
+	glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
+	genesisHash := ""
+	if genesis != nil {
+		genesisHash = genesis.Hash().Hex()
 	}
+	glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
+	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
+
+	netsplitChoice := ""
+	for i := range c.Forks {
+		if c.Forks[i].NetworkSplit {
+			netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
+		} else {
+			netsplitChoice = ""
+		}
+		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v hard-fork %v", c.Forks[i].Block, c.Forks[i].Name, netsplitChoice))
+	}
+
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[33mEthereum (ETC) Testnet\x1b[39m blockchain!")
+	} else {
+		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[32mEthereum (ETC) Classic\x1b[39m blockchain!")
+	}
+	glog.V(logger.Warn).Info(separator)
 	return c
 }
 

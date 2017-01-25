@@ -426,22 +426,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
 		filter := len(headers) == 1
 		if filter {
-			// If it's a potential fork check, validate against the rules
-			var fork *core.Fork
-			for i := range pm.chainConfig.Forks {
-				fork = pm.chainConfig.Forks[i]
-				if p.timeout != nil && fork.Block.Cmp(headers[0].Number) == 0 {
+			if err := pm.chainConfig.IsBadFork(headers[0]); err != nil {
+				if p.timeout != nil {
 					// Disable the fork drop timeout
 					p.timeout.Stop()
 					p.timeout = nil
-					// Validate the header and either drop the peer or continue
-					if err := fork.ValidateForkHeaderExtraData(headers[0]); err != nil {
-						glog.V(logger.Debug).Infof("%v: verified to be on the other side of a fork, dropping", p)
-						return err
-					}
-					glog.V(logger.Debug).Infof("%v: verified to be on the same side of a fork", p)
-					return nil
 				}
+				glog.V(logger.Debug).Infof("%v: verified to be on the other side of a fork, dropping", p)
+				return err
 			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
 			headers = pm.fetcher.FilterHeaders(headers, time.Now())

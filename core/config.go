@@ -20,7 +20,10 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -37,11 +40,33 @@ type ChainConfig struct {
 	VmConfig vm.Config `json:"-"`
 	// ForkConfig fork.Config
 	Forks []*Fork `json:"forks"`
+	// Optimize downloader to ignore well known blocks with consensus issues
+	BadHashes []*BadHash `json:"bad_hashes"`
+	ChainId   *big.Int   `json:"chain_id"`
+}
+
+type BadHash struct {
+	Block *big.Int
+	Hash  common.Hash
 }
 
 func NewChainConfig() *ChainConfig {
 	return &ChainConfig{
-		Forks: LoadForks(),
+		Forks:   LoadForks(),
+		ChainId: params.ChainId,
+	}
+}
+
+func NewTestChainConfig() *ChainConfig {
+	return &ChainConfig{
+		ChainId: big.NewInt(2),
+		Forks: []*Fork{
+			&Fork{
+				Name:     "Homestead",
+				Block:    big.NewInt(0),
+				GasTable: &params.GasTableHomestead,
+			},
+		},
 	}
 }
 
@@ -59,13 +84,13 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 	if fork.Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(fork.Block) >= 0 && num.Cmp(big.NewInt(0).Add(fork.Block, fork.Length)) < 0
+	return num.Cmp(fork.Block) >= 0
 }
 
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	fork := c.Fork("Diehard")
-	if fork.Block == nil || num == nil {
+	if fork.Block == nil || fork.Length == nil || num == nil {
 		return false
 	}
 	block := big.NewInt(0).Add(fork.Block, fork.Length)
@@ -81,6 +106,72 @@ func (c *ChainConfig) Fork(name string) *Fork {
 	return &Fork{}
 }
 
+func (c *ChainConfig) IsBadFork(header *types.Header) error {
+	for i := range c.Forks {
+		fork := c.Forks[i]
+		if fork.Block.Cmp(header.Number) == 0 {
+			if !common.EmptyHash(fork.RequiredHash) && header.Hash() != fork.RequiredHash {
+				return ValidationError("Fork bad block hash: 0x%x at %x", header.Hash(), header.Number)
+			}
+		}
+	}
+	for i := range c.BadHashes {
+		if c.BadHashes[i].Block.Cmp(header.Number) == 0 && c.BadHashes[i].Hash == header.Hash() {
+			return BadHashError(header.Hash())
+		}
+	}
+	return nil
+}
+
+func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
+	if c.IsDiehard(blockNumber) {
+		return types.NewChainIdSigner(c.ChainId)
+	}
+	return types.BasicSigner{}
+}
+
 func (c *ChainConfig) LoadForkConfig() {
 	c.Forks = LoadForks()
+	c.ChainId = params.ChainId
+	c.BadHashes = []*BadHash{
+		{
+			// consensus issue that occurred on the Frontier network at block 116,522, mined on 2015-08-20 at 14:59:16+02:00
+			// https://blog.ethereum.org/2015/08/20/security-alert-consensus-issue
+			Block: big.NewInt(116522),
+			Hash:  common.HexToHash("05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"),
+		},
+	}
+}
+func (c *ChainConfig) LoadTestnetConfig() {
+	c.Forks = LoadTestnet()
+	c.ChainId = params.TestnetChainId
+	c.BadHashes = []*BadHash{
+		{
+			// consensus issue at Testnet #383792
+			// http://ethereum.stackexchange.com/questions/10183/upgraded-to-geth-1-5-0-bad-block-383792
+			Block: big.NewInt(383792),
+			Hash:  common.HexToHash("9690db54968a760704d99b8118bf79d565711669cefad24b51b5b1013d827808"),
+		},
+		{
+			// chain followed by non-diehard testnet
+			Block: big.NewInt(1915277),
+			Hash:  common.HexToHash("3bef9997340acebc85b84948d849ceeff74384ddf512a20676d424e972a3c3c4"),
+		},
+	}
+}
+
+// GasTable returns the gas table corresponding to the current fork
+// The returned GasTable's fields shouldn't, under any circumstances, be changed.
+func (c *ChainConfig) GasTable(num *big.Int) params.GasTable {
+	var gasTable = params.GasTableHomestead
+	//TODO avoid loop, remember current fork
+	for i := range c.Forks {
+		fork := c.Forks[i]
+		if fork.Block.Cmp(num) <= 0 {
+			if fork.GasTable != nil {
+				gasTable = *fork.GasTable
+			}
+		}
+	}
+	return gasTable
 }

@@ -228,9 +228,10 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 			if atomic.LoadInt32(&failed) > 0 {
 				return
 			}
+
 			// Short circuit if the header is bad or already known
-			if BadHashes[hash] {
-				errs[index] = BadHashError(hash)
+			if err := hc.config.IsBadFork(header); err != nil {
+				errs[index] = err
 				atomic.AddInt32(&failed, 1)
 				return
 			}

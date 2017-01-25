@@ -115,9 +115,6 @@ func WriteGenesisBlock(chainDb ethdb.Database, reader io.Reader) (*types.Block, 
 	if err := WriteHeadBlockHash(chainDb, block.Hash()); err != nil {
 		return nil, err
 	}
-	if err := WriteChainConfig(chainDb, block.Hash(), genesis.ChainConfig); err != nil {
-		return nil, err
-	}
 
 	return block, nil
 }

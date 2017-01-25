@@ -47,11 +47,11 @@ import (
 )
 
 const (
-	clientIdentifier = "Geth"   // Client identifier to advertise over the network
-	versionMajor     = 2        // Major version component of the current release
-	versionMinor     = 0        // Minor version component of the current release
-	versionPatch     = 0        // Patch version component of the current release
-	versionMeta      = "stable" // Version metadata to append to the version string
+	clientIdentifier = "Geth"     // Client identifier to advertise over the network
+	versionMajor     = 3          // Major version component of the current release
+	versionMinor     = 2          // Minor version component of the current release
+	versionPatch     = 3          // Patch version component of the current release
+	versionMeta      = "unstable" // Version metadata to append to the version string
 
 	// !EPROJECT Replace Oracle or remove point of centralization
 	versionOracle = "0xfa7b9770ca4cb04296cac84f37736d4041251cdf" // Ethereum address of the Geth release oracle
@@ -206,6 +206,7 @@ participating.
 		utils.GpobaseStepUpFlag,
 		utils.GpobaseCorrectionFactorFlag,
 		utils.ExtraDataFlag,
+		utils.Unused1,
 	}
 	app.Flags = append(app.Flags, debug.Flags...)
 

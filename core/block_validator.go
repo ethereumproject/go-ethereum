@@ -223,7 +223,7 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 
 	expd := CalcDifficulty(config, header.Time.Uint64(), parent.Time.Uint64(), parent.Number, parent.Difficulty)
 	if expd.Cmp(header.Difficulty) != 0 {
-		return fmt.Errorf("Difficulty check failed for header %v, %v", header.Difficulty, expd)
+		return fmt.Errorf("Difficulty check failed for header %v != %v at %v", header.Difficulty, expd, header.Number)
 	}
 
 	a := new(big.Int).Set(parent.GasLimit)
@@ -258,17 +258,18 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	// This is a placeholder for testing. The calcDiff function should
 	// be determined by a config flag
 	num := new(big.Int).Add(parentNumber, common.Big1)
-	if config.IsDiehard(num) {
-		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff)
+	if config.IsDiehard(num) && !config.IsExplosion(num) {
+		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff, config.Fork("Diehard").Block)
 	} else if config.IsExplosion(num) {
-		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff)
+		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
+			config.Fork("Diehard").Block, big.NewInt(0).Add(config.Fork("Diehard").Block, config.Fork("Diehard").Length))
 	} else if config.IsHomestead(num) {
 		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
 	} else {
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
 }
-func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
@@ -303,7 +304,7 @@ func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *bi
 	}
 
 	// for the exponential factor
-	fixedCount := new(big.Int).Div(params.DiehardBlock, ExpDiffPeriod)
+	fixedCount := new(big.Int).Div(diehardBlock, ExpDiffPeriod)
 
 	// the exponential factor, commonly referred to as "the bomb"
 	// diff = diff + 2^(periodCount - 2)
@@ -316,7 +317,7 @@ func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *bi
 	return x
 }
 
-func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, diehardBlock *big.Int, explosionBlock *big.Int) *big.Int {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
@@ -352,8 +353,8 @@ func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *
 
 	// for the exponential factor
 	delayedCount := new(big.Int).Add(parentNumber, common.Big1)
-	delayedCount.Sub(delayedCount, params.ExplosionBlock)
-	delayedCount.Add(delayedCount, params.DiehardBlock)
+	delayedCount.Sub(delayedCount, explosionBlock)
+	delayedCount.Add(delayedCount, diehardBlock)
 	delayedCount.Div(delayedCount, ExpDiffPeriod)
 
 	// the exponential factor, commonly referred to as "the bomb"

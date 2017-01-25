@@ -56,10 +56,10 @@ func TestBombDelay(t *testing.T) {
 		t.Errorf("Expected for %d", 3000000)
 	}
 
-	if config.IsDiehard(big.NewInt(5000000)) {
+	if !config.IsDiehard(big.NewInt(5000000)) {
 		t.Errorf("Unexpected for %d", 5000000)
 	}
-	if config.IsDiehard(big.NewInt(5000001)) {
+	if !config.IsDiehard(big.NewInt(5000001)) {
 		t.Errorf("Unexpected for %d", 5000001)
 	}
 }

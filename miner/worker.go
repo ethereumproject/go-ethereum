@@ -62,6 +62,7 @@ type uint64RingBuffer struct {
 // all of the current state information
 type Work struct {
 	config             *core.ChainConfig
+	signer             types.Signer
 	state              *state.StateDB // apply state changes here
 	ancestors          *set.Set       // ancestor set (used for checking uncle parent validity)
 	family             *set.Set       // family set (used for checking uncle invalidity)
@@ -171,7 +172,7 @@ func (self *worker) pending() (*types.Block, *state.StateDB) {
 			self.current.receipts,
 		), self.current.state
 	}
-	return self.current.Block, self.current.state
+	return self.current.Block, self.current.state.Copy()
 }
 
 func (self *worker) start() {
@@ -356,12 +357,13 @@ func (self *worker) push(work *Work) {
 
 // makeCurrent creates a new environment for the current cycle.
 func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error {
-	state, err := state.New(parent.Root(), self.eth.ChainDb())
+	state, err := self.chain.StateAt(parent.Root())
 	if err != nil {
 		return err
 	}
 	work := &Work{
 		config:    self.config,
+		signer:    types.NewChainIdSigner(self.config.ChainId),
 		state:     state,
 		ancestors: set.New(),
 		family:    set.New(),
@@ -580,7 +582,15 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 	for _, tx := range transactions {
 		// Error may be ignored here. The error has already been checked
 		// during transaction acceptance is the transaction pool.
-		from, _ := tx.From()
+		// We use the eip155 signer regardless of the current hf.
+		tx.SetSigner(env.signer)
+		from, _ := types.Sender(env.signer, tx)
+		// Check whether the tx is replay protected. If we're not in the EIP155 hf
+		// phase, start ignoring the sender until we do.
+		if tx.Protected() && !env.config.IsDiehard(env.header.Number) {
+			glog.V(logger.Detail).Infof("Transaction (%x) is replay protected, but we haven't yet hardforked. Transaction will be ignored until we hardfork.\n", tx.Hash())
+			continue
+		}
 
 		// Check if it falls within margin. Txs from owned accounts are always processed.
 		if tx.GasPrice().Cmp(gasPrice) < 0 && !env.ownedAccounts.Has(from) {
@@ -647,7 +657,7 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 }
 
 func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, gp *core.GasPool) (error, vm.Logs) {
-	snap := env.state.Copy()
+	snap := env.state.Snapshot()
 
 	// this is a bit of a hack to force jit for the miners
 	config := env.config.VmConfig
@@ -656,9 +666,9 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, g
 	}
 	config.ForceJit = false // disable forcing jit
 
-	receipt, logs, _, err := core.ApplyTransaction(env.config, bc, gp, env.state, env.header, tx, env.header.GasUsed, config)
+	receipt, logs, _, err := core.ApplyTransaction(env.config, bc, gp, env.state, env.header, tx, env.header.GasUsed, vm.Config{})
 	if err != nil {
-		env.state.Set(snap)
+		env.state.RevertToSnapshot(snap)
 		return err, nil
 	}
 	env.txs = append(env.txs, tx)
