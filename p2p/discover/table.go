@@ -205,20 +205,24 @@ func (tab *Table) SetFallbackNodes(nodes []*Node) error {
 
 // Resolve searches for a specific node with the given ID.
 // It returns nil if the node could not be found.
-func (tab *Table) Resolve(targetID NodeID) *Node {
+func (tab *Table) Resolve(id NodeID) *Node {
 	// If the node is present in the local table, no
 	// network interaction is required.
-	hash := crypto.Keccak256Hash(targetID[:])
 	tab.mutex.Lock()
-	cl := tab.closest(hash, 1)
-	tab.mutex.Unlock()
-	if len(cl.entries) > 0 && cl.entries[0].ID == targetID {
-		return cl.entries[0]
+	for _, b := range tab.buckets {
+		for _, n := range b.entries {
+			if n.ID == id {
+				tab.mutex.Unlock()
+				return n
+			}
+		}
 	}
-	// Otherwise, do a network lookup.
-	result := tab.Lookup(targetID)
+	tab.mutex.Unlock()
+
+	// FIXME: do exact lookup
+	result := tab.Lookup(id)
 	for _, n := range result {
-		if n.ID == targetID {
+		if n.ID == id {
 			return n
 		}
 	}
@@ -230,49 +234,44 @@ func (tab *Table) Resolve(targetID NodeID) *Node {
 // nodes that are closer to it on each iteration.
 // The given target does not need to be an actual node
 // identifier.
-func (tab *Table) Lookup(targetID NodeID) []*Node {
-	return tab.lookup(targetID, true)
+func (tab *Table) Lookup(id NodeID) []*Node {
+	return tab.lookup(id, true)
 }
 
-func (tab *Table) lookup(targetID NodeID, refreshIfEmpty bool) []*Node {
+func (tab *Table) lookup(id NodeID, refreshIfEmpty bool) []*Node {
 	var (
-		target         = crypto.Keccak256Hash(targetID[:])
 		asked          = make(map[NodeID]bool)
-		seen           = make(map[NodeID]bool)
 		reply          = make(chan []*Node, alpha)
 		pendingQueries = 0
-		result         *nodesByDistance
+		result         = tab.closest(id)
 	)
 	// don't query further if we hit ourself.
 	// unlikely to happen often in practice.
 	asked[tab.self.ID] = true
 
-	for {
-		tab.mutex.Lock()
-		// generate initial result set
-		result = tab.closest(target, bucketSize)
-		tab.mutex.Unlock()
-		if len(result.entries) > 0 || !refreshIfEmpty {
-			break
-		}
+	if result.Nodes[0] == nil && refreshIfEmpty {
 		// The result set is empty, all nodes were dropped, refresh.
 		// We actually wait for the refresh to complete here. The very
 		// first query will hit this case and run the bootstrapping
 		// logic.
 		<-tab.refresh()
-		refreshIfEmpty = false
+
+		result = tab.closest(id)
 	}
 
 	for {
 		// ask the alpha closest nodes that we haven't asked yet
-		for i := 0; i < len(result.entries) && pendingQueries < alpha; i++ {
-			n := result.entries[i]
+		for _, n := range result.Nodes {
+			if n == nil || pendingQueries >= alpha {
+				break
+			}
+
 			if !asked[n.ID] {
 				asked[n.ID] = true
 				pendingQueries++
-				go func() {
+				go func(n *Node) {
 					// Find potential neighbors to bond with
-					r, err := tab.net.findnode(n.ID, n.addr(), targetID)
+					r, err := tab.net.findnode(n.ID, n.addr(), id)
 					if err != nil {
 						// Bump the failure counter to detect and evacuate non-bonded entries
 						fails := tab.db.findFails(n.ID) + 1
@@ -285,23 +284,24 @@ func (tab *Table) lookup(targetID NodeID, refreshIfEmpty bool) []*Node {
 						}
 					}
 					reply <- tab.bondall(r)
-				}()
+				}(n)
 			}
 		}
+
 		if pendingQueries == 0 {
 			// we have asked all closest nodes, stop the search
 			break
 		}
+
 		// wait for the next reply
 		for _, n := range <-reply {
-			if n != nil && !seen[n.ID] {
-				seen[n.ID] = true
-				result.push(n, bucketSize)
+			if n != nil {
+				result.Add(n)
 			}
 		}
 		pendingQueries--
 	}
-	return result.entries
+	return result.Slice()
 }
 
 func (tab *Table) refresh() <-chan struct{} {
@@ -400,19 +400,18 @@ func (tab *Table) doRefresh(done chan struct{}) {
 	tab.lookup(tab.self.ID, false)
 }
 
-// closest returns the n nodes in the table that are closest to the
-// given id. The caller must hold tab.mutex.
-func (tab *Table) closest(target common.Hash, nresults int) *nodesByDistance {
-	// This is a very wasteful way to find the closest nodes but
-	// obviously correct. I believe that tree-based buckets would make
-	// this easier to implement efficiently.
-	close := &nodesByDistance{target: target}
+func (tab *Table) closest(id NodeID) *closest {
+	c := &closest{Target: crypto.Keccak256Hash(id[:])}
+
+	tab.mutex.Lock()
+	defer tab.mutex.Unlock()
+
 	for _, b := range tab.buckets {
 		for _, n := range b.entries {
-			close.push(n, nresults)
+			c.Add(n)
 		}
 	}
-	return close
+	return c
 }
 
 func (tab *Table) len() (n int) {

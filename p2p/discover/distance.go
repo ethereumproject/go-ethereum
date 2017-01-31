@@ -24,30 +24,39 @@ import (
 
 // node distance computation.
 
-// nodesByDistance is a list of nodes, ordered by
-// distance to target.
-type nodesByDistance struct {
-	entries []*Node
-	target  common.Hash
+// Closest sorts a set on distance to Target.
+type closest struct {
+	Nodes  [bucketSize]*Node
+	Target common.Hash
 }
 
-// push adds the given node to the list, keeping the total size below maxElems.
-func (h *nodesByDistance) push(n *Node, maxElems int) {
-	ix := sort.Search(len(h.entries), func(i int) bool {
-		return distcmp(h.target, h.entries[i].sha, n.sha) > 0
+func (c *closest) Slice() []*Node {
+	for i, n := range c.Nodes {
+		if n == nil {
+			return c.Nodes[:i]
+		}
+	}
+	return c.Nodes[:]
+}
+
+func (c *closest) Add(entry *Node) {
+	i := sort.Search(len(c.Nodes), func(i int) bool {
+		other := c.Nodes[i]
+		if other == nil {
+			return true
+		}
+		return distcmp(c.Target, other.sha, entry.sha) >= 0
 	})
-	if len(h.entries) < maxElems {
-		h.entries = append(h.entries, n)
+
+	if i >= len(c.Nodes) {
+		return
 	}
-	if ix == len(h.entries) {
-		// farther away than all nodes we already have.
-		// if there was room for it, the node is now the last element.
-	} else {
-		// slide existing entries down to make room
-		// this will overwrite the entry we just appended.
-		copy(h.entries[ix+1:], h.entries[ix:])
-		h.entries[ix] = n
+	if n := c.Nodes[i]; n != nil && n.ID == entry.ID {
+		return
 	}
+
+	copy(c.Nodes[i+1:], c.Nodes[i:])
+	c.Nodes[i] = entry
 }
 
 // distcmp compares the distances a->target and b->target.

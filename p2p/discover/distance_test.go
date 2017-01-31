@@ -18,11 +18,55 @@ package discover
 
 import (
 	"math/big"
+	"reflect"
 	"testing"
 	"testing/quick"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/crypto"
 )
+
+var goldenClosest = [][]NodeID{
+	{
+		MustHexID("0x84d9d65c4552b5eb43d5ad55a2ee3f56c6cbc1c64a5c8d659f51fcd51bace24351232b8d7821617d2b29b54b81cdefb9b3e9c37d7fd5f63270bcc9e1a6f6a439"),
+		MustHexID("0x57d9d65c4552b5eb43d5ad55a2ee3f56c6cbc1c64a5c8d659f51fcd51bace24351232b8d7821617d2b29b54b81cdefb9b3e9c37d7fd5f63270bcc9e1a6f6a439"),
+	},
+	{
+		MustHexID("0x22d9d65c4552b5eb43d5ad55a2ee3f56c6cbc1c64a5c8d659f51fcd51bace24351232b8d7821617d2b29b54b81cdefb9b3e9c37d7fd5f63270bcc9e1a6f6a439"),
+		MustHexID("0x44d9d65c4552b5eb43d5ad55a2ee3f56c6cbc1c64a5c8d659f51fcd51bace24351232b8d7821617d2b29b54b81cdefb9b3e9c37d7fd5f63270bcc9e1a6f6a439"),
+		MustHexID("0xe2d9d65c4552b5eb43d5ad55a2ee3f56c6cbc1c64a5c8d659f51fcd51bace24351232b8d7821617d2b29b54b81cdefb9b3e9c37d7fd5f63270bcc9e1a6f6a439"),
+	},
+}
+
+func TestClosest(t *testing.T) {
+	for _, gold := range goldenClosest {
+		want := make([]*Node, len(gold))
+		for i, id := range gold {
+			want[i] = &Node{
+				ID:  id,
+				sha: crypto.Keccak256Hash(id[:]),
+			}
+		}
+
+		c := &closest{}
+
+		// insert in reverse order
+		for i := len(want) - 1; i >= 0; i-- {
+			c.Add(want[i])
+		}
+		if got := c.Slice(); !reflect.DeepEqual(got, want) {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+
+		// insert again (duplicate)
+		for _, n := range want {
+			c.Add(n)
+		}
+		if got := c.Slice(); !reflect.DeepEqual(got, want) {
+			t.Errorf("after reinsert got %+v, want %+v", got, gold)
+		}
+	}
+}
 
 func TestDistcmp(t *testing.T) {
 	distcmpBig := func(target, a, b common.Hash) int {
