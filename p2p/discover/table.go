@@ -28,7 +28,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sort"
 	"sync"
 	"time"
 
@@ -653,30 +652,4 @@ func (b *bucket) bump(n *Node) bool {
 		}
 	}
 	return false
-}
-
-// nodesByDistance is a list of nodes, ordered by
-// distance to target.
-type nodesByDistance struct {
-	entries []*Node
-	target  common.Hash
-}
-
-// push adds the given node to the list, keeping the total size below maxElems.
-func (h *nodesByDistance) push(n *Node, maxElems int) {
-	ix := sort.Search(len(h.entries), func(i int) bool {
-		return distcmp(h.target, h.entries[i].sha, n.sha) > 0
-	})
-	if len(h.entries) < maxElems {
-		h.entries = append(h.entries, n)
-	}
-	if ix == len(h.entries) {
-		// farther away than all nodes we already have.
-		// if there was room for it, the node is now the last element.
-	} else {
-		// slide existing entries down to make room
-		// this will overwrite the entry we just appended.
-		copy(h.entries[ix+1:], h.entries[ix:])
-		h.entries[ix] = n
-	}
 }
