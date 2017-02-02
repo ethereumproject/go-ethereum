@@ -150,6 +150,44 @@ func nodeAtDistance(base common.Hash, ld int) (n *Node) {
 	return n
 }
 
+// hashAtDistance returns a random hash such that logdist(a, b) == n
+func hashAtDistance(a common.Hash, n int) (b common.Hash) {
+	if n == 0 {
+		return a
+	}
+	// flip bit at position n, fill the rest with random bits
+	b = a
+	pos := len(a) - n/8 - 1
+	bit := byte(0x01) << (byte(n%8) - 1)
+	if bit == 0 {
+		pos++
+		bit = 0x80
+	}
+	b[pos] = a[pos]&^bit | ^a[pos]&bit // TODO: randomize end bits
+	for i := pos + 1; i < len(a); i++ {
+		b[i] = byte(rand.Intn(255))
+	}
+	return b
+}
+
+func TestHashAtDistance(t *testing.T) {
+	// we don't use quick.Check here because its output isn't
+	// very helpful when the test fails.
+	cfg := quickcfg()
+	for i := 0; i < cfg.MaxCount; i++ {
+		a := gen(common.Hash{}, cfg.Rand).(common.Hash)
+		dist := cfg.Rand.Intn(len(common.Hash{}) * 8)
+		result := hashAtDistance(a, dist)
+		actualdist := logdist(result, a)
+
+		if dist != actualdist {
+			t.Log("a:     ", a)
+			t.Log("result:", result)
+			t.Fatalf("#%d: distance of result is %d, want %d", i, actualdist, dist)
+		}
+	}
+}
+
 type pingRecorder struct{ responding, pinged map[NodeID]bool }
 
 func newPingRecorder() *pingRecorder {
@@ -169,61 +207,6 @@ func (t *pingRecorder) ping(toid NodeID, toaddr *net.UDPAddr) error {
 		return nil
 	} else {
 		return errTimeout
-	}
-}
-
-func TestTable_closest(t *testing.T) {
-	t.Parallel()
-
-	test := func(test *closeTest) bool {
-		// for any node table, Target and N
-		tab, _ := newTable(nil, test.Self, &net.UDPAddr{}, "")
-		defer tab.Close()
-		tab.stuff(test.All)
-
-		// check that doClosest(Target, N) returns nodes
-		result := tab.closest(test.Target, test.N).entries
-		if hasDuplicates(result) {
-			t.Errorf("result contains duplicates")
-			return false
-		}
-		if !sortedByDistanceTo(test.Target, result) {
-			t.Errorf("result is not sorted by distance to target")
-			return false
-		}
-
-		// check that the number of results is min(N, tablen)
-		wantN := test.N
-		if tlen := tab.len(); tlen < test.N {
-			wantN = tlen
-		}
-		if len(result) != wantN {
-			t.Errorf("wrong number of nodes: got %d, want %d", len(result), wantN)
-			return false
-		} else if len(result) == 0 {
-			return true // no need to check distance
-		}
-
-		// check that the result nodes have minimum distance to target.
-		for _, b := range tab.buckets {
-			for _, n := range b.entries {
-				if contains(result, n.ID) {
-					continue // don't run the check below for nodes in result
-				}
-				farthestResult := result[len(result)-1].sha
-				if distcmp(test.Target, n.sha, farthestResult) < 0 {
-					t.Errorf("table contains node that is closer to target but it's not in result")
-					t.Logf("  Target:          %v", test.Target)
-					t.Logf("  Farthest Result: %v", farthestResult)
-					t.Logf("  ID:              %v", n.ID)
-					return false
-				}
-			}
-		}
-		return true
-	}
-	if err := quick.Check(test, quickcfg()); err != nil {
-		t.Error(err)
 	}
 }
 
@@ -256,25 +239,6 @@ func TestTable_ReadRandomNodesGetAll(t *testing.T) {
 	if err := quick.Check(test, cfg); err != nil {
 		t.Error(err)
 	}
-}
-
-type closeTest struct {
-	Self   NodeID
-	Target common.Hash
-	All    []*Node
-	N      int
-}
-
-func (*closeTest) Generate(rand *rand.Rand, size int) reflect.Value {
-	t := &closeTest{
-		Self:   gen(NodeID{}, rand).(NodeID),
-		Target: gen(common.Hash{}, rand).(common.Hash),
-		N:      rand.Intn(bucketSize),
-	}
-	for _, id := range gen([]NodeID{}, rand).([]NodeID) {
-		t.All = append(t.All, &Node{ID: id})
-	}
-	return reflect.ValueOf(t)
 }
 
 func TestTable_Lookup(t *testing.T) {

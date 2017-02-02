@@ -286,12 +286,11 @@ func TestUDP_findnode(t *testing.T) {
 	// put a few nodes into the table. their exact
 	// distribution shouldn't matter much, altough we need to
 	// take care not to overflow any bucket.
-	targetHash := crypto.Keccak256Hash(testTarget[:])
-	nodes := &nodesByDistance{target: targetHash}
-	for i := 0; i < bucketSize; i++ {
-		nodes.push(nodeAtDistance(test.table.self.sha, i+2), bucketSize)
+	nodes := make([]*Node, bucketSize)
+	for i := range nodes {
+		nodes[i] = nodeAtDistance(test.table.self.sha, i+2)
 	}
-	test.table.stuff(nodes.entries)
+	test.table.stuff(nodes)
 
 	// ensure there's a bond with the test node,
 	// findnode won't be accepted otherwise.
@@ -303,7 +302,7 @@ func TestUDP_findnode(t *testing.T) {
 	))
 	// check that closest neighbors are returned.
 	test.packetIn(nil, findnodePacket, &findnode{Target: testTarget, Expiration: futureExp})
-	expected := test.table.closest(targetHash, bucketSize)
+	expected := test.table.closest(testTarget)
 
 	waitNeighbors := func(want []*Node) {
 		test.waitPacketOut(func(p *neighbors) {
@@ -312,13 +311,13 @@ func TestUDP_findnode(t *testing.T) {
 			}
 			for i := range p.Nodes {
 				if p.Nodes[i].ID != want[i].ID {
-					t.Errorf("result mismatch at %d:\n  got:  %v\n  want: %v", i, p.Nodes[i], expected.entries[i])
+					t.Errorf("result mismatch at %d:\n  got:  %v\n  want: %v", i, p.Nodes[i], expected.Nodes[i])
 				}
 			}
 		})
 	}
-	waitNeighbors(expected.entries[:maxNeighbors])
-	waitNeighbors(expected.entries[maxNeighbors:])
+	waitNeighbors(expected.Nodes[:maxNeighbors])
+	waitNeighbors(expected.Nodes[maxNeighbors:])
 }
 
 func TestUDP_findnodeMultiReply(t *testing.T) {

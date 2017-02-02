@@ -18,7 +18,6 @@ package discover
 
 import (
 	"fmt"
-	"math/big"
 	"math/rand"
 	"net"
 	"reflect"
@@ -27,7 +26,6 @@ import (
 	"testing/quick"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
@@ -225,63 +223,6 @@ func TestNodeID_pubkeyBad(t *testing.T) {
 	}
 	if ecdsa != nil {
 		t.Error("expected nil result")
-	}
-}
-
-func TestNodeID_distcmp(t *testing.T) {
-	distcmpBig := func(target, a, b common.Hash) int {
-		tbig := new(big.Int).SetBytes(target[:])
-		abig := new(big.Int).SetBytes(a[:])
-		bbig := new(big.Int).SetBytes(b[:])
-		return new(big.Int).Xor(tbig, abig).Cmp(new(big.Int).Xor(tbig, bbig))
-	}
-	if err := quick.CheckEqual(distcmp, distcmpBig, quickcfg()); err != nil {
-		t.Error(err)
-	}
-}
-
-// the random tests is likely to miss the case where they're equal.
-func TestNodeID_distcmpEqual(t *testing.T) {
-	base := common.Hash{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	x := common.Hash{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
-	if distcmp(base, x, x) != 0 {
-		t.Errorf("distcmp(base, x, x) != 0")
-	}
-}
-
-func TestNodeID_logdist(t *testing.T) {
-	logdistBig := func(a, b common.Hash) int {
-		abig, bbig := new(big.Int).SetBytes(a[:]), new(big.Int).SetBytes(b[:])
-		return new(big.Int).Xor(abig, bbig).BitLen()
-	}
-	if err := quick.CheckEqual(logdist, logdistBig, quickcfg()); err != nil {
-		t.Error(err)
-	}
-}
-
-// the random tests is likely to miss the case where they're equal.
-func TestNodeID_logdistEqual(t *testing.T) {
-	x := common.Hash{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	if logdist(x, x) != 0 {
-		t.Errorf("logdist(x, x) != 0")
-	}
-}
-
-func TestNodeID_hashAtDistance(t *testing.T) {
-	// we don't use quick.Check here because its output isn't
-	// very helpful when the test fails.
-	cfg := quickcfg()
-	for i := 0; i < cfg.MaxCount; i++ {
-		a := gen(common.Hash{}, cfg.Rand).(common.Hash)
-		dist := cfg.Rand.Intn(len(common.Hash{}) * 8)
-		result := hashAtDistance(a, dist)
-		actualdist := logdist(result, a)
-
-		if dist != actualdist {
-			t.Log("a:     ", a)
-			t.Log("result:", result)
-			t.Fatalf("#%d: distance of result is %d, want %d", i, actualdist, dist)
-		}
 	}
 }
 
