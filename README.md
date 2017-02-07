@@ -1,3 +1,9 @@
+[![Build Status](https://travis-ci.org/ethereumproject/go-ethereum.svg?branch=master)](https://travis-ci.org/ethereumproject/go-ethereum)
+[![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
+)](https://godoc.org/github.com/ethereumproject/go-ethereum)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Download](https://api.bintray.com/packages/ethereumproject/GoEthereumClassic/go-ethereum/images/download.svg)](https://bintray.com/ethereumproject/GoEthereumClassic/go-ethereum/_latestVersion)
+
 ## Ethereum Go (Ethereum Classic Blockchain)
 
 Official golang implementation of the Ethereum protocol supporting the
@@ -17,12 +23,6 @@ recommending actions that must be taken to help complete the migration.
 ----------|---------|-----|-----|---------|------
 develop   | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildLinux)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildLinux) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildOSX)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildOSX) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildARM)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildARM) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildWindows)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildWindows) | (TBD)
 master    | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Master_BuildLinux)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Master_BuildLinux) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Master_BuildOsx)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Master_BuildOsx) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Master_BuildArm)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Master_BuildArm) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Master_BuildWindows)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Master_BuildWindows) | (TBD)
-
-[![API Reference](
-https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
-)](https://godoc.org/github.com/ethereumproject/go-ethereum)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-[ ![Download](https://api.bintray.com/packages/ethereumproject/GoEthereumClassic/go-ethereum/images/download.svg) ](https://bintray.com/ethereumproject/GoEthereumClassic/go-ethereum/_latestVersion)
 
 ## Building the source
 
