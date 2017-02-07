@@ -20,9 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"os"
 	"reflect"
 	"testing"
 	"testing/quick"
@@ -460,7 +458,10 @@ const benchElemCount = 20000
 func benchGet(b *testing.B, commit bool) {
 	trie := new(Trie)
 	if commit {
-		_, tmpdb := tempDB()
+		tmpdb, err := ethdb.NewMemDatabase()
+		if err != nil {
+			b.Fatal(err)
+		}
 		trie, _ = New(common.Hash{}, tmpdb)
 	}
 	k := make([]byte, 32)
@@ -482,7 +483,6 @@ func benchGet(b *testing.B, commit bool) {
 	if commit {
 		ldb := trie.db.(*ethdb.LDBDatabase)
 		ldb.Close()
-		os.RemoveAll(ldb.Path())
 	}
 }
 
@@ -508,18 +508,6 @@ func benchHash(b *testing.B, e binary.ByteOrder) {
 	for i := 0; i < b.N; i++ {
 		trie.Hash()
 	}
-}
-
-func tempDB() (string, Database) {
-	dir, err := ioutil.TempDir("", "trie-bench")
-	if err != nil {
-		panic(fmt.Sprintf("can't create temporary directory: %v", err))
-	}
-	db, err := ethdb.NewLDBDatabase(dir, 256, 0)
-	if err != nil {
-		panic(fmt.Sprintf("can't create temporary database: %v", err))
-	}
-	return dir, db
 }
 
 func getString(trie *Trie, k string) []byte {
