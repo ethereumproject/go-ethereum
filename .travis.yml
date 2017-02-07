@@ -5,5 +5,8 @@ go:
   - 1.6
   - 1.7
 
+install:
+  - go get github.com/tools/godep
+
 script:
   - godep go test ./...
