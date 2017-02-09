@@ -18,27 +18,11 @@ development.
 Comments are being made in the codebase with the tag !EPROJECT
 recommending actions that must be taken to help complete the migration.
 
-
-          | Linux   | OSX | ARM | Windows | Tests
-----------|---------|-----|-----|---------|------
-develop   | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildLinux)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildLinux) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildOSX)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildOSX) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildARM)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildARM) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Develop_BuildWindows)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Develop_BuildWindows) | (TBD)
-master    | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Master_BuildLinux)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Master_BuildLinux) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Master_BuildOsx)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Master_BuildOsx) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Master_BuildArm)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Master_BuildArm) | [![Build Status](http://build.ethereumclassic.org/app/rest/builds/buildType:(id:GoEthereumClassic_Master_BuildWindows)/statusIcon)](http://build.ethereumclassic.org/viewType.html?buildTypeId=GoEthereumClassic_Master_BuildWindows) | (TBD)
-
 ## Building the source
 
-For prerequisites and detailed build instructions please read the
-[Installation Instructions](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum)
-on the wiki.
+Building geth requires both a Go and a C compiler. Dependencies are managed with [godep](https://github.com/tools/godep).
 
-Building geth requires both a Go and a C compiler.
-You can install them using your favourite package manager.
-Once the dependencies are installed, run
-
-    make geth
-
-or, to build the full suite of utilities:
-
-    make all
+To install the full suite of utilities run `godep go install ./cmd/...`.
 
 ## Executables
 
