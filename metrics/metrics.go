@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// Package metrics provides general system and process level metrics collection.
+// Package metrics centralizes the registration.
 package metrics
 
 import (
+	"encoding/json"
+	"os"
 	"runtime"
 	"time"
 
@@ -26,21 +28,45 @@ import (
 	"github.com/rcrowley/go-metrics"
 )
 
+// Reg is the metrics destination.
+var reg = metrics.DefaultRegistry
+
 // NewMeter create a new metrics Meter, either a real one of a NOP stub depending
 // on the metrics flag.
 func NewMeter(name string) metrics.Meter {
-	return metrics.GetOrRegisterMeter(name, metrics.DefaultRegistry)
+	return metrics.GetOrRegisterMeter(name, reg)
 }
 
 // NewTimer create a new metrics Timer, either a real one of a NOP stub depending
 // on the metrics flag.
 func NewTimer(name string) metrics.Timer {
-	return metrics.GetOrRegisterTimer(name, metrics.DefaultRegistry)
+	return metrics.GetOrRegisterTimer(name, reg)
 }
 
-// CollectProcessMetrics periodically collects various metrics about the running
+// Collect writes metrics to the given destination.
+func Collect(dest string) {
+	const interval = 3 * time.Second
+
+	go collectProcessMetrics(interval)
+
+	f, err := os.OpenFile(dest, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	defer f.Close()
+
+	encoder := json.NewEncoder(f)
+	ticks := time.Tick(interval)
+	for _ = range ticks {
+		if err := encoder.Encode(reg); err != nil {
+			glog.Errorf("metrics: log to %q: %s", dest, err)
+		}
+	}
+}
+
+// collectProcessMetrics periodically collects various metrics about the running
 // process.
-func CollectProcessMetrics(refresh time.Duration) {
+func collectProcessMetrics(refresh time.Duration) {
 	// Create the various data collectors
 	memstats := make([]*runtime.MemStats, 2)
 	diskstats := make([]*DiskStats, 2)
@@ -49,17 +75,17 @@ func CollectProcessMetrics(refresh time.Duration) {
 		diskstats[i] = new(DiskStats)
 	}
 	// Define the various metrics to collect
-	memAllocs := metrics.GetOrRegisterMeter("system/memory/allocs", metrics.DefaultRegistry)
-	memFrees := metrics.GetOrRegisterMeter("system/memory/frees", metrics.DefaultRegistry)
-	memInuse := metrics.GetOrRegisterMeter("system/memory/inuse", metrics.DefaultRegistry)
-	memPauses := metrics.GetOrRegisterMeter("system/memory/pauses", metrics.DefaultRegistry)
+	memAllocs := metrics.GetOrRegisterMeter("system/memory/allocs", reg)
+	memFrees := metrics.GetOrRegisterMeter("system/memory/frees", reg)
+	memInuse := metrics.GetOrRegisterMeter("system/memory/inuse", reg)
+	memPauses := metrics.GetOrRegisterMeter("system/memory/pauses", reg)
 
 	var diskReads, diskReadBytes, diskWrites, diskWriteBytes metrics.Meter
 	if err := ReadDiskStats(diskstats[0]); err == nil {
-		diskReads = metrics.GetOrRegisterMeter("system/disk/readcount", metrics.DefaultRegistry)
-		diskReadBytes = metrics.GetOrRegisterMeter("system/disk/readdata", metrics.DefaultRegistry)
-		diskWrites = metrics.GetOrRegisterMeter("system/disk/writecount", metrics.DefaultRegistry)
-		diskWriteBytes = metrics.GetOrRegisterMeter("system/disk/writedata", metrics.DefaultRegistry)
+		diskReads = metrics.GetOrRegisterMeter("system/disk/readcount", reg)
+		diskReadBytes = metrics.GetOrRegisterMeter("system/disk/readdata", reg)
+		diskWrites = metrics.GetOrRegisterMeter("system/disk/writecount", reg)
+		diskWriteBytes = metrics.GetOrRegisterMeter("system/disk/writedata", reg)
 	} else {
 		glog.V(logger.Debug).Infof("failed to read disk metrics: %v", err)
 	}

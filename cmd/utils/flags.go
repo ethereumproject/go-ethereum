@@ -224,9 +224,9 @@ var (
 	}
 
 	// logging and debug settings
-	MetricsEnabledFlag = cli.BoolFlag{
+	MetricsFlag = cli.StringFlag{
 		Name:  "metrics",
-		Usage: "Enable metrics collection and reporting",
+		Usage: "Enables metrics reporting. When the value is a path, either relative or absolute, then a log is written to the respective file.",
 	}
 	FakePoWFlag = cli.BoolFlag{
 		Name:  "fakepow",
