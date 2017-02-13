@@ -29,19 +29,94 @@ import (
 )
 
 // Reg is the metrics destination.
-var reg = metrics.DefaultRegistry
+var reg = metrics.NewRegistry()
 
-// NewMeter create a new metrics Meter, either a real one of a NOP stub depending
-// on the metrics flag.
-func NewMeter(name string) metrics.Meter {
-	return metrics.GetOrRegisterMeter(name, reg)
-}
+var (
+	MsgTXNIn           = metrics.NewRegisteredMeter("msg/txn/in", reg)
+	MsgTXNInBytes      = metrics.NewRegisteredMeter("msg/txn/in/bytes", reg)
+	MsgTXNOut          = metrics.NewRegisteredMeter("msg/txn/out", reg)
+	MsgTXNOutBytes     = metrics.NewRegisteredMeter("msg/txn/out/bytes", reg)
+	MsgHashIn          = metrics.NewRegisteredMeter("msg/hash/in", reg)
+	MsgHashInBytes     = metrics.NewRegisteredMeter("msg/hash/out/bytes", reg)
+	MsgHashOut         = metrics.NewRegisteredMeter("msg/hash/in", reg)
+	MsgHashOutBytes    = metrics.NewRegisteredMeter("msg/hash/out/bytes", reg)
+	MsgBlockIn         = metrics.NewRegisteredMeter("msg/block/in", reg)
+	MsgBlockInBytes    = metrics.NewRegisteredMeter("msg/block/in/bytes", reg)
+	MsgBlockOut        = metrics.NewRegisteredMeter("msg/block/out", reg)
+	MsgBlockOutBytes   = metrics.NewRegisteredMeter("msg/block/out/bytes", reg)
+	MsgHeaderIn        = metrics.NewRegisteredMeter("msg/header/in", reg)
+	MsgHeaderInBytes   = metrics.NewRegisteredMeter("msg/header/in/bytes", reg)
+	MsgHeaderOut       = metrics.NewRegisteredMeter("msg/header/out", reg)
+	MsgHeaderOutBytes  = metrics.NewRegisteredMeter("msg/header/out/bytes", reg)
+	MsgBodyIn          = metrics.NewRegisteredMeter("msg/body/in", reg)
+	MsgBodyInBytes     = metrics.NewRegisteredMeter("msg/body/in/bytes", reg)
+	MsgBodyOut         = metrics.NewRegisteredMeter("msg/body/out", reg)
+	MsgBodyOutBytes    = metrics.NewRegisteredMeter("msg/body/out/bytes", reg)
+	MsgStateIn         = metrics.NewRegisteredMeter("msg/state/in", reg)
+	MsgStateInBytes    = metrics.NewRegisteredMeter("msg/state/in/bytes", reg)
+	MsgStateOut        = metrics.NewRegisteredMeter("msg/state/out", reg)
+	MsgStateOutBytes   = metrics.NewRegisteredMeter("msg/state/out/bytes", reg)
+	MsgReceiptIn       = metrics.NewRegisteredMeter("msg/receipt/in", reg)
+	MsgReceiptInBytes  = metrics.NewRegisteredMeter("msg/receipt/in/bytes", reg)
+	MsgReceiptOut      = metrics.NewRegisteredMeter("msg/receipt/out", reg)
+	MsgReceiptOutBytes = metrics.NewRegisteredMeter("msg/receipt/out/bytes", reg)
+	MsgMiscIn          = metrics.NewRegisteredMeter("msg/misc/in", reg)
+	MsgMiscInBytes     = metrics.NewRegisteredMeter("msg/misc/in/bytes", reg)
+	MsgMiscOut         = metrics.NewRegisteredMeter("msg/misc/out", reg)
+	MsgMiscOutBytes    = metrics.NewRegisteredMeter("msg/misc/out/bytes", reg)
+)
 
-// NewTimer create a new metrics Timer, either a real one of a NOP stub depending
-// on the metrics flag.
-func NewTimer(name string) metrics.Timer {
-	return metrics.GetOrRegisterTimer(name, reg)
-}
+var (
+	DLHeaders        = metrics.NewRegisteredMeter("download/header", reg)
+	DLHeaderTimer    = metrics.NewRegisteredTimer("download/header", reg)
+	DLHeaderDrops    = metrics.NewRegisteredMeter("download/header/drop", reg)
+	DLHeaderTimeouts = metrics.NewRegisteredMeter("download/header/timeout", reg)
+
+	DLBodies       = metrics.NewRegisteredMeter("download/body", reg)
+	DLBodyTimer    = metrics.NewRegisteredTimer("download/body", reg)
+	DLBodyDrops    = metrics.NewRegisteredMeter("download/body/drop", reg)
+	DLBodyTimeouts = metrics.NewRegisteredMeter("download/body/timeout", reg)
+
+	DLReceipts        = metrics.NewRegisteredMeter("download/receipt", reg)
+	DLReceiptTimer    = metrics.NewRegisteredTimer("download/receipt", reg)
+	DLReceiptDrops    = metrics.NewRegisteredMeter("download/receipt/drop", reg)
+	DLReceiptTimeouts = metrics.NewRegisteredMeter("download/receipt/timeout", reg)
+
+	DLStates        = metrics.NewRegisteredMeter("download/state", reg)
+	DLStateTimer    = metrics.NewRegisteredTimer("download/state", reg)
+	DLStateDrops    = metrics.NewRegisteredMeter("download/state/drop", reg)
+	DLStateTimeouts = metrics.NewRegisteredMeter("download/state/timeout", reg)
+)
+
+var (
+	FetchBlocks  = metrics.NewRegisteredMeter("fetch/block", reg)
+	FetchHeaders = metrics.NewRegisteredMeter("fetch/header", reg)
+	FetchBodies  = metrics.NewRegisteredMeter("fetch/body", reg)
+
+	FetchFilterBlockIns   = metrics.NewRegisteredMeter("fetch/filter/block/in", reg)
+	FetchFilterBlockOuts  = metrics.NewRegisteredMeter("fetch/filter/block/out", reg)
+	FetchFilterHeaderIns  = metrics.NewRegisteredMeter("fetch/filter/header/in", reg)
+	FetchFilterHeaderOuts = metrics.NewRegisteredMeter("fetch/filter/header/out", reg)
+	FetchFilterBodyIns    = metrics.NewRegisteredMeter("fetch/filter/body/in", reg)
+	FetchFilterBodyOuts   = metrics.NewRegisteredMeter("fetch/filter/body/out", reg)
+
+	FetchAnnounces     = metrics.NewRegisteredMeter("fetch/announce", reg)
+	FetchAnnounceTimer = metrics.NewRegisteredTimer("fetch/announce", reg)
+	FetchAnnounceDrops = metrics.NewRegisteredMeter("fetch/announce/drop", reg)
+	FetchAnnounceDOS   = metrics.NewRegisteredMeter("fetch/announce/dos", reg)
+
+	FetchBroadcasts     = metrics.NewRegisteredMeter("fetch/broadcast", reg)
+	FetchBroadcastTimer = metrics.NewRegisteredTimer("fetch/broadcast", reg)
+	FetchBroadcastDrops = metrics.NewRegisteredMeter("fetch/broadcast/drop", reg)
+	FetchBroadcastDOS   = metrics.NewRegisteredMeter("fetch/broadcast/dos", reg)
+)
+
+var (
+	P2PIn       = metrics.NewRegisteredMeter("p2p/in", reg)
+	P2PInBytes  = metrics.NewRegisteredMeter("p2p/in/bytes", reg)
+	P2POut      = metrics.NewRegisteredMeter("p2p/out", reg)
+	P2POutBytes = metrics.NewRegisteredMeter("p2p/out/bytes", reg)
+)
 
 // Collect writes metrics to the given destination.
 func Collect(dest string) {

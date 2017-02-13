@@ -34,9 +34,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/trie"
-	"github.com/rcrowley/go-metrics"
 )
 
 var (
@@ -830,7 +830,7 @@ func (d *Downloader) fetchHeaders(p *peer, from uint64) error {
 				glog.V(logger.Debug).Infof("Received skeleton headers from incorrect peer (%s)", packet.PeerId())
 				break
 			}
-			headerReqTimer.UpdateSince(request)
+			metrics.DLHeaderTimer.UpdateSince(request)
 			timeout.Stop()
 
 			// If the skeleton's finished, pull any remaining head headers directly from the origin
@@ -876,7 +876,7 @@ func (d *Downloader) fetchHeaders(p *peer, from uint64) error {
 		case <-timeout.C:
 			// Header retrieval timed out, consider the peer bad and drop
 			glog.V(logger.Debug).Infof("%v: header request timed out", p)
-			headerTimeoutMeter.Mark(1)
+			metrics.DLHeaderTimeouts.Mark(1)
 			d.dropPeer(p.id)
 
 			// Finish the sync gracefully instead of dumping the gathered data though
@@ -1453,33 +1453,34 @@ func (d *Downloader) processContent() error {
 // DeliverHeaders injects a new batch of block headers received from a remote
 // node into the download schedule.
 func (d *Downloader) DeliverHeaders(id string, headers []*types.Header) (err error) {
-	return d.deliver(id, d.headerCh, &headerPack{id, headers}, headerInMeter, headerDropMeter)
+	return d.deliver(id, d.headerCh, &headerPack{id, headers}, metrics.DLHeaders.Mark, metrics.DLHeaderDrops.Mark)
 }
 
 // DeliverBodies injects a new batch of block bodies received from a remote node.
 func (d *Downloader) DeliverBodies(id string, transactions [][]*types.Transaction, uncles [][]*types.Header) (err error) {
-	return d.deliver(id, d.bodyCh, &bodyPack{id, transactions, uncles}, bodyInMeter, bodyDropMeter)
+	return d.deliver(id, d.bodyCh, &bodyPack{id, transactions, uncles}, metrics.DLBodies.Mark, metrics.DLBodyDrops.Mark)
 }
 
 // DeliverReceipts injects a new batch of receipts received from a remote node.
 func (d *Downloader) DeliverReceipts(id string, receipts [][]*types.Receipt) (err error) {
-	return d.deliver(id, d.receiptCh, &receiptPack{id, receipts}, receiptInMeter, receiptDropMeter)
+	return d.deliver(id, d.receiptCh, &receiptPack{id, receipts}, metrics.DLReceipts.Mark, metrics.DLReceiptDrops.Mark)
 }
 
 // DeliverNodeData injects a new batch of node state data received from a remote node.
 func (d *Downloader) DeliverNodeData(id string, data [][]byte) (err error) {
-	return d.deliver(id, d.stateCh, &statePack{id, data}, stateInMeter, stateDropMeter)
+	return d.deliver(id, d.stateCh, &statePack{id, data}, metrics.DLStates.Mark, metrics.DLStateDrops.Mark)
 }
 
 // deliver injects a new batch of data received from a remote node.
-func (d *Downloader) deliver(id string, destCh chan dataPack, packet dataPack, inMeter, dropMeter metrics.Meter) (err error) {
+func (d *Downloader) deliver(id string, destCh chan dataPack, packet dataPack, mark, markDrop func(int64)) (err error) {
 	// Update the delivery metrics for both good and failed deliveries
-	inMeter.Mark(int64(packet.Items()))
+	mark(int64(packet.Items()))
 	defer func() {
 		if err != nil {
-			dropMeter.Mark(int64(packet.Items()))
+			markDrop(int64(packet.Items()))
 		}
 	}()
+
 	// Deliver or abort if the sync is canceled while queuing
 	d.cancelLock.RLock()
 	cancel := d.cancelCh

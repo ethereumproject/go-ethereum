@@ -28,6 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/metrics"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
@@ -279,7 +280,9 @@ func (f *Fetcher) FilterBodies(transactions [][]*types.Transaction, uncles [][]*
 func (f *Fetcher) loop() {
 	// Iterate the block fetching until a quit is requested
 	fetchTimer := time.NewTimer(0)
+	defer fetchTimer.Stop()
 	completeTimer := time.NewTimer(0)
+	defer fetchTimer.Stop()
 
 	for {
 		// Clean up any expired block fetches
@@ -320,19 +323,19 @@ func (f *Fetcher) loop() {
 
 		case notification := <-f.notify:
 			// A block was announced, make sure the peer isn't DOSing us
-			propAnnounceInMeter.Mark(1)
+			metrics.FetchAnnounces.Mark(1)
 
 			count := f.announces[notification.origin] + 1
 			if count > hashLimit {
 				glog.V(logger.Debug).Infof("Peer %s: exceeded outstanding announces (%d)", notification.origin, hashLimit)
-				propAnnounceDOSMeter.Mark(1)
+				metrics.FetchAnnounceDOS.Mark(1)
 				break
 			}
 			// If we have a valid block number, check that it's potentially useful
 			if notification.number > 0 {
 				if dist := int64(notification.number) - int64(f.chainHeight()); dist < -maxUncleDist || dist > maxQueueDist {
 					glog.V(logger.Debug).Infof("[eth/62] Peer %s: discarded announcement #%d [%x…], distance %d", notification.origin, notification.number, notification.hash[:4], dist)
-					propAnnounceDropMeter.Mark(1)
+					metrics.FetchAnnounceDrops.Mark(1)
 					break
 				}
 			}
@@ -354,7 +357,7 @@ func (f *Fetcher) loop() {
 
 		case op := <-f.inject:
 			// A direct block insertion was requested, try and fill any pending gaps
-			propBroadcastInMeter.Mark(1)
+			metrics.FetchBroadcasts.Mark(1)
 			f.enqueue(op.origin, op.block)
 
 		case hash := <-f.done:
@@ -397,7 +400,7 @@ func (f *Fetcher) loop() {
 					}
 					// Use new eth/62 protocol to retrieve headers first
 					for _, hash := range hashes {
-						headerFetchMeter.Mark(1)
+						metrics.FetchHeaders.Mark(1)
 						fetchHeader(hash) // Suboptimal, but protocol doesn't allow batch header retrievals
 					}
 				}()
@@ -435,7 +438,7 @@ func (f *Fetcher) loop() {
 				if f.completingHook != nil {
 					f.completingHook(hashes)
 				}
-				bodyFetchMeter.Mark(int64(len(hashes)))
+				metrics.FetchBodies.Mark(int64(len(hashes)))
 				go f.completing[hashes[0]].fetchBodies(hashes)
 			}
 			// Schedule the next fetch if blocks are still pending
@@ -451,7 +454,7 @@ func (f *Fetcher) loop() {
 			case <-f.quit:
 				return
 			}
-			headerFilterInMeter.Mark(int64(len(task.headers)))
+			metrics.FetchFilterHeaderIns.Mark(int64(len(task.headers)))
 
 			// Split the batch of headers into unknown ones (to return to the caller),
 			// known incomplete ones (requiring body retrievals) and completed blocks.
@@ -495,7 +498,7 @@ func (f *Fetcher) loop() {
 					unknown = append(unknown, header)
 				}
 			}
-			headerFilterOutMeter.Mark(int64(len(unknown)))
+			metrics.FetchFilterHeaderOuts.Mark(int64(len(unknown)))
 			select {
 			case filter <- &headerFilterTask{headers: unknown, time: task.time}:
 			case <-f.quit:
@@ -527,7 +530,7 @@ func (f *Fetcher) loop() {
 			case <-f.quit:
 				return
 			}
-			bodyFilterInMeter.Mark(int64(len(task.transactions)))
+			metrics.FetchFilterBodyIns.Mark(int64(len(task.transactions)))
 
 			blocks := []*types.Block{}
 			for i := 0; i < len(task.transactions) && i < len(task.uncles); i++ {
@@ -562,7 +565,7 @@ func (f *Fetcher) loop() {
 				}
 			}
 
-			bodyFilterOutMeter.Mark(int64(len(task.transactions)))
+			metrics.FetchFilterBodyOuts.Mark(int64(len(task.transactions)))
 			select {
 			case filter <- task:
 			case <-f.quit:
@@ -619,14 +622,14 @@ func (f *Fetcher) enqueue(peer string, block *types.Block) {
 	count := f.queues[peer] + 1
 	if count > blockLimit {
 		glog.V(logger.Debug).Infof("Peer %s: discarded block #%d [%x…], exceeded allowance (%d)", peer, block.NumberU64(), hash.Bytes()[:4], blockLimit)
-		propBroadcastDOSMeter.Mark(1)
+		metrics.FetchBroadcastDOS.Mark(1)
 		f.forgetHash(hash)
 		return
 	}
 	// Discard any past or too distant blocks
 	if dist := int64(block.NumberU64()) - int64(f.chainHeight()); dist < -maxUncleDist || dist > maxQueueDist {
 		glog.V(logger.Debug).Infof("Peer %s: discarded block #%d [%x…], distance %d", peer, block.NumberU64(), hash.Bytes()[:4], dist)
-		propBroadcastDropMeter.Mark(1)
+		metrics.FetchBroadcastDrops.Mark(1)
 		f.forgetHash(hash)
 		return
 	}
@@ -669,7 +672,7 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 		switch err := f.validateBlock(block, parent); err {
 		case nil:
 			// All ok, quickly propagate to our peers
-			propBroadcastOutTimer.UpdateSince(block.ReceivedAt)
+			metrics.FetchBroadcastTimer.UpdateSince(block.ReceivedAt)
 			go f.broadcastBlock(block, true)
 
 		case core.BlockFutureErr:
@@ -687,7 +690,7 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 			return
 		}
 		// If import succeeded, broadcast the block
-		propAnnounceOutTimer.UpdateSince(block.ReceivedAt)
+		metrics.FetchAnnounceTimer.UpdateSince(block.ReceivedAt)
 		go f.broadcastBlock(block, false)
 
 		// Invoke the testing hook if needed
