@@ -215,8 +215,10 @@ participating.
 		if err := debug.Setup(ctx); err != nil {
 			return err
 		}
-		// Start system runtime metrics collection
-		go metrics.CollectProcessMetrics(3 * time.Second)
+
+		if c.Bool("metrics") {
+			go metrics.CollectProcessMetrics(3 * time.Second)
+		}
 
 		// This should be the only place where reporting is enabled
 		// because it is not intended to run while testing.
