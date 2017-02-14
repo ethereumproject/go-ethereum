@@ -41,10 +41,6 @@
 			"Rev": "a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4"
 		},
 		{
-			"ImportPath": "github.com/huin/goupnp",
-			"Rev": "46bde78b11f3f021f2a511df138be9e2fc7506e8"
-		},
-		{
 			"ImportPath": "github.com/huin/goupnp/dcps/internetgateway1",
 			"Rev": "46bde78b11f3f021f2a511df138be9e2fc7506e8"
 		},
@@ -221,66 +217,6 @@
 		{
 			"ImportPath": "golang.org/x/sys/unix",
 			"Rev": "50c6bc5e4292a1d4e65c6e9be5f53be28bcbe28e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/charmap",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/htmlindex",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/internal",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/internal/identifier",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/japanese",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/korean",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/simplifiedchinese",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/traditionalchinese",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/encoding/unicode",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/internal/tag",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/internal/utf8internal",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/language",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/runes",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
-		},
-		{
-			"ImportPath": "golang.org/x/text/transform",
-			"Rev": "09761194ac5034a97b2bfad4f5b896b0ac350b3e"
 		},
 		{
 			"ImportPath": "golang.org/x/tools/go/ast/astutil",
