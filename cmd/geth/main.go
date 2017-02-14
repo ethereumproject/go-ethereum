@@ -26,7 +26,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/cmd/utils"
@@ -196,7 +195,7 @@ participating.
 		utils.VMEnableJitFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
-		utils.MetricsEnabledFlag,
+		utils.MetricsFlag,
 		utils.FakePoWFlag,
 		utils.SolcPathFlag,
 		utils.GpoMinGasPriceFlag,
@@ -215,8 +214,10 @@ participating.
 		if err := debug.Setup(ctx); err != nil {
 			return err
 		}
-		// Start system runtime metrics collection
-		go metrics.CollectProcessMetrics(3 * time.Second)
+
+		if s := ctx.String("metrics"); s != "" {
+			go metrics.Collect(s)
+		}
 
 		// This should be the only place where reporting is enabled
 		// because it is not intended to run while testing.

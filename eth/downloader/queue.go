@@ -33,8 +33,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/trie"
-	"github.com/rcrowley/go-metrics"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
@@ -773,7 +773,7 @@ func (q *queue) ExpireHeaders(timeout time.Duration) map[string]int {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	return q.expire(timeout, q.headerPendPool, q.headerTaskQueue, headerTimeoutMeter)
+	return q.expire(timeout, q.headerPendPool, q.headerTaskQueue, metrics.DLHeaderTimeouts.Mark)
 }
 
 // ExpireBodies checks for in flight block body requests that exceeded a timeout
@@ -782,7 +782,7 @@ func (q *queue) ExpireBodies(timeout time.Duration) map[string]int {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	return q.expire(timeout, q.blockPendPool, q.blockTaskQueue, bodyTimeoutMeter)
+	return q.expire(timeout, q.blockPendPool, q.blockTaskQueue, metrics.DLBodyTimeouts.Mark)
 }
 
 // ExpireReceipts checks for in flight receipt requests that exceeded a timeout
@@ -791,7 +791,7 @@ func (q *queue) ExpireReceipts(timeout time.Duration) map[string]int {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	return q.expire(timeout, q.receiptPendPool, q.receiptTaskQueue, receiptTimeoutMeter)
+	return q.expire(timeout, q.receiptPendPool, q.receiptTaskQueue, metrics.DLReceiptTimeouts.Mark)
 }
 
 // ExpireNodeData checks for in flight node data requests that exceeded a timeout
@@ -800,7 +800,7 @@ func (q *queue) ExpireNodeData(timeout time.Duration) map[string]int {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	return q.expire(timeout, q.statePendPool, q.stateTaskQueue, stateTimeoutMeter)
+	return q.expire(timeout, q.statePendPool, q.stateTaskQueue, metrics.DLStateTimeouts.Mark)
 }
 
 // expire is the generic check that move expired tasks from a pending pool back
@@ -809,13 +809,13 @@ func (q *queue) ExpireNodeData(timeout time.Duration) map[string]int {
 // Note, this method expects the queue lock to be already held. The
 // reason the lock is not obtained in here is because the parameters already need
 // to access the queue, so they already need a lock anyway.
-func (q *queue) expire(timeout time.Duration, pendPool map[string]*fetchRequest, taskQueue *prque.Prque, timeoutMeter metrics.Meter) map[string]int {
+func (q *queue) expire(timeout time.Duration, pendPool map[string]*fetchRequest, taskQueue *prque.Prque, timeoutMarker func(int64)) map[string]int {
 	// Iterate over the expired requests and return each to the queue
 	expiries := make(map[string]int)
 	for id, request := range pendPool {
 		if time.Since(request.Time) > timeout {
 			// Update the metrics with the timeout
-			timeoutMeter.Mark(1)
+			timeoutMarker(1)
 
 			// Return any non satisfied requests to the pool
 			if request.From > 0 {
@@ -858,7 +858,7 @@ func (q *queue) DeliverHeaders(id string, headers []*types.Header, headerProcCh 
 	if request == nil {
 		return 0, errNoFetchesPending
 	}
-	headerReqTimer.UpdateSince(request.Time)
+	metrics.DLHeaderTimer.UpdateSince(request.Time)
 	delete(q.headerPendPool, id)
 
 	// Ensure headers can be mapped onto the skeleton chain
@@ -945,7 +945,7 @@ func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, uncleLi
 		result.Uncles = uncleLists[index]
 		return nil
 	}
-	return q.deliver(id, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool, q.blockDonePool, bodyReqTimer, len(txLists), reconstruct)
+	return q.deliver(id, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool, q.blockDonePool, metrics.DLBodyTimer.UpdateSince, len(txLists), reconstruct)
 }
 
 // DeliverReceipts injects a receipt retrieval response into the results queue.
@@ -962,7 +962,7 @@ func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int,
 		result.Receipts = receiptList[index]
 		return nil
 	}
-	return q.deliver(id, q.receiptTaskPool, q.receiptTaskQueue, q.receiptPendPool, q.receiptDonePool, receiptReqTimer, len(receiptList), reconstruct)
+	return q.deliver(id, q.receiptTaskPool, q.receiptTaskQueue, q.receiptPendPool, q.receiptDonePool, metrics.DLReceiptTimer.UpdateSince, len(receiptList), reconstruct)
 }
 
 // deliver injects a data retrieval response into the results queue.
@@ -970,16 +970,14 @@ func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int,
 // Note, this method expects the queue lock to be already held for writing. The
 // reason the lock is not obtained in here is because the parameters already need
 // to access the queue, so they already need a lock anyway.
-func (q *queue) deliver(id string, taskPool map[common.Hash]*types.Header, taskQueue *prque.Prque,
-	pendPool map[string]*fetchRequest, donePool map[common.Hash]struct{}, reqTimer metrics.Timer,
-	results int, reconstruct func(header *types.Header, index int, result *fetchResult) error) (int, error) {
+func (q *queue) deliver(id string, taskPool map[common.Hash]*types.Header, taskQueue *prque.Prque, pendPool map[string]*fetchRequest, donePool map[common.Hash]struct{}, timeSince func(time.Time), results int, reconstruct func(header *types.Header, index int, result *fetchResult) error) (int, error) {
 
 	// Short circuit if the data was never requested
 	request := pendPool[id]
 	if request == nil {
 		return 0, errNoFetchesPending
 	}
-	reqTimer.UpdateSince(request.Time)
+	timeSince(request.Time)
 	delete(pendPool, id)
 
 	// If no data items were retrieved, mark them as unavailable for the origin peer
@@ -1051,7 +1049,7 @@ func (q *queue) DeliverNodeData(id string, data [][]byte, callback func(error, i
 	if request == nil {
 		return 0, errNoFetchesPending
 	}
-	stateReqTimer.UpdateSince(request.Time)
+	metrics.DLStateTimer.UpdateSince(request.Time)
 	delete(q.statePendPool, id)
 
 	// If no data was retrieved, mark their hashes as unavailable for the origin peer

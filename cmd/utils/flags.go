@@ -39,7 +39,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
@@ -225,9 +224,9 @@ var (
 	}
 
 	// logging and debug settings
-	MetricsEnabledFlag = cli.BoolFlag{
-		Name:  metrics.MetricsEnabledFlag,
-		Usage: "Enable metrics collection and reporting",
+	MetricsFlag = cli.StringFlag{
+		Name:  "metrics",
+		Usage: "Enables metrics reporting. When the value is a path, either relative or absolute, then a log is written to the respective file.",
 	}
 	FakePoWFlag = cli.BoolFlag{
 		Name:  "fakepow",

@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// Package metrics provides general system and process level metrics collection.
+// Package metrics centralizes the registration.
 package metrics
 
 import (
+	"encoding/json"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/logger"
@@ -28,49 +28,120 @@ import (
 	"github.com/rcrowley/go-metrics"
 )
 
-// MetricsEnabledFlag is the CLI flag name to use to enable metrics collections.
-var MetricsEnabledFlag = "metrics"
+// Reg is the metrics destination.
+var reg = metrics.NewRegistry()
 
-// Enabled is the flag specifying if metrics are enable or not.
-var Enabled = false
+var (
+	MsgTXNIn           = metrics.NewRegisteredMeter("msg/txn/in", reg)
+	MsgTXNInBytes      = metrics.NewRegisteredMeter("msg/txn/in/bytes", reg)
+	MsgTXNOut          = metrics.NewRegisteredMeter("msg/txn/out", reg)
+	MsgTXNOutBytes     = metrics.NewRegisteredMeter("msg/txn/out/bytes", reg)
+	MsgHashIn          = metrics.NewRegisteredMeter("msg/hash/in", reg)
+	MsgHashInBytes     = metrics.NewRegisteredMeter("msg/hash/out/bytes", reg)
+	MsgHashOut         = metrics.NewRegisteredMeter("msg/hash/in", reg)
+	MsgHashOutBytes    = metrics.NewRegisteredMeter("msg/hash/out/bytes", reg)
+	MsgBlockIn         = metrics.NewRegisteredMeter("msg/block/in", reg)
+	MsgBlockInBytes    = metrics.NewRegisteredMeter("msg/block/in/bytes", reg)
+	MsgBlockOut        = metrics.NewRegisteredMeter("msg/block/out", reg)
+	MsgBlockOutBytes   = metrics.NewRegisteredMeter("msg/block/out/bytes", reg)
+	MsgHeaderIn        = metrics.NewRegisteredMeter("msg/header/in", reg)
+	MsgHeaderInBytes   = metrics.NewRegisteredMeter("msg/header/in/bytes", reg)
+	MsgHeaderOut       = metrics.NewRegisteredMeter("msg/header/out", reg)
+	MsgHeaderOutBytes  = metrics.NewRegisteredMeter("msg/header/out/bytes", reg)
+	MsgBodyIn          = metrics.NewRegisteredMeter("msg/body/in", reg)
+	MsgBodyInBytes     = metrics.NewRegisteredMeter("msg/body/in/bytes", reg)
+	MsgBodyOut         = metrics.NewRegisteredMeter("msg/body/out", reg)
+	MsgBodyOutBytes    = metrics.NewRegisteredMeter("msg/body/out/bytes", reg)
+	MsgStateIn         = metrics.NewRegisteredMeter("msg/state/in", reg)
+	MsgStateInBytes    = metrics.NewRegisteredMeter("msg/state/in/bytes", reg)
+	MsgStateOut        = metrics.NewRegisteredMeter("msg/state/out", reg)
+	MsgStateOutBytes   = metrics.NewRegisteredMeter("msg/state/out/bytes", reg)
+	MsgReceiptIn       = metrics.NewRegisteredMeter("msg/receipt/in", reg)
+	MsgReceiptInBytes  = metrics.NewRegisteredMeter("msg/receipt/in/bytes", reg)
+	MsgReceiptOut      = metrics.NewRegisteredMeter("msg/receipt/out", reg)
+	MsgReceiptOutBytes = metrics.NewRegisteredMeter("msg/receipt/out/bytes", reg)
+	MsgMiscIn          = metrics.NewRegisteredMeter("msg/misc/in", reg)
+	MsgMiscInBytes     = metrics.NewRegisteredMeter("msg/misc/in/bytes", reg)
+	MsgMiscOut         = metrics.NewRegisteredMeter("msg/misc/out", reg)
+	MsgMiscOutBytes    = metrics.NewRegisteredMeter("msg/misc/out/bytes", reg)
+)
 
-// Init enables or disables the metrics system. Since we need this to run before
-// any other code gets to create meters and timers, we'll actually do an ugly hack
-// and peek into the command line args for the metrics flag.
-func init() {
-	for _, arg := range os.Args {
-		if strings.TrimLeft(arg, "-") == MetricsEnabledFlag {
-			glog.V(logger.Info).Infof("Enabling metrics collection")
-			Enabled = true
+var (
+	DLHeaders        = metrics.NewRegisteredMeter("download/header", reg)
+	DLHeaderTimer    = metrics.NewRegisteredTimer("download/header", reg)
+	DLHeaderDrops    = metrics.NewRegisteredMeter("download/header/drop", reg)
+	DLHeaderTimeouts = metrics.NewRegisteredMeter("download/header/timeout", reg)
+
+	DLBodies       = metrics.NewRegisteredMeter("download/body", reg)
+	DLBodyTimer    = metrics.NewRegisteredTimer("download/body", reg)
+	DLBodyDrops    = metrics.NewRegisteredMeter("download/body/drop", reg)
+	DLBodyTimeouts = metrics.NewRegisteredMeter("download/body/timeout", reg)
+
+	DLReceipts        = metrics.NewRegisteredMeter("download/receipt", reg)
+	DLReceiptTimer    = metrics.NewRegisteredTimer("download/receipt", reg)
+	DLReceiptDrops    = metrics.NewRegisteredMeter("download/receipt/drop", reg)
+	DLReceiptTimeouts = metrics.NewRegisteredMeter("download/receipt/timeout", reg)
+
+	DLStates        = metrics.NewRegisteredMeter("download/state", reg)
+	DLStateTimer    = metrics.NewRegisteredTimer("download/state", reg)
+	DLStateDrops    = metrics.NewRegisteredMeter("download/state/drop", reg)
+	DLStateTimeouts = metrics.NewRegisteredMeter("download/state/timeout", reg)
+)
+
+var (
+	FetchBlocks  = metrics.NewRegisteredMeter("fetch/block", reg)
+	FetchHeaders = metrics.NewRegisteredMeter("fetch/header", reg)
+	FetchBodies  = metrics.NewRegisteredMeter("fetch/body", reg)
+
+	FetchFilterBlockIns   = metrics.NewRegisteredMeter("fetch/filter/block/in", reg)
+	FetchFilterBlockOuts  = metrics.NewRegisteredMeter("fetch/filter/block/out", reg)
+	FetchFilterHeaderIns  = metrics.NewRegisteredMeter("fetch/filter/header/in", reg)
+	FetchFilterHeaderOuts = metrics.NewRegisteredMeter("fetch/filter/header/out", reg)
+	FetchFilterBodyIns    = metrics.NewRegisteredMeter("fetch/filter/body/in", reg)
+	FetchFilterBodyOuts   = metrics.NewRegisteredMeter("fetch/filter/body/out", reg)
+
+	FetchAnnounces     = metrics.NewRegisteredMeter("fetch/announce", reg)
+	FetchAnnounceTimer = metrics.NewRegisteredTimer("fetch/announce", reg)
+	FetchAnnounceDrops = metrics.NewRegisteredMeter("fetch/announce/drop", reg)
+	FetchAnnounceDOS   = metrics.NewRegisteredMeter("fetch/announce/dos", reg)
+
+	FetchBroadcasts     = metrics.NewRegisteredMeter("fetch/broadcast", reg)
+	FetchBroadcastTimer = metrics.NewRegisteredTimer("fetch/broadcast", reg)
+	FetchBroadcastDrops = metrics.NewRegisteredMeter("fetch/broadcast/drop", reg)
+	FetchBroadcastDOS   = metrics.NewRegisteredMeter("fetch/broadcast/dos", reg)
+)
+
+var (
+	P2PIn       = metrics.NewRegisteredMeter("p2p/in", reg)
+	P2PInBytes  = metrics.NewRegisteredMeter("p2p/in/bytes", reg)
+	P2POut      = metrics.NewRegisteredMeter("p2p/out", reg)
+	P2POutBytes = metrics.NewRegisteredMeter("p2p/out/bytes", reg)
+)
+
+// Collect writes metrics to the given destination.
+func Collect(dest string) {
+	const interval = 3 * time.Second
+
+	go collectProcessMetrics(interval)
+
+	f, err := os.OpenFile(dest, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	defer f.Close()
+
+	encoder := json.NewEncoder(f)
+	ticks := time.Tick(interval)
+	for _ = range ticks {
+		if err := encoder.Encode(reg); err != nil {
+			glog.Errorf("metrics: log to %q: %s", dest, err)
 		}
 	}
 }
 
-// NewMeter create a new metrics Meter, either a real one of a NOP stub depending
-// on the metrics flag.
-func NewMeter(name string) metrics.Meter {
-	if !Enabled {
-		return new(metrics.NilMeter)
-	}
-	return metrics.GetOrRegisterMeter(name, metrics.DefaultRegistry)
-}
-
-// NewTimer create a new metrics Timer, either a real one of a NOP stub depending
-// on the metrics flag.
-func NewTimer(name string) metrics.Timer {
-	if !Enabled {
-		return new(metrics.NilTimer)
-	}
-	return metrics.GetOrRegisterTimer(name, metrics.DefaultRegistry)
-}
-
-// CollectProcessMetrics periodically collects various metrics about the running
+// collectProcessMetrics periodically collects various metrics about the running
 // process.
-func CollectProcessMetrics(refresh time.Duration) {
-	// Short circuit if the metrics system is disabled
-	if !Enabled {
-		return
-	}
+func collectProcessMetrics(refresh time.Duration) {
 	// Create the various data collectors
 	memstats := make([]*runtime.MemStats, 2)
 	diskstats := make([]*DiskStats, 2)
@@ -79,17 +150,17 @@ func CollectProcessMetrics(refresh time.Duration) {
 		diskstats[i] = new(DiskStats)
 	}
 	// Define the various metrics to collect
-	memAllocs := metrics.GetOrRegisterMeter("system/memory/allocs", metrics.DefaultRegistry)
-	memFrees := metrics.GetOrRegisterMeter("system/memory/frees", metrics.DefaultRegistry)
-	memInuse := metrics.GetOrRegisterMeter("system/memory/inuse", metrics.DefaultRegistry)
-	memPauses := metrics.GetOrRegisterMeter("system/memory/pauses", metrics.DefaultRegistry)
+	memAllocs := metrics.GetOrRegisterMeter("system/memory/allocs", reg)
+	memFrees := metrics.GetOrRegisterMeter("system/memory/frees", reg)
+	memInuse := metrics.GetOrRegisterMeter("system/memory/inuse", reg)
+	memPauses := metrics.GetOrRegisterMeter("system/memory/pauses", reg)
 
 	var diskReads, diskReadBytes, diskWrites, diskWriteBytes metrics.Meter
 	if err := ReadDiskStats(diskstats[0]); err == nil {
-		diskReads = metrics.GetOrRegisterMeter("system/disk/readcount", metrics.DefaultRegistry)
-		diskReadBytes = metrics.GetOrRegisterMeter("system/disk/readdata", metrics.DefaultRegistry)
-		diskWrites = metrics.GetOrRegisterMeter("system/disk/writecount", metrics.DefaultRegistry)
-		diskWriteBytes = metrics.GetOrRegisterMeter("system/disk/writedata", metrics.DefaultRegistry)
+		diskReads = metrics.GetOrRegisterMeter("system/disk/readcount", reg)
+		diskReadBytes = metrics.GetOrRegisterMeter("system/disk/readdata", reg)
+		diskWrites = metrics.GetOrRegisterMeter("system/disk/writecount", reg)
+		diskWriteBytes = metrics.GetOrRegisterMeter("system/disk/writedata", reg)
 	} else {
 		glog.V(logger.Debug).Infof("failed to read disk metrics: %v", err)
 	}

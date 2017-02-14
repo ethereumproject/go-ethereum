@@ -112,10 +112,6 @@
 			"Rev": "ad1edfd30321d8f006ccf05f1e0524adeb943060"
 		},
 		{
-			"ImportPath": "github.com/rcrowley/go-metrics",
-			"Rev": "51425a2415d21afadfd55cd93432c0bc69e9598d"
-		},
-		{
 			"ImportPath": "github.com/rjeczalik/notify",
 			"Rev": "f627deca7a510d96f0ef9388f2d0e8b16d21f87f"
 		},

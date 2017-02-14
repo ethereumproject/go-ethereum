@@ -152,9 +152,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if err != nil {
 		return nil, err
 	}
-	if db, ok := chainDb.(*ethdb.LDBDatabase); ok {
-		db.Meter("eth/db/chaindata/")
-	}
 	if err := upgradeChainDatabase(chainDb); err != nil {
 		return nil, err
 	}
@@ -165,9 +162,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	dappDb, err := ctx.OpenDatabase("dapp", config.DatabaseCache, config.DatabaseHandles)
 	if err != nil {
 		return nil, err
-	}
-	if db, ok := dappDb.(*ethdb.LDBDatabase); ok {
-		db.Meter("eth/db/dapp/")
 	}
 	glog.V(logger.Info).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", ProtocolVersions, config.NetworkId, config.ChainConfig.ChainId)
 
