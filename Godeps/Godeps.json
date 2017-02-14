@@ -29,10 +29,6 @@
 			"Rev": "9aae6aaa22315390f03959adca2c4d395b02fcef"
 		},
 		{
-			"ImportPath": "github.com/gizak/termui",
-			"Rev": "08a5d3f67b7d9ec87830ea39c48e570a1f18531f"
-		},
-		{
 			"ImportPath": "github.com/golang/snappy",
 			"Rev": "799c780093d646c1b79d30894e22512c319fa137"
 		},
@@ -89,18 +85,9 @@
 			"Rev": "56b76bdf51f7708750eac80fa38b952bb9f32639"
 		},
 		{
-			"ImportPath": "github.com/mattn/go-runewidth",
-			"Comment": "travisish-44-ge882a96",
-			"Rev": "e882a96ec18dd43fa283187b66af74497c9101c0"
-		},
-		{
 			"ImportPath": "github.com/microsoft/go-winio",
 			"Comment": "v0.2.0",
 			"Rev": "9e2895e5f6c3f16473b91d37fae6e89990a4520c"
-		},
-		{
-			"ImportPath": "github.com/nsf/termbox-go",
-			"Rev": "362329b0aa6447eadd52edd8d660ec1dff470295"
 		},
 		{
 			"ImportPath": "github.com/pborman/uuid",
