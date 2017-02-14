@@ -25,8 +25,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
-const maxRun = 1000
-
 func TestSegmenting(t *testing.T) {
 	prog := NewProgram([]byte{byte(PUSH1), 0x1, byte(PUSH1), 0x1, 0x0})
 	err := CompileProgram(prog)

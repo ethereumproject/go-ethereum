@@ -130,16 +130,6 @@ func (s *Server) RegisterName(name string, rcvr interface{}) error {
 	return nil
 }
 
-// hasOption returns true if option is included in options, otherwise false
-func hasOption(option CodecOption, options []CodecOption) bool {
-	for _, o := range options {
-		if option == o {
-			return true
-		}
-	}
-	return false
-}
-
 // serveRequest will reads requests from the codec, calls the RPC callback and
 // writes the response to the given codec.
 //

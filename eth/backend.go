@@ -24,7 +24,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -57,11 +56,6 @@ const (
 
 	autoDAGcheckInterval = 10 * time.Hour
 	autoDAGepochHeight   = epochLength / 2
-)
-
-var (
-	datadirInUseErrnos = map[uint]bool{11: true, 32: true, 35: true}
-	portInUseErrRE     = regexp.MustCompile("address already in use")
 )
 
 type Config struct {

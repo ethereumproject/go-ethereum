@@ -26,7 +26,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/hashicorp/golang-lru"
 )
 
@@ -353,26 +352,4 @@ func validDest(dests map[uint64]struct{}, dest *big.Int) bool {
 	}
 	_, ok := dests[dest.Uint64()]
 	return ok
-}
-
-// jitBaseCheck is the same as baseCheck except it doesn't do the look up in the
-// gas table. This is done during compilation instead.
-func jitBaseCheck(instr instruction, stack *stack, gas *big.Int) error {
-	err := stack.require(instr.spop)
-	if err != nil {
-		return err
-	}
-
-	if instr.spush > 0 && stack.len()-instr.spop+instr.spush > int(params.StackLimit.Int64()) {
-		return fmt.Errorf("stack limit reached %d (%d)", stack.len(), params.StackLimit.Int64())
-	}
-
-	// nil on gas means no base calculation
-	if instr.gas == nil {
-		return nil
-	}
-
-	gas.Add(gas, instr.gas)
-
-	return nil
 }

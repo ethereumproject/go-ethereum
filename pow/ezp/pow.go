@@ -24,11 +24,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
-	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/pow"
 )
-
-var powlogger = logger.NewLogger("POW")
 
 type EasyPow struct {
 	hash     *big.Int

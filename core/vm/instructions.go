@@ -117,10 +117,6 @@ func (instr instruction) Op() OpCode {
 	return instr.op
 }
 
-func opStaticJump(instr instruction, pc *uint64, ret *big.Int, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	ret.Set(instr.data)
-}
-
 func opAdd(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := stack.pop(), stack.pop()
 	stack.push(U256(x.Add(x, y)))
