@@ -91,10 +91,6 @@
 			"Rev": "0f1a46960a86dcdf5dd30d3e6568a497a997909f"
 		},
 		{
-			"ImportPath": "github.com/peterh/liner",
-			"Rev": "ad1edfd30321d8f006ccf05f1e0524adeb943060"
-		},
-		{
 			"ImportPath": "github.com/rjeczalik/notify",
 			"Rev": "f627deca7a510d96f0ef9388f2d0e8b16d21f87f"
 		},
