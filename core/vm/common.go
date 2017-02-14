@@ -17,7 +17,6 @@
 package vm
 
 import (
-	"math"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -41,8 +40,6 @@ var (
 
 	Zero = common.Big0 // Shortcut to common.Big0
 	One  = common.Big1 // Shortcut to common.Big1
-
-	max = big.NewInt(math.MaxInt64) // Maximum 64 bit integer
 )
 
 // calculates the memory size required for a step
@@ -83,17 +80,6 @@ func quadMemGas(mem *Memory, newMemSize, gas *big.Int) {
 // Simple helper
 func u256(n int64) *big.Int {
 	return big.NewInt(n)
-}
-
-// Mainly used for print variables and passing to Print*
-func toValue(val *big.Int) interface{} {
-	// Let's assume a string on right padded zero's
-	b := val.Bytes()
-	if b[0] != 0 && b[len(b)-1] == 0x0 && b[len(b)-2] == 0x0 {
-		return string(b)
-	}
-
-	return val
 }
 
 // getData returns a slice from the data based on the start and size and pads

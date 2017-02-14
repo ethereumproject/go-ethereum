@@ -30,9 +30,7 @@ import (
 const (
 	gpoProcessPastBlocks = 100
 
-	// for testing
-	gpoDefaultBaseCorrectionFactor = 110
-	gpoDefaultMinGasPrice          = 10000000000000
+	gpoDefaultMinGasPrice = 10000000000000
 )
 
 type blockPriceInfo struct {

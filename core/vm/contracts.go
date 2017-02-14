@@ -80,8 +80,6 @@ func ripemd160Func(in []byte) []byte {
 	return common.LeftPadBytes(crypto.Ripemd160(in), 32)
 }
 
-const ecRecoverInputLength = 128
-
 func ecrecoverFunc(in []byte) []byte {
 	in = common.RightPadBytes(in, 128)
 	// "in" is (hash, v, r, s), each 32 bytes

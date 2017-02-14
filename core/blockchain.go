@@ -43,12 +43,7 @@ import (
 	"github.com/hashicorp/golang-lru"
 )
 
-var (
-	chainlogger = logger.NewLogger("CHAIN")
-	jsonlogger  = logger.NewJsonLogger()
-
-	ErrNoGenesis = errors.New("Genesis not found in chain")
-)
+var ErrNoGenesis = errors.New("Genesis not found in chain")
 
 const (
 	headerCacheLimit    = 512
