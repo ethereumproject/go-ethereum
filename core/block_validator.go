@@ -434,8 +434,8 @@ func calcDifficultyFrontier(time, parentTime uint64, parentNumber, parentDiff *b
 	if diff.Cmp(params.MinimumDifficulty) < 0 {
 		diff.Set(params.MinimumDifficulty)
 	}
-
-	periodCount := new(big.Int).Add(parentNumber, common.Big1)
+// remove exponential bomb
+	periodCount := new(big.Int).Add(/*parentNumber*/ 0, common.Big1)
 	periodCount.Div(periodCount, ExpDiffPeriod)
 	if periodCount.Cmp(common.Big1) > 0 {
 		// diff = diff + 2^(periodCount - 2)
