@@ -84,7 +84,7 @@ func init() {
 	copy(relConfig.Commit[:], commit)
 
 	// Initialize the CLI app and start Geth
-	app = utils.NewApp(verString, "the go-ethereum command line interface")
+	app = utils.NewApp(verString, "the go-ethereum classic command line interface")
 	app.Action = geth
 	app.HideVersion = true // we have a command to print the version
 	app.Commands = []cli.Command{
@@ -385,7 +385,7 @@ func gpubench(ctx *cli.Context) error {
 }
 
 func version(c *cli.Context) error {
-	fmt.Println(clientIdentifier)
+	fmt.Println(clientIdentifier, "Classic")
 	fmt.Println("Version:", verString)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", c.GlobalInt(utils.NetworkIdFlag.Name))
