@@ -16,4 +16,4 @@ install:
 script:
   - godep go test ./...
   - godep go build -o cmd/geth/geth ./cmd/geth
-  - bats cmd/geth
+  - cd cmd/geth && bats .
