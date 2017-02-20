@@ -70,8 +70,8 @@ type subscriptionRegistry map[string]*callback // collection of subscription cal
 
 // Server represents a RPC server
 type Server struct {
-	services       serviceRegistry
-	subscriptions  subscriptionRegistry
+	services      serviceRegistry
+	subscriptions subscriptionRegistry
 
 	run      int32
 	codecsMu sync.Mutex

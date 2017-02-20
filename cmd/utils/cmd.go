@@ -22,10 +22,8 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"regexp"
 	"runtime"
 
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/internal/debug"
@@ -80,19 +78,6 @@ func StartNode(stack *node.Node) {
 		debug.Exit() // ensure trace and CPU profile data is flushed.
 		debug.LoudPanic("boom")
 	}()
-}
-
-func FormatTransactionData(data string) []byte {
-	d := common.StringToByteFunc(data, func(s string) (ret []byte) {
-		slice := regexp.MustCompile("\\n|\\s").Split(s, 1000000000)
-		for _, dataItem := range slice {
-			d := common.FormatData(dataItem)
-			ret = append(ret, d...)
-		}
-		return
-	})
-
-	return d
 }
 
 func ImportChain(chain *core.BlockChain, fn string) error {

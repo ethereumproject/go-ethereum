@@ -17,9 +17,12 @@
 package accounts
 
 import (
+	"bytes"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -28,6 +31,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/crypto/secp256k1"
 )
 
 func tmpKeyStore(t *testing.T, encrypted bool) (dir string, ks keyStore) {
@@ -234,8 +238,29 @@ func loadKeyStoreTestV1(file string, t *testing.T) map[string]KeyStoreTestV1 {
 
 func TestKeyForDirectICAP(t *testing.T) {
 	t.Parallel()
-	key := NewKeyForDirectICAP(rand.Reader)
+	key := newKeyForDirectICAP(rand.Reader)
 	if !strings.HasPrefix(key.Address.Hex(), "0x00") {
 		t.Errorf("Expected first address byte to be zero, have: %s", key.Address.Hex())
 	}
+}
+
+// newKeyForDirectICAP generates a key whose address fits into < 155 bits so it can fit
+// into the Direct ICAP spec. for simplicity and easier compatibility with other libs, we
+// retry until the first byte is 0.
+func newKeyForDirectICAP(rand io.Reader) *Key {
+	randBytes := make([]byte, 64)
+	_, err := rand.Read(randBytes)
+	if err != nil {
+		panic("key generation: could not read from random source: " + err.Error())
+	}
+	reader := bytes.NewReader(randBytes)
+	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), reader)
+	if err != nil {
+		panic("key generation: ecdsa.GenerateKey failed: " + err.Error())
+	}
+	key := newKeyFromECDSA(privateKeyECDSA)
+	if !strings.HasPrefix(key.Address.Hex(), "0x00") {
+		return newKeyForDirectICAP(rand)
+	}
+	return key
 }

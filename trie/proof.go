@@ -18,11 +18,8 @@ package trie
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
@@ -85,46 +82,6 @@ func (t *Trie) Prove(key []byte) []rlp.RawValue {
 		}
 	}
 	return proof
-}
-
-// VerifyProof checks merkle proofs. The given proof must contain the
-// value for key in a trie with the given root hash. VerifyProof
-// returns an error if the proof contains invalid trie nodes or the
-// wrong value.
-func VerifyProof(rootHash common.Hash, key []byte, proof []rlp.RawValue) (value []byte, err error) {
-	key = compactHexDecode(key)
-	sha := sha3.NewKeccak256()
-	wantHash := rootHash.Bytes()
-	for i, buf := range proof {
-		sha.Reset()
-		sha.Write(buf)
-		if !bytes.Equal(sha.Sum(nil), wantHash) {
-			return nil, fmt.Errorf("bad proof node %d: hash mismatch", i)
-		}
-		n, err := decodeNode(wantHash, buf)
-		if err != nil {
-			return nil, fmt.Errorf("bad proof node %d: %v", i, err)
-		}
-		keyrest, cld := get(n, key)
-		switch cld := cld.(type) {
-		case nil:
-			if i != len(proof)-1 {
-				return nil, fmt.Errorf("key mismatch at proof node %d", i)
-			} else {
-				// The trie doesn't contain the key.
-				return nil, nil
-			}
-		case hashNode:
-			key = keyrest
-			wantHash = cld
-		case valueNode:
-			if i != len(proof)-1 {
-				return nil, errors.New("additional nodes at end of proof")
-			}
-			return cld, nil
-		}
-	}
-	return nil, errors.New("unexpected end of proof")
 }
 
 func get(tn node, key []byte) ([]byte, node) {

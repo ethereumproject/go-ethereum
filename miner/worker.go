@@ -115,7 +115,7 @@ type worker struct {
 	uncleMu        sync.Mutex
 	possibleUncles map[common.Hash]*types.Block
 
-	txQueue   map[common.Hash]*types.Transaction
+	txQueue map[common.Hash]*types.Transaction
 
 	// atomic status counters
 	mining int32

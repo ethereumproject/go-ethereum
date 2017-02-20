@@ -48,7 +48,7 @@ func TestManager(t *testing.T) {
 		t.Fatalf("account file has wrong mode: got %o, want %o", stat.Mode(), 0600)
 	}
 	if !am.HasAddress(a.Address) {
-		t.Errorf("HasAccount(%x) should've returned true", a.Address)
+		t.Errorf("HasAddres(%x) should've returned true", a.Address)
 	}
 	if err := am.Update(a, "foo", "bar"); err != nil {
 		t.Errorf("Update error: %v", err)
@@ -60,7 +60,7 @@ func TestManager(t *testing.T) {
 		t.Errorf("account file %s should be gone after DeleteAccount", a.File)
 	}
 	if am.HasAddress(a.Address) {
-		t.Errorf("HasAccount(%x) should've returned true after DeleteAccount", a.Address)
+		t.Errorf("HasAddress(%x) should've returned true after DeleteAccount", a.Address)
 	}
 }
 

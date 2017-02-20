@@ -22,7 +22,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 // MakeName creates a node name that follows the ethereum convention
@@ -30,21 +29,6 @@ import (
 // the name.
 func MakeName(name, version string) string {
 	return fmt.Sprintf("%s/v%s/%s/%s", name, version, runtime.GOOS, runtime.Version())
-}
-
-func ExpandHomePath(p string) (path string) {
-	path = p
-	sep := string(os.PathSeparator)
-
-	// Check in case of paths like "/something/~/something/"
-	if len(p) > 1 && p[:1+len(sep)] == "~"+sep {
-		usr, _ := user.Current()
-		dir := usr.HomeDir
-
-		path = strings.Replace(p, "~", dir, 1)
-	}
-
-	return
 }
 
 func FileExist(filePath string) bool {

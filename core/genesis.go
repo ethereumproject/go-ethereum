@@ -174,12 +174,6 @@ func WriteTestNetGenesisBlock(chainDb ethdb.Database) (*types.Block, error) {
 	return WriteGenesisBlock(chainDb, strings.NewReader(TestNetGenesisBlock()))
 }
 
-// WriteOlympicGenesisBlock assembles the Olympic genesis block and writes it
-// along with all associated state into a chain database.
-func WriteOlympicGenesisBlock(db ethdb.Database) (*types.Block, error) {
-	return WriteGenesisBlock(db, strings.NewReader(OlympicGenesisBlock()))
-}
-
 // DefaultGenesisBlock assembles a JSON string representing the default Ethereum
 // genesis block.
 func DefaultGenesisBlock() string {

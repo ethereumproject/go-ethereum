@@ -45,22 +45,6 @@ func NewTopics(data ...[]byte) []Topic {
 	return topics
 }
 
-// NewTopicFromString creates a topic using the binary data contents of the
-// specified string.
-func NewTopicFromString(data string) Topic {
-	return NewTopic([]byte(data))
-}
-
-// NewTopicsFromStrings creates a list of topics from a list of textual data
-// elements, by iteratively calling NewTopicFromString on each of them.
-func NewTopicsFromStrings(data ...string) []Topic {
-	topics := make([]Topic, len(data))
-	for i, element := range data {
-		topics[i] = NewTopicFromString(element)
-	}
-	return topics
-}
-
 // String converts a topic byte array to a string representation.
 func (self *Topic) String() string {
 	return string(self[:])
@@ -101,25 +85,6 @@ func newTopicMatcher(topics ...[]Topic) *topicMatcher {
 		}
 	}
 	return &topicMatcher{conditions: matcher}
-}
-
-// newTopicMatcherFromBinary create a topic matcher from a list of binary conditions.
-func newTopicMatcherFromBinary(data ...[][]byte) *topicMatcher {
-	topics := make([][]Topic, len(data))
-	for i, condition := range data {
-		topics[i] = NewTopics(condition...)
-	}
-	return newTopicMatcher(topics...)
-}
-
-// newTopicMatcherFromStrings creates a topic matcher from a list of textual
-// conditions.
-func newTopicMatcherFromStrings(data ...[]string) *topicMatcher {
-	topics := make([][]Topic, len(data))
-	for i, condition := range data {
-		topics[i] = NewTopicsFromStrings(condition...)
-	}
-	return newTopicMatcher(topics...)
 }
 
 // Matches checks if a list of topics matches this particular condition set.

@@ -106,13 +106,6 @@ func (ms *ManagedState) SetNonce(addr common.Address, nonce uint64) {
 	ms.accounts[addr] = newAccount(so)
 }
 
-// HasAccount returns whether the given address is managed or not
-func (ms *ManagedState) HasAccount(addr common.Address) bool {
-	ms.mu.RLock()
-	defer ms.mu.RUnlock()
-	return ms.hasAccount(addr)
-}
-
 func (ms *ManagedState) hasAccount(addr common.Address) bool {
 	_, ok := ms.accounts[addr]
 	return ok
