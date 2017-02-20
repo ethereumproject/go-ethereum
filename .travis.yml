@@ -2,11 +2,18 @@ language: go
 go_import_path: github.com/ethereumproject/go-ethereum
 
 go:
-  - 1.6
   - 1.7
+  - 1.8
+
+before_install:
+  - sudo add-apt-repository ppa:duggan/bats --yes
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq bats
 
 install:
   - go get github.com/tools/godep
 
 script:
   - godep go test ./...
+  - godep go build -o cmd/geth/geth ./cmd/geth
+  - bats cmd/geth
