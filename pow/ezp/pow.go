@@ -28,7 +28,6 @@ import (
 )
 
 type EasyPow struct {
-	hash     *big.Int
 	HashRate int64
 	turbo    bool
 }

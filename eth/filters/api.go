@@ -589,7 +589,6 @@ type logQueue struct {
 
 	logs    []vmlog
 	timeout time.Time
-	id      int
 }
 
 func (l *logQueue) add(logs ...vmlog) {
@@ -614,7 +613,6 @@ type hashQueue struct {
 
 	hashes  []common.Hash
 	timeout time.Time
-	id      int
 }
 
 func (l *hashQueue) add(hashes ...common.Hash) {

@@ -44,8 +44,6 @@ import (
 )
 
 const (
-	keyHeaderKDF = "scrypt"
-
 	// n,r,p = 2^18, 8, 1 uses 256MB memory and approx 1s CPU time on a modern CPU.
 	StandardScryptN = 1 << 18
 	StandardScryptP = 1

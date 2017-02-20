@@ -92,26 +92,6 @@ func AddressToIndirectICAP(a Address, instCode string) (string, error) {
 	return "", errors.New("not implemented")
 }
 
-func addressToIndirectICAP(a Address, instCode string) (string, error) {
-	// TODO: add addressToClientIdent which grabs client ident from ICAP namereg
-	//clientIdent := addressToClientIdent(a)
-	clientIdent := "todo"
-	return clientIdentToIndirectICAP(instCode, clientIdent)
-}
-
-func clientIdentToIndirectICAP(instCode, clientIdent string) (string, error) {
-	if len(instCode) != 4 || !validBase36(instCode) {
-		return "", ICAPInstCodeError
-	}
-	if len(clientIdent) != 9 || !validBase36(instCode) {
-		return "", ICAPClientIdentError
-	}
-
-	// currently ETH is only valid asset identifier
-	s := join("ETH", instCode, clientIdent)
-	return join("XE", checkDigits(s), s), nil
-}
-
 // https://en.wikipedia.org/wiki/International_Bank_Account_Number#Validating_the_IBAN
 func validCheckSum(s string) error {
 	s = join(s[4:], s[:4])
