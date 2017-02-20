@@ -8,7 +8,7 @@ teardown() {
 	rm -fr $DATA_DIR
 }
 
-@test "list blanko" {
+@test "account list blanko" {
 	run ./geth --datadir $DATA_DIR account
 	echo "$output"
 
@@ -16,7 +16,7 @@ teardown() {
 	[ "$output" = "" ]
 }
 
-@test "list testdata keystore" {
+@test "account list testdata keystore" {
 	cp -R ../../accounts/testdata/keystore $DATA_DIR
 
 	run ./geth --datadir $DATA_DIR account
@@ -28,7 +28,7 @@ teardown() {
 	[ "${lines[2]}" == "Account #2: {289d485d9771714cce91d3393d764e1311907acc} $DATA_DIR/keystore/zzz" ]
 }
 
-@test "create" {
+@test "account create" {
 	run ./geth --datadir $DATA_DIR --lightkdf account new <<< $'secret\nsecret\n'
 	echo "$output"
 
@@ -36,7 +36,7 @@ teardown() {
 	[[ "$output" =~ Address:.\{[0-9a-f]{40}\}$ ]]
 }
 
-@test "create pass mismatch" {
+@test "account create pass mismatch" {
 	run ./geth --datadir $DATA_DIR --lightkdf account new <<< $'secret\nother\n'
 	echo "$output"
 
@@ -44,7 +44,7 @@ teardown() {
 	[[ "$output" == *"Passphrases do not match" ]]
 }
 
-@test "update pass" {
+@test "account update pass" {
 	cp -R ../../accounts/testdata/keystore $DATA_DIR
 
 	run ./geth --datadir $DATA_DIR --lightkdf account update f466859ead1932d743d622cb74fc058882e8648a <<< $'foobar\nother\nother\n'
@@ -53,7 +53,7 @@ teardown() {
 	[ "$status" -eq 0 ]
 }
 
-@test "import" {
+@test "account import" {
 	run ./geth --datadir $DATA_DIR --lightkdf wallet import testdata/guswallet.json <<< $'foo\n'
 	echo "$output"
 
@@ -65,7 +65,7 @@ teardown() {
 	[ $(ls $DATA_DIR/keystore | wc -l) -eq 1 ]
 }
 
-@test "import pass mismatch" {
+@test "account import pass mismatch" {
 	run ./geth --datadir $DATA_DIR --lightkdf wallet import testdata/guswallet.json <<< $'wrong\n'
 	echo "$output"
 
@@ -73,7 +73,7 @@ teardown() {
 	[[ "$output" == *"could not decrypt key with given passphrase" ]]
 }
 
-@test "unlock" {
+@test "account unlock" {
 	cp -R ../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 
@@ -84,7 +84,7 @@ teardown() {
 	[[ "$output" == *"Unlocked account f466859ead1932d743d622cb74fc058882e8648a"* ]]
 }
 
-@test "unlock pass mismatch" {
+@test "account unlock pass mismatch" {
 	cp -R ../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 
@@ -95,7 +95,7 @@ teardown() {
 	[[ "$output" == *"Failed to unlock account f466859ead1932d743d622cb74fc058882e8648a (could not decrypt key with given passphrase)" ]]
 }
 
-@test "unlock multiple" {
+@test "account unlock multiple" {
 	cp -R ../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 
@@ -107,7 +107,7 @@ teardown() {
 	[[ "$output" == *"Unlocked account 289d485d9771714cce91d3393d764e1311907acc"* ]]
 }
 
-@test "unlock multiple with pass file" {
+@test "account unlock multiple with pass file" {
 	cp -R ../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 	echo $'foobar\nfoobar\nfoobar\n' > $DATA_DIR/pass.txt
@@ -120,7 +120,7 @@ teardown() {
 	[[ "$output" == *"Unlocked account 289d485d9771714cce91d3393d764e1311907acc"* ]]
 }
 
-@test "unlock multiple with wrong pass file" {
+@test "account unlock multiple with wrong pass file" {
 	cp -R ../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 	echo $'wrong\nwrong\nwrong\n' > $DATA_DIR/pass.txt
@@ -132,7 +132,7 @@ teardown() {
 	[[ "$output" == *"Failed to unlock account 0 (could not decrypt key with given passphrase)" ]]
 }
 
-@test "unlock ambiguous" {
+@test "account unlock ambiguous" {
 	cp -R ../../accounts/testdata/dupes $DATA_DIR/store
 	touch $DATA_DIR/empty.js
 
@@ -145,7 +145,7 @@ teardown() {
 	[[ "$output" == *"Unlocked account f466859ead1932d743d622cb74fc058882e8648a"* ]]
 }
 
-@test "unlock ambiguous pass mismatch" {
+@test "account unlock ambiguous pass mismatch" {
 	cp -R ../../accounts/testdata/dupes $DATA_DIR/store
 	touch $DATA_DIR/empty.js
 
