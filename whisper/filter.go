@@ -48,50 +48,6 @@ func NewFilterTopics(data ...[][]byte) [][]Topic {
 	return filter
 }
 
-// NewFilterTopicsFlat creates a 2D topic array used by whisper.Filter from flat
-// binary data elements.
-func NewFilterTopicsFlat(data ...[]byte) [][]Topic {
-	filter := make([][]Topic, len(data))
-	for i, element := range data {
-		// Only add non-wildcard topics
-		filter[i] = make([]Topic, 0, 1)
-		if len(element) > 0 {
-			filter[i] = append(filter[i], NewTopic(element))
-		}
-	}
-	return filter
-}
-
-// NewFilterTopicsFromStrings creates a 2D topic array used by whisper.Filter
-// from textual data elements.
-func NewFilterTopicsFromStrings(data ...[]string) [][]Topic {
-	filter := make([][]Topic, len(data))
-	for i, condition := range data {
-		// Handle the special case of condition == [""]
-		if len(condition) == 1 && condition[0] == "" {
-			filter[i] = []Topic{}
-			continue
-		}
-		// Otherwise flatten normally
-		filter[i] = NewTopicsFromStrings(condition...)
-	}
-	return filter
-}
-
-// NewFilterTopicsFromStringsFlat creates a 2D topic array used by whisper.Filter from flat
-// binary data elements.
-func NewFilterTopicsFromStringsFlat(data ...string) [][]Topic {
-	filter := make([][]Topic, len(data))
-	for i, element := range data {
-		// Only add non-wildcard topics
-		filter[i] = make([]Topic, 0, 1)
-		if element != "" {
-			filter[i] = append(filter[i], NewTopicFromString(element))
-		}
-	}
-	return filter
-}
-
 // filterer is the internal, fully initialized filter ready to match inbound
 // messages to a variety of criteria.
 type filterer struct {

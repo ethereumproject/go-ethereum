@@ -225,8 +225,6 @@ func toGoType(i int, t Argument, output []byte) (interface{}, error) {
 // assignment.
 var (
 	r_interSlice = reflect.TypeOf([]interface{}{})
-	r_hash       = reflect.TypeOf(common.Hash{})
-	r_bytes      = reflect.TypeOf([]byte{})
 	r_byte       = reflect.TypeOf(byte(0))
 )
 

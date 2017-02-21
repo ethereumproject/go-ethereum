@@ -80,8 +80,6 @@ type Program struct {
 	Id     common.Hash // Id of the program
 	status int32       // status should be accessed atomically
 
-	contract *Contract
-
 	instructions []programInstruction // instruction set
 	mapping      map[uint64]uint64    // real PC mapping to array indices
 	destinations map[uint64]struct{}  // cached jump destinations

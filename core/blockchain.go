@@ -83,7 +83,6 @@ type BlockChain struct {
 	chainmu sync.RWMutex // blockchain insertion lock
 	procmu  sync.RWMutex // block processor lock
 
-	checkpoint       int          // checkpoint counts towards the new checkpoint
 	currentBlock     *types.Block // Current head of the block chain
 	currentFastBlock *types.Block // Current head of the fast-sync chain (may be above the block chain!)
 
@@ -1158,26 +1157,6 @@ func (self *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) 
 	}
 
 	return self.hc.InsertHeaderChain(chain, checkFreq, whFunc)
-}
-
-// writeHeader writes a header into the local chain, given that its parent is
-// already known. If the total difficulty of the newly inserted header becomes
-// greater than the current known TD, the canonical chain is re-routed.
-//
-// Note: This method is not concurrent-safe with inserting blocks simultaneously
-// into the chain, as side effects caused by reorganisations cannot be emulated
-// without the real blocks. Hence, writing headers directly should only be done
-// in two scenarios: pure-header mode of operation (light clients), or properly
-// separated header/block phases (non-archive clients).
-func (self *BlockChain) writeHeader(header *types.Header) error {
-	self.wg.Add(1)
-	defer self.wg.Done()
-
-	self.mu.Lock()
-	defer self.mu.Unlock()
-
-	_, err := self.hc.WriteHeader(header)
-	return err
 }
 
 // CurrentHeader retrieves the current head header of the canonical chain. The

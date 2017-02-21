@@ -449,15 +449,6 @@ type headerValidator struct {
 	Pow    pow.PoW      // Proof of work used for validating
 }
 
-// NewBlockValidator returns a new block validator which is safe for re-use
-func NewHeaderValidator(config *ChainConfig, chain *HeaderChain, pow pow.PoW) HeaderValidator {
-	return &headerValidator{
-		config: config,
-		Pow:    pow,
-		hc:     chain,
-	}
-}
-
 // ValidateHeader validates the given header and, depending on the pow arg,
 // checks the proof of work of the given header. Returns an error if the
 // validation failed.

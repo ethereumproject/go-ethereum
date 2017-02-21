@@ -157,7 +157,6 @@ type udp struct {
 	gotreply   chan reply
 
 	closing chan struct{}
-	nat     nat.Interface
 
 	*Table
 }

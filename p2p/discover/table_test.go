@@ -490,41 +490,6 @@ func (*preminedTestnet) close()                                      {}
 func (*preminedTestnet) waitping(from NodeID) error                  { return nil }
 func (*preminedTestnet) ping(toid NodeID, toaddr *net.UDPAddr) error { return nil }
 
-// mine generates a testnet struct literal with nodes at
-// various distances to the given target.
-func (n *preminedTestnet) mine(target NodeID) {
-	n.target = target
-	n.targetSha = crypto.Keccak256Hash(n.target[:])
-	found := 0
-	for found < bucketSize*10 {
-		k := newkey()
-		id := PubkeyID(&k.PublicKey)
-		sha := crypto.Keccak256Hash(id[:])
-		ld := logdist(n.targetSha, sha)
-		if len(n.dists[ld]) < bucketSize {
-			n.dists[ld] = append(n.dists[ld], id)
-			fmt.Println("found ID with ld", ld)
-			found++
-		}
-	}
-	fmt.Println("&preminedTestnet{")
-	fmt.Printf("	target: %#v,\n", n.target)
-	fmt.Printf("	targetSha: %#v,\n", n.targetSha)
-	fmt.Printf("	dists: [%d][]NodeID{\n", len(n.dists))
-	for ld, ns := range n.dists {
-		if len(ns) == 0 {
-			continue
-		}
-		fmt.Printf("		%d: []NodeID{\n", ld)
-		for _, n := range ns {
-			fmt.Printf("			MustHexID(\"%x\"),\n", n[:])
-		}
-		fmt.Println("		},")
-	}
-	fmt.Println("	},")
-	fmt.Println("}")
-}
-
 func hasDuplicates(slice []*Node) bool {
 	seen := make(map[NodeID]bool)
 	for i, e := range slice {

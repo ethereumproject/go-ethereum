@@ -196,67 +196,6 @@ func (self *Registrar) SetUrlHint(urlhint string, addr common.Address) (txhash s
 	return
 }
 
-// ReserveName(from, name) reserves name for the sender address in the globalRegistrar
-// the tx needs to be mined to take effect
-func (self *Registrar) ReserveName(address common.Address, name string) (txh string, err error) {
-	if zero.MatchString(GlobalRegistrarAddr) {
-		return "", fmt.Errorf("GlobalRegistrar address is not set")
-	}
-	nameHex, extra := encodeName(name, 2)
-	abi := reserveAbi + nameHex + extra
-	glog.V(logger.Detail).Infof("Reserve data: %s", abi)
-	return self.backend.Transact(
-		address.Hex(),
-		GlobalRegistrarAddr,
-		"", "", "", "",
-		abi,
-	)
-}
-
-// SetAddressToName(from, name, addr) will set the Address to address for name
-// in the globalRegistrar using from as the sender of the transaction
-// the tx needs to be mined to take effect
-func (self *Registrar) SetAddressToName(from common.Address, name string, address common.Address) (txh string, err error) {
-	if zero.MatchString(GlobalRegistrarAddr) {
-		return "", fmt.Errorf("GlobalRegistrar address is not set")
-	}
-
-	nameHex, extra := encodeName(name, 6)
-	addrHex := encodeAddress(address)
-
-	abi := registerAbi + nameHex + addrHex + trueHex + extra
-	glog.V(logger.Detail).Infof("SetAddressToName data: %s to %s ", abi, GlobalRegistrarAddr)
-
-	return self.backend.Transact(
-		from.Hex(),
-		GlobalRegistrarAddr,
-		"", "", "", "",
-		abi,
-	)
-}
-
-// NameToAddr(from, name) queries the registrar for the address on name
-func (self *Registrar) NameToAddr(from common.Address, name string) (address common.Address, err error) {
-	if zero.MatchString(GlobalRegistrarAddr) {
-		return address, fmt.Errorf("GlobalRegistrar address is not set")
-	}
-
-	nameHex, extra := encodeName(name, 2)
-	abi := resolveAbi + nameHex + extra
-	glog.V(logger.Detail).Infof("NameToAddr data: %s", abi)
-	res, _, err := self.backend.Call(
-		from.Hex(),
-		GlobalRegistrarAddr,
-		"", "", "",
-		abi,
-	)
-	if err != nil {
-		return
-	}
-	address = common.HexToAddress(res)
-	return
-}
-
 // called as first step in the registration process on HashReg
 func (self *Registrar) SetOwner(address common.Address) (txh string, err error) {
 	if zero.MatchString(HashRegAddr) {
@@ -359,38 +298,6 @@ func (self *Registrar) HashToHash(khash common.Hash) (chash common.Hash, err err
 	return
 }
 
-// HashToUrl(contenthash) resolves the url for contenthash using UrlHint
-// resolution is costless non-transactional
-// implemented as direct retrieval from  db
-// if we use content addressed storage, this step is no longer necessary
-func (self *Registrar) HashToUrl(chash common.Hash) (uri string, err error) {
-	if zero.MatchString(UrlHintAddr) {
-		return "", fmt.Errorf("UrlHint address is not set")
-	}
-	// look up in URL reg
-	var str string = " "
-	var idx uint32
-	for len(str) > 0 {
-		mapaddr := storageMapping(storageIdx2Addr(1), chash[:])
-		key := storageAddress(storageFixedArray(mapaddr, storageIdx2Addr(idx)))
-		hex := self.backend.StorageAt(UrlHintAddr[2:], key)
-		str = string(common.Hex2Bytes(hex[2:]))
-		l := 0
-		for (l < len(str)) && (str[l] == 0) {
-			l++
-		}
-
-		str = str[l:]
-		uri = uri + str
-		idx++
-	}
-
-	if len(uri) == 0 {
-		err = fmt.Errorf("HashToUrl: URL hint not found for '%v'", chash.Hex())
-	}
-	return
-}
-
 func storageIdx2Addr(varidx uint32) []byte {
 	data := make([]byte, 32)
 	binary.BigEndian.PutUint32(data[28:32], varidx)
@@ -405,26 +312,8 @@ func storageMapping(addr, key []byte) []byte {
 	return sha
 }
 
-func storageFixedArray(addr, idx []byte) []byte {
-	var carry byte
-	for i := 31; i >= 0; i-- {
-		var b byte = addr[i] + idx[i] + carry
-		if b < addr[i] {
-			carry = 1
-		} else {
-			carry = 0
-		}
-		addr[i] = b
-	}
-	return addr
-}
-
 func storageAddress(addr []byte) string {
 	return common.ToHex(addr)
-}
-
-func encodeAddress(address common.Address) string {
-	return addressAbiPrefix + address.Hex()[2:]
 }
 
 func encodeName(name string, index uint8) (string, string) {

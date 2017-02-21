@@ -122,10 +122,6 @@ func withEnvHint(envVar, str string) string {
 	return str + envText
 }
 
-func (self DirectoryFlag) getName() string {
-	return self.Name
-}
-
 func (self *DirectoryFlag) Set(value string) {
 	self.Value.Value = value
 }

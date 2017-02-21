@@ -19,11 +19,14 @@ package trie
 import (
 	"bytes"
 	crand "crypto/rand"
+	"errors"
+	"fmt"
 	mrand "math/rand"
 	"testing"
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
@@ -39,7 +42,7 @@ func TestProof(t *testing.T) {
 		if proof == nil {
 			t.Fatalf("missing key %x while constructing proof", kv.k)
 		}
-		val, err := VerifyProof(root, kv.k, proof)
+		val, err := verifyProof(root, kv.k, proof)
 		if err != nil {
 			t.Fatalf("VerifyProof error for key %x: %v\nraw proof: %x", kv.k, err, proof)
 		}
@@ -59,7 +62,7 @@ func TestOneElementProof(t *testing.T) {
 	if len(proof) != 1 {
 		t.Error("proof should have one element")
 	}
-	val, err := VerifyProof(trie.Hash(), []byte("k"), proof)
+	val, err := verifyProof(trie.Hash(), []byte("k"), proof)
 	if err != nil {
 		t.Fatalf("VerifyProof error: %v\nraw proof: %x", err, proof)
 	}
@@ -77,7 +80,7 @@ func TestVerifyBadProof(t *testing.T) {
 			t.Fatal("nil proof")
 		}
 		mutateByte(proof[mrand.Intn(len(proof))])
-		if _, err := VerifyProof(root, kv.k, proof); err == nil {
+		if _, err := verifyProof(root, kv.k, proof); err == nil {
 			t.Fatalf("expected proof to fail for key %x", kv.k)
 		}
 	}
@@ -110,25 +113,6 @@ func BenchmarkProve(b *testing.B) {
 	}
 }
 
-func BenchmarkVerifyProof(b *testing.B) {
-	trie, vals := randomTrie(100)
-	root := trie.Hash()
-	var keys []string
-	var proofs [][]rlp.RawValue
-	for k := range vals {
-		keys = append(keys, k)
-		proofs = append(proofs, trie.Prove([]byte(k)))
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		im := i % len(keys)
-		if _, err := VerifyProof(root, []byte(keys[im]), proofs[im]); err != nil {
-			b.Fatalf("key %x: %v", keys[im], err)
-		}
-	}
-}
-
 func randomTrie(n int) (*Trie, map[string]*kv) {
 	trie := new(Trie)
 	vals := make(map[string]*kv)
@@ -152,4 +136,44 @@ func randBytes(n int) []byte {
 	r := make([]byte, n)
 	crand.Read(r)
 	return r
+}
+
+// VerifyProof checks merkle proofs. The given proof must contain the
+// value for key in a trie with the given root hash. VerifyProof
+// returns an error if the proof contains invalid trie nodes or the
+// wrong value.
+func verifyProof(rootHash common.Hash, key []byte, proof []rlp.RawValue) (value []byte, err error) {
+	key = compactHexDecode(key)
+	sha := sha3.NewKeccak256()
+	wantHash := rootHash.Bytes()
+	for i, buf := range proof {
+		sha.Reset()
+		sha.Write(buf)
+		if !bytes.Equal(sha.Sum(nil), wantHash) {
+			return nil, fmt.Errorf("bad proof node %d: hash mismatch", i)
+		}
+		n, err := decodeNode(wantHash, buf)
+		if err != nil {
+			return nil, fmt.Errorf("bad proof node %d: %v", i, err)
+		}
+		keyrest, cld := get(n, key)
+		switch cld := cld.(type) {
+		case nil:
+			if i != len(proof)-1 {
+				return nil, fmt.Errorf("key mismatch at proof node %d", i)
+			} else {
+				// The trie doesn't contain the key.
+				return nil, nil
+			}
+		case hashNode:
+			key = keyrest
+			wantHash = cld
+		case valueNode:
+			if i != len(proof)-1 {
+				return nil, errors.New("additional nodes at end of proof")
+			}
+			return cld, nil
+		}
+	}
+	return nil, errors.New("unexpected end of proof")
 }

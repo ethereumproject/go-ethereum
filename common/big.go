@@ -126,13 +126,6 @@ func BigToBytes(num *big.Int, base int) []byte {
 	return append(ret[:len(ret)-len(num.Bytes())], num.Bytes()...)
 }
 
-// Big copy
-//
-// Creates a copy of the given big integer
-func BigCopy(src *big.Int) *big.Int {
-	return new(big.Int).Set(src)
-}
-
 // Big max
 //
 // Returns the maximum size big integer

@@ -17,7 +17,6 @@
 package common
 
 import (
-	"bytes"
 	"testing"
 )
 
@@ -67,23 +66,5 @@ func TestBigMin(t *testing.T) {
 	min2 := BigMin(b, a)
 	if min2 != b {
 		t.Errorf("Expected %d got %d", b, min2)
-	}
-}
-
-func TestBigCopy(t *testing.T) {
-	a := Big("10")
-	b := BigCopy(a)
-	c := Big("1000000000000")
-	y := BigToBytes(b, 16)
-	ybytes := []byte{0, 10}
-	z := BigToBytes(c, 16)
-	zbytes := []byte{232, 212, 165, 16, 0}
-
-	if bytes.Compare(y, ybytes) != 0 {
-		t.Error("Got", ybytes)
-	}
-
-	if bytes.Compare(z, zbytes) != 0 {
-		t.Error("Got", zbytes)
 	}
 }

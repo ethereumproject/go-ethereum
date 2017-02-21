@@ -120,39 +120,16 @@ func TestHashToHash(t *testing.T) {
 	}
 }
 
-func TestHashToUrl(t *testing.T) {
-	b := NewTestBackend()
-	res := New(b)
-
-	UrlHintAddr = "0x0"
-	got, err := res.HashToUrl(hash)
-	if err == nil {
-		t.Errorf("expected error")
-	} else {
-		exp := "UrlHint address is not set"
-		if err.Error() != exp {
-			t.Errorf("incorrect error, expected '%v', got '%v'", exp, err.Error())
+func storageFixedArray(addr, idx []byte) []byte {
+	var carry byte
+	for i := 31; i >= 0; i-- {
+		var b byte = addr[i] + idx[i] + carry
+		if b < addr[i] {
+			carry = 1
+		} else {
+			carry = 0
 		}
+		addr[i] = b
 	}
-
-	UrlHintAddr = common.BigToAddress(common.Big2).Hex() //[2:]
-	got, err = res.HashToUrl(hash)
-	if err == nil {
-		t.Errorf("expected error")
-	} else {
-		exp := "HashToUrl: URL hint not found for '" + hash.Hex() + "'"
-		if err.Error() != exp {
-			t.Errorf("incorrect error, expected '%v', got '%v'", exp, err.Error())
-		}
-	}
-
-	b.initUrlHint()
-	got, err = res.HashToUrl(hash)
-	if err != nil {
-		t.Errorf("expected no error, got %v", err)
-	} else {
-		if got != url {
-			t.Errorf("incorrect result, expected '%v', got '%s'", url, got)
-		}
-	}
+	return addr
 }

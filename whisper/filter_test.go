@@ -80,7 +80,7 @@ func TestFilterTopicsCreation(t *testing.T) {
 	// Check full filter creation
 	for i, tt := range filterTopicsCreationTests {
 		// Check the textual creation
-		filter := NewFilterTopicsFromStrings(tt.topics...)
+		filter := newFilterTopicsFromStrings(tt.topics...)
 		if len(filter) != len(tt.topics) {
 			t.Errorf("test %d: condition count mismatch: have %v, want %v", i, len(filter), len(tt.topics))
 			continue
@@ -124,7 +124,7 @@ func TestFilterTopicsCreation(t *testing.T) {
 	// Check flat filter creation
 	for i, tt := range filterTopicsCreationFlatTests {
 		// Check the textual creation
-		filter := NewFilterTopicsFromStringsFlat(tt.topics...)
+		filter := newFilterTopicsFromStringsFlat(tt.topics...)
 		if len(filter) != len(tt.topics) {
 			t.Errorf("test %d: condition count mismatch: have %v, want %v", i, len(filter), len(tt.topics))
 			continue
@@ -145,7 +145,7 @@ func TestFilterTopicsCreation(t *testing.T) {
 		for j, topic := range tt.topics {
 			binary[j] = []byte(topic)
 		}
-		filter = NewFilterTopicsFlat(binary...)
+		filter = newFilterTopicsFlat(binary...)
 		if len(filter) != len(tt.topics) {
 			t.Errorf("test %d: condition count mismatch: have %v, want %v", i, len(filter), len(tt.topics))
 			continue
@@ -171,36 +171,36 @@ var filterCompareTests = []struct {
 }{
 	{ // Wild-card filter matching anything
 		matcher: filterer{to: "", from: "", matcher: newTopicMatcher()},
-		message: filterer{to: "to", from: "from", matcher: newTopicMatcher(NewFilterTopicsFromStringsFlat("topic")...)},
+		message: filterer{to: "to", from: "from", matcher: newTopicMatcher(newFilterTopicsFromStringsFlat("topic")...)},
 		match:   true,
 	},
 	{ // Filter matching the to field
 		matcher: filterer{to: "to", from: "", matcher: newTopicMatcher()},
-		message: filterer{to: "to", from: "from", matcher: newTopicMatcher(NewFilterTopicsFromStringsFlat("topic")...)},
+		message: filterer{to: "to", from: "from", matcher: newTopicMatcher(newFilterTopicsFromStringsFlat("topic")...)},
 		match:   true,
 	},
 	{ // Filter rejecting the to field
 		matcher: filterer{to: "to", from: "", matcher: newTopicMatcher()},
-		message: filterer{to: "", from: "from", matcher: newTopicMatcher(NewFilterTopicsFromStringsFlat("topic")...)},
+		message: filterer{to: "", from: "from", matcher: newTopicMatcher(newFilterTopicsFromStringsFlat("topic")...)},
 		match:   false,
 	},
 	{ // Filter matching the from field
 		matcher: filterer{to: "", from: "from", matcher: newTopicMatcher()},
-		message: filterer{to: "to", from: "from", matcher: newTopicMatcher(NewFilterTopicsFromStringsFlat("topic")...)},
+		message: filterer{to: "to", from: "from", matcher: newTopicMatcher(newFilterTopicsFromStringsFlat("topic")...)},
 		match:   true,
 	},
 	{ // Filter rejecting the from field
 		matcher: filterer{to: "", from: "from", matcher: newTopicMatcher()},
-		message: filterer{to: "to", from: "", matcher: newTopicMatcher(NewFilterTopicsFromStringsFlat("topic")...)},
+		message: filterer{to: "to", from: "", matcher: newTopicMatcher(newFilterTopicsFromStringsFlat("topic")...)},
 		match:   false,
 	},
 	{ // Filter matching the topic field
-		matcher: filterer{to: "", from: "from", matcher: newTopicMatcher(NewFilterTopicsFromStringsFlat("topic")...)},
-		message: filterer{to: "to", from: "from", matcher: newTopicMatcher(NewFilterTopicsFromStringsFlat("topic")...)},
+		matcher: filterer{to: "", from: "from", matcher: newTopicMatcher(newFilterTopicsFromStringsFlat("topic")...)},
+		message: filterer{to: "to", from: "from", matcher: newTopicMatcher(newFilterTopicsFromStringsFlat("topic")...)},
 		match:   true,
 	},
 	{ // Filter rejecting the topic field
-		matcher: filterer{to: "", from: "", matcher: newTopicMatcher(NewFilterTopicsFromStringsFlat("topic")...)},
+		matcher: filterer{to: "", from: "", matcher: newTopicMatcher(newFilterTopicsFromStringsFlat("topic")...)},
 		message: filterer{to: "to", from: "from", matcher: newTopicMatcher()},
 		match:   false,
 	},
@@ -212,4 +212,48 @@ func TestFilterCompare(t *testing.T) {
 			t.Errorf("test %d: match mismatch: have %v, want %v", i, match, tt.match)
 		}
 	}
+}
+
+// NewFilterTopicsFlat creates a 2D topic array used by whisper.Filter from flat
+// binary data elements.
+func newFilterTopicsFlat(data ...[]byte) [][]Topic {
+	filter := make([][]Topic, len(data))
+	for i, element := range data {
+		// Only add non-wildcard topics
+		filter[i] = make([]Topic, 0, 1)
+		if len(element) > 0 {
+			filter[i] = append(filter[i], NewTopic(element))
+		}
+	}
+	return filter
+}
+
+// NewFilterTopicsFromStrings creates a 2D topic array used by whisper.Filter
+// from textual data elements.
+func newFilterTopicsFromStrings(data ...[]string) [][]Topic {
+	filter := make([][]Topic, len(data))
+	for i, condition := range data {
+		// Handle the special case of condition == [""]
+		if len(condition) == 1 && condition[0] == "" {
+			filter[i] = []Topic{}
+			continue
+		}
+		// Otherwise flatten normally
+		filter[i] = newTopicsFromStrings(condition...)
+	}
+	return filter
+}
+
+// NewFilterTopicsFromStringsFlat creates a 2D topic array used by whisper.Filter from flat
+// binary data elements.
+func newFilterTopicsFromStringsFlat(data ...string) [][]Topic {
+	filter := make([][]Topic, len(data))
+	for i, element := range data {
+		// Only add non-wildcard topics
+		filter[i] = make([]Topic, 0, 1)
+		if element != "" {
+			filter[i] = append(filter[i], newTopicFromString(element))
+		}
+	}
+	return filter
 }

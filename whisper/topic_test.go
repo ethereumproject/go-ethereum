@@ -38,7 +38,7 @@ func TestTopicCreation(t *testing.T) {
 		}
 	}
 	for i, tt := range topicCreationTests {
-		topic := NewTopicFromString(string(tt.data))
+		topic := newTopicFromString(string(tt.data))
 		if bytes.Compare(topic[:], tt.hash[:]) != 0 {
 			t.Errorf("textual test %d: hash mismatch: have %v, want %v.", i, topic, tt.hash)
 		}
@@ -59,7 +59,7 @@ func TestTopicCreation(t *testing.T) {
 			t.Errorf("binary batch test %d: hash mismatch: have %v, want %v.", i, topics[i], tt.hash)
 		}
 	}
-	topics = NewTopicsFromStrings(textualData...)
+	topics = newTopicsFromStrings(textualData...)
 	for i, tt := range topicCreationTests {
 		if bytes.Compare(topics[i][:], tt.hash[:]) != 0 {
 			t.Errorf("textual batch test %d: hash mismatch: have %v, want %v.", i, topics[i], tt.hash)
@@ -205,11 +205,46 @@ var topicMatcherTests = []struct {
 
 func TestTopicMatcher(t *testing.T) {
 	for i, tt := range topicMatcherTests {
-		topics := NewTopicsFromStrings(tt.topics...)
+		topics := newTopicsFromStrings(tt.topics...)
 
 		matcher := newTopicMatcherFromStrings(tt.filter...)
 		if match := matcher.Matches(topics); match != tt.match {
 			t.Errorf("test %d: match mismatch: have %v, want %v", i, match, tt.match)
 		}
 	}
+}
+
+// NewTopicFromString creates a topic using the binary data contents of the
+// specified string.
+func newTopicFromString(data string) Topic {
+	return NewTopic([]byte(data))
+}
+
+// NewTopicsFromStrings creates a list of topics from a list of textual data
+// elements, by iteratively calling NewTopicFromString on each of them.
+func newTopicsFromStrings(data ...string) []Topic {
+	topics := make([]Topic, len(data))
+	for i, element := range data {
+		topics[i] = newTopicFromString(element)
+	}
+	return topics
+}
+
+// newTopicMatcherFromStrings creates a topic matcher from a list of textual
+// conditions.
+func newTopicMatcherFromStrings(data ...[]string) *topicMatcher {
+	topics := make([][]Topic, len(data))
+	for i, condition := range data {
+		topics[i] = newTopicsFromStrings(condition...)
+	}
+	return newTopicMatcher(topics...)
+}
+
+// newTopicMatcherFromBinary create a topic matcher from a list of binary conditions.
+func newTopicMatcherFromBinary(data ...[][]byte) *topicMatcher {
+	topics := make([][]Topic, len(data))
+	for i, condition := range data {
+		topics[i] = NewTopics(condition...)
+	}
+	return newTopicMatcher(topics...)
 }

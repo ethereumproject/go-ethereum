@@ -145,7 +145,7 @@ func testBroadcast(anonymous bool, t *testing.T) {
 		dones[i] = done
 
 		targets[i].Watch(Filter{
-			Topics: NewFilterTopicsFromStringsFlat("broadcast topic"),
+			Topics: newFilterTopicsFromStringsFlat("broadcast topic"),
 			Fn: func(msg *Message) {
 				close(done)
 			},
@@ -154,7 +154,7 @@ func testBroadcast(anonymous bool, t *testing.T) {
 	// Send a dummy message from the sender
 	msg := NewMessage([]byte("broadcast whisper"))
 	envelope, err := msg.Wrap(DefaultPoW, Options{
-		Topics: NewTopicsFromStrings("broadcast topic"),
+		Topics: newTopicsFromStrings("broadcast topic"),
 		TTL:    DefaultTTL,
 	})
 	if err != nil {
