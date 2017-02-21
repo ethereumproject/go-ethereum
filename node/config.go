@@ -177,12 +177,6 @@ func (c *Config) HTTPEndpoint() string {
 	return fmt.Sprintf("%s:%d", c.HTTPHost, c.HTTPPort)
 }
 
-// DefaultHTTPEndpoint returns the HTTP endpoint used by default.
-func DefaultHTTPEndpoint() string {
-	config := &Config{HTTPHost: common.DefaultHTTPHost, HTTPPort: common.DefaultHTTPPort}
-	return config.HTTPEndpoint()
-}
-
 // WSEndpoint resolves an websocket endpoint based on the configured host interface
 // and port parameters.
 func (c *Config) WSEndpoint() string {
@@ -190,12 +184,6 @@ func (c *Config) WSEndpoint() string {
 		return ""
 	}
 	return fmt.Sprintf("%s:%d", c.WSHost, c.WSPort)
-}
-
-// DefaultWSEndpoint returns the websocket endpoint used by default.
-func DefaultWSEndpoint() string {
-	config := &Config{WSHost: common.DefaultWSHost, WSPort: common.DefaultWSPort}
-	return config.WSEndpoint()
 }
 
 // NodeKey retrieves the currently configured private key of the node, checking

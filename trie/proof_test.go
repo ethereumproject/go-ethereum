@@ -177,3 +177,26 @@ func verifyProof(rootHash common.Hash, key []byte, proof []rlp.RawValue) (value 
 	}
 	return nil, errors.New("unexpected end of proof")
 }
+
+func get(tn node, key []byte) ([]byte, node) {
+	for len(key) > 0 {
+		switch n := tn.(type) {
+		case *shortNode:
+			if len(key) < len(n.Key) || !bytes.Equal(n.Key, key[:len(n.Key)]) {
+				return nil, nil
+			}
+			tn = n.Val
+			key = key[len(n.Key):]
+		case *fullNode:
+			tn = n.Children[key[0]]
+			key = key[1:]
+		case hashNode:
+			return key, n
+		case nil:
+			return key, nil
+		default:
+			panic(fmt.Sprintf("%T: invalid node: %v", tn, tn))
+		}
+	}
+	return nil, tn.(valueNode)
+}
