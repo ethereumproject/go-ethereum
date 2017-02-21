@@ -44,14 +44,13 @@ func main() {
 		fmt.Printf("Failed to generate peer key: %v.\n", err)
 		os.Exit(-1)
 	}
-	name := common.MakeName("whisper-go", "1.0")
 	shh := whisper.New()
 
 	// Create an Ethereum peer to communicate through
 	server := p2p.Server{
 		PrivateKey: key,
 		MaxPeers:   10,
-		Name:       name,
+		Name:       fmt.Sprintf("whisper-go/v1.0/%s/%s", runtime.GOOS, runtime.Version())
 		Protocols:  []p2p.Protocol{shh.Protocol()},
 		ListenAddr: ":30300",
 		NAT:        nat.Any(),
@@ -63,7 +62,7 @@ func main() {
 	}
 
 	// Send a message to self to check that something works
-	payload := fmt.Sprintf("Hello world, this is %v. In case you're wondering, the time is %v", name, time.Now())
+	payload := fmt.Sprintf("Hello world, this is %v. In case you're wondering, the time is %v", server.Name, time.Now())
 	if err := selfSend(shh, []byte(payload)); err != nil {
 		fmt.Printf("Failed to self message: %v.\n", err)
 		os.Exit(-1)

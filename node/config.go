@@ -65,8 +65,7 @@ type Config struct {
 	// needed.
 	PrivateKey *ecdsa.PrivateKey
 
-	// Name sets the node name of this server. Use common.MakeName to create a name
-	// that follows existing conventions.
+	// Name sets the node name of this server.
 	Name string
 
 	// NoDiscovery specifies whether the peer discovery mechanism should be started

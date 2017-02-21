@@ -459,7 +459,7 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 
 // MakeNodeName creates a node name from a base set and the command line flags.
 func MakeNodeName(client, version string, ctx *cli.Context) string {
-	name := common.MakeName(client, version)
+	name := fmt.Sprintf("%s/v%s/%s/%s", client, version, runtime.GOOS, runtime.Version())
 	if identity := ctx.GlobalString(IdentityFlag.Name); len(identity) > 0 {
 		name += "/" + identity
 	}
