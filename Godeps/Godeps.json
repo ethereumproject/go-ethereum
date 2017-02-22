@@ -70,10 +70,6 @@
 			"Rev": "f627deca7a510d96f0ef9388f2d0e8b16d21f87f"
 		},
 		{
-			"ImportPath": "github.com/rs/cors",
-			"Rev": "5950cf11d77f8a61b432a25dd4d444b4ced01379"
-		},
-		{
 			"ImportPath": "github.com/rs/xhandler",
 			"Rev": "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
 		},
