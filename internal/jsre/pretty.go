@@ -53,7 +53,7 @@ func prettyError(vm *otto.Otto, err error, w io.Writer) {
 	if ottoErr, ok := err.(*otto.Error); ok {
 		failure = ottoErr.String()
 	}
-	fmt.Printf("\x1b[91m", failure, "\x1b[0m")
+	fmt.Fprint(w, "\x1b[91m", failure, "\x1b[0m")
 }
 
 func prettyPrintJS(call otto.FunctionCall, w io.Writer) otto.Value {
