@@ -7,10 +7,6 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/Gustav-Simonsson/go-opencl/cl",
-			"Rev": "593e01cfc4f3353585015321e01951d4a907d3ef"
-		},
-		{
 			"ImportPath": "github.com/cespare/cp",
 			"Rev": "165db2f241fd235aec29ba6d9b1ccd5f1c14637c"
 		},
