@@ -35,7 +35,9 @@ func importPreSaleKey(keyStore keyStore, keyJSON []byte, password string) (Accou
 	if err != nil {
 		return Account{}, nil, err
 	}
-	key.ID = uuid.NewRandom()
+
+	key.UUID = uuid.NewRandom().String()
+
 	a := Account{Address: key.Address, File: keyStore.JoinPath(keyFileName(key.Address))}
 	err = keyStore.StoreKey(a.File, key, password)
 	return a, key, err
