@@ -23,8 +23,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 var testSigData = make([]byte, 32)
@@ -56,7 +54,7 @@ func TestManager(t *testing.T) {
 	if err := am.DeleteAccount(a, "bar"); err != nil {
 		t.Errorf("DeleteAccount error: %v", err)
 	}
-	if common.FileExist(a.File) {
+	if _, err := os.Stat(a.File); err == nil || !os.IsNotExist(err) {
 		t.Errorf("account file %s should be gone after DeleteAccount", a.File)
 	}
 	if am.HasAddress(a.Address) {

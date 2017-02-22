@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -220,8 +221,11 @@ func testDecryptV1(test KeyStoreTestV1, t *testing.T) {
 
 func loadKeyStoreTestV3(file string, t *testing.T) map[string]KeyStoreTestV3 {
 	tests := make(map[string]KeyStoreTestV3)
-	err := common.LoadJSON(file, &tests)
+	bytes, err := ioutil.ReadFile(file)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(bytes, &tests); err != nil {
 		t.Fatal(err)
 	}
 	return tests
@@ -229,8 +233,11 @@ func loadKeyStoreTestV3(file string, t *testing.T) map[string]KeyStoreTestV3 {
 
 func loadKeyStoreTestV1(file string, t *testing.T) map[string]KeyStoreTestV1 {
 	tests := make(map[string]KeyStoreTestV1)
-	err := common.LoadJSON(file, &tests)
+	bytes, err := ioutil.ReadFile(file)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(bytes, &tests); err != nil {
 		t.Fatal(err)
 	}
 	return tests

@@ -30,8 +30,8 @@ type testBackend struct {
 
 var (
 	text     = "test"
-	codehash = common.StringToHash("1234")
-	hash     = common.BytesToHash(crypto.Keccak256([]byte(text)))
+	codehash = common.Hash{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '1', '2', '3', '4'}
+	hash     = crypto.Sha3Hash([]byte(text))
 	url      = "bzz://bzzhash/my/path/contr.act"
 )
 

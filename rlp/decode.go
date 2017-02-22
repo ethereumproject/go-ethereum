@@ -635,16 +635,6 @@ func NewStream(r io.Reader, inputLimit uint64) *Stream {
 	return s
 }
 
-// NewListStream creates a new stream that pretends to be positioned
-// at an encoded list of the given length.
-func NewListStream(r io.Reader, len uint64) *Stream {
-	s := new(Stream)
-	s.Reset(r, len)
-	s.kind = List
-	s.size = len
-	return s
-}
-
 // Bytes reads an RLP string and returns its contents as a byte slice.
 // If the input does not contain an RLP string, the returned
 // error will be ErrExpectedString.

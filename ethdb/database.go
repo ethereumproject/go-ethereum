@@ -84,9 +84,6 @@ func NewLDBDatabase(file string, cache int, handles int) (*LDBDatabase, error) {
 
 // Put puts the given key / value to the queue
 func (self *LDBDatabase) Put(key []byte, value []byte) error {
-	// Generate the data to write to disk, update the meter and write
-	//value = rle.Compress(value)
-
 	return self.db.Put(key, value, nil)
 }
 
@@ -98,7 +95,6 @@ func (self *LDBDatabase) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 	return dat, nil
-	//return rle.Decompress(dat)
 }
 
 // Delete deletes the key from the queue and database

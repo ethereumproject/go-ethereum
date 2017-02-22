@@ -26,7 +26,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereumproject/go-ethereum/common"
 	"golang.org/x/tools/imports"
 )
 
@@ -361,8 +360,8 @@ var bindTests = []struct {
 func TestBindings(t *testing.T) {
 	// Skip the test if no Go command can be found
 	gocmd := runtime.GOROOT() + "/bin/go"
-	if !common.FileExist(gocmd) {
-		t.Skip("go sdk not found for testing")
+	if _, err := os.Stat(gocmd); err != nil {
+		t.Skipf("Go SDK not found: %s", err)
 	}
 	// Skip the test if the go-ethereum sources are symlinked (https://github.com/golang/go/issues/14845)
 	linkTestCode := fmt.Sprintf("package linktest\nfunc CheckSymlinks(){\nfmt.Println(backends.NewNilBackend())\n}")
