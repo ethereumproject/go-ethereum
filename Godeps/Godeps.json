@@ -7,10 +7,6 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/davecgh/go-spew/spew",
-			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
-		},
-		{
 			"ImportPath": "github.com/ethereumproject/ethash",
 			"Comment": "v23.1-245",
 			"Rev": "56e22dd57264931727e9a9a098bec1e45938b0b6"
