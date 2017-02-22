@@ -31,7 +31,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/internal/jsre"
 	"github.com/ethereumproject/go-ethereum/node"
 )
 
@@ -258,11 +257,11 @@ func TestPrettyPrint(t *testing.T) {
 
 	// Define some specially formatted fields
 	var (
-		one   = jsre.NumberColor("1")
-		two   = jsre.StringColor("\"two\"")
-		three = jsre.NumberColor("3")
-		null  = jsre.SpecialColor("null")
-		fun   = jsre.FunctionColor("function()")
+		one   = "\x1b[31m1\x1b[0m"
+		two   = "\x1b[32m\"two\"\x1b[0m"
+		three = "\x1b[31m3\x1b[0m"
+		null  = "\x1b[1mnull\x1b[0m"
+		fun   = "\x1b[35mfunction()\x1b[0m"
 	)
 	// Assemble the actual output we're after and verify
 	want := `{
@@ -276,7 +275,7 @@ func TestPrettyPrint(t *testing.T) {
 }
 `
 	if output := string(tester.output.Bytes()); output != want {
-		t.Fatalf("pretty print mismatch: have %s, want %s", output, want)
+		t.Fatalf("got %q, want %q", output, want)
 	}
 }
 
@@ -286,9 +285,9 @@ func TestPrettyError(t *testing.T) {
 	defer tester.Close(t)
 	tester.console.Evaluate("throw 'hello'")
 
-	want := jsre.ErrorColor("hello") + "\n"
+	want := "\x1b[91mhello\x1b[0m\n"
 	if output := string(tester.output.Bytes()); output != want {
-		t.Fatalf("pretty error mismatch: have %s, want %s", output, want)
+		t.Fatalf("got %q, want %q", output, want)
 	}
 }
 

@@ -18,6 +18,7 @@ package accounts
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -26,7 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cespare/cp"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereumproject/go-ethereum/common"
 )
@@ -65,7 +65,11 @@ func TestWatchNewFile(t *testing.T) {
 		a := cachetestAccounts[i]
 		a.File = filepath.Join(dir, filepath.Base(a.File))
 		wantAccounts[i] = a
-		if err := cp.CopyFile(a.File, cachetestAccounts[i].File); err != nil {
+		data, err := ioutil.ReadFile(cachetestAccounts[i].File)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := ioutil.WriteFile(a.File, data, 0666); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -100,7 +104,11 @@ func TestWatchNoDir(t *testing.T) {
 	os.MkdirAll(dir, 0700)
 	defer os.RemoveAll(dir)
 	file := filepath.Join(dir, "aaa")
-	if err := cp.CopyFile(file, cachetestAccounts[0].File); err != nil {
+	data, err := ioutil.ReadFile(cachetestAccounts[0].File)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(file, data, 0666); err != nil {
 		t.Fatal(err)
 	}
 

@@ -23,21 +23,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fatih/color"
 	"github.com/robertkrimen/otto"
 )
 
 const (
 	maxPrettyPrintLevel = 3
 	indentString        = "  "
-)
-
-var (
-	FunctionColor = color.New(color.FgMagenta).SprintfFunc()
-	SpecialColor  = color.New(color.Bold).SprintfFunc()
-	NumberColor   = color.New(color.FgRed).SprintfFunc()
-	StringColor   = color.New(color.FgGreen).SprintfFunc()
-	ErrorColor    = color.New(color.FgHiRed).SprintfFunc()
 )
 
 // these fields are hidden when printing objects.
@@ -62,7 +53,7 @@ func prettyError(vm *otto.Otto, err error, w io.Writer) {
 	if ottoErr, ok := err.(*otto.Error); ok {
 		failure = ottoErr.String()
 	}
-	fmt.Fprint(w, ErrorColor("%s", failure))
+	fmt.Fprint(w, "\x1b[91m", failure, "\x1b[0m")
 }
 
 func prettyPrintJS(call otto.FunctionCall, w io.Writer) otto.Value {
@@ -78,6 +69,22 @@ type ppctx struct {
 	w  io.Writer
 }
 
+func (ctx ppctx) printFunction(a interface{}) {
+	fmt.Fprint(ctx.w, "\x1b[35m", a, "\x1b[0m")
+}
+
+func (ctx ppctx) printSpecial(a interface{}) {
+	fmt.Fprint(ctx.w, "\x1b[1m", a, "\x1b[0m")
+}
+
+func (ctx ppctx) printNumber(a interface{}) {
+	fmt.Fprint(ctx.w, "\x1b[31m", a, "\x1b[0m")
+}
+
+func (ctx ppctx) printString(a interface{}) {
+	fmt.Fprint(ctx.w, "\x1b[32m", a, "\x1b[0m")
+}
+
 func (ctx ppctx) indent(level int) string {
 	return strings.Repeat(indentString, level)
 }
@@ -87,20 +94,20 @@ func (ctx ppctx) printValue(v otto.Value, level int, inArray bool) {
 	case v.IsObject():
 		ctx.printObject(v.Object(), level, inArray)
 	case v.IsNull():
-		fmt.Fprint(ctx.w, SpecialColor("null"))
+		ctx.printSpecial("null")
 	case v.IsUndefined():
-		fmt.Fprint(ctx.w, SpecialColor("undefined"))
+		ctx.printSpecial("undefined")
 	case v.IsString():
 		s, _ := v.ToString()
-		fmt.Fprint(ctx.w, StringColor("%q", s))
+		ctx.printString(strconv.Quote(s))
 	case v.IsBoolean():
 		b, _ := v.ToBoolean()
-		fmt.Fprint(ctx.w, SpecialColor("%t", b))
+		ctx.printSpecial(b)
 	case v.IsNaN():
-		fmt.Fprint(ctx.w, NumberColor("NaN"))
+		ctx.printNumber("NaN")
 	case v.IsNumber():
 		s, _ := v.ToString()
-		fmt.Fprint(ctx.w, NumberColor("%s", s))
+		ctx.printNumber(s)
 	default:
 		fmt.Fprint(ctx.w, "<unprintable>")
 	}
@@ -134,7 +141,7 @@ func (ctx ppctx) printObject(obj *otto.Object, level int, inArray bool) {
 	case "Object":
 		// Print values from bignumber.js as regular numbers.
 		if ctx.isBigNumber(obj) {
-			fmt.Fprint(ctx.w, NumberColor("%s", toString(obj)))
+			ctx.printNumber(toString(obj))
 			return
 		}
 		// Otherwise, print all fields indented, but stop if we're too deep.
@@ -165,15 +172,15 @@ func (ctx ppctx) printObject(obj *otto.Object, level int, inArray bool) {
 	case "Function":
 		// Use toString() to display the argument list if possible.
 		if robj, err := obj.Call("toString"); err != nil {
-			fmt.Fprint(ctx.w, FunctionColor("function()"))
+			ctx.printFunction("function()")
 		} else {
 			desc := strings.Trim(strings.Split(robj.String(), "{")[0], " \t\n")
 			desc = strings.Replace(desc, " (", "(", 1)
-			fmt.Fprint(ctx.w, FunctionColor("%s", desc))
+			ctx.printFunction(desc)
 		}
 
 	case "RegExp":
-		fmt.Fprint(ctx.w, StringColor("%s", toString(obj)))
+		ctx.printString(toString(obj))
 
 	default:
 		if v, _ := obj.Get("toString"); v.IsFunction() && level <= maxPrettyPrintLevel {

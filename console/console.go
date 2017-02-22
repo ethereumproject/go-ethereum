@@ -30,7 +30,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/internal/jsre"
 	"github.com/ethereumproject/go-ethereum/internal/web3ext"
 	"github.com/ethereumproject/go-ethereum/rpc"
-	"github.com/mattn/go-colorable"
 	"github.com/peterh/liner"
 	"github.com/robertkrimen/otto"
 )
@@ -81,7 +80,7 @@ func New(config Config) (*Console, error) {
 		config.Prompt = DefaultPrompt
 	}
 	if config.Printer == nil {
-		config.Printer = colorable.NewColorableStdout()
+		config.Printer = os.Stdout
 	}
 	// Initialize the console and return
 	console := &Console{
