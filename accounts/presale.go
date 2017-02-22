@@ -35,7 +35,7 @@ func importPreSaleKey(keyStore keyStore, keyJSON []byte, password string) (Accou
 	if err != nil {
 		return Account{}, nil, err
 	}
-	key.Id = uuid.NewRandom()
+	key.ID = uuid.NewRandom()
 	a := Account{Address: key.Address, File: keyStore.JoinPath(keyFileName(key.Address))}
 	err = keyStore.StoreKey(a.File, key, password)
 	return a, key, err
@@ -71,7 +71,6 @@ func decryptPreSaleKey(fileContent []byte, password string) (key *Key, err error
 	ethPriv := crypto.Keccak256(plainText)
 	ecKey := crypto.ToECDSA(ethPriv)
 	key = &Key{
-		Id:         nil,
 		Address:    crypto.PubkeyToAddress(ecKey.PublicKey),
 		PrivateKey: ecKey,
 	}
