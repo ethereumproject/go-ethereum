@@ -30,11 +30,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/crypto/secp256k1"
-	"github.com/pborman/uuid"
 )
 
 type key struct {
-	// UUID is a version 4 "random" identifier.
 	UUID string
 	// to simplify lookups we also store the address
 	Address common.Address
@@ -93,13 +91,30 @@ func (k *key) UnmarshalJSON(j []byte) (err error) {
 	return nil
 }
 
-func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) *key {
-	key := &key{
-		UUID:       uuid.NewRandom().String(),
+// newKeyUUID returns an identifier for key.
+func newKeyUUID() (string, error) {
+	var u [16]byte
+	if _, err := rand.Read(u[:]); err != nil {
+		return "", err
+	}
+
+	u[6] = (u[6] & 0x0f) | 0x40 // version 4
+	u[8] = (u[8] & 0x3f) | 0x80 // variant 10
+
+	return fmt.Sprintf("%x-%x-%x-%x-%x", u[:4], u[4:6], u[6:8], u[8:10], u[10:]), nil
+}
+
+func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) (*key, error) {
+	id, err := newKeyUUID()
+	if err != nil {
+		return nil, err
+	}
+
+	return &key{
+		UUID:       id,
 		Address:    crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
 		PrivateKey: privateKeyECDSA,
-	}
-	return key
+	}, nil
 }
 
 func storeNewKey(ks keyStore, auth string) (*key, Account, error) {
@@ -107,7 +122,10 @@ func storeNewKey(ks keyStore, auth string) (*key, Account, error) {
 	if err != nil {
 		return nil, Account{}, err
 	}
-	key := newKeyFromECDSA(privateKeyECDSA)
+	key, err := newKeyFromECDSA(privateKeyECDSA)
+	if err != nil {
+		return nil, Account{}, err
+	}
 
 	a := Account{Address: key.Address, File: ks.JoinPath(keyFileName(key.Address))}
 	if err := ks.StoreKey(a.File, key, auth); err != nil {

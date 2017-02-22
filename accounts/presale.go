@@ -25,7 +25,6 @@ import (
 	"fmt"
 
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/pborman/uuid"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -36,7 +35,10 @@ func importPreSaleKey(keyStore keyStore, keyJSON []byte, password string) (Accou
 		return Account{}, nil, err
 	}
 
-	key.UUID = uuid.NewRandom().String()
+	key.UUID, err = newKeyUUID()
+	if err != nil {
+		return Account{}, nil, err
+	}
 
 	a := Account{Address: key.Address, File: keyStore.JoinPath(keyFileName(key.Address))}
 	err = keyStore.StoreKey(a.File, key, password)

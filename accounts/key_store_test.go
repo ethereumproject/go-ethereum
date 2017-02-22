@@ -261,7 +261,11 @@ func TestKeyForDirectICAP(t *testing.T) {
 			t.Fatalf("key generation: ecdsa.GenerateKey failed: %s", err)
 		}
 
-		key := newKeyFromECDSA(privateKeyECDSA)
+		key, err := newKeyFromECDSA(privateKeyECDSA)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		if key.Address[0] == 0 {
 			return
 		}
