@@ -30,7 +30,7 @@ import (
 )
 
 // creates a Key and stores that in the given KeyStore by decrypting a presale key JSON
-func importPreSaleKey(keyStore keyStore, keyJSON []byte, password string) (Account, *Key, error) {
+func importPreSaleKey(keyStore keyStore, keyJSON []byte, password string) (Account, *key, error) {
 	key, err := decryptPreSaleKey(keyJSON, password)
 	if err != nil {
 		return Account{}, nil, err
@@ -41,15 +41,14 @@ func importPreSaleKey(keyStore keyStore, keyJSON []byte, password string) (Accou
 	return a, key, err
 }
 
-func decryptPreSaleKey(fileContent []byte, password string) (key *Key, err error) {
+func decryptPreSaleKey(fileContent []byte, password string) (*key, error) {
 	preSaleKeyStruct := struct {
 		EncSeed string
 		EthAddr string
 		Email   string
 		BtcAddr string
 	}{}
-	err = json.Unmarshal(fileContent, &preSaleKeyStruct)
-	if err != nil {
+	if err := json.Unmarshal(fileContent, &preSaleKeyStruct); err != nil {
 		return nil, err
 	}
 	encSeedBytes, err := hex.DecodeString(preSaleKeyStruct.EncSeed)
@@ -70,16 +69,16 @@ func decryptPreSaleKey(fileContent []byte, password string) (key *Key, err error
 	}
 	ethPriv := crypto.Keccak256(plainText)
 	ecKey := crypto.ToECDSA(ethPriv)
-	key = &Key{
+	k := &key{
 		Address:    crypto.PubkeyToAddress(ecKey.PublicKey),
 		PrivateKey: ecKey,
 	}
-	derivedAddr := hex.EncodeToString(key.Address.Bytes()) // needed because .Hex() gives leading "0x"
+	derivedAddr := hex.EncodeToString(k.Address.Bytes()) // needed because .Hex() gives leading "0x"
 	expectedAddr := preSaleKeyStruct.EthAddr
 	if derivedAddr != expectedAddr {
 		err = fmt.Errorf("decrypted addr '%s' not equal to expected addr '%s'", derivedAddr, expectedAddr)
 	}
-	return key, err
+	return k, err
 }
 
 func aesCTRXOR(key, inText, iv []byte) ([]byte, error) {

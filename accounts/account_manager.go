@@ -70,7 +70,7 @@ type Manager struct {
 }
 
 type unlocked struct {
-	*Key
+	*key
 	abort chan struct{}
 }
 
@@ -203,16 +203,16 @@ func (am *Manager) TimedUnlock(a Account, passphrase string, timeout time.Durati
 		}
 	}
 	if timeout > 0 {
-		u = &unlocked{Key: key, abort: make(chan struct{})}
+		u = &unlocked{key: key, abort: make(chan struct{})}
 		go am.expire(a.Address, u, timeout)
 	} else {
-		u = &unlocked{Key: key}
+		u = &unlocked{key: key}
 	}
 	am.unlocked[a.Address] = u
 	return nil
 }
 
-func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *Key, error) {
+func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error) {
 	am.cache.maybeReload()
 	am.cache.mu.Lock()
 	a, err := am.cache.find(a)
@@ -278,12 +278,12 @@ func (am *Manager) Export(a Account, passphrase, newPassphrase string) (keyJSON 
 	} else {
 		N, P = StandardScryptN, StandardScryptP
 	}
-	return EncryptKey(key, newPassphrase, N, P)
+	return encryptKey(key, newPassphrase, N, P)
 }
 
 // Import stores the given encrypted JSON key into the key directory.
 func (am *Manager) Import(keyJSON []byte, passphrase, newPassphrase string) (Account, error) {
-	key, err := DecryptKey(keyJSON, passphrase)
+	key, err := decryptKey(keyJSON, passphrase)
 	if key != nil && key.PrivateKey != nil {
 		defer zeroKey(key.PrivateKey)
 	}
@@ -303,7 +303,7 @@ func (am *Manager) ImportECDSA(priv *ecdsa.PrivateKey, passphrase string) (Accou
 	return am.importKey(key, passphrase)
 }
 
-func (am *Manager) importKey(key *Key, passphrase string) (Account, error) {
+func (am *Manager) importKey(key *key, passphrase string) (Account, error) {
 	a := Account{Address: key.Address, File: am.keyStore.JoinPath(keyFileName(key.Address))}
 	if err := am.keyStore.StoreKey(a.File, key, passphrase); err != nil {
 		return Account{}, err

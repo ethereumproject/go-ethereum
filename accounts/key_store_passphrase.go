@@ -55,13 +55,13 @@ type keyStorePassphrase struct {
 	scryptP     int
 }
 
-func (ks keyStorePassphrase) GetKey(addr common.Address, filename, auth string) (*Key, error) {
+func (ks keyStorePassphrase) GetKey(addr common.Address, filename, auth string) (*key, error) {
 	// Load the key from the keystore and decrypt its contents
 	keyjson, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	key, err := DecryptKey(keyjson, auth)
+	key, err := decryptKey(keyjson, auth)
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +72,8 @@ func (ks keyStorePassphrase) GetKey(addr common.Address, filename, auth string) 
 	return key, nil
 }
 
-func (ks keyStorePassphrase) StoreKey(filename string, key *Key, auth string) error {
-	keyjson, err := EncryptKey(key, auth, ks.scryptN, ks.scryptP)
+func (ks keyStorePassphrase) StoreKey(filename string, key *key, auth string) error {
+	keyjson, err := encryptKey(key, auth, ks.scryptN, ks.scryptP)
 	if err != nil {
 		return err
 	}
@@ -118,8 +118,8 @@ type cipherparamsJSON struct {
 	IV string `json:"iv"`
 }
 
-// EncryptKey encrypts key as version 3.
-func EncryptKey(key *Key, auth string, scryptN, scryptP int) ([]byte, error) {
+// encryptKey encrypts key as version 3.
+func encryptKey(key *key, auth string, scryptN, scryptP int) ([]byte, error) {
 	authArray := []byte(auth)
 	salt := randentropy.GetEntropyCSPRNG(32)
 	derivedKey, err := scrypt.Key(authArray, salt, scryptN, scryptR, scryptP, scryptDKLen)
@@ -159,8 +159,8 @@ func EncryptKey(key *Key, auth string, scryptN, scryptP int) ([]byte, error) {
 	})
 }
 
-// DecryptKey decrypts a key from a JSON blob, returning the private key itself.
-func DecryptKey(keyjson []byte, auth string) (*Key, error) {
+// decryptKey decrypts a key from a JSON blob, returning the private key itself.
+func decryptKey(keyjson []byte, auth string) (*key, error) {
 	// Parse the JSON into a simple map to fetch the key version
 	m := make(map[string]interface{})
 	if err := json.Unmarshal(keyjson, &m); err != nil {
@@ -188,25 +188,25 @@ func DecryptKey(keyjson []byte, auth string) (*Key, error) {
 			return nil, err
 		}
 
+		if k.Version != 3 {
+			return nil, fmt.Errorf("unsupported JSON version: %d", version)
+		}
+
 		keyBytes, keyID, err = decryptKeyV3(k, auth)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	key := crypto.ToECDSA(keyBytes)
-	return &Key{
+	k := crypto.ToECDSA(keyBytes)
+	return &key{
 		ID:         uuid.UUID(keyID),
-		Address:    crypto.PubkeyToAddress(key.PublicKey),
-		PrivateKey: key,
+		Address:    crypto.PubkeyToAddress(k.PublicKey),
+		PrivateKey: k,
 	}, nil
 }
 
 func decryptKeyV3(keyProtected *encryptedKeyJSONV3, auth string) (keyBytes []byte, keyID []byte, err error) {
-	if keyProtected.Version != 3 {
-		return nil, nil, fmt.Errorf("Version not supported: %v", keyProtected.Version)
-	}
-
 	if keyProtected.Crypto.Cipher != "aes-128-ctr" {
 		return nil, nil, fmt.Errorf("Cipher not supported: %v", keyProtected.Crypto.Cipher)
 	}

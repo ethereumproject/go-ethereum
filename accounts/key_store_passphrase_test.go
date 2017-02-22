@@ -39,21 +39,21 @@ func TestKeyEncryptDecrypt(t *testing.T) {
 
 	// Do a few rounds of decryption and encryption
 	for i := 0; i < 3; i++ {
-		// Try a bad password first
-		if _, err := DecryptKey(keyjson, password+"bad"); err == nil {
+		// try a bad password first
+		if _, err := decryptKey(keyjson, password+"bad"); err == nil {
 			t.Errorf("test %d: json key decrypted with bad password", i)
 		}
-		// Decrypt with the correct password
-		key, err := DecryptKey(keyjson, password)
+		// decrypt with the correct password
+		key, err := decryptKey(keyjson, password)
 		if err != nil {
 			t.Errorf("test %d: json key failed to decrypt: %v", i, err)
 		}
 		if key.Address != address {
 			t.Errorf("test %d: key address mismatch: have %x, want %x", i, key.Address, address)
 		}
-		// Recrypt with a new password and start over
+		// recrypt with a new password and start over
 		password += "new data appended"
-		if keyjson, err = EncryptKey(key, password, veryLightScryptN, veryLightScryptP); err != nil {
+		if keyjson, err = encryptKey(key, password, veryLightScryptN, veryLightScryptP); err != nil {
 			t.Errorf("test %d: failed to recrypt key %v", i, err)
 		}
 	}

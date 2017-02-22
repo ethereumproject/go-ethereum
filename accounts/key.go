@@ -33,7 +33,7 @@ import (
 	"github.com/pborman/uuid"
 )
 
-type Key struct {
+type key struct {
 	ID uuid.UUID // Version 4 "random" for unique id not derived from key data
 	// to simplify lookups we also store the address
 	Address common.Address
@@ -44,9 +44,9 @@ type Key struct {
 
 type keyStore interface {
 	// Loads and decrypts the key from disk.
-	GetKey(addr common.Address, filename string, auth string) (*Key, error)
+	GetKey(addr common.Address, filename string, auth string) (*key, error)
 	// Writes and encrypts the key.
-	StoreKey(filename string, k *Key, auth string) error
+	StoreKey(filename string, k *key, auth string) error
 	// Joins filename with the key directory unless it is already absolute.
 	JoinPath(filename string) string
 }
@@ -58,7 +58,7 @@ type plainKeyJSON struct {
 	Version    int    `json:"version"`
 }
 
-func (k *Key) MarshalJSON() (j []byte, err error) {
+func (k *key) MarshalJSON() (j []byte, err error) {
 	jStruct := plainKeyJSON{
 		ID:         k.ID.String(),
 		Address:    hex.EncodeToString(k.Address[:]),
@@ -69,7 +69,7 @@ func (k *Key) MarshalJSON() (j []byte, err error) {
 	return j, err
 }
 
-func (k *Key) UnmarshalJSON(j []byte) (err error) {
+func (k *key) UnmarshalJSON(j []byte) (err error) {
 	keyJSON := new(plainKeyJSON)
 	err = json.Unmarshal(j, &keyJSON)
 	if err != nil {
@@ -92,8 +92,8 @@ func (k *Key) UnmarshalJSON(j []byte) (err error) {
 	return nil
 }
 
-func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) *Key {
-	key := &Key{
+func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) *key {
+	key := &key{
 		ID:         uuid.NewRandom(),
 		Address:    crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
 		PrivateKey: privateKeyECDSA,
@@ -101,7 +101,7 @@ func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) *Key {
 	return key
 }
 
-func storeNewKey(ks keyStore, auth string) (*Key, Account, error) {
+func storeNewKey(ks keyStore, auth string) (*key, Account, error) {
 	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 	if err != nil {
 		return nil, Account{}, err
