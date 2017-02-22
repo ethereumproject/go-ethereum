@@ -66,10 +66,6 @@
 			"Rev": "0f1a46960a86dcdf5dd30d3e6568a497a997909f"
 		},
 		{
-			"ImportPath": "github.com/rjeczalik/notify",
-			"Rev": "f627deca7a510d96f0ef9388f2d0e8b16d21f87f"
-		},
-		{
 			"ImportPath": "github.com/rs/xhandler",
 			"Rev": "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
 		},
