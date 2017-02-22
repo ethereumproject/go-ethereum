@@ -22,7 +22,6 @@ package accounts
 
 import (
 	"crypto/ecdsa"
-	crand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -248,7 +247,7 @@ func (am *Manager) expire(addr common.Address, u *unlocked, timeout time.Duratio
 // NewAccount generates a new key and stores it into the key directory,
 // encrypting it with the passphrase.
 func (am *Manager) NewAccount(passphrase string) (Account, error) {
-	_, account, err := storeNewKey(am.keyStore, crand.Reader, passphrase)
+	_, account, err := storeNewKey(am.keyStore, passphrase)
 	if err != nil {
 		return Account{}, err
 	}

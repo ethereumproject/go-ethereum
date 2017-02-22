@@ -18,10 +18,10 @@ package accounts
 
 import (
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -136,19 +136,13 @@ func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) *Key {
 	return key
 }
 
-func newKey(rand io.Reader) (*Key, error) {
-	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), rand)
-	if err != nil {
-		return nil, err
-	}
-	return newKeyFromECDSA(privateKeyECDSA), nil
-}
-
-func storeNewKey(ks keyStore, rand io.Reader, auth string) (*Key, Account, error) {
-	key, err := newKey(rand)
+func storeNewKey(ks keyStore, auth string) (*Key, Account, error) {
+	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 	if err != nil {
 		return nil, Account{}, err
 	}
+	key := newKeyFromECDSA(privateKeyECDSA)
+
 	a := Account{Address: key.Address, File: ks.JoinPath(keyFileName(key.Address))}
 	if err := ks.StoreKey(a.File, key, auth); err != nil {
 		zeroKey(key.PrivateKey)

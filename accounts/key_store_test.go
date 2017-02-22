@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -53,7 +52,7 @@ func TestKeyStorePlain(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	pass := "" // not used but required by API
-	k1, account, err := storeNewKey(ks, rand.Reader, pass)
+	k1, account, err := storeNewKey(ks, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +73,7 @@ func TestKeyStorePassphrase(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
-	k1, account, err := storeNewKey(ks, rand.Reader, pass)
+	k1, account, err := storeNewKey(ks, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +94,7 @@ func TestKeyStorePassphraseDecryptionFail(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
-	k1, account, err := storeNewKey(ks, rand.Reader, pass)
+	k1, account, err := storeNewKey(ks, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,31 +242,28 @@ func loadKeyStoreTestV1(file string, t *testing.T) map[string]KeyStoreTestV1 {
 	return tests
 }
 
-func TestKeyForDirectICAP(t *testing.T) {
-	t.Parallel()
-	key := newKeyForDirectICAP(rand.Reader)
-	if !strings.HasPrefix(key.Address.Hex(), "0x00") {
-		t.Errorf("Expected first address byte to be zero, have: %s", key.Address.Hex())
-	}
-}
-
+// WTF?
 // newKeyForDirectICAP generates a key whose address fits into < 155 bits so it can fit
 // into the Direct ICAP spec. for simplicity and easier compatibility with other libs, we
 // retry until the first byte is 0.
-func newKeyForDirectICAP(rand io.Reader) *Key {
-	randBytes := make([]byte, 64)
-	_, err := rand.Read(randBytes)
-	if err != nil {
-		panic("key generation: could not read from random source: " + err.Error())
+func TestKeyForDirectICAP(t *testing.T) {
+	t.Parallel()
+
+	for {
+		randBytes := make([]byte, 64)
+		_, err := rand.Read(randBytes)
+		if err != nil {
+			t.Fatalf("key generation: could not read from random source: %s", err)
+		}
+
+		privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), bytes.NewReader(randBytes))
+		if err != nil {
+			t.Fatalf("key generation: ecdsa.GenerateKey failed: %s", err)
+		}
+
+		key := newKeyFromECDSA(privateKeyECDSA)
+		if key.Address[0] == 0 {
+			return
+		}
 	}
-	reader := bytes.NewReader(randBytes)
-	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), reader)
-	if err != nil {
-		panic("key generation: ecdsa.GenerateKey failed: " + err.Error())
-	}
-	key := newKeyFromECDSA(privateKeyECDSA)
-	if !strings.HasPrefix(key.Address.Hex(), "0x00") {
-		return newKeyForDirectICAP(rand)
-	}
-	return key
 }
