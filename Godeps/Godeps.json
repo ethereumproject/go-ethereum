@@ -60,10 +60,6 @@
 			"Rev": "9fdad7c47650b7d2e1da50644c1f4ba7f172f252"
 		},
 		{
-			"ImportPath": "github.com/mattn/go-isatty",
-			"Rev": "56b76bdf51f7708750eac80fa38b952bb9f32639"
-		},
-		{
 			"ImportPath": "github.com/microsoft/go-winio",
 			"Comment": "v0.2.0",
 			"Rev": "9e2895e5f6c3f16473b91d37fae6e89990a4520c"
