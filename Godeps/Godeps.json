@@ -74,54 +74,6 @@
 			"Rev": "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
 		},
 		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/cache",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/comparer",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/errors",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/filter",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/iterator",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/journal",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/memdb",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/opt",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/storage",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/table",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
-			"ImportPath": "github.com/syndtr/goleveldb/leveldb/util",
-			"Rev": "917f41c560270110ceb73c5b38be2a9127387071"
-		},
-		{
 			"ImportPath": "golang.org/x/crypto/pbkdf2",
 			"Rev": "1f22c0103821b9390939b6776727195525381532"
 		},
