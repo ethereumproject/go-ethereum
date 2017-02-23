@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -20,19 +20,171 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"time"
+
+	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/crypto/scrypt"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/crypto/randentropy"
-	"golang.org/x/crypto/pbkdf2"
-	"golang.org/x/crypto/scrypt"
+	"github.com/ethereumproject/go-ethereum/crypto/secp256k1"
 )
+
+type key struct {
+	UUID string
+	// to simplify lookups we also store the address
+	Address common.Address
+	// we only store privkey as pubkey/address can be derived from it
+	// privkey in this struct is always in plaintext
+	PrivateKey *ecdsa.PrivateKey
+}
+
+type keyStore interface {
+	// Loads and decrypts the key from disk.
+	GetKey(addr common.Address, filename, secret string) (*key, error)
+	// Writes and encrypts the key.
+	StoreKey(filename string, k *key, secret string) error
+	// Joins filename with the key directory unless it is already absolute.
+	JoinPath(filename string) string
+}
+
+type plainKeyJSON struct {
+	ID         string `json:"id"`
+	Address    string `json:"address"`
+	PrivateKey string `json:"privatekey"`
+	Version    int    `json:"version"`
+}
+
+func (k *key) MarshalJSON() (j []byte, err error) {
+	jStruct := plainKeyJSON{
+		ID:         k.UUID,
+		Address:    hex.EncodeToString(k.Address[:]),
+		PrivateKey: hex.EncodeToString(crypto.FromECDSA(k.PrivateKey)),
+		Version:    3,
+	}
+	j, err = json.Marshal(jStruct)
+	return j, err
+}
+
+func (k *key) UnmarshalJSON(j []byte) (err error) {
+	keyJSON := new(plainKeyJSON)
+	err = json.Unmarshal(j, &keyJSON)
+	if err != nil {
+		return err
+	}
+
+	k.UUID = keyJSON.ID
+	addr, err := hex.DecodeString(keyJSON.Address)
+	if err != nil {
+		return err
+	}
+	k.Address = common.BytesToAddress(addr)
+
+	privkey, err := hex.DecodeString(keyJSON.PrivateKey)
+	if err != nil {
+		return err
+	}
+	k.PrivateKey = crypto.ToECDSA(privkey)
+
+	return nil
+}
+
+// newKeyUUID returns an identifier for key.
+func newKeyUUID() (string, error) {
+	var u [16]byte
+	if _, err := rand.Read(u[:]); err != nil {
+		return "", err
+	}
+
+	u[6] = (u[6] & 0x0f) | 0x40 // version 4
+	u[8] = (u[8] & 0x3f) | 0x80 // variant 10
+
+	return fmt.Sprintf("%x-%x-%x-%x-%x", u[:4], u[4:6], u[6:8], u[8:10], u[10:]), nil
+}
+
+func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) (*key, error) {
+	id, err := newKeyUUID()
+	if err != nil {
+		return nil, err
+	}
+
+	return &key{
+		UUID:       id,
+		Address:    crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
+		PrivateKey: privateKeyECDSA,
+	}, nil
+}
+
+func storeNewKey(ks keyStore, secret string) (*key, Account, error) {
+	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+	if err != nil {
+		return nil, Account{}, err
+	}
+	key, err := newKeyFromECDSA(privateKeyECDSA)
+	if err != nil {
+		return nil, Account{}, err
+	}
+
+	a := Account{Address: key.Address, File: ks.JoinPath(keyFileName(key.Address))}
+	if err := ks.StoreKey(a.File, key, secret); err != nil {
+		zeroKey(key.PrivateKey)
+		return nil, a, err
+	}
+	return key, a, err
+}
+
+type keyStorePlain struct {
+	keysDirPath string
+}
+
+func (ks keyStorePlain) GetKey(addr common.Address, filename, secret string) (*key, error) {
+	fd, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer fd.Close()
+	k := new(key)
+	if err := json.NewDecoder(fd).Decode(k); err != nil {
+		return nil, err
+	}
+	if k.Address != addr {
+		return nil, fmt.Errorf("key content mismatch: have address %x, want %x", k.Address, addr)
+	}
+	return k, nil
+}
+
+func (ks keyStorePlain) StoreKey(filename string, key *key, secret string) error {
+	content, err := json.Marshal(key)
+	if err != nil {
+		return err
+	}
+	return writeKeyFile(filename, content)
+}
+
+func (ks keyStorePlain) JoinPath(filename string) string {
+	if filepath.IsAbs(filename) {
+		return filename
+	} else {
+		return filepath.Join(ks.keysDirPath, filename)
+	}
+}
+
+// keyStorePassphrase behaves as keyStorePlain with the difference that
+// the private key is encrypted and on disk uses another JSON encoding.
+type keyStorePassphrase struct {
+	keysDirPath string
+	scryptN     int
+	scryptP     int
+}
 
 const (
 	// n,r,p = 2^18, 8, 1 uses 256MB memory and approx 1s CPU time on a modern CPU.
@@ -46,14 +198,6 @@ const (
 	scryptR     = 8
 	scryptDKLen = 32
 )
-
-// keyStorePassphrase behaves as keyStorePlain with the difference that
-// the private key is encrypted and on disk uses another JSON encoding.
-type keyStorePassphrase struct {
-	keysDirPath string
-	scryptN     int
-	scryptP     int
-}
 
 func (ks keyStorePassphrase) GetKey(addr common.Address, filename string, secret string) (*key, error) {
 	// Load the key from the keystore and decrypt its contents
@@ -325,4 +469,44 @@ func ensureInt(x interface{}) int {
 		res = int(x.(float64))
 	}
 	return res
+}
+
+func writeKeyFile(file string, content []byte) error {
+	// Create the keystore directory with appropriate permissions
+	// in case it is not present yet.
+	const dirPerm = 0700
+	if err := os.MkdirAll(filepath.Dir(file), dirPerm); err != nil {
+		return err
+	}
+	// Atomic write: create a temporary hidden file first
+	// then move it into place. TempFile assigns mode 0600.
+	f, err := ioutil.TempFile(filepath.Dir(file), "."+filepath.Base(file)+".tmp")
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(content); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return err
+	}
+	f.Close()
+	return os.Rename(f.Name(), file)
+}
+
+// keyFileName implements the naming convention for keyfiles:
+// UTC--<created_at UTC ISO8601>-<address hex>
+func keyFileName(keyAddr common.Address) string {
+	ts := time.Now().UTC()
+	return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), hex.EncodeToString(keyAddr[:]))
+}
+
+func toISO8601(t time.Time) string {
+	var tz string
+	name, offset := t.Zone()
+	if name == "UTC" {
+		tz = "Z"
+	} else {
+		tz = fmt.Sprintf("%03d00", offset/3600)
+	}
+	return fmt.Sprintf("%04d-%02d-%02dT%02d-%02d-%02d.%09d%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), tz)
 }

@@ -271,3 +271,39 @@ func TestKeyForDirectICAP(t *testing.T) {
 		}
 	}
 }
+
+const (
+	veryLightScryptN = 2
+	veryLightScryptP = 1
+)
+
+// Tests that a JSON key file can be decrypted and encrypted in multiple rounds.
+func TestKeyEncryptDecrypt(t *testing.T) {
+	keyjson, err := ioutil.ReadFile("testdata/very-light-scrypt.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	password := ""
+	address := common.HexToAddress("45dea0fb0bba44f4fcf290bba71fd57d7117cbb8")
+
+	// Do a few rounds of decryption and encryption
+	for i := 0; i < 3; i++ {
+		// try a bad password first
+		if _, err := decryptKey(keyjson, password+"bad"); err == nil {
+			t.Errorf("test %d: json key decrypted with bad password", i)
+		}
+		// decrypt with the correct password
+		key, err := decryptKey(keyjson, password)
+		if err != nil {
+			t.Errorf("test %d: json key failed to decrypt: %v", i, err)
+		}
+		if key.Address != address {
+			t.Errorf("test %d: key address mismatch: have %x, want %x", i, key.Address, address)
+		}
+		// recrypt with a new password and start over
+		password += "new data appended"
+		if keyjson, err = encryptKey(key, password, veryLightScryptN, veryLightScryptP); err != nil {
+			t.Errorf("test %d: failed to recrypt key %v", i, err)
+		}
+	}
+}
