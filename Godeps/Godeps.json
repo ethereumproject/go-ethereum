@@ -101,10 +101,6 @@
 			"Rev": "4f90aeace3a26ad7021961c297b22c42160c7b25"
 		},
 		{
-			"ImportPath": "gopkg.in/karalabe/cookiejar.v2/collections/prque",
-			"Rev": "8dcd6a7f4951f6ff3ee9cbb919a06d8925822e57"
-		},
-		{
 			"ImportPath": "gopkg.in/urfave/cli.v1",
 			"Comment": "v1.17.0",
 			"Rev": "01857ac33766ce0c93856370626f9799281c14f4"
