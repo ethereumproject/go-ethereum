@@ -36,14 +36,6 @@
 			"Rev": "46bde78b11f3f021f2a511df138be9e2fc7506e8"
 		},
 		{
-			"ImportPath": "github.com/jackpal/gateway",
-			"Rev": "192609c58b8985e645cbe82ddcb28a4362ca0fdc"
-		},
-		{
-			"ImportPath": "github.com/jackpal/go-nat-pmp",
-			"Rev": "46523a463303c6ede3ddfe45bde1c7ed52ebaacd"
-		},
-		{
 			"ImportPath": "github.com/rs/xhandler",
 			"Rev": "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
 		},
