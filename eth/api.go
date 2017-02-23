@@ -18,6 +18,7 @@ package eth
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -49,7 +50,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/syndtr/goleveldb/leveldb"
-	"golang.org/x/net/context"
 )
 
 const defaultGas = uint64(90000)
