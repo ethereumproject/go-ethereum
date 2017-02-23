@@ -143,6 +143,21 @@ type keyStorePlain struct {
 	baseDir string
 }
 
+func newPlaintextKeyStore(dir string) (keyStore, error) {
+	if !filepath.IsAbs(dir) {
+		var err error
+		dir, err = filepath.Abs(dir)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return nil, err
+	}
+
+	return keyStorePlain{baseDir: dir}, nil
+}
+
 func (store keyStorePlain) Lookup(file string, secret string) (*key, error) {
 	if !filepath.IsAbs(file) {
 		file = filepath.Join(store.baseDir, file)
@@ -176,7 +191,6 @@ func (store keyStorePlain) Insert(key *key, secret string) (file string, err err
 	return file, nil
 }
 
-
 func (store keyStorePlain) Update(file string, key *key, secret string) error {
 	data, err := json.Marshal(key)
 	if err != nil {
@@ -189,12 +203,29 @@ func (store keyStorePlain) Update(file string, key *key, secret string) error {
 	return writeKeyFile(file, data)
 }
 
-// keyStorePassphrase behaves as keyStorePlain with the difference that
-// the private key is encrypted and on disk uses another JSON encoding.
 type keyStorePassphrase struct {
 	baseDir string
 	scryptN int
 	scryptP int
+}
+
+func newKeyStore(dir string, scryptN, scryptP int) (keyStore, error) {
+	if !filepath.IsAbs(dir) {
+		var err error
+		dir, err = filepath.Abs(dir)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return nil, err
+	}
+
+	return &keyStorePassphrase{
+		baseDir: dir,
+		scryptN: scryptN,
+		scryptP: scryptP,
+	}, nil
 }
 
 const (
@@ -210,7 +241,7 @@ const (
 	scryptDKLen = 32
 )
 
-func (store keyStorePassphrase) Lookup(file string, secret string) (*key, error) {
+func (store *keyStorePassphrase) Lookup(file string, secret string) (*key, error) {
 	if !filepath.IsAbs(file) {
 		file = filepath.Join(store.baseDir, file)
 	}
@@ -228,7 +259,7 @@ func (store keyStorePassphrase) Lookup(file string, secret string) (*key, error)
 	return key, nil
 }
 
-func (store keyStorePassphrase) Insert(key *key, secret string) (file string, err error) {
+func (store *keyStorePassphrase) Insert(key *key, secret string) (file string, err error) {
 	data, err := encryptKey(key, secret, store.scryptN, store.scryptP)
 	if err != nil {
 		return "", err
@@ -248,7 +279,7 @@ func (store keyStorePassphrase) Insert(key *key, secret string) (file string, er
 	return file, nil
 }
 
-func (store keyStorePassphrase) Update(file string, key *key, secret string) error {
+func (store *keyStorePassphrase) Update(file string, key *key, secret string) error {
 	data, err := encryptKey(key, secret, store.scryptN, store.scryptP)
 	if err != nil {
 		return err
@@ -500,23 +531,19 @@ func ensureInt(x interface{}) int {
 }
 
 func writeKeyFile(file string, content []byte) error {
-	// Create the keystore directory with appropriate permissions
-	// in case it is not present yet.
-	const dirPerm = 0700
-	if err := os.MkdirAll(filepath.Dir(file), dirPerm); err != nil {
-		return err
-	}
+	dir, basename := filepath.Split(file)
+
 	// Atomic write: create a temporary hidden file first
 	// then move it into place. TempFile assigns mode 0600.
-	f, err := ioutil.TempFile(filepath.Dir(file), "."+filepath.Base(file)+".tmp")
+	f, err := ioutil.TempFile(dir, "."+basename+".tmp")
 	if err != nil {
 		return err
 	}
+	defer f.Close()
+
 	if _, err := f.Write(content); err != nil {
-		f.Close()
 		os.Remove(f.Name())
 		return err
 	}
-	f.Close()
 	return os.Rename(f.Name(), file)
 }

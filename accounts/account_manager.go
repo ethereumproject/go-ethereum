@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -77,20 +76,28 @@ type unlocked struct {
 }
 
 // NewManager creates a manager for the given directory.
-func NewManager(keydir string, scryptN, scryptP int) *Manager {
-	keydir, _ = filepath.Abs(keydir)
-	am := &Manager{keyStore: &keyStorePassphrase{keydir, scryptN, scryptP}}
+func NewManager(keydir string, scryptN, scryptP int) (*Manager, error) {
+	store, err := newKeyStore(keydir, scryptN, scryptP)
+	if err != nil {
+		return nil, err
+	}
+
+	am := &Manager{keyStore: store}
 	am.init(keydir)
-	return am
+	return am, nil
 }
 
 // NewPlaintextManager creates a manager for the given directory.
 // Deprecated: Use NewManager.
-func NewPlaintextManager(keydir string) *Manager {
-	keydir, _ = filepath.Abs(keydir)
-	am := &Manager{keyStore: &keyStorePlain{keydir}}
+func NewPlaintextManager(keydir string) (*Manager, error) {
+	store, err := newPlaintextKeyStore(keydir)
+	if err != nil {
+		return nil, err
+	}
+
+	am := &Manager{keyStore: store}
 	am.init(keydir)
-	return am
+	return am, nil
 }
 
 func (am *Manager) init(keydir string) {

@@ -204,13 +204,22 @@ func TestSignRace(t *testing.T) {
 }
 
 func tmpManager(t *testing.T, encrypted bool) (string, *Manager) {
-	d, err := ioutil.TempDir("", "eth-keystore-test")
+	dir, err := ioutil.TempDir("", "eth-keystore-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	new := NewPlaintextManager
-	if encrypted {
-		new = func(kd string) *Manager { return NewManager(kd, veryLightScryptN, veryLightScryptP) }
+
+	if !encrypted {
+		m, err := NewPlaintextManager(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return dir, m
 	}
-	return d, new(d)
+
+	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir, m
 }
