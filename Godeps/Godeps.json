@@ -65,26 +65,6 @@
 			"Rev": "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
 		},
 		{
-			"ImportPath": "golang.org/x/net/context",
-			"Rev": "8968c61983e8f51a91b8c0ef25bf739278c89634"
-		},
-		{
-			"ImportPath": "golang.org/x/net/html",
-			"Rev": "8968c61983e8f51a91b8c0ef25bf739278c89634"
-		},
-		{
-			"ImportPath": "golang.org/x/net/html/atom",
-			"Rev": "8968c61983e8f51a91b8c0ef25bf739278c89634"
-		},
-		{
-			"ImportPath": "golang.org/x/net/html/charset",
-			"Rev": "8968c61983e8f51a91b8c0ef25bf739278c89634"
-		},
-		{
-			"ImportPath": "golang.org/x/net/websocket",
-			"Rev": "8968c61983e8f51a91b8c0ef25bf739278c89634"
-		},
-		{
 			"ImportPath": "gopkg.in/check.v1",
 			"Rev": "4f90aeace3a26ad7021961c297b22c42160c7b25"
 		},
