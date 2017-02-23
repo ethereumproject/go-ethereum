@@ -75,6 +75,19 @@ type unlocked struct {
 	abort chan struct{}
 }
 
+const (
+	// n,r,p = 2^18, 8, 1 uses 256MB memory and approx 1s CPU time on a modern CPU.
+	StandardScryptN = 1 << 18
+	StandardScryptP = 1
+
+	// n,r,p = 2^12, 8, 6 uses 4MB memory and approx 100ms CPU time on a modern CPU.
+	LightScryptN = 1 << 12
+	LightScryptP = 6
+
+	scryptR     = 8
+	scryptDKLen = 32
+)
+
 // NewManager creates a manager for the given directory.
 func NewManager(keydir string, scryptN, scryptP int) (*Manager, error) {
 	store, err := newKeyStore(keydir, scryptN, scryptP)
@@ -82,33 +95,20 @@ func NewManager(keydir string, scryptN, scryptP int) (*Manager, error) {
 		return nil, err
 	}
 
-	am := &Manager{keyStore: store}
-	am.init(keydir)
-	return am, nil
-}
-
-// NewPlaintextManager creates a manager for the given directory.
-// Deprecated: Use NewManager.
-func NewPlaintextManager(keydir string) (*Manager, error) {
-	store, err := newPlaintextKeyStore(keydir)
-	if err != nil {
-		return nil, err
+	am := &Manager{
+		keyStore: *store,
+		unlocked: make(map[common.Address]*unlocked),
+		cache:    newAddrCache(keydir),
 	}
 
-	am := &Manager{keyStore: store}
-	am.init(keydir)
-	return am, nil
-}
-
-func (am *Manager) init(keydir string) {
-	am.unlocked = make(map[common.Address]*unlocked)
-	am.cache = newAddrCache(keydir)
 	// TODO: In order for this finalizer to work, there must be no references
 	// to am. addrCache doesn't keep a reference but unlocked keys do,
 	// so the finalizer will not trigger until all timed unlocks have expired.
 	runtime.SetFinalizer(am, func(m *Manager) {
 		m.cache.close()
 	})
+
+	return am, nil
 }
 
 // HasAddress reports whether a key with the given address is present.
@@ -264,7 +264,7 @@ func (am *Manager) expire(addr common.Address, u *unlocked, timeout time.Duratio
 // NewAccount generates a new key and stores it into the key directory,
 // encrypting it with the passphrase.
 func (am *Manager) NewAccount(passphrase string) (Account, error) {
-	_, account, err := storeNewKey(am.keyStore, passphrase)
+	_, account, err := storeNewKey(&am.keyStore, passphrase)
 	if err != nil {
 		return Account{}, err
 	}
@@ -289,13 +289,7 @@ func (am *Manager) Export(a Account, passphrase, newPassphrase string) (keyJSON 
 	if err != nil {
 		return nil, err
 	}
-	var N, P int
-	if store, ok := am.keyStore.(*keyStorePassphrase); ok {
-		N, P = store.scryptN, store.scryptP
-	} else {
-		N, P = StandardScryptN, StandardScryptP
-	}
-	return encryptKey(key, newPassphrase, N, P)
+	return encryptKey(key, newPassphrase, am.keyStore.scryptN, am.keyStore.scryptP)
 }
 
 // Import stores the given encrypted JSON key into the key directory.
@@ -347,7 +341,7 @@ func (am *Manager) Update(a Account, passphrase, newPassphrase string) error {
 // ImportPreSaleKey decrypts the given Ethereum presale wallet and stores
 // a key file in the key directory. The key file is encrypted with the same passphrase.
 func (am *Manager) ImportPreSaleKey(keyJSON []byte, passphrase string) (Account, error) {
-	a, _, err := importPreSaleKey(am.keyStore, keyJSON, passphrase)
+	a, _, err := importPreSaleKey(&am.keyStore, keyJSON, passphrase)
 	if err != nil {
 		return a, err
 	}

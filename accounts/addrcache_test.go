@@ -52,7 +52,7 @@ var (
 func TestWatchNewFile(t *testing.T) {
 	t.Parallel()
 
-	dir, am := tmpManager(t, false)
+	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
 	// Ensure the watcher is started before adding any files.

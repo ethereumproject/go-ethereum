@@ -48,12 +48,6 @@ type key struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
-type keyStore interface {
-	Lookup(path, secret string) (*key, error)
-	Insert(k *key, secret string) (path string, err error)
-	Update(path string, k *key, secret string) error
-}
-
 type plainKeyJSON struct {
 	ID         string `json:"id"`
 	Address    string `json:"address"`
@@ -121,7 +115,7 @@ func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) (*key, error) {
 	}, nil
 }
 
-func storeNewKey(store keyStore, secret string) (*key, Account, error) {
+func storeNewKey(store *keyStore, secret string) (*key, Account, error) {
 	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 	if err != nil {
 		return nil, Account{}, err
@@ -139,77 +133,13 @@ func storeNewKey(store keyStore, secret string) (*key, Account, error) {
 	return key, Account{Address: key.Address, File: file}, err
 }
 
-type keyStorePlain struct {
-	baseDir string
-}
-
-func newPlaintextKeyStore(dir string) (keyStore, error) {
-	if !filepath.IsAbs(dir) {
-		var err error
-		dir, err = filepath.Abs(dir)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return nil, err
-	}
-
-	return keyStorePlain{baseDir: dir}, nil
-}
-
-func (store keyStorePlain) Lookup(file string, secret string) (*key, error) {
-	if !filepath.IsAbs(file) {
-		file = filepath.Join(store.baseDir, file)
-	}
-
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-	k := new(key)
-	if err := json.Unmarshal(data, k); err != nil {
-		return nil, fmt.Errorf("eth/account: malformed JSON file %s: %s", file, err)
-	}
-	return k, nil
-}
-
-func (store keyStorePlain) Insert(key *key, secret string) (file string, err error) {
-	data, err := json.Marshal(key)
-	if err != nil {
-		return "", err
-	}
-
-	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.999999999")
-	file = fmt.Sprintf("UTC--%sZ--%x", timestamp, key.Address[:])
-	file = filepath.Join(store.baseDir, file)
-
-	if err := writeKeyFile(file, data); err != nil {
-		return "", err
-	}
-
-	return file, nil
-}
-
-func (store keyStorePlain) Update(file string, key *key, secret string) error {
-	data, err := json.Marshal(key)
-	if err != nil {
-		return err
-	}
-
-	if !filepath.IsAbs(file) {
-		file = filepath.Join(store.baseDir, file)
-	}
-	return writeKeyFile(file, data)
-}
-
-type keyStorePassphrase struct {
+type keyStore struct {
 	baseDir string
 	scryptN int
 	scryptP int
 }
 
-func newKeyStore(dir string, scryptN, scryptP int) (keyStore, error) {
+func newKeyStore(dir string, scryptN, scryptP int) (*keyStore, error) {
 	if !filepath.IsAbs(dir) {
 		var err error
 		dir, err = filepath.Abs(dir)
@@ -221,27 +151,14 @@ func newKeyStore(dir string, scryptN, scryptP int) (keyStore, error) {
 		return nil, err
 	}
 
-	return &keyStorePassphrase{
+	return &keyStore{
 		baseDir: dir,
 		scryptN: scryptN,
 		scryptP: scryptP,
 	}, nil
 }
 
-const (
-	// n,r,p = 2^18, 8, 1 uses 256MB memory and approx 1s CPU time on a modern CPU.
-	StandardScryptN = 1 << 18
-	StandardScryptP = 1
-
-	// n,r,p = 2^12, 8, 6 uses 4MB memory and approx 100ms CPU time on a modern CPU.
-	LightScryptN = 1 << 12
-	LightScryptP = 6
-
-	scryptR     = 8
-	scryptDKLen = 32
-)
-
-func (store *keyStorePassphrase) Lookup(file string, secret string) (*key, error) {
+func (store *keyStore) Lookup(file string, secret string) (*key, error) {
 	if !filepath.IsAbs(file) {
 		file = filepath.Join(store.baseDir, file)
 	}
@@ -259,7 +176,7 @@ func (store *keyStorePassphrase) Lookup(file string, secret string) (*key, error
 	return key, nil
 }
 
-func (store *keyStorePassphrase) Insert(key *key, secret string) (file string, err error) {
+func (store *keyStore) Insert(key *key, secret string) (file string, err error) {
 	data, err := encryptKey(key, secret, store.scryptN, store.scryptP)
 	if err != nil {
 		return "", err
@@ -279,7 +196,7 @@ func (store *keyStorePassphrase) Insert(key *key, secret string) (file string, e
 	return file, nil
 }
 
-func (store *keyStorePassphrase) Update(file string, key *key, secret string) error {
+func (store keyStore) Update(file string, key *key, secret string) error {
 	data, err := encryptKey(key, secret, store.scryptN, store.scryptP)
 	if err != nil {
 		return err
@@ -403,7 +320,7 @@ func decryptKey(web3JSON []byte, secret string) (*key, error) {
 			return nil, err
 		}
 		if w.Version != 3 {
-			return nil, fmt.Errorf("unsupported Web3 version: %d", version)
+			return nil, fmt.Errorf("unsupported Web3 version: %v", version)
 		}
 
 		keyUUID = w.ID

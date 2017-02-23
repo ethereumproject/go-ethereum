@@ -34,42 +34,22 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto/secp256k1"
 )
 
-func tmpKeyStore(t *testing.T, encrypted bool) (dir string, ks keyStore) {
-	d, err := ioutil.TempDir("", "geth-keystore-test")
+func tmpKeyStore(t *testing.T) (dir string, ks *keyStore) {
+	dir, err := ioutil.TempDir("", "geth-keystore-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if encrypted {
-		ks = &keyStorePassphrase{d, veryLightScryptN, veryLightScryptP}
-	} else {
-		ks = &keyStorePlain{d}
+
+	store, err := newKeyStore(dir, veryLightScryptN, veryLightScryptP)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return d, ks
+
+	return dir, store
 }
 
-func TestKeyStorePlain(t *testing.T) {
-	dir, ks := tmpKeyStore(t, false)
-	defer os.RemoveAll(dir)
-
-	key, account, err := storeNewKey(ks, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := ks.Lookup(account.File, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(got.Address, key.Address) {
-		t.Errorf("got address %x, want %x", got.Address, key.Address)
-	}
-	if !reflect.DeepEqual(key.PrivateKey, key.PrivateKey) {
-		t.Errorf("got private key %x, want %x", got.PrivateKey, key.PrivateKey)
-	}
-}
-
-func TestKeyStorePassphrase(t *testing.T) {
-	dir, ks := tmpKeyStore(t, true)
+func TestKeyStore(t *testing.T) {
+	dir, ks := tmpKeyStore(t)
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
@@ -90,8 +70,8 @@ func TestKeyStorePassphrase(t *testing.T) {
 	}
 }
 
-func TestKeyStorePassphraseDecryptionFail(t *testing.T) {
-	dir, ks := tmpKeyStore(t, true)
+func TestKeyStoreDecryptionFail(t *testing.T) {
+	dir, ks := tmpKeyStore(t)
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
@@ -105,7 +85,7 @@ func TestKeyStorePassphraseDecryptionFail(t *testing.T) {
 }
 
 func TestImportPreSaleKey(t *testing.T) {
-	dir, ks := tmpKeyStore(t, true)
+	dir, ks := tmpKeyStore(t)
 	defer os.RemoveAll(dir)
 
 	// file content of a presale key file generated with:
@@ -183,7 +163,10 @@ func TestV1_1(t *testing.T) {
 
 func TestV1_2(t *testing.T) {
 	t.Parallel()
-	store := &keyStorePassphrase{"testdata/v1", LightScryptN, LightScryptP}
+	store, err := newKeyStore("testdata/v1", LightScryptN, LightScryptP)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	key, err := store.Lookup("cb61d5a9c4896fb9658090b597ef0e7be6f7b67e/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e", "g")
 	if err != nil {
