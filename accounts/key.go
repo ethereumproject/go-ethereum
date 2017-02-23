@@ -43,9 +43,9 @@ type key struct {
 
 type keyStore interface {
 	// Loads and decrypts the key from disk.
-	GetKey(addr common.Address, filename string, auth string) (*key, error)
+	GetKey(addr common.Address, filename, secret string) (*key, error)
 	// Writes and encrypts the key.
-	StoreKey(filename string, k *key, auth string) error
+	StoreKey(filename string, k *key, secret string) error
 	// Joins filename with the key directory unless it is already absolute.
 	JoinPath(filename string) string
 }
@@ -117,7 +117,7 @@ func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) (*key, error) {
 	}, nil
 }
 
-func storeNewKey(ks keyStore, auth string) (*key, Account, error) {
+func storeNewKey(ks keyStore, secret string) (*key, Account, error) {
 	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 	if err != nil {
 		return nil, Account{}, err
@@ -128,7 +128,7 @@ func storeNewKey(ks keyStore, auth string) (*key, Account, error) {
 	}
 
 	a := Account{Address: key.Address, File: ks.JoinPath(keyFileName(key.Address))}
-	if err := ks.StoreKey(a.File, key, auth); err != nil {
+	if err := ks.StoreKey(a.File, key, secret); err != nil {
 		zeroKey(key.PrivateKey)
 		return nil, a, err
 	}

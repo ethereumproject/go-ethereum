@@ -35,11 +35,13 @@ func NewTransactor(keyin io.Reader, passphrase string) (*TransactOpts, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err := accounts.DecryptKey(json, passphrase)
+
+	key, err := accounts.Web3PrivateKey(json, passphrase)
 	if err != nil {
 		return nil, err
 	}
-	return NewKeyedTransactor(key.PrivateKey), nil
+
+	return NewKeyedTransactor(key), nil
 }
 
 // NewKeyedTransactor is a utility method to easily create a transaction signer

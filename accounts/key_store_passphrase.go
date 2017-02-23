@@ -19,6 +19,7 @@ package accounts
 import (
 	"bytes"
 	"crypto/aes"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -54,13 +55,13 @@ type keyStorePassphrase struct {
 	scryptP     int
 }
 
-func (ks keyStorePassphrase) GetKey(addr common.Address, filename, auth string) (*key, error) {
+func (ks keyStorePassphrase) GetKey(addr common.Address, filename string, secret string) (*key, error) {
 	// Load the key from the keystore and decrypt its contents
 	keyjson, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	key, err := decryptKey(keyjson, auth)
+	key, err := decryptKey(keyjson, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +72,8 @@ func (ks keyStorePassphrase) GetKey(addr common.Address, filename, auth string) 
 	return key, nil
 }
 
-func (ks keyStorePassphrase) StoreKey(filename string, key *key, auth string) error {
-	keyjson, err := encryptKey(key, auth, ks.scryptN, ks.scryptP)
+func (ks keyStorePassphrase) StoreKey(filename string, key *key, secret string) error {
+	keyjson, err := encryptKey(key, secret, ks.scryptN, ks.scryptP)
 	if err != nil {
 		return err
 	}
@@ -87,17 +88,18 @@ func (ks keyStorePassphrase) JoinPath(filename string) string {
 	}
 }
 
-// encryption records version 1 and 3
 // https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition
 
-type encryptedKeyJSONV3 struct {
+// web3v3 is a version 3 encrypted key store record.
+type web3v3 struct {
 	ID      string     `json:"id"`
 	Address string     `json:"address"`
 	Crypto  cryptoJSON `json:"crypto"`
 	Version int        `json:"version"`
 }
 
-type encryptedKeyJSONV1 struct {
+// web3v3 is a version 1 encrypted key store record.
+type web3v1 struct {
 	ID      string     `json:"id"`
 	Address string     `json:"address"`
 	Crypto  cryptoJSON `json:"crypto"`
@@ -118,10 +120,9 @@ type cipherparamsJSON struct {
 }
 
 // encryptKey encrypts key as version 3.
-func encryptKey(key *key, auth string, scryptN, scryptP int) ([]byte, error) {
-	authArray := []byte(auth)
+func encryptKey(key *key, secret string, scryptN, scryptP int) ([]byte, error) {
 	salt := randentropy.GetEntropyCSPRNG(32)
-	derivedKey, err := scrypt.Key(authArray, salt, scryptN, scryptR, scryptP, scryptDKLen)
+	derivedKey, err := scrypt.Key([]byte(secret), salt, scryptN, scryptR, scryptP, scryptDKLen)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func encryptKey(key *key, auth string, scryptN, scryptP int) ([]byte, error) {
 	}
 	mac := crypto.Keccak256(derivedKey[16:32], cipherText)
 
-	return json.Marshal(encryptedKeyJSONV3{
+	return json.Marshal(web3v3{
 		ID:      key.UUID,
 		Address: hex.EncodeToString(key.Address[:]),
 		Crypto: cryptoJSON{
@@ -158,11 +159,20 @@ func encryptKey(key *key, auth string, scryptN, scryptP int) ([]byte, error) {
 	})
 }
 
+// Web3PrivateKey decrypts the record with secret and returns the private key.
+func Web3PrivateKey(web3JSON []byte, secret string) (*ecdsa.PrivateKey, error) {
+	k, err := decryptKey(web3JSON, secret)
+	if err != nil {
+		return nil, err
+	}
+	return k.PrivateKey, nil
+}
+
 // decryptKey decrypts a key from a JSON blob, returning the private key itself.
-func decryptKey(keyjson []byte, auth string) (*key, error) {
+func decryptKey(web3JSON []byte, secret string) (*key, error) {
 	// Parse the JSON into a simple map to fetch the key version
 	m := make(map[string]interface{})
-	if err := json.Unmarshal(keyjson, &m); err != nil {
+	if err := json.Unmarshal(web3JSON, &m); err != nil {
 		return nil, err
 	}
 
@@ -172,31 +182,31 @@ func decryptKey(keyjson []byte, auth string) (*key, error) {
 		keyUUID  string
 	)
 	if version, ok := m["version"].(string); ok && version == "1" {
-		k := new(encryptedKeyJSONV1)
-		if err := json.Unmarshal(keyjson, k); err != nil {
+		w := new(web3v1)
+		if err := json.Unmarshal(web3JSON, w); err != nil {
 			return nil, err
 		}
 
-		keyUUID = k.ID
+		keyUUID = w.ID
 
 		var err error
-		keyBytes, err = decryptKeyV1(k, auth)
+		keyBytes, err = decryptKeyV1(w, secret)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		k := new(encryptedKeyJSONV3)
-		if err := json.Unmarshal(keyjson, k); err != nil {
+		w := new(web3v3)
+		if err := json.Unmarshal(web3JSON, w); err != nil {
 			return nil, err
 		}
-		if k.Version != 3 {
-			return nil, fmt.Errorf("unsupported JSON version: %d", version)
+		if w.Version != 3 {
+			return nil, fmt.Errorf("unsupported Web3 version: %d", version)
 		}
 
-		keyUUID = k.ID
+		keyUUID = w.ID
 
 		var err error
-		keyBytes, err = decryptKeyV3(k, auth)
+		keyBytes, err = decryptKeyV3(w, secret)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +220,7 @@ func decryptKey(keyjson []byte, auth string) (*key, error) {
 	}, nil
 }
 
-func decryptKeyV3(keyProtected *encryptedKeyJSONV3, auth string) (keyBytes []byte, err error) {
+func decryptKeyV3(keyProtected *web3v3, secret string) (keyBytes []byte, err error) {
 	if keyProtected.Crypto.Cipher != "aes-128-ctr" {
 		return nil, fmt.Errorf("Cipher not supported: %v", keyProtected.Crypto.Cipher)
 	}
@@ -230,7 +240,7 @@ func decryptKeyV3(keyProtected *encryptedKeyJSONV3, auth string) (keyBytes []byt
 		return nil, err
 	}
 
-	derivedKey, err := getKDFKey(keyProtected.Crypto, auth)
+	derivedKey, err := getKDFKey(keyProtected.Crypto, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +257,7 @@ func decryptKeyV3(keyProtected *encryptedKeyJSONV3, auth string) (keyBytes []byt
 	return plainText, err
 }
 
-func decryptKeyV1(keyProtected *encryptedKeyJSONV1, auth string) (keyBytes []byte, err error) {
+func decryptKeyV1(keyProtected *web3v1, secret string) (keyBytes []byte, err error) {
 	mac, err := hex.DecodeString(keyProtected.Crypto.MAC)
 	if err != nil {
 		return nil, err
@@ -263,7 +273,7 @@ func decryptKeyV1(keyProtected *encryptedKeyJSONV1, auth string) (keyBytes []byt
 		return nil, err
 	}
 
-	derivedKey, err := getKDFKey(keyProtected.Crypto, auth)
+	derivedKey, err := getKDFKey(keyProtected.Crypto, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -280,8 +290,7 @@ func decryptKeyV1(keyProtected *encryptedKeyJSONV1, auth string) (keyBytes []byt
 	return plainText, err
 }
 
-func getKDFKey(cryptoJSON cryptoJSON, auth string) ([]byte, error) {
-	authArray := []byte(auth)
+func getKDFKey(cryptoJSON cryptoJSON, secret string) ([]byte, error) {
 	salt, err := hex.DecodeString(cryptoJSON.KDFParams["salt"].(string))
 	if err != nil {
 		return nil, err
@@ -292,7 +301,7 @@ func getKDFKey(cryptoJSON cryptoJSON, auth string) ([]byte, error) {
 		n := ensureInt(cryptoJSON.KDFParams["n"])
 		r := ensureInt(cryptoJSON.KDFParams["r"])
 		p := ensureInt(cryptoJSON.KDFParams["p"])
-		return scrypt.Key(authArray, salt, n, r, p, dkLen)
+		return scrypt.Key([]byte(secret), salt, n, r, p, dkLen)
 
 	} else if cryptoJSON.KDF == "pbkdf2" {
 		c := ensureInt(cryptoJSON.KDFParams["c"])
@@ -300,7 +309,7 @@ func getKDFKey(cryptoJSON cryptoJSON, auth string) ([]byte, error) {
 		if prf != "hmac-sha256" {
 			return nil, fmt.Errorf("Unsupported PBKDF2 PRF: %s", prf)
 		}
-		key := pbkdf2.Key(authArray, salt, c, dkLen, sha256.New)
+		key := pbkdf2.Key([]byte(secret), salt, c, dkLen, sha256.New)
 		return key, nil
 	}
 
