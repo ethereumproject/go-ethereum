@@ -65,18 +65,6 @@
 			"Rev": "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
 		},
 		{
-			"ImportPath": "golang.org/x/crypto/pbkdf2",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/ripemd160",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/scrypt",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
-		},
-		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "8968c61983e8f51a91b8c0ef25bf739278c89634"
 		},
