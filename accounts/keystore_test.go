@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -35,77 +34,58 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto/secp256k1"
 )
 
-func tmpKeyStore(t *testing.T, encrypted bool) (dir string, ks keyStore) {
-	d, err := ioutil.TempDir("", "geth-keystore-test")
+func tmpKeyStore(t *testing.T) (dir string, ks *keyStore) {
+	dir, err := ioutil.TempDir("", "geth-keystore-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if encrypted {
-		ks = &keyStorePassphrase{d, veryLightScryptN, veryLightScryptP}
-	} else {
-		ks = &keyStorePlain{d}
+
+	store, err := newKeyStore(dir, veryLightScryptN, veryLightScryptP)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return d, ks
+
+	return dir, store
 }
 
-func TestKeyStorePlain(t *testing.T) {
-	dir, ks := tmpKeyStore(t, false)
-	defer os.RemoveAll(dir)
-
-	pass := "" // not used but required by API
-	k1, account, err := storeNewKey(ks, rand.Reader, pass)
-	if err != nil {
-		t.Fatal(err)
-	}
-	k2, err := ks.GetKey(k1.Address, account.File, pass)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(k1.Address, k2.Address) {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(k1.PrivateKey, k2.PrivateKey) {
-		t.Fatal(err)
-	}
-}
-
-func TestKeyStorePassphrase(t *testing.T) {
-	dir, ks := tmpKeyStore(t, true)
+func TestKeyStore(t *testing.T) {
+	dir, ks := tmpKeyStore(t)
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
-	k1, account, err := storeNewKey(ks, rand.Reader, pass)
+	key, account, err := storeNewKey(ks, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	k2, err := ks.GetKey(k1.Address, account.File, pass)
+
+	got, err := ks.Lookup(account.File, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(k1.Address, k2.Address) {
-		t.Fatal(err)
+	if !reflect.DeepEqual(got.Address, key.Address) {
+		t.Errorf("got address %x, want %x", got.Address, key.Address)
 	}
-	if !reflect.DeepEqual(k1.PrivateKey, k2.PrivateKey) {
-		t.Fatal(err)
+	if !reflect.DeepEqual(key.PrivateKey, key.PrivateKey) {
+		t.Errorf("got private key %x, want %x", got.PrivateKey, key.PrivateKey)
 	}
 }
 
-func TestKeyStorePassphraseDecryptionFail(t *testing.T) {
-	dir, ks := tmpKeyStore(t, true)
+func TestKeyStoreDecryptionFail(t *testing.T) {
+	dir, ks := tmpKeyStore(t)
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
-	k1, account, err := storeNewKey(ks, rand.Reader, pass)
+	_, account, err := storeNewKey(ks, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = ks.GetKey(k1.Address, account.File, "bar"); err != ErrDecrypt {
+	if _, err = ks.Lookup(account.File, "bar"); err != ErrDecrypt {
 		t.Fatalf("wrong error for invalid passphrase\ngot %q\nwant %q", err, ErrDecrypt)
 	}
 }
 
 func TestImportPreSaleKey(t *testing.T) {
-	dir, ks := tmpKeyStore(t, true)
+	dir, ks := tmpKeyStore(t)
 	defer os.RemoveAll(dir)
 
 	// file content of a presale key file generated with:
@@ -128,13 +108,13 @@ func TestImportPreSaleKey(t *testing.T) {
 // Test and utils for the key store tests in the Ethereum JSON tests;
 // testdataKeyStoreTests/basic_tests.json
 type KeyStoreTestV3 struct {
-	Json     encryptedKeyJSONV3
+	Json     web3v3
 	Password string
 	Priv     string
 }
 
 type KeyStoreTestV1 struct {
-	Json     encryptedKeyJSONV1
+	Json     web3v1
 	Password string
 	Priv     string
 }
@@ -183,22 +163,31 @@ func TestV1_1(t *testing.T) {
 
 func TestV1_2(t *testing.T) {
 	t.Parallel()
-	ks := &keyStorePassphrase{"testdata/v1", LightScryptN, LightScryptP}
-	addr := common.HexToAddress("cb61d5a9c4896fb9658090b597ef0e7be6f7b67e")
-	file := "testdata/v1/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e"
-	k, err := ks.GetKey(addr, file, "g")
+	store, err := newKeyStore("testdata/v1", LightScryptN, LightScryptP)
 	if err != nil {
 		t.Fatal(err)
 	}
-	privHex := hex.EncodeToString(crypto.FromECDSA(k.PrivateKey))
-	expectedHex := "d1b1178d3529626a1a93e073f65028370d14c7eb0936eb42abef05db6f37ad7d"
-	if privHex != expectedHex {
-		t.Fatal(fmt.Errorf("Unexpected privkey: %v, expected %v", privHex, expectedHex))
+
+	key, err := store.Lookup("cb61d5a9c4896fb9658090b597ef0e7be6f7b67e/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e", "g")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := hex.EncodeToString(key.Address[:])
+	want := "cb61d5a9c4896fb9658090b597ef0e7be6f7b67e"
+	if got != want {
+		t.Errorf("got address %s, want %s", got, want)
+	}
+
+	got = hex.EncodeToString(crypto.FromECDSA(key.PrivateKey))
+	want = "d1b1178d3529626a1a93e073f65028370d14c7eb0936eb42abef05db6f37ad7d"
+	if got != want {
+		t.Errorf("got private key %s, want %s", got, want)
 	}
 }
 
 func testDecryptV3(test KeyStoreTestV3, t *testing.T) {
-	privBytes, _, err := decryptKeyV3(&test.Json, test.Password)
+	privBytes, err := decryptKeyV3(&test.Json, test.Password)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +198,7 @@ func testDecryptV3(test KeyStoreTestV3, t *testing.T) {
 }
 
 func testDecryptV1(test KeyStoreTestV1, t *testing.T) {
-	privBytes, _, err := decryptKeyV1(&test.Json, test.Password)
+	privBytes, err := decryptKeyV1(&test.Json, test.Password)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,31 +232,68 @@ func loadKeyStoreTestV1(file string, t *testing.T) map[string]KeyStoreTestV1 {
 	return tests
 }
 
-func TestKeyForDirectICAP(t *testing.T) {
-	t.Parallel()
-	key := newKeyForDirectICAP(rand.Reader)
-	if !strings.HasPrefix(key.Address.Hex(), "0x00") {
-		t.Errorf("Expected first address byte to be zero, have: %s", key.Address.Hex())
-	}
-}
-
+// WTF?
 // newKeyForDirectICAP generates a key whose address fits into < 155 bits so it can fit
 // into the Direct ICAP spec. for simplicity and easier compatibility with other libs, we
 // retry until the first byte is 0.
-func newKeyForDirectICAP(rand io.Reader) *Key {
-	randBytes := make([]byte, 64)
-	_, err := rand.Read(randBytes)
+func TestKeyForDirectICAP(t *testing.T) {
+	t.Parallel()
+
+	for {
+		randBytes := make([]byte, 64)
+		_, err := rand.Read(randBytes)
+		if err != nil {
+			t.Fatalf("key generation: could not read from random source: %s", err)
+		}
+
+		privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), bytes.NewReader(randBytes))
+		if err != nil {
+			t.Fatalf("key generation: ecdsa.GenerateKey failed: %s", err)
+		}
+
+		key, err := newKeyFromECDSA(privateKeyECDSA)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if key.Address[0] == 0 {
+			return
+		}
+	}
+}
+
+const (
+	veryLightScryptN = 2
+	veryLightScryptP = 1
+)
+
+// Tests that a JSON key file can be decrypted and encrypted in multiple rounds.
+func TestKeyEncryptDecrypt(t *testing.T) {
+	keyjson, err := ioutil.ReadFile("testdata/very-light-scrypt.json")
 	if err != nil {
-		panic("key generation: could not read from random source: " + err.Error())
+		t.Fatal(err)
 	}
-	reader := bytes.NewReader(randBytes)
-	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), reader)
-	if err != nil {
-		panic("key generation: ecdsa.GenerateKey failed: " + err.Error())
+	password := ""
+	address := common.HexToAddress("45dea0fb0bba44f4fcf290bba71fd57d7117cbb8")
+
+	// Do a few rounds of decryption and encryption
+	for i := 0; i < 3; i++ {
+		// try a bad password first
+		if _, err := decryptKey(keyjson, password+"bad"); err == nil {
+			t.Errorf("test %d: json key decrypted with bad password", i)
+		}
+		// decrypt with the correct password
+		key, err := decryptKey(keyjson, password)
+		if err != nil {
+			t.Errorf("test %d: json key failed to decrypt: %v", i, err)
+		}
+		if key.Address != address {
+			t.Errorf("test %d: key address mismatch: have %x, want %x", i, key.Address, address)
+		}
+		// recrypt with a new password and start over
+		password += "new data appended"
+		if keyjson, err = encryptKey(key, password, veryLightScryptN, veryLightScryptP); err != nil {
+			t.Errorf("test %d: failed to recrypt key %v", i, err)
+		}
 	}
-	key := newKeyFromECDSA(privateKeyECDSA)
-	if !strings.HasPrefix(key.Address.Hex(), "0x00") {
-		return newKeyForDirectICAP(rand)
-	}
-	return key
 }

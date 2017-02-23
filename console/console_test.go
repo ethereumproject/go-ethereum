@@ -88,7 +88,10 @@ func newTester(t *testing.T, confOverride func(*eth.Config)) *tester {
 	if err != nil {
 		t.Fatalf("failed to create temporary keystore: %v", err)
 	}
-	accman := accounts.NewPlaintextManager(filepath.Join(workspace, "keystore"))
+	accman, err := accounts.NewManager(filepath.Join(workspace, "keystore"), accounts.LightScryptN, accounts.LightScryptP)
+	if err != nil {
+		t.Fatalf("failed to create account manager: %s", err)
+	}
 
 	// Create a networkless protocol stack and start an Ethereum service within
 	stack, err := node.New(&node.Config{DataDir: workspace, Name: testInstance, NoDiscovery: true})

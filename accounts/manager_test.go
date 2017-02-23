@@ -28,7 +28,7 @@ import (
 var testSigData = make([]byte, 32)
 
 func TestManager(t *testing.T) {
-	dir, am := tmpManager(t, true)
+	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
 	a, err := am.NewAccount("foo")
@@ -62,25 +62,8 @@ func TestManager(t *testing.T) {
 	}
 }
 
-func TestSign(t *testing.T) {
-	dir, am := tmpManager(t, true)
-	defer os.RemoveAll(dir)
-
-	pass := "" // not used but required by API
-	a1, err := am.NewAccount(pass)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := am.Unlock(a1, ""); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := am.Sign(a1.Address, testSigData); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestSignWithPassphrase(t *testing.T) {
-	dir, am := tmpManager(t, true)
+	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
 	pass := "passwd"
@@ -108,7 +91,7 @@ func TestSignWithPassphrase(t *testing.T) {
 }
 
 func TestTimedUnlock(t *testing.T) {
-	dir, am := tmpManager(t, true)
+	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
@@ -140,7 +123,7 @@ func TestTimedUnlock(t *testing.T) {
 }
 
 func TestOverrideUnlock(t *testing.T) {
-	dir, am := tmpManager(t, false)
+	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
@@ -178,7 +161,7 @@ func TestOverrideUnlock(t *testing.T) {
 
 // This test should fail under -race if signing races the expiration goroutine.
 func TestSignRace(t *testing.T) {
-	dir, am := tmpManager(t, false)
+	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
 	// Create a test account.
@@ -203,14 +186,15 @@ func TestSignRace(t *testing.T) {
 	t.Errorf("Account did not lock within the timeout")
 }
 
-func tmpManager(t *testing.T, encrypted bool) (string, *Manager) {
-	d, err := ioutil.TempDir("", "eth-keystore-test")
+func tmpManager(t *testing.T) (string, *Manager) {
+	dir, err := ioutil.TempDir("", "eth-keystore-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	new := NewPlaintextManager
-	if encrypted {
-		new = func(kd string) *Manager { return NewManager(kd, veryLightScryptN, veryLightScryptP) }
+
+	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return d, new(d)
+	return dir, m
 }

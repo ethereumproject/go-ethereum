@@ -52,7 +52,7 @@ var (
 func TestWatchNewFile(t *testing.T) {
 	t.Parallel()
 
-	dir, am := tmpManager(t, false)
+	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
 	// Ensure the watcher is started before adding any files.
@@ -92,7 +92,10 @@ func TestWatchNoDir(t *testing.T) {
 	// Create am but not the directory that it watches.
 	rand.Seed(time.Now().UnixNano())
 	dir := filepath.Join(os.TempDir(), fmt.Sprintf("eth-keystore-watch-test-%d-%d", os.Getpid(), rand.Int()))
-	am := NewManager(dir, LightScryptN, LightScryptP)
+	am, err := NewManager(dir, LightScryptN, LightScryptP)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	list := am.Accounts()
 	if len(list) > 0 {

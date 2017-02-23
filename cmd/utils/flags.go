@@ -410,16 +410,6 @@ func MustMakeDataDir(ctx *cli.Context) string {
 	return ""
 }
 
-// MakeKeyStoreDir resolves the folder to use for storing the account keys from the
-// set command line flags, returning the explicitly requested path, or one inside
-// the data directory otherwise.
-func MakeKeyStoreDir(datadir string, ctx *cli.Context) string {
-	if path := ctx.GlobalString(KeyStoreDirFlag.Name); path != "" {
-		return path
-	}
-	return filepath.Join(datadir, "keystore")
-}
-
 // MakeIPCPath creates an IPC path configuration from the set command line flags,
 // returning an empty string if IPC was explicitly disabled, or the set path.
 func MakeIPCPath(ctx *cli.Context) string {
@@ -562,8 +552,17 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 		scryptP = accounts.LightScryptP
 	}
 	datadir := MustMakeDataDir(ctx)
-	keydir := MakeKeyStoreDir(datadir, ctx)
-	return accounts.NewManager(keydir, scryptN, scryptP)
+
+	keydir := filepath.Join(datadir, "keystore")
+	if path := ctx.GlobalString(KeyStoreDirFlag.Name); path != "" {
+		keydir = path
+	}
+
+	m, err := accounts.NewManager(keydir, scryptN, scryptP)
+	if err != nil {
+		glog.Fatalf("init account manager at %q: %s", keydir, err)
+	}
+	return m
 }
 
 // MakeAddress converts an account specified directly as a hex encoded string or

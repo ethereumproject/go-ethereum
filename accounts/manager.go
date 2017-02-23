@@ -22,12 +22,10 @@ package accounts
 
 import (
 	"crypto/ecdsa"
-	crand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -40,6 +38,8 @@ var (
 	ErrLocked  = errors.New("account is locked")
 	ErrNoMatch = errors.New("no key for given address or file")
 	ErrDecrypt = errors.New("could not decrypt key with given passphrase")
+
+	errAddrMismatch = errors.New("security violation: address of file didn't match request")
 )
 
 // Account represents a stored key.
@@ -71,36 +71,44 @@ type Manager struct {
 }
 
 type unlocked struct {
-	*Key
+	*key
 	abort chan struct{}
 }
 
+const (
+	// n,r,p = 2^18, 8, 1 uses 256MB memory and approx 1s CPU time on a modern CPU.
+	StandardScryptN = 1 << 18
+	StandardScryptP = 1
+
+	// n,r,p = 2^12, 8, 6 uses 4MB memory and approx 100ms CPU time on a modern CPU.
+	LightScryptN = 1 << 12
+	LightScryptP = 6
+
+	scryptR     = 8
+	scryptDKLen = 32
+)
+
 // NewManager creates a manager for the given directory.
-func NewManager(keydir string, scryptN, scryptP int) *Manager {
-	keydir, _ = filepath.Abs(keydir)
-	am := &Manager{keyStore: &keyStorePassphrase{keydir, scryptN, scryptP}}
-	am.init(keydir)
-	return am
-}
+func NewManager(keydir string, scryptN, scryptP int) (*Manager, error) {
+	store, err := newKeyStore(keydir, scryptN, scryptP)
+	if err != nil {
+		return nil, err
+	}
 
-// NewPlaintextManager creates a manager for the given directory.
-// Deprecated: Use NewManager.
-func NewPlaintextManager(keydir string) *Manager {
-	keydir, _ = filepath.Abs(keydir)
-	am := &Manager{keyStore: &keyStorePlain{keydir}}
-	am.init(keydir)
-	return am
-}
+	am := &Manager{
+		keyStore: *store,
+		unlocked: make(map[common.Address]*unlocked),
+		cache:    newAddrCache(keydir),
+	}
 
-func (am *Manager) init(keydir string) {
-	am.unlocked = make(map[common.Address]*unlocked)
-	am.cache = newAddrCache(keydir)
 	// TODO: In order for this finalizer to work, there must be no references
 	// to am. addrCache doesn't keep a reference but unlocked keys do,
 	// so the finalizer will not trigger until all timed unlocks have expired.
 	runtime.SetFinalizer(am, func(m *Manager) {
 		m.cache.close()
 	})
+
+	return am, nil
 }
 
 // HasAddress reports whether a key with the given address is present.
@@ -204,24 +212,32 @@ func (am *Manager) TimedUnlock(a Account, passphrase string, timeout time.Durati
 		}
 	}
 	if timeout > 0 {
-		u = &unlocked{Key: key, abort: make(chan struct{})}
+		u = &unlocked{key: key, abort: make(chan struct{})}
 		go am.expire(a.Address, u, timeout)
 	} else {
-		u = &unlocked{Key: key}
+		u = &unlocked{key: key}
 	}
 	am.unlocked[a.Address] = u
 	return nil
 }
 
-func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *Key, error) {
+func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error) {
 	am.cache.maybeReload()
 	am.cache.mu.Lock()
 	a, err := am.cache.find(a)
 	am.cache.mu.Unlock()
 	if err != nil {
-		return a, nil, err
+		return Account{}, nil, err
 	}
-	key, err := am.keyStore.GetKey(a.Address, a.File, auth)
+
+	key, err := am.keyStore.Lookup(a.File, auth)
+	if err != nil {
+		return Account{}, nil, err
+	}
+	if key.Address != a.Address {
+		return Account{}, nil, errAddrMismatch
+	}
+
 	return a, key, err
 }
 
@@ -248,7 +264,7 @@ func (am *Manager) expire(addr common.Address, u *unlocked, timeout time.Duratio
 // NewAccount generates a new key and stores it into the key directory,
 // encrypting it with the passphrase.
 func (am *Manager) NewAccount(passphrase string) (Account, error) {
-	_, account, err := storeNewKey(am.keyStore, crand.Reader, passphrase)
+	_, account, err := storeNewKey(&am.keyStore, passphrase)
 	if err != nil {
 		return Account{}, err
 	}
@@ -273,18 +289,12 @@ func (am *Manager) Export(a Account, passphrase, newPassphrase string) (keyJSON 
 	if err != nil {
 		return nil, err
 	}
-	var N, P int
-	if store, ok := am.keyStore.(*keyStorePassphrase); ok {
-		N, P = store.scryptN, store.scryptP
-	} else {
-		N, P = StandardScryptN, StandardScryptP
-	}
-	return EncryptKey(key, newPassphrase, N, P)
+	return encryptKey(key, newPassphrase, am.keyStore.scryptN, am.keyStore.scryptP)
 }
 
 // Import stores the given encrypted JSON key into the key directory.
 func (am *Manager) Import(keyJSON []byte, passphrase, newPassphrase string) (Account, error) {
-	key, err := DecryptKey(keyJSON, passphrase)
+	key, err := decryptKey(keyJSON, passphrase)
 	if key != nil && key.PrivateKey != nil {
 		defer zeroKey(key.PrivateKey)
 	}
@@ -296,7 +306,11 @@ func (am *Manager) Import(keyJSON []byte, passphrase, newPassphrase string) (Acc
 
 // ImportECDSA stores the given key into the key directory, encrypting it with the passphrase.
 func (am *Manager) ImportECDSA(priv *ecdsa.PrivateKey, passphrase string) (Account, error) {
-	key := newKeyFromECDSA(priv)
+	key, err := newKeyFromECDSA(priv)
+	if err != nil {
+		return Account{}, err
+	}
+
 	if am.cache.hasAddress(key.Address) {
 		return Account{}, fmt.Errorf("account already exists")
 	}
@@ -304,11 +318,13 @@ func (am *Manager) ImportECDSA(priv *ecdsa.PrivateKey, passphrase string) (Accou
 	return am.importKey(key, passphrase)
 }
 
-func (am *Manager) importKey(key *Key, passphrase string) (Account, error) {
-	a := Account{Address: key.Address, File: am.keyStore.JoinPath(keyFileName(key.Address))}
-	if err := am.keyStore.StoreKey(a.File, key, passphrase); err != nil {
+func (am *Manager) importKey(key *key, passphrase string) (Account, error) {
+	file, err := am.keyStore.Insert(key, passphrase)
+	if err != nil {
 		return Account{}, err
 	}
+
+	a := Account{File: file, Address: key.Address}
 	am.cache.add(a)
 	return a, nil
 }
@@ -319,13 +335,13 @@ func (am *Manager) Update(a Account, passphrase, newPassphrase string) error {
 	if err != nil {
 		return err
 	}
-	return am.keyStore.StoreKey(a.File, key, newPassphrase)
+	return am.keyStore.Update(a.File, key, newPassphrase)
 }
 
 // ImportPreSaleKey decrypts the given Ethereum presale wallet and stores
 // a key file in the key directory. The key file is encrypted with the same passphrase.
 func (am *Manager) ImportPreSaleKey(keyJSON []byte, passphrase string) (Account, error) {
-	a, _, err := importPreSaleKey(am.keyStore, keyJSON, passphrase)
+	a, _, err := importPreSaleKey(&am.keyStore, keyJSON, passphrase)
 	if err != nil {
 		return a, err
 	}

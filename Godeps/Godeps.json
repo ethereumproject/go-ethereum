@@ -61,11 +61,6 @@
 			"Rev": "9e2895e5f6c3f16473b91d37fae6e89990a4520c"
 		},
 		{
-			"ImportPath": "github.com/pborman/uuid",
-			"Comment": "v1.0-6-g0f1a469",
-			"Rev": "0f1a46960a86dcdf5dd30d3e6568a497a997909f"
-		},
-		{
 			"ImportPath": "github.com/rs/xhandler",
 			"Rev": "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
 		},
