@@ -40,9 +40,12 @@ func importPreSaleKey(keyStore keyStore, keyJSON []byte, password string) (Accou
 		return Account{}, nil, err
 	}
 
-	a := Account{Address: key.Address, File: keyStore.JoinPath(keyFileName(key.Address))}
-	err = keyStore.StoreKey(a.File, key, password)
-	return a, key, err
+	file, err := keyStore.Insert(key, password)
+	if err != nil {
+		return Account{}, nil, err
+	}
+
+	return Account{Address: key.Address, File: file}, key, nil
 }
 
 func decryptPreSaleKey(fileContent []byte, password string) (*key, error) {

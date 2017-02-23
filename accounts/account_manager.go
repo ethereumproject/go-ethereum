@@ -39,6 +39,8 @@ var (
 	ErrLocked  = errors.New("account is locked")
 	ErrNoMatch = errors.New("no key for given address or file")
 	ErrDecrypt = errors.New("could not decrypt key with given passphrase")
+
+	errAddrMismatch = errors.New("security violation: address of file didn't match request")
 )
 
 // Account represents a stored key.
@@ -218,9 +220,17 @@ func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error
 	a, err := am.cache.find(a)
 	am.cache.mu.Unlock()
 	if err != nil {
-		return a, nil, err
+		return Account{}, nil, err
 	}
-	key, err := am.keyStore.GetKey(a.Address, a.File, auth)
+
+	key, err := am.keyStore.Lookup(a.File, auth)
+	if err != nil {
+		return Account{}, nil, err
+	}
+	if key.Address != a.Address {
+		return Account{}, nil, errAddrMismatch
+	}
+
 	return a, key, err
 }
 
@@ -308,10 +318,12 @@ func (am *Manager) ImportECDSA(priv *ecdsa.PrivateKey, passphrase string) (Accou
 }
 
 func (am *Manager) importKey(key *key, passphrase string) (Account, error) {
-	a := Account{Address: key.Address, File: am.keyStore.JoinPath(keyFileName(key.Address))}
-	if err := am.keyStore.StoreKey(a.File, key, passphrase); err != nil {
+	file, err := am.keyStore.Insert(key, passphrase)
+	if err != nil {
 		return Account{}, err
 	}
+
+	a := Account{File: file, Address: key.Address}
 	am.cache.add(a)
 	return a, nil
 }
@@ -322,7 +334,7 @@ func (am *Manager) Update(a Account, passphrase, newPassphrase string) error {
 	if err != nil {
 		return err
 	}
-	return am.keyStore.StoreKey(a.File, key, newPassphrase)
+	return am.keyStore.Update(a.File, key, newPassphrase)
 }
 
 // ImportPreSaleKey decrypts the given Ethereum presale wallet and stores

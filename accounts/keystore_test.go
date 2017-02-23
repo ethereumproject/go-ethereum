@@ -51,20 +51,20 @@ func TestKeyStorePlain(t *testing.T) {
 	dir, ks := tmpKeyStore(t, false)
 	defer os.RemoveAll(dir)
 
-	pass := "" // not used but required by API
-	k1, account, err := storeNewKey(ks, pass)
+	key, account, err := storeNewKey(ks, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	k2, err := ks.GetKey(k1.Address, account.File, pass)
+
+	got, err := ks.Lookup(account.File, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(k1.Address, k2.Address) {
-		t.Fatal(err)
+	if !reflect.DeepEqual(got.Address, key.Address) {
+		t.Errorf("got address %x, want %x", got.Address, key.Address)
 	}
-	if !reflect.DeepEqual(k1.PrivateKey, k2.PrivateKey) {
-		t.Fatal(err)
+	if !reflect.DeepEqual(key.PrivateKey, key.PrivateKey) {
+		t.Errorf("got private key %x, want %x", got.PrivateKey, key.PrivateKey)
 	}
 }
 
@@ -73,19 +73,20 @@ func TestKeyStorePassphrase(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
-	k1, account, err := storeNewKey(ks, pass)
+	key, account, err := storeNewKey(ks, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	k2, err := ks.GetKey(k1.Address, account.File, pass)
+
+	got, err := ks.Lookup(account.File, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(k1.Address, k2.Address) {
-		t.Fatal(err)
+	if !reflect.DeepEqual(got.Address, key.Address) {
+		t.Errorf("got address %x, want %x", got.Address, key.Address)
 	}
-	if !reflect.DeepEqual(k1.PrivateKey, k2.PrivateKey) {
-		t.Fatal(err)
+	if !reflect.DeepEqual(key.PrivateKey, key.PrivateKey) {
+		t.Errorf("got private key %x, want %x", got.PrivateKey, key.PrivateKey)
 	}
 }
 
@@ -94,11 +95,11 @@ func TestKeyStorePassphraseDecryptionFail(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
-	k1, account, err := storeNewKey(ks, pass)
+	_, account, err := storeNewKey(ks, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = ks.GetKey(k1.Address, account.File, "bar"); err != ErrDecrypt {
+	if _, err = ks.Lookup(account.File, "bar"); err != ErrDecrypt {
 		t.Fatalf("wrong error for invalid passphrase\ngot %q\nwant %q", err, ErrDecrypt)
 	}
 }
@@ -182,17 +183,23 @@ func TestV1_1(t *testing.T) {
 
 func TestV1_2(t *testing.T) {
 	t.Parallel()
-	ks := &keyStorePassphrase{"testdata/v1", LightScryptN, LightScryptP}
-	addr := common.HexToAddress("cb61d5a9c4896fb9658090b597ef0e7be6f7b67e")
-	file := "testdata/v1/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e"
-	k, err := ks.GetKey(addr, file, "g")
+	store := &keyStorePassphrase{"testdata/v1", LightScryptN, LightScryptP}
+
+	key, err := store.Lookup("cb61d5a9c4896fb9658090b597ef0e7be6f7b67e/cb61d5a9c4896fb9658090b597ef0e7be6f7b67e", "g")
 	if err != nil {
 		t.Fatal(err)
 	}
-	privHex := hex.EncodeToString(crypto.FromECDSA(k.PrivateKey))
-	expectedHex := "d1b1178d3529626a1a93e073f65028370d14c7eb0936eb42abef05db6f37ad7d"
-	if privHex != expectedHex {
-		t.Fatal(fmt.Errorf("Unexpected privkey: %v, expected %v", privHex, expectedHex))
+
+	got := hex.EncodeToString(key.Address[:])
+	want := "cb61d5a9c4896fb9658090b597ef0e7be6f7b67e"
+	if got != want {
+		t.Errorf("got address %s, want %s", got, want)
+	}
+
+	got = hex.EncodeToString(crypto.FromECDSA(key.PrivateKey))
+	want = "d1b1178d3529626a1a93e073f65028370d14c7eb0936eb42abef05db6f37ad7d"
+	if got != want {
+		t.Errorf("got private key %s, want %s", got, want)
 	}
 }
 

@@ -49,12 +49,9 @@ type key struct {
 }
 
 type keyStore interface {
-	// Loads and decrypts the key from disk.
-	GetKey(addr common.Address, filename, secret string) (*key, error)
-	// Writes and encrypts the key.
-	StoreKey(filename string, k *key, secret string) error
-	// Joins filename with the key directory unless it is already absolute.
-	JoinPath(filename string) string
+	Lookup(path, secret string) (*key, error)
+	Insert(k *key, secret string) (path string, err error)
+	Update(path string, k *key, secret string) error
 }
 
 type plainKeyJSON struct {
@@ -124,7 +121,7 @@ func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) (*key, error) {
 	}, nil
 }
 
-func storeNewKey(ks keyStore, secret string) (*key, Account, error) {
+func storeNewKey(store keyStore, secret string) (*key, Account, error) {
 	privateKeyECDSA, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 	if err != nil {
 		return nil, Account{}, err
@@ -134,56 +131,70 @@ func storeNewKey(ks keyStore, secret string) (*key, Account, error) {
 		return nil, Account{}, err
 	}
 
-	a := Account{Address: key.Address, File: ks.JoinPath(keyFileName(key.Address))}
-	if err := ks.StoreKey(a.File, key, secret); err != nil {
-		zeroKey(key.PrivateKey)
-		return nil, a, err
+	file, err := store.Insert(key, secret)
+	if err != nil {
+		return nil, Account{}, err
 	}
-	return key, a, err
+
+	return key, Account{Address: key.Address, File: file}, err
 }
 
 type keyStorePlain struct {
-	keysDirPath string
+	baseDir string
 }
 
-func (ks keyStorePlain) GetKey(addr common.Address, filename, secret string) (*key, error) {
-	fd, err := os.Open(filename)
+func (store keyStorePlain) Lookup(file string, secret string) (*key, error) {
+	if !filepath.IsAbs(file) {
+		file = filepath.Join(store.baseDir, file)
+	}
+
+	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
-	defer fd.Close()
 	k := new(key)
-	if err := json.NewDecoder(fd).Decode(k); err != nil {
-		return nil, err
-	}
-	if k.Address != addr {
-		return nil, fmt.Errorf("key content mismatch: have address %x, want %x", k.Address, addr)
+	if err := json.Unmarshal(data, k); err != nil {
+		return nil, fmt.Errorf("eth/account: malformed JSON file %s: %s", file, err)
 	}
 	return k, nil
 }
 
-func (ks keyStorePlain) StoreKey(filename string, key *key, secret string) error {
-	content, err := json.Marshal(key)
+func (store keyStorePlain) Insert(key *key, secret string) (file string, err error) {
+	data, err := json.Marshal(key)
+	if err != nil {
+		return "", err
+	}
+
+	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.999999999")
+	file = fmt.Sprintf("UTC--%sZ--%x", timestamp, key.Address[:])
+	file = filepath.Join(store.baseDir, file)
+
+	if err := writeKeyFile(file, data); err != nil {
+		return "", err
+	}
+
+	return file, nil
+}
+
+
+func (store keyStorePlain) Update(file string, key *key, secret string) error {
+	data, err := json.Marshal(key)
 	if err != nil {
 		return err
 	}
-	return writeKeyFile(filename, content)
-}
 
-func (ks keyStorePlain) JoinPath(filename string) string {
-	if filepath.IsAbs(filename) {
-		return filename
-	} else {
-		return filepath.Join(ks.keysDirPath, filename)
+	if !filepath.IsAbs(file) {
+		file = filepath.Join(store.baseDir, file)
 	}
+	return writeKeyFile(file, data)
 }
 
 // keyStorePassphrase behaves as keyStorePlain with the difference that
 // the private key is encrypted and on disk uses another JSON encoding.
 type keyStorePassphrase struct {
-	keysDirPath string
-	scryptN     int
-	scryptP     int
+	baseDir string
+	scryptN int
+	scryptP int
 }
 
 const (
@@ -199,37 +210,54 @@ const (
 	scryptDKLen = 32
 )
 
-func (ks keyStorePassphrase) GetKey(addr common.Address, filename string, secret string) (*key, error) {
-	// Load the key from the keystore and decrypt its contents
-	keyjson, err := ioutil.ReadFile(filename)
+func (store keyStorePassphrase) Lookup(file string, secret string) (*key, error) {
+	if !filepath.IsAbs(file) {
+		file = filepath.Join(store.baseDir, file)
+	}
+
+	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
-	key, err := decryptKey(keyjson, secret)
+
+	key, err := decryptKey(data, secret)
 	if err != nil {
 		return nil, err
 	}
-	// Make sure we're really operating on the requested key (no swap attacks)
-	if key.Address != addr {
-		return nil, fmt.Errorf("key content mismatch: have account %x, want %x", key.Address, addr)
-	}
+
 	return key, nil
 }
 
-func (ks keyStorePassphrase) StoreKey(filename string, key *key, secret string) error {
-	keyjson, err := encryptKey(key, secret, ks.scryptN, ks.scryptP)
+func (store keyStorePassphrase) Insert(key *key, secret string) (file string, err error) {
+	data, err := encryptKey(key, secret, store.scryptN, store.scryptP)
+	if err != nil {
+		return "", err
+	}
+
+	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.999999999")
+	file = fmt.Sprintf("UTC--%sZ--%x", timestamp, key.Address[:])
+	file = filepath.Join(store.baseDir, file)
+
+	if err := writeKeyFile(file, data); err != nil {
+		return "", err
+	}
+
+	if err := writeKeyFile(file, data); err != nil {
+		return "", err
+	}
+	return file, nil
+}
+
+func (store keyStorePassphrase) Update(file string, key *key, secret string) error {
+	data, err := encryptKey(key, secret, store.scryptN, store.scryptP)
 	if err != nil {
 		return err
 	}
-	return writeKeyFile(filename, keyjson)
-}
 
-func (ks keyStorePassphrase) JoinPath(filename string) string {
-	if filepath.IsAbs(filename) {
-		return filename
-	} else {
-		return filepath.Join(ks.keysDirPath, filename)
+	if !filepath.IsAbs(file) {
+		file = filepath.Join(store.baseDir, file)
 	}
+	return writeKeyFile(file, data)
 }
 
 // https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition
@@ -491,22 +519,4 @@ func writeKeyFile(file string, content []byte) error {
 	}
 	f.Close()
 	return os.Rename(f.Name(), file)
-}
-
-// keyFileName implements the naming convention for keyfiles:
-// UTC--<created_at UTC ISO8601>-<address hex>
-func keyFileName(keyAddr common.Address) string {
-	ts := time.Now().UTC()
-	return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), hex.EncodeToString(keyAddr[:]))
-}
-
-func toISO8601(t time.Time) string {
-	var tz string
-	name, offset := t.Zone()
-	if name == "UTC" {
-		tz = "Z"
-	} else {
-		tz = fmt.Sprintf("%03d00", offset/3600)
-	}
-	return fmt.Sprintf("%04d-%02d-%02dT%02d-%02d-%02d.%09d%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), tz)
 }
