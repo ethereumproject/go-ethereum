@@ -20,9 +20,9 @@ recommending actions that must be taken to help complete the migration.
 
 ## Building the source
 
-Building geth requires both a Go and a C compiler. Dependencies are managed with [godep](https://github.com/tools/godep).
+Building geth requires both a Go and a C compiler.
 
-To install the full suite of utilities run `godep go install ./cmd/...`.
+To install the full suite of utilities run `go install github.com/ethereumproject/go-ethereum/cmd/...`.
 
 ## Executables
 
