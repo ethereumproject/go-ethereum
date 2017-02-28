@@ -28,28 +28,28 @@ type Fork struct {
 // TODO Migrate hardcoded fork config into a json file
 func LoadForks() []*Fork {
 	return []*Fork{
-		&Fork{
+		{
 			Name:         "Homestead",
 			Block:        big.NewInt(1150000),
 			NetworkSplit: false,
 			Support:      true,
 			GasTable:     &params.GasTableHomestead,
 		},
-		&Fork{
+		{
 			Name:         "ETF",
 			Block:        big.NewInt(1920000),
 			NetworkSplit: true,
 			Support:      false,
 			RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
 		},
-		&Fork{
+		{
 			Name:         "GasReprice",
 			Block:        big.NewInt(2500000),
 			NetworkSplit: false,
 			Support:      true,
 			GasTable:     &params.GasTableHomesteadGasRepriceFork,
 		},
-		&Fork{
+		{
 			Name:         "Diehard",
 			Block:        big.NewInt(3000000),
 			Length:       big.NewInt(2000000),
@@ -62,28 +62,28 @@ func LoadForks() []*Fork {
 
 func LoadTestnet() []*Fork {
 	return []*Fork{
-		&Fork{
+		{
 			Name:         "Homestead",
 			Block:        big.NewInt(494000),
 			NetworkSplit: false,
 			Support:      true,
 			GasTable:     &params.GasTableHomestead,
 		},
-		&Fork{
+		{
 			Name:         "GasReprice",
 			Block:        big.NewInt(1783000),
 			NetworkSplit: false,
 			Support:      true,
 			GasTable:     &params.GasTableHomesteadGasRepriceFork,
 		},
-		&Fork{
+		{
 			Name:         "ETF",
 			Block:        big.NewInt(1885000),
 			NetworkSplit: true,
 			Support:      false,
 			RequiredHash: common.HexToHash("2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740"),
 		},
-		&Fork{
+		{
 			Name:         "Diehard",
 			Block:        big.NewInt(1915000),
 			Length:       big.NewInt(1500000),

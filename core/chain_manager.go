@@ -37,7 +37,7 @@ import (
 func MakeChainConfig() *ChainConfig {
 	return &ChainConfig{
 		Forks: []*Fork{
-			&Fork{
+			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
 			},
@@ -49,7 +49,7 @@ func MakeDiehardChainConfig() *ChainConfig {
 	return &ChainConfig{
 		ChainId: big.NewInt(63),
 		Forks: []*Fork{
-			&Fork{
+			{
 				Name:   "Diehard",
 				Block:  big.NewInt(0),
 				Length: big.NewInt(1000),

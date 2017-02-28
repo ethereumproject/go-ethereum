@@ -50,7 +50,7 @@ func main() {
 	server := p2p.Server{
 		PrivateKey: key,
 		MaxPeers:   10,
-		Name:       fmt.Sprintf("whisper-go/v1.0/%s/%s", runtime.GOOS, runtime.Version())
+		Name:       fmt.Sprintf("whisper-go/v1.0/%s/%s", runtime.GOOS, runtime.Version()),
 		Protocols:  []p2p.Protocol{shh.Protocol()},
 		ListenAddr: ":30300",
 		NAT:        nat.Any(),

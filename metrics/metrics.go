@@ -132,7 +132,7 @@ func Collect(dest string) {
 
 	encoder := json.NewEncoder(f)
 	ticks := time.Tick(interval)
-	for _ = range ticks {
+	for range ticks {
 		if err := encoder.Encode(reg); err != nil {
 			glog.Errorf("metrics: log to %q: %s", dest, err)
 		}

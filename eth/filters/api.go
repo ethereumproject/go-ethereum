@@ -384,7 +384,7 @@ func (args *NewFilterArgs) UnmarshalJSON(data []byte) error {
 		args.Topics = make([][]common.Hash, len(raw.Topics))
 		for i, t := range raw.Topics {
 			if t == nil { // ignore topic when matching logs
-				args.Topics[i] = []common.Hash{common.Hash{}}
+				args.Topics[i] = []common.Hash{{}}
 			} else if topic, ok := t.(string); ok { // match specific topic
 				top, err := topicConverter(topic)
 				if err != nil {

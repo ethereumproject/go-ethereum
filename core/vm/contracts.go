@@ -45,25 +45,25 @@ var Precompiled = PrecompiledContracts()
 func PrecompiledContracts() map[string]*PrecompiledAccount {
 	return map[string]*PrecompiledAccount{
 		// ECRECOVER
-		string(common.LeftPadBytes([]byte{1}, 20)): &PrecompiledAccount{func(l int) *big.Int {
+		string(common.LeftPadBytes([]byte{1}, 20)): {func(l int) *big.Int {
 			return params.EcrecoverGas
 		}, ecrecoverFunc},
 
 		// SHA256
-		string(common.LeftPadBytes([]byte{2}, 20)): &PrecompiledAccount{func(l int) *big.Int {
+		string(common.LeftPadBytes([]byte{2}, 20)): {func(l int) *big.Int {
 			n := big.NewInt(int64(l+31) / 32)
 			n.Mul(n, params.Sha256WordGas)
 			return n.Add(n, params.Sha256Gas)
 		}, sha256Func},
 
 		// RIPEMD160
-		string(common.LeftPadBytes([]byte{3}, 20)): &PrecompiledAccount{func(l int) *big.Int {
+		string(common.LeftPadBytes([]byte{3}, 20)): {func(l int) *big.Int {
 			n := big.NewInt(int64(l+31) / 32)
 			n.Mul(n, params.Ripemd160WordGas)
 			return n.Add(n, params.Ripemd160Gas)
 		}, ripemd160Func},
 
-		string(common.LeftPadBytes([]byte{4}, 20)): &PrecompiledAccount{func(l int) *big.Int {
+		string(common.LeftPadBytes([]byte{4}, 20)): {func(l int) *big.Int {
 			n := big.NewInt(int64(l+31) / 32)
 			n.Mul(n, params.IdentityWordGas)
 

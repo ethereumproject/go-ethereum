@@ -103,7 +103,7 @@ func TestPcMappingToInstruction(t *testing.T) {
 }
 
 var benchmarks = map[string]vmBench{
-	"pushes": vmBench{
+	"pushes": {
 		false, false, false,
 		common.Hex2Bytes("600a600a01600a600a01600a600a01600a600a01600a600a01600a600a01600a600a01600a600a01600a600a01600a600a01"), nil,
 	},

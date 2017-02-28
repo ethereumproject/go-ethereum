@@ -26,17 +26,17 @@ type matchTest struct {
 
 func TestMatchFn(t *testing.T) {
 	tests := []matchTest{
-		matchTest{
+		{
 			[]OpCode{PUSH1, PUSH1, MSTORE, JUMP},
 			[]OpCode{PUSH1, MSTORE},
 			1,
 		},
-		matchTest{
+		{
 			[]OpCode{PUSH1, PUSH1, MSTORE, JUMP},
 			[]OpCode{PUSH1, MSTORE, PUSH1},
 			0,
 		},
-		matchTest{
+		{
 			[]OpCode{},
 			[]OpCode{PUSH1},
 			0,
@@ -63,10 +63,10 @@ type parseTest struct {
 
 func TestParser(t *testing.T) {
 	tests := []parseTest{
-		parseTest{PUSH1, 32, PUSH},
-		parseTest{DUP1, 16, DUP},
-		parseTest{SWAP1, 16, SWAP},
-		parseTest{MSTORE, 1, MSTORE},
+		{PUSH1, 32, PUSH},
+		{DUP1, 16, DUP},
+		{SWAP1, 16, SWAP},
+		{MSTORE, 1, MSTORE},
 	}
 
 	for _, test := range tests {
