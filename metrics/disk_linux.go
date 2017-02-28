@@ -14,58 +14,49 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// Contains the Linux implementation of process disk IO counter retrieval.
-
 package metrics
 
 import (
-	"bufio"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
-// ReadDiskStats retrieves the disk IO stats belonging to the current process.
-func ReadDiskStats(stats *DiskStats) error {
-	// Open the process disk IO counter file
-	inf, err := os.Open(fmt.Sprintf("/proc/%d/io", os.Getpid()))
+func readDiskStats(stats *diskStats) {
+	file := fmt.Sprintf("/proc/%d/io", os.Getpid())
+	bytes, err := ioutil.ReadFile(file)
 	if err != nil {
-		return err
+		glog.Errorf("%s: %s", file, err)
+		return
 	}
-	defer inf.Close()
-	in := bufio.NewReader(inf)
 
-	// Iterate over the IO counter, and extract what we need
-	for {
-		// Read the next line and split to key and value
-		line, err := in.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		key, value := "", int64(0)
-		if parts := strings.Split(line, ":"); len(parts) != 2 {
+	for _, line := range strings.Split(string(bytes), "\n") {
+		i := strings.Index(line, ": ")
+		if i < 0 {
 			continue
-		} else {
-			key = strings.TrimSpace(parts[0])
-			if value, err = strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64); err != nil {
-				return err
-			}
 		}
-		// Update the counter based on the key
-		switch key {
+
+		var p *int64
+		switch line[:i] {
 		case "syscr":
-			stats.ReadCount = value
+			p = &stats.ReadCount
 		case "syscw":
-			stats.WriteCount = value
+			p = &stats.WriteCount
 		case "rchar":
-			stats.ReadBytes = value
+			p = &stats.ReadBytes
 		case "wchar":
-			stats.WriteBytes = value
+			p = &stats.WriteBytes
+		default:
+			continue
+		}
+
+		*p, err = strconv.ParseInt(line[i+2:], 10, 64)
+		if err != nil {
+			glog.Errorf("%s: line %q: %s", file, line, err)
 		}
 	}
 }
