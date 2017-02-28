@@ -17,6 +17,7 @@
 package rpc
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -25,8 +26,6 @@ import (
 	"reflect"
 	"unicode"
 	"unicode/utf8"
-
-	"golang.org/x/net/context"
 )
 
 // Is this an exported - upper case - name?

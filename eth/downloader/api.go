@@ -17,9 +17,9 @@
 package downloader
 
 import (
+	"context"
 	"sync"
 
-	"golang.org/x/net/context"
 
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/rpc"

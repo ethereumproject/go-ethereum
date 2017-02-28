@@ -17,13 +17,13 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"golang.org/x/net/context"
 )
 
 var (
