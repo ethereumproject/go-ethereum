@@ -24,7 +24,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 )
@@ -118,7 +117,7 @@ func (b *SimulatedBackend) ContractCall(contract common.Address, data []byte, pe
 		data:     data,
 	}
 	// Execute the call and return
-	vmenv := core.NewEnv(statedb, core.NewTestChainConfig(), b.blockchain, msg, block.Header(), vm.Config{})
+	vmenv := core.NewEnv(statedb, core.NewTestChainConfig(), b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
 
 	out, _, err := core.ApplyMessage(vmenv, msg, gaspool)
@@ -168,7 +167,7 @@ func (b *SimulatedBackend) EstimateGasLimit(sender common.Address, contract *com
 		data:     data,
 	}
 	// Execute the call and return
-	vmenv := core.NewEnv(statedb, core.NewTestChainConfig(), b.blockchain, msg, block.Header(), vm.Config{})
+	vmenv := core.NewEnv(statedb, core.NewTestChainConfig(), b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
 
 	_, gas, _, err := core.NewStateTransition(vmenv, msg, gaspool).TransitionDb()

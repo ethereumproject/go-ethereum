@@ -27,7 +27,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
@@ -191,7 +190,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 	}
 
 	header := be.bc.CurrentBlock().Header()
-	vmenv := core.NewEnv(statedb, be.config, be.bc, msg, header, vm.Config{})
+	vmenv := core.NewEnv(statedb, be.config, be.bc, msg, header)
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 	res, gas, err := core.ApplyMessage(vmenv, msg, gp)
 

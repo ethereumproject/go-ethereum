@@ -28,14 +28,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/params"
 )
 
-// Config are the configuration options for the EVM
-type Config struct {
-	Debug     bool
-	EnableJit bool
-	ForceJit  bool
-	Logger    LogConfig
-}
-
 // EVM is used to run Ethereum based contracts and will utilise the
 // passed environment to query external sources for state information.
 // The EVM will run the byte code VM or JIT VM based on the passed
@@ -43,24 +35,15 @@ type Config struct {
 type EVM struct {
 	env       Environment
 	jumpTable vmJumpTable
-	cfg       Config
 	gasTable  params.GasTable
-	logger    *Logger
 }
 
 // New returns a new instance of the EVM.
-func New(env Environment, cfg Config) *EVM {
-	var logger *Logger
-	if cfg.Debug {
-		logger = newLogger(cfg.Logger, env)
-	}
-
+func New(env Environment) *EVM {
 	return &EVM{
 		env:       env,
 		jumpTable: newJumpTable(env.RuleSet(), env.BlockNumber()),
-		cfg:       cfg,
 		gasTable:  env.RuleSet().GasTable(env.BlockNumber()),
-		logger:    logger,
 	}
 }
 
@@ -83,38 +66,6 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	codehash := contract.CodeHash // codehash is used when doing jump dest caching
 	if codehash == (common.Hash{}) {
 		codehash = crypto.Keccak256Hash(contract.Code)
-	}
-	var program *Program
-	if evm.cfg.EnableJit {
-		// If the JIT is enabled check the status of the JIT program,
-		// if it doesn't exist compile a new program in a separate
-		// goroutine or wait for compilation to finish if the JIT is
-		// forced.
-		switch GetProgramStatus(codehash) {
-		case progReady:
-			return RunProgram(GetProgram(codehash), evm.env, contract, input)
-		case progUnknown:
-			if evm.cfg.ForceJit {
-				// Create and compile program
-				program = NewProgram(contract.Code)
-				perr := CompileProgram(program)
-				if perr == nil {
-					return RunProgram(program, evm.env, contract, input)
-				}
-				glog.V(logger.Info).Infoln("error compiling program", err)
-			} else {
-				// create and compile the program. Compilation
-				// is done in a separate goroutine
-				program = NewProgram(contract.Code)
-				go func() {
-					err := CompileProgram(program)
-					if err != nil {
-						glog.V(logger.Info).Infoln("error compiling program", err)
-						return
-					}
-				}()
-			}
-		}
 	}
 
 	var (
@@ -148,13 +99,6 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	)
 	contract.Input = input
 
-	// User defer pattern to check for an error and, based on the error being nil or not, use all gas and return.
-	defer func() {
-		if err != nil && evm.cfg.Debug {
-			evm.logger.captureState(pc, op, contract.Gas, cost, mem, stack, contract, evm.env.Depth(), err)
-		}
-	}()
-
 	if glog.V(logger.Debug) {
 		glog.Infof("running byte VM %x\n", codehash[:4])
 		tstart := time.Now()
@@ -164,17 +108,6 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	}
 
 	for ; ; instrCount++ {
-		/*
-			if EnableJit && it%100 == 0 {
-				if program != nil && progStatus(atomic.LoadInt32(&program.status)) == progReady {
-					// move execution
-					fmt.Println("moved", it)
-					glog.V(logger.Info).Infoln("Moved execution to JIT")
-					return runProgram(program, pc, mem, stack, evm.env, contract, input)
-				}
-			}
-		*/
-
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
 		// calculate the new memory size and gas price for the current executing opcode
@@ -191,10 +124,6 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 		// Resize the memory calculated previously
 		mem.Resize(newMemSize.Uint64())
-		// Add a log message
-		if evm.cfg.Debug {
-			evm.logger.captureState(pc, op, contract.Gas, cost, mem, stack, contract, evm.env.Depth(), nil)
-		}
 
 		if opPtr := evm.jumpTable[op]; opPtr.valid {
 			if opPtr.fn != nil {

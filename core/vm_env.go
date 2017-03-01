@@ -53,7 +53,7 @@ type VMEnv struct {
 	getHashFn func(uint64) common.Hash // getHashFn callback is used to retrieve block hashes
 }
 
-func NewEnv(state *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header, cfg vm.Config) *VMEnv {
+func NewEnv(state *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) *VMEnv {
 	env := &VMEnv{
 		chainConfig: chainConfig,
 		chain:       chain,
@@ -63,12 +63,7 @@ func NewEnv(state *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, m
 		getHashFn:   GetHashFn(header.ParentHash, chain),
 	}
 
-	// if no log collector is present set self as the collector
-	if cfg.Logger.Collector == nil {
-		cfg.Logger.Collector = env
-	}
-
-	env.evm = vm.New(env, cfg)
+	env.evm = vm.New(env)
 	return env
 }
 

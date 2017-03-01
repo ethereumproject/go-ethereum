@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-	"os"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -33,17 +32,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/params"
 )
 
-var (
-	ForceJit  bool
-	EnableJit bool
-)
-
 func init() {
 	glog.SetV(0)
-	if os.Getenv("JITVM") == "true" {
-		ForceJit = true
-		EnableJit = true
-	}
 }
 
 func checkLogs(tlog []Log, logs vm.Logs) error {
@@ -222,10 +212,7 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	env.gasLimit = common.Big(envValues["currentGasLimit"])
 	env.Gas = new(big.Int)
 
-	env.evm = vm.New(env, vm.Config{
-		EnableJit: EnableJit,
-		ForceJit:  ForceJit,
-	})
+	env.evm = vm.New(env)
 
 	return env
 }

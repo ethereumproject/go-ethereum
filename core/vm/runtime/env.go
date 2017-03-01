@@ -58,15 +58,7 @@ func NewEnv(cfg *Config, state *state.StateDB) vm.Environment {
 		difficulty: cfg.Difficulty,
 		gasLimit:   cfg.GasLimit,
 	}
-	env.evm = vm.New(env, vm.Config{
-		Debug:     cfg.Debug,
-		EnableJit: !cfg.DisableJit,
-		ForceJit:  !cfg.DisableJit,
-
-		Logger: vm.LogConfig{
-			Collector: env,
-		},
-	})
+	env.evm = vm.New(env)
 
 	return env
 }
