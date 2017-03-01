@@ -18,12 +18,12 @@
 package metrics
 
 import (
+	"bufio"
 	"encoding/json"
 	"os"
 	"runtime"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/rcrowley/go-metrics"
 )
@@ -118,66 +118,53 @@ var (
 	P2POutBytes = metrics.NewRegisteredMeter("p2p/out/bytes", reg)
 )
 
-// Collect writes metrics to the given destination.
-func Collect(dest string) {
-	const interval = 3 * time.Second
+var (
+	MemAllocs = metrics.GetOrRegisterGauge("memory/allocs", reg)
+	MemFrees  = metrics.GetOrRegisterGauge("memory/frees", reg)
+	MemInuse  = metrics.GetOrRegisterGauge("memory/inuse", reg)
+	MemPauses = metrics.GetOrRegisterGauge("memory/pauses", reg)
 
-	go collectProcessMetrics(interval)
+	DiskReads      = metrics.GetOrRegisterGauge("disk/readcount", reg)
+	DiskReadBytes  = metrics.GetOrRegisterGauge("disk/readdata", reg)
+	DiskWrites     = metrics.GetOrRegisterGauge("disk/writecount", reg)
+	DiskWriteBytes = metrics.GetOrRegisterGauge("disk/writedata", reg)
+)
 
-	f, err := os.OpenFile(dest, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+// diskStats is the per process disk I/O statistics.
+type diskStats struct {
+	ReadCount  int64 // Number of read operations executed
+	ReadBytes  int64 // Total number of bytes read
+	WriteCount int64 // Number of write operations executed
+	WriteBytes int64 // Total number of byte written
+}
+
+// Collect writes metrics to the given file.
+func Collect(file string) {
+	f, err := os.OpenFile(file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		glog.Fatal(err)
 	}
 	defer f.Close()
 
-	encoder := json.NewEncoder(f)
-	ticks := time.Tick(interval)
-	for _ = range ticks {
+	encoder := json.NewEncoder(bufio.NewWriter(f))
+
+	for range time.Tick(3 * time.Second) {
+		var mem runtime.MemStats
+		runtime.ReadMemStats(&mem)
+		MemAllocs.Update(int64(mem.Mallocs))
+		MemFrees.Update(int64(mem.Frees))
+		MemInuse.Update(int64(mem.Alloc))
+		MemPauses.Update(int64(mem.PauseTotalNs))
+
+		var disk diskStats
+		readDiskStats(&disk)
+		DiskReads.Update(disk.ReadCount)
+		DiskReadBytes.Update(disk.ReadBytes)
+		DiskWrites.Update(disk.WriteCount)
+		DiskWriteBytes.Update(disk.WriteBytes)
+
 		if err := encoder.Encode(reg); err != nil {
-			glog.Errorf("metrics: log to %q: %s", dest, err)
+			glog.Errorf("metrics: log to %q: %s", file, err)
 		}
-	}
-}
-
-// collectProcessMetrics periodically collects various metrics about the running
-// process.
-func collectProcessMetrics(refresh time.Duration) {
-	// Create the various data collectors
-	memstats := make([]*runtime.MemStats, 2)
-	diskstats := make([]*DiskStats, 2)
-	for i := 0; i < len(memstats); i++ {
-		memstats[i] = new(runtime.MemStats)
-		diskstats[i] = new(DiskStats)
-	}
-	// Define the various metrics to collect
-	memAllocs := metrics.GetOrRegisterMeter("system/memory/allocs", reg)
-	memFrees := metrics.GetOrRegisterMeter("system/memory/frees", reg)
-	memInuse := metrics.GetOrRegisterMeter("system/memory/inuse", reg)
-	memPauses := metrics.GetOrRegisterMeter("system/memory/pauses", reg)
-
-	var diskReads, diskReadBytes, diskWrites, diskWriteBytes metrics.Meter
-	if err := ReadDiskStats(diskstats[0]); err == nil {
-		diskReads = metrics.GetOrRegisterMeter("system/disk/readcount", reg)
-		diskReadBytes = metrics.GetOrRegisterMeter("system/disk/readdata", reg)
-		diskWrites = metrics.GetOrRegisterMeter("system/disk/writecount", reg)
-		diskWriteBytes = metrics.GetOrRegisterMeter("system/disk/writedata", reg)
-	} else {
-		glog.V(logger.Debug).Infof("failed to read disk metrics: %v", err)
-	}
-	// Iterate loading the different stats and updating the meters
-	for i := 1; ; i++ {
-		runtime.ReadMemStats(memstats[i%2])
-		memAllocs.Mark(int64(memstats[i%2].Mallocs - memstats[(i-1)%2].Mallocs))
-		memFrees.Mark(int64(memstats[i%2].Frees - memstats[(i-1)%2].Frees))
-		memInuse.Mark(int64(memstats[i%2].Alloc - memstats[(i-1)%2].Alloc))
-		memPauses.Mark(int64(memstats[i%2].PauseTotalNs - memstats[(i-1)%2].PauseTotalNs))
-
-		if ReadDiskStats(diskstats[i%2]) == nil {
-			diskReads.Mark(int64(diskstats[i%2].ReadCount - diskstats[(i-1)%2].ReadCount))
-			diskReadBytes.Mark(int64(diskstats[i%2].ReadBytes - diskstats[(i-1)%2].ReadBytes))
-			diskWrites.Mark(int64(diskstats[i%2].WriteCount - diskstats[(i-1)%2].WriteCount))
-			diskWriteBytes.Mark(int64(diskstats[i%2].WriteBytes - diskstats[(i-1)%2].WriteBytes))
-		}
-		time.Sleep(refresh)
 	}
 }

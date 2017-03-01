@@ -55,7 +55,7 @@ func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core
 		genesis     = core.WriteGenesisBlockForTesting(db, testBank)
 		chainConfig = &core.ChainConfig{
 			Forks: []*core.Fork{
-				&core.Fork{
+				{
 					Name:  "Homestead",
 					Block: big.NewInt(0),
 				},

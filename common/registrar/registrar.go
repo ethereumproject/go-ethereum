@@ -140,7 +140,7 @@ func (self *Registrar) SetHashReg(hashreg string, addr common.Address) (txhash s
 		var res string
 		res, _, err = self.backend.Call("", GlobalRegistrarAddr, "", "", "", hashRegAbi)
 		if len(res) >= 40 {
-			HashRegAddr = "0x" + res[len(res)-40:len(res)]
+			HashRegAddr = "0x" + res[len(res)-40:]
 		}
 		if err != nil || zero.MatchString(HashRegAddr) {
 			if (addr == common.Address{}) {
@@ -175,7 +175,7 @@ func (self *Registrar) SetUrlHint(urlhint string, addr common.Address) (txhash s
 		var res string
 		res, _, err = self.backend.Call("", GlobalRegistrarAddr, "", "", "", urlHintAbi)
 		if len(res) >= 40 {
-			UrlHintAddr = "0x" + res[len(res)-40:len(res)]
+			UrlHintAddr = "0x" + res[len(res)-40:]
 		}
 		if err != nil || zero.MatchString(UrlHintAddr) {
 			if (addr == common.Address{}) {

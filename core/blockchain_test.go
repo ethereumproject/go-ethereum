@@ -1127,7 +1127,7 @@ func TestCanonicalBlockRetrieval(t *testing.T) {
 
 	chain, _ := GenerateChain(MakeChainConfig(), genesis, db, 10, func(i int, gen *BlockGen) {})
 
-	for i, _ := range chain {
+	for i := range chain {
 		go func(block *types.Block) {
 			// try to retrieve a block by its canonical hash and see if the block data can be retrieved.
 			for {
@@ -1164,11 +1164,11 @@ func TestEIP155Transition(t *testing.T) {
 		config  = &ChainConfig{
 			ChainId: big.NewInt(1),
 			Forks: []*Fork{
-				&Fork{
+				{
 					Name:  "Homestead",
 					Block: big.NewInt(0),
 				},
-				&Fork{
+				{
 					Name:  "Diehard",
 					Block: big.NewInt(2),
 				},
@@ -1245,11 +1245,11 @@ func TestEIP155Transition(t *testing.T) {
 	config = &ChainConfig{
 		ChainId: big.NewInt(2),
 		Forks: []*Fork{
-			&Fork{
+			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
 			},
-			&Fork{
+			{
 				Name:  "Diehard",
 				Block: big.NewInt(2),
 			},

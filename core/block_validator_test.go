@@ -34,7 +34,7 @@ func testChainConfig() *ChainConfig {
 	return &ChainConfig{
 		ChainId: big.NewInt(2),
 		Forks: []*Fork{
-			&Fork{
+			{
 				Name:     "Homestead",
 				Block:    big.NewInt(0),
 				GasTable: &params.GasTableHomestead,
