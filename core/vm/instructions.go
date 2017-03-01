@@ -17,7 +17,6 @@
 package vm
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -38,27 +37,6 @@ type instruction struct {
 	spush int
 
 	returns bool
-}
-
-func jump(mapping map[uint64]uint64, destinations map[uint64]struct{}, contract *Contract, to *big.Int) (uint64, error) {
-	if !validDest(destinations, to) {
-		nop := contract.GetOp(to.Uint64())
-		return 0, fmt.Errorf("invalid jump destination (%v) %v", nop, to)
-	}
-
-	return mapping[to.Uint64()], nil
-}
-
-// validDest checks if the given destination is a valid one given the
-// destination table of the program
-func validDest(dests map[uint64]struct{}, dest *big.Int) bool {
-	// PC cannot go beyond len(code) and certainly can't be bigger than 64bits.
-	// Don't bother checking for JUMPDEST in that case.
-	if dest.Cmp(bigMaxUint64) > 0 {
-		return false
-	}
-	_, ok := dests[dest.Uint64()]
-	return ok
 }
 
 func (instr instruction) halts() bool {
@@ -385,31 +363,6 @@ func opPop(instr instruction, pc *uint64, env Environment, contract *Contract, m
 	stack.pop()
 }
 
-func opPush(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	stack.push(new(big.Int).Set(instr.data))
-}
-
-func opDup(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	stack.dup(int(instr.data.Int64()))
-}
-
-func opSwap(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	stack.swap(int(instr.data.Int64()))
-}
-
-func opLog(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	n := int(instr.data.Int64())
-	topics := make([]common.Hash, n)
-	mStart, mSize := stack.pop(), stack.pop()
-	for i := 0; i < n; i++ {
-		topics[i] = common.BigToHash(stack.pop())
-	}
-
-	d := memory.Get(mStart.Int64(), mSize.Int64())
-	log := NewLog(contract.Address(), topics, d, env.BlockNumber().Uint64())
-	env.AddLog(log)
-}
-
 func opMload(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	offset := stack.pop()
 	val := common.BigD(memory.Get(offset.Int64(), 32))
@@ -439,10 +392,6 @@ func opSstore(instr instruction, pc *uint64, env Environment, contract *Contract
 	env.Db().SetState(contract.Address(), loc, common.BigToHash(val))
 }
 
-func opJump(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-}
-func opJumpi(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-}
 func opJumpdest(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 }
 
@@ -559,11 +508,6 @@ func opDelegateCall(instr instruction, pc *uint64, env Environment, contract *Co
 		stack.push(big.NewInt(1))
 		memory.Set(outOffset.Uint64(), outSize.Uint64(), ret)
 	}
-}
-
-func opReturn(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-}
-func opStop(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 }
 
 func opSuicide(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
