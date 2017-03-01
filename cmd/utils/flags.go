@@ -209,20 +209,6 @@ var (
 		Value: "",
 	}
 
-	VMForceJitFlag = cli.BoolFlag{
-		Name:  "forcejit",
-		Usage: "Force the JIT VM to take precedence",
-	}
-	VMJitCacheFlag = cli.IntFlag{
-		Name:  "jitcache",
-		Usage: "Amount of cached JIT VM programs",
-		Value: 64,
-	}
-	VMEnableJitFlag = cli.BoolFlag{
-		Name:  "jitvm",
-		Usage: "Enable the JIT VM",
-	}
-
 	// logging and debug settings
 	MetricsFlag = cli.StringFlag{
 		Name:  "metrics",
@@ -453,9 +439,6 @@ func MakeNodeName(client, version string, ctx *cli.Context) string {
 	if identity := ctx.GlobalString(IdentityFlag.Name); len(identity) > 0 {
 		name += "/" + identity
 	}
-	if ctx.GlobalBool(VMEnableJitFlag.Name) {
-		name += "/JIT"
-	}
 	return name
 }
 
@@ -664,9 +647,6 @@ func MakeSystemNode(name, version string, relconf release.Config, extra []byte, 
 	// Configure the Ethereum service
 	accman := MakeAccountManager(ctx)
 
-	// get enabled jit flag
-	jitEnabled := ctx.GlobalBool(VMEnableJitFlag.Name)
-
 	ethConf := &eth.Config{
 		ChainConfig:             MustMakeChainConfig(ctx),
 		FastSync:                ctx.GlobalBool(FastSyncFlag.Name),
@@ -680,8 +660,6 @@ func MakeSystemNode(name, version string, relconf release.Config, extra []byte, 
 		ExtraData:               MakeMinerExtra(extra, ctx),
 		NatSpec:                 ctx.GlobalBool(NatspecEnabledFlag.Name),
 		DocRoot:                 ctx.GlobalString(DocRootFlag.Name),
-		EnableJit:               jitEnabled,
-		ForceJit:                ctx.GlobalBool(VMForceJitFlag.Name),
 		GasPrice:                common.String2Big(ctx.GlobalString(GasPriceFlag.Name)),
 		GpoMinGasPrice:          common.String2Big(ctx.GlobalString(GpoMinGasPriceFlag.Name)),
 		GpoMaxGasPrice:          common.String2Big(ctx.GlobalString(GpoMaxGasPriceFlag.Name)),
