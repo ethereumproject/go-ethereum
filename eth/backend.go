@@ -36,7 +36,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common/registrar/ethreg"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/eth/filters"
 	"github.com/ethereumproject/go-ethereum/ethdb"
@@ -89,9 +88,6 @@ type Config struct {
 	GpobaseStepDown         int
 	GpobaseStepUp           int
 	GpobaseCorrectionFactor int
-
-	EnableJit bool
-	ForceJit  bool
 
 	TestGenesisBlock *types.Block   // Genesis block to seed the chain database with (testing only!)
 	TestGenesisState ethdb.Database // Genesis state to seed the database with (testing only!)
@@ -240,10 +236,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	eth.chainConfig = config.ChainConfig
-	eth.chainConfig.VmConfig = vm.Config{
-		EnableJit: config.EnableJit,
-		ForceJit:  config.ForceJit,
-	}
 
 	eth.blockchain, err = core.NewBlockChain(chainDb, eth.chainConfig, eth.pow, eth.EventMux())
 	if err != nil {
@@ -330,10 +322,6 @@ func (s *Ethereum) APIs() []rpc.API {
 			Version:   "1.0",
 			Service:   NewPublicDebugAPI(s),
 			Public:    true,
-		}, {
-			Namespace: "debug",
-			Version:   "1.0",
-			Service:   NewPrivateDebugAPI(s.chainConfig, s),
 		}, {
 			Namespace: "net",
 			Version:   "1.0",

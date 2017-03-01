@@ -22,7 +22,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/params"
 )
 
@@ -37,7 +36,6 @@ var (
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
-	VmConfig vm.Config `json:"-"`
 	// ForkConfig fork.Config
 	Forks []*Fork `json:"forks"`
 	// Optimize downloader to ignore well known blocks with consensus issues

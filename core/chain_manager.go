@@ -23,7 +23,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/pow"
@@ -122,7 +121,7 @@ func (b *BlockGen) AddTx(tx *types.Transaction) {
 		b.SetCoinbase(common.Address{})
 	}
 	b.statedb.StartRecord(tx.Hash(), common.Hash{}, len(b.txs))
-	receipt, _, _, err := ApplyTransaction(b.config, nil, b.gasPool, b.statedb, b.header, tx, b.header.GasUsed, vm.Config{})
+	receipt, _, _, err := ApplyTransaction(b.config, nil, b.gasPool, b.statedb, b.header, tx, b.header.GasUsed)
 	if err != nil {
 		panic(err)
 	}
