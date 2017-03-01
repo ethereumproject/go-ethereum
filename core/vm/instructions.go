@@ -25,15 +25,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/params"
 )
 
-type programInstruction interface {
-	// executes the program instruction and allows the instruction to modify the state of the program
-	do(program *Program, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) ([]byte, error)
-	// returns whether the program instruction halts the execution of the JIT
-	halts() bool
-	// Returns the current op code (debugging purposes)
-	Op() OpCode
-}
-
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
 
 type instruction struct {
@@ -58,55 +49,16 @@ func jump(mapping map[uint64]uint64, destinations map[uint64]struct{}, contract 
 	return mapping[to.Uint64()], nil
 }
 
-func (instr instruction) do(program *Program, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) ([]byte, error) {
-	// calculate the new memory size and gas price for the current executing opcode
-	gasTable := env.RuleSet().GasTable(env.BlockNumber())
-	newMemSize, cost, err := calculateGasAndSize(gasTable, env,
-		contract, contract.caller, instr.op,
-		env.Db(), memory, stack)
-	if err != nil {
-		return nil, err
+// validDest checks if the given destination is a valid one given the
+// destination table of the program
+func validDest(dests map[uint64]struct{}, dest *big.Int) bool {
+	// PC cannot go beyond len(code) and certainly can't be bigger than 64bits.
+	// Don't bother checking for JUMPDEST in that case.
+	if dest.Cmp(bigMaxUint64) > 0 {
+		return false
 	}
-
-	// Use the calculated gas. When insufficient gas is present, use all gas and return an
-	// Out Of Gas error
-	if !contract.UseGas(cost) {
-		return nil, OutOfGasError
-	}
-	// Resize the memory calculated previously
-	memory.Resize(newMemSize.Uint64())
-
-	// These opcodes return an argument and are therefor handled
-	// differently from the rest of the opcodes
-	switch instr.op {
-	case JUMP:
-		if pos, err := jump(program.mapping, program.destinations, contract, stack.pop()); err != nil {
-			return nil, err
-		} else {
-			*pc = pos
-			return nil, nil
-		}
-	case JUMPI:
-		pos, cond := stack.pop(), stack.pop()
-		if cond.Cmp(common.BigTrue) >= 0 {
-			if pos, err := jump(program.mapping, program.destinations, contract, pos); err != nil {
-				return nil, err
-			} else {
-				*pc = pos
-				return nil, nil
-			}
-		}
-	case RETURN:
-		offset, size := stack.pop(), stack.pop()
-		return memory.GetPtr(offset.Int64(), size.Int64()), nil
-	default:
-		if instr.fn == nil {
-			return nil, fmt.Errorf("Invalid opcode 0x%x", instr.op)
-		}
-		instr.fn(instr, pc, env, contract, memory, stack)
-	}
-	*pc++
-	return nil, nil
+	_, ok := dests[dest.Uint64()]
+	return ok
 }
 
 func (instr instruction) halts() bool {
