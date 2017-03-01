@@ -1651,62 +1651,8 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 // while replaying a transaction in debug mode as well as the amount of
 // gas used and the return value
 type ExecutionResult struct {
-	Gas         *big.Int       `json:"gas"`
-	ReturnValue string         `json:"returnValue"`
-	StructLogs  []structLogRes `json:"structLogs"`
-}
-
-// structLogRes stores a structured log emitted by the EVM while replaying a
-// transaction in debug mode
-type structLogRes struct {
-	Pc      uint64            `json:"pc"`
-	Op      string            `json:"op"`
-	Gas     *big.Int          `json:"gas"`
-	GasCost *big.Int          `json:"gasCost"`
-	Depth   int               `json:"depth"`
-	Error   string            `json:"error"`
-	Stack   []string          `json:"stack"`
-	Memory  []string          `json:"memory"`
-	Storage map[string]string `json:"storage"`
-}
-
-// formatLogs formats EVM returned structured logs for json output
-func formatLogs(structLogs []vm.StructLog) []structLogRes {
-	formattedStructLogs := make([]structLogRes, len(structLogs))
-	for index, trace := range structLogs {
-		formattedStructLogs[index] = structLogRes{
-			Pc:      trace.Pc,
-			Op:      trace.Op.String(),
-			Gas:     trace.Gas,
-			GasCost: trace.GasCost,
-			Depth:   trace.Depth,
-			Error:   formatError(trace.Err),
-			Stack:   make([]string, len(trace.Stack)),
-			Storage: make(map[string]string),
-		}
-
-		for i, stackValue := range trace.Stack {
-			formattedStructLogs[index].Stack[i] = fmt.Sprintf("%x", common.LeftPadBytes(stackValue.Bytes(), 32))
-		}
-
-		for i := 0; i+32 <= len(trace.Memory); i += 32 {
-			formattedStructLogs[index].Memory = append(formattedStructLogs[index].Memory, fmt.Sprintf("%x", trace.Memory[i:i+32]))
-		}
-
-		for i, storageValue := range trace.Storage {
-			formattedStructLogs[index].Storage[fmt.Sprintf("%x", i)] = fmt.Sprintf("%x", storageValue)
-		}
-	}
-	return formattedStructLogs
-}
-
-// formatError formats a Go error into either an empty string or the data content
-// of the error itself.
-func formatError(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
+	Gas         *big.Int `json:"gas"`
+	ReturnValue string   `json:"returnValue"`
 }
 
 // TraceCall executes a call and returns the amount of gas, created logs and optionally returned values.
@@ -1756,7 +1702,6 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 	return &ExecutionResult{
 		Gas:         gas,
 		ReturnValue: fmt.Sprintf("%x", ret),
-		StructLogs:  formatLogs(vmenv.StructLogs()),
 	}, nil
 }
 

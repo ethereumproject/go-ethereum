@@ -49,7 +49,6 @@ type VMEnv struct {
 
 	header    *types.Header            // Header information
 	chain     *BlockChain              // Blockchain handle
-	logs      []vm.StructLog           // Logs for the custom structured logger
 	getHashFn func(uint64) common.Hash // getHashFn callback is used to retrieve block hashes
 }
 
@@ -115,12 +114,4 @@ func (self *VMEnv) DelegateCall(me vm.ContractRef, addr common.Address, data []b
 
 func (self *VMEnv) Create(me vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return Create(self, me, data, gas, price, value)
-}
-
-func (self *VMEnv) StructLogs() []vm.StructLog {
-	return self.logs
-}
-
-func (self *VMEnv) AddStructLog(log vm.StructLog) {
-	self.logs = append(self.logs, log)
 }

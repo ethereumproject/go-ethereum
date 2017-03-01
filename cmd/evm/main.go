@@ -157,7 +157,6 @@ func run(ctx *cli.Context) error {
 		statedb.Commit()
 		fmt.Println(string(statedb.Dump()))
 	}
-	vm.StdErrFormat(vmenv.StructLogs())
 
 	if ctx.GlobalBool(SysStatFlag.Name) {
 		var mem runtime.MemStats
@@ -197,7 +196,6 @@ type VMEnv struct {
 	depth int
 	Gas   *big.Int
 	time  *big.Int
-	logs  []vm.StructLog
 
 	evm *vm.EVM
 }
@@ -243,12 +241,6 @@ func (self *VMEnv) GetHash(n uint64) common.Hash {
 		return self.block.Hash()
 	}
 	return common.Hash{}
-}
-func (self *VMEnv) AddStructLog(log vm.StructLog) {
-	self.logs = append(self.logs, log)
-}
-func (self *VMEnv) StructLogs() []vm.StructLog {
-	return self.logs
 }
 func (self *VMEnv) AddLog(log *vm.Log) {
 	self.state.AddLog(log)
