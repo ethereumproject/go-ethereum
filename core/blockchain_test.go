@@ -136,12 +136,10 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 		}
 		receipts, _, usedGas, err := blockchain.Processor().Process(block, statedb)
 		if err != nil {
-			reportBlock(block, err)
 			return err
 		}
 		err = blockchain.Validator().ValidateState(block, blockchain.GetBlock(block.ParentHash()), statedb, receipts, usedGas)
 		if err != nil {
-			reportBlock(block, err)
 			return err
 		}
 		blockchain.mu.Lock()
@@ -547,40 +545,39 @@ func testReorg(t *testing.T, first, second []int, td int64, full bool) {
 	}
 }
 
-// Tests that the insertion functions detect banned hashes.
-func TestBadHeaderHashes(t *testing.T) { testBadHashes(t, false) }
-func TestBadBlockHashes(t *testing.T)  { testBadHashes(t, true) }
-
-func testBadHashes(t *testing.T, full bool) {
-	// Create a pristine block chain
+func TestInsertHeaderChainBadHash(t *testing.T) {
 	db, _ := ethdb.NewMemDatabase()
 	genesis, _ := WriteTestNetGenesisBlock(db)
+	headers := makeHeaderChainWithDiff(genesis, []int{1, 2, 4}, 10)
 	bc := chm(genesis, db)
-
-	// Create a chain, ban a hash and try to import
-	var err error
-	if full {
-		blocks := makeBlockChainWithDiff(genesis, []int{1, 2, 4}, 10)
-
-		bc.config.BadHashes = []*BadHash{
-			{
-				Block: blocks[2].Number(),
-				Hash:  blocks[2].Header().Hash(),
-			},
-		}
-		_, err = bc.InsertChain(blocks)
-	} else {
-		headers := makeHeaderChainWithDiff(genesis, []int{1, 2, 4}, 10)
-		bc.config.BadHashes = []*BadHash{
-			{
-				Block: headers[2].Number,
-				Hash:  headers[2].Hash(),
-			},
-		}
-		_, err = bc.InsertHeaderChain(headers, 1)
+	bc.config.BadHashes = []*BadHash{
+		{
+			Block: headers[2].Number,
+			Hash:  headers[2].Hash(),
+		},
 	}
-	if !IsBadHashError(err) {
-		t.Errorf("error mismatch: want: BadHashError, have: %v", err)
+
+	_, err := bc.InsertHeaderChain(headers, 1)
+	if err != ErrHashKnownBad {
+		t.Errorf("got error %#v, want %#v", err, ErrHashKnownBad)
+	}
+}
+
+func TestInsertChainBadHash(t *testing.T) {
+	db, _ := ethdb.NewMemDatabase()
+	genesis, _ := WriteTestNetGenesisBlock(db)
+	blocks := makeBlockChainWithDiff(genesis, []int{1, 2, 4}, 10)
+	bc := chm(genesis, db)
+	bc.config.BadHashes = []*BadHash{
+		{
+			Block: blocks[2].Number(),
+			Hash:  blocks[2].Header().Hash(),
+		},
+	}
+
+	_, err := bc.InsertChain(blocks)
+	if err != ErrHashKnownBad {
+		t.Errorf("got error %#v, want %#v", err, ErrHashKnownBad)
 	}
 }
 

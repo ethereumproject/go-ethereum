@@ -762,14 +762,9 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
-	// If the chain is already initialized, use any existing chain configs
-	c := new(core.ChainConfig)
-
-	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
+	c := core.DefaultConfig
 	if ctx.GlobalBool(TestNetFlag.Name) {
-		c.LoadTestnetConfig()
-	} else {
-		c.LoadForkConfig()
+		c = core.TestConfig
 	}
 
 	for i := range c.Forks {
@@ -784,6 +779,8 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	separator := strings.Repeat("-", 110)
 	glog.V(logger.Warn).Info(separator)
 	glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
+
+	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
 	genesisHash := ""
 	if genesis != nil {
 		genesisHash = genesis.Hash().Hex()

@@ -230,7 +230,7 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 			}
 
 			// Short circuit if the header is bad or already known
-			if err := hc.config.IsBadFork(header); err != nil {
+			if err := hc.config.HeaderCheck(header); err != nil {
 				errs[index] = err
 				atomic.AddInt32(&failed, 1)
 				return
@@ -254,6 +254,7 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 			}
 		}
 	}
+
 	// Start as many worker threads as goroutines allowed
 	pending := new(sync.WaitGroup)
 	for i := 0; i < runtime.GOMAXPROCS(0); i++ {

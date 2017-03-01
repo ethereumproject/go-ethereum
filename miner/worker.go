@@ -18,6 +18,7 @@ package miner
 
 import (
 	"fmt"
+	"log"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -262,7 +263,7 @@ func (self *worker) wait() {
 
 			if self.fullValidation {
 				if _, err := self.chain.InsertChain(types.Blocks{block}); err != nil {
-					glog.V(logger.Error).Infoln("mining err", err)
+					log.Println("mine: ignoring invalid block #%d (%x) received:", block.Number(), block.Hash(), err)
 					continue
 				}
 				go self.mux.Post(core.NewMinedBlockEvent{Block: block})

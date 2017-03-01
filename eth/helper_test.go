@@ -63,7 +63,8 @@ func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core
 		}
 		blockchain, _ = core.NewBlockChain(db, chainConfig, pow, evmux)
 	)
-	chain, _ := core.GenerateChain(core.NewTestChainConfig(), genesis, db, blocks, generator)
+
+	chain, _ := core.GenerateChain(core.TestConfig, genesis, db, blocks, generator)
 	if _, err := blockchain.InsertChain(chain); err != nil {
 		panic(err)
 	}

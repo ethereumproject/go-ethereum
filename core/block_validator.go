@@ -113,7 +113,7 @@ func (v *BlockValidator) ValidateBlock(block *types.Block) error {
 func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas *big.Int) (err error) {
 	header := block.Header()
 	if block.GasUsed().Cmp(usedGas) != 0 {
-		return ValidationError(fmt.Sprintf("gas used error (%v / %v)", block.GasUsed(), usedGas))
+		return validateError(fmt.Sprintf("gas used error (%v / %v)", block.GasUsed(), usedGas))
 	}
 	// Validate the received block's bloom with the one derived from the generated receipts.
 	// For valid blocks this should always validate to true.
@@ -141,7 +141,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 func (v *BlockValidator) VerifyUncles(block, parent *types.Block) error {
 	// validate that there at most 2 uncles included in this block
 	if len(block.Uncles()) > 2 {
-		return ValidationError("Block can only contain maximum 2 uncles (contained %v)", len(block.Uncles()))
+		return validateError(fmt.Sprintf("Block can only contain maximum 2 uncles (contained %d)", len(block.Uncles())))
 	}
 
 	uncles := set.New()
@@ -178,7 +178,7 @@ func (v *BlockValidator) VerifyUncles(block, parent *types.Block) error {
 		}
 
 		if err := ValidateHeader(v.config, v.Pow, uncle, ancestors[uncle.ParentHash].Header(), true, true); err != nil {
-			return ValidationError(fmt.Sprintf("uncle[%d](%x) header invalid: %v", i, hash[:4], err))
+			return validateError(fmt.Sprintf("uncle[%d](%x) header invalid: %v", i, hash[:4], err))
 		}
 	}
 

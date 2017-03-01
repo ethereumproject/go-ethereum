@@ -156,7 +156,6 @@ func (r RuleSet) GasTable(num *big.Int) params.GasTable {
 		return params.GasTableHomesteadGasRepriceFork
 	}
 
-	fmt.Println("diehard")
 	return params.GasTableDiehardFork
 }
 
