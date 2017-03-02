@@ -170,12 +170,13 @@ func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error 
 	core.WriteCanonicalHash(db, test.Genesis.Hash(), test.Genesis.NumberU64())
 	core.WriteHeadBlockHash(db, test.Genesis.Hash())
 	evmux := new(event.TypeMux)
-	config := core.NewChainConfig()
-	config.Fork("Homestead").Block = homesteadBlock
+
+	core.DefaultConfig.Fork("Homestead").Block = homesteadBlock
 	if gasPriceFork != nil {
-		config.Fork("GasReprice").Block = gasPriceFork
+		core.DefaultConfig.Fork("GasReprice").Block = gasPriceFork
 	}
-	chain, err := core.NewBlockChain(db, config, ethash.NewShared(), evmux)
+
+	chain, err := core.NewBlockChain(db, core.DefaultConfig, ethash.NewShared(), evmux)
 	if err != nil {
 		return err
 	}
@@ -266,15 +267,15 @@ func (t *BlockTest) TryBlocksInsert(blockchain *core.BlockChain) ([]btBlock, err
 				return nil, fmt.Errorf("Block RLP decoding failed when expected to succeed: %v", err)
 			}
 		}
+
 		// RLP decoding worked, try to insert into chain:
 		blocks := types.Blocks{cb}
-		i, err := blockchain.InsertChain(blocks)
-		if err != nil {
+		if i, err := blockchain.InsertChain(blocks); err != nil {
 			if b.BlockHeader == nil {
-				continue // OK - block is supposed to be invalid, continue with next block
-			} else {
-				return nil, fmt.Errorf("Block #%v insertion into chain failed: %v", blocks[i].Number(), err)
+				// block supposed to be invalid, continue with next
+				continue
 			}
+			return nil, fmt.Errorf("abort on block #%d (%x): %s", blocks[i].Number(), blocks[i].Hash(), err)
 		}
 		if b.BlockHeader == nil {
 			return nil, fmt.Errorf("Block insertion should have failed")

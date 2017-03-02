@@ -62,7 +62,17 @@ func TestProtocolCompatibility(t *testing.T) {
 }
 
 // Tests that block headers can be retrieved from a remote chain based on user queries.
-func TestGetBlockHeaders62(t *testing.T) { testGetBlockHeaders(t, 62) }
+func TestGetBlockHeaders62(t *testing.T) {
+	core.TestConfig.Forks = []*core.Fork{
+		{
+			Name:     "Homestead",
+			Block:    big.NewInt(0),
+			GasTable: &params.GasTableHomestead,
+		},
+	}
+	testGetBlockHeaders(t, 62)
+}
+
 func TestGetBlockHeaders63(t *testing.T) { testGetBlockHeaders(t, 63) }
 
 func testGetBlockHeaders(t *testing.T, protocol int) {

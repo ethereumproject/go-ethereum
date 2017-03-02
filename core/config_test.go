@@ -5,8 +5,17 @@ import (
 	"testing"
 )
 
+func TestConfigErrorProperties(t *testing.T) {
+	if IsValidateError(ErrHashKnownBad) {
+		t.Error("ErrHashKnownBad is a validation error")
+	}
+	if !IsValidateError(ErrHashKnownFork) {
+		t.Error("ErrHashKnownFork is not a validation error")
+	}
+}
+
 func TestBombWait(t *testing.T) {
-	config := NewChainConfig()
+	config := DefaultConfig
 
 	if config.IsHomestead(big.NewInt(10000)) {
 		t.Errorf("Unexpected for %d", 10000)
@@ -36,7 +45,7 @@ func TestBombWait(t *testing.T) {
 }
 
 func TestBombDelay(t *testing.T) {
-	config := NewChainConfig()
+	config := DefaultConfig
 
 	if config.IsDiehard(big.NewInt(1920000)) {
 		t.Errorf("Unexpected for %d", 1920000)
@@ -65,7 +74,7 @@ func TestBombDelay(t *testing.T) {
 }
 
 func TestBombExplode(t *testing.T) {
-	config := NewChainConfig()
+	config := DefaultConfig
 
 	if config.IsExplosion(big.NewInt(1920000)) {
 		t.Errorf("Unexpected for %d", 1920000)

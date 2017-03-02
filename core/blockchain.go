@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	mrand "math/rand"
 	"runtime"
@@ -567,19 +568,6 @@ func (bc *BlockChain) Stop() {
 	glog.V(logger.Info).Infoln("Chain manager stopped")
 }
 
-func (self *BlockChain) procFutureBlocks() {
-	blocks := make([]*types.Block, 0, self.futureBlocks.Len())
-	for _, hash := range self.futureBlocks.Keys() {
-		if block, exist := self.futureBlocks.Get(hash); exist {
-			blocks = append(blocks, block.(*types.Block))
-		}
-	}
-	if len(blocks) > 0 {
-		types.BlockBy(types.Number).Sort(blocks)
-		self.InsertChain(blocks)
-	}
-}
-
 type WriteStatus byte
 
 const (
@@ -802,9 +790,9 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	return
 }
 
-// InsertChain will attempt to insert the given chain in to the canonical chain or, otherwise, create a fork. It an error is returned
-// it will return the index number of the failing block as well an error describing what went wrong (for possible errors see core/errors.go).
-func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
+// InsertChain inserts the given chain into the canonical chain or, otherwise, create a fork.
+// If the err return is not nil then chainIndex points to the cause in chain.
+func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error) {
 	self.wg.Add(1)
 	defer self.wg.Done()
 
@@ -846,9 +834,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 			}
 		}
 
-		if err := self.config.IsBadFork(block.Header()); err != nil {
-			glog.Infof("Found bad block")
-			reportBlock(block, err)
+		if err := self.config.HeaderCheck(block.Header()); err != nil {
 			return i, err
 		}
 
@@ -880,8 +866,6 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 				continue
 			}
 
-			reportBlock(block, err)
-
 			return i, err
 		}
 
@@ -894,19 +878,16 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 			err = self.stateCache.Reset(chain[i-1].Root())
 		}
 		if err != nil {
-			reportBlock(block, err)
 			return i, err
 		}
 		// Process block using the parent state as reference point.
 		receipts, logs, usedGas, err := self.processor.Process(block, self.stateCache)
 		if err != nil {
-			reportBlock(block, err)
 			return i, err
 		}
 		// Validate the state using the default validator
 		err = self.Validator().ValidateState(block, self.GetBlock(block.ParentHash()), self.stateCache, receipts, usedGas)
 		if err != nil {
-			reportBlock(block, err)
 			return i, err
 		}
 		// Write state changes to database
@@ -1112,23 +1093,30 @@ func (self *BlockChain) postChainEvents(events []interface{}, logs vm.Logs) {
 	}
 }
 
-func (self *BlockChain) update() {
-	futureTimer := time.Tick(5 * time.Second)
-	for {
-		select {
-		case <-futureTimer:
-			self.procFutureBlocks()
-		case <-self.quit:
-			return
-		}
-	}
-}
+func (chain *BlockChain) update() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
-// reportBlock logs a bad block error.
-func reportBlock(block *types.Block, err error) {
-	if glog.V(logger.Error) {
-		glog.Errorf("Bad block #%v (%s)\n", block.Number(), block.Hash().Hex())
-		glog.Errorf("    %v", err)
+	for range ticker.C {
+		select {
+		case <-chain.quit:
+			return
+		default:
+		}
+
+		blocks := make([]*types.Block, 0, chain.futureBlocks.Len())
+		for _, hash := range chain.futureBlocks.Keys() {
+			if block, exist := chain.futureBlocks.Get(hash); exist {
+				blocks = append(blocks, block.(*types.Block))
+			}
+		}
+
+		if len(blocks) > 0 {
+			types.BlockBy(types.Number).Sort(blocks)
+			if i, err := chain.InsertChain(blocks); err != nil {
+				log.Printf("periodic future chain update on block #%d (%x):  %s", blocks[i].Number(), blocks[i].Hash(), err)
+			}
+		}
 	}
 }
 

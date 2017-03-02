@@ -177,7 +177,7 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 
 func (pm *ProtocolManager) insertChain(blocks types.Blocks) (i int, err error) {
 	i, err = pm.blockchain.InsertChain(blocks)
-	if pm.badBlockReportingEnabled && core.IsValidationErr(err) && i < len(blocks) {
+	if err != nil && pm.badBlockReportingEnabled && core.IsValidateError(err) {
 		go sendBadBlockReport(blocks[i], err)
 	}
 	return i, err
@@ -426,13 +426,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
 		filter := len(headers) == 1
 		if filter {
-			if err := pm.chainConfig.IsBadFork(headers[0]); err != nil {
+			if err := pm.chainConfig.HeaderCheck(headers[0]); err != nil {
 				if p.timeout != nil {
 					// Disable the fork drop timeout
 					p.timeout.Stop()
 					p.timeout = nil
 				}
-				glog.V(logger.Debug).Infof("%v: verified to be on the other side of a fork, dropping", p)
 				return err
 			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case

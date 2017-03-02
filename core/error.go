@@ -67,21 +67,16 @@ func IsUncleErr(err error) bool {
 	return ok
 }
 
-// Block validation error. If any validation fails, this error will be thrown
-type ValidationErr struct {
-	Message string
+// validateError signals a block validation failure.
+type validateError string
+
+func (err validateError) Error() string {
+	return string(err)
 }
 
-func (err *ValidationErr) Error() string {
-	return err.Message
-}
-
-func ValidationError(format string, v ...interface{}) *ValidationErr {
-	return &ValidationErr{Message: fmt.Sprintf(format, v...)}
-}
-
-func IsValidationErr(err error) bool {
-	_, ok := err.(*ValidationErr)
+// IsValidateError eturns whether err is a validation error.
+func IsValidateError(err error) bool {
+	_, ok := err.(validateError)
 	return ok
 }
 
@@ -175,17 +170,6 @@ func (self *ValueTransferError) Error() string {
 }
 func IsValueTransferErr(e error) bool {
 	_, ok := e.(*ValueTransferError)
-	return ok
-}
-
-type BadHashError common.Hash
-
-func (h BadHashError) Error() string {
-	return fmt.Sprintf("Found known bad hash in chain %x", h[:])
-}
-
-func IsBadHashError(err error) bool {
-	_, ok := err.(BadHashError)
 	return ok
 }
 
