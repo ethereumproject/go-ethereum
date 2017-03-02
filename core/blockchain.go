@@ -791,8 +791,8 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 }
 
 // InsertChain inserts the given chain into the canonical chain or, otherwise, create a fork.
-// If the err return is not nil then n holds the index of the chain causing the error.
-func (self *BlockChain) InsertChain(chain types.Blocks) (n int, err error) {
+// If the err return is not nil then chainIndex points to the cause in chain.
+func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error) {
 	self.wg.Add(1)
 	defer self.wg.Done()
 
@@ -1094,27 +1094,28 @@ func (self *BlockChain) postChainEvents(events []interface{}, logs vm.Logs) {
 }
 
 func (chain *BlockChain) update() {
-	futureTimer := time.Tick(5 * time.Second)
-	for {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
 		select {
-		case <-futureTimer:
-			blocks := make([]*types.Block, 0, chain.futureBlocks.Len())
-			for _, hash := range chain.futureBlocks.Keys() {
-				if block, exist := chain.futureBlocks.Get(hash); exist {
-					blocks = append(blocks, block.(*types.Block))
-				}
-			}
-
-			if len(blocks) > 0 {
-				types.BlockBy(types.Number).Sort(blocks)
-				if i, err := chain.InsertChain(blocks); err != nil {
-					log.Printf("periodic chain update failed on block #%d (%x):  %s", blocks[i].Number(), blocks[i].Hash(), err)
-				}
-			}
-
 		case <-chain.quit:
 			return
+		default:
+		}
 
+		blocks := make([]*types.Block, 0, chain.futureBlocks.Len())
+		for _, hash := range chain.futureBlocks.Keys() {
+			if block, exist := chain.futureBlocks.Get(hash); exist {
+				blocks = append(blocks, block.(*types.Block))
+			}
+		}
+
+		if len(blocks) > 0 {
+			types.BlockBy(types.Number).Sort(blocks)
+			if i, err := chain.InsertChain(blocks); err != nil {
+				log.Printf("periodic future chain update on block #%d (%x):  %s", blocks[i].Number(), blocks[i].Hash(), err)
+			}
 		}
 	}
 }
