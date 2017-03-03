@@ -7,7 +7,7 @@ install:
   - echo %PATH%
   - echo %GOPATH%
   - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
-  - set GIT_HASH_SHORT=%APPVEYOR_REPO_COMMIT:~0,6%
+  - set GIT_HASH_SHORT=%APPVEYOR_REPO_COMMIT:~0,7%
   - go version
   - go env
   - go get golang.org/x/sys/windows
@@ -24,8 +24,20 @@ deploy:
     subject: ethereumproject
     repo: GoEthereumClassic
     package: go-ethereum
-    version: develop
-    publish: false
+    version: master
+    publish: true
     override: true
     on:
-      branch: splix/appveyor
+      branch: master
+  - provider: BinTray
+    username: splix
+    api_key:
+      secure: yBy4Pe1aiUnBXLheSJNzRQxvVUm+g7etLEdKDWv82XvxAup4wg2nKZ/ogTyJkWxx
+    subject: ethereumproject
+    repo: GoEthereumClassic
+    package: go-ethereum
+    version: %APPVEYOR_REPO_TAG_NAME%
+    publish: true
+    override: true
+    on:
+      appveyor_repo_tag: true
