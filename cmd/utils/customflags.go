@@ -66,10 +66,10 @@ func (self DirectoryFlag) String() string {
 	return withEnvHint(self.EnvVar, fmt.Sprintf(fmtString, prefixedNames(self.Name), self.Value.Value, self.Usage))
 }
 
-func eachName(longName string, fn func(string)) {
-	parts := strings.Split(longName, ",")
-	for _, name := range parts {
-		name = strings.Trim(name, " ")
+func eachName(s string, fn func(string)) {
+	f := func(r rune) bool {return r == ',' || r == ' '}
+
+	for _, name := range strings.FieldsFunc(s, f) {
 		fn(name)
 	}
 }
