@@ -9,6 +9,7 @@ install:
   - go version
   - go env
 build_script:
+  - go get ./cmd/...
   - go build -o build/geth -i ./cmd/geth
 artifacts:
   - path: build/geth
