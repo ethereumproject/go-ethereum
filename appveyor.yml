@@ -10,10 +10,21 @@ install:
   - go version
   - go env
   - go get golang.org/x/sys/windows
-  - dir C:\msys64\mingw64\bin
-  - dir C:\msys64\usr\bin\
 build_script:
-  - go build -o build/geth.exe -i ./cmd/geth
+  - go build -o build/geth-{commit}.exe -i ./cmd/geth
 artifacts:
-  - path: build/geth.exe
+  - path: build/geth-{commit}.exe
     name: geth
+deploy:
+  - provider: BinTray
+    username: splix
+    api_key:
+      secure: yBy4Pe1aiUnBXLheSJNzRQxvVUm+g7etLEdKDWv82XvxAup4wg2nKZ/ogTyJkWxx
+    subject: ethereumproject
+    repo: GoEthereumClassic
+    package: go-ethereum
+    version: commit-{commit}
+    publish: false
+    override: true
+    on:
+      branch: splix/appveyor
