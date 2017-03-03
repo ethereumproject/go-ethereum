@@ -6,12 +6,12 @@ environment:
 install:
   - echo %PATH%
   - echo %GOPATH%
-  - set PATH=%GOPATH%\bin;c:\go\bin;C:\mingw-w64\i686-6.3.0-posix-dwarf-rt_v5-rev1;%PATH%
+  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
   - go version
   - go env
   - go get golang.org/x/sys/windows
-  - dir C:\mingw-w64\i686-6.3.0-posix-dwarf-rt_v5-rev1\bin
-  - dir C:\mingw-w64\i686-6.3.0-posix-dwarf-rt_v5-rev1
+  - dir C:\msys64\mingw64\bin
+  - dir C:\msys64\usr\bin\
 build_script:
   - go build -o build/geth.exe -i ./cmd/geth
 artifacts:
