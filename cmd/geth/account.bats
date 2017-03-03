@@ -17,7 +17,7 @@ teardown() {
 }
 
 @test "account list testdata keystore" {
-	cp -R ../../accounts/testdata/keystore $DATA_DIR
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR
 
 	run ./geth --datadir $DATA_DIR account
 	echo "$output"
@@ -45,7 +45,7 @@ teardown() {
 }
 
 @test "account update pass" {
-	cp -R ../../accounts/testdata/keystore $DATA_DIR
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR
 
 	run ./geth --datadir $DATA_DIR --lightkdf account update f466859ead1932d743d622cb74fc058882e8648a <<< $'foobar\nother\nother\n'
 	echo "$output"
@@ -54,7 +54,7 @@ teardown() {
 }
 
 @test "account import" {
-	run ./geth --datadir $DATA_DIR --lightkdf wallet import testdata/guswallet.json <<< $'foo\n'
+	run ./geth --datadir $DATA_DIR --lightkdf wallet import $BATS_TEST_DIRNAME/testdata/guswallet.json <<< $'foo\n'
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -66,7 +66,7 @@ teardown() {
 }
 
 @test "account import pass mismatch" {
-	run ./geth --datadir $DATA_DIR --lightkdf wallet import testdata/guswallet.json <<< $'wrong\n'
+	run ./geth --datadir $DATA_DIR --lightkdf wallet import $BATS_TEST_DIRNAME/testdata/guswallet.json <<< $'wrong\n'
 	echo "$output"
 
 	[ "$status" -ne 0 ]
@@ -74,7 +74,7 @@ teardown() {
 }
 
 @test "account unlock" {
-	cp -R ../../accounts/testdata/keystore $DATA_DIR
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 
 	run ./geth --datadir $DATA_DIR --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'
@@ -85,7 +85,7 @@ teardown() {
 }
 
 @test "account unlock pass mismatch" {
-	cp -R ../../accounts/testdata/keystore $DATA_DIR
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 
 	run ./geth --datadir $DATA_DIR --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong1\nwrong2\nwrong3\n'
@@ -96,7 +96,7 @@ teardown() {
 }
 
 @test "account unlock multiple" {
-	cp -R ../../accounts/testdata/keystore $DATA_DIR
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 
 	run ./geth --datadir $DATA_DIR --nat none --nodiscover --dev --unlock 0,2 js $DATA_DIR/empty.js <<< $'foobar\nfoobar\n'
@@ -108,7 +108,7 @@ teardown() {
 }
 
 @test "account unlock multiple with pass file" {
-	cp -R ../../accounts/testdata/keystore $DATA_DIR
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 	echo $'foobar\nfoobar\nfoobar\n' > $DATA_DIR/pass.txt
 
@@ -121,7 +121,7 @@ teardown() {
 }
 
 @test "account unlock multiple with wrong pass file" {
-	cp -R ../../accounts/testdata/keystore $DATA_DIR
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR
 	touch $DATA_DIR/empty.js
 	echo $'wrong\nwrong\nwrong\n' > $DATA_DIR/pass.txt
 
@@ -133,7 +133,7 @@ teardown() {
 }
 
 @test "account unlock ambiguous" {
-	cp -R ../../accounts/testdata/dupes $DATA_DIR/store
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/dupes $DATA_DIR/store
 	touch $DATA_DIR/empty.js
 
 	run ./geth --datadir $DATA_DIR --keystore $DATA_DIR/store --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'$DATA_DIR/store/1
@@ -146,7 +146,7 @@ teardown() {
 }
 
 @test "account unlock ambiguous pass mismatch" {
-	cp -R ../../accounts/testdata/dupes $DATA_DIR/store
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/dupes $DATA_DIR/store
 	touch $DATA_DIR/empty.js
 
 	run ./geth --datadir $DATA_DIR --keystore $DATA_DIR/store --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong\n'$DATA_DIR/store/1
