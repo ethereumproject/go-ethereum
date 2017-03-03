@@ -7,13 +7,14 @@ install:
   - echo %PATH%
   - echo %GOPATH%
   - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
+  - set GIT_HASH_SHORT=%APPVEYOR_REPO_COMMIT:~0,6%
   - go version
   - go env
   - go get golang.org/x/sys/windows
 build_script:
-  - go build -o build/geth-%APPVEYOR_REPO_COMMIT%.exe -i ./cmd/geth
+  - go build -o build/geth-classic-win64-%GIT_HASH_SHORT%.exe -i ./cmd/geth
 artifacts:
-  - path: build/geth-%APPVEYOR_REPO_COMMIT%.exe
+  - path: build/geth-classic-win64-%GIT_HASH_SHORT%.exe
     name: geth
 deploy:
   - provider: BinTray
@@ -23,7 +24,7 @@ deploy:
     subject: ethereumproject
     repo: GoEthereumClassic
     package: go-ethereum
-    version: commit-%APPVEYOR_REPO_COMMIT%
+    version: develop
     publish: false
     override: true
     on:
