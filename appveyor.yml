@@ -9,8 +9,8 @@ install:
   - go version
   - go env
 build_script:
-  - go get ./cmd/...
-  - go build -o build/geth -i ./cmd/geth
+  - go get -u ./cmd/geth
+  - go build -o build/geth.exe -i ./cmd/geth
 artifacts:
-  - path: build/geth
+  - path: build/geth.exe
     name: geth
