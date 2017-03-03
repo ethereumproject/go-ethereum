@@ -1,15 +1,17 @@
 language: go
 go_import_path: github.com/ethereumproject/go-ethereum
 
-go:
-  - 1.7
+go: 1.7
+
+env:
+- GETH_CMD=./geth-$TRAVIS_OS_NAME
 
 before_install:
-  - sudo add-apt-repository ppa:duggan/bats --yes
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq bats
+- sudo add-apt-repository ppa:duggan/bats --yes
+- sudo apt-get update -qq
+- sudo apt-get install -qq bats
 
 script:
-  - go test ./...
-  - go build -o cmd/geth/geth ./cmd/geth
-  - cd cmd/geth && bats .
+- go test ./...
+- go build -o $GETH_CMD ./cmd/geth
+- bats cmd/geth
