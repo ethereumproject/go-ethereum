@@ -12,6 +12,7 @@ install:
   - go env
   - go get golang.org/x/sys/windows
 build_script:
+  - go test ./...
   - go build -o build/geth-classic-win64-%GIT_HASH_SHORT%.exe -i ./cmd/geth
 artifacts:
   - path: build/geth-classic-win64-%GIT_HASH_SHORT%.exe
