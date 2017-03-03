@@ -1,0 +1,12 @@
+platform: x64
+clone_folder: c:\gopath\src\github.com\ethereumproject\go-ethereum
+environment:
+  GOPATH: c:\gopath
+install:
+  - echo %PATH%
+  - echo %GOPATH%
+  - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
+  - go version
+  - go env
+build_script:
+  - go build -o build -i c:\gopath\src\github.com\ethereumproject\go-ethereum\cmd\...
