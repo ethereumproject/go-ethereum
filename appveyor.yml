@@ -36,7 +36,7 @@ deploy:
     subject: ethereumproject
     repo: GoEthereumClassic
     package: go-ethereum
-    version: %APPVEYOR_REPO_TAG_NAME%
+    version: "%APPVEYOR_REPO_TAG_NAME%"
     publish: true
     override: true
     on:
