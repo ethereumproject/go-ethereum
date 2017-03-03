@@ -11,9 +11,9 @@ install:
   - go env
   - go get golang.org/x/sys/windows
 build_script:
-  - go build -o build/geth-{commit}.exe -i ./cmd/geth
+  - go build -o build/geth-%APPVEYOR_REPO_COMMIT%.exe -i ./cmd/geth
 artifacts:
-  - path: build/geth-{commit}.exe
+  - path: build/geth-%APPVEYOR_REPO_COMMIT%.exe
     name: geth
 deploy:
   - provider: BinTray
@@ -23,7 +23,7 @@ deploy:
     subject: ethereumproject
     repo: GoEthereumClassic
     package: go-ethereum
-    version: commit-{commit}
+    version: commit-%APPVEYOR_REPO_COMMIT%
     publish: false
     override: true
     on:
