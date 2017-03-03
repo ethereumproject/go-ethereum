@@ -1,0 +1,44 @@
+platform: x64
+clone_folder: c:\gopath\src\github.com\ethereumproject\go-ethereum
+os: Visual Studio 2015
+environment:
+  GOPATH: c:\gopath
+install:
+  - echo %PATH%
+  - echo %GOPATH%
+  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
+  - set GIT_HASH_SHORT=%APPVEYOR_REPO_COMMIT:~0,7%
+  - go version
+  - go env
+  - go get golang.org/x/sys/windows
+build_script:
+  - go test ./...
+  - go build -o build/geth-classic-win64-%GIT_HASH_SHORT%.exe -i ./cmd/geth
+artifacts:
+  - path: build/geth-classic-win64-%GIT_HASH_SHORT%.exe
+    name: geth
+deploy:
+  - provider: BinTray
+    username: splix
+    api_key:
+      secure: yBy4Pe1aiUnBXLheSJNzRQxvVUm+g7etLEdKDWv82XvxAup4wg2nKZ/ogTyJkWxx
+    subject: ethereumproject
+    repo: GoEthereumClassic
+    package: go-ethereum
+    version: master
+    publish: true
+    override: true
+    on:
+      branch: master
+  - provider: BinTray
+    username: splix
+    api_key:
+      secure: yBy4Pe1aiUnBXLheSJNzRQxvVUm+g7etLEdKDWv82XvxAup4wg2nKZ/ogTyJkWxx
+    subject: ethereumproject
+    repo: GoEthereumClassic
+    package: go-ethereum
+    version: "%APPVEYOR_REPO_TAG_NAME%"
+    publish: true
+    override: true
+    on:
+      appveyor_repo_tag: true
