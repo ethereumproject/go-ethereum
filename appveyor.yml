@@ -8,6 +8,7 @@ install:
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
   - go version
   - go env
+  - go get golang.org/x/sys/windows
 build_script:
   - go build -o build/geth.exe -i ./cmd/geth
 artifacts:
