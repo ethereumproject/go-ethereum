@@ -189,10 +189,6 @@ func (store *keyStore) Insert(key *key, secret string) (file string, err error) 
 	if err := writeKeyFile(file, data); err != nil {
 		return "", err
 	}
-
-	if err := writeKeyFile(file, data); err != nil {
-		return "", err
-	}
 	return file, nil
 }
 
