@@ -182,7 +182,7 @@ func (store *keyStore) Insert(key *key, secret string) (file string, err error) 
 		return "", err
 	}
 
-	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.999999999")
+	timestamp := time.Now().UTC().Format("2006-01-02T15-04-05.999999999")
 	file = fmt.Sprintf("UTC--%sZ--%x", timestamp, key.Address[:])
 	file = filepath.Join(store.baseDir, file)
 
@@ -448,7 +448,7 @@ func writeKeyFile(file string, content []byte) error {
 
 	// Atomic write: create a temporary hidden file first
 	// then move it into place. TempFile assigns mode 0600.
-	f, err := ioutil.TempFile(dir, "."+basename+".tmp")
+	f, err := ioutil.TempFile(dir, "."+basename+"_")
 	if err != nil {
 		return err
 	}
