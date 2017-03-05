@@ -182,13 +182,9 @@ func (store *keyStore) Insert(key *key, secret string) (file string, err error) 
 		return "", err
 	}
 
-	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.999999999")
+	timestamp := time.Now().UTC().Format("2006-01-02T15-04-05.999999999")
 	file = fmt.Sprintf("UTC--%sZ--%x", timestamp, key.Address[:])
 	file = filepath.Join(store.baseDir, file)
-
-	if err := writeKeyFile(file, data); err != nil {
-		return "", err
-	}
 
 	if err := writeKeyFile(file, data); err != nil {
 		return "", err
@@ -456,11 +452,16 @@ func writeKeyFile(file string, content []byte) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	if _, err := f.Write(content); err != nil {
+		f.Close()
 		os.Remove(f.Name())
 		return err
 	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	// BUG(pascaldekloe): Windows won't allow updates to a keyfile when it is being read.
 	return os.Rename(f.Name(), file)
 }
