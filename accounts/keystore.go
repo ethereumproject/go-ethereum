@@ -448,15 +448,20 @@ func writeKeyFile(file string, content []byte) error {
 
 	// Atomic write: create a temporary hidden file first
 	// then move it into place. TempFile assigns mode 0600.
-	f, err := ioutil.TempFile(dir, "."+basename+"_")
+	f, err := ioutil.TempFile(dir, "."+basename+".tmp")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	if _, err := f.Write(content); err != nil {
+		f.Close()
 		os.Remove(f.Name())
 		return err
 	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	// BUG(pascaldekloe): Windows won't allow updates to a keyfile when it is being read.
 	return os.Rename(f.Name(), file)
 }
