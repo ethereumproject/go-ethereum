@@ -36,6 +36,8 @@ var HomesteadBootNodes = []*discover.Node{
 	discover.MustParseNode("enode://ee3da491ce6a155eb132708eb0e8d04b0637926ec0ae1b79e63fc97cb9fc3818f49250a0ae0d7f79ed62b66ec677f408c4e01741504dc7a051e274f1e803d454@91.121.65.179:40404"),   //mso-
 	discover.MustParseNode("enode://48e063a6cf5f335b1ef2ed98126bf522cf254396f850c7d442fe2edbbc23398787e14cd4de7968a00175a82762de9cbe9e1407d8ccbcaeca5004d65f8398d759@159.203.255.59:30303"),  //mik-
 	discover.MustParseNode("enode://42d8f29d1db5f4b2947cd5c3d76c6d0d3697e6b9b3430c3d41e46b4bb77655433aeedc25d4b4ea9d8214b6a43008ba67199374a9b53633301bca0cd20c6928ab@104.155.176.151:30303"), //boot.gastracker.io
+	discover.MustParseNode("enode://814920f1ec9510aa9ea1c8f79d8b6e6a462045f09caa2ae4055b0f34f7416fca6facd3dd45f1cf1673c0209e0503f02776b8ff94020e98b6679a0dc561b4eba0@104.154.136.117:30303"), //boot1.etcdevteam.com
+	discover.MustParseNode("enode://72e445f4e89c0f476d404bc40478b0df83a5b500d2d2e850e08eb1af0cd464ab86db6160d0fde64bd77d5f0d33507ae19035671b3c74fec126d6e28787669740@104.198.71.200:30303"),  //boot2.etcdevteam.com
 
 	// Pending & Not Resolving
 	//discover.MustParseNode("enode://b61123cc535d6bac44f9e6ff8637a30a10198f80b5582148dcd84ef8039a4b90e326bb7f6964588a46bcf1ccd8e8bba65db514fc72e3026ff13b20959f45f654@etc.naphex.rocks:30303"), // nap-
@@ -47,6 +49,8 @@ var HomesteadBootNodes = []*discover.Node{
 var TestNetBootNodes = []*discover.Node{
 	// ETC Nodes
 	discover.MustParseNode("enode://fb28713820e718066a2f5df6250ae9d07cff22f672dbf26be6c75d088f821a9ad230138ba492c533a80407d054b1436ef18e951bb65e6901553516c8dffe8ff0@104.155.176.151:30304"), //boot.gastracker.io
+	discover.MustParseNode("enode://afdc6076b9bf3e7d3d01442d6841071e84c76c73a7016cb4f35c0437df219db38565766234448f1592a07ba5295a867f0ce87b359bf50311ed0b830a2361392d@104.154.136.117:30403"), //boot1.etcdevteam.com
+	discover.MustParseNode("enode://21101a9597b79e933e17bc94ef3506fe99a137808907aa8fefa67eea4b789792ad11fb391f38b00087f8800a2d3dff011572b62a31232133dd1591ac2d1502c8@104.198.71.200:30403"),  //boot2.etcdevteam.com
 
 	// ETH/DEV Go Bootnodes
 	discover.MustParseNode("enode://e4533109cc9bd7604e4ff6c095f7a1d807e15b38e9bfeb05d3b7c423ba86af0a9e89abbf40bd9dde4250fef114cd09270fa4e224cbeef8b7bf05a51e8260d6b8@94.242.229.4:40404"),
