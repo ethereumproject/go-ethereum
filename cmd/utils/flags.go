@@ -33,12 +33,14 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/miner"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
@@ -74,18 +76,6 @@ OPTIONS:
 	{{range .Flags}}{{.}}
 	{{end}}{{end}}
 `
-}
-
-// NewApp creates an app with sane defaults.
-func NewApp(version, usage string) *cli.App {
-	app := cli.NewApp()
-	app.Name = filepath.Base(os.Args[0])
-	app.Author = ""
-	//app.Authors = nil
-	app.Email = ""
-	app.Version = version
-	app.Usage = usage
-	return app
 }
 
 // These are all the command line flags we support.
@@ -195,7 +185,7 @@ var (
 	}
 	ExtraDataFlag = cli.StringFlag{
 		Name:  "extradata",
-		Usage: "Block extra data set by the miner (default = client version)",
+		Usage: "Freeform header field set by the miner",
 	}
 	// Account settings
 	UnlockedAccountFlag = cli.StringFlag{
@@ -583,15 +573,6 @@ func MakeEtherbase(accman *accounts.Manager, ctx *cli.Context) common.Address {
 	return account.Address
 }
 
-// MakeMinerExtra resolves extradata for the miner from the set command line flags
-// or returns a default one composed on the client, runtime and OS metadata.
-func MakeMinerExtra(extra []byte, ctx *cli.Context) []byte {
-	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
-		return []byte(ctx.GlobalString(ExtraDataFlag.Name))
-	}
-	return extra
-}
-
 // MakePasswordList reads password lines from the file specified by --password.
 func MakePasswordList(ctx *cli.Context) []string {
 	path := ctx.GlobalString(PasswordFileFlag.Name)
@@ -612,7 +593,16 @@ func MakePasswordList(ctx *cli.Context) []string {
 
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
-func MakeSystemNode(name, version string, relconf release.Config, extra []byte, ctx *cli.Context) *node.Node {
+func MakeSystemNode(name, version string, relconf release.Config, ctx *cli.Context) *node.Node {
+	// global settings
+	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
+		s := ctx.GlobalString(ExtraDataFlag.Name)
+		if len(s) > types.HeaderExtraMax {
+			Fatalf("%s flag %q exceeds size limit of %d", ExtraDataFlag.Name, s, types.HeaderExtraMax)
+		}
+		miner.HeaderExtra = []byte(s)
+	}
+
 	// Avoid conflicting network flags
 	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag, OlympicFlag}
 	for _, flag := range netFlags {
@@ -623,6 +613,7 @@ func MakeSystemNode(name, version string, relconf release.Config, extra []byte, 
 	if networks > 1 {
 		Fatalf("The %v flags are mutually exclusive", netFlags)
 	}
+
 	// Configure the node's service container
 	stackConf := &node.Config{
 		DataDir:         MustMakeDataDir(ctx),
@@ -644,6 +635,7 @@ func MakeSystemNode(name, version string, relconf release.Config, extra []byte, 
 		WSOrigins:       ctx.GlobalString(WSAllowedOriginsFlag.Name),
 		WSModules:       MakeRPCModules(ctx.GlobalString(WSApiFlag.Name)),
 	}
+
 	// Configure the Ethereum service
 	accman := MakeAccountManager(ctx)
 
@@ -657,7 +649,6 @@ func MakeSystemNode(name, version string, relconf release.Config, extra []byte, 
 		AccountManager:          accman,
 		Etherbase:               MakeEtherbase(accman, ctx),
 		MinerThreads:            ctx.GlobalInt(MinerThreadsFlag.Name),
-		ExtraData:               MakeMinerExtra(extra, ctx),
 		NatSpec:                 ctx.GlobalBool(NatspecEnabledFlag.Name),
 		DocRoot:                 ctx.GlobalString(DocRootFlag.Name),
 		GasPrice:                common.String2Big(ctx.GlobalString(GasPriceFlag.Name)),
@@ -744,7 +735,7 @@ func SetupNetwork(ctx *cli.Context) {
 		params.DurationLimit = big.NewInt(8)
 		params.GenesisGasLimit = big.NewInt(3141592)
 		params.MinGasLimit = big.NewInt(125000)
-		params.MaximumExtraDataSize = big.NewInt(1024)
+		types.HeaderExtraMax = 1024
 		NetworkIdFlag.Value = 0
 		core.BlockReward = big.NewInt(1.5e+18)
 		core.ExpDiffPeriod = big.NewInt(math.MaxInt64)

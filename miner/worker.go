@@ -108,7 +108,6 @@ type worker struct {
 
 	coinbase common.Address
 	gasPrice *big.Int
-	extra    []byte
 
 	currentMu sync.Mutex
 	current   *Work
@@ -463,7 +462,7 @@ func (self *worker) commitNewWork() {
 		GasLimit:   core.CalcGasLimit(parent),
 		GasUsed:    new(big.Int),
 		Coinbase:   self.coinbase,
-		Extra:      self.extra,
+		Extra:      HeaderExtra,
 		Time:       big.NewInt(tstamp),
 	}
 	previous := self.current

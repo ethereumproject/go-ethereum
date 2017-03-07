@@ -67,7 +67,7 @@ func (self DirectoryFlag) String() string {
 }
 
 func eachName(s string, fn func(string)) {
-	f := func(r rune) bool {return r == ',' || r == ' '}
+	f := func(r rune) bool { return r == ',' || r == ' ' }
 
 	for _, name := range strings.FieldsFunc(s, f) {
 		fn(name)

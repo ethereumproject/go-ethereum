@@ -31,6 +31,10 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
+// Version is the application revision identifier. It can be set with the linker
+// as in: go build -ldflags "-X main.Version="`git describe --tags`
+var Version = "unknown"
+
 var (
 	continueOnError = false
 	testExtension   = ".json"
@@ -204,11 +208,10 @@ func main() {
 	glog.SetToStderr(true)
 
 	app := cli.NewApp()
-	app.Name = "ethtest"
+	app.Name = filepath.Base(os.Args[0])
+	app.Version = Version
 	app.Usage = "go-ethereum test interface"
 	app.Action = setupApp
-	app.Version = "0.2.0"
-	app.Author = "go-ethereum team"
 
 	app.Flags = []cli.Flag{
 		TestFlag,

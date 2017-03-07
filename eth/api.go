@@ -259,14 +259,6 @@ func (s *PrivateMinerAPI) Stop() bool {
 	return true
 }
 
-// SetExtra sets the extra data string that is included when this miner mines a block.
-func (s *PrivateMinerAPI) SetExtra(extra string) (bool, error) {
-	if err := s.e.Miner().SetExtra([]byte(extra)); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
 // SetGasPrice sets the minimum accepted gas price for the miner.
 func (s *PrivateMinerAPI) SetGasPrice(gasPrice rpc.HexNumber) bool {
 	s.e.Miner().SetGasPrice(gasPrice.BigInt())

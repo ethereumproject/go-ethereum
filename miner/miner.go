@@ -18,7 +18,6 @@
 package miner
 
 import (
-	"fmt"
 	"math/big"
 	"sync/atomic"
 
@@ -30,9 +29,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 )
+
+// HeaderExtra is a freeform description.
+var HeaderExtra []byte
 
 type Miner struct {
 	mux *event.TypeMux
@@ -153,15 +154,6 @@ func (self *Miner) HashRate() (tot int64) {
 		tot += agent.GetHashRate()
 	}
 	return
-}
-
-func (self *Miner) SetExtra(extra []byte) error {
-	if uint64(len(extra)) > params.MaximumExtraDataSize.Uint64() {
-		return fmt.Errorf("Extra exceeds max length. %d > %v", len(extra), params.MaximumExtraDataSize)
-	}
-
-	self.worker.extra = extra
-	return nil
 }
 
 // Pending returns the currently pending block and associated state.

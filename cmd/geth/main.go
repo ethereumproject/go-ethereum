@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"strings"
 
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/cmd/utils"
 	"github.com/ethereumproject/go-ethereum/common"
@@ -39,11 +41,12 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/release"
-	"github.com/ethereumproject/go-ethereum/rlp"
-	"gopkg.in/urfave/cli.v1"
 )
+
+// Version is the application revision identifier. It can be set with the linker
+// as in: go build -ldflags "-X main.Version="`git describe --tags`
+var Version = "unknown"
 
 const (
 	clientIdentifier = "Geth"     // Client identifier to advertise over the network
@@ -58,20 +61,10 @@ const (
 
 var (
 	gitCommit string         // Git SHA1 commit hash of the release (set via linker flags)
-	verString string         // Combined textual representation of all the version components
 	relConfig release.Config // Structured version information and release oracle config
-	app       *cli.App
 )
 
-func init() {
-	// Construct the textual version string from the individual components
-	verString = fmt.Sprintf("%d.%d.%d", versionMajor, versionMinor, versionPatch)
-	if versionMeta != "" {
-		verString += "-" + versionMeta
-	}
-	if gitCommit != "" {
-		verString += "-" + gitCommit[:8]
-	}
+func main() {
 	// Construct the version release oracle configuration
 	relConfig.Oracle = common.HexToAddress(versionOracle)
 
@@ -83,9 +76,13 @@ func init() {
 	copy(relConfig.Commit[:], commit)
 
 	// Initialize the CLI app and start Geth
-	app = utils.NewApp(verString, "the go-ethereum command line interface")
+	app := cli.NewApp()
+	app.Name = filepath.Base(os.Args[0])
+	app.Version = Version
+	app.Usage = "the go-ethereum command line interface"
 	app.Action = geth
 	app.HideVersion = true // we have a command to print the version
+
 	app.Commands = []cli.Command{
 		importCommand,
 		exportCommand,
@@ -232,40 +229,18 @@ participating.
 		console.Stdin.Close() // Resets terminal mode.
 		return nil
 	}
-}
 
-func main() {
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func makeDefaultExtra() []byte {
-	var clientInfo = struct {
-		Version   uint
-		Name      string
-		GoVersion string
-		Os        string
-	}{uint(versionMajor<<16 | versionMinor<<8 | versionPatch), clientIdentifier, runtime.Version(), runtime.GOOS}
-	extra, err := rlp.EncodeToBytes(clientInfo)
-	if err != nil {
-		glog.V(logger.Warn).Infoln("error setting canonical miner information:", err)
-	}
-
-	if uint64(len(extra)) > params.MaximumExtraDataSize.Uint64() {
-		glog.V(logger.Warn).Infoln("error setting canonical miner information: extra exceeds", params.MaximumExtraDataSize)
-		glog.V(logger.Debug).Infof("extra: %x\n", extra)
-		return nil
-	}
-	return extra
-}
-
 // geth is the main entry point into the system if no special subcommand is ran.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
-	node := utils.MakeSystemNode(clientIdentifier, verString, relConfig, makeDefaultExtra(), ctx)
+	node := utils.MakeSystemNode(clientIdentifier, Version, relConfig, ctx)
 	startNode(ctx, node)
 	node.Wait()
 
@@ -384,7 +359,7 @@ func gpubench(ctx *cli.Context) error {
 
 func version(c *cli.Context) error {
 	fmt.Println(clientIdentifier)
-	fmt.Println("Version:", verString)
+	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", c.GlobalInt(utils.NetworkIdFlag.Name))
 	fmt.Println("Go Version:", runtime.Version())

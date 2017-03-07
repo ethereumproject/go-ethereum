@@ -28,6 +28,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/common/compiler"
 )
 
+// Version is the application revision identifier. It can be set with the linker
+// as in: go build -ldflags "-X main.Version="`git describe --tags`
+var Version = "unknown"
+
 var (
 	abiFlag = flag.String("abi", "", "Path to the Ethereum contract ABI json to bind")
 	binFlag = flag.String("bin", "", "Path to the Ethereum contract bytecode (generate deploy method)")
@@ -37,13 +41,19 @@ var (
 	solcFlag = flag.String("solc", "solc", "Solidity compiler to use if source builds are requested")
 	excFlag  = flag.String("exc", "", "Comma separated types to exclude from binding")
 
-	pkgFlag = flag.String("pkg", "", "Go package name to generate the binding into")
-	outFlag = flag.String("out", "", "Output file for the generated binding (default = stdout)")
+	pkgFlag     = flag.String("pkg", "", "Go package name to generate the binding into")
+	outFlag     = flag.String("out", "", "Output file for the generated binding (default = stdout)")
+	versionFlag = flag.Bool("version", false, "Prints the revision identifier and exit immediatily.")
 )
 
 func main() {
 	// Parse and ensure all needed inputs are specified
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println("abigen version", Version)
+		os.Exit(0)
+	}
 
 	if *abiFlag == "" && *solFlag == "" {
 		fmt.Printf("No contract ABI (--abi) or Solidity source (--sol) specified\n")
