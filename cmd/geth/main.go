@@ -18,7 +18,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -31,7 +30,6 @@ import (
 
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/cmd/utils"
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -41,41 +39,13 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/release"
 )
 
 // Version is the application revision identifier. It can be set with the linker
 // as in: go build -ldflags "-X main.Version="`git describe --tags`
 var Version = "unknown"
 
-const (
-	clientIdentifier = "Geth"     // Client identifier to advertise over the network
-	versionMajor     = 3          // Major version component of the current release
-	versionMinor     = 2          // Minor version component of the current release
-	versionPatch     = 3          // Patch version component of the current release
-	versionMeta      = "unstable" // Version metadata to append to the version string
-
-	// !EPROJECT Replace Oracle or remove point of centralization
-	versionOracle = "0xfa7b9770ca4cb04296cac84f37736d4041251cdf" // Ethereum address of the Geth release oracle
-)
-
-var (
-	gitCommit string         // Git SHA1 commit hash of the release (set via linker flags)
-	relConfig release.Config // Structured version information and release oracle config
-)
-
 func main() {
-	// Construct the version release oracle configuration
-	relConfig.Oracle = common.HexToAddress(versionOracle)
-
-	relConfig.Major = uint32(versionMajor)
-	relConfig.Minor = uint32(versionMinor)
-	relConfig.Patch = uint32(versionPatch)
-
-	commit, _ := hex.DecodeString(gitCommit)
-	copy(relConfig.Commit[:], commit)
-
-	// Initialize the CLI app and start Geth
 	app := cli.NewApp()
 	app.Name = filepath.Base(os.Args[0])
 	app.Version = Version
@@ -240,7 +210,7 @@ participating.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
-	node := utils.MakeSystemNode(clientIdentifier, Version, relConfig, ctx)
+	node := utils.MakeSystemNode(Version, ctx)
 	startNode(ctx, node)
 	node.Wait()
 
@@ -358,7 +328,7 @@ func gpubench(ctx *cli.Context) error {
 }
 
 func version(c *cli.Context) error {
-	fmt.Println(clientIdentifier)
+	fmt.Println("Geth")
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", c.GlobalInt(utils.NetworkIdFlag.Name))

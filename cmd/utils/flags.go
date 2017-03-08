@@ -46,7 +46,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
 	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
-	"github.com/ethereumproject/go-ethereum/release"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
@@ -423,15 +422,6 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 	return key
 }
 
-// MakeNodeName creates a node name from a base set and the command line flags.
-func MakeNodeName(client, version string, ctx *cli.Context) string {
-	name := fmt.Sprintf("%s/v%s/%s/%s", client, version, runtime.GOOS, runtime.Version())
-	if identity := ctx.GlobalString(IdentityFlag.Name); len(identity) > 0 {
-		name += "/" + identity
-	}
-	return name
-}
-
 // MakeBootstrapNodes creates a list of bootstrap nodes from the command line
 // flags, reverting to pre-configured ones if none have been specified.
 func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
@@ -593,7 +583,12 @@ func MakePasswordList(ctx *cli.Context) []string {
 
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
-func MakeSystemNode(name, version string, relconf release.Config, ctx *cli.Context) *node.Node {
+func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
+	name := fmt.Sprintf("Geth/%s/%s/%s", version, runtime.GOOS, runtime.Version())
+	if identity := ctx.GlobalString(IdentityFlag.Name); len(identity) > 0 {
+		name += "/" + identity
+	}
+
 	// global settings
 	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
 		s := ctx.GlobalString(ExtraDataFlag.Name)
@@ -618,7 +613,7 @@ func MakeSystemNode(name, version string, relconf release.Config, ctx *cli.Conte
 	stackConf := &node.Config{
 		DataDir:         MustMakeDataDir(ctx),
 		PrivateKey:      MakeNodeKey(ctx),
-		Name:            MakeNodeName(name, version, ctx),
+		Name:            name,
 		NoDiscovery:     ctx.GlobalBool(NoDiscoverFlag.Name),
 		BootstrapNodes:  MakeBootstrapNodes(ctx),
 		ListenAddr:      MakeListenAddress(ctx),
@@ -714,11 +709,6 @@ func MakeSystemNode(name, version string, relconf release.Config, ctx *cli.Conte
 		if err := stack.Register(func(*node.ServiceContext) (node.Service, error) { return whisper.New(), nil }); err != nil {
 			Fatalf("Failed to register the Whisper service: %v", err)
 		}
-	}
-	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		return release.NewReleaseService(ctx, relconf)
-	}); err != nil {
-		Fatalf("Failed to register the Geth release oracle service: %v", err)
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {
