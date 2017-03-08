@@ -20,6 +20,7 @@ package main
 import (
 	"crypto/ecdsa"
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/ethereumproject/go-ethereum/cmd/utils"
@@ -29,21 +30,29 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
 )
 
-func main() {
-	var (
-		listenAddr  = flag.String("addr", ":30301", "listen address")
-		genKey      = flag.String("genkey", "", "generate a node key and quit")
-		nodeKeyFile = flag.String("nodekey", "", "private key filename")
-		nodeKeyHex  = flag.String("nodekeyhex", "", "private key as hex (for testing)")
-		natdesc     = flag.String("nat", "none", "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)")
+// Version is the application revision identifier. It can be set with the linker
+// as in: go build -ldflags "-X main.Version="`git describe --tags`
+var Version = "unknown"
 
-		nodeKey *ecdsa.PrivateKey
-		err     error
-	)
+var (
+	listenAddr  = flag.String("addr", ":30301", "listen address")
+	genKey      = flag.String("genkey", "", "generate a node key and quit")
+	nodeKeyFile = flag.String("nodekey", "", "private key filename")
+	nodeKeyHex  = flag.String("nodekeyhex", "", "private key as hex (for testing)")
+	natdesc     = flag.String("nat", "none", "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)")
+	versionFlag = flag.Bool("version", false, "Prints the revision identifier and exit immediatily.")
+)
+
+func main() {
 	flag.Var(glog.GetVerbosity(), "verbosity", "log verbosity (0-9)")
 	flag.Var(glog.GetVModule(), "vmodule", "log verbosity pattern")
 	glog.SetToStderr(true)
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println("bootnode version", Version)
+		os.Exit(0)
+	}
 
 	if *genKey != "" {
 		key, err := crypto.GenerateKey()
@@ -60,17 +69,23 @@ func main() {
 	if err != nil {
 		utils.Fatalf("-nat: %v", err)
 	}
+
+	var nodeKey *ecdsa.PrivateKey
 	switch {
 	case *nodeKeyFile == "" && *nodeKeyHex == "":
 		utils.Fatalf("Use -nodekey or -nodekeyhex to specify a private key")
 	case *nodeKeyFile != "" && *nodeKeyHex != "":
 		utils.Fatalf("Options -nodekey and -nodekeyhex are mutually exclusive")
 	case *nodeKeyFile != "":
-		if nodeKey, err = crypto.LoadECDSA(*nodeKeyFile); err != nil {
+		var err error
+		nodeKey, err = crypto.LoadECDSA(*nodeKeyFile)
+		if err != nil {
 			utils.Fatalf("-nodekey: %v", err)
 		}
 	case *nodeKeyHex != "":
-		if nodeKey, err = crypto.HexToECDSA(*nodeKeyHex); err != nil {
+		var err error
+		nodeKey, err = crypto.HexToECDSA(*nodeKeyHex)
+		if err != nil {
 			utils.Fatalf("-nodekeyhex: %v", err)
 		}
 	}

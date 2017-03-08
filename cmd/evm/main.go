@@ -21,10 +21,12 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/cmd/utils"
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -34,11 +36,13 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/params"
-	"gopkg.in/urfave/cli.v1"
 )
 
+// Version is the application revision identifier. It can be set with the linker
+// as in: go build -ldflags "-X main.Version="`git describe --tags`
+var Version = "unknown"
+
 var (
-	app       *cli.App
 	DebugFlag = cli.BoolFlag{
 		Name:  "debug",
 		Usage: "output full trace logs",
@@ -92,8 +96,14 @@ var (
 	}
 )
 
+var app *cli.App
+
 func init() {
-	app = utils.NewApp("0.2", "the evm command line interface")
+	app = cli.NewApp()
+	app.Name = filepath.Base(os.Args[0])
+	app.Version = Version
+	app.Usage = "the evm command line interface"
+	app.Action = run
 	app.Flags = []cli.Flag{
 		CreateFlag,
 		DebugFlag,
@@ -108,7 +118,6 @@ func init() {
 		DumpFlag,
 		InputFlag,
 	}
-	app.Action = run
 }
 
 func run(ctx *cli.Context) error {

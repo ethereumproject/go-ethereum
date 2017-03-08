@@ -32,13 +32,8 @@ var AppHelpTemplate = `NAME:
 
 USAGE:
    {{.App.HelpName}} [options]{{if .App.Commands}} command [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
-   {{if .App.Version}}
 VERSION:
-   {{.App.Version}}
-   {{end}}{{if len .App.Authors}}
-AUTHOR(S):
-   {{range .App.Authors}}{{ . }}{{end}}
-   {{end}}{{if .App.Commands}}
+   {{.App.Version}}{{if .App.Commands}}
 COMMANDS:
    {{range .App.Commands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
    {{end}}{{end}}{{if .FlagGroups}}

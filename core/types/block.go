@@ -33,6 +33,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
+
+// HeaderExtraMax is the byte size limit for Header.Extra.
+var HeaderExtraMax = 32
+
 // A BlockNonce is a 64-bit hash which proves (combined with the
 // mix-hash) that a sufficient amount of computation has been carried
 // out on a block.
@@ -65,7 +69,7 @@ type Header struct {
 	GasLimit    *big.Int       // Gas limit
 	GasUsed     *big.Int       // Gas used
 	Time        *big.Int       // Creation time
-	Extra       []byte         // Extra data
+	Extra       []byte         // Freeform descriptor
 	MixDigest   common.Hash    // for quick difficulty verification
 	Nonce       BlockNonce
 }

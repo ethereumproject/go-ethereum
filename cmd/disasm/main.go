@@ -18,6 +18,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,7 +27,19 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
+// Version is the application revision identifier. It can be set with the linker
+// as in: go build -ldflags "-X main.Version="`git describe --tags`
+var Version = "unknown"
+
+var versionFlag = flag.Bool("version", false, "Prints the revision identifier and exit immediatily.")
+
 func main() {
+	flag.Parse()
+	if *versionFlag {
+		fmt.Println("disasm version", Version)
+		os.Exit(0)
+	}
+
 	code, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		fmt.Println(err)

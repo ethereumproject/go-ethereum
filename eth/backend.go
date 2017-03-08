@@ -74,7 +74,6 @@ type Config struct {
 	AutoDAG   bool
 	PowTest   bool
 	PowShared bool
-	ExtraData []byte
 
 	AccountManager *accounts.Manager
 	Etherbase      common.Address
@@ -254,7 +253,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.pow)
 	eth.miner.SetGasPrice(config.GasPrice)
-	eth.miner.SetExtra(config.ExtraData)
 
 	return eth, nil
 }

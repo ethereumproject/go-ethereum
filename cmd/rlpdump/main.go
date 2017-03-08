@@ -29,9 +29,14 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
+// Version is the application revision identifier. It can be set with the linker
+// as in: go build -ldflags "-X main.Version="`git describe --tags`
+var Version = "unknown"
+
 var (
-	hexMode = flag.String("hex", "", "dump given hex data")
-	noASCII = flag.Bool("noascii", false, "don't print ASCII strings readably")
+	hexMode     = flag.String("hex", "", "dump given hex data")
+	noASCII     = flag.Bool("noascii", false, "don't print ASCII strings readably")
+	versionFlag = flag.Bool("version", false, "Prints the revision identifier and exit immediatily.")
 )
 
 func init() {
@@ -46,6 +51,11 @@ If the filename is omitted, data is read from stdin.`)
 
 func main() {
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println("rlpdump version", Version)
+		os.Exit(0)
+	}
 
 	var r io.Reader
 	switch {

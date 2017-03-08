@@ -4,18 +4,20 @@ os: Visual Studio 2015
 environment:
   GOPATH: c:\gopath
 install:
+  - git describe > version.txt
+  - set /p VERSION=<version.txt
+  - echo %VERSION%
   - echo %PATH%
   - echo %GOPATH%
   - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
-  - set GIT_HASH_SHORT=%APPVEYOR_REPO_COMMIT:~0,7%
   - go version
   - go env
   - go get golang.org/x/sys/windows
 build_script:
   - go test ./...
-  - go build -o build/geth-classic-win64-%GIT_HASH_SHORT%.exe -i ./cmd/geth
+  - go build -ldflags -Xmain.Version="%VERSION% ./cmd/geth
 artifacts:
-  - path: build/geth-classic-win64-%GIT_HASH_SHORT%.exe
+  - path: geth.exe
     name: geth
 deploy:
   - provider: BinTray
@@ -37,8 +39,8 @@ deploy:
     subject: ethereumproject
     repo: GoEthereumClassic
     package: go-ethereum
-    version: "%APPVEYOR_REPO_TAG_NAME%"
+    version: "%VERSION%"
     publish: true
-    override: true
+    override: false
     on:
       appveyor_repo_tag: true

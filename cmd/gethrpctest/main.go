@@ -19,6 +19,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -36,16 +37,26 @@ import (
 	"github.com/ethereumproject/go-ethereum/whisper"
 )
 
-const defaultTestKey = "b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291"
+// Version is the application revision identifier. It can be set with the linker
+// as in: go build -ldflags "-X main.Version="`git describe --tags`
+var Version = "unknown"
 
 var (
-	testFile = flag.String("json", "", "Path to the .json test file to load")
-	testName = flag.String("test", "", "Name of the test from the .json file to run")
-	testKey  = flag.String("key", defaultTestKey, "Private key of a test account to inject")
+	testFile    = flag.String("json", "", "Path to the .json test file to load")
+	testName    = flag.String("test", "", "Name of the test from the .json file to run")
+	testKey     = flag.String("key", defaultTestKey, "Private key of a test account to inject")
+	versionFlag = flag.Bool("version", false, "Prints the revision identifier and exit immediatily.")
 )
+
+const defaultTestKey = "b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291"
 
 func main() {
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println("gethrpctest version", Version)
+		os.Exit(0)
+	}
 
 	// Enable logging errors, we really do want to see those
 	glog.SetV(2)
