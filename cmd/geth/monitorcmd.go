@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"reflect"
 	"runtime"
@@ -26,7 +27,6 @@ import (
 
 	"sort"
 
-	"github.com/ethereumproject/go-ethereum/cmd/utils"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/gizak/termui"
@@ -74,15 +74,15 @@ func monitor(ctx *cli.Context) error {
 	)
 	// Attach to an Ethereum node over IPC or RPC
 	endpoint := ctx.String(monitorCommandAttachFlag.Name)
-	if client, err = utils.NewRemoteRPCClientFromString(endpoint); err != nil {
-		utils.Fatalf("Unable to attach to geth node: %v", err)
+	if client, err = NewRemoteRPCClientFromString(endpoint); err != nil {
+		log.Fatalf("Unable to attach to geth node: %s", err)
 	}
 	defer client.Close()
 
 	// Retrieve all the available metrics and resolve the user pattens
 	metrics, err := retrieveMetrics(client)
 	if err != nil {
-		utils.Fatalf("Failed to retrieve system metrics: %v", err)
+		log.Fatalf("Failed to retrieve system metrics: %s", err)
 	}
 	monitored := resolveMetrics(metrics, ctx.Args())
 	if len(monitored) == 0 {
@@ -90,18 +90,18 @@ func monitor(ctx *cli.Context) error {
 		sort.Strings(list)
 
 		if len(list) > 0 {
-			utils.Fatalf("No metrics specified.\n\nAvailable:\n - %s", strings.Join(list, "\n - "))
+			log.Fatalf("No metrics specified. Available: %q", list)
 		} else {
-			utils.Fatalf("No metrics collected by geth (--metrics).\n")
+			log.Fatal("No metrics collected by geth (--metrics).")
 		}
 	}
 	sort.Strings(monitored)
 	if cols := len(monitored) / ctx.Int(monitorCommandRowsFlag.Name); cols > 6 {
-		utils.Fatalf("Requested metrics (%d) spans more that 6 columns:\n - %s", len(monitored), strings.Join(monitored, "\n - "))
+		log.Fatalf("Requested metrics spans more that 6 columns: %q", monitored)
 	}
 	// Create and configure the chart UI defaults
 	if err := termui.Init(); err != nil {
-		utils.Fatalf("Unable to initialize terminal UI: %v", err)
+		log.Fatalf("Unable to initialize terminal UI: %s", err)
 	}
 	defer termui.Close()
 
@@ -205,8 +205,7 @@ func resolveMetric(metrics map[string]interface{}, pattern string, path string) 
 	if len(parts) > 1 {
 		for _, variation := range strings.Split(parts[0], ",") {
 			if submetrics, ok := metrics[variation].(map[string]interface{}); !ok {
-				utils.Fatalf("Failed to retrieve system metrics: %s", path+variation)
-				return nil
+				log.Fatalf("%s: failed to retrieve system metrics: %q", path, variation)
 			} else {
 				results = append(results, resolveMetric(submetrics, parts[1], path+variation+"/")...)
 			}
@@ -224,8 +223,7 @@ func resolveMetric(metrics map[string]interface{}, pattern string, path string) 
 			results = append(results, expandMetrics(metric, path+variation+"/")...)
 
 		default:
-			utils.Fatalf("Metric pattern resolved to unexpected type: %v", reflect.TypeOf(metric))
-			return nil
+			log.Fatal("Metric pattern resolved to unexpected type:", reflect.TypeOf(metric))
 		}
 	}
 	return results
@@ -246,8 +244,7 @@ func expandMetrics(metrics map[string]interface{}, path string) []string {
 			list = append(list, expandMetrics(metric, path+name+"/")...)
 
 		default:
-			utils.Fatalf("Metric pattern %s resolved to unexpected type: %v", path+name, reflect.TypeOf(metric))
-			return nil
+			log.Fatalf("%s: Metric pattern %q resolved to unexpected type: %v", path, name, reflect.TypeOf(metric))
 		}
 	}
 	return list

@@ -21,9 +21,9 @@ import (
 	"crypto/ecdsa"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
-	"github.com/ethereumproject/go-ethereum/cmd/utils"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
@@ -57,41 +57,41 @@ func main() {
 	if *genKey != "" {
 		key, err := crypto.GenerateKey()
 		if err != nil {
-			utils.Fatalf("could not generate key: %v", err)
+			log.Fatalf("could not generate key: %s", err)
 		}
 		if err := crypto.SaveECDSA(*genKey, key); err != nil {
-			utils.Fatalf("%v", err)
+			log.Fatal(err)
 		}
 		os.Exit(0)
 	}
 
 	natm, err := nat.Parse(*natdesc)
 	if err != nil {
-		utils.Fatalf("-nat: %v", err)
+		log.Fatalf("nat: %s", err)
 	}
 
 	var nodeKey *ecdsa.PrivateKey
 	switch {
 	case *nodeKeyFile == "" && *nodeKeyHex == "":
-		utils.Fatalf("Use -nodekey or -nodekeyhex to specify a private key")
+		log.Fatal("Use -nodekey or -nodekeyhex to specify a private key")
 	case *nodeKeyFile != "" && *nodeKeyHex != "":
-		utils.Fatalf("Options -nodekey and -nodekeyhex are mutually exclusive")
+		log.Fatal("Options -nodekey and -nodekeyhex are mutually exclusive")
 	case *nodeKeyFile != "":
 		var err error
 		nodeKey, err = crypto.LoadECDSA(*nodeKeyFile)
 		if err != nil {
-			utils.Fatalf("-nodekey: %v", err)
+			log.Fatalf("nodekey: %s", err)
 		}
 	case *nodeKeyHex != "":
 		var err error
 		nodeKey, err = crypto.HexToECDSA(*nodeKeyHex)
 		if err != nil {
-			utils.Fatalf("-nodekeyhex: %v", err)
+			log.Fatalf("nodekeyhex: %s", err)
 		}
 	}
 
 	if _, err := discover.ListenUDP(nodeKey, *listenAddr, natm, ""); err != nil {
-		utils.Fatalf("%v", err)
+		log.Fatal(err)
 	}
 	select {}
 }
