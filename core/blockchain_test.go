@@ -169,7 +169,7 @@ func testHeaderChainImport(chain []*types.Header, blockchain *BlockChain) error 
 }
 
 func loadChain(fn string, t *testing.T) (types.Blocks, error) {
-	fh, err := os.OpenFile(filepath.Join("..", "_data", fn), os.O_RDONLY, os.ModePerm)
+	fh, err := os.OpenFile(filepath.Join("testdata", fn), os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
