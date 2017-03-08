@@ -6,9 +6,6 @@ os:
 - linux
 - osx
 
-env:
-- GETH_ZIP=./geth-$TRAVIS_OS_NAME-$(git rev-parse --short HEAD)
-
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository ppa:duggan/bats --yes; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
@@ -20,7 +17,7 @@ script:
 - go test ./...
 - go build -o geth ./cmd/geth
 - bats cmd/geth
-- zip $GETH_ZIP geth
+- zip geth-$TRAVIS_OS_NAME-$(git rev-parse --short HEAD).zip geth
 
 deploy:
   provider: bintray
