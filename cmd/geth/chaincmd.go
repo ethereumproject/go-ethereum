@@ -18,12 +18,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/cmd/utils"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -73,14 +73,14 @@ Use "ethereum dump 0" to dump the genesis block.
 
 func importChain(ctx *cli.Context) error {
 	if len(ctx.Args()) != 1 {
-		utils.Fatalf("This command requires an argument.")
+		log.Fatal("This command requires an argument.")
 	}
-	chain, chainDb := utils.MakeChain(ctx)
+	chain, chainDb := MakeChain(ctx)
 	start := time.Now()
-	err := utils.ImportChain(chain, ctx.Args().First())
+	err := ImportChain(chain, ctx.Args().First())
 	chainDb.Close()
 	if err != nil {
-		utils.Fatalf("Import error: %v", err)
+		log.Fatal("Import error: ", err)
 	}
 	fmt.Printf("Import done in %v", time.Since(start))
 	return nil
@@ -88,31 +88,31 @@ func importChain(ctx *cli.Context) error {
 
 func exportChain(ctx *cli.Context) error {
 	if len(ctx.Args()) < 1 {
-		utils.Fatalf("This command requires an argument.")
+		log.Fatal("This command requires an argument.")
 	}
-	chain, _ := utils.MakeChain(ctx)
+	chain, _ := MakeChain(ctx)
 	start := time.Now()
 
-	var err error
 	fp := ctx.Args().First()
 	if len(ctx.Args()) < 3 {
-		err = utils.ExportChain(chain, fp)
+		if err := ExportChain(chain, fp); err != nil {
+			log.Fatal(err)
+		}
 	} else {
 		// This can be improved to allow for numbers larger than 9223372036854775807
-		first, ferr := strconv.ParseInt(ctx.Args().Get(1), 10, 64)
-		last, lerr := strconv.ParseInt(ctx.Args().Get(2), 10, 64)
-		if ferr != nil || lerr != nil {
-			utils.Fatalf("Export error in parsing parameters: block number not an integer\n")
+		first, err := strconv.ParseUint(ctx.Args().Get(1), 10, 64)
+		if err != nil {
+			log.Fatal("export paramater: ", err)
 		}
-		if first < 0 || last < 0 {
-			utils.Fatalf("Export error: block number must be greater than 0\n")
+		last, err := strconv.ParseUint(ctx.Args().Get(2), 10, 64)
+		if err != nil {
+			log.Fatal("export paramater: ", err)
 		}
-		err = utils.ExportAppendChain(chain, fp, uint64(first), uint64(last))
+		if err = ExportAppendChain(chain, fp, first, last); err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	if err != nil {
-		utils.Fatalf("Export error: %v\n", err)
-	}
 	fmt.Printf("Export done in %v", time.Since(start))
 	return nil
 }
@@ -120,14 +120,14 @@ func exportChain(ctx *cli.Context) error {
 func removeDB(ctx *cli.Context) error {
 	confirm, err := console.Stdin.PromptConfirm("Remove local database?")
 	if err != nil {
-		utils.Fatalf("%v", err)
+		log.Fatal(err)
 	}
 
 	if confirm {
 		fmt.Println("Removing chaindata...")
 		start := time.Now()
 
-		os.RemoveAll(filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), "chaindata"))
+		os.RemoveAll(filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata"))
 
 		fmt.Printf("Removed in %v\n", time.Since(start))
 	} else {
@@ -139,7 +139,7 @@ func removeDB(ctx *cli.Context) error {
 func upgradeDB(ctx *cli.Context) error {
 	glog.Infoln("Upgrading blockchain database")
 
-	chain, chainDb := utils.MakeChain(ctx)
+	chain, chainDb := MakeChain(ctx)
 	bcVersion := core.GetBlockChainVersion(chainDb)
 	if bcVersion == 0 {
 		bcVersion = core.BlockChainVersion
@@ -147,20 +147,20 @@ func upgradeDB(ctx *cli.Context) error {
 
 	// Export the current chain.
 	filename := fmt.Sprintf("blockchain_%d_%s.chain", bcVersion, time.Now().Format("20060102_150405"))
-	exportFile := filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), filename)
-	if err := utils.ExportChain(chain, exportFile); err != nil {
-		utils.Fatalf("Unable to export chain for reimport %s", err)
+	exportFile := filepath.Join(ctx.GlobalString(DataDirFlag.Name), filename)
+	if err := ExportChain(chain, exportFile); err != nil {
+		log.Fatal("Unable to export chain for reimport ", err)
 	}
 	chainDb.Close()
-	os.RemoveAll(filepath.Join(ctx.GlobalString(utils.DataDirFlag.Name), "chaindata"))
+	os.RemoveAll(filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata"))
 
 	// Import the chain file.
-	chain, chainDb = utils.MakeChain(ctx)
+	chain, chainDb = MakeChain(ctx)
 	core.WriteBlockChainVersion(chainDb, core.BlockChainVersion)
-	err := utils.ImportChain(chain, exportFile)
+	err := ImportChain(chain, exportFile)
 	chainDb.Close()
 	if err != nil {
-		utils.Fatalf("Import error %v (a backup is made in %s, use the import command to import it)", err, exportFile)
+		log.Fatalf("Import error %v (a backup is made in %s, use the import command to import it)", err, exportFile)
 	} else {
 		os.Remove(exportFile)
 		glog.Infoln("Import finished")
@@ -169,7 +169,7 @@ func upgradeDB(ctx *cli.Context) error {
 }
 
 func dump(ctx *cli.Context) error {
-	chain, chainDb := utils.MakeChain(ctx)
+	chain, chainDb := MakeChain(ctx)
 	for _, arg := range ctx.Args() {
 		var block *types.Block
 		if hashish(arg) {
@@ -180,11 +180,11 @@ func dump(ctx *cli.Context) error {
 		}
 		if block == nil {
 			fmt.Println("{}")
-			utils.Fatalf("block not found")
+			log.Fatal("block not found")
 		} else {
 			state, err := state.New(block.Root(), chainDb)
 			if err != nil {
-				utils.Fatalf("could not create new state: %v", err)
+				log.Fatal("could not create new state: ", err)
 			}
 			fmt.Printf("%s\n", state.Dump())
 		}

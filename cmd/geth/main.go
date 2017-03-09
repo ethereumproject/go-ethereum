@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,7 +30,6 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/ethash"
-	"github.com/ethereumproject/go-ethereum/cmd/utils"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -113,63 +113,63 @@ participating.
 	}
 
 	app.Flags = []cli.Flag{
-		utils.IdentityFlag,
-		utils.UnlockedAccountFlag,
-		utils.PasswordFileFlag,
-		utils.BootnodesFlag,
-		utils.DataDirFlag,
-		utils.KeyStoreDirFlag,
-		utils.BlockchainVersionFlag,
-		utils.OlympicFlag,
-		utils.FastSyncFlag,
-		utils.CacheFlag,
-		utils.LightKDFFlag,
-		utils.JSpathFlag,
-		utils.ListenPortFlag,
-		utils.MaxPeersFlag,
-		utils.MaxPendingPeersFlag,
-		utils.EtherbaseFlag,
-		utils.GasPriceFlag,
-		utils.MinerThreadsFlag,
-		utils.MiningEnabledFlag,
-		utils.MiningGPUFlag,
-		utils.AutoDAGFlag,
-		utils.TargetGasLimitFlag,
-		utils.NATFlag,
-		utils.NatspecEnabledFlag,
-		utils.NoDiscoverFlag,
-		utils.NodeKeyFileFlag,
-		utils.NodeKeyHexFlag,
-		utils.RPCEnabledFlag,
-		utils.RPCListenAddrFlag,
-		utils.RPCPortFlag,
-		utils.RPCApiFlag,
-		utils.WSEnabledFlag,
-		utils.WSListenAddrFlag,
-		utils.WSPortFlag,
-		utils.WSApiFlag,
-		utils.WSAllowedOriginsFlag,
-		utils.IPCDisabledFlag,
-		utils.IPCApiFlag,
-		utils.IPCPathFlag,
-		utils.ExecFlag,
-		utils.PreloadJSFlag,
-		utils.WhisperEnabledFlag,
-		utils.DevModeFlag,
-		utils.TestNetFlag,
-		utils.NetworkIdFlag,
-		utils.RPCCORSDomainFlag,
-		utils.MetricsFlag,
-		utils.FakePoWFlag,
-		utils.SolcPathFlag,
-		utils.GpoMinGasPriceFlag,
-		utils.GpoMaxGasPriceFlag,
-		utils.GpoFullBlockRatioFlag,
-		utils.GpobaseStepDownFlag,
-		utils.GpobaseStepUpFlag,
-		utils.GpobaseCorrectionFactorFlag,
-		utils.ExtraDataFlag,
-		utils.Unused1,
+		IdentityFlag,
+		UnlockedAccountFlag,
+		PasswordFileFlag,
+		BootnodesFlag,
+		DataDirFlag,
+		KeyStoreDirFlag,
+		BlockchainVersionFlag,
+		OlympicFlag,
+		FastSyncFlag,
+		CacheFlag,
+		LightKDFFlag,
+		JSpathFlag,
+		ListenPortFlag,
+		MaxPeersFlag,
+		MaxPendingPeersFlag,
+		EtherbaseFlag,
+		GasPriceFlag,
+		MinerThreadsFlag,
+		MiningEnabledFlag,
+		MiningGPUFlag,
+		AutoDAGFlag,
+		TargetGasLimitFlag,
+		NATFlag,
+		NatspecEnabledFlag,
+		NoDiscoverFlag,
+		NodeKeyFileFlag,
+		NodeKeyHexFlag,
+		RPCEnabledFlag,
+		RPCListenAddrFlag,
+		RPCPortFlag,
+		RPCApiFlag,
+		WSEnabledFlag,
+		WSListenAddrFlag,
+		WSPortFlag,
+		WSApiFlag,
+		WSAllowedOriginsFlag,
+		IPCDisabledFlag,
+		IPCApiFlag,
+		IPCPathFlag,
+		ExecFlag,
+		PreloadJSFlag,
+		WhisperEnabledFlag,
+		DevModeFlag,
+		TestNetFlag,
+		NetworkIdFlag,
+		RPCCORSDomainFlag,
+		MetricsFlag,
+		FakePoWFlag,
+		SolcPathFlag,
+		GpoMinGasPriceFlag,
+		GpoMaxGasPriceFlag,
+		GpoFullBlockRatioFlag,
+		GpobaseStepDownFlag,
+		GpobaseStepUpFlag,
+		GpobaseCorrectionFactorFlag,
+		ExtraDataFlag,
+		Unused1,
 	}
 	app.Flags = append(app.Flags, debug.Flags...)
 
@@ -189,7 +189,7 @@ participating.
 		// for chains with the main network genesis block and network id 1.
 		eth.EnableBadBlockReporting = true
 
-		utils.SetupNetwork(ctx)
+		SetupNetwork(ctx)
 		return nil
 	}
 
@@ -210,7 +210,7 @@ participating.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
-	node := utils.MakeSystemNode(Version, ctx)
+	node := MakeSystemNode(Version, ctx)
 	startNode(ctx, node)
 	node.Wait()
 
@@ -222,22 +222,22 @@ func geth(ctx *cli.Context) error {
 func initGenesis(ctx *cli.Context) error {
 	genesisPath := ctx.Args().First()
 	if len(genesisPath) == 0 {
-		utils.Fatalf("must supply path to genesis JSON file")
+		log.Fatal("must supply path to genesis JSON file")
 	}
 
-	chainDb, err := ethdb.NewLDBDatabase(filepath.Join(utils.MustMakeDataDir(ctx), "chaindata"), 0, 0)
+	chainDb, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeDataDir(ctx), "chaindata"), 0, 0)
 	if err != nil {
-		utils.Fatalf("could not open database: %v", err)
+		log.Fatal("could not open database: ", err)
 	}
 
 	genesisFile, err := os.Open(genesisPath)
 	if err != nil {
-		utils.Fatalf("failed to read genesis file: %v", err)
+		log.Fatal("failed to read genesis file: ", err)
 	}
 
 	block, err := core.WriteGenesisBlock(chainDb, genesisFile)
 	if err != nil {
-		utils.Fatalf("failed to write genesis block: %v", err)
+		log.Fatalf("failed to write genesis block: ", err)
 	}
 	glog.V(logger.Info).Infof("successfully wrote genesis block and/or chain rule set: %x", block.Hash())
 	return nil
@@ -248,26 +248,26 @@ func initGenesis(ctx *cli.Context) error {
 // miner.
 func startNode(ctx *cli.Context, stack *node.Node) {
 	// Start up the node itself
-	utils.StartNode(stack)
+	StartNode(stack)
 
 	// Unlock any account specifically requested
 	var ethereum *eth.Ethereum
 	if err := stack.Service(&ethereum); err != nil {
-		utils.Fatalf("ethereum service not running: %v", err)
+		log.Fatal("ethereum service not running: ", err)
 	}
 	accman := ethereum.AccountManager()
-	passwords := utils.MakePasswordList(ctx)
+	passwords := MakePasswordList(ctx)
 
-	accounts := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
+	accounts := strings.Split(ctx.GlobalString(UnlockedAccountFlag.Name), ",")
 	for i, account := range accounts {
 		if trimmed := strings.TrimSpace(account); trimmed != "" {
 			unlockAccount(ctx, accman, trimmed, i, passwords)
 		}
 	}
 	// Start auxiliary services if enabled
-	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) {
-		if err := ethereum.StartMining(ctx.GlobalInt(utils.MinerThreadsFlag.Name), ctx.GlobalString(utils.MiningGPUFlag.Name)); err != nil {
-			utils.Fatalf("Failed to start mining: %v", err)
+	if ctx.GlobalBool(MiningEnabledFlag.Name) {
+		if err := ethereum.StartMining(ctx.GlobalInt(MinerThreadsFlag.Name), ctx.GlobalString(MiningGPUFlag.Name)); err != nil {
+			log.Fatalf("Failed to start mining: ", err)
 		}
 	}
 }
@@ -275,7 +275,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 func makedag(ctx *cli.Context) error {
 	args := ctx.Args()
 	wrongArgs := func() {
-		utils.Fatalf(`Usage: geth makedag <block number> <outputdir>`)
+		log.Fatal(`Usage: geth makedag <block number> <outputdir>`)
 	}
 	switch {
 	case len(args) == 2:
@@ -291,7 +291,7 @@ func makedag(ctx *cli.Context) error {
 			}
 			_, err = ioutil.ReadDir(dir)
 			if err != nil {
-				utils.Fatalf("Can't find dir")
+				log.Fatal("Can't find dir")
 			}
 			fmt.Println("making DAG, this could take awhile...")
 			ethash.MakeDAG(blockNum, dir)
@@ -310,7 +310,7 @@ func gpuinfo(ctx *cli.Context) error {
 func gpubench(ctx *cli.Context) error {
 	args := ctx.Args()
 	wrongArgs := func() {
-		utils.Fatalf(`Usage: geth gpubench <gpu number>`)
+		log.Fatal(`Usage: geth gpubench <gpu number>`)
 	}
 	switch {
 	case len(args) == 1:
@@ -331,7 +331,7 @@ func version(c *cli.Context) error {
 	fmt.Println("Geth")
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
-	fmt.Println("Network Id:", c.GlobalInt(utils.NetworkIdFlag.Name))
+	fmt.Println("Network Id:", c.GlobalInt(NetworkIdFlag.Name))
 	fmt.Println("Go Version:", runtime.Version())
 	fmt.Println("OS:", runtime.GOOS)
 	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))

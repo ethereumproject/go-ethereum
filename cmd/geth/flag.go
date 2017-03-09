@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
-package utils
+package main
 
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"log"
 	"io/ioutil"
 	"math"
 	"math/big"
@@ -381,7 +382,7 @@ func MustMakeDataDir(ctx *cli.Context) string {
 		}
 		return path
 	}
-	Fatalf("Cannot determine default data directory, please set manually (--datadir)")
+	log.Fatal("Cannot determine default data directory, please set manually (--datadir)")
 	return ""
 }
 
@@ -407,16 +408,16 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 	)
 	switch {
 	case file != "" && hex != "":
-		Fatalf("Options %q and %q are mutually exclusive", NodeKeyFileFlag.Name, NodeKeyHexFlag.Name)
+		log.Fatalf("Options %q and %q are mutually exclusive", NodeKeyFileFlag.Name, NodeKeyHexFlag.Name)
 
 	case file != "":
 		if key, err = crypto.LoadECDSA(file); err != nil {
-			Fatalf("Option %q: %v", NodeKeyFileFlag.Name, err)
+			log.Fatalf("Option %q: %v", NodeKeyFileFlag.Name, err)
 		}
 
 	case hex != "":
 		if key, err = crypto.HexToECDSA(hex); err != nil {
-			Fatalf("Option %q: %v", NodeKeyHexFlag.Name, err)
+			log.Fatalf("Option %q: %v", NodeKeyHexFlag.Name, err)
 		}
 	}
 	return key
@@ -456,7 +457,7 @@ func MakeListenAddress(ctx *cli.Context) string {
 func MakeNAT(ctx *cli.Context) nat.Interface {
 	natif, err := nat.Parse(ctx.GlobalString(NATFlag.Name))
 	if err != nil {
-		Fatalf("Option %s: %v", NATFlag.Name, err)
+		log.Fatalf("Option %s: %v", NATFlag.Name, err)
 	}
 	return natif
 }
@@ -493,11 +494,11 @@ func MakeWSRpcHost(ctx *cli.Context) string {
 // for Geth and returns half of the allowance to assign to the database.
 func MakeDatabaseHandles() int {
 	if err := raiseFdLimit(2048); err != nil {
-		Fatalf("Failed to raise file descriptor allowance: %v", err)
+		log.Fatal("Failed to raise file descriptor allowance: ", err)
 	}
 	limit, err := getFdLimit()
 	if err != nil {
-		Fatalf("Failed to retrieve file descriptor allowance: %v", err)
+		log.Fatal("Failed to retrieve file descriptor allowance: ", err)
 	}
 	if limit > 2048 { // cap database file descriptors even if more is available
 		limit = 2048
@@ -558,7 +559,7 @@ func MakeEtherbase(accman *accounts.Manager, ctx *cli.Context) common.Address {
 	// If the specified etherbase is a valid address, return it
 	account, err := MakeAddress(accman, etherbase)
 	if err != nil {
-		Fatalf("Option %q: %v", EtherbaseFlag.Name, err)
+		log.Fatalf("Option %q: %v", EtherbaseFlag.Name, err)
 	}
 	return account.Address
 }
@@ -571,7 +572,7 @@ func MakePasswordList(ctx *cli.Context) []string {
 	}
 	text, err := ioutil.ReadFile(path)
 	if err != nil {
-		Fatalf("Failed to read password file: %v", err)
+		log.Fatal("Failed to read password file: ", err)
 	}
 	lines := strings.Split(string(text), "\n")
 	// Sanitise DOS line endings.
@@ -593,7 +594,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
 		s := ctx.GlobalString(ExtraDataFlag.Name)
 		if len(s) > types.HeaderExtraMax {
-			Fatalf("%s flag %q exceeds size limit of %d", ExtraDataFlag.Name, s, types.HeaderExtraMax)
+			log.Fatalf("%s flag %q exceeds size limit of %d", ExtraDataFlag.Name, s, types.HeaderExtraMax)
 		}
 		miner.HeaderExtra = []byte(s)
 	}
@@ -606,7 +607,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		}
 	}
 	if networks > 1 {
-		Fatalf("The %v flags are mutually exclusive", netFlags)
+		log.Fatalf("The %v flags are mutually exclusive", netFlags)
 	}
 
 	// Configure the node's service container
@@ -698,16 +699,16 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Assemble and return the protocol stack
 	stack, err := node.New(stackConf)
 	if err != nil {
-		Fatalf("Failed to create the protocol stack: %v", err)
+		log.Fatal("Failed to create the protocol stack: ", err)
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
 		return eth.New(ctx, ethConf)
 	}); err != nil {
-		Fatalf("Failed to register the Ethereum service: %v", err)
+		log.Fatal("Failed to register the Ethereum service: ", err)
 	}
 	if shhEnable {
 		if err := stack.Register(func(*node.ServiceContext) (node.Service, error) { return whisper.New(), nil }); err != nil {
-			Fatalf("Failed to register the Whisper service: %v", err)
+			log.Fatal("Failed to register the Whisper service: ", err)
 		}
 	}
 
@@ -798,7 +799,7 @@ func MakeChainDatabase(ctx *cli.Context) ethdb.Database {
 
 	chainDb, err := ethdb.NewLDBDatabase(filepath.Join(datadir, "chaindata"), cache, handles)
 	if err != nil {
-		Fatalf("Could not open database: %v", err)
+		log.Fatal("Could not open database: ", err)
 	}
 	return chainDb
 }
@@ -822,7 +823,7 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	}
 	chain, err = core.NewBlockChain(chainDb, chainConfig, pow, new(event.TypeMux))
 	if err != nil {
-		Fatalf("Could not start chainmanager: %v", err)
+		log.Fatal("Could not start chainmanager: ", err)
 	}
 	return chain, chainDb
 }

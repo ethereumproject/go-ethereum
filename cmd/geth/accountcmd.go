@@ -19,9 +19,9 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 
 	"github.com/ethereumproject/go-ethereum/accounts"
-	"github.com/ethereumproject/go-ethereum/cmd/utils"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
@@ -168,7 +168,7 @@ nodes.
 )
 
 func accountList(ctx *cli.Context) error {
-	accman := utils.MakeAccountManager(ctx)
+	accman := MakeAccountManager(ctx)
 	for i, acct := range accman.Accounts() {
 		fmt.Printf("Account #%d: {%x} %s\n", i, acct.Address, acct.File)
 	}
@@ -177,9 +177,9 @@ func accountList(ctx *cli.Context) error {
 
 // tries unlocking the specified account a few times.
 func unlockAccount(ctx *cli.Context, accman *accounts.Manager, address string, i int, passwords []string) (accounts.Account, string) {
-	account, err := utils.MakeAddress(accman, address)
+	account, err := MakeAddress(accman, address)
 	if err != nil {
-		utils.Fatalf("Could not list accounts: %v", err)
+		log.Fatal("Could not list accounts: ", err)
 	}
 	for trials := 0; trials < 3; trials++ {
 		prompt := fmt.Sprintf("Unlocking account %s | Attempt %d/%d", address, trials+1, 3)
@@ -199,7 +199,7 @@ func unlockAccount(ctx *cli.Context, accman *accounts.Manager, address string, i
 		}
 	}
 	// All trials expended to unlock account, bail out
-	utils.Fatalf("Failed to unlock account %s (%v)", address, err)
+	log.Fatalf("Failed to unlock account %s (%v)", address, err)
 	return accounts.Account{}, ""
 }
 
@@ -219,15 +219,15 @@ func getPassPhrase(prompt string, confirmation bool, i int, passwords []string) 
 	}
 	password, err := console.Stdin.PromptPassword("Passphrase: ")
 	if err != nil {
-		utils.Fatalf("Failed to read passphrase: %v", err)
+		log.Fatal("Failed to read passphrase: ", err)
 	}
 	if confirmation {
 		confirm, err := console.Stdin.PromptPassword("Repeat passphrase: ")
 		if err != nil {
-			utils.Fatalf("Failed to read passphrase confirmation: %v", err)
+			log.Fatalf("Failed to read passphrase confirmation: ", err)
 		}
 		if password != confirm {
-			utils.Fatalf("Passphrases do not match")
+			log.Fatal("Passphrases do not match")
 		}
 	}
 	return password
@@ -247,7 +247,7 @@ func ambiguousAddrRecovery(am *accounts.Manager, err *accounts.AmbiguousAddrErro
 		}
 	}
 	if match == nil {
-		utils.Fatalf("None of the listed files could be unlocked.")
+		log.Fatal("None of the listed files could be unlocked.")
 	}
 	fmt.Printf("Your passphrase unlocked %s\n", match.File)
 	fmt.Println("In order to avoid this warning, you need to remove the following duplicate key files:")
@@ -261,12 +261,12 @@ func ambiguousAddrRecovery(am *accounts.Manager, err *accounts.AmbiguousAddrErro
 
 // accountCreate creates a new account into the keystore defined by the CLI flags.
 func accountCreate(ctx *cli.Context) error {
-	accman := utils.MakeAccountManager(ctx)
-	password := getPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, utils.MakePasswordList(ctx))
+	accman := MakeAccountManager(ctx)
+	password := getPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, MakePasswordList(ctx))
 
 	account, err := accman.NewAccount(password)
 	if err != nil {
-		utils.Fatalf("Failed to create account: %v", err)
+		log.Fatal("Failed to create account: ", err)
 	}
 	fmt.Printf("Address: {%x}\n", account.Address)
 	return nil
@@ -276,14 +276,14 @@ func accountCreate(ctx *cli.Context) error {
 // one, also providing the possibility to change the pass-phrase.
 func accountUpdate(ctx *cli.Context) error {
 	if len(ctx.Args()) == 0 {
-		utils.Fatalf("No accounts specified to update")
+		log.Fatal("No accounts specified to update")
 	}
-	accman := utils.MakeAccountManager(ctx)
+	accman := MakeAccountManager(ctx)
 
 	account, oldPassword := unlockAccount(ctx, accman, ctx.Args().First(), 0, nil)
 	newPassword := getPassPhrase("Please give a new password. Do not forget this password.", true, 0, nil)
 	if err := accman.Update(account, oldPassword, newPassword); err != nil {
-		utils.Fatalf("Could not update the account: %v", err)
+		log.Fatal("Could not update the account: ", err)
 	}
 	return nil
 }
@@ -291,19 +291,19 @@ func accountUpdate(ctx *cli.Context) error {
 func importWallet(ctx *cli.Context) error {
 	keyfile := ctx.Args().First()
 	if len(keyfile) == 0 {
-		utils.Fatalf("keyfile must be given as argument")
+		log.Fatal("keyfile must be given as argument")
 	}
 	keyJson, err := ioutil.ReadFile(keyfile)
 	if err != nil {
-		utils.Fatalf("Could not read wallet file: %v", err)
+		log.Fatal("Could not read wallet file: ", err)
 	}
 
-	accman := utils.MakeAccountManager(ctx)
-	passphrase := getPassPhrase("", false, 0, utils.MakePasswordList(ctx))
+	accman := MakeAccountManager(ctx)
+	passphrase := getPassPhrase("", false, 0, MakePasswordList(ctx))
 
 	acct, err := accman.ImportPreSaleKey(keyJson, passphrase)
 	if err != nil {
-		utils.Fatalf("%v", err)
+		log.Fatal(err)
 	}
 	fmt.Printf("Address: {%x}\n", acct.Address)
 	return nil
@@ -312,17 +312,17 @@ func importWallet(ctx *cli.Context) error {
 func accountImport(ctx *cli.Context) error {
 	keyfile := ctx.Args().First()
 	if len(keyfile) == 0 {
-		utils.Fatalf("keyfile must be given as argument")
+		log.Fatal("keyfile must be given as argument")
 	}
 	key, err := crypto.LoadECDSA(keyfile)
 	if err != nil {
-		utils.Fatalf("keyfile must be given as argument")
+		log.Fatal("keyfile must be given as argument")
 	}
-	accman := utils.MakeAccountManager(ctx)
-	passphrase := getPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, utils.MakePasswordList(ctx))
+	accman := MakeAccountManager(ctx)
+	passphrase := getPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, MakePasswordList(ctx))
 	acct, err := accman.ImportECDSA(key, passphrase)
 	if err != nil {
-		utils.Fatalf("Could not create the account: %v", err)
+		log.Fatal("Could not create the account: ", err)
 	}
 	fmt.Printf("Address: {%x}\n", acct.Address)
 	return nil
