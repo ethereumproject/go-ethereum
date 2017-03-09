@@ -15,7 +15,7 @@ install:
   - go get golang.org/x/sys/windows
 build_script:
   - go test ./...
-  - go build -ldflags -Xmain.Version=%VERSION% ./cmd/geth
+  - go build -ldflags -X main.Version=%VERSION% ./cmd/geth
 artifacts:
   - path: geth.exe
     name: geth
