@@ -16,8 +16,9 @@ install:
 build_script:
   - go test ./...
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
+  - 7z a geth-classic-win64-%VERSION%.zip geth.exe
 artifacts:
-  - path: geth.exe
+  - path: '*.zip'
     name: geth
 deploy:
   - provider: BinTray
