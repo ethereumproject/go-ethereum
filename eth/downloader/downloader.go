@@ -384,134 +384,69 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		glog.V(logger.Debug).Infof("Synchronisation terminated after %v", time.Since(start))
 	}(time.Now())
 
-	switch {
-	case p.version >= 62:
-		glog.V(logger.Debug).Infoln("Synchronising with eth/62 peer.")
-		// Look up the sync boundaries: the common ancestor and the target block
-		latest, err := d.fetchHeight(p)
-		if err != nil {
-			return err
-		}
-		height := latest.Number.Uint64()
-
-		origin, err := d.findAncestor(p, height)
-		if err != nil {
-			return err
-		}
-		d.syncStatsLock.Lock()
-		if d.syncStatsChainHeight <= origin || d.syncStatsChainOrigin > origin {
-			d.syncStatsChainOrigin = origin
-		}
-		d.syncStatsChainHeight = height
-		d.syncStatsLock.Unlock()
-
-		// Initiate the sync using a concurrent header and content retrieval algorithm
-		pivot := uint64(0)
-		switch d.mode {
-		case LightSync:
-			pivot = height
-		case FastSync:
-			// Calculate the new fast/slow sync pivot point
-			if d.fsPivotLock == nil {
-				pivotOffset, err := rand.Int(rand.Reader, big.NewInt(int64(fsPivotInterval)))
-				if err != nil {
-					panic(fmt.Sprintf("Failed to access crypto random source: %v", err))
-				}
-				if height > uint64(fsMinFullBlocks)+pivotOffset.Uint64() {
-					pivot = height - uint64(fsMinFullBlocks) - pivotOffset.Uint64()
-				}
-			} else {
-				// Pivot point locked in, use this and do not pick a new one!
-				pivot = d.fsPivotLock.Number.Uint64()
-			}
-			// If the point is below the origin, move origin back to ensure state download
-			if pivot < origin {
-				if pivot > 0 {
-					origin = pivot - 1
-				} else {
-					origin = 0
-				}
-			}
-			glog.V(logger.Debug).Infof("Fast syncing until pivot block #%d", pivot)
-		}
-		d.queue.Prepare(origin+1, d.mode, pivot, latest)
-		if d.syncInitHook != nil {
-			d.syncInitHook(origin, height)
-		}
-		return d.spawnSync(origin+1,
-			func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
-			func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
-			func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
-			func() error { return d.fetchReceipts(origin + 1) },    // Receipts are retrieved during fast sync
-			func() error { return d.fetchNodeData() },              // Node state data is retrieved during fast sync
-		)
-
-	case p.version >= 63:
-		glog.V(logger.Debug).Infoln("Synchronising with eth/63 peer.")
-		// Look up the sync boundaries: the common ancestor and the target block
-		latest, err := d.fetchHeight(p)
-		if err != nil {
-			return err
-		}
-		height := latest.Number.Uint64()
-
-		origin, err := d.findAncestor(p, height)
-		if err != nil {
-			return err
-		}
-		d.syncStatsLock.Lock()
-		if d.syncStatsChainHeight <= origin || d.syncStatsChainOrigin > origin {
-			d.syncStatsChainOrigin = origin
-		}
-		d.syncStatsChainHeight = height
-		d.syncStatsLock.Unlock()
-
-		// Initiate the sync using a concurrent header and content retrieval algorithm
-		pivot := uint64(0)
-		switch d.mode {
-		case LightSync:
-			pivot = height
-		case FastSync:
-			// Calculate the new fast/slow sync pivot point
-			if d.fsPivotLock == nil {
-				pivotOffset, err := rand.Int(rand.Reader, big.NewInt(int64(fsPivotInterval)))
-				if err != nil {
-					panic(fmt.Sprintf("Failed to access crypto random source: %v", err))
-				}
-				if height > uint64(fsMinFullBlocks)+pivotOffset.Uint64() {
-					pivot = height - uint64(fsMinFullBlocks) - pivotOffset.Uint64()
-				}
-			} else {
-				// Pivot point locked in, use this and do not pick a new one!
-				pivot = d.fsPivotLock.Number.Uint64()
-			}
-			// If the point is below the origin, move origin back to ensure state download
-			if pivot < origin {
-				if pivot > 0 {
-					origin = pivot - 1
-				} else {
-					origin = 0
-				}
-			}
-			glog.V(logger.Debug).Infof("Fast syncing until pivot block #%d", pivot)
-		}
-		d.queue.Prepare(origin+1, d.mode, pivot, latest)
-		if d.syncInitHook != nil {
-			d.syncInitHook(origin, height)
-		}
-		return d.spawnSync(origin+1,
-			func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
-			func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
-			func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
-			func() error { return d.fetchReceipts(origin + 1) },    // Receipts are retrieved during fast sync
-			func() error { return d.fetchNodeData() },              // Node state data is retrieved during fast sync
-		)
-
-	default:
-		// Something very wrong, stop right here
-		glog.V(logger.Error).Infof("Unsupported eth protocol: %d", p.version)
+	if p.version < 62 {
+		glog.Infof("download: peer %q protocol %d too old", p.id, p.version)
 		return errBadPeer
 	}
+
+	// Look up the sync boundaries: the common ancestor and the target block
+	latest, err := d.fetchHeight(p)
+	if err != nil {
+		return err
+	}
+	height := latest.Number.Uint64()
+
+	origin, err := d.findAncestor(p, height)
+	if err != nil {
+		return err
+	}
+	d.syncStatsLock.Lock()
+	if d.syncStatsChainHeight <= origin || d.syncStatsChainOrigin > origin {
+		d.syncStatsChainOrigin = origin
+	}
+	d.syncStatsChainHeight = height
+	d.syncStatsLock.Unlock()
+
+	// Initiate the sync using a concurrent header and content retrieval algorithm
+	pivot := uint64(0)
+	switch d.mode {
+	case LightSync:
+		pivot = height
+	case FastSync:
+		// Calculate the new fast/slow sync pivot point
+		if d.fsPivotLock == nil {
+			pivotOffset, err := rand.Int(rand.Reader, big.NewInt(int64(fsPivotInterval)))
+			if err != nil {
+				panic(fmt.Sprintf("Failed to access crypto random source: %v", err))
+			}
+			if height > uint64(fsMinFullBlocks)+pivotOffset.Uint64() {
+				pivot = height - uint64(fsMinFullBlocks) - pivotOffset.Uint64()
+			}
+		} else {
+			// Pivot point locked in, use this and do not pick a new one!
+			pivot = d.fsPivotLock.Number.Uint64()
+		}
+		// If the point is below the origin, move origin back to ensure state download
+		if pivot < origin {
+			if pivot > 0 {
+				origin = pivot - 1
+			} else {
+				origin = 0
+			}
+		}
+		glog.V(logger.Debug).Infof("Fast syncing until pivot block #%d", pivot)
+	}
+	d.queue.Prepare(origin+1, d.mode, pivot, latest)
+	if d.syncInitHook != nil {
+		d.syncInitHook(origin, height)
+	}
+	return d.spawnSync(origin+1,
+		func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
+		func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
+		func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
+		func() error { return d.fetchReceipts(origin + 1) },    // Receipts are retrieved during fast sync
+		func() error { return d.fetchNodeData() },              // Node state data is retrieved during fast sync
+	)
 }
 
 // spawnSync runs d.process and all given fetcher functions to completion in
