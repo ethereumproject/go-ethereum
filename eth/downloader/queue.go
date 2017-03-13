@@ -648,7 +648,7 @@ func (q *queue) reserveHeaders(p *peer, count int, taskPool map[common.Hash]*typ
 		// If we're the first to request this task, initialise the result container
 		index := int(header.Number.Int64() - int64(q.resultOffset))
 		if index >= len(q.resultCache) || index < 0 {
-			common.Report("index allocation went beyond available resultCache space")
+			glog.Error("index allocation went beyond available resultCache space.\nYou've encountered a sought after, hard to reproduce bug. Please report this to the developers <3 https://github.com/ethereumproject/go-ethereum/issues")
 			return nil, false, errInvalidChain
 		}
 		if q.resultCache[index] == nil {
