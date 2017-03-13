@@ -25,7 +25,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/internal/debug"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
@@ -66,16 +65,17 @@ func StartNode(stack *node.Node) {
 		signal.Notify(sigc, os.Interrupt)
 		defer signal.Stop(sigc)
 		<-sigc
-		glog.V(logger.Info).Infoln("Got interrupt, shutting down...")
+		glog.Infoln("Got interrupt, shutting down...")
 		go stack.Stop()
+
+		// WTF?
 		for i := 10; i > 0; i-- {
 			<-sigc
 			if i > 1 {
-				glog.V(logger.Info).Infof("Already shutting down, interrupt %d more times for panic.", i-1)
+				glog.Infof("Already shutting down, interrupt %d more times for panic.", i-1)
 			}
 		}
-		debug.Exit() // ensure trace and CPU profile data is flushed.
-		debug.LoudPanic("boom")
+		glog.Fatal("boom")
 	}()
 }
 

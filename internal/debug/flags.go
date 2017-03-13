@@ -17,12 +17,6 @@
 package debug
 
 import (
-	"fmt"
-	"net/http"
-	_ "net/http/pprof"
-	"runtime"
-
-	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -43,39 +37,11 @@ var (
 		Usage: "Request a stack trace at a specific logging statement (e.g. \"block.go:271\")",
 		Value: glog.GetTraceLocation(),
 	}
-	pprofFlag = cli.BoolFlag{
-		Name:  "pprof",
-		Usage: "Enable the pprof HTTP server",
-	}
-	pprofPortFlag = cli.IntFlag{
-		Name:  "pprofport",
-		Usage: "pprof HTTP server listening port",
-		Value: 6060,
-	}
-	memprofilerateFlag = cli.IntFlag{
-		Name:  "memprofilerate",
-		Usage: "Turn on memory profiling with the given rate",
-		Value: runtime.MemProfileRate,
-	}
-	blockprofilerateFlag = cli.IntFlag{
-		Name:  "blockprofilerate",
-		Usage: "Turn on block profiling with the given rate",
-	}
-	cpuprofileFlag = cli.StringFlag{
-		Name:  "cpuprofile",
-		Usage: "Write CPU profile to the given file",
-	}
-	traceFlag = cli.StringFlag{
-		Name:  "trace",
-		Usage: "Write execution trace to the given file",
-	}
 )
 
 // Flags holds all command-line flags required for debugging.
 var Flags = []cli.Flag{
 	verbosityFlag, vmoduleFlag, backtraceAtFlag,
-	pprofFlag, pprofPortFlag,
-	memprofilerateFlag, blockprofilerateFlag, cpuprofileFlag, traceFlag,
 }
 
 // Setup initializes profiling and logging based on the CLI flags.
@@ -85,34 +51,5 @@ func Setup(ctx *cli.Context) error {
 	glog.CopyStandardLogTo("INFO")
 	glog.SetToStderr(true)
 
-	// profiling, tracing
-	runtime.MemProfileRate = ctx.GlobalInt(memprofilerateFlag.Name)
-	Handler.SetBlockProfileRate(ctx.GlobalInt(blockprofilerateFlag.Name))
-	if traceFile := ctx.GlobalString(traceFlag.Name); traceFile != "" {
-		if err := Handler.StartGoTrace(traceFile); err != nil {
-			return err
-		}
-	}
-	if cpuFile := ctx.GlobalString(cpuprofileFlag.Name); cpuFile != "" {
-		if err := Handler.StartCPUProfile(cpuFile); err != nil {
-			return err
-		}
-	}
-
-	// pprof server
-	if ctx.GlobalBool(pprofFlag.Name) {
-		address := fmt.Sprintf("127.0.0.1:%d", ctx.GlobalInt(pprofPortFlag.Name))
-		go func() {
-			glog.V(logger.Info).Infof("starting pprof server at http://%s/debug/pprof", address)
-			glog.Errorln(http.ListenAndServe(address, nil))
-		}()
-	}
 	return nil
-}
-
-// Exit stops all running profiles, flushing their output to the
-// respective file.
-func Exit() {
-	Handler.StopCPUProfile()
-	Handler.StopGoTrace()
 }
