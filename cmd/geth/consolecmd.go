@@ -22,6 +22,8 @@ import (
 	"os/signal"
 
 	"github.com/ethereumproject/go-ethereum/console"
+	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -99,16 +101,22 @@ func localConsole(ctx *cli.Context) error {
 // console to it.
 func remoteConsole(ctx *cli.Context) error {
 	// Attach to a remotely running geth instance and start the JavaScript console
-	client, err := NewRemoteRPCClient(ctx)
-	if err != nil {
-		log.Fatal("Unable to attach to remote geth: ", err)
+	var uri = "ipc:" + node.DefaultIPCEndpoint()
+        if ctx.Args().Present() {
+                uri = ctx.Args().First()
 	}
+	client, err := rpc.NewClient(uri)
+	if err != nil {
+		log.Fatal("attach to remote geth: ", err)
+	}
+
 	config := console.Config{
 		DataDir: MustMakeDataDir(ctx),
 		DocRoot: ctx.GlobalString(JSpathFlag.Name),
 		Client:  client,
 		Preload: MakeConsolePreloads(ctx),
 	}
+
 	console, err := console.New(config)
 	if err != nil {
 		log.Fatal("Failed to start the JavaScript console: ", err)

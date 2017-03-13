@@ -68,14 +68,10 @@ to display multiple metrics simultaneously.
 
 // monitor starts a terminal UI based monitoring tool for the requested metrics.
 func monitor(ctx *cli.Context) error {
-	var (
-		client rpc.Client
-		err    error
-	)
 	// Attach to an Ethereum node over IPC or RPC
-	endpoint := ctx.String(monitorCommandAttachFlag.Name)
-	if client, err = NewRemoteRPCClientFromString(endpoint); err != nil {
-		log.Fatalf("Unable to attach to geth node: %s", err)
+	client, err := rpc.NewClient(ctx.String(monitorCommandAttachFlag.Name))
+	if err != nil {
+		log.Fatal("attach to remote geth: ", err)
 	}
 	defer client.Close()
 
