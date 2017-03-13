@@ -41,7 +41,6 @@ func WriteGenesisBlock(chainDb ethdb.Database, reader io.Reader) (*types.Block, 
 	if err != nil {
 		return nil, err
 	}
-
 	var genesis struct {
 		ChainConfig *ChainConfig `json:"config"`
 		Nonce       string
@@ -58,13 +57,15 @@ func WriteGenesisBlock(chainDb ethdb.Database, reader io.Reader) (*types.Block, 
 			Balance string
 		}
 	}
-
 	if err := json.Unmarshal(contents, &genesis); err != nil {
 		return nil, err
 	}
 
 	// creating with empty hash always works
-	statedb, _ := state.New(common.Hash{}, chainDb)
+	statedb, err := state.New(common.Hash{}, chainDb)
+	if err != nil {
+		return nil, err
+	}
 	for addr, account := range genesis.Alloc {
 		address := common.HexToAddress(addr)
 		statedb.AddBalance(address, common.String2Big(account.Balance))
@@ -122,19 +123,23 @@ func WriteGenesisBlock(chainDb ethdb.Database, reader io.Reader) (*types.Block, 
 // GenesisBlockForTesting creates a block in which addr has the given wei balance.
 // The state trie of the block is written to db. the passed db needs to contain a state root
 func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big.Int) *types.Block {
-	statedb, _ := state.New(common.Hash{}, db)
+	statedb, err := state.New(common.Hash{}, db)
+	if err != nil {
+		panic(err)
+	}
+
 	obj := statedb.GetOrNewStateObject(addr)
 	obj.SetBalance(balance)
 	root, err := statedb.Commit()
 	if err != nil {
 		panic(fmt.Sprintf("cannot write state: %v", err))
 	}
-	block := types.NewBlock(&types.Header{
+
+	return types.NewBlock(&types.Header{
 		Difficulty: params.GenesisDifficulty,
 		GasLimit:   params.GenesisGasLimit,
 		Root:       root,
 	}, nil, nil, nil)
-	return block
 }
 
 type GenesisAccount struct {
@@ -158,7 +163,10 @@ func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) 
 	"difficulty":"0x%x",
 	"alloc": %s
 }`, types.EncodeNonce(0), params.GenesisGasLimit.Bytes(), params.GenesisDifficulty.Bytes(), accountJson)
-	block, _ := WriteGenesisBlock(db, strings.NewReader(testGenesis))
+	block, err := WriteGenesisBlock(db, strings.NewReader(testGenesis))
+	if err != nil {
+		panic(err)
+	}
 	return block
 }
 
