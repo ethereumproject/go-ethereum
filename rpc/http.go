@@ -23,7 +23,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/rs/cors"
@@ -35,19 +34,9 @@ const (
 
 // httpClient connects to a geth RPC server over HTTP.
 type httpClient struct {
-	endpoint   *url.URL    // HTTP-RPC server endpoint
+	endpoint   string      // HTTP-RPC server endpoint
 	httpClient http.Client // reuse connection
 	lastRes    []byte      // HTTP requests are synchronous, store last response
-}
-
-// NewHTTPClient create a new RPC clients that connection to a geth RPC server
-// over HTTP.
-func NewHTTPClient(endpoint string) (Client, error) {
-	url, err := url.Parse(endpoint)
-	if err != nil {
-		return nil, err
-	}
-	return &httpClient{endpoint: url}, nil
 }
 
 // Send will serialize the given msg to JSON and sends it to the RPC server.
@@ -61,7 +50,7 @@ func (client *httpClient) Send(msg interface{}) error {
 		return err
 	}
 
-	resp, err := client.httpClient.Post(client.endpoint.String(), "application/json", bytes.NewReader(body))
+	resp, err := client.httpClient.Post(client.endpoint, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}

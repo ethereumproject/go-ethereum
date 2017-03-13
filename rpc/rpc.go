@@ -1,4 +1,4 @@
-// Copyright 2016 The go-ethereum Authors
+// Copyright 2017 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,18 +14,25 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-//+build !go1.5
+package rpc
 
-// no-op implementation of tracing methods for Go < 1.5.
+import (
+	"fmt"
+	"strings"
+)
 
-package debug
-
-import "errors"
-
-func (*HandlerT) StartGoTrace(string) error {
-	return errors.New("tracing is not supported on Go < 1.5")
-}
-
-func (*HandlerT) StopGoTrace() error {
-	return errors.New("tracing is not supported on Go < 1.5")
+func NewClient(uri string) (Client, error) {
+	if strings.HasPrefix(uri, "ipc:") {
+		return newIPCClient(uri[4:])
+	}
+	if strings.HasPrefix(uri, "rpc:") {
+		return &httpClient{endpoint: uri[4:]}, nil
+	}
+	if strings.HasPrefix(uri, "http://") {
+		return &httpClient{endpoint: uri}, nil
+	}
+	if strings.HasPrefix(uri, "ws:") {
+		return &wsClient{endpoint: uri}, nil
+	}
+	return nil, fmt.Errorf("unsupported RPC schema %q", uri)
 }

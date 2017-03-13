@@ -21,7 +21,6 @@ package main
 import (
 	"io"
 
-	"github.com/ethereumproject/go-ethereum/internal/debug"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -136,10 +135,13 @@ var AppHelpFlagGroups = []flagGroup{
 	},
 	{
 		Name: "LOGGING AND DEBUGGING",
-		Flags: append([]cli.Flag{
+		Flags: []cli.Flag{
+			VerbosityFlag,
+			VModuleFlag,
+			BacktraceAtFlag,
 			MetricsFlag,
 			FakePoWFlag,
-		}, debug.Flags...),
+		},
 	},
 	{
 		Name: "EXPERIMENTAL",

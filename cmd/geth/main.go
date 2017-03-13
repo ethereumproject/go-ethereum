@@ -34,7 +34,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/internal/debug"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
@@ -159,6 +158,9 @@ participating.
 		TestNetFlag,
 		NetworkIdFlag,
 		RPCCORSDomainFlag,
+		VerbosityFlag,
+		VModuleFlag,
+		BacktraceAtFlag,
 		MetricsFlag,
 		FakePoWFlag,
 		SolcPathFlag,
@@ -171,13 +173,12 @@ participating.
 		ExtraDataFlag,
 		Unused1,
 	}
-	app.Flags = append(app.Flags, debug.Flags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		runtime.GOMAXPROCS(runtime.NumCPU())
-		if err := debug.Setup(ctx); err != nil {
-			return err
-		}
+
+		glog.CopyStandardLogTo("INFO")
+		glog.SetToStderr(true)
 
 		if s := ctx.String("metrics"); s != "" {
 			go metrics.Collect(s)
@@ -195,7 +196,6 @@ participating.
 
 	app.After = func(ctx *cli.Context) error {
 		logger.Flush()
-		debug.Exit()
 		console.Stdin.Close() // Resets terminal mode.
 		return nil
 	}
