@@ -452,14 +452,23 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 // spawnSync runs d.process and all given fetcher functions to completion in
 // separate goroutines, returning the first error that appears.
 func (d *Downloader) spawnSync(origin uint64, fetchers ...func() error) error {
-	var wg sync.WaitGroup
 	errc := make(chan error, len(fetchers)+1)
+
+	var wg sync.WaitGroup
 	wg.Add(len(fetchers) + 1)
-	go func() { defer wg.Done(); errc <- d.processContent() }()
-	for _, fn := range fetchers {
-		fn := fn
-		go func() { defer wg.Done(); errc <- fn() }()
+
+	go func() {
+		defer wg.Done()
+		errc <- d.processContent()
+	}()
+
+	for _, fetcher := range fetchers {
+		go func(f func() error) {
+			defer wg.Done()
+			errc <- f()
+		}(fetcher)
 	}
+
 	// Wait for the first error, then terminate the others.
 	var err error
 	for i := 0; i < len(fetchers)+1; i++ {
