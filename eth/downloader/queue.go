@@ -139,42 +139,6 @@ func newQueue(stateDb ethdb.Database) *queue {
 	}
 }
 
-// Reset clears out the queue contents.
-func (q *queue) Reset() {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-
-	q.stateSchedLock.Lock()
-	defer q.stateSchedLock.Unlock()
-
-	q.closed = false
-	q.mode = FullSync
-	q.fastSyncPivot = 0
-
-	q.headerHead = common.Hash{}
-
-	q.headerPendPool = make(map[string]*fetchRequest)
-
-	q.blockTaskPool = make(map[common.Hash]*types.Header)
-	q.blockTaskQueue.Reset()
-	q.blockPendPool = make(map[string]*fetchRequest)
-	q.blockDonePool = make(map[common.Hash]struct{})
-
-	q.receiptTaskPool = make(map[common.Hash]*types.Header)
-	q.receiptTaskQueue.Reset()
-	q.receiptPendPool = make(map[string]*fetchRequest)
-	q.receiptDonePool = make(map[common.Hash]struct{})
-
-	q.stateTaskIndex = 0
-	q.stateTaskPool = make(map[common.Hash]int)
-	q.stateTaskQueue.Reset()
-	q.statePendPool = make(map[string]*fetchRequest)
-	q.stateScheduler = nil
-
-	q.resultCache = make([]*fetchResult, blockCacheLimit)
-	q.resultOffset = 0
-}
-
 // Close marks the end of the sync, unblocking WaitResults.
 // It may be called even if the queue is already closed.
 func (q *queue) Close() {
@@ -632,11 +596,13 @@ func (q *queue) reserveHeaders(p *peer, count int, taskPool map[common.Hash]*typ
 	if _, ok := pendPool[p.id]; ok {
 		return nil, false, nil
 	}
+
 	// Calculate an upper limit on the items we might fetch (i.e. throttling)
 	space := len(q.resultCache) - len(donePool)
 	for _, request := range pendPool {
 		space -= len(request.Headers)
 	}
+
 	// Retrieve a batch of tasks, skipping previously failed ones
 	send := make([]*types.Header, 0, count)
 	skip := make([]*types.Header, 0)
@@ -651,6 +617,7 @@ func (q *queue) reserveHeaders(p *peer, count int, taskPool map[common.Hash]*typ
 			glog.Error("index allocation went beyond available resultCache space.\nYou've encountered a sought after, hard to reproduce bug. Please report this to the developers <3 https://github.com/ethereumproject/go-ethereum/issues")
 			return nil, false, errInvalidChain
 		}
+
 		if q.resultCache[index] == nil {
 			components := 1
 			if q.mode == FastSync && header.Number.Uint64() <= q.fastSyncPivot {
@@ -661,6 +628,7 @@ func (q *queue) reserveHeaders(p *peer, count int, taskPool map[common.Hash]*typ
 				Header:  header,
 			}
 		}
+
 		// If this fetch task is a noop, skip this fetch operation
 		if isNoop(header) {
 			donePool[header.Hash()] = struct{}{}
@@ -678,6 +646,7 @@ func (q *queue) reserveHeaders(p *peer, count int, taskPool map[common.Hash]*typ
 			send = append(send, header)
 		}
 	}
+
 	// Merge all the skipped headers back
 	for _, header := range skip {
 		taskQueue.Push(header, -float32(header.Number.Uint64()))
