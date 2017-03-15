@@ -113,7 +113,7 @@ type queue struct {
 	resultOffset uint64         // Offset of the first cached fetch result in the block chain
 
 	active *sync.Cond
-	closed bool
+	done   chan struct{}
 }
 
 // newQueue creates a new download queue for scheduling block retrieval.
@@ -134,18 +134,10 @@ func newQueue(stateDb ethdb.Database) *queue {
 		statePendPool:    make(map[string]*fetchRequest),
 		stateDatabase:    stateDb,
 		resultCache:      make([]*fetchResult, blockCacheLimit),
+		done:             make(chan struct{}),
 	}
 	q.active = sync.NewCond(q)
 	return q
-}
-
-// Close marks the end of the sync, unblocking WaitResults.
-// It may be called even if the queue is already closed.
-func (q *queue) Close() {
-	q.Lock()
-	q.closed = true
-	q.Unlock()
-	q.active.Broadcast()
 }
 
 // PendingHeaders retrieves the number of header requests pending for retrieval.
@@ -365,18 +357,30 @@ func (q *queue) Schedule(headers []*types.Header, from uint64) []*types.Header {
 	return inserts
 }
 
+// Done marks the end of the sync, unblocking WaitResults.
+func (q *queue) Done() {
+	close(q.done)
+	q.active.Broadcast()
+}
+
 // WaitResults retrieves and permanently removes a batch of fetch
-// results from the cache. the result slice will be empty if the queue
-// has been closed.
+// results from the cache. The return is empty when queue.Done.
 func (q *queue) WaitResults() []*fetchResult {
 	q.Lock()
 	defer q.Unlock()
 
 	nproc := q.countProcessableItems()
-	for nproc == 0 && !q.closed {
+	for nproc == 0 {
+		select {
+		case <-q.done:
+			return nil
+		default:
+		}
+
 		q.active.Wait()
 		nproc = q.countProcessableItems()
 	}
+
 	results := make([]*fetchResult, nproc)
 	copy(results, q.resultCache[:nproc])
 	if len(results) > 0 {
