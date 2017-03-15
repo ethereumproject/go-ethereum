@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 	"strings"
@@ -278,27 +279,29 @@ func (d *Downloader) UnregisterPeer(id string) error {
 
 // Synchronise tries to sync up our local block chain with a remote peer, both
 // adding various sanity checks as well as wrapping it with various log entries.
-func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode SyncMode) error {
-	glog.V(logger.Detail).Infof("Attempting synchronisation: %v, head [%x…], TD %v", id, head[:4], td)
-
+func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode SyncMode) bool {
 	err := d.synchronise(id, head, td, mode)
 	switch err {
 	case nil:
-		glog.V(logger.Detail).Infof("Synchronisation completed")
+		log.Printf("peer %q sync complete", id)
+		return true
 
 	case errBusy:
-		glog.V(logger.Detail).Infof("Synchronisation already in progress")
+		log.Print("sync busy")
 
 	case errTimeout, errBadPeer, errStallingPeer, errEmptyHashSet,
 		errEmptyHeaderSet, errPeersUnavailable, errTooOld,
 		errInvalidAncestor, errInvalidChain:
-		glog.V(logger.Debug).Infof("Removing peer %v: %v", id, err)
+		log.Printf("peer %q drop: %s", id, err)
 		d.dropPeer(id)
 
+	case errCancelBlockFetch, errCancelHeaderFetch, errCancelBodyFetch, errCancelReceiptFetch, errCancelStateFetch, errCancelHeaderProcessing, errCancelContentProcessing:
+
 	default:
-		glog.V(logger.Warn).Infof("Synchronisation failed: %v", err)
+		log.Printf("peer %q sync: %s", id, err)
 	}
-	return err
+
+	return false
 }
 
 // synchronise will select the peer and use it for synchronising. If an empty string is given
