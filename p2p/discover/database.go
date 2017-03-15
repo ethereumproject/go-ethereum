@@ -228,12 +228,14 @@ func (db *nodeDB) ensureExpirer() {
 // expirer should be started in a go routine, and is responsible for looping ad
 // infinitum and dropping stale data from the database.
 func (db *nodeDB) expirer() {
-	tick := time.Tick(nodeDBCleanupCycle)
+	ticker := time.NewTicker(nodeDBCleanupCycle)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case <-tick:
+		case <-ticker.C:
 			if err := db.expireNodes(); err != nil {
-				glog.V(logger.Error).Infof("Failed to expire nodedb items: %v", err)
+				glog.Error("Failed to expire nodedb items: ", err)
 			}
 
 		case <-db.quit:
