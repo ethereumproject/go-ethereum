@@ -873,7 +873,7 @@ func (d *Downloader) fillHeaderSkeleton(from uint64, skeleton []*types.Header) (
 	)
 	err := d.fetchParts(errCancelHeaderFetch, d.headerCh, deliver, d.queue.headerContCh, expire,
 		d.queue.PendingHeaders, d.queue.InFlightHeaders, throttle, reserve,
-		nil, fetch, d.queue.CancelHeaders, capacity, d.peers.HeaderIdlePeers, setIdle, "Header")
+		nil, fetch, capacity, d.peers.HeaderIdlePeers, setIdle, "Header")
 
 	glog.V(logger.Debug).Infof("Skeleton fill terminated: %v", err)
 
@@ -899,7 +899,7 @@ func (d *Downloader) fetchBodies(from uint64) error {
 	)
 	err := d.fetchParts(errCancelBodyFetch, d.bodyCh, deliver, d.bodyWakeCh, expire,
 		d.queue.PendingBlocks, d.queue.InFlightBlocks, d.queue.ShouldThrottleBlocks, d.queue.ReserveBodies,
-		d.bodyFetchHook, fetch, d.queue.CancelBodies, capacity, d.peers.BodyIdlePeers, setIdle, "Body")
+		d.bodyFetchHook, fetch, capacity, d.peers.BodyIdlePeers, setIdle, "Body")
 
 	glog.V(logger.Debug).Infof("Block body download terminated: %v", err)
 	return err
@@ -923,7 +923,7 @@ func (d *Downloader) fetchReceipts(from uint64) error {
 	)
 	err := d.fetchParts(errCancelReceiptFetch, d.receiptCh, deliver, d.receiptWakeCh, expire,
 		d.queue.PendingReceipts, d.queue.InFlightReceipts, d.queue.ShouldThrottleReceipts, d.queue.ReserveReceipts,
-		d.receiptFetchHook, fetch, d.queue.CancelReceipts, capacity, d.peers.ReceiptIdlePeers, setIdle, "Receipt")
+		d.receiptFetchHook, fetch, capacity, d.peers.ReceiptIdlePeers, setIdle, "Receipt")
 
 	glog.V(logger.Debug).Infof("Receipt download terminated: %v", err)
 	return err
@@ -979,7 +979,7 @@ func (d *Downloader) fetchNodeData() error {
 	)
 	err := d.fetchParts(errCancelStateFetch, d.stateCh, deliver, d.stateWakeCh, expire,
 		d.queue.PendingNodeData, d.queue.InFlightNodeData, throttle, reserve, nil, fetch,
-		d.queue.CancelNodeData, capacity, d.peers.NodeDataIdlePeers, setIdle, "State")
+		capacity, d.peers.NodeDataIdlePeers, setIdle, "State")
 
 	glog.V(logger.Debug).Infof("Node state data download terminated: %v", err)
 	return err
@@ -1005,14 +1005,13 @@ func (d *Downloader) fetchNodeData() error {
 //  - reserve:     task callback to reserve new download tasks to a particular peer (also signals partial completions)
 //  - fetchHook:   tester callback to notify of new tasks being initiated (allows testing the scheduling logic)
 //  - fetch:       network callback to actually send a particular download request to a physical remote peer
-//  - cancel:      task callback to abort an in-flight download request and allow rescheduling it (in case of lost peer)
 //  - capacity:    network callback to retreive the estimated type-specific bandwidth capacity of a peer (traffic shaping)
 //  - idle:        network callback to retrieve the currently (type specific) idle peers that can be assigned tasks
 //  - setIdle:     network callback to set a peer back to idle and update its estimated capacity (traffic shaping)
 //  - kind:        textual label of the type being downloaded to display in log mesages
 func (d *Downloader) fetchParts(errCancel error, deliveryCh chan dataPack, deliver func(dataPack) (int, error), wakeCh chan bool,
 	expire func() map[string]int, pending func() int, inFlight func() bool, throttle func() bool, reserve func(*peer, int) (*fetchRequest, bool, error),
-	fetchHook func([]*types.Header), fetch func(*peer, *fetchRequest) error, cancel func(*fetchRequest), capacity func(*peer) int,
+	fetchHook func([]*types.Header), fetch func(*peer, *fetchRequest) error, capacity func(*peer) int,
 	idle func() ([]*peer, int), setIdle func(*peer, int), kind string) error {
 
 	// Create a ticker to detect expired retrieval tasks

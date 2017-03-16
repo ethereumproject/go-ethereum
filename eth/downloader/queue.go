@@ -673,46 +673,6 @@ func (q *queue) reserveHeaders(p *peer, count int, taskPool map[common.Hash]*typ
 	return request, progress, nil
 }
 
-// CancelHeaders aborts a fetch request, returning all pending skeleton indexes to the queue.
-func (q *queue) CancelHeaders(request *fetchRequest) {
-	q.cancel(request, q.headerTaskQueue, q.headerPendPool)
-}
-
-// CancelBodies aborts a body fetch request, returning all pending headers to the
-// task queue.
-func (q *queue) CancelBodies(request *fetchRequest) {
-	q.cancel(request, q.blockTaskQueue, q.blockPendPool)
-}
-
-// CancelReceipts aborts a body fetch request, returning all pending headers to
-// the task queue.
-func (q *queue) CancelReceipts(request *fetchRequest) {
-	q.cancel(request, q.receiptTaskQueue, q.receiptPendPool)
-}
-
-// CancelNodeData aborts a node state data fetch request, returning all pending
-// hashes to the task queue.
-func (q *queue) CancelNodeData(request *fetchRequest) {
-	q.cancel(request, q.stateTaskQueue, q.statePendPool)
-}
-
-// Cancel aborts a fetch request, returning all pending hashes to the task queue.
-func (q *queue) cancel(request *fetchRequest, taskQueue *prque.Prque, pendPool map[string]*fetchRequest) {
-	q.Lock()
-	defer q.Unlock()
-
-	if request.From > 0 {
-		taskQueue.Push(request.From, -float32(request.From))
-	}
-	for hash, index := range request.Hashes {
-		taskQueue.Push(hash, float32(index))
-	}
-	for _, header := range request.Headers {
-		taskQueue.Push(header, -float32(header.Number.Uint64()))
-	}
-	delete(pendPool, request.Peer.id)
-}
-
 // Revoke cancels all pending requests belonging to a given peer. This method is
 // meant to be called during a peer drop to quickly reassign owned data fetches
 // to remaining nodes.
