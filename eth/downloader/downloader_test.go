@@ -728,7 +728,7 @@ func testThrottling(t *testing.T, protocol int, mode SyncMode) {
 			time.Sleep(25 * time.Millisecond)
 
 			tester.lock.Lock()
-			tester.downloader.queue.lock.Lock()
+			tester.downloader.queue.Lock()
 			cached = len(tester.downloader.queue.blockDonePool)
 			if mode == FastSync {
 				if receipts := len(tester.downloader.queue.receiptDonePool); receipts < cached {
@@ -739,7 +739,7 @@ func testThrottling(t *testing.T, protocol int, mode SyncMode) {
 			}
 			frozen = int(atomic.LoadUint32(&blocked))
 			retrieved = len(tester.ownBlocks)
-			tester.downloader.queue.lock.Unlock()
+			tester.downloader.queue.Unlock()
 			tester.lock.Unlock()
 
 			if cached == blockCacheLimit || retrieved+cached+frozen == targetBlocks+1 {

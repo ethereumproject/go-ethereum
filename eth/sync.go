@@ -30,8 +30,7 @@ import (
 )
 
 const (
-	forceSyncCycle      = 10 * time.Second // Time interval to force syncs, even if few peers are available
-	minDesiredPeerCount = 5                // Amount of peers desired to start syncing
+	minDesiredPeerCount = 5 // Amount of peers desired to start syncing
 
 	// This is the target size for the packs of transactions sent by txsyncLoop.
 	// A pack can get larger than this if a single transactions exceeds this size.
@@ -129,28 +128,34 @@ func (pm *ProtocolManager) txsyncLoop() {
 // syncer is responsible for periodically synchronising with the network, both
 // downloading hashes and blocks as well as handling the announcement handler.
 func (pm *ProtocolManager) syncer() {
-	// Start and ensure cleanup of sync mechanisms
 	pm.fetcher.Start()
 	defer pm.fetcher.Stop()
 	defer pm.downloader.Terminate()
 
-	// Wait for different events to fire synchronisation operations
-	forceSync := time.Tick(forceSyncCycle)
+	sync := func() { pm.synchronise(pm.peers.BestPeer()) }
 	for {
-		select {
-		case <-pm.newPeerCh:
-			// Make sure we have peers to select from, then sync
-			if pm.peers.Len() < minDesiredPeerCount {
-				break
+		batchTimer := time.AfterFunc(10*time.Second, sync)
+		for {
+			select {
+			case <-pm.noMorePeers:
+				batchTimer.Stop()
+				return
+
+			case <-pm.newPeerCh:
+				if pm.peers.Len() < minDesiredPeerCount {
+					continue
+				}
+
+				if batchTimer.Stop() {
+					go sync()
+				}
+
+			case <-batchTimer.C:
+
 			}
-			go pm.synchronise(pm.peers.BestPeer())
+			// sync launched
 
-		case <-forceSync:
-			// Force a sync even if not enough peers are present
-			go pm.synchronise(pm.peers.BestPeer())
-
-		case <-pm.noMorePeers:
-			return
+			break
 		}
 	}
 }
@@ -161,20 +166,21 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 	if peer == nil {
 		return
 	}
+
 	// Make sure the peer's TD is higher than our own
 	currentBlock := pm.blockchain.CurrentBlock()
 	td := pm.blockchain.GetTd(currentBlock.Hash())
-
 	pHead, pTd := peer.Head()
 	if pTd.Cmp(td) <= 0 {
 		return
 	}
+
 	// Otherwise try to sync with the downloader
 	mode := downloader.FullSync
 	if atomic.LoadUint32(&pm.fastSync) == 1 {
 		mode = downloader.FastSync
 	}
-	if err := pm.downloader.Synchronise(peer.id, pHead, pTd, mode); err != nil {
+	if !pm.downloader.Synchronise(peer.id, pHead, pTd, mode) {
 		return
 	}
 	atomic.StoreUint32(&pm.synced, 1) // Mark initial sync done
