@@ -36,58 +36,55 @@ import (
 )
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0
-func WriteGenesisBlock(chainDb ethdb.Database, reader io.Reader) (*types.Block, error) {
-	contents, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	var genesis struct {
-		ChainConfig *ChainConfig `json:"config"`
-		Nonce       string
-		Timestamp   string
-		ParentHash  string
-		ExtraData   string
-		GasLimit    string
-		Difficulty  string
-		Mixhash     string
-		Coinbase    string
-		Alloc       map[string]struct {
-			Code    string
-			Storage map[string]string
-			Balance string
-		}
-	}
-	if err := json.Unmarshal(contents, &genesis); err != nil {
+func WriteGenesisBlock(chainDb ethdb.Database, r io.Reader) (*types.Block, error) {
+	var genesis GenesisDump
+	if err := json.NewDecoder(r).Decode(&genesis); err != nil {
 		return nil, err
 	}
 
-	// creating with empty hash always works
 	statedb, err := state.New(common.Hash{}, chainDb)
 	if err != nil {
 		return nil, err
 	}
-	for addr, account := range genesis.Alloc {
-		address := common.HexToAddress(addr)
-		statedb.AddBalance(address, common.String2Big(account.Balance))
-		statedb.SetCode(address, common.Hex2Bytes(account.Code))
+
+	for addrHex, account := range genesis.Alloc {
+		var addr common.Address
+		if err := addrHex.Decode(addr[:]); err != nil {
+			return nil, fmt.Errorf("malformed addres %q: %s", addrHex, err)
+		}
+
+		balance, ok := new(big.Int).SetString(account.Balance, 0)
+		if !ok {
+			return nil, fmt.Errorf("malformed account %q balance %q", addrHex, account.Balance)
+		}
+		statedb.AddBalance(addr, balance)
+
+		code, err := account.Code.Bytes()
+		if err != nil {
+			return nil, fmt.Errorf("malformed account %q code: %s", addrHex, err)
+		}
+		statedb.SetCode(addr, code)
+
 		for key, value := range account.Storage {
-			statedb.SetState(address, common.HexToHash(key), common.HexToHash(value))
+			var k, v common.Hash
+			if err := key.Decode(k[:]); err != nil {
+				return nil, fmt.Errorf("malformed account %q key: %s", addrHex, err)
+			}
+			if err := value.Decode(v[:]); err != nil {
+				return nil, fmt.Errorf("malformed account %q value: %s", addrHex, err)
+			}
+			statedb.SetState(addr, k, v)
 		}
 	}
 	root, stateBatch := statedb.CommitBatch()
 
-	difficulty := common.String2Big(genesis.Difficulty)
-	block := types.NewBlock(&types.Header{
-		Nonce:      types.EncodeNonce(common.String2Big(genesis.Nonce).Uint64()),
-		Time:       common.String2Big(genesis.Timestamp),
-		ParentHash: common.HexToHash(genesis.ParentHash),
-		Extra:      common.FromHex(genesis.ExtraData),
-		GasLimit:   common.String2Big(genesis.GasLimit),
-		Difficulty: difficulty,
-		MixDigest:  common.HexToHash(genesis.Mixhash),
-		Coinbase:   common.HexToAddress(genesis.Coinbase),
-		Root:       root,
-	}, nil, nil, nil)
+	header, err := genesis.Header()
+	if err != nil {
+		return nil, err
+	}
+	header.Root = root
+
+	block := types.NewBlock(header, nil, nil, nil)
 
 	if block := GetBlock(chainDb, block.Hash()); block != nil {
 		glog.V(logger.Info).Infoln("Genesis block already in chain. Writing canonical number")
@@ -101,7 +98,7 @@ func WriteGenesisBlock(chainDb ethdb.Database, reader io.Reader) (*types.Block, 
 	if err := stateBatch.Write(); err != nil {
 		return nil, fmt.Errorf("cannot write state: %v", err)
 	}
-	if err := WriteTd(chainDb, block.Hash(), difficulty); err != nil {
+	if err := WriteTd(chainDb, block.Hash(), header.Difficulty); err != nil {
 		return nil, err
 	}
 	if err := WriteBlock(chainDb, block); err != nil {
@@ -153,7 +150,7 @@ func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) 
 		if i != 0 {
 			accountJson += ","
 		}
-		accountJson += fmt.Sprintf(`"0x%x":{"balance":"0x%x"}`, account.Address, account.Balance.Bytes())
+		accountJson += fmt.Sprintf(`"%x":{"balance":"0x%x"}`, account.Address, account.Balance.Bytes())
 	}
 	accountJson += "}"
 
@@ -225,7 +222,7 @@ func OlympicGenesisBlock() string {
 func TestNetGenesisBlock() string {
 	return fmt.Sprintf(`{
 		"nonce": "0x%x",
-		"difficulty": "0x20000",
+		"difficulty": "0x2000",
 		"mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
 		"coinbase": "0x0000000000000000000000000000000000000000",
 		"timestamp": "0x00",
