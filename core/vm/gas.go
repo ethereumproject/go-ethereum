@@ -39,11 +39,28 @@ var (
 	n64 = big.NewInt(64)
 )
 
+type GasTable struct {
+	ExtcodeSize *big.Int
+	ExtcodeCopy *big.Int
+	Balance     *big.Int
+	SLoad       *big.Int
+	Calls       *big.Int
+	Suicide     *big.Int
+	ExpByte     *big.Int
+
+	// CreateBySuicide occurs when the
+	// refunded account is one that does
+	// not exist. This logic is similar
+	// to call. May be left nil. Nil means
+	// not charged.
+	CreateBySuicide *big.Int
+}
+
 // calcGas returns the actual gas cost of the call.
 //
 // The cost of gas was changed during the homestead price change HF. To allow for EIP150
 // to be implemented. The returned gas is gas - base * 63 / 64.
-func callGas(gasTable params.GasTable, availableGas, base, callCost *big.Int) *big.Int {
+func callGas(gasTable *GasTable, availableGas, base, callCost *big.Int) *big.Int {
 	if gasTable.CreateBySuicide != nil {
 		availableGas = new(big.Int).Sub(availableGas, base)
 		g := new(big.Int).Div(availableGas, n64)

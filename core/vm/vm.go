@@ -35,7 +35,7 @@ import (
 type EVM struct {
 	env       Environment
 	jumpTable vmJumpTable
-	gasTable  params.GasTable
+	gasTable  GasTable
 }
 
 // New returns a new instance of the EVM.
@@ -43,7 +43,7 @@ func New(env Environment) *EVM {
 	return &EVM{
 		env:       env,
 		jumpTable: newJumpTable(env.RuleSet(), env.BlockNumber()),
-		gasTable:  env.RuleSet().GasTable(env.BlockNumber()),
+		gasTable:  *env.RuleSet().GasTable(env.BlockNumber()),
 	}
 }
 
@@ -111,7 +111,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
 		// calculate the new memory size and gas price for the current executing opcode
-		newMemSize, cost, err = calculateGasAndSize(evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
+		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +172,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 // calculateGasAndSize calculates the required given the opcode and stack items calculates the new memorysize for
 // the operation. This does not reduce gas or resizes the memory.
-func calculateGasAndSize(gasTable params.GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack) (*big.Int, *big.Int, error) {
+func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack) (*big.Int, *big.Int, error) {
 	var (
 		gas                 = new(big.Int)
 		newMemSize *big.Int = new(big.Int)

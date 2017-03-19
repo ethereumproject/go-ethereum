@@ -22,7 +22,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 var (
@@ -32,97 +32,6 @@ var (
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
 )
-
-// DefaultConfig is the Ethereum Classic standard setup.
-var DefaultConfig = &ChainConfig{
-	Forks: []*Fork{
-		{
-			Name:         "Homestead",
-			Block:        big.NewInt(1150000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableHomestead,
-		}, {
-			Name:         "ETF",
-			Block:        big.NewInt(1920000),
-			NetworkSplit: true,
-			Support:      false,
-			RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
-		}, {
-			Name:         "GasReprice",
-			Block:        big.NewInt(2500000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableHomesteadGasRepriceFork,
-		}, {
-			Name:         "Diehard",
-			Block:        big.NewInt(3000000),
-			Length:       big.NewInt(2000000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableDiehardFork,
-		},
-	},
-	BadHashes: []*BadHash{
-		{
-			// consensus issue that occurred on the Frontier network at block 116,522, mined on 2015-08-20 at 14:59:16+02:00
-			// https://blog.ethereum.org/2015/08/20/security-alert-consensus-issue
-			Block: big.NewInt(116522),
-			Hash:  common.HexToHash("05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"),
-		},
-	},
-	ChainId: params.ChainId,
-}
-
-// TestConfig is the semi-official setup for testing purposes.
-// TODO(pascaldekloe): drop with issue #131
-var TestConfig = &ChainConfig{
-	Forks: []*Fork{
-		{
-			Name:         "Homestead",
-			Block:        big.NewInt(494000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableHomestead,
-		},
-		{
-			Name:         "GasReprice",
-			Block:        big.NewInt(1783000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableHomesteadGasRepriceFork,
-		},
-		{
-			Name:         "ETF",
-			Block:        big.NewInt(1885000),
-			NetworkSplit: true,
-			Support:      false,
-			RequiredHash: common.HexToHash("2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740"),
-		},
-		{
-			Name:         "Diehard",
-			Block:        big.NewInt(1915000),
-			Length:       big.NewInt(1500000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableDiehardFork,
-		},
-	},
-	BadHashes: []*BadHash{
-		{
-			// consensus issue at Testnet #383792
-			// http://ethereum.stackexchange.com/questions/10183/upgraded-to-geth-1-5-0-bad-block-383792
-			Block: big.NewInt(383792),
-			Hash:  common.HexToHash("9690db54968a760704d99b8118bf79d565711669cefad24b51b5b1013d827808"),
-		},
-		{
-			// chain followed by non-diehard testnet
-			Block: big.NewInt(1915277),
-			Hash:  common.HexToHash("3bef9997340acebc85b84948d849ceeff74384ddf512a20676d424e972a3c3c4"),
-		},
-	},
-	ChainId: params.TestnetChainId,
-}
 
 // ChainConfig is the core config which determines the blockchain settings.
 //
@@ -214,18 +123,27 @@ func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
 
 // GasTable returns the gas table corresponding to the current fork
 // The returned GasTable's fields shouldn't, under any circumstances, be changed.
-func (c *ChainConfig) GasTable(num *big.Int) params.GasTable {
-	var gasTable = params.GasTableHomestead
-	//TODO avoid loop, remember current fork
-	for i := range c.Forks {
-		fork := c.Forks[i]
+func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
+	t := &vm.GasTable{
+		ExtcodeSize:     big.NewInt(20),
+		ExtcodeCopy:     big.NewInt(20),
+		Balance:         big.NewInt(20),
+		SLoad:           big.NewInt(50),
+		Calls:           big.NewInt(40),
+		Suicide:         big.NewInt(0),
+		ExpByte:         big.NewInt(10),
+		CreateBySuicide: nil,
+	}
+
+	for _, fork := range c.Forks {
 		if fork.Block.Cmp(num) <= 0 {
 			if fork.GasTable != nil {
-				gasTable = *fork.GasTable
+				t = fork.GasTable
 			}
 		}
 	}
-	return gasTable
+
+	return t
 }
 
 type Fork struct {
@@ -242,6 +160,6 @@ type Fork struct {
 	// after network split.
 	RequiredHash common.Hash
 	// Gas Price table
-	GasTable *params.GasTable
+	GasTable *vm.GasTable
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
 }

@@ -29,7 +29,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 func init() {
@@ -148,15 +147,42 @@ type RuleSet struct {
 func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
 }
-func (r RuleSet) GasTable(num *big.Int) params.GasTable {
+func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
-		return params.GasTableHomestead
+		return &vm.GasTable{
+			ExtcodeSize:     big.NewInt(20),
+			ExtcodeCopy:     big.NewInt(20),
+			Balance:         big.NewInt(20),
+			SLoad:           big.NewInt(50),
+			Calls:           big.NewInt(40),
+			Suicide:         big.NewInt(0),
+			ExpByte:         big.NewInt(10),
+			CreateBySuicide: nil,
+		}
 	}
 	if r.DiehardBlock == nil || num == nil || num.Cmp(r.DiehardBlock) < 0 {
-		return params.GasTableHomesteadGasRepriceFork
+		return &vm.GasTable{
+			ExtcodeSize:     big.NewInt(700),
+			ExtcodeCopy:     big.NewInt(700),
+			Balance:         big.NewInt(400),
+			SLoad:           big.NewInt(200),
+			Calls:           big.NewInt(700),
+			Suicide:         big.NewInt(5000),
+			ExpByte:         big.NewInt(10),
+			CreateBySuicide: big.NewInt(25000),
+		}
 	}
 
-	return params.GasTableDiehardFork
+	return &vm.GasTable{
+		ExtcodeSize:     big.NewInt(700),
+		ExtcodeCopy:     big.NewInt(700),
+		Balance:         big.NewInt(400),
+		SLoad:           big.NewInt(200),
+		Calls:           big.NewInt(700),
+		Suicide:         big.NewInt(5000),
+		ExpByte:         big.NewInt(50),
+		CreateBySuicide: big.NewInt(25000),
+	}
 }
 
 type Env struct {
