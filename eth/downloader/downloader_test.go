@@ -17,6 +17,7 @@
 package downloader
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -37,16 +38,44 @@ import (
 )
 
 var (
-	testdb, _   = ethdb.NewMemDatabase()
-	testKey, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-	testAddress = crypto.PubkeyToAddress(testKey.PublicKey)
-	genesis     = core.GenesisBlockForTesting(testdb, testAddress, big.NewInt(1000000000))
+	testdb      ethdb.Database
+	testKey     *ecdsa.PrivateKey
+	testAddress common.Address
+	genesis     *types.Block
 )
 
 // Reduce some of the parameters to make the tester faster.
 func init() {
 	MaxForkAncestry = uint64(10000)
 	blockCacheLimit = 1024
+
+	var err error
+	testKey, err = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	if err != nil {
+		panic(err)
+	}
+	testAddress = crypto.PubkeyToAddress(testKey.PublicKey)
+
+	testdb, err = ethdb.NewMemDatabase()
+	if err != nil {
+		panic(err)
+	}
+
+	statedb, err := state.New(common.Hash{}, testdb)
+	if err != nil {
+		panic(err)
+	}
+	obj := statedb.GetOrNewStateObject(testAddress)
+	obj.SetBalance(big.NewInt(1000000000))
+	root, err := statedb.Commit()
+	if err != nil {
+		panic(fmt.Sprintf("cannot write state: %v", err))
+	}
+	genesis = types.NewBlock(&types.Header{
+		Difficulty: big.NewInt(131072),
+		GasLimit:   big.NewInt(4712388),
+		Root:       root,
+	}, nil, nil, nil)
 }
 
 // makeChain creates a chain of n blocks starting at and including parent.

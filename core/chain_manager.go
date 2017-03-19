@@ -252,13 +252,24 @@ func makeHeader(config *ChainConfig, parent *types.Block, state *state.StateDB) 
 // header only chain.
 func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *BlockChain, error) {
 	// Create the new chain database
-	db, _ := ethdb.NewMemDatabase()
+	db, err := ethdb.NewMemDatabase()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	evmux := &event.TypeMux{}
 
 	// Initialize a fresh chain with only a genesis block
-	genesis, _ := WriteTestNetGenesisBlock(db)
+	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	blockchain, _ := NewBlockChain(db, MakeChainConfig(), FakePow{}, evmux)
+	blockchain, err := NewBlockChain(db, MakeChainConfig(), FakePow{}, evmux)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Create and inject the requested chain
 	if n == 0 {
 		return db, blockchain, nil
@@ -271,7 +282,7 @@ func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *Block
 	}
 	// Header-only chain requested
 	headers := makeHeaderChain(config, genesis.Header(), n, db, canonicalSeed)
-	_, err := blockchain.InsertHeaderChain(headers, 1)
+	_, err = blockchain.InsertHeaderChain(headers, 1)
 	return db, blockchain, err
 }
 

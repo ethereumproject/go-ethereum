@@ -17,9 +17,10 @@
 package core
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
+
+	"github.com/ethereumproject/ethash"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -43,26 +44,40 @@ func testChainConfig() *ChainConfig {
 	}
 }
 
-func proc() (Validator, *BlockChain) {
-	db, _ := ethdb.NewMemDatabase()
-	var mux event.TypeMux
-
-	WriteTestNetGenesisBlock(db)
-	blockchain, err := NewBlockChain(db, testChainConfig(), thePow(), &mux)
+func proc(t testing.TB) (Validator, *BlockChain) {
+	db, err := ethdb.NewMemDatabase()
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
+	}
+	_, err = WriteGenesisBlock(db, TestNetGenesis)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pow, err := ethash.NewForTesting()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var mux event.TypeMux
+	blockchain, err := NewBlockChain(db, testChainConfig(), pow, &mux)
+	if err != nil {
+		t.Fatal(err)
 	}
 	return blockchain.validator, blockchain
 }
 
 func TestNumber(t *testing.T) {
-	_, chain := proc()
+	_, chain := proc(t)
 
-	statedb, _ := state.New(chain.Genesis().Root(), chain.chainDb)
+	statedb, err := state.New(chain.Genesis().Root(), chain.chainDb)
+	if err != nil {
+		t.Fatal(err)
+	}
 	header := makeHeader(chain.config, chain.Genesis(), statedb)
 	header.Number = big.NewInt(3)
 	cfg := testChainConfig()
-	err := ValidateHeader(cfg, nil, header, chain.Genesis().Header(), false, false)
+	err = ValidateHeader(cfg, nil, header, chain.Genesis().Header(), false, false)
 	if err != BlockNumberErr {
 		t.Errorf("expected block number error, got %q", err)
 	}
@@ -75,7 +90,10 @@ func TestNumber(t *testing.T) {
 }
 
 func TestPutReceipt(t *testing.T) {
-	db, _ := ethdb.NewMemDatabase()
+	db, err := ethdb.NewMemDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var addr common.Address
 	addr[0] = 1

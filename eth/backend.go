@@ -24,7 +24,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -61,7 +60,7 @@ type Config struct {
 	ChainConfig *core.ChainConfig // chain configuration
 
 	NetworkId int    // Network ID to use for selecting peers to connect to
-	Genesis   string // Genesis JSON to seed the chain database with
+	Genesis   *core.GenesisDump
 	FastSync  bool   // Enables the state download based fast synchronisation algorithm
 
 	BlockChainVersion  int
@@ -155,8 +154,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	glog.V(logger.Info).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", ProtocolVersions, config.NetworkId, config.ChainConfig.ChainId)
 
 	// Load up any custom genesis block if requested
-	if len(config.Genesis) > 0 {
-		block, err := core.WriteGenesisBlock(chainDb, strings.NewReader(config.Genesis))
+	if config.Genesis != nil {
+		block, err := core.WriteGenesisBlock(chainDb, config.Genesis)
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +222,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	// block is prenent in the database.
 	genesis := core.GetBlock(chainDb, core.GetCanonicalHash(chainDb, 0))
 	if genesis == nil {
-		genesis, err = core.WriteDefaultGenesisBlock(chainDb)
+		genesis, err = core.WriteGenesisBlock(chainDb, core.DefaultGenesis)
 		if err != nil {
 			return nil, err
 		}
