@@ -167,7 +167,7 @@ var (
 	TargetGasLimitFlag = cli.StringFlag{
 		Name:  "targetgaslimit",
 		Usage: "Target gas limit sets the artificial target gas floor for the blocks to mine",
-		Value: params.GenesisGasLimit.String(),
+		Value: params.TargetGasLimit.String(),
 	}
 	AutoDAGFlag = cli.BoolFlag{
 		Name:  "autodag",
@@ -739,7 +739,6 @@ func SetupNetwork(ctx *cli.Context) {
 	switch {
 	case ctx.GlobalBool(OlympicFlag.Name):
 		params.DurationLimit = big.NewInt(8)
-		params.GenesisGasLimit = big.NewInt(3141592)
 		params.MinGasLimit = big.NewInt(125000)
 		types.HeaderExtraMax = 1024
 		NetworkIdFlag.Value = 0
