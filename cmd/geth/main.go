@@ -18,6 +18,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -219,28 +220,33 @@ func geth(ctx *cli.Context) error {
 
 // initGenesis will initialise the given JSON format genesis file and writes it as
 // the zero'd block (i.e. genesis) or will fail hard if it can't succeed.
-func initGenesis(ctx *cli.Context) error {
-	genesisPath := ctx.Args().First()
-	if len(genesisPath) == 0 {
-		log.Fatal("must supply path to genesis JSON file")
+func initGenesis(ctx *cli.Context) {
+	path := ctx.Args().First()
+	if len(path) == 0 {
+		log.Fatal("need path argument to genesis JSON file")
 	}
 
-	chainDb, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeDataDir(ctx), "chaindata"), 0, 0)
+	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeDataDir(ctx), "chaindata"), 0, 0)
 	if err != nil {
 		log.Fatal("could not open database: ", err)
 	}
 
-	genesisFile, err := os.Open(genesisPath)
+	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal("failed to read genesis file: ", err)
 	}
+	defer f.Close()
 
-	block, err := core.WriteGenesisBlock(chainDb, genesisFile)
-	if err != nil {
-		log.Fatalf("failed to write genesis block: ", err)
+	dump := new(core.GenesisDump)
+	if json.NewDecoder(f).Decode(dump); err != nil {
+		log.Fatalf("%s: %s", path, err)
 	}
-	glog.V(logger.Info).Infof("successfully wrote genesis block and/or chain rule set: %x", block.Hash())
-	return nil
+
+	block, err := core.WriteGenesisBlock(chainDB, dump)
+	if err != nil {
+		log.Fatal("failed to write genesis block: ", err)
+	}
+	log.Printf("successfully wrote genesis block and/or chain rule set: %x", block.Hash())
 }
 
 // startNode boots up the system node and all registered protocols, after which

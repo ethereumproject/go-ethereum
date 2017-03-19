@@ -49,7 +49,7 @@ func proc(t testing.TB) (Validator, *BlockChain) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = WriteTestNetGenesisBlock(db)
+	_, err = WriteGenesisBlock(db, TestNetGenesis)
 	if err != nil {
 		t.Fatal(err)
 	}

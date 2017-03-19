@@ -681,13 +681,13 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			ethConf.NetworkId = 1
 		}
-		ethConf.Genesis = core.OlympicGenesisBlock()
+		ethConf.Genesis = core.OlympicGenesis
 
 	case ctx.GlobalBool(TestNetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			ethConf.NetworkId = 2
 		}
-		ethConf.Genesis = core.TestNetGenesisBlock()
+		ethConf.Genesis = core.TestNetGenesis
 		state.StartingNonce = 1048576 // (2**20)
 
 	case ctx.GlobalBool(DevModeFlag.Name):
@@ -702,7 +702,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 			stackConf.ListenAddr = ":0"
 		}
 		// Override the Ethereum protocol configs
-		ethConf.Genesis = core.OlympicGenesisBlock()
+		ethConf.Genesis = core.OlympicGenesis
 		if !ctx.GlobalIsSet(GasPriceFlag.Name) {
 			ethConf.GasPrice = new(big.Int)
 		}
@@ -825,9 +825,9 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	chainDb = MakeChainDatabase(ctx)
 
 	if ctx.GlobalBool(OlympicFlag.Name) {
-		_, err := core.WriteTestNetGenesisBlock(chainDb)
+		_, err := core.WriteGenesisBlock(chainDb, core.OlympicGenesis)
 		if err != nil {
-			glog.Fatalln(err)
+			log.Fatal(err)
 		}
 	}
 	chainConfig := MustMakeChainConfigFromDb(ctx, chainDb)

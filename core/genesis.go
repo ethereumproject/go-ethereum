@@ -17,14 +17,9 @@
 package core
 
 import (
-	"compress/gzip"
-	"encoding/base64"
-	"encoding/json"
+	hexlib "encoding/hex"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math/big"
-	"strings"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -36,12 +31,7 @@ import (
 )
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0
-func WriteGenesisBlock(chainDb ethdb.Database, r io.Reader) (*types.Block, error) {
-	var genesis GenesisDump
-	if err := json.NewDecoder(r).Decode(&genesis); err != nil {
-		return nil, err
-	}
-
+func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Block, error) {
 	statedb, err := state.New(common.Hash{}, chainDb)
 	if err != nil {
 		return nil, err
@@ -145,96 +135,21 @@ type GenesisAccount struct {
 }
 
 func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) *types.Block {
-	accountJson := "{"
-	for i, account := range accounts {
-		if i != 0 {
-			accountJson += ","
-		}
-		accountJson += fmt.Sprintf(`"%x":{"balance":"0x%x"}`, account.Address, account.Balance.Bytes())
+	dump := GenesisDump{
+		GasLimit:   "0x47E7C4",
+		Difficulty: "0x020000",
+		Alloc:      make(map[hex]*GenesisDumpAlloc, len(accounts)),
 	}
-	accountJson += "}"
 
-	testGenesis := fmt.Sprintf(`{
-	"nonce":"0x%x",
-	"gasLimit":"0x%x",
-	"difficulty":"0x%x",
-	"alloc": %s
-}`, types.EncodeNonce(0), params.GenesisGasLimit.Bytes(), params.GenesisDifficulty.Bytes(), accountJson)
-	block, err := WriteGenesisBlock(db, strings.NewReader(testGenesis))
+	for _, a := range accounts {
+		dump.Alloc[hex(hexlib.EncodeToString(a.Address[:]))] = &GenesisDumpAlloc{
+			Balance: a.Balance.String(),
+		}
+	}
+
+	block, err := WriteGenesisBlock(db, &dump)
 	if err != nil {
 		panic(err)
 	}
 	return block
-}
-
-// WriteDefaultGenesisBlock assembles the official Ethereum genesis block and
-// writes it - along with all associated state - into a chain database.
-func WriteDefaultGenesisBlock(chainDb ethdb.Database) (*types.Block, error) {
-	return WriteGenesisBlock(chainDb, strings.NewReader(DefaultGenesisBlock()))
-}
-
-// WriteTestNetGenesisBlock assembles the Morden test network genesis block and
-// writes it - along with all associated state - into a chain database.
-func WriteTestNetGenesisBlock(chainDb ethdb.Database) (*types.Block, error) {
-	return WriteGenesisBlock(chainDb, strings.NewReader(TestNetGenesisBlock()))
-}
-
-// DefaultGenesisBlock assembles a JSON string representing the default Ethereum
-// genesis block.
-func DefaultGenesisBlock() string {
-	reader, err := gzip.NewReader(base64.NewDecoder(base64.StdEncoding, strings.NewReader(defaultGenesisBlock)))
-	if err != nil {
-		panic(fmt.Sprintf("failed to access default genesis: %v", err))
-	}
-	blob, err := ioutil.ReadAll(reader)
-	if err != nil {
-		panic(fmt.Sprintf("failed to load default genesis: %v", err))
-	}
-	return string(blob)
-}
-
-// OlympicGenesisBlock assembles a JSON string representing the Olympic genesis
-// block.
-func OlympicGenesisBlock() string {
-	return fmt.Sprintf(`{
-		"nonce":"0x%x",
-		"gasLimit":"0x%x",
-		"difficulty":"0x%x",
-		"alloc": {
-			"0000000000000000000000000000000000000001": {"balance": "1"},
-			"0000000000000000000000000000000000000002": {"balance": "1"},
-			"0000000000000000000000000000000000000003": {"balance": "1"},
-			"0000000000000000000000000000000000000004": {"balance": "1"},
-			"dbdbdb2cbd23b783741e8d7fcf51e459b497e4a6": {"balance": "1606938044258990275541962092341162602522202993782792835301376"},
-			"e4157b34ea9615cfbde6b4fda419828124b70c78": {"balance": "1606938044258990275541962092341162602522202993782792835301376"},
-			"b9c015918bdaba24b4ff057a92a3873d6eb201be": {"balance": "1606938044258990275541962092341162602522202993782792835301376"},
-			"6c386a4b26f73c802f34673f7248bb118f97424a": {"balance": "1606938044258990275541962092341162602522202993782792835301376"},
-			"cd2a3d9f938e13cd947ec05abc7fe734df8dd826": {"balance": "1606938044258990275541962092341162602522202993782792835301376"},
-			"2ef47100e0787b915105fd5e3f4ff6752079d5cb": {"balance": "1606938044258990275541962092341162602522202993782792835301376"},
-			"e6716f9544a56c530d868e4bfbacb172315bdead": {"balance": "1606938044258990275541962092341162602522202993782792835301376"},
-			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4": {"balance": "1606938044258990275541962092341162602522202993782792835301376"}
-		}
-	}`, types.EncodeNonce(42), params.GenesisGasLimit.Bytes(), params.GenesisDifficulty.Bytes())
-}
-
-// TestNetGenesisBlock assembles a JSON string representing the Morden test net
-// genenis block.
-func TestNetGenesisBlock() string {
-	return fmt.Sprintf(`{
-		"nonce": "0x%x",
-		"difficulty": "0x2000",
-		"mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
-		"coinbase": "0x0000000000000000000000000000000000000000",
-		"timestamp": "0x00",
-		"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-		"extraData": "0x",
-		"gasLimit": "0x2FEFD8",
-		"alloc": {
-			"0000000000000000000000000000000000000001": { "balance": "1" },
-			"0000000000000000000000000000000000000002": { "balance": "1" },
-			"0000000000000000000000000000000000000003": { "balance": "1" },
-			"0000000000000000000000000000000000000004": { "balance": "1" },
-			"102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": { "balance": "1606938044258990275541962092341162602522202993782792835301376" }
-		}
-	}`, types.EncodeNonce(0x6d6f7264656e))
 }

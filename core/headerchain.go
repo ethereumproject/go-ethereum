@@ -87,7 +87,7 @@ func NewHeaderChain(chainDb ethdb.Database, config *ChainConfig, getValidator ge
 
 	hc.genesisHeader = hc.GetHeaderByNumber(0)
 	if hc.genesisHeader == nil {
-		genesisBlock, err := WriteDefaultGenesisBlock(chainDb)
+		genesisBlock, err := WriteGenesisBlock(chainDb, DefaultGenesis)
 		if err != nil {
 			return nil, err
 		}

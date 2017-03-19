@@ -50,7 +50,9 @@ func theBlockChain(db ethdb.Database, t *testing.T) *BlockChain {
 	}
 
 	var eventMux event.TypeMux
-	WriteTestNetGenesisBlock(db)
+	if _, err := WriteGenesisBlock(db, TestNetGenesis); err != nil {
+		t.Fatal(err)
+	}
 	blockchain, err := NewBlockChain(db, testChainConfig(), pow, &eventMux)
 	if err != nil {
 		t.Error("failed creating blockchain:", err)
@@ -527,7 +529,7 @@ func testReorg(t *testing.T, first, second []int, td int64, full bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteTestNetGenesisBlock(db)
+	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -575,7 +577,7 @@ func TestInsertHeaderChainBadHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteTestNetGenesisBlock(db)
+	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,7 +601,7 @@ func TestInsertChainBadHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteTestNetGenesisBlock(db)
+	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -629,7 +631,7 @@ func testReorgBadHashes(t *testing.T, full bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteTestNetGenesisBlock(db)
+	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
 	if err != nil {
 		t.Fatal(err)
 	}

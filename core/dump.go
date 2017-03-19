@@ -38,11 +38,14 @@ type GenesisDump struct {
 	Coinbase   prefixedHex
 
 	// Alloc maps accounts by their address.
-	Alloc map[hex]struct {
-		Code    prefixedHex
-		Storage map[hex]hex
-		Balance string // decimal string
-	}
+	Alloc map[hex]*GenesisDumpAlloc
+}
+
+// GenesisDumpAlloc is a GenesisDump.Alloc entry.
+type GenesisDumpAlloc struct {
+	Code    prefixedHex
+	Storage map[hex]hex
+	Balance string // decimal string
 }
 
 // Header returns the mapping.
