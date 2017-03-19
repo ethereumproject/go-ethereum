@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/tests"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -78,9 +78,9 @@ func runTestWithReader(test string, r io.Reader) error {
 	var err error
 	switch strings.ToLower(test) {
 	case "bk", "block", "blocktest", "blockchaintest", "blocktests", "blockchaintests":
-		err = tests.RunBlockTestWithReader(params.MainNetHomesteadBlock, nil, r, skipTests)
+		err = tests.RunBlockTestWithReader(big.NewInt(1150000), nil, r, skipTests)
 	case "st", "state", "statetest", "statetests":
-		rs := tests.RuleSet{HomesteadBlock: params.MainNetHomesteadBlock}
+		rs := tests.RuleSet{HomesteadBlock: big.NewInt(1150000)}
 		err = tests.RunStateTestWithReader(rs, r, skipTests)
 	case "tx", "transactiontest", "transactiontests":
 		err = tests.RunTransactionTestsWithReader(r, skipTests)

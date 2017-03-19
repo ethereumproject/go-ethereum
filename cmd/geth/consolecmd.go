@@ -102,8 +102,8 @@ func localConsole(ctx *cli.Context) error {
 func remoteConsole(ctx *cli.Context) error {
 	// Attach to a remotely running geth instance and start the JavaScript console
 	var uri = "ipc:" + node.DefaultIPCEndpoint()
-        if ctx.Args().Present() {
-                uri = ctx.Args().First()
+	if ctx.Args().Present() {
+		uri = ctx.Args().First()
 	}
 	client, err := rpc.NewClient(uri)
 	if err != nil {

@@ -36,11 +36,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/trie"
 )
 
-var (
+const (
 	MaxHashFetch    = 512 // Amount of hashes to be fetched per retrieval request
 	MaxBlockFetch   = 128 // Amount of blocks to be fetched per retrieval request
 	MaxHeaderFetch  = 192 // Amount of block headers to be fetched per retrieval request
@@ -49,12 +48,16 @@ var (
 	MaxReceiptFetch = 256 // Amount of transaction receipts to allow fetching per request
 	MaxStateFetch   = 384 // Amount of node state values to allow fetching per request
 
-	MaxForkAncestry  = 3 * params.EpochDuration.Uint64() // Maximum chain reorganisation
-	rttMinEstimate   = 2 * time.Second                   // Minimum round-trip time to target for download requests
-	rttMaxEstimate   = 20 * time.Second                  // Maximum rount-trip time to target for download requests
-	rttMinConfidence = 0.1                               // Worse confidence factor in our estimated RTT value
-	ttlScaling       = 3                                 // Constant scaling factor for RTT -> TTL conversion
-	ttlLimit         = time.Minute                       // Maximum TTL allowance to prevent reaching crazy timeouts
+	EpochDuration   = 30000             // Duration between proof-of-work epochs
+	MaxForkAncestry = 3 * EpochDuration // Maximum chain reorganisation
+)
+
+var (
+	rttMinEstimate   = 2 * time.Second  // Minimum round-trip time to target for download requests
+	rttMaxEstimate   = 20 * time.Second // Maximum rount-trip time to target for download requests
+	rttMinConfidence = 0.1              // Worse confidence factor in our estimated RTT value
+	ttlScaling       = 3                // Constant scaling factor for RTT -> TTL conversion
+	ttlLimit         = time.Minute      // Maximum TTL allowance to prevent reaching crazy timeouts
 
 	qosTuningPeers   = 5    // Number of peers to tune based on (best peers)
 	qosConfidenceCap = 10   // Number of peers above which not to modify RTT confidence

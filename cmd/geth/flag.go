@@ -19,8 +19,8 @@ package main
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"log"
 	"io/ioutil"
+	"log"
 	"math"
 	"math/big"
 	"os"
@@ -45,7 +45,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/ethereumproject/go-ethereum/whisper"
@@ -167,7 +166,7 @@ var (
 	TargetGasLimitFlag = cli.StringFlag{
 		Name:  "targetgaslimit",
 		Usage: "Target gas limit sets the artificial target gas floor for the blocks to mine",
-		Value: params.TargetGasLimit.String(),
+		Value: core.TargetGasLimit.String(),
 	}
 	AutoDAGFlag = cli.BoolFlag{
 		Name:  "autodag",
@@ -738,14 +737,14 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 func SetupNetwork(ctx *cli.Context) {
 	switch {
 	case ctx.GlobalBool(OlympicFlag.Name):
-		params.DurationLimit = big.NewInt(8)
-		params.MinGasLimit = big.NewInt(125000)
+		core.DurationLimit = big.NewInt(8)
+		core.MinGasLimit = big.NewInt(125000)
 		types.HeaderExtraMax = 1024
 		NetworkIdFlag.Value = 0
 		core.BlockReward = big.NewInt(1.5e+18)
 		core.ExpDiffPeriod = big.NewInt(math.MaxInt64)
 	}
-	params.TargetGasLimit = common.String2Big(ctx.GlobalString(TargetGasLimitFlag.Name))
+	core.TargetGasLimit = common.String2Big(ctx.GlobalString(TargetGasLimitFlag.Name))
 }
 
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
