@@ -27,7 +27,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0
@@ -105,28 +104,6 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	}
 
 	return block, nil
-}
-
-// GenesisBlockForTesting creates a block in which addr has the given wei balance.
-// The state trie of the block is written to db. the passed db needs to contain a state root
-func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big.Int) *types.Block {
-	statedb, err := state.New(common.Hash{}, db)
-	if err != nil {
-		panic(err)
-	}
-
-	obj := statedb.GetOrNewStateObject(addr)
-	obj.SetBalance(balance)
-	root, err := statedb.Commit()
-	if err != nil {
-		panic(fmt.Sprintf("cannot write state: %v", err))
-	}
-
-	return types.NewBlock(&types.Header{
-		Difficulty: params.GenesisDifficulty,
-		GasLimit:   params.GenesisGasLimit,
-		Root:       root,
-	}, nil, nil, nil)
 }
 
 type GenesisAccount struct {

@@ -17,11 +17,11 @@
 package core
 
 import (
+	"fmt"
 	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -39,8 +39,26 @@ import (
 	"github.com/hashicorp/golang-lru"
 )
 
-func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+// GenesisBlockForTesting creates a block in which addr has the given wei balance.
+// The state trie of the block is written to db. the passed db needs to contain a state root
+func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big.Int) *types.Block {
+	statedb, err := state.New(common.Hash{}, db)
+	if err != nil {
+		panic(err)
+	}
+
+	obj := statedb.GetOrNewStateObject(addr)
+	obj.SetBalance(balance)
+	root, err := statedb.Commit()
+	if err != nil {
+		panic(fmt.Sprintf("cannot write state: %v", err))
+	}
+
+	return types.NewBlock(&types.Header{
+		Difficulty: big.NewInt(131072),
+		GasLimit:   big.NewInt(4712388),
+		Root:       root,
+	}, nil, nil, nil)
 }
 
 func theBlockChain(db ethdb.Database, t *testing.T) *BlockChain {
@@ -962,8 +980,7 @@ func TestLightVsFastVsFullChainHeads(t *testing.T) {
 
 // Tests that chain reorganisations handle transaction removals and reinsertions.
 func TestChainTxReorgs(t *testing.T) {
-	params.MinGasLimit = big.NewInt(125000)      // Minimum the gas limit may ever be.
-	params.GenesisGasLimit = big.NewInt(3141592) // Gas limit of the Genesis block.
+	params.MinGasLimit = big.NewInt(125000) // Minimum the gas limit may ever be.
 
 	key1, err := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	if err != nil {
@@ -1098,8 +1115,7 @@ func TestChainTxReorgs(t *testing.T) {
 }
 
 func TestLogReorgs(t *testing.T) {
-	params.MinGasLimit = big.NewInt(125000)      // Minimum the gas limit may ever be.
-	params.GenesisGasLimit = big.NewInt(3141592) // Gas limit of the Genesis block.
+	params.MinGasLimit = big.NewInt(125000) // Minimum the gas limit may ever be.
 
 	key1, err := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	if err != nil {
