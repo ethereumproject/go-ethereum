@@ -17,12 +17,18 @@
 package core
 
 import (
+	hexlib "encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var (
@@ -162,4 +168,226 @@ type Fork struct {
 	// Gas Price table
 	GasTable *vm.GasTable
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
+}
+
+// WriteGenesisBlock writes the genesis block to the database as block number 0
+func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Block, error) {
+	statedb, err := state.New(common.Hash{}, chainDb)
+	if err != nil {
+		return nil, err
+	}
+
+	for addrHex, account := range genesis.Alloc {
+		var addr common.Address
+		if err := addrHex.Decode(addr[:]); err != nil {
+			return nil, fmt.Errorf("malformed addres %q: %s", addrHex, err)
+		}
+
+		balance, ok := new(big.Int).SetString(account.Balance, 0)
+		if !ok {
+			return nil, fmt.Errorf("malformed account %q balance %q", addrHex, account.Balance)
+		}
+		statedb.AddBalance(addr, balance)
+
+		code, err := account.Code.Bytes()
+		if err != nil {
+			return nil, fmt.Errorf("malformed account %q code: %s", addrHex, err)
+		}
+		statedb.SetCode(addr, code)
+
+		for key, value := range account.Storage {
+			var k, v common.Hash
+			if err := key.Decode(k[:]); err != nil {
+				return nil, fmt.Errorf("malformed account %q key: %s", addrHex, err)
+			}
+			if err := value.Decode(v[:]); err != nil {
+				return nil, fmt.Errorf("malformed account %q value: %s", addrHex, err)
+			}
+			statedb.SetState(addr, k, v)
+		}
+	}
+	root, stateBatch := statedb.CommitBatch()
+
+	header, err := genesis.Header()
+	if err != nil {
+		return nil, err
+	}
+	header.Root = root
+
+	block := types.NewBlock(header, nil, nil, nil)
+
+	if block := GetBlock(chainDb, block.Hash()); block != nil {
+		glog.V(logger.Info).Infoln("Genesis block already in chain. Writing canonical number")
+		err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64())
+		if err != nil {
+			return nil, err
+		}
+		return block, nil
+	}
+
+	if err := stateBatch.Write(); err != nil {
+		return nil, fmt.Errorf("cannot write state: %v", err)
+	}
+	if err := WriteTd(chainDb, block.Hash(), header.Difficulty); err != nil {
+		return nil, err
+	}
+	if err := WriteBlock(chainDb, block); err != nil {
+		return nil, err
+	}
+	if err := WriteBlockReceipts(chainDb, block.Hash(), nil); err != nil {
+		return nil, err
+	}
+	if err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64()); err != nil {
+		return nil, err
+	}
+	if err := WriteHeadBlockHash(chainDb, block.Hash()); err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+type GenesisAccount struct {
+	Address common.Address
+	Balance *big.Int
+}
+
+func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) *types.Block {
+	dump := GenesisDump{
+		GasLimit:   "0x47E7C4",
+		Difficulty: "0x020000",
+		Alloc:      make(map[hex]*GenesisDumpAlloc, len(accounts)),
+	}
+
+	for _, a := range accounts {
+		dump.Alloc[hex(hexlib.EncodeToString(a.Address[:]))] = &GenesisDumpAlloc{
+			Balance: a.Balance.String(),
+		}
+	}
+
+	block, err := WriteGenesisBlock(db, &dump)
+	if err != nil {
+		panic(err)
+	}
+	return block
+}
+
+// GenesisDump is the geth JSON format.
+// https://github.com/ethereumproject/wiki/wiki/Ethereum-Chain-Spec-Format#subformat-genesis
+type GenesisDump struct {
+	Nonce      prefixedHex
+	Timestamp  prefixedHex
+	ParentHash prefixedHex
+	ExtraData  prefixedHex
+	GasLimit   prefixedHex
+	Difficulty prefixedHex
+	Mixhash    prefixedHex
+	Coinbase   prefixedHex
+
+	// Alloc maps accounts by their address.
+	Alloc map[hex]*GenesisDumpAlloc
+}
+
+// GenesisDumpAlloc is a GenesisDump.Alloc entry.
+type GenesisDumpAlloc struct {
+	Code    prefixedHex
+	Storage map[hex]hex
+	Balance string // decimal string
+}
+
+// Header returns the mapping.
+func (g *GenesisDump) Header() (*types.Header, error) {
+	var h types.Header
+
+	var err error
+	if err = g.Nonce.Decode(h.Nonce[:]); err != nil {
+		return nil, fmt.Errorf("malformed nonce: %s", err)
+	}
+	if h.Time, err = g.Timestamp.Int(); err != nil {
+		return nil, fmt.Errorf("malformed timestamp: %s", err)
+	}
+	if err = g.ParentHash.Decode(h.ParentHash[:]); err != nil {
+		return nil, fmt.Errorf("malformed parentHash: %s", err)
+	}
+	if h.Extra, err = g.ExtraData.Bytes(); err != nil {
+		return nil, fmt.Errorf("malformed extraData: %s", err)
+	}
+	if h.GasLimit, err = g.GasLimit.Int(); err != nil {
+		return nil, fmt.Errorf("malformed gasLimit: %s", err)
+	}
+	if h.Difficulty, err = g.Difficulty.Int(); err != nil {
+		return nil, fmt.Errorf("malformed difficulty: %s", err)
+	}
+	if err = g.Mixhash.Decode(h.MixDigest[:]); err != nil {
+		return nil, fmt.Errorf("malformed mixhash: %s", err)
+	}
+	if err := g.Coinbase.Decode(h.Coinbase[:]); err != nil {
+		return nil, fmt.Errorf("malformed coinbase: %s", err)
+	}
+
+	return &h, nil
+}
+
+// hex is a hexadecimal string.
+type hex string
+
+// Decode fills buf when h is not empty.
+func (h hex) Decode(buf []byte) error {
+	if len(h) != 2*len(buf) {
+		return fmt.Errorf("want %d hexadecimals", 2*len(buf))
+	}
+
+	_, err := hexlib.Decode(buf, []byte(h))
+	return err
+}
+
+// prefixedHex is a hexadecimal string with an "0x" prefix.
+type prefixedHex string
+
+var errNoHexPrefix = errors.New("want 0x prefix")
+
+// Decode fills buf when h is not empty.
+func (h prefixedHex) Decode(buf []byte) error {
+	i := len(h)
+	if i == 0 {
+		return nil
+	}
+	if i == 1 || h[0] != '0' || h[1] != 'x' {
+		return errNoHexPrefix
+	}
+	if i == 2 {
+		return nil
+	}
+	if i != 2*len(buf)+2 {
+		return fmt.Errorf("want %d hexadecimals with 0x prefix", 2*len(buf))
+	}
+
+	_, err := hexlib.Decode(buf, []byte(h[2:]))
+	return err
+}
+
+func (h prefixedHex) Bytes() ([]byte, error) {
+	l := len(h)
+	if l == 0 {
+		return nil, nil
+	}
+	if l == 1 || h[0] != '0' || h[1] != 'x' {
+		return nil, errNoHexPrefix
+	}
+	if l == 2 {
+		return nil, nil
+	}
+
+	bytes := make([]byte, l/2-1)
+	_, err := hexlib.Decode(bytes, []byte(h[2:]))
+	return bytes, err
+}
+
+func (h prefixedHex) Int() (*big.Int, error) {
+	bytes, err := h.Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return new(big.Int).SetBytes(bytes), nil
 }
