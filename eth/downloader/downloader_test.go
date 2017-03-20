@@ -33,7 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/trie"
 )
 
@@ -46,7 +45,6 @@ var (
 
 // Reduce some of the parameters to make the tester faster.
 func init() {
-	MaxForkAncestry = uint64(10000)
 	blockCacheLimit = 1024
 
 	var err error
@@ -93,7 +91,7 @@ func makeChain(n int, seed byte, parent *types.Block, parentReceipts types.Recei
 		}
 		// If the block number is multiple of 3, send a bonus transaction to the miner
 		if parent == genesis && i%3 == 0 {
-			tx, err := types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), params.TxGas, nil, nil).SignECDSA(testKey)
+			tx, err := types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), core.TxGas, nil, nil).SignECDSA(testKey)
 			if err != nil {
 				panic(err)
 			}

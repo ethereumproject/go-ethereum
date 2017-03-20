@@ -29,7 +29,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 func RunVmTestWithReader(r io.Reader, skipTests []string) error {
@@ -215,7 +214,12 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 
 	caller := state.GetOrNewStateObject(from)
 
-	vmenv := NewEnvFromMap(RuleSet{params.MainNetHomesteadBlock, params.MainNetHomesteadGasRepriceBlock, params.DiehardBlock, params.ExplosionBlock}, state, env, exec)
+	vmenv := NewEnvFromMap(RuleSet{
+		HomesteadBlock:           big.NewInt(1150000),
+		HomesteadGasRepriceBlock: big.NewInt(2500000),
+		DiehardBlock:             big.NewInt(3000000),
+		ExplosionBlock:           big.NewInt(5000000),
+	}, state, env, exec)
 	vmenv.vmTest = true
 	vmenv.skipTransfer = true
 	vmenv.initial = true

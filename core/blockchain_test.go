@@ -34,7 +34,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
 )
@@ -801,7 +800,7 @@ func TestFastVsFullChains(t *testing.T) {
 		// If the block number is multiple of 3, send a few bonus transactions to the miner
 		if i%3 == 2 {
 			for j := 0; j < i%4+1; j++ {
-				tx, err := types.NewTransaction(block.TxNonce(address), common.Address{0x00}, big.NewInt(1000), params.TxGas, nil, nil).WithSigner(signer).SignECDSA(key)
+				tx, err := types.NewTransaction(block.TxNonce(address), common.Address{0x00}, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key)
 				if err != nil {
 					panic(err)
 				}
@@ -980,7 +979,7 @@ func TestLightVsFastVsFullChainHeads(t *testing.T) {
 
 // Tests that chain reorganisations handle transaction removals and reinsertions.
 func TestChainTxReorgs(t *testing.T) {
-	params.MinGasLimit = big.NewInt(125000) // Minimum the gas limit may ever be.
+	MinGasLimit = big.NewInt(125000)
 
 	key1, err := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	if err != nil {
@@ -1013,11 +1012,11 @@ func TestChainTxReorgs(t *testing.T) {
 	// Create two transactions shared between the chains:
 	//  - postponed: transaction included at a later block in the forked chain
 	//  - swapped: transaction included at the same block number in the forked chain
-	postponed, err := types.NewTransaction(0, addr1, big.NewInt(1000), params.TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+	postponed, err := types.NewTransaction(0, addr1, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	swapped, err := types.NewTransaction(1, addr1, big.NewInt(1000), params.TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+	swapped, err := types.NewTransaction(1, addr1, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1037,13 +1036,13 @@ func TestChainTxReorgs(t *testing.T) {
 	chain, _ := GenerateChain(chainConfig, genesis, db, 3, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
-			pastDrop, _ = types.NewTransaction(gen.TxNonce(addr2), addr2, big.NewInt(1000), params.TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
+			pastDrop, _ = types.NewTransaction(gen.TxNonce(addr2), addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
 
 			gen.AddTx(pastDrop)  // This transaction will be dropped in the fork from below the split point
 			gen.AddTx(postponed) // This transaction will be postponed till block #3 in the fork
 
 		case 2:
-			freshDrop, _ = types.NewTransaction(gen.TxNonce(addr2), addr2, big.NewInt(1000), params.TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
+			freshDrop, _ = types.NewTransaction(gen.TxNonce(addr2), addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
 
 			gen.AddTx(freshDrop) // This transaction will be dropped in the fork from exactly at the split point
 			gen.AddTx(swapped)   // This transaction will be swapped out at the exact height
@@ -1066,18 +1065,18 @@ func TestChainTxReorgs(t *testing.T) {
 	chain, _ = GenerateChain(chainConfig, genesis, db, 5, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
-			pastAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), params.TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
+			pastAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
 			gen.AddTx(pastAdd) // This transaction needs to be injected during reorg
 
 		case 2:
 			gen.AddTx(postponed) // This transaction was postponed from block #1 in the original chain
 			gen.AddTx(swapped)   // This transaction was swapped from the exact current spot in the original chain
 
-			freshAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), params.TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
+			freshAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
 			gen.AddTx(freshAdd) // This transaction will be added exactly at reorg time
 
 		case 3:
-			futureAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), params.TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
+			futureAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
 			gen.AddTx(futureAdd) // This transaction will be added after a full reorg
 		}
 	})
@@ -1115,7 +1114,7 @@ func TestChainTxReorgs(t *testing.T) {
 }
 
 func TestLogReorgs(t *testing.T) {
-	params.MinGasLimit = big.NewInt(125000) // Minimum the gas limit may ever be.
+	MinGasLimit = big.NewInt(125000)
 
 	key1, err := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	if err != nil {

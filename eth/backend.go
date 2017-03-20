@@ -59,9 +59,9 @@ const (
 type Config struct {
 	ChainConfig *core.ChainConfig // chain configuration
 
-	NetworkId int    // Network ID to use for selecting peers to connect to
+	NetworkId int // Network ID to use for selecting peers to connect to
 	Genesis   *core.GenesisDump
-	FastSync  bool   // Enables the state download based fast synchronisation algorithm
+	FastSync  bool // Enables the state download based fast synchronisation algorithm
 
 	BlockChainVersion  int
 	SkipBcVersionCheck bool // e.g. blockchain export

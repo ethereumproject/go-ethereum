@@ -20,7 +20,6 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 // Type is the VM type accepted by **NewVm**
@@ -62,13 +61,13 @@ func quadMemGas(mem *Memory, newMemSize, gas *big.Int) {
 			// The order has been optimised to reduce allocation
 			oldSize := toWordSize(big.NewInt(int64(mem.Len())))
 			pow := new(big.Int).Exp(oldSize, common.Big2, Zero)
-			linCoef := oldSize.Mul(oldSize, params.MemoryGas)
-			quadCoef := new(big.Int).Div(pow, params.QuadCoeffDiv)
+			linCoef := oldSize.Mul(oldSize, big.NewInt(3))
+			quadCoef := new(big.Int).Div(pow, big.NewInt(512))
 			oldTotalFee := new(big.Int).Add(linCoef, quadCoef)
 
 			pow.Exp(newMemSizeWords, common.Big2, Zero)
-			linCoef = linCoef.Mul(newMemSizeWords, params.MemoryGas)
-			quadCoef = quadCoef.Div(pow, params.QuadCoeffDiv)
+			linCoef = linCoef.Mul(newMemSizeWords, big.NewInt(3))
+			quadCoef = quadCoef.Div(pow, big.NewInt(512))
 			newTotalFee := linCoef.Add(linCoef, quadCoef)
 
 			fee := newTotalFee.Sub(newTotalFee, oldTotalFee)

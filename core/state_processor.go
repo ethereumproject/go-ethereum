@@ -29,8 +29,9 @@ import (
 )
 
 var (
-	big8  = big.NewInt(8)
-	big32 = big.NewInt(32)
+	BlockReward = big.NewInt(5e+18)
+	big8        = big.NewInt(8)
+	big32       = big.NewInt(32)
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning

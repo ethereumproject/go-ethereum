@@ -35,7 +35,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -225,8 +224,18 @@ func NewEnv(state *state.StateDB, transactor common.Address, value *big.Int) *VM
 type ruleSet struct{}
 
 func (ruleSet) IsHomestead(*big.Int) bool { return true }
-func (ruleSet) GasTable(*big.Int) params.GasTable {
-	return params.GasTableHomesteadGasRepriceFork
+
+func (ruleSet) GasTable(*big.Int) *vm.GasTable {
+	return &vm.GasTable{
+		ExtcodeSize:     big.NewInt(700),
+		ExtcodeCopy:     big.NewInt(700),
+		Balance:         big.NewInt(400),
+		SLoad:           big.NewInt(200),
+		Calls:           big.NewInt(700),
+		Suicide:         big.NewInt(5000),
+		ExpByte:         big.NewInt(10),
+		CreateBySuicide: big.NewInt(25000),
+	}
 }
 
 func (self *VMEnv) RuleSet() vm.RuleSet       { return ruleSet{} }

@@ -19,9 +19,9 @@ package vm
 import (
 	"fmt"
 	"math/big"
-
-	"github.com/ethereumproject/go-ethereum/params"
 )
+
+const stackLimit = 1024 // maximum size of VM stack allowed.
 
 var (
 	GasQuickStep   = big.NewInt(2)
@@ -39,11 +39,28 @@ var (
 	n64 = big.NewInt(64)
 )
 
+type GasTable struct {
+	ExtcodeSize *big.Int
+	ExtcodeCopy *big.Int
+	Balance     *big.Int
+	SLoad       *big.Int
+	Calls       *big.Int
+	Suicide     *big.Int
+	ExpByte     *big.Int
+
+	// CreateBySuicide occurs when the
+	// refunded account is one that does
+	// not exist. This logic is similar
+	// to call. May be left nil. Nil means
+	// not charged.
+	CreateBySuicide *big.Int
+}
+
 // calcGas returns the actual gas cost of the call.
 //
 // The cost of gas was changed during the homestead price change HF. To allow for EIP150
 // to be implemented. The returned gas is gas - base * 63 / 64.
-func callGas(gasTable params.GasTable, availableGas, base, callCost *big.Int) *big.Int {
+func callGas(gasTable *GasTable, availableGas, base, callCost *big.Int) *big.Int {
 	if gasTable.CreateBySuicide != nil {
 		availableGas = new(big.Int).Sub(availableGas, base)
 		g := new(big.Int).Div(availableGas, n64)
@@ -74,8 +91,8 @@ func baseCheck(op OpCode, stack *stack, gas *big.Int) error {
 			return err
 		}
 
-		if r.stackPush > 0 && stack.len()-r.stackPop+r.stackPush > int(params.StackLimit.Int64()) {
-			return fmt.Errorf("stack limit reached %d (%d)", stack.len(), params.StackLimit.Int64())
+		if r.stackPush > 0 && stack.len()-r.stackPop+r.stackPush > stackLimit {
+			return fmt.Errorf("stack length %d exceed limit %d", stack.len(), stackLimit)
 		}
 
 		gas.Add(gas, r.gas)
@@ -149,16 +166,16 @@ var _baseCheck = map[OpCode]req{
 	BALANCE:      {1, Zero, 1},
 	EXTCODESIZE:  {1, Zero, 1},
 	EXTCODECOPY:  {4, Zero, 0},
-	SLOAD:        {1, params.SloadGas, 1},
+	SLOAD:        {1, big.NewInt(50), 1},
 	SSTORE:       {2, Zero, 0},
-	SHA3:         {2, params.Sha3Gas, 1},
-	CREATE:       {3, params.CreateGas, 1},
+	SHA3:         {2, big.NewInt(30), 1},
+	CREATE:       {3, big.NewInt(32000), 1},
 	// Zero is calculated in the gasSwitch
 	CALL:         {7, Zero, 1},
 	CALLCODE:     {7, Zero, 1},
 	DELEGATECALL: {6, Zero, 1},
 	SUICIDE:      {1, Zero, 0},
-	JUMPDEST:     {0, params.JumpdestGas, 0},
+	JUMPDEST:     {0, big.NewInt(1), 0},
 	RETURN:       {2, Zero, 0},
 	PUSH1:        {0, GasFastestStep, 1},
 	DUP1:         {0, Zero, 1},

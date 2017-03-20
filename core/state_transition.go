@@ -24,11 +24,13 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
-	Big0 = big.NewInt(0)
+	TxGas                 = big.NewInt(21000) // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
+	TxGasContractCreation = big.NewInt(53000) // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
+	TxDataZeroGas         = big.NewInt(4)     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
+	TxDataNonZeroGas      = big.NewInt(68)    // Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions.
 )
 
 /*
@@ -82,9 +84,9 @@ func MessageCreatesContract(msg Message) bool {
 func IntrinsicGas(data []byte, contractCreation, homestead bool) *big.Int {
 	igas := new(big.Int)
 	if contractCreation && homestead {
-		igas.Set(params.TxGasContractCreation)
+		igas.Set(TxGasContractCreation)
 	} else {
-		igas.Set(params.TxGas)
+		igas.Set(TxGas)
 	}
 	if len(data) > 0 {
 		var nz int64
@@ -94,10 +96,10 @@ func IntrinsicGas(data []byte, contractCreation, homestead bool) *big.Int {
 			}
 		}
 		m := big.NewInt(nz)
-		m.Mul(m, params.TxDataNonZeroGas)
+		m.Mul(m, TxDataNonZeroGas)
 		igas.Add(igas, m)
 		m.SetInt64(int64(len(data)) - nz)
-		m.Mul(m, params.TxDataZeroGas)
+		m.Mul(m, TxDataZeroGas)
 		igas.Add(igas, m)
 	}
 	return igas
@@ -238,7 +240,7 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	if contractCreation {
 		ret, _, err = vmenv.Create(sender, self.data, self.gas, self.gasPrice, self.value)
 		if homestead && err == vm.CodeStoreOutOfGasError {
-			self.gas = Big0
+			self.gas = big.NewInt(0)
 		}
 
 		if err != nil {

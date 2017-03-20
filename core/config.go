@@ -17,12 +17,18 @@
 package core
 
 import (
+	hexlib "encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var (
@@ -32,97 +38,6 @@ var (
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
 )
-
-// DefaultConfig is the Ethereum Classic standard setup.
-var DefaultConfig = &ChainConfig{
-	Forks: []*Fork{
-		{
-			Name:         "Homestead",
-			Block:        big.NewInt(1150000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableHomestead,
-		}, {
-			Name:         "ETF",
-			Block:        big.NewInt(1920000),
-			NetworkSplit: true,
-			Support:      false,
-			RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
-		}, {
-			Name:         "GasReprice",
-			Block:        big.NewInt(2500000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableHomesteadGasRepriceFork,
-		}, {
-			Name:         "Diehard",
-			Block:        big.NewInt(3000000),
-			Length:       big.NewInt(2000000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableDiehardFork,
-		},
-	},
-	BadHashes: []*BadHash{
-		{
-			// consensus issue that occurred on the Frontier network at block 116,522, mined on 2015-08-20 at 14:59:16+02:00
-			// https://blog.ethereum.org/2015/08/20/security-alert-consensus-issue
-			Block: big.NewInt(116522),
-			Hash:  common.HexToHash("05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"),
-		},
-	},
-	ChainId: params.ChainId,
-}
-
-// TestConfig is the semi-official setup for testing purposes.
-// TODO(pascaldekloe): drop with issue #131
-var TestConfig = &ChainConfig{
-	Forks: []*Fork{
-		{
-			Name:         "Homestead",
-			Block:        big.NewInt(494000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableHomestead,
-		},
-		{
-			Name:         "GasReprice",
-			Block:        big.NewInt(1783000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableHomesteadGasRepriceFork,
-		},
-		{
-			Name:         "ETF",
-			Block:        big.NewInt(1885000),
-			NetworkSplit: true,
-			Support:      false,
-			RequiredHash: common.HexToHash("2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740"),
-		},
-		{
-			Name:         "Diehard",
-			Block:        big.NewInt(1915000),
-			Length:       big.NewInt(1500000),
-			NetworkSplit: false,
-			Support:      true,
-			GasTable:     &params.GasTableDiehardFork,
-		},
-	},
-	BadHashes: []*BadHash{
-		{
-			// consensus issue at Testnet #383792
-			// http://ethereum.stackexchange.com/questions/10183/upgraded-to-geth-1-5-0-bad-block-383792
-			Block: big.NewInt(383792),
-			Hash:  common.HexToHash("9690db54968a760704d99b8118bf79d565711669cefad24b51b5b1013d827808"),
-		},
-		{
-			// chain followed by non-diehard testnet
-			Block: big.NewInt(1915277),
-			Hash:  common.HexToHash("3bef9997340acebc85b84948d849ceeff74384ddf512a20676d424e972a3c3c4"),
-		},
-	},
-	ChainId: params.TestnetChainId,
-}
 
 // ChainConfig is the core config which determines the blockchain settings.
 //
@@ -214,18 +129,27 @@ func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
 
 // GasTable returns the gas table corresponding to the current fork
 // The returned GasTable's fields shouldn't, under any circumstances, be changed.
-func (c *ChainConfig) GasTable(num *big.Int) params.GasTable {
-	var gasTable = params.GasTableHomestead
-	//TODO avoid loop, remember current fork
-	for i := range c.Forks {
-		fork := c.Forks[i]
+func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
+	t := &vm.GasTable{
+		ExtcodeSize:     big.NewInt(20),
+		ExtcodeCopy:     big.NewInt(20),
+		Balance:         big.NewInt(20),
+		SLoad:           big.NewInt(50),
+		Calls:           big.NewInt(40),
+		Suicide:         big.NewInt(0),
+		ExpByte:         big.NewInt(10),
+		CreateBySuicide: nil,
+	}
+
+	for _, fork := range c.Forks {
 		if fork.Block.Cmp(num) <= 0 {
 			if fork.GasTable != nil {
-				gasTable = *fork.GasTable
+				t = fork.GasTable
 			}
 		}
 	}
-	return gasTable
+
+	return t
 }
 
 type Fork struct {
@@ -242,6 +166,228 @@ type Fork struct {
 	// after network split.
 	RequiredHash common.Hash
 	// Gas Price table
-	GasTable *params.GasTable
+	GasTable *vm.GasTable
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
+}
+
+// WriteGenesisBlock writes the genesis block to the database as block number 0
+func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Block, error) {
+	statedb, err := state.New(common.Hash{}, chainDb)
+	if err != nil {
+		return nil, err
+	}
+
+	for addrHex, account := range genesis.Alloc {
+		var addr common.Address
+		if err := addrHex.Decode(addr[:]); err != nil {
+			return nil, fmt.Errorf("malformed addres %q: %s", addrHex, err)
+		}
+
+		balance, ok := new(big.Int).SetString(account.Balance, 0)
+		if !ok {
+			return nil, fmt.Errorf("malformed account %q balance %q", addrHex, account.Balance)
+		}
+		statedb.AddBalance(addr, balance)
+
+		code, err := account.Code.Bytes()
+		if err != nil {
+			return nil, fmt.Errorf("malformed account %q code: %s", addrHex, err)
+		}
+		statedb.SetCode(addr, code)
+
+		for key, value := range account.Storage {
+			var k, v common.Hash
+			if err := key.Decode(k[:]); err != nil {
+				return nil, fmt.Errorf("malformed account %q key: %s", addrHex, err)
+			}
+			if err := value.Decode(v[:]); err != nil {
+				return nil, fmt.Errorf("malformed account %q value: %s", addrHex, err)
+			}
+			statedb.SetState(addr, k, v)
+		}
+	}
+	root, stateBatch := statedb.CommitBatch()
+
+	header, err := genesis.Header()
+	if err != nil {
+		return nil, err
+	}
+	header.Root = root
+
+	block := types.NewBlock(header, nil, nil, nil)
+
+	if block := GetBlock(chainDb, block.Hash()); block != nil {
+		glog.V(logger.Info).Infoln("Genesis block already in chain. Writing canonical number")
+		err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64())
+		if err != nil {
+			return nil, err
+		}
+		return block, nil
+	}
+
+	if err := stateBatch.Write(); err != nil {
+		return nil, fmt.Errorf("cannot write state: %v", err)
+	}
+	if err := WriteTd(chainDb, block.Hash(), header.Difficulty); err != nil {
+		return nil, err
+	}
+	if err := WriteBlock(chainDb, block); err != nil {
+		return nil, err
+	}
+	if err := WriteBlockReceipts(chainDb, block.Hash(), nil); err != nil {
+		return nil, err
+	}
+	if err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64()); err != nil {
+		return nil, err
+	}
+	if err := WriteHeadBlockHash(chainDb, block.Hash()); err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+type GenesisAccount struct {
+	Address common.Address
+	Balance *big.Int
+}
+
+func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) *types.Block {
+	dump := GenesisDump{
+		GasLimit:   "0x47E7C4",
+		Difficulty: "0x020000",
+		Alloc:      make(map[hex]*GenesisDumpAlloc, len(accounts)),
+	}
+
+	for _, a := range accounts {
+		dump.Alloc[hex(hexlib.EncodeToString(a.Address[:]))] = &GenesisDumpAlloc{
+			Balance: a.Balance.String(),
+		}
+	}
+
+	block, err := WriteGenesisBlock(db, &dump)
+	if err != nil {
+		panic(err)
+	}
+	return block
+}
+
+// GenesisDump is the geth JSON format.
+// https://github.com/ethereumproject/wiki/wiki/Ethereum-Chain-Spec-Format#subformat-genesis
+type GenesisDump struct {
+	Nonce      prefixedHex
+	Timestamp  prefixedHex
+	ParentHash prefixedHex
+	ExtraData  prefixedHex
+	GasLimit   prefixedHex
+	Difficulty prefixedHex
+	Mixhash    prefixedHex
+	Coinbase   prefixedHex
+
+	// Alloc maps accounts by their address.
+	Alloc map[hex]*GenesisDumpAlloc
+}
+
+// GenesisDumpAlloc is a GenesisDump.Alloc entry.
+type GenesisDumpAlloc struct {
+	Code    prefixedHex
+	Storage map[hex]hex
+	Balance string // decimal string
+}
+
+// Header returns the mapping.
+func (g *GenesisDump) Header() (*types.Header, error) {
+	var h types.Header
+
+	var err error
+	if err = g.Nonce.Decode(h.Nonce[:]); err != nil {
+		return nil, fmt.Errorf("malformed nonce: %s", err)
+	}
+	if h.Time, err = g.Timestamp.Int(); err != nil {
+		return nil, fmt.Errorf("malformed timestamp: %s", err)
+	}
+	if err = g.ParentHash.Decode(h.ParentHash[:]); err != nil {
+		return nil, fmt.Errorf("malformed parentHash: %s", err)
+	}
+	if h.Extra, err = g.ExtraData.Bytes(); err != nil {
+		return nil, fmt.Errorf("malformed extraData: %s", err)
+	}
+	if h.GasLimit, err = g.GasLimit.Int(); err != nil {
+		return nil, fmt.Errorf("malformed gasLimit: %s", err)
+	}
+	if h.Difficulty, err = g.Difficulty.Int(); err != nil {
+		return nil, fmt.Errorf("malformed difficulty: %s", err)
+	}
+	if err = g.Mixhash.Decode(h.MixDigest[:]); err != nil {
+		return nil, fmt.Errorf("malformed mixhash: %s", err)
+	}
+	if err := g.Coinbase.Decode(h.Coinbase[:]); err != nil {
+		return nil, fmt.Errorf("malformed coinbase: %s", err)
+	}
+
+	return &h, nil
+}
+
+// hex is a hexadecimal string.
+type hex string
+
+// Decode fills buf when h is not empty.
+func (h hex) Decode(buf []byte) error {
+	if len(h) != 2*len(buf) {
+		return fmt.Errorf("want %d hexadecimals", 2*len(buf))
+	}
+
+	_, err := hexlib.Decode(buf, []byte(h))
+	return err
+}
+
+// prefixedHex is a hexadecimal string with an "0x" prefix.
+type prefixedHex string
+
+var errNoHexPrefix = errors.New("want 0x prefix")
+
+// Decode fills buf when h is not empty.
+func (h prefixedHex) Decode(buf []byte) error {
+	i := len(h)
+	if i == 0 {
+		return nil
+	}
+	if i == 1 || h[0] != '0' || h[1] != 'x' {
+		return errNoHexPrefix
+	}
+	if i == 2 {
+		return nil
+	}
+	if i != 2*len(buf)+2 {
+		return fmt.Errorf("want %d hexadecimals with 0x prefix", 2*len(buf))
+	}
+
+	_, err := hexlib.Decode(buf, []byte(h[2:]))
+	return err
+}
+
+func (h prefixedHex) Bytes() ([]byte, error) {
+	l := len(h)
+	if l == 0 {
+		return nil, nil
+	}
+	if l == 1 || h[0] != '0' || h[1] != 'x' {
+		return nil, errNoHexPrefix
+	}
+	if l == 2 {
+		return nil, nil
+	}
+
+	bytes := make([]byte, l/2-1)
+	_, err := hexlib.Decode(bytes, []byte(h[2:]))
+	return bytes, err
+}
+
+func (h prefixedHex) Int() (*big.Int, error) {
+	bytes, err := h.Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return new(big.Int).SetBytes(bytes), nil
 }

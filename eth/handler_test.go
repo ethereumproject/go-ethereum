@@ -25,11 +25,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/p2p"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 // Tests that protocol versions and modes of operations are matched up properly.
@@ -65,9 +65,18 @@ func TestProtocolCompatibility(t *testing.T) {
 func TestGetBlockHeaders62(t *testing.T) {
 	core.TestConfig.Forks = []*core.Fork{
 		{
-			Name:     "Homestead",
-			Block:    big.NewInt(0),
-			GasTable: &params.GasTableHomestead,
+			Name:  "Homestead",
+			Block: big.NewInt(0),
+			GasTable: &vm.GasTable{
+				ExtcodeSize:     big.NewInt(20),
+				ExtcodeCopy:     big.NewInt(20),
+				Balance:         big.NewInt(20),
+				SLoad:           big.NewInt(50),
+				Calls:           big.NewInt(40),
+				Suicide:         big.NewInt(0),
+				ExpByte:         big.NewInt(10),
+				CreateBySuicide: nil,
+			},
 		},
 	}
 	testGetBlockHeaders(t, 62)
@@ -303,13 +312,13 @@ func testGetNodeData(t *testing.T, protocol int) {
 		switch i {
 		case 0:
 			// In block 1, the test bank sends account #1 some ether.
-			tx, _ := types.NewTransaction(block.TxNonce(testBank.Address), acc1Addr, big.NewInt(10000), params.TxGas, nil, nil).SignECDSA(testBankKey)
+			tx, _ := types.NewTransaction(block.TxNonce(testBank.Address), acc1Addr, big.NewInt(10000), core.TxGas, nil, nil).SignECDSA(testBankKey)
 			block.AddTx(tx)
 		case 1:
 			// In block 2, the test bank sends some more ether to account #1.
 			// acc1Addr passes it on to account #2.
-			tx1, _ := types.NewTransaction(block.TxNonce(testBank.Address), acc1Addr, big.NewInt(1000), params.TxGas, nil, nil).SignECDSA(testBankKey)
-			tx2, _ := types.NewTransaction(block.TxNonce(acc1Addr), acc2Addr, big.NewInt(1000), params.TxGas, nil, nil).SignECDSA(acc1Key)
+			tx1, _ := types.NewTransaction(block.TxNonce(testBank.Address), acc1Addr, big.NewInt(1000), core.TxGas, nil, nil).SignECDSA(testBankKey)
+			tx2, _ := types.NewTransaction(block.TxNonce(acc1Addr), acc2Addr, big.NewInt(1000), core.TxGas, nil, nil).SignECDSA(acc1Key)
 			block.AddTx(tx1)
 			block.AddTx(tx2)
 		case 2:
@@ -394,13 +403,13 @@ func testGetReceipt(t *testing.T, protocol int) {
 		switch i {
 		case 0:
 			// In block 1, the test bank sends account #1 some ether.
-			tx, _ := types.NewTransaction(block.TxNonce(testBank.Address), acc1Addr, big.NewInt(10000), params.TxGas, nil, nil).SignECDSA(testBankKey)
+			tx, _ := types.NewTransaction(block.TxNonce(testBank.Address), acc1Addr, big.NewInt(10000), core.TxGas, nil, nil).SignECDSA(testBankKey)
 			block.AddTx(tx)
 		case 1:
 			// In block 2, the test bank sends some more ether to account #1.
 			// acc1Addr passes it on to account #2.
-			tx1, _ := types.NewTransaction(block.TxNonce(testBank.Address), acc1Addr, big.NewInt(1000), params.TxGas, nil, nil).SignECDSA(testBankKey)
-			tx2, _ := types.NewTransaction(block.TxNonce(acc1Addr), acc2Addr, big.NewInt(1000), params.TxGas, nil, nil).SignECDSA(acc1Key)
+			tx1, _ := types.NewTransaction(block.TxNonce(testBank.Address), acc1Addr, big.NewInt(1000), core.TxGas, nil, nil).SignECDSA(testBankKey)
+			tx2, _ := types.NewTransaction(block.TxNonce(acc1Addr), acc2Addr, big.NewInt(1000), core.TxGas, nil, nil).SignECDSA(acc1Key)
 			block.AddTx(tx1)
 			block.AddTx(tx2)
 		case 2:
