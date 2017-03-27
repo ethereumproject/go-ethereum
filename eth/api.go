@@ -1679,10 +1679,10 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 		value:    args.Value.BigInt(),
 		data:     common.FromHex(args.Data),
 	}
-	if msg.gas.Cmp(common.Big0) == 0 {
+	if msg.gas.Sign() == 0 {
 		msg.gas = big.NewInt(50000000)
 	}
-	if msg.gasPrice.Cmp(common.Big0) == 0 {
+	if msg.gasPrice.Sign() == 0 {
 		msg.gasPrice = new(big.Int).Mul(big.NewInt(50), common.Shannon)
 	}
 

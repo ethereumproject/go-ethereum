@@ -23,9 +23,8 @@ var (
 	Big1      = big.NewInt(1)
 	Big2      = big.NewInt(2)
 	Big3      = big.NewInt(3)
-	Big0      = big.NewInt(0)
 	BigTrue   = Big1
-	BigFalse  = Big0
+	BigFalse  = big.NewInt(0)
 	Big32     = big.NewInt(32)
 	Big36     = big.NewInt(36)
 	Big97     = big.NewInt(97)
@@ -67,13 +66,7 @@ var tt256m1 = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(
 var tt255 = new(big.Int).Lsh(big.NewInt(1), 255)
 
 func U256(x *big.Int) *big.Int {
-	//if x.Cmp(Big0) < 0 {
-	//		return new(big.Int).Add(tt256, x)
-	//	}
-
-	x.And(x, tt256m1)
-
-	return x
+	return x.And(x, tt256m1)
 }
 
 func S256(x *big.Int) *big.Int {

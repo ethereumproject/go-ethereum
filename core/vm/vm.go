@@ -151,7 +151,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 				case JUMPI:
 					pos, cond := stack.pop(), stack.pop()
 
-					if cond.Cmp(common.BigTrue) >= 0 {
+					if cond.Sign() != 0 {
 						if err := jump(pc, pos); err != nil {
 							return nil, err
 						}

@@ -244,7 +244,7 @@ func (self *VMEnv) Db() vm.Database           { return self.state }
 func (self *VMEnv) SnapshotDatabase() int     { return self.state.Snapshot() }
 func (self *VMEnv) RevertToSnapshot(snap int) { self.state.RevertToSnapshot(snap) }
 func (self *VMEnv) Origin() common.Address    { return *self.transactor }
-func (self *VMEnv) BlockNumber() *big.Int     { return common.Big0 }
+func (self *VMEnv) BlockNumber() *big.Int     { return new(big.Int) }
 func (self *VMEnv) Coinbase() common.Address  { return *self.transactor }
 func (self *VMEnv) Time() *big.Int            { return self.time }
 func (self *VMEnv) Difficulty() *big.Int      { return common.Big1 }

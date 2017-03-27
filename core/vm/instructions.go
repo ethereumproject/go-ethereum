@@ -65,7 +65,7 @@ func opMul(instr instruction, pc *uint64, env Environment, contract *Contract, m
 
 func opDiv(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := stack.pop(), stack.pop()
-	if y.Cmp(common.Big0) != 0 {
+	if y.Sign() != 0 {
 		stack.push(U256(x.Div(x, y)))
 	} else {
 		stack.push(new(big.Int))
@@ -74,12 +74,12 @@ func opDiv(instr instruction, pc *uint64, env Environment, contract *Contract, m
 
 func opSdiv(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := S256(stack.pop()), S256(stack.pop())
-	if y.Cmp(common.Big0) == 0 {
+	if y.Sign() == 0 {
 		stack.push(new(big.Int))
 		return
 	} else {
 		n := new(big.Int)
-		if new(big.Int).Mul(x, y).Cmp(common.Big0) < 0 {
+		if new(big.Int).Mul(x, y).Sign() < 0 {
 			n.SetInt64(-1)
 		} else {
 			n.SetInt64(1)
@@ -94,7 +94,7 @@ func opSdiv(instr instruction, pc *uint64, env Environment, contract *Contract, 
 
 func opMod(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := stack.pop(), stack.pop()
-	if y.Cmp(common.Big0) == 0 {
+	if y.Sign() == 0 {
 		stack.push(new(big.Int))
 	} else {
 		stack.push(U256(x.Mod(x, y)))
@@ -104,11 +104,11 @@ func opMod(instr instruction, pc *uint64, env Environment, contract *Contract, m
 func opSmod(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := S256(stack.pop()), S256(stack.pop())
 
-	if y.Cmp(common.Big0) == 0 {
+	if y.Sign() == 0 {
 		stack.push(new(big.Int))
 	} else {
 		n := new(big.Int)
-		if x.Cmp(common.Big0) < 0 {
+		if x.Sign() < 0 {
 			n.SetInt64(-1)
 		} else {
 			n.SetInt64(1)
@@ -195,7 +195,7 @@ func opEq(instr instruction, pc *uint64, env Environment, contract *Contract, me
 
 func opIszero(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x := stack.pop()
-	if x.Cmp(common.Big0) > 0 {
+	if x.Sign() != 0 {
 		stack.push(new(big.Int))
 	} else {
 		stack.push(big.NewInt(1))
@@ -225,7 +225,7 @@ func opByte(instr instruction, pc *uint64, env Environment, contract *Contract, 
 }
 func opAddmod(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y, z := stack.pop(), stack.pop(), stack.pop()
-	if z.Cmp(Zero) > 0 {
+	if z.Sign() > 0 {
 		add := x.Add(x, y)
 		add.Mod(add, z)
 		stack.push(U256(add))
@@ -235,7 +235,7 @@ func opAddmod(instr instruction, pc *uint64, env Environment, contract *Contract
 }
 func opMulmod(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y, z := stack.pop(), stack.pop(), stack.pop()
-	if z.Cmp(Zero) > 0 {
+	if z.Sign() > 0 {
 		mul := x.Mul(x, y)
 		mul.Mod(mul, z)
 		stack.push(U256(mul))
