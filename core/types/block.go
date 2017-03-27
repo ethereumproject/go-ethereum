@@ -33,7 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
-
 // HeaderExtraMax is the byte size limit for Header.Extra.
 var HeaderExtraMax = 32
 

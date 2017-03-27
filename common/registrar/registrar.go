@@ -54,7 +54,6 @@ This is done for frontier by default, otherwise the caller needs to make sure
 the relevant environment initialised the desired contracts
 */
 var (
-	// GlobalRegistrarAddr = "0xc6d9d2cd449a754c494264e1809c50e34d64562b" // olympic
 	GlobalRegistrarAddr = "0x33990122638b9132ca29c723bdf037f1a891a70c" // frontier
 	HashRegAddr         = "0x23bf622b5a65f6060d855fca401133ded3520620" // frontier
 	UrlHintAddr         = "0x73ed5ef6c010727dfd2671dbb70faac19ec18626" // frontier

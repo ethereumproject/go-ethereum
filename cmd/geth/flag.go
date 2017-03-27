@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -97,12 +96,8 @@ var (
 	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "networkid",
-		Usage: "Network identifier (integer, 0=Olympic, 1=Homestead, 2=Morden)",
+		Usage: "Network identifier (integer, 1=Homestead, 2=Morden)",
 		Value: eth.NetworkId,
-	}
-	OlympicFlag = cli.BoolFlag{
-		Name:  "olympic",
-		Usage: "Olympic network: pre-configured pre-release test network",
 	}
 	TestNetFlag = cli.BoolFlag{
 		Name:  "testnet",
@@ -614,7 +609,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	// Avoid conflicting network flags
-	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag, OlympicFlag}
+	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag}
 	for _, flag := range netFlags {
 		if ctx.GlobalBool(flag.Name) {
 			networks++
@@ -676,12 +671,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	// Override any default configs in dev mode or the test net
 	switch {
-	case ctx.GlobalBool(OlympicFlag.Name):
-		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			ethConf.NetworkId = 1
-		}
-		ethConf.Genesis = core.OlympicGenesis
-
 	case ctx.GlobalBool(TestNetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			ethConf.NetworkId = 2
@@ -701,7 +690,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 			stackConf.ListenAddr = ":0"
 		}
 		// Override the Ethereum protocol configs
-		ethConf.Genesis = core.OlympicGenesis
+		ethConf.Genesis = core.TestNetGenesis
 		if !ctx.GlobalIsSet(GasPriceFlag.Name) {
 			ethConf.GasPrice = new(big.Int)
 		}
@@ -731,20 +720,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	return stack
-}
-
-// SetupNetwork configures the system for either the main net or some test network.
-func SetupNetwork(ctx *cli.Context) {
-	switch {
-	case ctx.GlobalBool(OlympicFlag.Name):
-		core.DurationLimit = big.NewInt(8)
-		core.MinGasLimit = big.NewInt(125000)
-		types.HeaderExtraMax = 1024
-		NetworkIdFlag.Value = 0
-		core.BlockReward = big.NewInt(1.5e+18)
-		core.ExpDiffPeriod = big.NewInt(math.MaxInt64)
-	}
-	core.TargetGasLimit = common.String2Big(ctx.GlobalString(TargetGasLimitFlag.Name))
 }
 
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
@@ -822,12 +797,6 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	var err error
 	chainDb = MakeChainDatabase(ctx)
 
-	if ctx.GlobalBool(OlympicFlag.Name) {
-		_, err := core.WriteGenesisBlock(chainDb, core.OlympicGenesis)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 	chainConfig := MustMakeChainConfigFromDb(ctx, chainDb)
 
 	pow := pow.PoW(core.FakePow{})
