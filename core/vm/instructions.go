@@ -248,11 +248,11 @@ func opSha3(instr instruction, pc *uint64, env Environment, contract *Contract, 
 	offset, size := stack.pop(), stack.pop()
 	hash := crypto.Keccak256(memory.Get(offset.Int64(), size.Int64()))
 
-	stack.push(common.BytesToBig(hash))
+	stack.push(new(big.Int).SetBytes(hash))
 }
 
 func opAddress(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	stack.push(common.Bytes2Big(contract.Address().Bytes()))
+	stack.push(new(big.Int).SetBytes(contract.Address().Bytes()))
 }
 
 func opBalance(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
@@ -275,7 +275,7 @@ func opCallValue(instr instruction, pc *uint64, env Environment, contract *Contr
 }
 
 func opCalldataLoad(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	stack.push(common.Bytes2Big(getData(contract.Input, stack.pop(), common.Big32)))
+	stack.push(new(big.Int).SetBytes(getData(contract.Input, stack.pop(), common.Big32)))
 }
 
 func opCalldataSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
@@ -366,7 +366,7 @@ func opPop(instr instruction, pc *uint64, env Environment, contract *Contract, m
 
 func opMload(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	offset := stack.pop()
-	val := common.BigD(memory.Get(offset.Int64(), 32))
+	val := new(big.Int).SetBytes(memory.Get(offset.Int64(), 32))
 	stack.push(val)
 }
 
@@ -538,8 +538,8 @@ func makeLog(size int) instrFn {
 // make push instruction function
 func makePush(size uint64, bsize *big.Int) instrFn {
 	return func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-		byts := getData(contract.Code, new(big.Int).SetUint64(*pc+1), bsize)
-		stack.push(common.Bytes2Big(byts))
+		bytes := getData(contract.Code, new(big.Int).SetUint64(*pc+1), bsize)
+		stack.push(new(big.Int).SetBytes(bytes))
 		*pc += size
 	}
 }

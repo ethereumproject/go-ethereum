@@ -39,12 +39,12 @@ func TestBloom(t *testing.T) {
 	}
 
 	for _, data := range positive {
-		if !bloom.TestBytes([]byte(data)) {
+		if !BloomLookup(bloom, []byte(data)) {
 			t.Error("expected", data, "to test true")
 		}
 	}
 	for _, data := range negative {
-		if bloom.TestBytes([]byte(data)) {
+		if BloomLookup(bloom, []byte(data)) {
 			t.Error("did not expect", data, "to test true")
 		}
 	}

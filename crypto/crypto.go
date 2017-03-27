@@ -90,7 +90,7 @@ func ToECDSA(prv []byte) *ecdsa.PrivateKey {
 
 	priv := new(ecdsa.PrivateKey)
 	priv.PublicKey.Curve = secp256k1.S256()
-	priv.D = common.BigD(prv)
+	priv.D = new(big.Int).SetBytes(prv)
 	priv.PublicKey.X, priv.PublicKey.Y = secp256k1.S256().ScalarBaseMult(prv)
 	return priv
 }

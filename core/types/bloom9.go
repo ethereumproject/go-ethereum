@@ -25,10 +25,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
-type bytesBacked interface {
-	Bytes() []byte
-}
-
 const bloomLength = 256
 
 type Bloom [bloomLength]byte
@@ -53,20 +49,8 @@ func (b *Bloom) Add(d *big.Int) {
 	b.SetBytes(bin.Bytes())
 }
 
-func (b Bloom) Big() *big.Int {
-	return common.Bytes2Big(b[:])
-}
-
 func (b Bloom) Bytes() []byte {
 	return b[:]
-}
-
-func (b Bloom) Test(test *big.Int) bool {
-	return BloomLookup(b, test)
-}
-
-func (b Bloom) TestBytes(test []byte) bool {
-	return b.Test(common.BytesToBig(test))
 }
 
 func (b Bloom) MarshalJSON() ([]byte, error) {
@@ -116,9 +100,8 @@ func bloom9(b []byte) *big.Int {
 
 var Bloom9 = bloom9
 
-func BloomLookup(bin Bloom, topic bytesBacked) bool {
-	bloom := bin.Big()
-	cmp := bloom9(topic.Bytes()[:])
-
+func BloomLookup(bin Bloom, topic []byte) bool {
+	bloom := new(big.Int).SetBytes(bin[:])
+	cmp := bloom9(topic)
 	return bloom.And(bloom, cmp).Cmp(cmp) == 0
 }

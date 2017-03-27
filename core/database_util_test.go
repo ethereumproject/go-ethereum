@@ -539,7 +539,7 @@ func TestMipmapBloom(t *testing.T) {
 
 	for _, level := range MIPMapLevels {
 		bloom := GetMipmapBloom(db, 2, level)
-		if !bloom.Test(new(big.Int).SetBytes([]byte("address1"))) {
+		if !types.BloomLookup(bloom, []byte("address1")) {
 			t.Error("expected test to be included on level:", level)
 		}
 	}
@@ -559,7 +559,7 @@ func TestMipmapBloom(t *testing.T) {
 	WriteMipmapBloom(db, 1000, types.Receipts{receipt})
 
 	bloom := GetMipmapBloom(db, 1000, 1000)
-	if bloom.TestBytes([]byte("test")) {
+	if types.BloomLookup(bloom, []byte("test")) {
 		t.Error("test should not have been included")
 	}
 }
@@ -624,7 +624,7 @@ func TestMipmapChain(t *testing.T) {
 	}
 
 	bloom := GetMipmapBloom(db, 0, 1000)
-	if bloom.TestBytes(addr2[:]) {
+	if types.BloomLookup(bloom, addr2[:]) {
 		t.Error("address was included in bloom and should not have")
 	}
 }

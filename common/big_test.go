@@ -23,7 +23,6 @@ import (
 func TestMisc(t *testing.T) {
 	a := Big("10")
 	b := Big("57896044618658097711785492504343953926634992332820282019728792003956564819968")
-	c := []byte{1, 2, 3, 4}
 	z := BitTest(a, 1)
 
 	if z != true {
@@ -35,8 +34,6 @@ func TestMisc(t *testing.T) {
 
 	U256(b)
 	S256(b)
-
-	BigD(c)
 }
 
 func TestBigMax(t *testing.T) {
