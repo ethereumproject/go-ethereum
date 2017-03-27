@@ -165,10 +165,12 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		}
 
 		if obj.Balance().Cmp(common.Big(account.Balance)) != 0 {
-			return fmt.Errorf("(%x) balance failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], common.String2Big(account.Balance), obj.Balance())
+			return fmt.Errorf("(%x) balance failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], account.Balance, obj.Balance())
 		}
 
-		if obj.Nonce() != common.String2Big(account.Nonce).Uint64() {
+		if nonce, err := strconv.ParseUint(account.Nonce, 0, 64); err != nil {
+			return fmt.Errorf("test account %q malformed nonce: %s", addr, err)
+		} else if obj.Nonce() != nonce {
 			return fmt.Errorf("(%x) nonce failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], account.Nonce, obj.Nonce())
 		}
 

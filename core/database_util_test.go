@@ -19,9 +19,11 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -53,11 +55,30 @@ func (d *diffTest) UnmarshalJSON(b []byte) (err error) {
 		return err
 	}
 
-	d.ParentTimestamp = common.String2Big(ext.ParentTimestamp).Uint64()
-	d.ParentDifficulty = common.String2Big(ext.ParentDifficulty)
-	d.CurrentTimestamp = common.String2Big(ext.CurrentTimestamp).Uint64()
-	d.CurrentBlocknumber = common.String2Big(ext.CurrentBlocknumber)
-	d.CurrentDifficulty = common.String2Big(ext.CurrentDifficulty)
+	d.ParentTimestamp, err = strconv.ParseUint(ext.ParentTimestamp, 0, 64)
+	if err != nil {
+		return fmt.Errorf("malformed parent timestamp: %s", err)
+	}
+
+	d.ParentDifficulty = new(big.Int)
+	if _, ok := d.ParentDifficulty.SetString(ext.ParentDifficulty, 0); !ok {
+		return fmt.Errorf("malformed parent difficulty %q", ext.ParentDifficulty)
+	}
+
+	d.CurrentTimestamp, err = strconv.ParseUint(ext.CurrentTimestamp, 0, 64)
+	if err != nil {
+		return fmt.Errorf("malformed current timestamp: %s", err)
+	}
+
+	d.CurrentBlocknumber = new(big.Int)
+	if _, ok := d.CurrentBlocknumber.SetString(ext.CurrentBlocknumber, 0); !ok {
+		return fmt.Errorf("malformed current blocknumber %q", ext.CurrentBlocknumber)
+	}
+
+	d.CurrentDifficulty = new(big.Int)
+	if _, ok := d.CurrentDifficulty.SetString(ext.CurrentDifficulty, 0); !ok {
+		return fmt.Errorf("malformed current difficulty %q", ext.CurrentDifficulty)
+	}
 
 	return nil
 }

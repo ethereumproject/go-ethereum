@@ -32,7 +32,7 @@ var (
 	Big98    = big.NewInt(98)
 	Big256   = big.NewInt(0xff)
 	Big257   = big.NewInt(257)
-	MaxBig   = String2Big("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	MaxBig, _ = new(big.Int).SetString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
 )
 
 // Big pow
@@ -65,12 +65,6 @@ func BytesToBig(data []byte) *big.Int {
 }
 func Bytes2Big(data []byte) *big.Int { return BytesToBig(data) }
 func BigD(data []byte) *big.Int      { return BytesToBig(data) }
-
-func String2Big(num string) *big.Int {
-	n := new(big.Int)
-	n.SetString(num, 0)
-	return n
-}
 
 func BitTest(num *big.Int, i int) bool {
 	return num.Bit(i) > 0
