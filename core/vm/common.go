@@ -37,7 +37,7 @@ var (
 	U256 = common.U256 // Shortcut to common.U256
 	S256 = common.S256 // Shortcut to common.S256
 
-	One  = common.Big1 // Shortcut to common.Big1
+	One = common.Big1 // Shortcut to common.Big1
 )
 
 // calculates the memory size required for a step

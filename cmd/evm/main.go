@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -127,7 +128,11 @@ func run(ctx *cli.Context) error {
 	statedb, _ := state.New(common.Hash{}, db)
 	sender := statedb.CreateAccount(common.StringToAddress("sender"))
 
-	vmenv := NewEnv(statedb, common.StringToAddress("evmuser"), common.Big(ctx.GlobalString(ValueFlag.Name)))
+	valueFlag, _ := new(big.Int).SetString(ctx.GlobalString(ValueFlag.Name), 0)
+	if valueFlag == nil {
+		log.Fatalf("malformed %s flag value %q", ValueFlag.Name, ctx.GlobalString(ValueFlag.Name))
+	}
+	vmenv := NewEnv(statedb, common.StringToAddress("evmuser"), valueFlag)
 
 	tstart := time.Now()
 
@@ -136,28 +141,24 @@ func run(ctx *cli.Context) error {
 		err error
 	)
 
+	gasFlag, _ := new(big.Int).SetString(ctx.GlobalString(GasFlag.Name), 0)
+	if gasFlag == nil {
+		log.Fatalf("malformed %s flag value %q", GasFlag.Name, ctx.GlobalString(GasFlag.Name))
+	}
+	priceFlag, _ := new(big.Int).SetString(ctx.GlobalString(PriceFlag.Name), 0)
+	if priceFlag == nil {
+		log.Fatalf("malformed %s flag value %q", PriceFlag.Name, ctx.GlobalString(PriceFlag.Name))
+	}
+
 	if ctx.GlobalBool(CreateFlag.Name) {
 		input := append(common.Hex2Bytes(ctx.GlobalString(CodeFlag.Name)), common.Hex2Bytes(ctx.GlobalString(InputFlag.Name))...)
-		ret, _, err = vmenv.Create(
-			sender,
-			input,
-			common.Big(ctx.GlobalString(GasFlag.Name)),
-			common.Big(ctx.GlobalString(PriceFlag.Name)),
-			common.Big(ctx.GlobalString(ValueFlag.Name)),
-		)
+		ret, _, err = vmenv.Create(sender, input, gasFlag, priceFlag, valueFlag)
 	} else {
 		receiver := statedb.CreateAccount(common.StringToAddress("receiver"))
 
 		code := common.Hex2Bytes(ctx.GlobalString(CodeFlag.Name))
 		receiver.SetCode(crypto.Keccak256Hash(code), code)
-		ret, err = vmenv.Call(
-			sender,
-			receiver.Address(),
-			common.Hex2Bytes(ctx.GlobalString(InputFlag.Name)),
-			common.Big(ctx.GlobalString(GasFlag.Name)),
-			common.Big(ctx.GlobalString(PriceFlag.Name)),
-			common.Big(ctx.GlobalString(ValueFlag.Name)),
-		)
+		ret, err = vmenv.Call(sender, receiver.Address(), common.Hex2Bytes(ctx.GlobalString(InputFlag.Name)), gasFlag, priceFlag, valueFlag)
 	}
 	vmdone := time.Since(tstart)
 

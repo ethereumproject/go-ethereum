@@ -44,16 +44,6 @@ func BigPow(a, b int) *big.Int {
 	return c
 }
 
-// Big
-//
-// Shortcut for new(big.Int).SetString(..., 0)
-func Big(num string) *big.Int {
-	n := new(big.Int)
-	n.SetString(num, 0)
-
-	return n
-}
-
 func BitTest(num *big.Int, i int) bool {
 	return num.Bit(i) > 0
 }

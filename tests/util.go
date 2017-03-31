@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -107,8 +108,16 @@ func insertAccount(state *state.StateDB, saddr string, account Account) {
 	}
 	addr := common.HexToAddress(saddr)
 	state.SetCode(addr, common.Hex2Bytes(account.Code))
-	state.SetNonce(addr, common.Big(account.Nonce).Uint64())
-	state.SetBalance(addr, common.Big(account.Balance))
+	if i, err := strconv.ParseUint(account.Nonce, 0, 64); err != nil {
+		panic(err)
+	} else {
+		state.SetNonce(addr, i)
+	}
+	if i, ok := new(big.Int).SetString(account.Balance, 0); !ok {
+		panic("malformed account balance")
+	} else {
+		state.SetBalance(addr, i)
+	}
 	for a, v := range account.Storage {
 		state.SetState(addr, common.HexToHash(a), common.HexToHash(v))
 	}
@@ -221,10 +230,22 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	env.origin = common.HexToAddress(exeValues["caller"])
 	env.parent = common.HexToHash(envValues["previousHash"])
 	env.coinbase = common.HexToAddress(envValues["currentCoinbase"])
-	env.number = common.Big(envValues["currentNumber"])
-	env.time = common.Big(envValues["currentTimestamp"])
-	env.difficulty = common.Big(envValues["currentDifficulty"])
-	env.gasLimit = common.Big(envValues["currentGasLimit"])
+	env.number, _ = new(big.Int).SetString(envValues["currentNumber"], 0)
+	if env.number == nil {
+		panic("malformed current number")
+	}
+	env.time, _ = new(big.Int).SetString(envValues["currentTimestamp"], 0)
+	if env.time == nil {
+		panic("malformed current timestamp")
+	}
+	env.difficulty, _ = new(big.Int).SetString(envValues["currentDifficulty"], 0)
+	if env.difficulty == nil {
+		panic("malformed current difficulty")
+	}
+	env.gasLimit, _ = new(big.Int).SetString(envValues["currentGasLimit"], 0)
+	if env.gasLimit == nil {
+		panic("malformed current gas limit")
+	}
 	env.Gas = new(big.Int)
 
 	env.evm = vm.New(env)

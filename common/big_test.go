@@ -17,28 +17,14 @@
 package common
 
 import (
+	"math/big"
+
 	"testing"
 )
 
-func TestMisc(t *testing.T) {
-	a := Big("10")
-	b := Big("57896044618658097711785492504343953926634992332820282019728792003956564819968")
-	z := BitTest(a, 1)
-
-	if z != true {
-		t.Error("Expected true got", z)
-	}
-
-	U256(a)
-	S256(a)
-
-	U256(b)
-	S256(b)
-}
-
 func TestBigMax(t *testing.T) {
-	a := Big("10")
-	b := Big("5")
+	a := big.NewInt(10)
+	b := big.NewInt(5)
 
 	max1 := BigMax(a, b)
 	if max1 != a {
@@ -52,8 +38,8 @@ func TestBigMax(t *testing.T) {
 }
 
 func TestBigMin(t *testing.T) {
-	a := Big("10")
-	b := Big("5")
+	a := big.NewInt(10)
+	b := big.NewInt(5)
 
 	min1 := BigMin(a, b)
 	if min1 != b {
