@@ -18,6 +18,7 @@
 package miner
 
 import (
+	"errors"
 	"math/big"
 	"sync/atomic"
 
@@ -91,13 +92,21 @@ out:
 	}
 }
 
-func (m *Miner) SetGasPrice(price *big.Int) {
-	// FIXME block tests set a nil gas price. Quick dirty fix
+func (m *Miner) SetGasPrice(price *big.Int) error {
+
 	if price == nil {
-		return
+		priceNilError := errors.New("Gas price was nil. Must be big int.")
+		return priceNilError
+	}
+
+	if m.MinAcceptedGasPrice > price {
+		priceTooLowError := errors.New("Gas price lower than minimum allowed.")
+		return priceTooLowError
 	}
 
 	m.worker.setGasPrice(price)
+
+	return nil
 }
 
 func (self *Miner) Start(coinbase common.Address, threads int) {
