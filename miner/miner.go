@@ -95,8 +95,7 @@ out:
 func (m *Miner) SetGasPrice(price *big.Int) error {
 
 	if price == nil {
-		priceNilError := errors.New("Gas price was nil. Must be big int.")
-		return priceNilError
+		return
 	}
 
 	if price.Cmp(m.MinAcceptedGasPrice) == -1 {
