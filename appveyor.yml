@@ -4,12 +4,17 @@ os: Visual Studio 2015
 environment:
   GOPATH: c:\gopath
 install:
+  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
   - git describe --tags > version.txt
-  - set /p VERSION=<version.txt
-  - echo %VERSION%
+  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+)-([ga-f0-9]+)/v\1.\2-\3/' > version-app.txt
+  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.\2/' version.txt > version-only.txt
+  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.0/' version.txt > version-base.txt
+  - set /p VERSION=<version-app.txt
+  - set /p VERSION_ONLY=<version-only.txt
+  - set /p VERSION_BASE=<version-base.txt
+  - echo %VERSION_BASE% %VERSION_ONLY% %VERSION%
   - echo %PATH%
   - echo %GOPATH%
-  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
   - go version
   - go env
   - go get golang.org/x/sys/windows
@@ -28,7 +33,7 @@ deploy:
     subject: ethereumproject
     repo: GoEthereumClassic
     package: go-ethereum
-    version: master
+    version: "%VERSION_BASE%"
     publish: true
     override: true
     on:
