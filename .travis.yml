@@ -16,9 +16,9 @@ before_install:
 script:
 - go test ./...
 - git describe --tags > version.txt
-- sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+)-([ga-f0-9]+)/v\1.\2-\3/' version.txt > version-app.txt
+- sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+)-g([a-f0-9]+)/v\1.\2+\3/' version.txt > version-app.txt
 - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.\2/' version.txt > version-only.txt
-- sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.0/' version.txt > version-base.txt
+- sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.x/' version.txt > version-base.txt
 - go build -ldflags "-X main.Version="`cat version-app.txt` ./cmd/geth
 - bats cmd/geth
 - zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
