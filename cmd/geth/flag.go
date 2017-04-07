@@ -596,6 +596,60 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
+// Check for preexisting **Un-classic** data directory, ie "/home/path/to/Ethereum".
+// If it exists, check if the data therein belongs to Classic blockchain (ie not configged as "ETF"),
+// and rename it to fit Classic naming convention ("/home/path/to/EthereumClassic") if that dir doesn't already exist.
+// This case only applies to Default, ie when a user **doesn't** provide a custom --datadir flag;
+// a user should be able to override a specified data dir if they want.
+func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
+
+	unclassicDataDirPath := common.DefaultUnclassicDataDir()
+	classicDataDirPath := common.DefaultDataDir()
+
+	// only if using default data dir (flagged dir can override)
+	if ctx.GlobalIsSet(DataDirFlag.Name) {
+		log.Printf("INFO: Global --datadir flag is set: %v \n", DataDirFlag.Value.String())
+		return nil
+	}
+
+	// only if default **classic** data dir doesn't already exist
+	if _, err := os.Stat(classicDataDirPath); err == nil {
+		// classic data dir already exists
+		log.Printf("INFO: Using existing ETClassic data directory at: %v.\n", classicDataDirPath)
+		return nil
+	}
+
+	// only if **unclassic** ("<home>/Ethereum") datadir chaindb path DOES already exist, so return nil if it doesn't;
+	// otherwise NewLDBDatabase will create an empty one there.
+	unclassicChainDBPath := filepath.Join(unclassicDataDirPath, "chaindata")
+	if _, err := os.Stat(unclassicChainDBPath); os.IsNotExist(err) {
+		log.Printf("INFO: No existing ETH/ETF default chaindata dir found at: %v \n Using default data directory at: %v.\n", unclassicChainDBPath, classicDataDirPath)
+		return nil
+	}
+
+	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
+	chainDB, err := ethdb.NewLDBDatabase(unclassicChainDBPath, 0, 0)
+	if err != nil {
+		log.Fatalf("WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n  Using default data directory at: %v", err, classicDataDirPath)
+		return nil
+	}
+
+	defer chainDB.Close()
+
+	bcVersionNumber := core.GetBlockChainVersion(chainDB)
+	isETF := core.DefaultConfig.IsETF(big.NewInt(int64(bcVersionNumber)))
+
+	// if existing database in <home>/Ethereum isn't ETC, let it be
+	if isETF {
+		log.Printf("INFO: Existing default Ethereum database at: %v isn't an ETClassic blockchain, it has version number: %v. Will not alter. \nUsing ETC chaindata database at: %v \n", unclassicDataDirPath, bcVersionNumber, classicDataDirPath)
+		return nil
+	}
+
+	log.Printf("INFO/WARNING: Found existing Ethereum data directory with ETC chaindata. \n Moving it from: %v, to: %v \n To specify a data directory use the `--datadir` flag.", unclassicDataDirPath, classicDataDirPath)
+
+	return os.Rename(unclassicDataDirPath, classicDataDirPath)
+}
+
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
@@ -611,6 +665,10 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 			log.Fatalf("%s flag %q exceeds size limit of %d", ExtraDataFlag.Name, s, types.HeaderExtraMax)
 		}
 		miner.HeaderExtra = []byte(s)
+	}
+
+	if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
+		log.Fatalf("Failed to migrate existing Classic database: %v", migrationError)
 	}
 
 	// Avoid conflicting network flags

@@ -59,6 +59,14 @@ type BadHash struct {
 	Hash  common.Hash
 }
 
+// IsETF returns whether num is equal to the bailout fork.
+func (c *ChainConfig) IsETF(num *big.Int) bool {
+	if c.Fork("ETF").Block == nil || num == nil {
+		return false
+	}
+	return num.Cmp(c.Fork("ETF").Block) == 0
+}
+
 // IsHomestead returns whether num is either equal to the homestead block or greater.
 func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 	if c.Fork("Homestead").Block == nil || num == nil {
