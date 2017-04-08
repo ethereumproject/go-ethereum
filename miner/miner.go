@@ -98,7 +98,7 @@ func (m *Miner) SetGasPrice(price *big.Int) error {
 		return nil
 	}
 
-	if price.Cmp(m.MinAcceptedGasPrice) == -1 {
+	if m.MinAcceptedGasPrice != nil && price.Cmp(m.MinAcceptedGasPrice) == -1 {
 		priceTooLowError := errors.New("Gas price lower than minimum allowed.")
 		return priceTooLowError
 	}
