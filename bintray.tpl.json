@@ -7,7 +7,7 @@
   },
 
   "version": {
-    "name": "master",
+    "name": "APPVERSION",
     "attributes": [],
     "gpgSign": false
   },
