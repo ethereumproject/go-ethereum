@@ -8,14 +8,16 @@
 ## Ethereum Go (Ethereum Classic Blockchain)
 
 Official Go language implementation of the Ethereum protocol supporting the
-_original_ chain. Ethereum Classic (ETC) offers a censorship resistant and powerful application platform for developers parallel to Ethereum (ETHF), while rejecting the DAO bailout.
+_original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and powerful application platform for developers in parallel to Ethereum (ETHF), while differentially rejecting the DAO bailout.
 
-This project is migrated from the now hard-forked [Ethereum (ETHF) Github project](https://github.com/ethereum), and we will need to slowly migrate pieces of the infrastructure required to maintain the project. We will apply all upstream patches unrelated to the DAO HF while organizing development.
+## Install
 
-Comments are being made in the codebase with the tag !EPROJECT
-recommending actions that must be taken to help complete the migration.
+### From a release binary
+The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth --help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum). For common useage, just scroll down a little.
 
-## Building the source
+### Building the source
+
+If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. 
 
 #### Dependencies
 Building geth requires both a Go and a C compiler. Visit our [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum) for instructions.
@@ -23,16 +25,18 @@ Building geth requires both a Go and a C compiler. Visit our [Installation Wiki]
 #### Installing command executables
 
 To install...
-- the full suite of utilities, run `go install github.com/ethereumproject/go-ethereum/cmd/...`
-- just __geth__, run `go install github.com/ethereumproject/go-ethereum/cmd/geth`
+- the full suite of utilities: `$ go install github.com/ethereumproject/go-ethereum/cmd/...`
+- just __geth__: `$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
+
+Executables built from source will, by default, be installed in `$GOPATH/bin/`
 
 ## Executables
 
-This repository includes several wrappers/executables found in the `cmd` directory.
+This repository includes several wrappers/executables found in the `cmd` directory. There's a lot going on here!
 
 | Command    | Description |
 |:----------:|-------------|
-| **`geth`** | Our main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test-, or private net), capable of running as a full node (default) archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. Please see our [Command Line Options](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options) wiki page for details. |
+| **`geth`** | The main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test-, or private net), capable of running as a full node (default) archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. Please see our [Command Line Options](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options) wiki page for details. |
 | `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Ethereum contract ABIs](https://github.com/ethereumproject/wiki/wiki/Ethereum-Contract-ABI) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/ethereumproject/go-ethereum/wiki/Native-DApps:-Go-bindings-to-Ethereum-contracts) wiki page for details. |
 | `bootnode` | Stripped down version of our Ethereum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks. |
 | `disasm` | Bytecode disassembler to convert EVM (Ethereum Virtual Machine) bytecode into more user friendly assembly-like opcodes (e.g. `echo "6001" | disasm`). For details on the individual opcodes, please see pages 22-30 of the [Ethereum Yellow Paper](http://gavwood.com/paper.pdf). |
@@ -42,16 +46,13 @@ This repository includes several wrappers/executables found in the `cmd` directo
 
 ## Running geth
 
-Going through all the possible command line flags is out of scope here (please consult our
-[CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options)), but below you'll find a few common parameter combos to get you up to speed quickly on how you can run your
-own Geth instance.
+Going through all the possible command line flags would be overwhelming here, but below you'll find a few common parameter combos to get you up to speed quickly on how you can run your own Geth instance. 
+
+For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
 
 ### Full node on the main Ethereum network
 
-By far the most common scenario is people wanting to simply interact with the Ethereum network:
-create accounts; transfer funds; deploy and interact with contracts. For this particular use-case
-the user doesn't care about years-old historical data, so we can fast-sync quickly to the current
-state of the network. To do so:
+By far the most common scenario is people wanting to simply interact with the Ethereum network: create accounts; transfer funds; deploy and interact with contracts. For this particular use-case the user doesn't care about years-old historical data, so we can fast-sync quickly to the current state of the network. To do so:
 
 ```
 $ geth --fast --cache=512 console
@@ -59,23 +60,21 @@ $ geth --fast --cache=512 console
 
 This command will:
 
- * Start geth in fast sync mode (`--fast`), causing it to download more data in exchange for avoiding
-   processing the entire history of the Ethereum network, which is very CPU intensive.
- * Bump the memory allowance of the database to 512MB (`--cache=512`), which can help significantly in
-   sync times especially for HDD users. This flag is optional and you can set it as high or as low as
-   you'd like, though we'd recommend the 512MB - 2GB range.
- * Start up Geth's built-in interactive [JavaScript console](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console),
-   (via the trailing `console` subcommand) through which you can invoke all official [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API)
-   as well as Geth's own [management APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs).
-   This too is optional and if you leave it out you can always attach to an already running Geth instance
-   with `geth --attach`.
+ * Start geth in fast sync mode (`--fast`), causing it to download more data in exchange for avoiding processing the entire history of the Ethereum network, which is very CPU intensive.
+ * Bump the memory allowance of the database to 512MB (`--cache=512`), which can help significantly in sync times especially for HDD users. This flag is optional and you can set it as high or as low as you'd like, though we'd recommend the 512MB - 2GB range.
+ * Start up Geth's built-in interactive [JavaScript console](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console), (via the trailing `console` subcommand) through which you can invoke all official [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API) as well as Geth's own [management APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs). This too is optional and if you leave it out you can always attach to an already running Geth instance with `geth --attach`.
+
+## Developing and advanced useage
+
+This project is migrated from the now hard-forked [Ethereum (ETHF) Github project](https://github.com/ethereum), and we will need to slowly migrate pieces of the infrastructure required to maintain the project. We will apply all upstream patches unrelated to the DAO HF while organizing development.
+
+Comments are being made in the codebase with the tag `!EPROJECT`
+recommending actions that must be taken to help complete the migration.
 
 ### Full node on the Ethereum test network
 
-Transitioning towards developers, if you'd like to play around with creating Ethereum contracts, you
-almost certainly would like to do that without any real money involved until you get the hang of the
-entire system. In other words, instead of attaching to the main network, you want to join the **test**
-network with your node, which is fully equivalent to the main network, but with play-Ether only.
+If you'd like to play around with creating Ethereum contracts, you
+almost certainly would like to do that without any real money involved until you get the hang of the entire system. In other words, instead of attaching to the main network, you want to join the **test** network with your node, which is fully equivalent to the main network, but with play-Ether only.
 
 ```
 $ geth --testnet --fast --cache=512 console
@@ -232,26 +231,13 @@ limit blocks converge to (`--targetgaslimit`) and the price transactions are acc
 
 ## Contribution
 
-Thank you for considering to help out with the source code! We welcome contributions from everyone, and are grateful for even the smallest of fixes!
+Thank you for considering to help out with the source code!
 
-If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request
-for the maintainers to review and merge into the main code base. If you wish to submit more
-complex changes though, please check up with the core devs first on [our gitter channel](https://gitter.im/ethereumproject/go-ethereum)
-to ensure those changes are in line with the general philosophy of the project and/or get some
-early feedback which can make both your efforts much lighter as well as our review and merge
-procedures quick and simple.
+The core values of democratic engagement, transparency, and integrity run deep with us. We welcome contributions from everyone, and are grateful for even the smallest of fixes.  :clap:
 
-Please make sure your contributions adhere to our coding guidelines:
+If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes, please check up with the core devs first on [our gitter channel](https://gitter.im/ethereumproject/go-ethereum) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
 
- * Code must adhere to the official Go [formatting](https://golang.org/doc/effective_go.html#formatting) guidelines (i.e. uses [gofmt](https://golang.org/cmd/gofmt/)).
- * Code must be documented adhering to the official Go [commentary](https://golang.org/doc/effective_go.html#commentary) guidelines.
- * Commit messages should be prefixed with the problem addressed, subtitled by the solution, eg:
-```shell
-problem: README should have accurate commit format spec
-solution: update README commit format spec
-```
-
-Please see the [Wiki](https://github.com/ethereumproject/go-ethereum/wiki/home) for more details on configuring your environment, managing project dependencies, and testing procedures.
+Please see the [Wiki](https://github.com/ethereumproject/go-ethereum/wiki) for more details on configuring your environment, managing project dependencies, and testing procedures.
 
 ## License
 
