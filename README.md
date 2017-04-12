@@ -21,9 +21,14 @@ recommending actions that must be taken to help complete the migration.
 
 ## Building the source
 
-Building geth requires both a Go and a C compiler.
+#### Dependencies
+Building geth requires both a Go and a C compiler. Visit our [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum) for instructions.
 
-To install the full suite of utilities run `go install github.com/ethereumproject/go-ethereum/cmd/...`.
+#### Installing command executables
+
+To install...
+- the full suite of utilities, run `go install github.com/ethereumproject/go-ethereum/cmd/...`
+- just __geth__, run `go install github.com/ethereumproject/go-ethereum/cmd/geth`
 
 ## Executables
 
@@ -246,8 +251,11 @@ Please make sure your contributions adhere to our coding guidelines:
 
  * Code must adhere to the official Go [formatting](https://golang.org/doc/effective_go.html#formatting) guidelines (i.e. uses [gofmt](https://golang.org/cmd/gofmt/)).
  * Code must be documented adhering to the official Go [commentary](https://golang.org/doc/effective_go.html#commentary) guidelines.
- * Commit messages should be prefixed with the package(s) they modify.
-   * E.g. "eth, rpc: make trace configs optional"
+ * Commit messages should be prefixed with the problem addressed, subtitled by the solution, eg:
+```shell
+problem: README should have accurate commit format spec
+solution: update README commit format spec
+```
 
 Please see the [Developers' Guide](https://github.com/ethereumproject/go-ethereum/wiki/Developers'-Guide)
 for more details on configuring your environment, managing project dependencies and testing procedures.
