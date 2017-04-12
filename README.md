@@ -17,7 +17,7 @@ The simplest way to get started running a node is to visit our [Releases page](h
 
 ### Building the source
 
-If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. 
+If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
 #### Dependencies
 Building geth requires both a Go and a C compiler. Visit our [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum) for instructions.
