@@ -22,6 +22,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"encoding/json"
+	"os"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -302,6 +305,22 @@ type GenesisDumpAlloc struct {
 	Code    prefixedHex `json:"code"`
 	Storage map[hex]hex `json:"storage"`
 	Balance string      `json:"balance"` // decimal string
+}
+
+// ReadGenesisFromJSONFile allows the use a flagged genesis file in json format
+// It can be used in conjunction with a flagged external chain config file
+func ReadGenesisFromJSONFile(jsonFilePath string) (dump *GenesisDump, err error) {
+	f, err := os.Open(jsonFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read genesis file: %s", err)
+	}
+	defer f.Close()
+
+	dump = new(GenesisDump)
+	if json.NewDecoder(f).Decode(dump); err != nil {
+		return nil, fmt.Errorf("%s: %s", jsonFilePath, err)
+	}
+	return dump, nil
 }
 
 // Header returns the mapping.

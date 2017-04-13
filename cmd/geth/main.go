@@ -18,7 +18,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -218,8 +217,7 @@ func geth(ctx *cli.Context) error {
 
 	// if exporting chain config, just write file and return (don't run node)
 	if ctx.GlobalIsSet(ExportChainConfigFlag.Name) {
-		chainConfig := MustMakeChainConfig(ctx) // *core.ChainConfig
-		return ExportChainConfigJSON(ctx.GlobalString(ExportChainConfigFlag.Name), chainConfig)
+		return ExportExternalChainConfigJSON(ctx)
 	}
 
 	node := MakeSystemNode(Version, ctx)
@@ -242,14 +240,8 @@ func initGenesis(ctx *cli.Context) {
 		log.Fatal("could not open database: ", err)
 	}
 
-	f, err := os.Open(path)
+	dump, err := core.ReadGenesisFromJSONFile(path)
 	if err != nil {
-		log.Fatal("failed to read genesis file: ", err)
-	}
-	defer f.Close()
-
-	dump := new(core.GenesisDump)
-	if json.NewDecoder(f).Decode(dump); err != nil {
 		log.Fatalf("%s: %s", path, err)
 	}
 
