@@ -288,13 +288,17 @@ func MakePasswordList(ctx *cli.Context) []string {
 }
 
 // ExportChainConfig exports contextualized chain configuration to JSON file
-func ExportChainConfigJSON(chainConfigFilePath string, config *core.ChainConfig) error {
+func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 
-	if chainConfigFilePath == "" {
+	chainConfigFilePath := ctx.GlobalString(ExportChainConfigFlag.Name)
+	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
+
+	if chainConfigFilePath == "" || chainConfigFilePath == "/" {
 		return fmt.Errorf("Filepath to export chain configuration was blank; it must be specified.")
 	}
-	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
 	chainConfigFilePath = common.AbsolutePath(common.DefaultDataDir(), chainConfigFilePath)
+
+	config := MustMakeChainConfig(ctx)
 
 	jsonConfig, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
@@ -313,6 +317,7 @@ func ExportChainConfigJSON(chainConfigFilePath string, config *core.ChainConfig)
 // and rename it to fit Classic naming convention ("/home/path/to/EthereumClassic") if that dir doesn't already exist.
 // This case only applies to Default, ie when a user **doesn't** provide a custom --datadir flag;
 // a user should be able to override a specified data dir if they want.
+// TODO: make test(s)
 func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	unclassicDataDirPath := common.DefaultUnclassicDataDir()
@@ -362,13 +367,19 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	return os.Rename(unclassicDataDirPath, classicDataDirPath)
 }
 
-// MakeSystemNode sets up a local node, configures the services to launch and
-// assembles the P2P protocol stack.
-func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
+// makeName makes the node name, which can be (in part) customized by the IdentityFlag
+func makeName(version string, ctx *cli.Context) string {
 	name := fmt.Sprintf("Geth/%s/%s/%s", version, runtime.GOOS, runtime.Version())
 	if identity := ctx.GlobalString(IdentityFlag.Name); len(identity) > 0 {
 		name += "/" + identity
 	}
+	return name
+}
+
+// MakeSystemNode sets up a local node, configures the services to launch and
+// assembles the P2P protocol stack.
+func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
+	name := makeName(version, ctx)
 
 	// global settings
 	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
