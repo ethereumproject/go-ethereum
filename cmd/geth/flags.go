@@ -39,10 +39,6 @@ var (
 		Usage: "Network identifier (integer, 0=Olympic, 1=Homestead, 2=Morden)",
 		Value: eth.NetworkId,
 	}
-	OlympicFlag = cli.BoolFlag{
-		Name:  "olympic",
-		Usage: "Olympic network: pre-configured pre-release test network",
-	}
 	TestNetFlag = cli.BoolFlag{
 		Name:  "testnet",
 		Usage: "Morden network: pre-configured test network with modified starting nonces (replay protection)",
