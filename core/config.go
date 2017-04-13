@@ -18,11 +18,11 @@ package core
 
 import (
 	hexlib "encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
-
-	"encoding/json"
 	"os"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -162,6 +162,20 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 	}
 
 	return t
+}
+
+// WriteToJSONFile writes a given config to a specified file path.
+// It doesn't run any checks on the file path so make sure that's already squeaky clean.
+func (c *ChainConfig) WriteToJSONFile(path string) error {
+	jsonConfig, err := json.MarshalIndent(c, "", "    ")
+	if err != nil {
+		return fmt.Errorf("Could not marshal json from chain config: %v", err)
+	}
+
+	if err := ioutil.WriteFile(path, jsonConfig, 0644); err != nil {
+		return fmt.Errorf("Could not write chain config file: %v", err)
+	}
+	return nil
 }
 
 type Fork struct {

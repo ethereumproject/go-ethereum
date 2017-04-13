@@ -18,7 +18,6 @@ package main
 
 import (
 	"crypto/ecdsa"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -294,20 +293,16 @@ func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
 
 	if chainConfigFilePath == "" || chainConfigFilePath == "/" {
-		return fmt.Errorf("Filepath to export chain configuration was blank; it must be specified.")
+		return fmt.Errorf("Given filepath to export chain configuration was blank or caused an error; it was: '%v'. It cannot be blank.", chainConfigFilePath)
 	}
-	chainConfigFilePath = common.AbsolutePath(common.DefaultDataDir(), chainConfigFilePath)
+	chainConfigFilePath = common.EnsureAbsolutePath(common.DefaultDataDir(), chainConfigFilePath)
 
 	config := MustMakeChainConfig(ctx)
 
-	jsonConfig, err := json.MarshalIndent(config, "", "    ")
-	if err != nil {
-		return fmt.Errorf("Could not marshal json from chain config: %v", err)
+	if writeError := config.WriteToJSONFile(chainConfigFilePath); writeError != nil {
+		return fmt.Errorf("An error occurred while writing chain configuration: %v", writeError)
 	}
 
-	if err := ioutil.WriteFile(chainConfigFilePath, jsonConfig, 0644); err != nil {
-		return fmt.Errorf("Could not write chain config file: %v", err)
-	}
 	glog.V(logger.Info).Info(fmt.Sprintf("Wrote chain config file to \x1b[32m%s\x1b[39m  Closing down now.", chainConfigFilePath))
 	return nil
 }
@@ -368,7 +363,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 }
 
 // makeName makes the node name, which can be (in part) customized by the IdentityFlag
-func makeName(version string, ctx *cli.Context) string {
+func makeNodeName(version string, ctx *cli.Context) string {
 	name := fmt.Sprintf("Geth/%s/%s/%s", version, runtime.GOOS, runtime.Version())
 	if identity := ctx.GlobalString(IdentityFlag.Name); len(identity) > 0 {
 		name += "/" + identity
@@ -379,7 +374,7 @@ func makeName(version string, ctx *cli.Context) string {
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
-	name := makeName(version, ctx)
+	name := makeNodeName(version, ctx)
 
 	// global settings
 	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
@@ -619,7 +614,7 @@ func MakeConsolePreloads(ctx *cli.Context) []string {
 
 	assets := ctx.GlobalString(JSpathFlag.Name)
 	for _, file := range strings.Split(ctx.GlobalString(PreloadJSFlag.Name), ",") {
-		preloads = append(preloads, common.AbsolutePath(assets, strings.TrimSpace(file)))
+		preloads = append(preloads, common.EnsureAbsolutePath(assets, strings.TrimSpace(file)))
 	}
 	return preloads
 }
