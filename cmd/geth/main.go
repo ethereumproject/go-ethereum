@@ -118,6 +118,7 @@ participating.
 		BootnodesFlag,
 		DataDirFlag,
 		ExportChainConfigFlag,
+		UseChainConfigFlag,
 		KeyStoreDirFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,

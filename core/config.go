@@ -178,6 +178,22 @@ func (c *ChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
+// ReadChainConfigFromJSONFile reads a given json file into a *ChainConfig.
+// Again, no checks are made on the file path.
+func ReadChainConfigFromJSONFile(path string) (*ChainConfig, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read chain configuration file: %s", err)
+	}
+	defer f.Close()
+
+	var config = &ChainConfig{}
+	if json.NewDecoder(f).Decode(config); err != nil {
+		return nil, fmt.Errorf("%s: %s", path, err)
+	}
+	return config, nil
+}
+
 type Fork struct {
 	Name string
 	// For user notification only

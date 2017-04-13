@@ -293,9 +293,8 @@ func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
 
 	if chainConfigFilePath == "" || chainConfigFilePath == "/" {
-		return fmt.Errorf("Given filepath to export chain configuration was blank or caused an error; it was: '%v'. It cannot be blank.", chainConfigFilePath)
+		return fmt.Errorf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank.", chainConfigFilePath)
 	}
-	chainConfigFilePath = common.EnsureAbsolutePath(common.DefaultDataDir(), chainConfigFilePath)
 
 	config := MustMakeChainConfig(ctx)
 
@@ -313,6 +312,7 @@ func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 // This case only applies to Default, ie when a user **doesn't** provide a custom --datadir flag;
 // a user should be able to override a specified data dir if they want.
 // TODO: make test(s)
+// FIXME: do we really want to just rename users' data directory? they may have other scripts/programs that interact with the "old" default dir path...
 func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	unclassicDataDirPath := common.DefaultUnclassicDataDir()
@@ -524,9 +524,39 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
+
+	separator := strings.Repeat("-", 110) // for display formatting
+
 	c := core.DefaultConfig
 	if ctx.GlobalBool(TestNetFlag.Name) {
 		c = core.TestConfig
+	}
+
+	// FIXME: do we really want to just fall back to Default/Test if invalid flagged config file?
+	// Override default chain configs with flagged json file.
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+		// ensure flag arg cleanliness
+		chainConfigJSONFilePath := ctx.GlobalString(UseChainConfigFlag.Name)
+		chainConfigJSONFilePath = filepath.Clean(chainConfigJSONFilePath)
+
+		// ensure file exists and that it is NOT a directory
+		if info, err := os.Stat(chainConfigJSONFilePath); os.IsNotExist(err) {
+			glog.V(logger.Error).Info(separator)
+			glog.V(logger.Error).Info(fmt.Sprintf("ERROR: No existing chain configuration file found at: %s -- Ignoring this flag.", chainConfigJSONFilePath))
+		} else if info.IsDir() {
+			glog.V(logger.Error).Info(separator)
+			glog.V(logger.Error).Info(fmt.Sprintf("ERROR: Specified configuration file cannot be a directory: %s -- Ignoring this flag.", chainConfigJSONFilePath))
+		} else {
+			customC, err := core.ReadChainConfigFromJSONFile(chainConfigJSONFilePath)
+			if err == nil {
+				c = customC
+				glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", chainConfigJSONFilePath))
+			} else {
+				glog.V(logger.Error).Info(separator)
+				glog.V(logger.Error).Info(fmt.Sprintf("ERROR: Error reading configuration file (%s): %v -- Ignoring this flag.", chainConfigJSONFilePath, err))
+			}
+
+		}
 	}
 
 	for i := range c.Forks {
@@ -538,7 +568,6 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		}
 	}
 
-	separator := strings.Repeat("-", 110)
 	glog.V(logger.Warn).Info(separator)
 	glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
 

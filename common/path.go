@@ -26,7 +26,7 @@ func EnsureAbsolutePath(Datadir string, filename string) string {
 	if filepath.IsAbs(filename) {
 		return filename
 	}
-	return filepath.Join(Datadir, filename)
+	return filepath.Clean(filepath.Join(Datadir, filename))
 }
 
 func HomeDir() string {
