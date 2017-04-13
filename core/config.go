@@ -39,6 +39,7 @@ var (
 	ErrHashKnownFork = validateError("known fork hash mismatch")
 )
 
+// #chainconfigi
 // ChainConfig is the core config which determines the blockchain settings.
 //
 // ChainConfig is stored in the database on a per block basis. This means

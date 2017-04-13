@@ -118,6 +118,7 @@ participating.
 		PasswordFileFlag,
 		BootnodesFlag,
 		DataDirFlag,
+		ExportChainConfigFlag,
 		KeyStoreDirFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,
@@ -214,6 +215,13 @@ participating.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
+
+	// if exporting chain config, just write file and return (don't run node)
+	if ctx.GlobalIsSet(ExportChainConfigFlag.Name) {
+		chainConfig := MustMakeChainConfig(ctx) // *core.ChainConfig
+		return ExportChainConfigJSON(ctx.GlobalString(ExportChainConfigFlag.Name), chainConfig)
+	}
+
 	node := MakeSystemNode(Version, ctx)
 	startNode(ctx, node)
 	node.Wait()

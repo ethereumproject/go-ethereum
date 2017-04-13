@@ -26,6 +26,10 @@ var (
 		Usage: "Data directory for the databases and keystore",
 		Value: DirectoryString{common.DefaultDataDir()},
 	}
+	ExportChainConfigFlag = cli.StringFlag{
+		Name: "exportchainconfig",
+		Usage: "Export current chain config to file. If a relative path is specified it will use default Ethereum data directory as base.",
+	}
 	KeyStoreDirFlag = DirectoryFlag{
 		Name:  "keystore",
 		Usage: "Directory for the keystore (default = inside the datadir)",

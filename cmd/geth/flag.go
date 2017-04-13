@@ -18,9 +18,11 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -45,7 +47,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
 	"github.com/ethereumproject/go-ethereum/pow"
-	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -76,311 +77,7 @@ OPTIONS:
 `
 }
 
-// These are all the command line flags we support.
-// If you add to this list, please remember to include the
-// flag in the appropriate command definition.
-//
-// The flags are defined here so their names and help texts
-// are the same for all commands.
-
-var (
-	// General settings
-	DataDirFlag = DirectoryFlag{
-		Name:  "datadir",
-		Usage: "Data directory for the databases and keystore",
-		Value: DirectoryString{common.DefaultDataDir()},
-	}
-	KeyStoreDirFlag = DirectoryFlag{
-		Name:  "keystore",
-		Usage: "Directory for the keystore (default = inside the datadir)",
-	}
-	NetworkIdFlag = cli.IntFlag{
-		Name:  "networkid",
-		Usage: "Network identifier (integer, 1=Homestead, 2=Morden)",
-		Value: eth.NetworkId,
-	}
-	TestNetFlag = cli.BoolFlag{
-		Name:  "testnet",
-		Usage: "Morden network: pre-configured test network with modified starting nonces (replay protection)",
-	}
-	DevModeFlag = cli.BoolFlag{
-		Name:  "dev",
-		Usage: "Developer mode: pre-configured private network with several debugging flags",
-	}
-	IdentityFlag = cli.StringFlag{
-		Name:  "identity",
-		Usage: "Custom node name",
-	}
-	NatspecEnabledFlag = cli.BoolFlag{
-		Name:  "natspec",
-		Usage: "Enable NatSpec confirmation notice",
-	}
-	DocRootFlag = DirectoryFlag{
-		Name:  "docroot",
-		Usage: "Document Root for HTTPClient file scheme",
-		Value: DirectoryString{common.HomeDir()},
-	}
-	CacheFlag = cli.IntFlag{
-		Name:  "cache",
-		Usage: "Megabytes of memory allocated to internal caching (min 16MB / database forced)",
-		Value: 128,
-	}
-	BlockchainVersionFlag = cli.IntFlag{
-		Name:  "blockchainversion",
-		Usage: "Blockchain version (integer)",
-		Value: core.BlockChainVersion,
-	}
-	FastSyncFlag = cli.BoolFlag{
-		Name:  "fast",
-		Usage: "Enable fast syncing through state downloads",
-	}
-	LightKDFFlag = cli.BoolFlag{
-		Name:  "lightkdf",
-		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
-	}
-	// Network Split settings
-	ETFChain = cli.BoolFlag{
-		Name:  "etf",
-		Usage: "Updates the chain rules to use the ETF hard-fork blockchain",
-	}
-	// Miner settings
-	// TODO Refactor CPU vs GPU mining flags
-	MiningEnabledFlag = cli.BoolFlag{
-		Name:  "mine",
-		Usage: "Enable mining",
-	}
-	MinerThreadsFlag = cli.IntFlag{
-		Name:  "minerthreads",
-		Usage: "Number of CPU threads to use for mining",
-		Value: runtime.NumCPU(),
-	}
-	MiningGPUFlag = cli.StringFlag{
-		Name:  "minergpus",
-		Usage: "List of GPUs to use for mining (e.g. '0,1' will use the first two GPUs found)",
-	}
-	TargetGasLimitFlag = cli.StringFlag{
-		Name:  "targetgaslimit",
-		Usage: "Target gas limit sets the artificial target gas floor for the blocks to mine",
-		Value: core.TargetGasLimit.String(),
-	}
-	AutoDAGFlag = cli.BoolFlag{
-		Name:  "autodag",
-		Usage: "Enable automatic DAG pregeneration",
-	}
-	EtherbaseFlag = cli.StringFlag{
-		Name:  "etherbase",
-		Usage: "Public address for block mining rewards (default = first account created)",
-		Value: "0",
-	}
-	GasPriceFlag = cli.StringFlag{
-		Name:  "gasprice",
-		Usage: "Minimal gas price to accept for mining a transactions",
-		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
-	}
-	ExtraDataFlag = cli.StringFlag{
-		Name:  "extradata",
-		Usage: "Freeform header field set by the miner",
-	}
-	// Account settings
-	UnlockedAccountFlag = cli.StringFlag{
-		Name:  "unlock",
-		Usage: "Comma separated list of accounts to unlock",
-		Value: "",
-	}
-	PasswordFileFlag = cli.StringFlag{
-		Name:  "password",
-		Usage: "Password file to use for non-inteactive password input",
-		Value: "",
-	}
-
-	// logging and debug settings
-	VerbosityFlag = cli.GenericFlag{
-		Name:  "verbosity",
-		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=core, 5=debug, 6=detail",
-		Value: glog.GetVerbosity(),
-	}
-	VModuleFlag = cli.GenericFlag{
-		Name:  "vmodule",
-		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
-		Value: glog.GetVModule(),
-	}
-	BacktraceAtFlag = cli.GenericFlag{
-		Name:  "backtrace",
-		Usage: "Request a stack trace at a specific logging statement (e.g. \"block.go:271\")",
-		Value: glog.GetTraceLocation(),
-	}
-	MetricsFlag = cli.StringFlag{
-		Name:  "metrics",
-		Usage: "Enables metrics reporting. When the value is a path, either relative or absolute, then a log is written to the respective file.",
-	}
-	FakePoWFlag = cli.BoolFlag{
-		Name:  "fakepow",
-		Usage: "Disables proof-of-work verification",
-	}
-
-	// RPC settings
-	RPCEnabledFlag = cli.BoolFlag{
-		Name:  "rpc",
-		Usage: "Enable the HTTP-RPC server",
-	}
-	RPCListenAddrFlag = cli.StringFlag{
-		Name:  "rpcaddr",
-		Usage: "HTTP-RPC server listening interface",
-		Value: common.DefaultHTTPHost,
-	}
-	RPCPortFlag = cli.IntFlag{
-		Name:  "rpcport",
-		Usage: "HTTP-RPC server listening port",
-		Value: common.DefaultHTTPPort,
-	}
-	RPCCORSDomainFlag = cli.StringFlag{
-		Name:  "rpccorsdomain",
-		Usage: "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
-		Value: "",
-	}
-	RPCApiFlag = cli.StringFlag{
-		Name:  "rpcapi",
-		Usage: "API's offered over the HTTP-RPC interface",
-		Value: rpc.DefaultHTTPApis,
-	}
-	IPCDisabledFlag = cli.BoolFlag{
-		Name:  "ipcdisable",
-		Usage: "Disable the IPC-RPC server",
-	}
-	IPCApiFlag = cli.StringFlag{
-		Name:  "ipcapi",
-		Usage: "API's offered over the IPC-RPC interface",
-		Value: rpc.DefaultIPCApis,
-	}
-	IPCPathFlag = DirectoryFlag{
-		Name:  "ipcpath",
-		Usage: "Filename for IPC socket/pipe within the datadir (explicit paths escape it)",
-		Value: DirectoryString{common.DefaultIPCSocket},
-	}
-	WSEnabledFlag = cli.BoolFlag{
-		Name:  "ws",
-		Usage: "Enable the WS-RPC server",
-	}
-	WSListenAddrFlag = cli.StringFlag{
-		Name:  "wsaddr",
-		Usage: "WS-RPC server listening interface",
-		Value: common.DefaultWSHost,
-	}
-	WSPortFlag = cli.IntFlag{
-		Name:  "wsport",
-		Usage: "WS-RPC server listening port",
-		Value: common.DefaultWSPort,
-	}
-	WSApiFlag = cli.StringFlag{
-		Name:  "wsapi",
-		Usage: "API's offered over the WS-RPC interface",
-		Value: rpc.DefaultHTTPApis,
-	}
-	WSAllowedOriginsFlag = cli.StringFlag{
-		Name:  "wsorigins",
-		Usage: "Origins from which to accept websockets requests",
-		Value: "",
-	}
-	ExecFlag = cli.StringFlag{
-		Name:  "exec",
-		Usage: "Execute JavaScript statement (only in combination with console/attach)",
-	}
-	PreloadJSFlag = cli.StringFlag{
-		Name:  "preload",
-		Usage: "Comma separated list of JavaScript files to preload into the console",
-	}
-
-	// Network Settings
-	MaxPeersFlag = cli.IntFlag{
-		Name:  "maxpeers",
-		Usage: "Maximum number of network peers (network disabled if set to 0)",
-		Value: 25,
-	}
-	MaxPendingPeersFlag = cli.IntFlag{
-		Name:  "maxpendpeers",
-		Usage: "Maximum number of pending connection attempts (defaults used if set to 0)",
-		Value: 0,
-	}
-	ListenPortFlag = cli.IntFlag{
-		Name:  "port",
-		Usage: "Network listening port",
-		Value: 30303,
-	}
-	BootnodesFlag = cli.StringFlag{
-		Name:  "bootnodes",
-		Usage: "Comma separated enode URLs for P2P discovery bootstrap",
-		Value: "",
-	}
-	NodeKeyFileFlag = cli.StringFlag{
-		Name:  "nodekey",
-		Usage: "P2P node key file",
-	}
-	NodeKeyHexFlag = cli.StringFlag{
-		Name:  "nodekeyhex",
-		Usage: "P2P node key as hex (for testing)",
-	}
-	NATFlag = cli.StringFlag{
-		Name:  "nat",
-		Usage: "NAT port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
-		Value: "any",
-	}
-	NoDiscoverFlag = cli.BoolFlag{
-		Name:  "nodiscover",
-		Usage: "Disables the peer discovery mechanism (manual peer addition)",
-	}
-	WhisperEnabledFlag = cli.BoolFlag{
-		Name:  "shh",
-		Usage: "Enable Whisper",
-	}
-	// ATM the url is left to the user and deployment to
-	JSpathFlag = cli.StringFlag{
-		Name:  "jspath",
-		Usage: "JavaScript root path for `loadScript` and document root for `admin.httpGet`",
-		Value: ".",
-	}
-	SolcPathFlag = cli.StringFlag{
-		Name:  "solc",
-		Usage: "Solidity compiler command to be used",
-		Value: "solc",
-	}
-
-	// Gas price oracle settings
-	GpoMinGasPriceFlag = cli.StringFlag{
-		Name:  "gpomin",
-		Usage: "Minimum suggested gas price",
-		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
-	}
-	GpoMaxGasPriceFlag = cli.StringFlag{
-		Name:  "gpomax",
-		Usage: "Maximum suggested gas price",
-		Value: new(big.Int).Mul(big.NewInt(500), common.Shannon).String(),
-	}
-	GpoFullBlockRatioFlag = cli.IntFlag{
-		Name:  "gpofull",
-		Usage: "Full block threshold for gas price calculation (%)",
-		Value: 80,
-	}
-	GpobaseStepDownFlag = cli.IntFlag{
-		Name:  "gpobasedown",
-		Usage: "Suggested gas price base step down ratio (1/1000)",
-		Value: 10,
-	}
-	GpobaseStepUpFlag = cli.IntFlag{
-		Name:  "gpobaseup",
-		Usage: "Suggested gas price base step up ratio (1/1000)",
-		Value: 100,
-	}
-	GpobaseCorrectionFactorFlag = cli.IntFlag{
-		Name:  "gpobasecf",
-		Usage: "Suggested gas price base correction factor (%)",
-		Value: 110,
-	}
-	Unused1 = cli.BoolFlag{
-		Name:  "oppose-dao-fork",
-		Usage: "Use classic blockchain (always set, flag is unused and exists for compatibility only)",
-	}
-)
-
+// #chainconfigi
 // MustMakeDataDir retrieves the currently requested data directory, terminating
 // if none (or the empty string) is specified. If the node is starting a testnet,
 // the a subdirectory of the specified datadir will be used.
@@ -591,6 +288,27 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
+// ExportChainConfig exports contextualized chain configuration to JSON file
+func ExportChainConfigJSON (chainConfigFilePath string, config *core.ChainConfig) error {
+
+	if chainConfigFilePath == "" {
+		return fmt.Errorf("Filepath to export chain configuration was blank; it must be specified.")
+	}
+	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
+	chainConfigFilePath = common.AbsolutePath(common.DefaultDataDir(), chainConfigFilePath)
+
+	jsonConfig, err := json.MarshalIndent(config, "", "    ")
+	if err != nil {
+		return fmt.Errorf("Could not marshal json from chain config: %v", err)
+	}
+
+	if err := ioutil.WriteFile(chainConfigFilePath, jsonConfig, 0644); err != nil {
+		return fmt.Errorf("Could not write chain config file: %v", err)
+	}
+	glog.V(logger.Info).Info(fmt.Sprintf("Wrote chain config file to \x1b[32m%s\x1b[39m  Closing down now.", chainConfigFilePath))
+	return nil
+}
+
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
@@ -609,7 +327,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	// Avoid conflicting network flags
-	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag}
+	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag, OlympicFlag}
 	for _, flag := range netFlags {
 		if ctx.GlobalBool(flag.Name) {
 			networks++
@@ -656,9 +374,9 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		MinerThreads:            ctx.GlobalInt(MinerThreadsFlag.Name),
 		NatSpec:                 ctx.GlobalBool(NatspecEnabledFlag.Name),
 		DocRoot:                 ctx.GlobalString(DocRootFlag.Name),
-		GasPrice:                new(big.Int),
-		GpoMinGasPrice:          new(big.Int),
-		GpoMaxGasPrice:          new(big.Int),
+		GasPrice:                common.String2Big(ctx.GlobalString(GasPriceFlag.Name)),
+		GpoMinGasPrice:          common.String2Big(ctx.GlobalString(GpoMinGasPriceFlag.Name)),
+		GpoMaxGasPrice:          common.String2Big(ctx.GlobalString(GpoMaxGasPriceFlag.Name)),
 		GpoFullBlockRatio:       ctx.GlobalInt(GpoFullBlockRatioFlag.Name),
 		GpobaseStepDown:         ctx.GlobalInt(GpobaseStepDownFlag.Name),
 		GpobaseStepUp:           ctx.GlobalInt(GpobaseStepUpFlag.Name),
@@ -666,22 +384,17 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		SolcPath:                ctx.GlobalString(SolcPathFlag.Name),
 		AutoDAG:                 ctx.GlobalBool(AutoDAGFlag.Name) || ctx.GlobalBool(MiningEnabledFlag.Name),
 	}
-
-	if _, ok := ethConf.GasPrice.SetString(ctx.GlobalString(GasPriceFlag.Name), 0); !ok {
-		log.Fatalf("malformed %s flag value %q", GasPriceFlag.Name, ctx.GlobalString(GasPriceFlag.Name))
-	}
-	if _, ok := ethConf.GpoMinGasPrice.SetString(ctx.GlobalString(GpoMinGasPriceFlag.Name), 0); !ok {
-		log.Fatalf("malformed %s flag value %q", GpoMinGasPriceFlag.Name, ctx.GlobalString(GpoMinGasPriceFlag.Name))
-	}
-	if _, ok := ethConf.GpoMaxGasPrice.SetString(ctx.GlobalString(GpoMaxGasPriceFlag.Name), 0); !ok {
-		log.Fatalf("malformed %s flag value %q", GpoMaxGasPriceFlag.Name, ctx.GlobalString(GpoMaxGasPriceFlag.Name))
-	}
-
 	// Configure the Whisper service
 	shhEnable := ctx.GlobalBool(WhisperEnabledFlag.Name)
 
 	// Override any default configs in dev mode or the test net
 	switch {
+	case ctx.GlobalBool(OlympicFlag.Name):
+		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
+			ethConf.NetworkId = 1
+		}
+		ethConf.Genesis = core.OlympicGenesis
+
 	case ctx.GlobalBool(TestNetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			ethConf.NetworkId = 2
@@ -701,7 +414,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 			stackConf.ListenAddr = ":0"
 		}
 		// Override the Ethereum protocol configs
-		ethConf.Genesis = core.TestNetGenesis
+		ethConf.Genesis = core.OlympicGenesis
 		if !ctx.GlobalIsSet(GasPriceFlag.Name) {
 			ethConf.GasPrice = new(big.Int)
 		}
@@ -710,6 +423,9 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		}
 		ethConf.PowTest = true
 	}
+
+
+
 	// Assemble and return the protocol stack
 	stack, err := node.New(stackConf)
 	if err != nil {
@@ -733,6 +449,20 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	return stack
 }
 
+// SetupNetwork configures the system for either the main net or some test network.
+func SetupNetwork(ctx *cli.Context) {
+	switch {
+	case ctx.GlobalBool(OlympicFlag.Name):
+		core.DurationLimit = big.NewInt(8)
+		core.MinGasLimit = big.NewInt(125000)
+		types.HeaderExtraMax = 1024
+		NetworkIdFlag.Value = 0
+		core.BlockReward = big.NewInt(1.5e+18)
+		core.ExpDiffPeriod = big.NewInt(math.MaxInt64)
+	}
+	core.TargetGasLimit = common.String2Big(ctx.GlobalString(TargetGasLimitFlag.Name))
+}
+
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
 func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 	db := MakeChainDatabase(ctx)
@@ -741,6 +471,7 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 	return MustMakeChainConfigFromDb(ctx, db)
 }
 
+// #chainconfigi
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
 	c := core.DefaultConfig
@@ -808,6 +539,12 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	var err error
 	chainDb = MakeChainDatabase(ctx)
 
+	if ctx.GlobalBool(OlympicFlag.Name) {
+		_, err := core.WriteGenesisBlock(chainDb, core.OlympicGenesis)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	chainConfig := MustMakeChainConfigFromDb(ctx, chainDb)
 
 	pow := pow.PoW(core.FakePow{})
