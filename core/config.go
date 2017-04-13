@@ -76,7 +76,6 @@ func (c *ChainConfig) IsETF(num *big.Int) bool {
 	return num.Cmp(c.Fork("ETF").Block) == 0
 }
 
-
 // IsDiehard returns whether num is greater than or equal to the Diehard block, but less than explosion.
 func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 	fork := c.Fork("Diehard")
@@ -258,8 +257,8 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 }
 
 type GenesisAccount struct {
-	Address common.Address
-	Balance *big.Int
+	Address common.Address `json:"address"`
+	Balance *big.Int       `json:"balance"`
 }
 
 func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) *types.Block {
@@ -285,24 +284,24 @@ func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) 
 // GenesisDump is the geth JSON format.
 // https://github.com/ethereumproject/wiki/wiki/Ethereum-Chain-Spec-Format#subformat-genesis
 type GenesisDump struct {
-	Nonce      prefixedHex
-	Timestamp  prefixedHex
-	ParentHash prefixedHex
-	ExtraData  prefixedHex
-	GasLimit   prefixedHex
-	Difficulty prefixedHex
-	Mixhash    prefixedHex
-	Coinbase   prefixedHex
+	Nonce      prefixedHex `json:"nonce"`
+	Timestamp  prefixedHex `json:"timestamp"`
+	ParentHash prefixedHex `json:"parentHash"`
+	ExtraData  prefixedHex `json:"extraData"`
+	GasLimit   prefixedHex `json:"gasLimit"`
+	Difficulty prefixedHex `json:"difficulty"`
+	Mixhash    prefixedHex `json:"mixhash"`
+	Coinbase   prefixedHex `json:"coinbase"`
 
 	// Alloc maps accounts by their address.
-	Alloc map[hex]*GenesisDumpAlloc
+	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
 }
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.
 type GenesisDumpAlloc struct {
-	Code    prefixedHex
-	Storage map[hex]hex
-	Balance string // decimal string
+	Code    prefixedHex `json:"code"`
+	Storage map[hex]hex `json:"storage"`
+	Balance string      `json:"balance"` // decimal string
 }
 
 // Header returns the mapping.

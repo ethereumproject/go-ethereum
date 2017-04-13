@@ -288,7 +288,7 @@ func MakePasswordList(ctx *cli.Context) []string {
 }
 
 // ExportChainConfig exports contextualized chain configuration to JSON file
-func ExportChainConfigJSON (chainConfigFilePath string, config *core.ChainConfig) error {
+func ExportChainConfigJSON(chainConfigFilePath string, config *core.ChainConfig) error {
 
 	if chainConfigFilePath == "" {
 		return fmt.Errorf("Filepath to export chain configuration was blank; it must be specified.")
