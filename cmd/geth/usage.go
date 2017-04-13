@@ -58,7 +58,6 @@ var AppHelpFlagGroups = []flagGroup{
 			DataDirFlag,
 			KeyStoreDirFlag,
 			NetworkIdFlag,
-			OlympicFlag,
 			TestNetFlag,
 			DevModeFlag,
 			IdentityFlag,

@@ -222,7 +222,7 @@ func (self *StateObject) CommitTrie(db trie.Database, dbw trie.DatabaseWriter) e
 }
 
 func (c *StateObject) AddBalance(amount *big.Int) {
-	if amount.Cmp(common.Big0) == 0 {
+	if amount.Sign() == 0 {
 		return
 	}
 	c.SetBalance(new(big.Int).Add(c.Balance(), amount))
@@ -233,7 +233,7 @@ func (c *StateObject) AddBalance(amount *big.Int) {
 }
 
 func (c *StateObject) SubBalance(amount *big.Int) {
-	if amount.Cmp(common.Big0) == 0 {
+	if amount.Sign() == 0 {
 		return
 	}
 	c.SetBalance(new(big.Int).Sub(c.Balance(), amount))

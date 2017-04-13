@@ -120,7 +120,6 @@ participating.
 		DataDirFlag,
 		KeyStoreDirFlag,
 		BlockchainVersionFlag,
-		OlympicFlag,
 		FastSyncFlag,
 		CacheFlag,
 		LightKDFFlag,
@@ -191,7 +190,11 @@ participating.
 		// for chains with the main network genesis block and network id 1.
 		eth.EnableBadBlockReporting = true
 
-		SetupNetwork(ctx)
+		gasLimit := ctx.GlobalString(TargetGasLimitFlag.Name)
+		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
+			log.Fatalf("malformed %s flag value %q", TargetGasLimitFlag.Name, gasLimit)
+		}
+
 		return nil
 	}
 

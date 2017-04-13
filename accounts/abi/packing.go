@@ -17,6 +17,7 @@
 package abi
 
 import (
+	"math/big"
 	"reflect"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -47,7 +48,7 @@ func packElement(t Type, reflectValue reflect.Value) []byte {
 		if reflectValue.Bool() {
 			return common.LeftPadBytes(common.Big1.Bytes(), 32)
 		} else {
-			return common.LeftPadBytes(common.Big0.Bytes(), 32)
+			return common.LeftPadBytes(new(big.Int).Bytes(), 32)
 		}
 	case BytesTy:
 		if reflectValue.Kind() == reflect.Array {

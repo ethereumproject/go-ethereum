@@ -180,7 +180,7 @@ func TestValidateSignatureValues(t *testing.T) {
 	}
 	minusOne := big.NewInt(-1)
 	one := common.Big1
-	zero := common.Big0
+	zero := new(big.Int)
 	secp256k1nMinus1 := new(big.Int).Sub(secp256k1.N, common.Big1)
 
 	// correct v,r,s

@@ -102,7 +102,7 @@ func (self *Filter) mipFind(start, end uint64, depth int) (logs vm.Logs) {
 		// find addresses in bloom filters
 		bloom := core.GetMipmapBloom(self.db, num, level)
 		for _, addr := range self.addresses {
-			if bloom.TestBytes(addr[:]) {
+			if types.BloomLookup(bloom, addr[:]) {
 				// range check normalised values and make sure that
 				// we're resolving the correct range instead of the
 				// normalised values.
@@ -208,7 +208,7 @@ func (self *Filter) bloomFilter(block *types.Block) bool {
 	if len(self.addresses) > 0 {
 		var included bool
 		for _, addr := range self.addresses {
-			if types.BloomLookup(block.Bloom(), addr) {
+			if types.BloomLookup(block.Bloom(), addr[:]) {
 				included = true
 				break
 			}
@@ -222,7 +222,7 @@ func (self *Filter) bloomFilter(block *types.Block) bool {
 	for _, sub := range self.topics {
 		var included bool
 		for _, topic := range sub {
-			if (topic == common.Hash{}) || types.BloomLookup(block.Bloom(), topic) {
+			if (topic == common.Hash{}) || types.BloomLookup(block.Bloom(), topic[:]) {
 				included = true
 				break
 			}

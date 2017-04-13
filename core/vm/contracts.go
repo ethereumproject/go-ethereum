@@ -83,10 +83,10 @@ func ecrecoverFunc(in []byte) []byte {
 	// "in" is (hash, v, r, s), each 32 bytes
 	// but for ecrecover we want (r, s, v)
 
-	r := common.BytesToBig(in[64:96])
-	s := common.BytesToBig(in[96:128])
+	r := new(big.Int).SetBytes(in[64:96])
+	s := new(big.Int).SetBytes(in[96:128])
 	// Treat V as a 256bit integer
-	vbig := common.Bytes2Big(in[32:64])
+	vbig := new(big.Int).SetBytes(in[32:64])
 	v := byte(vbig.Uint64())
 
 	// tighter sig s values in homestead only apply to tx sigs

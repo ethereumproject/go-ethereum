@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"testing"
 
-	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
@@ -53,9 +52,8 @@ func TestBlockEncoding(t *testing.T) {
 
 	tx1 := NewTransaction(0, common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87"), big.NewInt(10), big.NewInt(50000), big.NewInt(10), nil)
 	tx1, _ = tx1.WithSignature(common.Hex2Bytes("9bea4c4daac7c7c52e093e6a4c35dbbcf8856f1af7b059ba20253e70848d094f8a8fae537ce25ed8cb5af9adac3f141af69bd515bd2ba031522df09b97dd72b100"))
-	fmt.Println(block.Transactions()[0].Hash())
-	fmt.Println(tx1.data)
-	fmt.Println(tx1.Hash())
+	t.Logf("transaction data 0x%x, hash 0x%x", tx1.data, tx1.Hash())
+
 	check("len(Transactions)", len(block.Transactions()), 1)
 	check("Transactions[0].Hash", block.Transactions()[0].Hash(), tx1.Hash())
 

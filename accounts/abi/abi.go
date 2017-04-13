@@ -103,14 +103,14 @@ func toGoSlice(i int, t Argument, output []byte) (interface{}, error) {
 		return nil, fmt.Errorf("abi: unsupported slice type %v", elem.T)
 	}
 	// get the offset which determines the start of this array ...
-	offset := int(common.BytesToBig(output[index : index+32]).Uint64())
+	offset := int(new(big.Int).SetBytes(output[index : index+32]).Uint64())
 	if offset+32 > len(output) {
 		return nil, fmt.Errorf("abi: cannot marshal in to go slice: offset %d would go over slice boundary (len=%d)", len(output), offset+32)
 	}
 
 	slice := output[offset:]
 	// ... starting with the size of the array in elements ...
-	size := int(common.BytesToBig(slice[:32]).Uint64())
+	size := int(new(big.Int).SetBytes(slice[:32]).Uint64())
 	slice = slice[32:]
 	// ... and make sure that we've at the very least the amount of bytes
 	// available in the buffer.
@@ -129,9 +129,9 @@ func toGoSlice(i int, t Argument, output []byte) (interface{}, error) {
 		// set inter to the correct type (cast)
 		switch elem.T {
 		case IntTy, UintTy:
-			inter = common.BytesToBig(returnOutput)
+			inter = new(big.Int).SetBytes(returnOutput)
 		case BoolTy:
-			inter = common.BytesToBig(returnOutput).Uint64() > 0
+			inter = new(big.Int).SetBytes(returnOutput).Uint64() > 0
 		case AddressTy:
 			inter = common.BytesToAddress(returnOutput)
 		case HashTy:
@@ -164,12 +164,12 @@ func toGoType(i int, t Argument, output []byte) (interface{}, error) {
 	switch t.Type.T {
 	case StringTy, BytesTy: // variable arrays are written at the end of the return bytes
 		// parse offset from which we should start reading
-		offset := int(common.BytesToBig(output[index : index+32]).Uint64())
+		offset := int(new(big.Int).SetBytes(output[index : index+32]).Uint64())
 		if offset+32 > len(output) {
 			return nil, fmt.Errorf("abi: cannot marshal in to go type: length insufficient %d require %d", len(output), offset+32)
 		}
 		// parse the size up until we should be reading
-		size := int(common.BytesToBig(output[offset : offset+32]).Uint64())
+		size := int(new(big.Int).SetBytes(output[offset : offset+32]).Uint64())
 		if offset+32+size > len(output) {
 			return nil, fmt.Errorf("abi: cannot marshal in to go type: length insufficient %d require %d", len(output), offset+32+size)
 		}
@@ -183,7 +183,7 @@ func toGoType(i int, t Argument, output []byte) (interface{}, error) {
 	// convert the bytes to whatever is specified by the ABI.
 	switch t.Type.T {
 	case IntTy, UintTy:
-		bigNum := common.BytesToBig(returnOutput)
+		bigNum := new(big.Int).SetBytes(returnOutput)
 
 		// If the type is a integer convert to the integer type
 		// specified by the ABI.
@@ -208,7 +208,7 @@ func toGoType(i int, t Argument, output []byte) (interface{}, error) {
 			return bigNum, nil
 		}
 	case BoolTy:
-		return common.BytesToBig(returnOutput).Uint64() > 0, nil
+		return new(big.Int).SetBytes(returnOutput).Uint64() > 0, nil
 	case AddressTy:
 		return common.BytesToAddress(returnOutput), nil
 	case HashTy:

@@ -20,19 +20,18 @@ import "math/big"
 
 // Common big integers often used
 var (
-	Big1     = big.NewInt(1)
-	Big2     = big.NewInt(2)
-	Big3     = big.NewInt(3)
-	Big0     = big.NewInt(0)
-	BigTrue  = Big1
-	BigFalse = Big0
-	Big32    = big.NewInt(32)
-	Big36    = big.NewInt(36)
-	Big97    = big.NewInt(97)
-	Big98    = big.NewInt(98)
-	Big256   = big.NewInt(0xff)
-	Big257   = big.NewInt(257)
-	MaxBig   = String2Big("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	Big1      = big.NewInt(1)
+	Big2      = big.NewInt(2)
+	Big3      = big.NewInt(3)
+	BigTrue   = Big1
+	BigFalse  = big.NewInt(0)
+	Big32     = big.NewInt(32)
+	Big36     = big.NewInt(36)
+	Big97     = big.NewInt(97)
+	Big98     = big.NewInt(98)
+	Big256    = big.NewInt(0xff)
+	Big257    = big.NewInt(257)
+	MaxBig, _ = new(big.Int).SetString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
 )
 
 // Big pow
@@ -43,33 +42,6 @@ func BigPow(a, b int) *big.Int {
 	c.Exp(big.NewInt(int64(a)), big.NewInt(int64(b)), big.NewInt(0))
 
 	return c
-}
-
-// Big
-//
-// Shortcut for new(big.Int).SetString(..., 0)
-func Big(num string) *big.Int {
-	n := new(big.Int)
-	n.SetString(num, 0)
-
-	return n
-}
-
-// Bytes2Big
-//
-func BytesToBig(data []byte) *big.Int {
-	n := new(big.Int)
-	n.SetBytes(data)
-
-	return n
-}
-func Bytes2Big(data []byte) *big.Int { return BytesToBig(data) }
-func BigD(data []byte) *big.Int      { return BytesToBig(data) }
-
-func String2Big(num string) *big.Int {
-	n := new(big.Int)
-	n.SetString(num, 0)
-	return n
 }
 
 func BitTest(num *big.Int, i int) bool {
@@ -84,13 +56,7 @@ var tt256m1 = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(
 var tt255 = new(big.Int).Lsh(big.NewInt(1), 255)
 
 func U256(x *big.Int) *big.Int {
-	//if x.Cmp(Big0) < 0 {
-	//		return new(big.Int).Add(tt256, x)
-	//	}
-
-	x.And(x, tt256m1)
-
-	return x
+	return x.And(x, tt256m1)
 }
 
 func S256(x *big.Int) *big.Int {
