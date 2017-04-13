@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -327,7 +326,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	// Avoid conflicting network flags
-	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag, OlympicFlag}
+	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag}
 	for _, flag := range netFlags {
 		if ctx.GlobalBool(flag.Name) {
 			networks++
@@ -374,9 +373,9 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		MinerThreads:            ctx.GlobalInt(MinerThreadsFlag.Name),
 		NatSpec:                 ctx.GlobalBool(NatspecEnabledFlag.Name),
 		DocRoot:                 ctx.GlobalString(DocRootFlag.Name),
-		GasPrice:                common.String2Big(ctx.GlobalString(GasPriceFlag.Name)),
-		GpoMinGasPrice:          common.String2Big(ctx.GlobalString(GpoMinGasPriceFlag.Name)),
-		GpoMaxGasPrice:          common.String2Big(ctx.GlobalString(GpoMaxGasPriceFlag.Name)),
+		GasPrice:                new(big.Int),
+		GpoMinGasPrice:          new(big.Int),
+		GpoMaxGasPrice:          new(big.Int),
 		GpoFullBlockRatio:       ctx.GlobalInt(GpoFullBlockRatioFlag.Name),
 		GpobaseStepDown:         ctx.GlobalInt(GpobaseStepDownFlag.Name),
 		GpobaseStepUp:           ctx.GlobalInt(GpobaseStepUpFlag.Name),
@@ -384,17 +383,22 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		SolcPath:                ctx.GlobalString(SolcPathFlag.Name),
 		AutoDAG:                 ctx.GlobalBool(AutoDAGFlag.Name) || ctx.GlobalBool(MiningEnabledFlag.Name),
 	}
+
+	if _, ok := ethConf.GasPrice.SetString(ctx.GlobalString(GasPriceFlag.Name), 0); !ok {
+		log.Fatalf("malformed %s flag value %q", GasPriceFlag.Name, ctx.GlobalString(GasPriceFlag.Name))
+	}
+	if _, ok := ethConf.GpoMinGasPrice.SetString(ctx.GlobalString(GpoMinGasPriceFlag.Name), 0); !ok {
+		log.Fatalf("malformed %s flag value %q", GpoMinGasPriceFlag.Name, ctx.GlobalString(GpoMinGasPriceFlag.Name))
+	}
+	if _, ok := ethConf.GpoMaxGasPrice.SetString(ctx.GlobalString(GpoMaxGasPriceFlag.Name), 0); !ok {
+		log.Fatalf("malformed %s flag value %q", GpoMaxGasPriceFlag.Name, ctx.GlobalString(GpoMaxGasPriceFlag.Name))
+	}
+
 	// Configure the Whisper service
 	shhEnable := ctx.GlobalBool(WhisperEnabledFlag.Name)
 
 	// Override any default configs in dev mode or the test net
 	switch {
-	case ctx.GlobalBool(OlympicFlag.Name):
-		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			ethConf.NetworkId = 1
-		}
-		ethConf.Genesis = core.OlympicGenesis
-
 	case ctx.GlobalBool(TestNetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			ethConf.NetworkId = 2
@@ -414,7 +418,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 			stackConf.ListenAddr = ":0"
 		}
 		// Override the Ethereum protocol configs
-		ethConf.Genesis = core.OlympicGenesis
+		ethConf.Genesis = core.TestNetGenesis
 		if !ctx.GlobalIsSet(GasPriceFlag.Name) {
 			ethConf.GasPrice = new(big.Int)
 		}
@@ -423,9 +427,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		}
 		ethConf.PowTest = true
 	}
-
-
-
 	// Assemble and return the protocol stack
 	stack, err := node.New(stackConf)
 	if err != nil {
@@ -449,20 +450,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	return stack
 }
 
-// SetupNetwork configures the system for either the main net or some test network.
-func SetupNetwork(ctx *cli.Context) {
-	switch {
-	case ctx.GlobalBool(OlympicFlag.Name):
-		core.DurationLimit = big.NewInt(8)
-		core.MinGasLimit = big.NewInt(125000)
-		types.HeaderExtraMax = 1024
-		NetworkIdFlag.Value = 0
-		core.BlockReward = big.NewInt(1.5e+18)
-		core.ExpDiffPeriod = big.NewInt(math.MaxInt64)
-	}
-	core.TargetGasLimit = common.String2Big(ctx.GlobalString(TargetGasLimitFlag.Name))
-}
-
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
 func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 	db := MakeChainDatabase(ctx)
@@ -471,7 +458,6 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 	return MustMakeChainConfigFromDb(ctx, db)
 }
 
-// #chainconfigi
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
 	c := core.DefaultConfig
@@ -539,12 +525,6 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	var err error
 	chainDb = MakeChainDatabase(ctx)
 
-	if ctx.GlobalBool(OlympicFlag.Name) {
-		_, err := core.WriteGenesisBlock(chainDb, core.OlympicGenesis)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 	chainConfig := MustMakeChainConfigFromDb(ctx, chainDb)
 
 	pow := pow.PoW(core.FakePow{})
