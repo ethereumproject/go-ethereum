@@ -303,7 +303,7 @@ func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 		// Name: ,
 		// Genesis: ,
 		// State: ,
-		// Bootstrap: ,
+		 Bootstrap: MakeBootstrapNodes(ctx),
 	}
 
 	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {
@@ -414,7 +414,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		PrivateKey:      MakeNodeKey(ctx),
 		Name:            name,
 		NoDiscovery:     ctx.GlobalBool(NoDiscoverFlag.Name),
-		BootstrapNodes:  MakeBootstrapNodes(ctx),
+		//BootstrapNodes:  MakeBootstrapNodes(ctx),
 		ListenAddr:      MakeListenAddress(ctx),
 		NAT:             MakeNAT(ctx),
 		MaxPeers:        ctx.GlobalInt(MaxPeersFlag.Name),
@@ -482,12 +482,22 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 		if externalConfig.ChainConfig != nil {
 			ethConf.ChainConfig = externalConfig.ChainConfig
-			glog.V(logger.Info).Info(fmt.Sprintf("Found custom chain configuration: \x1b[32m%v\x1b[39m", externalConfig.ChainConfig))
+			glog.V(logger.Info).Info(fmt.Sprintf("Found custom chain configuration: \x1b[32m%s\x1b[39m", externalConfig.ChainConfig))
 		} else {
 			ethConf.ChainConfig = MustMakeChainConfig(ctx)
 			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom chain configuration. Will not override."))
 		}
+
+		if externalConfig.Bootstrap != nil {
+			stackConf.BootstrapNodes = externalConfig.Bootstrap
+			glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
+		} else {
+			stackConf.BootstrapNodes = MakeBootstrapNodes(ctx)
+			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom bootstrap nodes.n Will not override."))
+		}
+
 		// TODO: implement other external config fields as well (ie Genesis, etc...)
+		// TODO: could refactor `if` statement switches to external config reader function
 
 	} else {
 		ethConf.ChainConfig = MustMakeChainConfig(ctx)
