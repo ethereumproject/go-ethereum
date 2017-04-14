@@ -177,28 +177,28 @@ type ExternalChainConfig struct {
 
 // WriteToJSONFile writes a given config to a specified file path.
 // It doesn't run any checks on the file path so make sure that's already squeaky clean.
-func (c *ChainConfig) WriteToJSONFile(path string) error {
+func (c *ExternalChainConfig) WriteToJSONFile(path string) error {
 	jsonConfig, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
 		return fmt.Errorf("Could not marshal json from chain config: %v", err)
 	}
 
 	if err := ioutil.WriteFile(path, jsonConfig, 0644); err != nil {
-		return fmt.Errorf("Could not write chain config file: %v", err)
+		return fmt.Errorf("Could not write external chain config file: %v", err)
 	}
 	return nil
 }
 
 // ReadChainConfigFromJSONFile reads a given json file into a *ChainConfig.
 // Again, no checks are made on the file path.
-func ReadChainConfigFromJSONFile(path string) (*ChainConfig, error) {
+func ReadChainConfigFromJSONFile(path string) (*ExternalChainConfig, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read chain configuration file: %s", err)
+		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
 	}
 	defer f.Close()
 
-	var config = &ChainConfig{}
+	var config = &ExternalChainConfig{}
 	if json.NewDecoder(f).Decode(config); err != nil {
 		return nil, fmt.Errorf("%s: %s", path, err)
 	}

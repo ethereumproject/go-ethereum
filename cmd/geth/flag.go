@@ -296,9 +296,17 @@ func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 		return fmt.Errorf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank.", chainConfigFilePath)
 	}
 
-	config := MustMakeChainConfig(ctx)
+	var currentConfig = &core.ExternalChainConfig{
+		ChainConfig: MustMakeChainConfig(ctx), // get current chain config
+		// TODO: implement these
+		// ID: ,
+		// Name: ,
+		// Genesis: ,
+		// State: ,
+		// Bootstrap: ,
+	}
 
-	if writeError := config.WriteToJSONFile(chainConfigFilePath); writeError != nil {
+	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {
 		return fmt.Errorf("An error occurred while writing chain configuration: %v", writeError)
 	}
 
@@ -426,7 +434,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	accman := MakeAccountManager(ctx)
 
 	ethConf := &eth.Config{
-		ChainConfig:             MustMakeChainConfig(ctx),
+		//ChainConfig:           MustMakeChainConfig(ctx),
 		FastSync:                ctx.GlobalBool(FastSyncFlag.Name),
 		BlockChainVersion:       ctx.GlobalInt(BlockchainVersionFlag.Name),
 		DatabaseCache:           ctx.GlobalInt(CacheFlag.Name),
@@ -456,6 +464,33 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 	if _, ok := ethConf.GpoMaxGasPrice.SetString(ctx.GlobalString(GpoMaxGasPriceFlag.Name), 0); !ok {
 		log.Fatalf("malformed %s flag value %q", GpoMaxGasPriceFlag.Name, ctx.GlobalString(GpoMaxGasPriceFlag.Name))
+	}
+
+
+	// #chainconfigi
+	// Override configs based on ExternalChainConfig flag file
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+
+		// Use externalConfig in lieu of pertinent node+eth Configs
+		// This will allow partial externalChainConfig JSON files to override only specified settings, ie ChainConfig, Genesis, Nodes...,
+		// *which may or may not be desirable UI
+		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+		if err != nil {
+			panic(err)
+		}
+		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", ctx.GlobalString(UseChainConfigFlag.Name)))
+
+		if externalConfig.ChainConfig != nil {
+			ethConf.ChainConfig = externalConfig.ChainConfig
+			glog.V(logger.Info).Info(fmt.Sprintf("Found custom chain configuration: \x1b[32m%v\x1b[39m", externalConfig.ChainConfig))
+		} else {
+			ethConf.ChainConfig = MustMakeChainConfig(ctx)
+			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom chain configuration. Will not override."))
+		}
+		// TODO: implement other external config fields as well (ie Genesis, etc...)
+
+	} else {
+		ethConf.ChainConfig = MustMakeChainConfig(ctx)
 	}
 
 	// Configure the Whisper service
@@ -524,7 +559,7 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 
 // readExternalChainConfig reads a flagged external json file for blockchain configuration
 // it accepts the raw path argument and cleans it, returning either a valid config or an error
-func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.ChainConfig, error) {
+func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.ExternalChainConfig, error) {
 
 	// ensure flag arg cleanliness
 	flaggedExternalChainConfigPath = filepath.Clean(flaggedExternalChainConfigPath)
@@ -552,16 +587,6 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 	c := core.DefaultConfig
 	if ctx.GlobalBool(TestNetFlag.Name) {
 		c = core.TestConfig
-	}
-
-	// Override default chain configs with flagged json file.
-	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
-		if err != nil {
-			panic(err)
-		}
-		c = externalConfig
-		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", ctx.GlobalString(UseChainConfigFlag.Name)))
 	}
 
 	for i := range c.Forks {
