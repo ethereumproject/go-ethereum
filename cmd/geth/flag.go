@@ -522,6 +522,28 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 	return MustMakeChainConfigFromDb(ctx, db)
 }
 
+// readExternalChainConfig reads a flagged external json file for blockchain configuration
+// it accepts the raw path argument and cleans it, returning either a valid config or an error
+func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.ChainConfig, error) {
+
+	// ensure flag arg cleanliness
+	flaggedExternalChainConfigPath = filepath.Clean(flaggedExternalChainConfigPath)
+
+	// ensure file exists and that it is NOT a directory
+	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("ERROR: No existing chain configuration file found at: %s", flaggedExternalChainConfigPath)
+	} else if info.IsDir() {
+		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
+	} else {
+		customC, err := core.ReadChainConfigFromJSONFile(flaggedExternalChainConfigPath)
+		if err == nil {
+			return customC, nil
+		} else {
+			return nil, fmt.Errorf("ERROR: Error reading configuration file (%s): %v", flaggedExternalChainConfigPath, err)
+		}
+	}
+}
+
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
 
@@ -532,31 +554,14 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		c = core.TestConfig
 	}
 
-	// FIXME: do we really want to just fall back to Default/Test if invalid flagged config file?
 	// Override default chain configs with flagged json file.
 	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-		// ensure flag arg cleanliness
-		chainConfigJSONFilePath := ctx.GlobalString(UseChainConfigFlag.Name)
-		chainConfigJSONFilePath = filepath.Clean(chainConfigJSONFilePath)
-
-		// ensure file exists and that it is NOT a directory
-		if info, err := os.Stat(chainConfigJSONFilePath); os.IsNotExist(err) {
-			glog.V(logger.Error).Info(separator)
-			glog.V(logger.Error).Info(fmt.Sprintf("ERROR: No existing chain configuration file found at: %s -- Ignoring this flag.", chainConfigJSONFilePath))
-		} else if info.IsDir() {
-			glog.V(logger.Error).Info(separator)
-			glog.V(logger.Error).Info(fmt.Sprintf("ERROR: Specified configuration file cannot be a directory: %s -- Ignoring this flag.", chainConfigJSONFilePath))
-		} else {
-			customC, err := core.ReadChainConfigFromJSONFile(chainConfigJSONFilePath)
-			if err == nil {
-				c = customC
-				glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", chainConfigJSONFilePath))
-			} else {
-				glog.V(logger.Error).Info(separator)
-				glog.V(logger.Error).Info(fmt.Sprintf("ERROR: Error reading configuration file (%s): %v -- Ignoring this flag.", chainConfigJSONFilePath, err))
-			}
-
+		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+		if err != nil {
+			panic(err)
 		}
+		c = externalConfig
+		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", ctx.GlobalString(UseChainConfigFlag.Name)))
 	}
 
 	for i := range c.Forks {
