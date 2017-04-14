@@ -32,6 +32,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p/discover"
 )
 
 var (
@@ -162,6 +163,16 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 	}
 
 	return t
+}
+
+// ExternalChainConfig holds necessary data for externalizing a given blockchain configuration.
+type ExternalChainConfig struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
+	Genesis *GenesisDump `json:"genesisDump"`
+	ChainConfig *ChainConfig `json:"chainConfig"`
+	State []*GenesisAccount `json:"state"`
+	Bootstrap []*discover.Node `json:"bootstrap"`
 }
 
 // WriteToJSONFile writes a given config to a specified file path.
