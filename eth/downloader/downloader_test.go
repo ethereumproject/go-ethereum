@@ -1169,6 +1169,8 @@ func testMissingHeaderAttack(t *testing.T, protocol int, mode SyncMode) {
 	if err := tester.sync("valid", nil, mode); err != nil {
 		t.Fatalf("failed to synchronise blocks: %v", err)
 	}
+	// Wait to make sure all data is set after sync
+	time.Sleep(200 * time.Millisecond)
 	assertOwnChain(t, tester, targetBlocks+1)
 }
 
@@ -1441,6 +1443,10 @@ func testSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	progress <- struct{}{}
 	pending.Wait()
 
+	// Wait to make sure all data is set after sync
+	time.Sleep(200 * time.Millisecond)
+
+
 	// Check final progress after successful sync
 	if origin, current, latest, _, _ := tester.downloader.Progress(); origin != uint64(targetBlocks/2+1) || current != uint64(targetBlocks) || latest != uint64(targetBlocks) {
 		t.Fatalf("Final progress mismatch: have %v/%v/%v, want %v/%v/%v", origin, current, latest, targetBlocks/2+1, targetBlocks, targetBlocks)
@@ -1516,6 +1522,9 @@ func testForkedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	}
 	progress <- struct{}{}
 	pending.Wait()
+
+	// Wait to make sure all data is set after sync
+	time.Sleep(200 * time.Millisecond)
 
 	// Check final progress after successful sync
 	if origin, current, latest, _, _ := tester.downloader.Progress(); origin != uint64(common) || current != uint64(len(hashesB)-1) || latest != uint64(len(hashesB)-1) {
@@ -1595,6 +1604,9 @@ func testFailedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	progress <- struct{}{}
 	pending.Wait()
 
+	// Wait to make sure all data is set after sync
+	time.Sleep(200 * time.Millisecond)
+
 	// Check final progress after successful sync
 	if origin, current, latest, _, _ := tester.downloader.Progress(); origin > uint64(targetBlocks/2) || current != uint64(targetBlocks) || latest != uint64(targetBlocks) {
 		t.Fatalf("Final progress mismatch: have %v/%v/%v, want 0-%v/%v/%v", origin, current, latest, targetBlocks/2, targetBlocks, targetBlocks)
@@ -1671,7 +1683,11 @@ func testFakedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		t.Fatalf("Completing progress mismatch: have %v/%v/%v, want %v/0-%v/%v", origin, current, latest, 0, targetBlocks, targetBlocks)
 	}
 	progress <- struct{}{}
+
 	pending.Wait()
+
+	// Wait to make sure all data is set after sync
+	time.Sleep(200 * time.Millisecond)
 
 	// Check final progress after successful sync
 	if origin, current, latest, _, _ := tester.downloader.Progress(); origin > uint64(targetBlocks) || current != uint64(targetBlocks) || latest != uint64(targetBlocks) {
@@ -1764,6 +1780,10 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 			tester.lock.Unlock()
 		}
 	}
+
+	// Wait to make sure all data is set after sync
+	time.Sleep(200 * time.Millisecond)
+
 	// Retry limit exhausted, downloader will switch to full sync, should succeed
 	if err := tester.sync("peer", nil, FastSync); err != nil {
 		t.Fatalf("failed to synchronise blocks in slow sync: %v", err)
