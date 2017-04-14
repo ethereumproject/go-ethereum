@@ -286,6 +286,24 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
+// GetGenesisDump reads the genesis block from a database's chaindata and return a GenesisDump for exporting
+func GetGenesisDump(ctx *cli.Context) (*core.GenesisDump, error) {
+	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
+	dataDirPath := filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata")
+	chainDB, err := ethdb.NewLDBDatabase(dataDirPath, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n  Using default data directory at: %v", err, dataDirPath)
+	}
+	defer chainDB.Close()
+
+	genesis := core.GetBlock(chainDB, core.GetCanonicalHash(chainDB, 0))
+	dump, err := core.MakeGenesisDump(genesis)
+	if err != nil {
+		return nil, err
+	}
+	return dump, nil
+}
+
 // ExportChainConfig exports contextualized chain configuration to JSON file
 func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 
@@ -295,13 +313,17 @@ func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 	if chainConfigFilePath == "" || chainConfigFilePath == "/" {
 		return fmt.Errorf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank.", chainConfigFilePath)
 	}
+	genesisDump, err := GetGenesisDump(ctx)
+	if err != nil {
+		return err
+	}
 
 	var currentConfig = &core.ExternalChainConfig{
 		ChainConfig: MustMakeChainConfig(ctx), // get current chain config
 		// TODO: implement these
 		// ID: ,
 		// Name: ,
-		// Genesis: ,
+		 Genesis: genesisDump,
 		// State: ,
 		 Bootstrap: MakeBootstrapNodes(ctx),
 	}

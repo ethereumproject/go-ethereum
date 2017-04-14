@@ -167,12 +167,12 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 
 // ExternalChainConfig holds necessary data for externalizing a given blockchain configuration.
 type ExternalChainConfig struct {
-	ID string `json:"id"`
-	Name string `json:"name"`
-	Genesis *GenesisDump `json:"genesisDump"`
-	ChainConfig *ChainConfig `json:"chainConfig"`
-	State []*GenesisAccount `json:"state"`
-	Bootstrap []*discover.Node `json:"bootstrap"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Genesis     *GenesisDump      `json:"genesisDump"`
+	ChainConfig *ChainConfig      `json:"chainConfig"`
+	State       []*GenesisAccount `json:"state"`
+	Bootstrap   []*discover.Node  `json:"bootstrap"`
 }
 
 // WriteToJSONFile writes a given config to a specified file path.
@@ -339,6 +339,36 @@ type GenesisDump struct {
 
 	// Alloc maps accounts by their address.
 	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
+}
+
+// MakeGenesisDump makes a genesis dump (TODO: more commentary)
+func MakeGenesisDump(genesis *types.Block) (*GenesisDump, error) {
+
+	genesisHeader := genesis.Header()
+
+	nonce, err := genesisHeader.Nonce.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	time := common.Bytes2Hex(common.BigToBytes(genesisHeader.Time, 0))
+	parentHash := genesisHeader.ParentHash.Hex()
+	extra := common.Bytes2Hex(genesisHeader.Extra)
+	gasLimit := common.BigToHash(genesisHeader.GasLimit).Hex()
+	difficulty := common.BigToHash(genesisHeader.Difficulty).Hex()
+	mixHash := genesisHeader.MixDigest.Hex()
+	coinbase := genesisHeader.Coinbase.Hex()
+
+	return &GenesisDump{
+		Nonce:      prefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
+		Timestamp:  prefixedHex(time),
+		ParentHash: prefixedHex(parentHash),
+		ExtraData:  prefixedHex(extra),
+		GasLimit:   prefixedHex(gasLimit),
+		Difficulty: prefixedHex(difficulty),
+		Mixhash:    prefixedHex(mixHash),
+		Coinbase:   prefixedHex(coinbase),
+		//Alloc: ,
+	}, nil
 }
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.
