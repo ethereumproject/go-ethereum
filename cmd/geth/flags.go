@@ -28,7 +28,7 @@ var (
 	}
 	ExportChainConfigFlag = cli.StringFlag{
 		Name: "exportchainconfig",
-		Usage: "Export current chain config to file. If a relative path is specified it will use default Ethereum data directory as base.",
+		Usage: "Export current chain config to file (JSON). If a relative path is specified it will use default Ethereum data directory as base.",
 	}
 	UseChainConfigFlag = cli.StringFlag{
 		Name: "chainconfig",
