@@ -452,6 +452,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		}
 		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", ctx.GlobalString(UseChainConfigFlag.Name)))
 
+		// ChainConfig
 		if externalConfig.ChainConfig != nil {
 			ethConf.ChainConfig = externalConfig.ChainConfig
 			glog.V(logger.Info).Info(fmt.Sprintf("Found custom chain configuration: \x1b[32m%s\x1b[39m", externalConfig.ChainConfig))
@@ -460,6 +461,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom chain configuration. Will not override."))
 		}
 
+		// Bootstrap nodes
 		if externalConfig.Bootstrap != nil {
 			stackConf.BootstrapNodes = externalConfig.Bootstrap
 			glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
@@ -473,6 +475,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	} else {
 		ethConf.ChainConfig = MustMakeChainConfig(ctx)
+		stackConf.BootstrapNodes = MakeBootstrapNodes(ctx)
 	}
 
 	// Configure the Whisper service
