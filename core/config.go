@@ -350,13 +350,7 @@ type GenesisDumpAlloc struct {
 
 
 // MakeGenesisDump makes a genesis dump
-func MakeGenesisDump(dataDirPath string) (*GenesisDump, error) {
-
-	chaindb, err := ethdb.NewLDBDatabase(dataDirPath, 0, 0) // TODO: dynamically set cache, handles like node
-	if err != nil {
-		return nil, fmt.Errorf("WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n  Using default data directory at: %v", err, dataDirPath)
-	}
-	defer chaindb.Close()
+func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 
 	genesis := GetBlock(chaindb, GetCanonicalHash(chaindb, 0))
 

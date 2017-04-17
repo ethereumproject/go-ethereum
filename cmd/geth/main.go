@@ -246,7 +246,6 @@ func initGenesis(ctx *cli.Context) error {
 		log.Fatalf("could not open database: ", err)
 		return err
 	}
-	defer chainDB.Close()
 
 	dump, err := core.ReadGenesisFromJSONFile(path)
 	if err != nil {
@@ -273,23 +272,25 @@ func dumpExternalChainConfig(ctx *cli.Context) error {
 		return errors.New("invalid required filepath argument")
 	}
 
-	dataDirPath := filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata")
-
 	// pretty printy
 	cwd, _ := os.Getwd()
 	glog.V(logger.Info).Info(fmt.Sprintf("Dumping chain configuration JSON to \x1b[32m%s\x1b[39m, it may take a moment to tally genesis allocations...", common.EnsureAbsolutePath(cwd, chainConfigFilePath)))
 
-	genesisDump, err := core.MakeGenesisDump(dataDirPath)
+	db := MakeChainDatabase(ctx)
+
+	genesisDump, err := core.MakeGenesisDump(db)
 	if err != nil {
 		log.Fatalf("An error occurred dumping the genesis block state: %v", err)
 		return err
 	}
+	db.Close() // required for MustMakeChainConfig below
+	glog.V(logger.Info).Info("Finished building genesis state dump. Whew!")
 
 	var currentConfig = &core.ExternalChainConfig{
 		// TODO: implement these
 		// ID: ,
 		// Name: ,
-		ChainConfig: MustMakeChainConfig(ctx), // get current chain config
+		ChainConfig: MustMakeChainConfig(ctx), // get current/contextualized chain config
 		Genesis: genesisDump,
 		Bootstrap: MakeBootstrapNodes(ctx),
 	}

@@ -132,11 +132,34 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 	// Return pre-configured nodes if none were manually requested
 	if !ctx.GlobalIsSet(BootnodesFlag.Name) {
+
+		// --test flag should override nodes for config file, maybe?
 		if ctx.GlobalBool(TestNetFlag.Name) {
 			return TestNetBootNodes
 		}
-		return HomesteadBootNodes
+
+		// --chainconfig flag
+		if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+
+			externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+			if err != nil {
+				panic(err)
+			}
+
+			// check if config file contains bootnodes configuration data
+			// if it does, use it ; if it doesn't, return default (ie "soft" config file)
+			if externalConfig.Bootstrap != nil {
+				glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes in config file: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
+				return externalConfig.Bootstrap
+			} else {
+				glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom bootstrap nodes. Will not override."))
+				return HomesteadBootNodes
+			}
+		} else {
+			return HomesteadBootNodes
+		}
 	}
+
 	// Otherwise parse and use the CLI bootstrap nodes
 	bootnodes := []*discover.Node{}
 
@@ -300,7 +323,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	// only if using default data dir (flagged dir can override)
 	if ctx.GlobalIsSet(DataDirFlag.Name) {
-		log.Printf("INFO: Global --datadir flag is set: %v \n", DataDirFlag.Value.String())
+		log.Printf("INFO: Global --datadir flag is set: %v \n", ctx.GlobalString(DataDirFlag.Name))
 		return nil
 	}
 
@@ -353,6 +376,8 @@ func makeNodeName(version string, ctx *cli.Context) string {
 
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
+// TODO: refactor reading external chain config file so we don't have to do it three separate times... (ie global? getter?)
+// OR, is it better to just refactor the error handling and call mutliple garbage-able reads to keep sustained memory use down?
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	name := makeNodeName(version, ctx)
 
@@ -386,7 +411,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		PrivateKey:      MakeNodeKey(ctx),
 		Name:            name,
 		NoDiscovery:     ctx.GlobalBool(NoDiscoverFlag.Name),
-		//BootstrapNodes:  MakeBootstrapNodes(ctx),
+		BootstrapNodes:  MakeBootstrapNodes(ctx),
 		ListenAddr:      MakeListenAddress(ctx),
 		NAT:             MakeNAT(ctx),
 		MaxPeers:        ctx.GlobalInt(MaxPeersFlag.Name),
@@ -406,7 +431,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	accman := MakeAccountManager(ctx)
 
 	ethConf := &eth.Config{
-		//ChainConfig:           MustMakeChainConfig(ctx),
+		ChainConfig:             MustMakeChainConfig(ctx),
 		FastSync:                ctx.GlobalBool(FastSyncFlag.Name),
 		BlockChainVersion:       ctx.GlobalInt(BlockchainVersionFlag.Name),
 		DatabaseCache:           ctx.GlobalInt(CacheFlag.Name),
@@ -438,44 +463,16 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		log.Fatalf("malformed %s flag value %q", GpoMaxGasPriceFlag.Name, ctx.GlobalString(GpoMaxGasPriceFlag.Name))
 	}
 
-
-	// #chainconfigi
-	// Override configs based on ExternalChainConfig flag file
+	// Write genesis block if chain config file has genesis state data
 	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-
-		// Use externalConfig in lieu of pertinent node+eth Configs
-		// This will allow partial externalChainConfig JSON files to override only specified settings, ie ChainConfig, Genesis, Nodes...,
-		// *which may or may not be desirable UI
-		// TODO: handle construction configs in a much more refactored, less redundant way
 		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
 		if err != nil {
 			panic(err)
 		}
-		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", ctx.GlobalString(UseChainConfigFlag.Name)))
-
-		// ChainConfig
-		if externalConfig.ChainConfig != nil {
-			ethConf.ChainConfig = externalConfig.ChainConfig
-			glog.V(logger.Info).Info(fmt.Sprintf("Found custom chain configuration: \x1b[32m%s\x1b[39m", externalConfig.ChainConfig))
-		} else {
-			ethConf.ChainConfig = MustMakeChainConfig(ctx)
-			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom chain configuration. Will not override."))
-		}
-
-		// Bootstrap nodes
-		if externalConfig.Bootstrap != nil {
-			stackConf.BootstrapNodes = externalConfig.Bootstrap
-			glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
-		} else {
-			stackConf.BootstrapNodes = MakeBootstrapNodes(ctx)
-			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom bootstrap nodes. Will not override."))
-		}
-
-		// Genesis
 		if externalConfig.Genesis != nil {
 
 			// This is yank-pasted from initGenesis command. TODO: refactor some serious shi
-			chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeDataDir(ctx), "chaindata"), 0, 0)
+			chainDB := MakeChainDatabase(ctx)
 			if err != nil {
 				log.Fatalf("could not open database: %v", err)
 			}
@@ -491,13 +488,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		} else {
 			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom genesis state. Will use DB."))
 		}
-
-		// TODO: implement other external config fields as well (ie Genesis, etc...)
-		// TODO: could refactor `if` statement switches to external config reader function
-
-	} else {
-		ethConf.ChainConfig = MustMakeChainConfig(ctx)
-		stackConf.BootstrapNodes = MakeBootstrapNodes(ctx)
 	}
 
 	// Configure the Whisper service
@@ -558,9 +548,31 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
 func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
+
+	// need to at least ensure the set up of the database files
 	db := MakeChainDatabase(ctx)
 	defer db.Close()
 
+	// Override configs based on ExternalChainConfig flag file
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+
+		// Use externalConfig in lieu of pertinent node+eth Configs
+		// This will allow partial externalChainConfig JSON files to override only specified settings, ie ChainConfig, Genesis, Nodes...,
+		// *which may or may not be desirable UI
+		// TODO: handle construction configs in a much more refactored, less redundant way
+
+		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+		if err != nil {
+			panic(err)
+		}
+
+		if externalConfig.ChainConfig != nil {
+			glog.V(logger.Info).Info(fmt.Sprintf("Found custom chain configuration: \x1b[32m%s\x1b[39m", externalConfig.ChainConfig))
+			return externalConfig.ChainConfig
+		}
+
+		glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom chain configuration. Will use DB/context."))
+	}
 	return MustMakeChainConfigFromDb(ctx, db)
 }
 
@@ -579,6 +591,7 @@ func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.Exter
 	} else {
 		customC, err := core.ReadChainConfigFromJSONFile(flaggedExternalChainConfigPath)
 		if err == nil {
+			glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", flaggedExternalChainConfigPath))
 			return customC, nil
 		} else {
 			return nil, fmt.Errorf("ERROR: Error reading configuration file (%s): %v", flaggedExternalChainConfigPath, err)
