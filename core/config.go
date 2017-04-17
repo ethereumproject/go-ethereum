@@ -363,13 +363,10 @@ func MakeGenesisDump(dataDirPath string) (*GenesisDump, error) {
 	// Settings.
 	genesisHeader := genesis.Header()
 
-	nonce, err := genesisHeader.Nonce.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	time := common.Bytes2Hex(common.BigToBytes(genesisHeader.Time, 0))
+	nonce := []byte(fmt.Sprintf(`0x%x`, genesisHeader.Nonce))
+	time := common.BigToHash(genesisHeader.Time).Hex()
 	parentHash := genesisHeader.ParentHash.Hex()
-	extra := common.Bytes2Hex(genesisHeader.Extra)
+	extra := common.ToHex(genesisHeader.Extra)
 	gasLimit := common.BigToHash(genesisHeader.GasLimit).Hex()
 	difficulty := common.BigToHash(genesisHeader.Difficulty).Hex()
 	mixHash := genesisHeader.MixDigest.Hex()

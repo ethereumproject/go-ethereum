@@ -446,6 +446,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		// Use externalConfig in lieu of pertinent node+eth Configs
 		// This will allow partial externalChainConfig JSON files to override only specified settings, ie ChainConfig, Genesis, Nodes...,
 		// *which may or may not be desirable UI
+		// TODO: handle construction configs in a much more refactored, less redundant way
 		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
 		if err != nil {
 			panic(err)
@@ -467,7 +468,28 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 			glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
 		} else {
 			stackConf.BootstrapNodes = MakeBootstrapNodes(ctx)
-			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom bootstrap nodes.n Will not override."))
+			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom bootstrap nodes. Will not override."))
+		}
+
+		// Genesis
+		if externalConfig.Genesis != nil {
+
+			// This is yank-pasted from initGenesis command. TODO: refactor some serious shi
+			chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeDataDir(ctx), "chaindata"), 0, 0)
+			if err != nil {
+				log.Fatalf("could not open database: %v", err)
+			}
+
+			block, err := core.WriteGenesisBlock(chainDB, externalConfig.Genesis)
+			if err != nil {
+				log.Fatalf("failed to write genesis block: %v", err)
+			} else {
+				log.Printf("successfully wrote genesis block and allocations: %x", block.Hash())
+			}
+
+			chainDB.Close()
+		} else {
+			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom genesis state. Will use DB."))
 		}
 
 		// TODO: implement other external config fields as well (ie Genesis, etc...)

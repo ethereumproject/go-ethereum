@@ -246,6 +246,7 @@ func initGenesis(ctx *cli.Context) error {
 		log.Fatalf("could not open database: ", err)
 		return err
 	}
+	defer chainDB.Close()
 
 	dump, err := core.ReadGenesisFromJSONFile(path)
 	if err != nil {
