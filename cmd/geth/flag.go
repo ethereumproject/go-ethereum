@@ -286,51 +286,6 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
-// GetGenesisDump reads the genesis block from a database's chaindata and return a GenesisDump for exporting
-func GetGenesisDump(ctx *cli.Context) (*core.GenesisDump, error) {
-
-	dataDirPath := filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata")
-
-	dump, err := core.MakeGenesisDump(dataDirPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return dump, nil
-}
-
-// ExportChainConfig exports contextualized chain configuration to JSON file
-func ExportExternalChainConfigJSON(ctx *cli.Context) error {
-
-	chainConfigFilePath := ctx.GlobalString(ExportChainConfigFlag.Name)
-	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
-
-	if chainConfigFilePath == "" || chainConfigFilePath == "/" {
-		return fmt.Errorf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank.", chainConfigFilePath)
-	}
-	genesisDump, err := GetGenesisDump(ctx)
-	if err != nil {
-		return err
-	}
-
-	var currentConfig = &core.ExternalChainConfig{
-		ChainConfig: MustMakeChainConfig(ctx), // get current chain config
-		// TODO: implement these
-		// ID: ,
-		// Name: ,
-		 Genesis: genesisDump,
-		// State: ,
-		 Bootstrap: MakeBootstrapNodes(ctx),
-	}
-
-	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {
-		return fmt.Errorf("An error occurred while writing chain configuration: %v", writeError)
-	}
-
-	glog.V(logger.Info).Info(fmt.Sprintf("Wrote chain config file to \x1b[32m%s\x1b[39m  Closing down now.", chainConfigFilePath))
-	return nil
-}
-
 // Check for preexisting **Un-classic** data directory, ie "/home/path/to/Ethereum".
 // If it exists, check if the data therein belongs to Classic blockchain (ie not configged as "ETF"),
 // and rename it to fit Classic naming convention ("/home/path/to/EthereumClassic") if that dir doesn't already exist.

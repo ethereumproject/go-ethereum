@@ -18,6 +18,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -38,6 +39,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -109,6 +111,15 @@ This is a destructive action and changes the network in which you will be
 participating.
 `,
 		},
+		{
+			Action: dumpExternalChainConfig,
+			Name:   "dumpExternalChainConfig",
+			Usage:  "dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
+			Description: `
+The dump external configuration command writes a JSON file containing pertinent configuration data for
+the configuration of a chain database. It includes genesis block data as well as chain fork settings.
+`,
+		},
 	}
 
 	app.Flags = []cli.Flag{
@@ -117,7 +128,6 @@ participating.
 		PasswordFileFlag,
 		BootnodesFlag,
 		DataDirFlag,
-		ExportChainConfigFlag,
 		UseChainConfigFlag,
 		KeyStoreDirFlag,
 		BlockchainVersionFlag,
@@ -215,15 +225,6 @@ participating.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
-
-	// if exporting chain config, just write file and return (don't run node)
-	if ctx.GlobalIsSet(ExportChainConfigFlag.Name) {
-		if err := ExportExternalChainConfigJSON(ctx); err != nil {
-			panic(err)
-		}
-		return nil
-	}
-
 	node := MakeSystemNode(Version, ctx)
 	startNode(ctx, node)
 	node.Wait()
@@ -233,15 +234,17 @@ func geth(ctx *cli.Context) error {
 
 // initGenesis will initialise the given JSON format genesis file and writes it as
 // the zero'd block (i.e. genesis) or will fail hard if it can't succeed.
-func initGenesis(ctx *cli.Context) {
+func initGenesis(ctx *cli.Context) error {
 	path := ctx.Args().First()
 	if len(path) == 0 {
 		log.Fatal("need path argument to genesis JSON file")
+		return errors.New("need path argument to genesis JSON file")
 	}
 
 	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeDataDir(ctx), "chaindata"), 0, 0)
 	if err != nil {
-		log.Fatal("could not open database: ", err)
+		log.Fatalf("could not open database: ", err)
+		return err
 	}
 
 	dump, err := core.ReadGenesisFromJSONFile(path)
@@ -254,7 +257,51 @@ func initGenesis(ctx *cli.Context) {
 		log.Fatal("failed to write genesis block: ", err)
 	}
 	log.Printf("successfully wrote genesis block and/or chain rule set: %x", block.Hash())
+	return nil
 }
+
+
+// dumpExternailChainConfig exports chain configuration based on database to JSON file
+func dumpExternalChainConfig(ctx *cli.Context) error {
+
+	chainConfigFilePath := ctx.Args().First()
+	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
+
+	if chainConfigFilePath == "" || chainConfigFilePath == "/" || chainConfigFilePath == "." {
+		log.Fatalf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank. You typed: %v ", chainConfigFilePath, ctx.Args().First())
+		return errors.New("invalid required filepath argument")
+	}
+
+	dataDirPath := filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata")
+
+	// pretty printy
+	cwd, _ := os.Getwd()
+	glog.V(logger.Info).Info(fmt.Sprintf("Dumping chain configuration JSON to \x1b[32m%s\x1b[39m, it may take a moment to tally genesis allocations...", common.EnsureAbsolutePath(cwd, chainConfigFilePath)))
+
+	genesisDump, err := core.MakeGenesisDump(dataDirPath)
+	if err != nil {
+		log.Fatalf("An error occurred dumping the genesis block state: %v", err)
+		return err
+	}
+
+	var currentConfig = &core.ExternalChainConfig{
+		// TODO: implement these
+		// ID: ,
+		// Name: ,
+		ChainConfig: MustMakeChainConfig(ctx), // get current chain config
+		Genesis: genesisDump,
+		Bootstrap: MakeBootstrapNodes(ctx),
+	}
+
+	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {
+		log.Fatalf("An error occurred while writing chain configuration: %v", writeError)
+		return writeError
+	}
+
+	glog.V(logger.Info).Info(fmt.Sprintf("Wrote chain config file to \x1b[32m%s\x1b[39m.", chainConfigFilePath))
+	return nil
+}
+
 
 // startNode boots up the system node and all registered protocols, after which
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces and the

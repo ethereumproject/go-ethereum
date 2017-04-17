@@ -26,10 +26,6 @@ var (
 		Usage: "Data directory for the databases and keystore",
 		Value: DirectoryString{common.DefaultDataDir()},
 	}
-	ExportChainConfigFlag = cli.StringFlag{
-		Name: "exportchainconfig",
-		Usage: "Export current chain config to file (JSON). If a relative path is specified it will use default Ethereum data directory as base.",
-	}
 	UseChainConfigFlag = cli.StringFlag{
 		Name: "chainconfig",
 		Usage: "Specify a JSON format chain configuration file to use.",
