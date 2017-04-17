@@ -169,7 +169,7 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 type ExternalChainConfig struct {
 	ID          string            `json:"id"`
 	Name        string            `json:"name"`
-	Genesis     *GenesisDump      `json:"genesisDump"`
+	Genesis     *GenesisDump      `json:"genesis"`
 	ChainConfig *ChainConfig      `json:"chainConfig"`
 	State       []*GenesisAccount `json:"state"`
 	Bootstrap   []*discover.Node  `json:"bootstrap"`
