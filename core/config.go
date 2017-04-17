@@ -341,6 +341,14 @@ type GenesisDump struct {
 	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
 }
 
+// GenesisDumpAlloc is a GenesisDump.Alloc entry.
+type GenesisDumpAlloc struct {
+	Code    prefixedHex `json:"code"`
+	Storage map[hex]hex `json:"storage"`
+	Balance string      `json:"balance"` // decimal string
+}
+
+
 // MakeGenesisDump makes a genesis dump
 func MakeGenesisDump(dataDirPath string) (*GenesisDump, error) {
 
@@ -407,13 +415,6 @@ func MakeGenesisDump(dataDirPath string) (*GenesisDump, error) {
 	}
 
 	return dump, nil
-}
-
-// GenesisDumpAlloc is a GenesisDump.Alloc entry.
-type GenesisDumpAlloc struct {
-	Code    prefixedHex `json:"code"`
-	Storage map[hex]hex `json:"storage"`
-	Balance string      `json:"balance"` // decimal string
 }
 
 // ReadGenesisFromJSONFile allows the use a flagged genesis file in json format

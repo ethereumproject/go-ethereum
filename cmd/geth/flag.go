@@ -286,19 +286,6 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
-// GetGenesisDump reads the genesis block from a database's chaindata and return a GenesisDump for exporting
-func GetGenesisDump(ctx *cli.Context) (*core.GenesisDump, error) {
-
-	dataDirPath := filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata")
-
-	dump, err := core.MakeGenesisDump(dataDirPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return dump, nil
-}
-
 // ExportChainConfig exports contextualized chain configuration to JSON file
 func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 
@@ -308,19 +295,20 @@ func ExportExternalChainConfigJSON(ctx *cli.Context) error {
 	if chainConfigFilePath == "" || chainConfigFilePath == "/" {
 		return fmt.Errorf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank.", chainConfigFilePath)
 	}
-	genesisDump, err := GetGenesisDump(ctx)
+
+	dataDirPath := filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata")
+	genesisDump, err := core.MakeGenesisDump(dataDirPath)
 	if err != nil {
 		return err
 	}
 
 	var currentConfig = &core.ExternalChainConfig{
-		ChainConfig: MustMakeChainConfig(ctx), // get current chain config
 		// TODO: implement these
 		// ID: ,
 		// Name: ,
-		 Genesis: genesisDump,
-		// State: ,
-		 Bootstrap: MakeBootstrapNodes(ctx),
+		ChainConfig: MustMakeChainConfig(ctx), // get current chain config
+		Genesis: genesisDump,
+		Bootstrap: MakeBootstrapNodes(ctx),
 	}
 
 	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {
