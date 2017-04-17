@@ -288,19 +288,14 @@ func MakePasswordList(ctx *cli.Context) []string {
 
 // GetGenesisDump reads the genesis block from a database's chaindata and return a GenesisDump for exporting
 func GetGenesisDump(ctx *cli.Context) (*core.GenesisDump, error) {
-	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
-	dataDirPath := filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata")
-	chainDB, err := ethdb.NewLDBDatabase(dataDirPath, 0, 0)
-	if err != nil {
-		return nil, fmt.Errorf("WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n  Using default data directory at: %v", err, dataDirPath)
-	}
-	defer chainDB.Close()
 
-	genesis := core.GetBlock(chainDB, core.GetCanonicalHash(chainDB, 0))
-	dump, err := core.MakeGenesisDump(genesis)
+	dataDirPath := filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata")
+
+	dump, err := core.MakeGenesisDump(dataDirPath)
 	if err != nil {
 		return nil, err
 	}
+
 	return dump, nil
 }
 

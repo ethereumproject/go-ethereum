@@ -169,7 +169,7 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 type ExternalChainConfig struct {
 	ID          string            `json:"id"`
 	Name        string            `json:"name"`
-	Genesis     *GenesisDump      `json:"genesisDump"`
+	Genesis     *GenesisDump      `json:"genesis"`
 	ChainConfig *ChainConfig      `json:"chainConfig"`
 	State       []*GenesisAccount `json:"state"`
 	Bootstrap   []*discover.Node  `json:"bootstrap"`
@@ -341,9 +341,18 @@ type GenesisDump struct {
 	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
 }
 
-// MakeGenesisDump makes a genesis dump (TODO: more commentary)
-func MakeGenesisDump(genesis *types.Block) (*GenesisDump, error) {
+// MakeGenesisDump makes a genesis dump
+func MakeGenesisDump(dataDirPath string) (*GenesisDump, error) {
 
+	chaindb, err := ethdb.NewLDBDatabase(dataDirPath, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n  Using default data directory at: %v", err, dataDirPath)
+	}
+	defer chaindb.Close()
+
+	genesis := GetBlock(chaindb, GetCanonicalHash(chaindb, 0))
+
+	// Settings.
 	genesisHeader := genesis.Header()
 
 	nonce, err := genesisHeader.Nonce.MarshalJSON()
@@ -358,7 +367,7 @@ func MakeGenesisDump(genesis *types.Block) (*GenesisDump, error) {
 	mixHash := genesisHeader.MixDigest.Hex()
 	coinbase := genesisHeader.Coinbase.Hex()
 
-	return &GenesisDump{
+	var dump = &GenesisDump{
 		Nonce:      prefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
 		Timestamp:  prefixedHex(time),
 		ParentHash: prefixedHex(parentHash),
@@ -368,7 +377,36 @@ func MakeGenesisDump(genesis *types.Block) (*GenesisDump, error) {
 		Mixhash:    prefixedHex(mixHash),
 		Coinbase:   prefixedHex(coinbase),
 		//Alloc: ,
-	}, nil
+	}
+
+	//// State allocations.
+	state, err := state.New(common.Hash{}, chaindb)
+	if err != nil {
+		return nil, err
+	}
+
+	genState, err := state.New(genesis.Root())
+	if err != nil {
+		return nil, err
+	}
+	stateDump := genState.RawDump()
+
+	stateAccounts := stateDump.Accounts
+	dump.Alloc = make(map[hex]*GenesisDumpAlloc, len(stateAccounts))
+
+	for address, acct := range stateAccounts {
+
+		// Ensure valid address.
+		// TODO: handle invalidity
+		if common.IsHexAddress(address) {
+
+			dump.Alloc[hex(address)] = &GenesisDumpAlloc{
+				Balance: acct.Balance,
+			}
+		}
+	}
+
+	return dump, nil
 }
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.

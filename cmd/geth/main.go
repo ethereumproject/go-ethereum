@@ -218,7 +218,10 @@ func geth(ctx *cli.Context) error {
 
 	// if exporting chain config, just write file and return (don't run node)
 	if ctx.GlobalIsSet(ExportChainConfigFlag.Name) {
-		return ExportExternalChainConfigJSON(ctx)
+		if err := ExportExternalChainConfigJSON(ctx); err != nil {
+			panic(err)
+		}
+		return nil
 	}
 
 	node := MakeSystemNode(Version, ctx)
