@@ -25,7 +25,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/ethdb"
@@ -67,16 +66,7 @@ func TestGetBlockHeaders62(t *testing.T) {
 		{
 			Name:  "Homestead",
 			Block: big.NewInt(0),
-			GasTable: &vm.GasTable{
-				ExtcodeSize:     big.NewInt(20),
-				ExtcodeCopy:     big.NewInt(20),
-				Balance:         big.NewInt(20),
-				SLoad:           big.NewInt(50),
-				Calls:           big.NewInt(40),
-				Suicide:         big.NewInt(0),
-				ExpByte:         big.NewInt(10),
-				CreateBySuicide: nil,
-			},
+			Features: []*core.ForkFeature{core.DefaultHomesteadFeature},
 		},
 	}
 	testGetBlockHeaders(t, 62)
