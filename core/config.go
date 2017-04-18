@@ -92,10 +92,10 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	fork := c.Fork("Diehard")
-	if fork.Block == nil || fork.Length == nil || num == nil {
+	if fork.Block == nil || fork.CollectOptions().Length == nil || num == nil {
 		return false
 	}
-	block := big.NewInt(0).Add(fork.Block, fork.Length)
+	block := big.NewInt(0).Add(fork.Block, fork.CollectOptions().Length)
 	return num.Cmp(block) >= 0
 }
 
@@ -113,10 +113,10 @@ func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 		if fork.Block.Cmp(h.Number) != 0 {
 			continue
 		}
-		if common.EmptyHash(fork.RequiredHash) {
+		if common.EmptyHash(fork.CollectOptions().RequiredHash) {
 			continue
 		}
-		if fork.RequiredHash != h.Hash() {
+		if fork.CollectOptions().RequiredHash != h.Hash() {
 			return ErrHashKnownFork
 		}
 	}
@@ -156,8 +156,8 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 
 	for _, fork := range c.Forks {
 		if fork.Block.Cmp(num) <= 0 {
-			if fork.GasTable != nil {
-				t = fork.GasTable
+			if fork.CollectOptions().GasTable != nil {
+				t = fork.CollectOptions().GasTable
 			}
 		}
 	}
@@ -167,12 +167,11 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 
 // ExternalChainConfig holds necessary data for externalizing a given blockchain configuration.
 type ExternalChainConfig struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Genesis     *GenesisDump      `json:"genesis"`
-	ChainConfig *ChainConfig      `json:"chainConfig"`
-	State       []*GenesisAccount `json:"state"`
-	Bootstrap   []*discover.Node  `json:"bootstrap"`
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Genesis     *GenesisDump     `json:"genesis"`
+	ChainConfig *ChainConfig     `json:"chainConfig"`
+	Bootstrap   []*discover.Node `json:"bootstrap"`
 }
 
 // WriteToJSONFile writes a given config to a specified file path.
@@ -206,21 +205,72 @@ func ReadChainConfigFromJSONFile(path string) (*ExternalChainConfig, error) {
 }
 
 type Fork struct {
+	ID   string
 	Name string
-	// For user notification only
-	Support      bool
-	NetworkSplit bool
 	// Block is the block number where the hard-fork commences on
 	// the Ethereum network.
 	Block *big.Int
-	// Length of fork, if limited
-	Length *big.Int
+	// Configurable features.
+	Features []*ForkFeature
+}
+
+// ForkFeatures will be identified and implemented based on their `id`.
+// Their `id` identifies "what", _or_ "what kind" of feature it is.
+// For example, there are several 'set-gasprice' features, each using a different gastable.
+// In this case, the last ForkFeature with ID 'set-gasprice' in a given Fork will be used, but it's
+// obviously best practice to only have one 'set-gasprice' ForkFeature per Fork anyway.
+// Another example pertains to EIP/ECIP upgrades (so-called "hard-forks"). These are
+// policitical or economic decisions made by or in the interest of the community, and impacting
+// the implementation of the Ethereum Classic protocol. In these cases, given ID's will be more descripive, ie
+//  "homestead", "diehard", "eip155", "ecip1010", etc... ;-)
+type ForkFeature struct {
+	ID      string `json:"id"`
+	Options *FeatureOptions
+}
+
+// FeatureOptions uses hardcoded field values instead of arbitrary key-value pairs
+// to avoid pitfalls related to `reflect`ing and, more importantly, to provide a transparent
+// and concrete set of available options for users interested in configuring their own features.
+// It is OK for a given FeatureOptions to contain only some of the possible fields; nil values will be ignored.
+// These are options that are supported by the Ethereum protocol as it follows given forks
+// of a given blockchain.
+type FeatureOptions struct {
+	// For user notification only
+	NetworkSplit bool `json:"networkSplit"`
+	Support      bool `json:"support"`
 	// RequiredHash to assist in avoiding sync issues
 	// after network split.
-	RequiredHash common.Hash
-	// Gas Price table
-	GasTable *vm.GasTable
+	RequiredHash common.Hash  `json:"requiredHash"`
+	GasTable     *vm.GasTable `json:"gasTable"` // Gas Price table
+	Length       *big.Int     `json:"length"`   // Length of fork, if limited
+	ChainID      *big.Int     `json:"chainId"`
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
+}
+
+// CollectOptions amalgamates and returns a flat set of FeatureOptions for a given Fork.
+// In the case that multiple ForFeatures specify the same key, the latest-specified will be used.
+// TODO: could possible use an id as an argument to get more precision if desired
+func (f *Fork) CollectOptions() *FeatureOptions {
+	opts := &FeatureOptions{}
+
+	for _, feature := range f.Features {
+		// FIXME: there is probably a more elegant way of doing this...
+		opts.NetworkSplit = feature.Options.NetworkSplit // bools cant be nil
+		opts.Support = feature.Options.Support
+		if !common.EmptyHash(feature.Options.RequiredHash) {
+			opts.RequiredHash = feature.Options.RequiredHash
+		}
+		if feature.Options.GasTable != nil {
+			opts.GasTable = feature.Options.GasTable
+		}
+		if feature.Options.Length != nil && feature.Options.Length != big.NewInt(0) {
+			opts.Length = feature.Options.Length
+		}
+		if feature.Options.ChainID != nil && feature.Options.ChainID != big.NewInt(0) {
+			opts.ChainID = feature.Options.ChainID
+		}
+	}
+	return opts
 }
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0
@@ -348,7 +398,6 @@ type GenesisDumpAlloc struct {
 	Balance string      `json:"balance"` // decimal string
 }
 
-
 // MakeGenesisDump makes a genesis dump
 func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 
@@ -379,12 +428,7 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	}
 
 	//// State allocations.
-	state, err := state.New(common.Hash{}, chaindb)
-	if err != nil {
-		return nil, err
-	}
-
-	genState, err := state.New(genesis.Root())
+	genState, err := state.New(genesis.Root(), chaindb)
 	if err != nil {
 		return nil, err
 	}

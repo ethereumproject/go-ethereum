@@ -281,8 +281,8 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	var fork *core.Fork
 	for i := range pm.chainConfig.Forks {
 		fork = pm.chainConfig.Forks[i]
-		if fork.NetworkSplit {
-			if fork.Support {
+		if fork.CollectOptions().NetworkSplit {
+			if fork.CollectOptions().Support {
 				// Request the peer's fork block header for extra-dat
 				if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
 					glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)

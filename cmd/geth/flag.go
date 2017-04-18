@@ -613,7 +613,7 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		// Force override any existing configs if explicitly requested
 		if c.Forks[i].Name == "ETF" {
 			if ctx.GlobalBool(ETFChain.Name) {
-				c.Forks[i].Support = true
+				c.Forks[i].CollectOptions().Support = true
 			}
 		}
 	}
@@ -631,8 +631,8 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 
 	netsplitChoice := ""
 	for i := range c.Forks {
-		if c.Forks[i].NetworkSplit {
-			netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
+		if c.Forks[i].CollectOptions().NetworkSplit {
+			netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].CollectOptions().Support)
 		} else {
 			netsplitChoice = ""
 		}
