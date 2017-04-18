@@ -403,6 +403,9 @@ type GenesisDumpAlloc struct {
 func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 
 	genesis := GetBlock(chaindb, GetCanonicalHash(chaindb, 0))
+	if genesis == nil {
+		return nil, nil
+	}
 
 	// Settings.
 	genesisHeader := genesis.Header()

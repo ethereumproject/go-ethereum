@@ -283,8 +283,25 @@ func dumpExternalChainConfig(ctx *cli.Context) error {
 		log.Fatalf("An error occurred dumping the genesis block state: %v", err)
 		return err
 	}
-	db.Close() // required for MustMakeChainConfig below
-	glog.V(logger.Info).Info("Finished building genesis state dump. Whew!")
+	db.Close() // required to free for MustMakeChainConfig below
+
+	// Case: No genesis block exists in the given db.
+	// This case is probably that a user is running `dumpExternalChainConfig` without
+	// having initialized any chaindata yet. If so, we should just dump defaulty values.
+	//
+	// FYI: here would be an inflection point for if we used a --genesis flag.
+	if genesisDump == nil {
+		if ctx.GlobalBool(TestNetFlag.Name) {
+			glog.V(logger.Info).Info("WARNING: No genesis block found in database. Dumping the testnet default genesis.")
+			genesisDump = core.TestNetGenesis
+		} else {
+			glog.V(logger.Info).Info("WARNING: No genesis block found in database. Dumping the mainnet default genesis.")
+			genesisDump = core.DefaultGenesis
+		}
+	} else {
+		// it'll only take a while if nondefaulty
+		glog.V(logger.Info).Info("Finished building genesis state dump. Whew!")
+	}
 
 	var currentConfig = &core.ExternalChainConfig{
 		// TODO: implement these
