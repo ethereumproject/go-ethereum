@@ -28,58 +28,21 @@ import (
 var DefaultConfig = &ChainConfig{
 	Forks: []*Fork{
 		{
-			Name:  "Homestead",
-			Block: big.NewInt(1150000),
-			Features: []*ForkFeature{
-				{
-					ID: "homestead",
-					Options: &FeatureOptions{
-						NetworkSplit: false,
-						Support:      true,
-						GasTable:     HomeSteadGasTable,
-					},
-				},
-			},
+			Name:     "Homestead",
+			Block:    big.NewInt(1150000),
+			Features: []*ForkFeature{DefaultHomesteadFeature},
 		}, {
-			Name:  "ETF",
-			Block: big.NewInt(1920000),
-			Features: []*ForkFeature{
-				{
-					ID: "etf",
-					Options: &FeatureOptions{
-						NetworkSplit: true,
-						Support:      false,
-						RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
-					},
-				},
-			},
+			Name:     "ETF",
+			Block:    big.NewInt(1920000),
+			Features: []*ForkFeature{DefaultETFFeature},
 		}, {
-			Name:  "GasReprice",
-			Block: big.NewInt(2500000),
-			Features: []*ForkFeature{
-				{
-					ID: "gasreprice",
-					Options: &FeatureOptions{
-						NetworkSplit: false,
-						Support:      true,
-						GasTable:     GasRepriceGasTable,
-					},
-				},
-			},
+			Name:     "GasReprice",
+			Block:    big.NewInt(2500000),
+			Features: []*ForkFeature{DefaultGasRepriceFeature},
 		}, {
-			Name:  "Diehard",
-			Block: big.NewInt(3000000),
-			Features: []*ForkFeature{
-				{
-					ID: "diehard",
-					Options: &FeatureOptions{
-						Length:       big.NewInt(2000000),
-						NetworkSplit: false,
-						Support:      true,
-						GasTable:     DiehardGasTable,
-					},
-				},
-			},
+			Name:     "Diehard",
+			Block:    big.NewInt(3000000),
+			Features: []*ForkFeature{DefaultDiehardFeature},
 		},
 	},
 	BadHashes: []*BadHash{
@@ -97,61 +60,24 @@ var DefaultConfig = &ChainConfig{
 var TestConfig = &ChainConfig{
 	Forks: []*Fork{
 		{
-			Name:  "Homestead",
-			Block: big.NewInt(494000),
-			Features: []*ForkFeature{
-				{
-					ID: "homestead",
-					Options: &FeatureOptions{
-						NetworkSplit: false,
-						Support:      true,
-						GasTable:     HomeSteadGasTable,
-					},
-				},
-			},
+			Name:     "Homestead",
+			Block:    big.NewInt(494000),
+			Features: []*ForkFeature{DefaultHomesteadFeature},
 		},
 		{
-			Name:  "GasReprice",
-			Block: big.NewInt(1783000),
-			Features: []*ForkFeature{
-				{
-					ID: "gasreprice",
-					Options: &FeatureOptions{
-						NetworkSplit: false,
-						Support:      true,
-						GasTable:     GasRepriceGasTable,
-					},
-				},
-			},
+			Name:     "GasReprice",
+			Block:    big.NewInt(1783000),
+			Features: []*ForkFeature{DefaultGasRepriceFeature},
 		},
 		{
-			Name:  "ETF",
-			Block: big.NewInt(1885000),
-			Features: []*ForkFeature{
-				{
-					ID: "etf",
-					Options: &FeatureOptions{
-						NetworkSplit: true,
-						Support:      false,
-						RequiredHash: common.HexToHash("2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740"),
-					},
-				},
-			},
+			Name:     "ETF",
+			Block:    big.NewInt(1885000),
+			Features: []*ForkFeature{DefaultETFFeature},
 		},
 		{
-			Name:  "Diehard",
-			Block: big.NewInt(1915000),
-			Features: []*ForkFeature{
-				{
-					ID: "diehard",
-					Options: &FeatureOptions{
-						Length:       big.NewInt(1500000),
-						NetworkSplit: false,
-						Support:      true,
-						GasTable:     DiehardGasTable,
-					},
-				},
-			},
+			Name:     "Diehard",
+			Block:    big.NewInt(1915000),
+			Features: []*ForkFeature{DefaultDiehardFeature},
 		},
 	},
 	BadHashes: []*BadHash{

@@ -270,7 +270,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff, config.Fork("Diehard").Block)
 	} else if config.IsExplosion(num) {
 		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
-			config.Fork("Diehard").Block, big.NewInt(0).Add(config.Fork("Diehard").Block, config.Fork("Diehard").Length))
+			config.Fork("Diehard").Block, big.NewInt(0).Add(config.Fork("Diehard").Block, config.Fork("Diehard").CollectOptions().Length))
 	} else if config.IsHomestead(num) {
 		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
 	} else {
