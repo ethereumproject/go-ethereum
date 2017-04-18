@@ -81,7 +81,7 @@ func (h Hash) MarshalJSON() ([]byte, error) {
 
 // Sets the hash to the value of b. If b is larger than len(h) it will panic
 func (h *Hash) SetBytes(b []byte) {
-	if len(b) > len(h) {
+	if len(b) > len(h.Bytes()) {
 		b = b[len(b)-HashLength:]
 	}
 
@@ -142,7 +142,7 @@ func (a Address) Hex() string   { return "0x" + Bytes2Hex(a[:]) }
 
 // Sets the address to the value of b. If b is larger than len(a) it will panic
 func (a *Address) SetBytes(b []byte) {
-	if len(b) > len(a) {
+	if len(b) > len(a.Bytes()) {
 		b = b[len(b)-AddressLength:]
 	}
 	copy(a[AddressLength-len(b):], b)
