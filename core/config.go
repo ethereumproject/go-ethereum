@@ -205,27 +205,27 @@ func ReadChainConfigFromJSONFile(path string) (*ExternalChainConfig, error) {
 }
 
 type Fork struct {
-	ID   string
-	Name string
+	ID   string `json:"id"`
+	Name string `json:"name"`
 	// Block is the block number where the hard-fork commences on
 	// the Ethereum network.
-	Block *big.Int
+	Block *big.Int `json:"block"`
 	// Configurable features.
-	Features []*ForkFeature
+	Features []*ForkFeature `json:"features"`
 }
 
 // ForkFeatures will be identified and implemented based on their `id`.
 // Their `id` identifies "what", _or_ "what kind" of feature it is.
 // For example, there are several 'set-gasprice' features, each using a different gastable.
-// In this case, the last ForkFeature with ID 'set-gasprice' in a given Fork will be used, but it's
+// In this case, the last-to-iterate (via `range`) ForkFeature with ID 'set-gasprice' in a given Fork will be used, but it's
 // obviously best practice to only have one 'set-gasprice' ForkFeature per Fork anyway.
 // Another example pertains to EIP/ECIP upgrades (so-called "hard-forks"). These are
-// policitical or economic decisions made by or in the interest of the community, and impacting
-// the implementation of the Ethereum Classic protocol. In these cases, given ID's will be more descripive, ie
+// political or economic decisions made by or in the interest of the community, and impacting
+// the implementation of the Ethereum Classic protocol. In these cases, given ID's will be more descriptive, ie
 //  "homestead", "diehard", "eip155", "ecip1010", etc... ;-)
 type ForkFeature struct {
 	ID      string `json:"id"`
-	Options *FeatureOptions
+	Options *FeatureOptions `json:"options"`
 }
 
 // FeatureOptions uses hardcoded field values instead of arbitrary key-value pairs
@@ -234,6 +234,7 @@ type ForkFeature struct {
 // It is OK for a given FeatureOptions to contain only some of the possible fields; nil values will be ignored.
 // These are options that are supported by the Ethereum protocol as it follows given forks
 // of a given blockchain.
+// See go-ethereum/core/data_features.go for exemplary defaults.
 type FeatureOptions struct {
 	// For user notification only
 	NetworkSplit bool `json:"networkSplit"`
@@ -247,14 +248,14 @@ type FeatureOptions struct {
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
 }
 
-// CollectOptions amalgamates and returns a flat set of FeatureOptions for a given Fork.
-// In the case that multiple ForFeatures specify the same key, the latest-specified will be used.
+// CollectOptions aggregates and returns a flat set of FeatureOptions for a given Fork.
+// In the case that multiple ForkFeatures specify the same key, the latest-specified will be used.
 // TODO: could possible use an id as an argument to get more precision if desired
+// FIXME: there is probably a more elegant way of doing this...
 func (f *Fork) CollectOptions() *FeatureOptions {
 	opts := &FeatureOptions{}
 
 	for _, feature := range f.Features {
-		// FIXME: there is probably a more elegant way of doing this...
 		opts.NetworkSplit = feature.Options.NetworkSplit // bools cant be nil
 		opts.Support = feature.Options.Support
 		if !common.EmptyHash(feature.Options.RequiredHash) {
