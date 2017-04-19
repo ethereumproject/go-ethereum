@@ -75,14 +75,21 @@ OPTIONS:
 `
 }
 
-// QUESTION: should we disallowed custom chain names that would conflict with default data naming schemes?
-//  ie "You can't name your custom chain any of the following: nodekey, dapp, keystore, chaindata, nodes"
+// getChainNameFromContext gets the --chain=my-custom-net value.
+// --testnet flag overrides --chain flag, thus return default testnet value.
+// Disallowed words which conflict with in-use data files will log the problem and return "",
+// which cause an error.
 func getChainNameFromContext(ctx *cli.Context) string {
 	if ctx.GlobalBool(TestNetFlag.Name) {
 		return core.DefaultTestChainName
 	}
 	if ctx.GlobalIsSet(ChainNameFlag.Name) {
 		if name := ctx.GlobalString(ChainNameFlag.Name); name != "" {
+			reservedNames := map[string]bool{"chaindata": true, "dapp": true, "keystore": true, "nodekey": true, "nodes": true}
+			if reservedNames[name] {
+				log.Fatal("Reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes'. Please use a different identifier.")
+				return ""
+			}
 			return name
 		} else {
 			log.Fatal("Argument to --chain must not be blank.")
@@ -153,7 +160,7 @@ func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 	// Return pre-configured nodes if none were manually requested
 	if !ctx.GlobalIsSet(BootnodesFlag.Name) {
 
-		// --test flag should override nodes for config file, maybe?
+		// --testnet flag overrides --config flag
 		if ctx.GlobalBool(TestNetFlag.Name) {
 			return TestNetBootNodes
 		}
@@ -167,7 +174,8 @@ func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 			}
 
 			// check if config file contains bootnodes configuration data
-			// if it does, use it ; if it doesn't, return default (ie "soft" config file)
+			// if it does, use it
+			// if it doesn't, return default (ie "soft" config file)
 			if externalConfig.Bootstrap != nil {
 				glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes in config file: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
 				return externalConfig.Bootstrap

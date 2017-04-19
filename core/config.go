@@ -214,8 +214,7 @@ type Fork struct {
 	Features []*ForkFeature `json:"features"`
 }
 
-// ForkFeatures will be identified and implemented based on their `id`.
-// Their `id` identifies "what", _or_ "what kind" of feature it is.
+// ForkFeatures are designed to decouple the implementation feature upgrades from Forks themselves.
 // For example, there are several 'set-gasprice' features, each using a different gastable.
 // In this case, the last-to-iterate (via `range`) ForkFeature with ID 'set-gasprice' in a given Fork will be used, but it's
 // obviously best practice to only have one 'set-gasprice' ForkFeature per Fork anyway.
@@ -431,7 +430,7 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 		//Alloc: ,
 	}
 
-	//// State allocations.
+	// State allocations.
 	genState, err := state.New(genesis.Root(), chaindb)
 	if err != nil {
 		return nil, err
@@ -442,22 +441,19 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	dump.Alloc = make(map[hex]*GenesisDumpAlloc, len(stateAccounts))
 
 	for address, acct := range stateAccounts {
-
-		// Ensure valid address.
-		// TODO: handle invalidity
 		if common.IsHexAddress(address) {
-
 			dump.Alloc[hex(address)] = &GenesisDumpAlloc{
 				Balance: acct.Balance,
 			}
+		} else {
+			return nil, fmt.Errorf("Invalid address in genesis state: %v", address)
 		}
 	}
-
 	return dump, nil
 }
 
-// ReadGenesisFromJSONFile allows the use a flagged genesis file in json format
-// It can be used in conjunction with a flagged external chain config file
+// ReadGenesisFromJSONFile allows the use a genesis file in JSON format.
+// Implemented in `init` command via initGenesis method.
 func ReadGenesisFromJSONFile(jsonFilePath string) (dump *GenesisDump, err error) {
 	f, err := os.Open(jsonFilePath)
 	if err != nil {
