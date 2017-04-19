@@ -25,9 +25,9 @@ teardown() {
 	echo "$output"
 
 	[ "$status" -eq 0 ]
-	[ "${lines[0]}" == "Account #0: {7ef5a6135f1fd6a02593eedc869c6d41d934aef8} $DATA_DIR/keystore/UTC--2016-03-22T12-57-55.920751759Z--7ef5a6135f1fd6a02593eedc869c6d41d934aef8" ]
-	[ "${lines[1]}" == "Account #1: {f466859ead1932d743d622cb74fc058882e8648a} $DATA_DIR/keystore/aaa" ]
-	[ "${lines[2]}" == "Account #2: {289d485d9771714cce91d3393d764e1311907acc} $DATA_DIR/keystore/zzz" ]
+	[ "${lines[0]}" == "Account #0: {7ef5a6135f1fd6a02593eedc869c6d41d934aef8} $DATA_DIR/mainnet/keystore/UTC--2016-03-22T12-57-55.920751759Z--7ef5a6135f1fd6a02593eedc869c6d41d934aef8" ]
+	[ "${lines[1]}" == "Account #1: {f466859ead1932d743d622cb74fc058882e8648a} $DATA_DIR/mainnet/keystore/aaa" ]
+	[ "${lines[2]}" == "Account #2: {289d485d9771714cce91d3393d764e1311907acc} $DATA_DIR/mainnet/keystore/zzz" ]
 }
 
 @test "account create" {
@@ -63,8 +63,8 @@ teardown() {
 	[[ "$output" == *"Address: {d4584b5f6229b7be90727b0fc8c6b91bb427821f}" ]]
 
 	echo "=== data dir files:"
-	ls $DATA_DIR/keystore
-	[ $(ls $DATA_DIR/keystore | wc -l) -eq 1 ]
+	ls $DATA_DIR/mainnet/keystore
+	[ $(ls $DATA_DIR/mainnet/keystore | wc -l) -eq 1 ]
 }
 
 @test "account import pass mismatch" {
