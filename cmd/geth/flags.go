@@ -34,6 +34,11 @@ var (
 		Name:  "keystore",
 		Usage: "Directory for the keystore (default = inside the datadir)",
 	}
+	ChainNameFlag = cli.StringFlag{
+		Name: "chain",
+		Usage: "Name of blockchain network to use (default='mainnnet', test='testnet'). These correlate to subdirectories under your base <EthereumClassic> data directory (--datadir). Chain name to use can also be configured from an external chain configuration file.",
+		Value: core.DefaultChainName,
+	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "networkid",
 		Usage: "Network identifier (integer, 0=Olympic, 1=Homestead, 2=Morden)",

@@ -130,6 +130,7 @@ the configuration of a chain database. It includes genesis block data as well as
 		DataDirFlag,
 		UseChainConfigFlag,
 		KeyStoreDirFlag,
+		ChainNameFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,
 		CacheFlag,
@@ -241,7 +242,7 @@ func initGenesis(ctx *cli.Context) error {
 		return errors.New("need path argument to genesis JSON file")
 	}
 
-	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeDataDir(ctx), "chaindata"), 0, 0)
+	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeChainDataDir(ctx), "chaindata"), 0, 0)
 	if err != nil {
 		log.Fatalf("could not open database: ", err)
 		return err
@@ -303,11 +304,12 @@ func dumpExternalChainConfig(ctx *cli.Context) error {
 		glog.V(logger.Info).Info("Finished building genesis state dump. Whew!")
 	}
 
+	chainConfig := MustMakeChainConfig(ctx)
+
 	var currentConfig = &core.ExternalChainConfig{
-		// TODO: implement these
-		// ID: ,
-		// Name: ,
-		ChainConfig: MustMakeChainConfig(ctx), // get current/contextualized chain config
+		ID: fmt.Sprintf("%s", chainConfig.ChainId),
+		Name: getChainNameFromContext(ctx),
+		ChainConfig: chainConfig, // get current/contextualized chain config
 		Genesis: genesisDump,
 		Bootstrap: MakeBootstrapNodes(ctx),
 	}

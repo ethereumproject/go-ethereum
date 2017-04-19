@@ -24,6 +24,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 )
 
+var DefaultChainName = "mainnet"
+var DefaultTestChainName = "testnet"
+
 // DefaultConfig is the Ethereum Classic standard setup.
 var DefaultConfig = &ChainConfig{
 	Forks: []*Fork{

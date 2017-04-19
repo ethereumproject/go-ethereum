@@ -111,7 +111,7 @@ func remoteConsole(ctx *cli.Context) error {
 	}
 
 	config := console.Config{
-		DataDir: MustMakeDataDir(ctx),
+		DataDir: MustMakeChainDataDir(ctx),
 		DocRoot: ctx.GlobalString(JSpathFlag.Name),
 		Client:  client,
 		Preload: MakeConsolePreloads(ctx),

@@ -75,19 +75,39 @@ OPTIONS:
 `
 }
 
-// #chainconfigi
-// MustMakeDataDir retrieves the currently requested data directory, terminating
-// if none (or the empty string) is specified. If the node is starting a testnet,
-// the a subdirectory of the specified datadir will be used.
-func MustMakeDataDir(ctx *cli.Context) string {
-	if path := ctx.GlobalString(DataDirFlag.Name); path != "" {
-		if ctx.GlobalBool(TestNetFlag.Name) {
-			return filepath.Join(path, "/testnet")
+// QUESTION: should we disallowed custom chain names that would conflict with default data naming schemes?
+//  ie "You can't name your custom chain any of the following: nodekey, dapp, keystore, chaindata, nodes"
+func getChainNameFromContext(ctx *cli.Context) string {
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		return core.DefaultTestChainName
+	}
+	if ctx.GlobalIsSet(ChainNameFlag.Name) {
+		if name := ctx.GlobalString(ChainNameFlag.Name); name != "" {
+			return name
+		} else {
+			log.Fatal("Argument to --chain must not be blank.")
+			return ""
 		}
+	}
+	return core.DefaultChainName
+}
+
+// mustMakeDataDir retrieves the currently requested data directory, terminating
+// if none (or the empty string) is specified.
+// --> <home>/<EthereumClassic>(defaulty) or --datadir
+func mustMakeDataDir(ctx *cli.Context) string {
+	if path := ctx.GlobalString(DataDirFlag.Name); path != "" {
 		return path
 	}
-	log.Fatal("Cannot determine default data directory, please set manually (--datadir)")
+	log.Fatal("Cannot determine data directory, please set manually (--datadir)")
 	return ""
+}
+
+// MustMakeChainDataDir retrieves the currently requested data directory including chain-specific subdirectory.
+// A subdir of the datadir is used for each chain configuration ("/mainnet", "/testnet", "/my-custom-net").
+// --> <home>/<EthereumClassic>/<mainnet|testnet|custom-net>, per --chain
+func MustMakeChainDataDir(ctx *cli.Context) string {
+	return common.EnsureAbsolutePath(mustMakeDataDir(ctx), getChainNameFromContext(ctx))
 }
 
 // MakeIPCPath creates an IPC path configuration from the set command line flags,
@@ -242,7 +262,7 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 		scryptN = accounts.LightScryptN
 		scryptP = accounts.LightScryptP
 	}
-	datadir := MustMakeDataDir(ctx)
+	datadir := MustMakeChainDataDir(ctx)
 
 	keydir := filepath.Join(datadir, "keystore")
 	if path := ctx.GlobalString(KeyStoreDirFlag.Name); path != "" {
@@ -309,6 +329,8 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
+// migrateExistingDirToClassicNamingScheme renames default base data directory ".../Ethereum" to ".../EthereumClassic", pending os customs, etc... ;-)
+///
 // Check for preexisting **Un-classic** data directory, ie "/home/path/to/Ethereum".
 // If it exists, check if the data therein belongs to Classic blockchain (ie not configged as "ETF"),
 // and rename it to fit Classic naming convention ("/home/path/to/EthereumClassic") if that dir doesn't already exist.
@@ -336,7 +358,9 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	// only if **unclassic** ("<home>/Ethereum") datadir chaindb path DOES already exist, so return nil if it doesn't;
 	// otherwise NewLDBDatabase will create an empty one there.
-	unclassicChainDBPath := filepath.Join(unclassicDataDirPath, "chaindata")
+	unclassicChainDBPath := filepath.Join(unclassicDataDirPath, "chaindata") // note that this uses the 'old' non-subdirectory way of holding default data.
+	// it must be called before migrating to subdirectories
+
 	if _, err := os.Stat(unclassicChainDBPath); os.IsNotExist(err) {
 		log.Printf("INFO: No existing ETH/ETF default chaindata dir found at: %v \n Using default data directory at: %v.\n", unclassicChainDBPath, classicDataDirPath)
 		return nil
@@ -363,6 +387,79 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	log.Printf("INFO/WARNING: Found existing Ethereum data directory with ETC chaindata. \n Moving it from: %v, to: %v \n To specify a data directory use the `--datadir` flag.", unclassicDataDirPath, classicDataDirPath)
 
 	return os.Rename(unclassicDataDirPath, classicDataDirPath)
+}
+
+
+// migrateToChainSubdirIfNecessary migrates ".../EthereumClassic/nodes|chaindata|...|nodekey" --> ".../EthereumClassic/mainnet/nodes|chaindata|...|nodekey"
+func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
+	name := getChainNameFromContext(ctx) // "mainnet"
+
+	// return ok if not default ("mainnet"); don't interfere with custom, and testnet already uses subdir
+	if name != core.DefaultChainName {
+		return nil
+	}
+
+	datapath := mustMakeDataDir(ctx) // ".../EthereumClassic/ | --datadir"
+	if datapath == "" {
+		return fmt.Errorf("Could not determine base data dir: %v", datapath)
+	}
+
+	mainnetSubdir := MustMakeChainDataDir(ctx) // ie, <EthereumClassic>/mainnet
+
+	// check if default subdir "mainnet" exits
+	// NOTE: this assumes that if the migration has been run once, the "mainnet" dir will exist and will have necessary datum inside it
+	mainnetInfo, err := os.Stat(mainnetSubdir)
+	if err == nil {
+		// dir already exists
+		return nil
+	}
+	if mainnetInfo != nil && !mainnetInfo.IsDir() {
+		return fmt.Errorf("Found file named 'mainnet' in EthereumClassic datadir, which conflicts with default chain directory naming convention: %v", mainnetSubdir)
+	}
+
+	// mkdir -p ".../mainnet"
+	if err := os.Mkdir(mainnetSubdir, 0755); err != nil {
+		return err
+	}
+
+	// move if existing (nodekey, dapp/, keystore/, chaindata/, nodes/) into new subdirectories
+	for _, dir := range []string{"dapp", "keystore", "chaindata", "nodes"} {
+
+		dirPath := filepath.Join(datapath, dir)
+
+		dirInfo, e := os.Stat(dirPath)
+		if e != nil && os.IsNotExist(e) {
+			continue // dir doesn't exist
+		}
+		if !dirInfo.IsDir() {
+			continue // don't interfere with user *file* that won't be relevant for geth
+		}
+
+		dirPathUnderSubdir := filepath.Join(mainnetSubdir, dir)
+		if err := os.Rename(dirPath, dirPathUnderSubdir); err != nil {
+			return err
+		}
+	}
+
+	// ensure nodekey exists and is file (loop lets us stay consistent in form here, an keep options open for easy other files to include)
+	for _, file := range []string{"nodekey"} {
+		filePath := filepath.Join(datapath, file)
+
+		// ensure exists and is a file
+		fileInfo, e := os.Stat(filePath)
+		if e != nil && os.IsNotExist(e) {
+			continue
+		}
+		if fileInfo.IsDir() {
+			continue // don't interfere with user dirs that won't be relevant for geth
+		}
+
+		filePathUnderSubdir := filepath.Join(mainnetSubdir, file)
+		if err := os.Rename(filePath, filePathUnderSubdir); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // makeName makes the node name, which can be (in part) customized by the IdentityFlag
@@ -394,6 +491,14 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		log.Fatalf("Failed to migrate existing Classic database: %v", migrationError)
 	}
 
+	// Move existing data from <EthereumClassic>/ (without subdir structure) to pertinent chain-named subdir.
+	// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
+	// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
+	// and the user is using the Default configuration (ie "mainnet")
+	if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
+		log.Fatalf("An error occurred migrating existing data to named subdir : %v", subdirMigrateErr)
+	}
+
 	// Avoid conflicting network flags
 	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag}
 	for _, flag := range netFlags {
@@ -407,7 +512,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	// Configure the node's service container
 	stackConf := &node.Config{
-		DataDir:         MustMakeDataDir(ctx),
+		DataDir:         MustMakeChainDataDir(ctx),
 		PrivateKey:      MakeNodeKey(ctx),
 		Name:            name,
 		NoDiscovery:     ctx.GlobalBool(NoDiscoverFlag.Name),
@@ -651,7 +756,7 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 // MakeChainDatabase open an LevelDB using the flags passed to the client and will hard crash if it fails.
 func MakeChainDatabase(ctx *cli.Context) ethdb.Database {
 	var (
-		datadir = MustMakeDataDir(ctx)
+		datadir = MustMakeChainDataDir(ctx)
 		cache   = ctx.GlobalInt(CacheFlag.Name)
 		handles = MakeDatabaseHandles()
 	)
