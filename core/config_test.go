@@ -116,14 +116,19 @@ func sameGenesisDumpAllocationsBalances(gd1, gd2 *GenesisDump) bool {
 	return true
 }
 
+// TestMakeGenesisDump is a unit-ish test for MakeGenesisDump()
 func TestMakeGenesisDump(t *testing.T) {
 	// setup so we have a genesis block in this test db
 	db, _ := ethdb.NewMemDatabase()
 	genesisDump := &GenesisDump{
+		Nonce:      "0x0000000000000042",
+		Timestamp:  "0x0000000000000000000000000000000000000000000000000000000000000000",
+		Coinbase:   "0x0000000000000000000000000000000000000000",
 		Difficulty: "0x0000000000000000000000000000000000000000000000000000000400000000",
 		ExtraData:  "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
 		GasLimit:   "0x0000000000000000000000000000000000000000000000000000000000001388",
-		Nonce:      "0x0000000000000042",
+		Mixhash:    "0x0000000000000000000000000000000000000000000000000000000000000000",
+		ParentHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
 		Alloc: map[hex]*GenesisDumpAlloc{
 			"000d836201318ec6899a67540690382780743280": {Balance: "200000000000000000000"},
 			"001762430ea9c3a26e5749afdb70da5f78ddbb8c": {Balance: "200000000000000000000"},
@@ -141,6 +146,15 @@ func TestMakeGenesisDump(t *testing.T) {
 
 	// ensure equivalent genesis dumps in and out
 	gotGenesisDump, err := MakeGenesisDump(db)
+	if gotGenesisDump.Nonce != genesisDump.Nonce {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump nonce: wanted: %v, got: %v", genesisDump.Nonce, gotGenesisDump.Nonce)
+	}
+	if gotGenesisDump.Timestamp != genesisDump.Timestamp {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump timestamp: wanted: %v, got: %v", genesisDump.Timestamp, gotGenesisDump.Timestamp)
+	}
+	if gotGenesisDump.Coinbase != genesisDump.Coinbase {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump coinbase: wanted: %v, got: %v", genesisDump.Coinbase, gotGenesisDump.Coinbase)
+	}
 	if gotGenesisDump.Difficulty != genesisDump.Difficulty {
 		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump difficulty: wanted: %v, got: %v", genesisDump.Difficulty, gotGenesisDump.Difficulty)
 	}
@@ -150,8 +164,11 @@ func TestMakeGenesisDump(t *testing.T) {
 	if gotGenesisDump.GasLimit != genesisDump.GasLimit {
 		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump gaslimit: wanted: %v, got: %v", genesisDump.GasLimit, gotGenesisDump.GasLimit)
 	}
-	if gotGenesisDump.Nonce != genesisDump.Nonce {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump nonce: wanted: %v, got: %v", genesisDump.Nonce, gotGenesisDump.Nonce)
+	if gotGenesisDump.Mixhash != genesisDump.Mixhash {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump mixhash: wanted: %v, got: %v", genesisDump.Mixhash, gotGenesisDump.Mixhash)
+	}
+	if gotGenesisDump.ParentHash != genesisDump.ParentHash {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump parenthash: wanted: %v, got: %v", genesisDump.ParentHash, gotGenesisDump.ParentHash)
 	}
 	if !sameGenesisDumpAllocationsBalances(genesisDump, gotGenesisDump) {
 		t.Error("MakeGenesisDump failed to make equivalent genesis dump allocations.")
