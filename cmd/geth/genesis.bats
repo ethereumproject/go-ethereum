@@ -10,6 +10,7 @@ teardown() {
 	rm -fr $DATA_DIR
 }
 
+# Test `init` command, which reads from a given genesis JSON file.
 @test "genesis" {
 	echo '{
 	"alloc"      : {},
@@ -21,7 +22,7 @@ teardown() {
 	"mixhash"    : "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"timestamp"  : "0x00"
-}' > $DATA_DIR/genesis.json
+	}' > $DATA_DIR/genesis.json
 
 	run $GETH_CMD --datadir $DATA_DIR init $DATA_DIR/genesis.json
 	echo "$output"
@@ -46,7 +47,7 @@ teardown() {
 	"parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"timestamp"  : "0x00",
 	"config"     : {}
-}' > $DATA_DIR/genesis.json
+	}' > $DATA_DIR/genesis.json
 
 	run $GETH_CMD --datadir $DATA_DIR init $DATA_DIR/genesis.json
 	echo "$output"
@@ -71,7 +72,7 @@ teardown() {
 	"parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"timestamp"  : "0x00",
 	"config"     : {}
-}' > $DATA_DIR/genesis.json
+	}' > $DATA_DIR/genesis.json
 
 	run $GETH_CMD --datadir $DATA_DIR init $DATA_DIR/genesis.json
 	echo "$output"
@@ -83,3 +84,4 @@ teardown() {
 	echo "$output"
 	[[ "$output" == *'"0x0000000000000042"'* ]]
 }
+
