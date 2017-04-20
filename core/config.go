@@ -408,8 +408,7 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 
 	// Settings.
 	genesisHeader := genesis.Header()
-
-	nonce := []byte(fmt.Sprintf(`0x%x`, genesisHeader.Nonce))
+	nonce := fmt.Sprintf(`0x%x`, genesisHeader.Nonce)
 	time := common.BigToHash(genesisHeader.Time).Hex()
 	parentHash := genesisHeader.ParentHash.Hex()
 	extra := common.ToHex(genesisHeader.Extra)
