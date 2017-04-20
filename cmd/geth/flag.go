@@ -96,6 +96,16 @@ func getChainNameFromContext(ctx *cli.Context) string {
 			return ""
 		}
 	}
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+		conf, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+		if err != nil {
+			log.Fatalf("ERROR: Failed to read external chain configuration file: %v", err)
+			return ""
+		}
+		if conf.Name != "" {
+			return conf.Name
+		}
+	}
 	return core.DefaultChainName
 }
 
@@ -383,14 +393,16 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	defer chainDB.Close()
 
-	bcVersionNumber := core.GetBlockChainVersion(chainDB)
-	isETF := core.DefaultConfig.IsETF(big.NewInt(int64(bcVersionNumber)))
-
-	// if existing database in <home>/Ethereum isn't ETC, let it be
-	if isETF {
-		log.Printf("INFO: Existing default Ethereum database at: %v isn't an ETClassic blockchain, it has version number: %v. Will not alter. \nUsing ETC chaindata database at: %v \n", unclassicDataDirPath, bcVersionNumber, classicDataDirPath)
-		return nil
-	}
+	// FIXME:
+	// How do you tell an ETHF from an ETC blockchain?
+	//bcVersionNumber := core.GetBlockChainVersion(chainDB)
+	//isETF := core.DefaultConfig.IsETF(big.NewInt(int64(bcVersionNumber)))
+	//
+	//// if existing database in <home>/Ethereum isn't ETC, let it be
+	//if isETF {
+	//	log.Printf("INFO: Existing default Ethereum database at: %v isn't an ETClassic blockchain, it has version number: %v. Will not alter. \nUsing ETC chaindata database at: %v \n", unclassicDataDirPath, bcVersionNumber, classicDataDirPath)
+	//	return nil
+	//}
 
 	log.Printf("INFO/WARNING: Found existing Ethereum data directory with ETC chaindata. \n Moving it from: %v, to: %v \n To specify a data directory use the `--datadir` flag.", unclassicDataDirPath, classicDataDirPath)
 
