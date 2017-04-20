@@ -46,8 +46,8 @@ import (
 // as in: go build -ldflags "-X main.Version="`git describe --tags`
 var Version = "source"
 
-func main() {
-	app := cli.NewApp()
+func makeCLIApp() (app *cli.App) {
+	app = cli.NewApp()
 	app.Name = filepath.Base(os.Args[0])
 	app.Version = Version
 	app.Usage = "the go-ethereum command line interface"
@@ -215,7 +215,11 @@ the configuration of a chain database. It includes genesis block data as well as
 		console.Stdin.Close() // Resets terminal mode.
 		return nil
 	}
+	return app
+}
 
+func main() {
+	app := makeCLIApp()
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
