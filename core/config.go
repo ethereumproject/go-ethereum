@@ -111,14 +111,14 @@ func (c *ChainConfig) Fork(name string) *Fork {
 }
 
 // LookupForkByBlockNum looks up a Fork by its block number, which is assumed to be unique.
-// If not Fork is found, nil is returned.
+// If not Fork is found, empty fork is returned.
 func (c *ChainConfig) LookupForkByBlockNum(num *big.Int) *Fork {
 	for i, := range c.Forks {
 		if c.Forks[i].Block.Cmp(num) == 0 {
 			return c.Forks[i]
 		}
 	}
-	return nil
+	return &Fork{}
 }
 
 // GetForkForBlockNum gets a the most-recent Fork corresponding to a given block number for
@@ -252,7 +252,7 @@ func (fs Forks) Swap(i, j int) {
 
 // These are the raw key-value configuration options made available
 // by an external JSON file.
-type ChainConfigOptions map[string]interface{}
+type ChainFeatureConfigOptions map[string]interface{}
 
 // ForkFeatures are designed to decouple the implementation feature upgrades from Forks themselves.
 // For example, there are several 'set-gasprice' features, each using a different gastable.
@@ -264,7 +264,7 @@ type ChainConfigOptions map[string]interface{}
 //  "homestead", "diehard", "eip155", "ecip1010", etc... ;-)
 type ForkFeature struct {
 	ID      string `json:"id"`
-	Options *ChainConfigOptions `json:"options"`
+	Options *ChainFeatureConfigOptions `json:"options"`
 }
 
 // FeatureOptions establishes the current concrete possibilities for arbitrary key-value pairs in configuration
@@ -281,21 +281,21 @@ type FeatureOptions struct {
 
 // GetOptions gets relevant chain configuration options for a given block number num.
 // The impact of this on the code is that queries to chain configuration will no longer
-// be made with regard to Fork, but with regard to Block number.
+// be made with regard to Fork name, but with regard to Block number.
 // GetOptions must parse arbitrary key-value pairs to available (ie non-unknown) fields, types, and values,
 // and return an error (which must be handled "hard") if it handles an unknown/unparseable option
 // key or value.
 func (c *ChainConfig) GetOptions(num *big.Int) (*FeatureOptions, error) {
 	// find relevant fork
 	fork := c.GetForkForBlockNum(num)
-	if fork == nil {
+	if fork.Features != nil {
 		return &FeatureOptions{}, nil
 	}
 	// parse
 	return fork.decodeOptions()
 }
 
-// decodeOptions decodes arbitrary key-value data to useable struct
+// decodeOptions decodes arbitrary key-value data (JSON) to useable struct
 // ForkFeature.Options -> FeatureOptions
 func (f *Fork) decodeOptions() (*FeatureOptions, error) {
 	// TODO
