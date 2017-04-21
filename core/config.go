@@ -177,14 +177,13 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 		CreateBySuicide: nil,
 	}
 
-	for _, fork := range c.Forks {
-		if fork.Block.Cmp(num) <= 0 {
-			if fork.CollectOptions().GasTable != nil {
-				t = fork.CollectOptions().GasTable
-			}
-		}
+	opts, err := c.GetOptions(num)
+	if err != nil {
+		panic(err)
 	}
-
+	if opts.GasTable != nil {
+		return opts.GasTable
+	}
 	return t
 }
 
@@ -288,7 +287,18 @@ type FeatureOptions struct {
 // key or value.
 func (c *ChainConfig) GetOptions(num *big.Int) (*FeatureOptions, error) {
 	// find relevant fork
+	fork := c.GetForkForBlockNum(num)
+	if fork == nil {
+		return &FeatureOptions{}, nil
+	}
+	// parse
+	return fork.decodeOptions()
+}
 
+// decodeOptions decodes arbitrary key-value data to useable struct
+// ForkFeature.Options -> FeatureOptions
+func (f *Fork) decodeOptions() (*FeatureOptions, error) {
+	// TODO
 }
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0
