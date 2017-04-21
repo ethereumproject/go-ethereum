@@ -377,7 +377,12 @@ func (f ChainFeatureConfigOptions) decodeOptions() (*FeatureOptions, error) {
 			var gs = &vm.GasTable{}
 			stringGasTableVal := val.(string) // type assertion, Go will panic if fail
 			json.Unmarshal([]byte(stringGasTableVal), &gs)
-			opts.GasTable = gs
+
+			if !gs.IsEmpty() {
+				opts.GasTable = gs
+			} else {
+				opts.GasTable = DefaultGasTableMap[stringGasTableVal]
+			}
 
 		} else if saneKey == "length" { 
 			i, ok := new(big.Int).SetString(val.(string), 0)

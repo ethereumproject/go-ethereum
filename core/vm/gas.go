@@ -73,6 +73,36 @@ func callGas(gasTable *GasTable, availableGas, base, callCost *big.Int) *big.Int
 	return callCost
 }
 
+// IsEmpty return true if all values are zero values,
+// which useful for checking JSON-decoded empty state.
+func (g *GasTable) IsEmpty() bool {
+	if g.ExtcodeSize != big.Zero {
+		return false
+	}
+	if g.ExtcodeCopy != big.Zero {
+		return false
+	}
+	if g.Balance != big.Zero {
+		return false
+	}
+	if g.SLoad != big.Zero {
+		return false
+	}
+	if g.Calls != big.Zero {
+		return false
+	}
+	if g.Suicide != big.Zero {
+		return false
+	}
+	if g.ExpByte != big.Zero {
+		return false
+	}
+	if g.CreateBySuicide != big.Zero {
+		return false
+	}
+	return true
+}
+
 // baseCheck checks for any stack error underflows
 func baseCheck(op OpCode, stack *stack, gas *big.Int) error {
 	// PUSH and DUP are a bit special. They all cost the same but we do want to have checking on stack push limit
