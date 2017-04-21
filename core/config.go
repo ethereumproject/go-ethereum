@@ -384,19 +384,11 @@ func (f ChainFeatureConfigOptions) decodeOptions() (*FeatureOptions, error) {
 				opts.GasTable = DefaultGasTableMap[stringGasTableVal]
 			}
 
-		} else if saneKey == "length" { 
-			i, ok := new(big.Int).SetString(val.(string), 0)
-			if !ok {
-				return nil, fmt.Errorf("Error configuring chain length parameter: %v", val)
-			}
-			opts.Length = i
+		} else if saneKey == "length" {
+			opts.Length = new(big.Int).SetInt64(int64(val.(int)))
 
-		} else if saneKey == "chainid" { 
-			i, ok := new(big.Int).SetString(val.(string), 0)
-			if !ok {
-				return nil, fmt.Errorf("Error configuring chain id parameter: %v", val)
-			}
-			opts.ChainID = i
+		} else if saneKey == "chainid" {
+			opts.ChainID = new(big.Int).SetInt64(int64(val.(int)))
 
 		} else if saneKey == "difficulty" {
 			opts.Difficulty = val.(string)

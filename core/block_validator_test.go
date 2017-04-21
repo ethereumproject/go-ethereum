@@ -37,7 +37,22 @@ func testChainConfig() *ChainConfig {
 			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
-				Features: []*ForkFeature{DefaultHomesteadFeature},
+				Features: []*ForkFeature{
+					&ForkFeature{
+						ID: "homestead",
+						Options: ChainFeatureConfigOptions{
+							"gastable": `{
+							"extcodesize":     20,
+							"extcodecopy":     20,
+							"balance":         20,
+							"sload":           50,
+							"calls":           40,
+							"suicide":         0,
+							"expbyte":         10
+						}`,
+						},
+					},
+				},
 			},
 		},
 	}
