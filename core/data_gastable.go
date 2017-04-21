@@ -19,11 +19,12 @@
 package core
 
 import (
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"math/big"
+
+	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
-var HomeSteadGasTable = &vm.GasTable{
+var DefaultHomeSteadGasTable = &vm.GasTable{
 	ExtcodeSize:     big.NewInt(20),
 	ExtcodeCopy:     big.NewInt(20),
 	Balance:         big.NewInt(20),
@@ -34,7 +35,7 @@ var HomeSteadGasTable = &vm.GasTable{
 	CreateBySuicide: nil,
 }
 
-var GasRepriceGasTable = &vm.GasTable{
+var DefaultGasRepriceGasTable = &vm.GasTable{
 	ExtcodeSize:     big.NewInt(700),
 	ExtcodeCopy:     big.NewInt(700),
 	Balance:         big.NewInt(400),
@@ -45,7 +46,7 @@ var GasRepriceGasTable = &vm.GasTable{
 	CreateBySuicide: big.NewInt(25000),
 }
 
-var DiehardGasTable = &vm.GasTable{
+var DefaultDiehardGasTable = &vm.GasTable{
 	ExtcodeSize:     big.NewInt(700),
 	ExtcodeCopy:     big.NewInt(700),
 	Balance:         big.NewInt(400),

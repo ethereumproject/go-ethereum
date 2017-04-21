@@ -22,32 +22,30 @@ import (
 	"math/big"
 )
 
-// DefaultHomesteadFeature is the default homestead fork feature configuration
-var DefaultHomesteadFeature = &ForkFeature{
-	ID: "homestead",
-	Options: &FeatureOptions{
-		GasTable:     HomeSteadGasTable,
-	},
-}
-
-// DefaultETFFeature is the default etf fork feature configuration
-var DefaultETFFeature = &ForkFeature{
-	ID: "etf",
-}
-
-// DefaultGasRepriceFeature is the default gasreprice fork feature configuration
 var DefaultGasRepriceFeature = &ForkFeature{
-	ID: "gasreprice",
+	ID: "gasReprice",
 	Options: &FeatureOptions{
-		GasTable:     GasRepriceGasTable,
+		GasTable: DefaultGasRepriceGasTable,
 	},
 }
 
-// DefaultDiehardFeature is the default diehard fork feature configuration
-var DefaultDiehardFeature = &ForkFeature{
-	ID: "diehard",
+var DefaultEIP155Feature = &ForkFeature{
+	ID: "eip155",
 	Options: &FeatureOptions{
-		Length:       big.NewInt(2000000),
-		GasTable:     DiehardGasTable,
+		ChainID: big.NewInt(61),
+	},
+}
+
+var DefaultBombDelayFeature = &ForkFeature{
+	ID: "ecip1010", // bomb delay
+	Options: &FeatureOptions{
+		Length: big.NewInt(2000000),
+	},
+}
+
+var DefaultDiehardGasRepriceFeature = &ForkFeature{
+	ID: "diehardGasprice",
+	Options: &FeatureOptions{
+		GasTable: DefaultDiehardGasTable,
 	},
 }

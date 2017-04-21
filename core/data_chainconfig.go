@@ -31,22 +31,33 @@ var DefaultTestChainName = "testnet"
 var DefaultConfig = &ChainConfig{
 	Forks: []*Fork{
 		{
-			Name:     "Homestead",
-			Block:    big.NewInt(1150000),
-			Features: []*ForkFeature{DefaultHomesteadFeature},
+			Name:  "Homestead",
+			Block: big.NewInt(1150000),
+			Features: []*ForkFeature{
+				&ForkFeature{
+					ID: "homestead",
+					Options: &FeatureOptions{
+						GasTable: DefaultHomeSteadGasTable,
+					},
+				},
+			},
 		}, {
-			Name:     "ETF",
-			Block:    big.NewInt(1920000),
+			Name:         "ETF",
+			Block:        big.NewInt(1920000),
 			RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
-			Features: []*ForkFeature{DefaultETFFeature},
+			Features:     []*ForkFeature{},
 		}, {
-			Name:     "GasReprice",
-			Block:    big.NewInt(2500000),
+			Name:  "GasReprice",
+			Block: big.NewInt(2500000),
 			Features: []*ForkFeature{DefaultGasRepriceFeature},
 		}, {
 			Name:     "Diehard",
 			Block:    big.NewInt(3000000),
-			Features: []*ForkFeature{DefaultDiehardFeature},
+			Features: []*ForkFeature{
+				DefaultEIP155Feature, 
+				DefaultBombDelayFeature,
+				DefaultDiehardGasRepriceFeature
+			},
 		},
 	},
 	BadHashes: []*BadHash{
@@ -57,7 +68,7 @@ var DefaultConfig = &ChainConfig{
 			Hash:  common.HexToHash("05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"),
 		},
 	},
-	ChainId: big.NewInt(61),
+	chainId: big.NewInt(61),
 }
 
 // TestConfig is the semi-official setup for testing purposes.
@@ -66,7 +77,14 @@ var TestConfig = &ChainConfig{
 		{
 			Name:     "Homestead",
 			Block:    big.NewInt(494000),
-			Features: []*ForkFeature{DefaultHomesteadFeature},
+			Features: []*ForkFeature{
+				&ForkFeature{
+					ID: "homestead",
+					Options: &FeatureOptions{
+						GasTable: DefaultHomeSteadGasTable,
+					},
+				},
+			},
 		},
 		{
 			Name:     "GasReprice",
@@ -76,12 +94,16 @@ var TestConfig = &ChainConfig{
 		{
 			Name:     "ETF",
 			Block:    big.NewInt(1885000),
-			Features: []*ForkFeature{DefaultETFFeature},
+			Features: []*ForkFeature{},
 		},
 		{
 			Name:     "Diehard",
 			Block:    big.NewInt(1915000),
-			Features: []*ForkFeature{DefaultDiehardFeature},
+			Features: []*ForkFeature{
+				DefaultEIP155Feature, 
+				DefaultBombDelayFeature,
+				DefaultDiehardGasRepriceFeature
+			},
 		},
 	},
 	BadHashes: []*BadHash{
@@ -97,5 +119,5 @@ var TestConfig = &ChainConfig{
 			Hash:  common.HexToHash("3bef9997340acebc85b84948d849ceeff74384ddf512a20676d424e972a3c3c4"),
 		},
 	},
-	ChainId: big.NewInt(62),
+	chainId: big.NewInt(62),
 }
