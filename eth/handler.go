@@ -281,19 +281,17 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	var fork *core.Fork
 	for i := range pm.chainConfig.Forks {
 		fork = pm.chainConfig.Forks[i]
-		if fork.CollectOptions().NetworkSplit {
-			if fork.CollectOptions().Support {
-				// Request the peer's fork block header for extra-dat
-				if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
-					glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
-					return err
-				}
-				// Start a timer to disconnect if the peer doesn't reply in time
-				p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
-					glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
-					pm.removePeer(p.id)
-				})
+		if !fork.RequiredHash.IsEmpty() {
+			// Request the peer's fork block header for extra-dat
+			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
+				glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
+				return err
 			}
+			// Start a timer to disconnect if the peer doesn't reply in time
+			p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
+				glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
+				pm.removePeer(p.id)
+			})
 			// Make sure it's cleaned up if the peer dies off
 			defer func() {
 				if p.timeout != nil {

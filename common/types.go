@@ -111,6 +111,10 @@ func EmptyHash(h Hash) bool {
 	return h == Hash{}
 }
 
+func (h Hash) IsEmpty() bool {
+	return EmptyHash(h)
+}
+
 /////////// Address
 func BytesToAddress(b []byte) Address {
 	var a Address

@@ -734,15 +734,6 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		c = core.TestConfig
 	}
 
-	for i := range c.Forks {
-		// Force override any existing configs if explicitly requested
-		if c.Forks[i].Name == "ETF" {
-			if ctx.GlobalBool(ETFChain.Name) {
-				c.Forks[i].CollectOptions().Support = true
-			}
-		}
-	}
-
 	glog.V(logger.Warn).Info(separator)
 	glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
 
@@ -756,11 +747,6 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 
 	netsplitChoice := ""
 	for i := range c.Forks {
-		if c.Forks[i].CollectOptions().NetworkSplit {
-			netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].CollectOptions().Support)
-		} else {
-			netsplitChoice = ""
-		}
 		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v hard-fork %v", c.Forks[i].Block, c.Forks[i].Name, netsplitChoice))
 	}
 

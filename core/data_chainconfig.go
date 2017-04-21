@@ -37,6 +37,7 @@ var DefaultConfig = &ChainConfig{
 		}, {
 			Name:     "ETF",
 			Block:    big.NewInt(1920000),
+			RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
 			Features: []*ForkFeature{DefaultETFFeature},
 		}, {
 			Name:     "GasReprice",

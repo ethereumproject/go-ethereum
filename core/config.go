@@ -113,10 +113,7 @@ func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 		if fork.Block.Cmp(h.Number) != 0 {
 			continue
 		}
-		if common.EmptyHash(fork.CollectOptions().RequiredHash) {
-			continue
-		}
-		if fork.CollectOptions().RequiredHash != h.Hash() {
+		if !fork.RequiredHash.IsEmpty() && fork.RequiredHash != h.Hash() {
 			return ErrHashKnownFork
 		}
 	}
@@ -210,6 +207,8 @@ type Fork struct {
 	// Block is the block number where the hard-fork commences on
 	// the Ethereum network.
 	Block *big.Int `json:"block"`
+	// Used to improve sync for a known network split
+	RequiredHash common.Hash `json:"requiredHash"`
 	// Configurable features.
 	Features []*ForkFeature `json:"features"`
 }
@@ -235,12 +234,6 @@ type ForkFeature struct {
 // of a given blockchain.
 // See go-ethereum/core/data_features.go for exemplary defaults.
 type FeatureOptions struct {
-	// For user notification only
-	NetworkSplit bool `json:"networkSplit"`
-	Support      bool `json:"support"`
-	// RequiredHash to assist in avoiding sync issues
-	// after network split.
-	RequiredHash common.Hash  `json:"requiredHash"`
 	GasTable     *vm.GasTable `json:"gasTable"` // Gas Price table
 	Length       *big.Int     `json:"length"`   // Length of fork, if limited
 	ChainID      *big.Int     `json:"chainId"`
@@ -255,11 +248,6 @@ func (f *Fork) CollectOptions() *FeatureOptions {
 	opts := &FeatureOptions{}
 
 	for _, feature := range f.Features {
-		opts.NetworkSplit = feature.Options.NetworkSplit // bools cant be nil
-		opts.Support = feature.Options.Support
-		if !common.EmptyHash(feature.Options.RequiredHash) {
-			opts.RequiredHash = feature.Options.RequiredHash
-		}
 		if feature.Options.GasTable != nil {
 			opts.GasTable = feature.Options.GasTable
 		}

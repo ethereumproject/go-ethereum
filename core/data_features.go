@@ -20,16 +20,12 @@ package core
 
 import (
 	"math/big"
-
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // DefaultHomesteadFeature is the default homestead fork feature configuration
 var DefaultHomesteadFeature = &ForkFeature{
 	ID: "homestead",
 	Options: &FeatureOptions{
-		NetworkSplit: false,
-		Support:      true,
 		GasTable:     HomeSteadGasTable,
 	},
 }
@@ -37,19 +33,12 @@ var DefaultHomesteadFeature = &ForkFeature{
 // DefaultETFFeature is the default etf fork feature configuration
 var DefaultETFFeature = &ForkFeature{
 	ID: "etf",
-	Options: &FeatureOptions{
-		NetworkSplit: true,
-		Support:      false,
-		RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
-	},
 }
 
 // DefaultGasRepriceFeature is the default gasreprice fork feature configuration
 var DefaultGasRepriceFeature = &ForkFeature{
 	ID: "gasreprice",
 	Options: &FeatureOptions{
-		NetworkSplit: false,
-		Support:      true,
 		GasTable:     GasRepriceGasTable,
 	},
 }
@@ -59,8 +48,6 @@ var DefaultDiehardFeature = &ForkFeature{
 	ID: "diehard",
 	Options: &FeatureOptions{
 		Length:       big.NewInt(2000000),
-		NetworkSplit: false,
-		Support:      true,
 		GasTable:     DiehardGasTable,
 	},
 }
