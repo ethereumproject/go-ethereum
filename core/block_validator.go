@@ -267,10 +267,14 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	// be determined by a config flag
 	num := new(big.Int).Add(parentNumber, common.Big1)
 	if config.IsDiehard(num) && !config.IsExplosion(num) {
-		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff, config.Fork("Diehard").Block)
+		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff, config.GetForkForBlockNum(num).Block)
 	} else if config.IsExplosion(num) {
+		opts, e := config.GetOptions(num)
+		if e != nil {
+			panic(e) // TODO improve me
+		}
 		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
-			config.Fork("Diehard").Block, big.NewInt(0).Add(config.Fork("Diehard").Block, config.Fork("Diehard").CollectOptions().Length))
+			config.GetForkForBlockNum(num).Block, big.NewInt(0).Add(config.GetForkForBlockNum(num).Block, opts.Length))
 	} else if config.IsHomestead(num) {
 		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
 	} else {

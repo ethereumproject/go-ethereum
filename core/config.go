@@ -24,6 +24,9 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+	"regexp"
+	"sort"
+	"strings"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -33,7 +36,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
-	"sort"
 )
 
 var (
@@ -92,11 +94,15 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
-	fork := c.Fork("Diehard")
-	if fork.Block == nil || fork.CollectOptions().Length == nil || num == nil {
+	opts, e := c.GetOptions(num)
+	fork := c.GetForkForBlockNum(num)
+	if e != nil {
+		panic(e) // TODO handle better ?
+	}
+	if c.GetForkForBlockNum(num).Block == nil || opts.Length == nil || num == nil {
 		return false
 	}
-	block := big.NewInt(0).Add(fork.Block, fork.CollectOptions().Length)
+	block := big.NewInt(0).Add(fork.Block, opts.Length)
 	return num.Cmp(block) >= 0
 }
 
@@ -113,7 +119,7 @@ func (c *ChainConfig) Fork(name string) *Fork {
 // LookupForkByBlockNum looks up a Fork by its block number, which is assumed to be unique.
 // If not Fork is found, empty fork is returned.
 func (c *ChainConfig) LookupForkByBlockNum(num *big.Int) *Fork {
-	for i, := range c.Forks {
+	for i := range c.Forks {
 		if c.Forks[i].Block.Cmp(num) == 0 {
 			return c.Forks[i]
 		}
@@ -125,13 +131,26 @@ func (c *ChainConfig) LookupForkByBlockNum(num *big.Int) *Fork {
 // a chain configuration.
 func (c *ChainConfig) GetForkForBlockNum(num *big.Int) *Fork {
 	sort.Sort(c.Forks)
-	var okFork *Fork
+	var okFork = &Fork{}
 	for _, f := range c.Forks {
 		if f.Block.Cmp(num) <= 0 {
 			okFork = f
 		}
 	}
 	return okFork
+}
+
+// GetForksThroughBlockNum get all forks up to but not exceeding a given block number
+// for a calling ChainConfig
+func (c *ChainConfig) GetForksThroughBlockNum(num *big.Int) Forks {
+	var applicableForks Forks
+	sort.Sort(c.Forks)
+	for _, fork := range c.Forks {
+		if fork.Block.Cmp(num) <= 0 {
+			applicableForks = append(applicableForks, fork)
+		}
+	}
+	return applicableForks
 }
 
 func (c *ChainConfig) HeaderCheck(h *types.Header) error {
@@ -250,10 +269,6 @@ func (fs Forks) Swap(i, j int) {
 	fs[i], fs[j] = fs[j], fs[i]
 }
 
-// These are the raw key-value configuration options made available
-// by an external JSON file.
-type ChainFeatureConfigOptions map[string]interface{}
-
 // ForkFeatures are designed to decouple the implementation feature upgrades from Forks themselves.
 // For example, there are several 'set-gasprice' features, each using a different gastable.
 // In this case, the last-to-iterate (via `range`) ForkFeature with ID 'set-gasprice' in a given Fork will be used, but it's
@@ -264,8 +279,12 @@ type ChainFeatureConfigOptions map[string]interface{}
 //  "homestead", "diehard", "eip155", "ecip1010", etc... ;-)
 type ForkFeature struct {
 	ID      string `json:"id"`
-	Options *ChainFeatureConfigOptions `json:"options"`
+	Options ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
 }
+
+// These are the raw key-value configuration options made available
+// by an external JSON file.
+type ChainFeatureConfigOptions map[string]interface{}
 
 // FeatureOptions establishes the current concrete possibilities for arbitrary key-value pairs in configuration
 // options. These are options that are supported by the Ethereum protocol as it follows given Forks/+Features
@@ -285,20 +304,103 @@ type FeatureOptions struct {
 // GetOptions must parse arbitrary key-value pairs to available (ie non-unknown) fields, types, and values,
 // and return an error (which must be handled "hard") if it handles an unknown/unparseable option
 // key or value.
+// Must get unique options up to, but not beyond block number, prioritizing most-recent options
+// in cases of a single key being configured more than once for different Forks/+Features
 func (c *ChainConfig) GetOptions(num *big.Int) (*FeatureOptions, error) {
 	// find relevant fork
-	fork := c.GetForkForBlockNum(num)
-	if fork.Features != nil {
+	forks := c.GetForksThroughBlockNum(num) // these will be sorted
+	if forks.Len() == 0 {
 		return &FeatureOptions{}, nil
 	}
+
+	return forks.decodeAndFlattenOptions()
+}
+
+// merge merges one "incoming" set of FeatureOptions *onto* another base,
+// where the incoming feature option takes precedence.
+// it's usefulness in this application depends on "incoming" being chronologically later than "base", ie to override with the new
+func (base *FeatureOptions) merge(incoming *FeatureOptions) error {
+	if incoming.GasTable != nil {
+		base.GasTable = incoming.GasTable
+	}
+	if incoming.Length != nil {
+		base.Length = incoming.Length
+	}
+	if incoming.ChainID != nil {
+		base.ChainID = incoming.ChainID
+	}
+	if incoming.Difficulty != "" {
+		base.Difficulty = incoming.Difficulty
+	}
+	// error me?
+	return nil
+}
+
+// decodeAndFlattenOptions decode and aggregates all configured options on a Fork
+// it is the iterative form of decodeOptions()
+// it assume forks have been sorted chronologically (by block number), ie via GetForksThroughBlockNum
+func (fs Forks) decodeAndFlattenOptions() (*FeatureOptions, error) {
+	var decodedOpts = &FeatureOptions{}
 	// parse
-	return fork.decodeOptions()
+	for _, fork := range fs {
+		if fork.Features != nil {
+			// fork has n features
+			for _, feat := range fork.Features {
+				featOpts, e := feat.Options.decodeOptions()
+				if e != nil {
+					return nil, e
+				}
+				// merge newest options on top of old feature options
+				if e := decodedOpts.merge(featOpts); e != nil {
+					return nil, e
+				}
+			}
+		}
+	}
+	return decodedOpts, nil
+}
+
+func mustStringToLowerAlphaOnly(s string) string {
+	nonAlpha := regexp.MustCompile("[^a-zA-Z]")
+	onlyAlpha := nonAlpha.ReplaceAllString(s, "") // replace non-alphas with ""
+	return strings.ToLower(onlyAlpha)
 }
 
 // decodeOptions decodes arbitrary key-value data (JSON) to useable struct
 // ForkFeature.Options -> FeatureOptions
-func (f *Fork) decodeOptions() (*FeatureOptions, error) {
-	// TODO
+func (f ChainFeatureConfigOptions) decodeOptions() (*FeatureOptions, error) {
+	var opts = &FeatureOptions{}
+	for key, val := range f {
+		saneKey := mustStringToLowerAlphaOnly(key)
+		if saneKey  == "gastable" {
+			// regex.ReplaceAllLiteralString(src, repl string) string
+			var gs = &vm.GasTable{}
+			stringGasTableVal := val.(string) // type assertion, Go will panic if fail
+			json.Unmarshal([]byte(stringGasTableVal), &gs)
+			opts.GasTable = gs
+
+		} else if saneKey == "length" { 
+			i, ok := new(big.Int).SetString(val.(string), 0)
+			if !ok {
+				return nil, fmt.Errorf("Error configuring chain length parameter: %v", val)
+			}
+			opts.Length = i
+
+		} else if saneKey == "chainid" { 
+			i, ok := new(big.Int).SetString(val.(string), 0)
+			if !ok {
+				return nil, fmt.Errorf("Error configuring chain id parameter: %v", val)
+			}
+			opts.ChainID = i
+
+		} else if saneKey == "difficulty" {
+			opts.Difficulty = val.(string)
+
+		} else {
+			return nil, fmt.Errorf("Chain configuration contained invalid parameter: key: %v, val: %v", key, val)
+		}
+	}
+	return opts, nil
 }
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0

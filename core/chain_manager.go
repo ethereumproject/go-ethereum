@@ -52,7 +52,11 @@ func MakeDiehardChainConfig() *ChainConfig {
 				Name:   "Diehard",
 				Block:  big.NewInt(0),
 				//Length: big.NewInt(1000),
-				Features: []*ForkFeature{DefaultDiehardFeature},
+				Features: []*ForkFeature{
+					DefaultEIP155Feature,
+					DefaultBombDelayFeature,
+					DefaultDiehardGasRepriceFeature,
+				},
 			},
 		},
 	}
