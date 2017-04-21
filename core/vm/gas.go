@@ -76,28 +76,28 @@ func callGas(gasTable *GasTable, availableGas, base, callCost *big.Int) *big.Int
 // IsEmpty return true if all values are zero values,
 // which useful for checking JSON-decoded empty state.
 func (g *GasTable) IsEmpty() bool {
-	if g.ExtcodeSize != big.Zero {
+	if g.ExtcodeSize != nil {
 		return false
 	}
-	if g.ExtcodeCopy != big.Zero {
+	if g.ExtcodeCopy != nil {
 		return false
 	}
-	if g.Balance != big.Zero {
+	if g.Balance != nil {
 		return false
 	}
-	if g.SLoad != big.Zero {
+	if g.SLoad != nil {
 		return false
 	}
-	if g.Calls != big.Zero {
+	if g.Calls != nil {
 		return false
 	}
-	if g.Suicide != big.Zero {
+	if g.Suicide != nil {
 		return false
 	}
-	if g.ExpByte != big.Zero {
+	if g.ExpByte != nil {
 		return false
 	}
-	if g.CreateBySuicide != big.Zero {
+	if g.CreateBySuicide != nil {
 		return false
 	}
 	return true
