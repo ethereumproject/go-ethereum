@@ -33,6 +33,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"sort"
 )
 
 var (
@@ -51,7 +52,7 @@ var (
 // set of configuration options.
 type ChainConfig struct {
 	// Forks holds fork block requirements. See ErrHashKnownFork.
-	Forks []*Fork `json:"forks"`
+	Forks Forks `json:"forks"`
 
 	// BadHashes holds well known blocks with consensus issues. See ErrHashKnownBad.
 	BadHashes []*BadHash `json:"bad_hashes"`
@@ -99,6 +100,7 @@ func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	return num.Cmp(block) >= 0
 }
 
+// Fork looks up a Fork by its name, assumed to be unique
 func (c *ChainConfig) Fork(name string) *Fork {
 	for i := range c.Forks {
 		if c.Forks[i].Name == name {
@@ -106,6 +108,30 @@ func (c *ChainConfig) Fork(name string) *Fork {
 		}
 	}
 	return &Fork{}
+}
+
+// LookupForkByBlockNum looks up a Fork by its block number, which is assumed to be unique.
+// If not Fork is found, empty fork is returned.
+func (c *ChainConfig) LookupForkByBlockNum(num *big.Int) *Fork {
+	for i, := range c.Forks {
+		if c.Forks[i].Block.Cmp(num) == 0 {
+			return c.Forks[i]
+		}
+	}
+	return &Fork{}
+}
+
+// GetForkForBlockNum gets a the most-recent Fork corresponding to a given block number for
+// a chain configuration.
+func (c *ChainConfig) GetForkForBlockNum(num *big.Int) *Fork {
+	sort.Sort(c.Forks)
+	var okFork *Fork
+	for _, f := range c.Forks {
+		if f.Block.Cmp(num) <= 0 {
+			okFork = f
+		}
+	}
+	return okFork
 }
 
 func (c *ChainConfig) HeaderCheck(h *types.Header) error {
@@ -151,14 +177,13 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 		CreateBySuicide: nil,
 	}
 
-	for _, fork := range c.Forks {
-		if fork.Block.Cmp(num) <= 0 {
-			if fork.CollectOptions().GasTable != nil {
-				t = fork.CollectOptions().GasTable
-			}
-		}
+	opts, err := c.GetOptions(num)
+	if err != nil {
+		panic(err)
 	}
-
+	if opts.GasTable != nil {
+		return opts.GasTable
+	}
 	return t
 }
 
@@ -213,6 +238,22 @@ type Fork struct {
 	Features []*ForkFeature `json:"features"`
 }
 
+// Forks implements sort interface, sorting by block number
+type Forks []*Fork
+func (fs Forks) Len() int { return len(fs) }
+func (fs Forks) Less(i, j int) bool {
+	iF := fs[i]
+	jF := fs[j]
+	return iF.Block.Cmp(jF.Block) < 0
+}
+func (fs Forks) Swap(i, j int) {
+	fs[i], fs[j] = fs[j], fs[i]
+}
+
+// These are the raw key-value configuration options made available
+// by an external JSON file.
+type ChainFeatureConfigOptions map[string]interface{}
+
 // ForkFeatures are designed to decouple the implementation feature upgrades from Forks themselves.
 // For example, there are several 'set-gasprice' features, each using a different gastable.
 // In this case, the last-to-iterate (via `range`) ForkFeature with ID 'set-gasprice' in a given Fork will be used, but it's
@@ -223,42 +264,41 @@ type Fork struct {
 //  "homestead", "diehard", "eip155", "ecip1010", etc... ;-)
 type ForkFeature struct {
 	ID      string `json:"id"`
-	Options *FeatureOptions `json:"options"`
+	Options *ChainFeatureConfigOptions `json:"options"`
 }
 
-// FeatureOptions uses hardcoded field values instead of arbitrary key-value pairs
-// to avoid pitfalls related to `reflect`ing and, more importantly, to provide a transparent
-// and concrete set of available options for users interested in configuring their own features.
-// It is OK for a given FeatureOptions to contain only some of the possible fields; nil values will be ignored.
-// These are options that are supported by the Ethereum protocol as it follows given forks
-// of a given blockchain.
+// FeatureOptions establishes the current concrete possibilities for arbitrary key-value pairs in configuration
+// options. These are options that are supported by the Ethereum protocol as it follows given Forks/+Features
+// of a given blockchain configuration.
 // See go-ethereum/core/data_features.go for exemplary defaults.
 type FeatureOptions struct {
 	GasTable     *vm.GasTable `json:"gasTable"` // Gas Price table
 	Length       *big.Int     `json:"length"`   // Length of fork, if limited
 	ChainID      *big.Int     `json:"chainId"`
+	Difficulty   string       `json:"difficulty"` // id of eip/ecip difficulty algorithm
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
 }
 
-// CollectOptions aggregates and returns a flat set of FeatureOptions for a given Fork.
-// In the case that multiple ForkFeatures specify the same key, the latest-specified will be used.
-// TODO: could possible use an id as an argument to get more precision if desired
-// FIXME: there is probably a more elegant way of doing this...
-func (f *Fork) CollectOptions() *FeatureOptions {
-	opts := &FeatureOptions{}
-
-	for _, feature := range f.Features {
-		if feature.Options.GasTable != nil {
-			opts.GasTable = feature.Options.GasTable
-		}
-		if feature.Options.Length != nil && feature.Options.Length != big.NewInt(0) {
-			opts.Length = feature.Options.Length
-		}
-		if feature.Options.ChainID != nil && feature.Options.ChainID != big.NewInt(0) {
-			opts.ChainID = feature.Options.ChainID
-		}
+// GetOptions gets relevant chain configuration options for a given block number num.
+// The impact of this on the code is that queries to chain configuration will no longer
+// be made with regard to Fork name, but with regard to Block number.
+// GetOptions must parse arbitrary key-value pairs to available (ie non-unknown) fields, types, and values,
+// and return an error (which must be handled "hard") if it handles an unknown/unparseable option
+// key or value.
+func (c *ChainConfig) GetOptions(num *big.Int) (*FeatureOptions, error) {
+	// find relevant fork
+	fork := c.GetForkForBlockNum(num)
+	if fork.Features != nil {
+		return &FeatureOptions{}, nil
 	}
-	return opts
+	// parse
+	return fork.decodeOptions()
+}
+
+// decodeOptions decodes arbitrary key-value data (JSON) to useable struct
+// ForkFeature.Options -> FeatureOptions
+func (f *Fork) decodeOptions() (*FeatureOptions, error) {
+	// TODO
 }
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0

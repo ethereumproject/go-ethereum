@@ -18,34 +18,40 @@
 
 package core
 
-import (
-	"math/big"
-)
-
 var DefaultGasRepriceFeature = &ForkFeature{
 	ID: "gasReprice",
-	Options: &FeatureOptions{
-		GasTable: DefaultGasRepriceGasTable,
+	Options: &ChainFeatureConfigOptions{
+		"gastable": "DefaultGasRepriceGasTable",
 	},
 }
 
 var DefaultEIP155Feature = &ForkFeature{
 	ID: "eip155",
-	Options: &FeatureOptions{
-		ChainID: big.NewInt(61),
+	Options: &ChainFeatureConfigOptions{
+		"chainid": 61,
 	},
 }
 
 var DefaultBombDelayFeature = &ForkFeature{
 	ID: "ecip1010", // bomb delay
-	Options: &FeatureOptions{
-		Length: big.NewInt(2000000),
+	Options: &ChainFeatureConfigOptions{
+		"length": 2000000,
 	},
 }
 
 var DefaultDiehardGasRepriceFeature = &ForkFeature{
 	ID: "diehardGasprice",
-	Options: &FeatureOptions{
-		GasTable: DefaultDiehardGasTable,
+	Options: &ChainFeatureConfigOptions{
+		// This is just an example of the arbitrariness of they key-value config.
+		"gastable": `{
+			"extcodesize:      700,
+			"extcodecopy":     700,
+			"balance":         400,
+			"sload":           200,
+			"calls":           700,
+			"suicide":         5000,
+			"expbyte":         50,
+			"createbysuicide": 25000,
+		}`,
 	},
 }
