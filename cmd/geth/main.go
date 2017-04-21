@@ -181,7 +181,7 @@ participating.
 		if ctx.Args().Present() {
 			commandExists := false
 			for _, cmd := range app.Commands {
-				if cmd.Name == ctx.Args().First() {
+				if cmd.HasName(ctx.Args().First()) {
 					commandExists = true
 				}
 			}
