@@ -20,28 +20,28 @@ package core
 
 var DefaultGasRepriceFeature = &ForkFeature{
 	ID: "gasReprice",
-	Options: &ChainConfigOptions{
+	Options: &ChainFeatureConfigOptions{
 		"gastable": "DefaultGasRepriceGasTable",
 	},
 }
 
 var DefaultEIP155Feature = &ForkFeature{
 	ID: "eip155",
-	Options: &ChainConfigOptions{
+	Options: &ChainFeatureConfigOptions{
 		"chainid": 61,
 	},
 }
 
 var DefaultBombDelayFeature = &ForkFeature{
 	ID: "ecip1010", // bomb delay
-	Options: &ChainConfigOptions{
+	Options: &ChainFeatureConfigOptions{
 		"length": 2000000,
 	},
 }
 
 var DefaultDiehardGasRepriceFeature = &ForkFeature{
 	ID: "diehardGasprice",
-	Options: &ChainConfigOptions{
+	Options: &ChainFeatureConfigOptions{
 		// This is just an example of the arbitrariness of they key-value config.
 		"gastable": `{
 			"extcodesize:      700,
