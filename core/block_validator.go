@@ -266,16 +266,21 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	// This is a placeholder for testing. The calcDiff function should
 	// be determined by a config flag
 	num := new(big.Int).Add(parentNumber, common.Big1)
-	if config.IsDiehard(num) && !config.IsExplosion(num) {
-		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff, config.GetForkForBlockNum(num).Block)
-	} else if config.IsExplosion(num) {
-		opts, e := config.GetOptions(num)
-		if e != nil {
-			panic(e) // TODO improve me
+	if feature, fork, enabled := config.GetFeature(num, "ecip1010"); enabled {
+		length, ok := feature.GetBigInt("length")
+		if !ok {
+			panic("ecip1010 length is not set")
 		}
-		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
-			config.GetForkForBlockNum(num).Block, big.NewInt(0).Add(config.GetForkForBlockNum(num).Block, opts.Length))
-	} else if config.IsHomestead(num) {
+		explosionBlock := big.NewInt(0).Add(fork.Block, length)
+		if explosionBlock.Cmp(num) < 0 {
+			return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff,
+				fork.Block)
+		} else {
+			return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
+				fork.Block, explosionBlock)
+		}
+	}
+	if config.IsHomestead(num) {
 		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
 	} else {
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)

@@ -130,7 +130,7 @@ func (c *ChainConfig) LookupForkByBlockNum(num *big.Int) *Fork {
 // GetForkForBlockNum gets a the most-recent Fork corresponding to a given block number for
 // a chain configuration.
 func (c *ChainConfig) GetForkForBlockNum(num *big.Int) *Fork {
-	sort.Sort(c.Forks)
+	sort.Sort(c.Forks) //TODO sort once after construction
 	var okFork = &Fork{}
 	for _, f := range c.Forks {
 		if f.Block.Cmp(num) <= 0 {
@@ -151,6 +151,25 @@ func (c *ChainConfig) GetForksThroughBlockNum(num *big.Int) Forks {
 		}
 	}
 	return applicableForks
+}
+
+func (c *ChainConfig) GetFeature(num *big.Int, name string) (*ForkFeature, *Fork, bool) {
+	var okForkFeature = &ForkFeature{}
+	var okFork = &Fork{}
+	var found = false
+	for _, f := range c.Forks {
+		if f.Block.Cmp(num) > 0 {
+			break
+		}
+		for _, ff := range f.Features {
+			if ff.ID == name {
+				okForkFeature = ff
+				okFork = f
+				found = true
+			}
+		}
+	}
+	return okForkFeature, okFork, found
 }
 
 func (c *ChainConfig) HeaderCheck(h *types.Header) error {
@@ -280,7 +299,48 @@ func (fs Forks) Swap(i, j int) {
 type ForkFeature struct {
 	ID      string `json:"id"`
 	Options ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
+	ParsedOptions map[string]interface{}
 }
+
+func (o *ForkFeature) GetStringOptions(name string) (string, bool) {
+	if o.ParsedOptions == nil {
+		o.ParsedOptions = make(map[string]interface{});
+	} else if val, ok := o.ParsedOptions[name]; ok {
+		return val.(string), true
+	}
+	val := o.Options[name].(string)
+	o.ParsedOptions[name] = val; //expect it as a string in config
+	return val, true
+}
+func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
+	if o.ParsedOptions == nil {
+		o.ParsedOptions = make(map[string]interface{});
+	} else if val, ok := o.ParsedOptions[name]; ok {
+		return val.(*big.Int), true
+	}
+	originalValue := o.Options[name]
+	if value, ok := originalValue.(int64); ok {
+		i := big.NewInt(value)
+		o.ParsedOptions[name] = i
+		return i, true
+	}
+	if value, ok := originalValue.(int); ok {
+		i := big.NewInt(int64(value))
+		o.ParsedOptions[name] = i
+		return i, true
+	}
+	if value, ok := originalValue.(string); ok {
+		i := new(big.Int);
+		_, err := fmt.Sscan(value, i);
+		if (err != nil) {
+			return nil, false
+		}
+		o.ParsedOptions[name] = i
+		return i, true
+	}
+	return nil, false
+}
+
 
 // These are the raw key-value configuration options made available
 // by an external JSON file.
