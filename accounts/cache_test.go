@@ -118,14 +118,20 @@ func TestWatchNoDir(t *testing.T) {
 	// am should see the account.
 	wantAccounts := []Account{cachetestAccounts[0]}
 	wantAccounts[0].File = file
-	for d := 200 * time.Millisecond; d < 8*time.Second; d *= 2 {
+	seen := make(map[time.Duration]bool)
+	for d := 400 * time.Millisecond; d < 8 * time.Second; d *= 2 {
 		list = am.Accounts()
+		seen[d] = false
 		if reflect.DeepEqual(list, wantAccounts) {
-			return
+			seen[d] = true
 		}
 		time.Sleep(d)
 	}
-	t.Errorf("\ngot  %v\nwant %v", list, wantAccounts)
+	for _, saw := range seen {
+		if !saw {
+			t.Errorf("\ngot  %v\nwant %v, with: %v", list, wantAccounts, seen)
+		}
+	}
 }
 
 func TestCacheInitialReload(t *testing.T) {
