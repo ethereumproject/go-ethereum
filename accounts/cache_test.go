@@ -119,7 +119,7 @@ func TestWatchNoDir(t *testing.T) {
 	wantAccounts := []Account{cachetestAccounts[0]}
 	wantAccounts[0].File = file
 	var seen, got = make(map[time.Duration]bool), make(map[time.Duration][]Account)
-	for d := 1 * time.Second; d < 8 * time.Second; d *= 2 {
+	for d := 2 * time.Second; d < 8 * time.Second; d *= 2 {
 		list = am.Accounts()
 		seen[d] = false
 		if reflect.DeepEqual(list, wantAccounts) {
