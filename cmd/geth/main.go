@@ -112,8 +112,8 @@ participating.
 `,
 		},
 		{
-			Action: dumpExternalChainConfig,
-			Name:   "dumpExternalChainConfig",
+			Action: dumpChainConfig,
+			Name:   "dumpChainConfig",
 			Usage:  "dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
 			Description: `
 The dump external configuration command writes a JSON file containing pertinent configuration data for
@@ -267,7 +267,7 @@ func initGenesis(ctx *cli.Context) error {
 
 
 // dumpExternailChainConfig exports chain configuration based on database to JSON file
-func dumpExternalChainConfig(ctx *cli.Context) error {
+func dumpChainConfig(ctx *cli.Context) error {
 
 	chainConfigFilePath := ctx.Args().First()
 	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
@@ -291,7 +291,7 @@ func dumpExternalChainConfig(ctx *cli.Context) error {
 	db.Close() // required to free for MustMakeChainConfig below
 
 	// Case: No genesis block exists in the given db.
-	// This case is probably that a user is running `dumpExternalChainConfig` without
+	// This case is probably that a user is running `dumpChainConfig` without
 	// having initialized any chaindata yet. If so, we should just dump defaulty values.
 	//
 	// FYI: here would be an inflection point for if we used a --genesis flag.

@@ -31,7 +31,7 @@ func ExampleAppRunHelpCommand() {
 	//    gpubench			benchmark GPU
 	//    version			print ethereum version numbers
 	//    init				bootstraps and initialises a new genesis block (JSON)
-	//    dumpExternalChainConfig	dump current chain configuration to JSON file [REQUIRED argument: filepath.json]
+	//    dumpChainConfig	dump current chain configuration to JSON file [REQUIRED argument: filepath.json]
 	//    help, h			Shows a list of commands or help for one command
 
 	// ETHEREUM OPTIONS:
