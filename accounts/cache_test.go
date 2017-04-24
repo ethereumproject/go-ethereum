@@ -106,31 +106,40 @@ func TestWatchNoDir(t *testing.T) {
 	// Create the directory and copy a key file into it.
 	os.MkdirAll(dir, 0700)
 	defer os.RemoveAll(dir)
+
 	file := filepath.Join(dir, "aaa")
 	data, err := ioutil.ReadFile(cachetestAccounts[0].File)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(file, data, 0666); err != nil {
+	ff, err := os.Create(file)
+	if err != nil {
 		t.Fatal(err)
 	}
+	f, err := os.OpenFile(ff.Name(), os.O_RDWR, 0666)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Write(data)
+	f.Close()
 
 	// am should see the account.
 	wantAccounts := []Account{cachetestAccounts[0]}
 	wantAccounts[0].File = file
-	var seen, got = make(map[time.Duration]bool), make(map[time.Duration][]Account)
-	for d := 4 * time.Second; d < 8 * time.Second; d *= 2 {
+	var seen, gotAccounts = make(map[time.Duration]bool), make(map[time.Duration][]Account)
+	for d := 200 * time.Second; d < 8*time.Second; d *= 2 {
 		list = am.Accounts()
 		seen[d] = false
 		if reflect.DeepEqual(list, wantAccounts) {
 			seen[d] = true
+		} else {
 		}
-		got[d] = list
+		gotAccounts[d] = list
 		time.Sleep(d)
 	}
 	for i, saw := range seen {
 		if !saw {
-			t.Errorf("\nat %v got  %v\nwant %v", i, got[i], wantAccounts)
+			t.Errorf("\nat %v got  %v\nwant %v", i, gotAccounts[i], wantAccounts)
 		}
 	}
 }
