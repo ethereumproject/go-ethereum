@@ -118,18 +118,19 @@ func TestWatchNoDir(t *testing.T) {
 	// am should see the account.
 	wantAccounts := []Account{cachetestAccounts[0]}
 	wantAccounts[0].File = file
-	seen := make(map[time.Duration]bool)
-	for d := 400 * time.Millisecond; d < 8 * time.Second; d *= 2 {
+	var seen, got = make(map[time.Duration]bool), make(map[time.Duration][]Account)
+	for d := 1 * time.Second; d < 8 * time.Second; d *= 2 {
 		list = am.Accounts()
 		seen[d] = false
 		if reflect.DeepEqual(list, wantAccounts) {
 			seen[d] = true
+			got[d] = list
 		}
 		time.Sleep(d)
 	}
-	for _, saw := range seen {
+	for i, saw := range seen {
 		if !saw {
-			t.Errorf("\ngot  %v\nwant %v, with: %v", list, wantAccounts, seen)
+			t.Errorf("\nat %v got  %v\nwant %v", i, got[i], wantAccounts)
 		}
 	}
 }
