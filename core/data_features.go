@@ -18,6 +18,12 @@
 
 package core
 
+import "math/big"
+
+// DefaultBombDelayLength is the default delay length for the "explosion" algorithm according
+// to ecip1010
+var DefaultBombDelayLength = big.NewInt(2000000) // 1500000 ???
+
 var DefaultGasRepriceFeature = &ForkFeature{
 	ID: "gasReprice",
 	Options: ChainFeatureConfigOptions{
@@ -29,13 +35,6 @@ var DefaultEIP155Feature = &ForkFeature{
 	ID: "eip155",
 	Options: ChainFeatureConfigOptions{
 		"chainid": 61,
-	},
-}
-
-var DefaultBombDelayFeature = &ForkFeature{
-	ID: "ecip1010", // bomb delay
-	Options: ChainFeatureConfigOptions{
-		"length": 2000000,
 	},
 }
 

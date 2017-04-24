@@ -86,6 +86,7 @@ func TestBombExplode(t *testing.T) {
 		t.Errorf("Unexpected for %d", 2325166)
 	}
 
+	// Default Diehard block is 3000000
 	if config.IsExplosion(big.NewInt(3000000)) {
 		t.Errorf("Unxpected for %d", 3000000)
 	}
@@ -96,6 +97,7 @@ func TestBombExplode(t *testing.T) {
 		t.Errorf("Unxpected for %d", 3000000)
 	}
 
+	// Default BombDelay length is 2000000.
 	if !config.IsExplosion(big.NewInt(5000000)) {
 		t.Errorf("Expected for %d", 5000000)
 	}

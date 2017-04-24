@@ -94,16 +94,18 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
-	opts, e := c.GetOptions(num)
-	fork := c.GetForkForBlockNum(num)
-	if e != nil {
-		panic(e) // TODO handle better ?
+	opts, err := c.GetOptions(num)
+	if err != nil {
+		panic(err)
 	}
-	if c.GetForkForBlockNum(num).Block == nil || opts.Length == nil || num == nil {
+	if opts == nil || opts.Difficulty == nil {
 		return false
 	}
-	block := big.NewInt(0).Add(fork.Block, opts.Length)
-	return num.Cmp(block) >= 0
+	if opts.Difficulty.Name == "explosion" {
+		return true
+	}
+
+	return false
 }
 
 // Fork looks up a Fork by its name, assumed to be unique
@@ -298,6 +300,10 @@ func (fs Forks) Swap(i, j int) {
 //  "homestead", "diehard", "eip155", "ecip1010", etc... ;-)
 type ForkFeature struct {
 	ID      string `json:"id"`
+	// Optional block number at which to implement this Feature.
+	// It will override fork/+feature configurations with earlier blocks, but can be overridden by subsequent forks/+features.
+	// It will be ineffectual if less than parent Fork's block.
+	Block *big.Int `json:"block"`
 	Options ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
 	ParsedOptions map[string]interface{}
 }
@@ -352,9 +358,8 @@ type ChainFeatureConfigOptions map[string]interface{}
 // See go-ethereum/core/data_features.go for exemplary defaults.
 type FeatureOptions struct {
 	GasTable     *vm.GasTable `json:"gasTable"` // Gas Price table
-	Length       *big.Int     `json:"length"`   // Length of fork, if limited
 	ChainID      *big.Int     `json:"chainId"`
-	Difficulty   string       `json:"difficulty"` // id of eip/ecip difficulty algorithm
+	Difficulty   *DifficultyConfig      `json:"difficulty"` // name/+options for eip/ecip difficulty algorithm
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
 }
 
@@ -373,7 +378,7 @@ func (c *ChainConfig) GetOptions(num *big.Int) (*FeatureOptions, error) {
 		return &FeatureOptions{}, nil
 	}
 
-	return forks.decodeAndFlattenOptions()
+	return forks.decodeAndFlattenOptions(num)
 }
 
 // merge merges one "incoming" set of FeatureOptions *onto* another base,
@@ -383,13 +388,10 @@ func (base *FeatureOptions) merge(incoming *FeatureOptions) error {
 	if incoming.GasTable != nil {
 		base.GasTable = incoming.GasTable
 	}
-	if incoming.Length != nil {
-		base.Length = incoming.Length
-	}
 	if incoming.ChainID != nil {
 		base.ChainID = incoming.ChainID
 	}
-	if incoming.Difficulty != "" {
+	if incoming.Difficulty != nil {
 		base.Difficulty = incoming.Difficulty
 	}
 	// error me?
@@ -399,13 +401,17 @@ func (base *FeatureOptions) merge(incoming *FeatureOptions) error {
 // decodeAndFlattenOptions decode and aggregates all configured options on a Fork
 // it is the iterative form of decodeOptions()
 // it assume forks have been sorted chronologically (by block number), ie via GetForksThroughBlockNum
-func (fs Forks) decodeAndFlattenOptions() (*FeatureOptions, error) {
+func (fs Forks) decodeAndFlattenOptions(num *big.Int) (*FeatureOptions, error) {
 	var decodedOpts = &FeatureOptions{}
 	// parse
 	for _, fork := range fs {
 		if fork.Features != nil {
 			// fork has n features
 			for _, feat := range fork.Features {
+				// do not apply features with block numbers in the 'future'
+				if feat.Block != nil && feat.Block.Cmp(num) > 0 {
+					continue // break this Feature's for-loop
+				}
 				featOpts, e := feat.Options.decodeOptions()
 				if e != nil {
 					return nil, e
@@ -433,7 +439,6 @@ func (f ChainFeatureConfigOptions) decodeOptions() (*FeatureOptions, error) {
 	for key, val := range f {
 		saneKey := mustStringToLowerAlphaOnly(key)
 		if saneKey  == "gastable" {
-			// regex.ReplaceAllLiteralString(src, repl string) string
 			var gs = &vm.GasTable{}
 			stringGasTableVal := val.(string) // type assertion, Go will panic if fail
 			json.Unmarshal([]byte(stringGasTableVal), &gs)
@@ -444,15 +449,18 @@ func (f ChainFeatureConfigOptions) decodeOptions() (*FeatureOptions, error) {
 				opts.GasTable = DefaultGasTableMap[stringGasTableVal]
 			}
 
-		} else if saneKey == "length" {
-			opts.Length = new(big.Int).SetInt64(int64(val.(int)))
-
 		} else if saneKey == "chainid" {
-			opts.ChainID = new(big.Int).SetInt64(int64(val.(int)))
+			opts.ChainID = big.NewInt(int64(val.(int))) // will panic if error
 
 		} else if saneKey == "difficulty" {
-			opts.Difficulty = val.(string)
+			var difficulty = &DifficultyConfig{}
+			stringDifficultyVal := val.(string)
+			json.Unmarshal([]byte(stringDifficultyVal), &difficulty)
 
+			// Configured difficulty must have name attribute
+			if difficulty.Name != "" {
+				opts.Difficulty = difficulty
+			}
 		} else {
 			return nil, fmt.Errorf("Chain configuration contained invalid parameter: key: %v, val: %v", key, val)
 		}

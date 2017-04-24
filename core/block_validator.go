@@ -44,6 +44,12 @@ var (
 	bigMinus99 = big.NewInt(-99)
 )
 
+// Difficulty allows passing configurable options to a given difficulty algorithm.
+type DifficultyConfig struct {
+	Name string `json:"name"`
+	Options map[string]interface{} `json:"options"`
+}
+
 // BlockValidator is responsible for validating block headers, uncles and
 // processed state.
 //
@@ -266,26 +272,38 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	// This is a placeholder for testing. The calcDiff function should
 	// be determined by a config flag
 	num := new(big.Int).Add(parentNumber, common.Big1)
-	if feature, fork, enabled := config.GetFeature(num, "ecip1010"); enabled {
-		length, ok := feature.GetBigInt("length")
-		if !ok {
-			panic("ecip1010 length is not set")
-		}
-		explosionBlock := big.NewInt(0).Add(fork.Block, length)
-		if explosionBlock.Cmp(num) < 0 {
-			return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff,
-				fork.Block)
+
+	fork := config.GetForkForBlockNum(num)
+	opts, err := config.GetOptions(num)
+	if err != nil {
+		panic(err)
+	}
+	if opts.Difficulty == nil {
+		// Stand-ins until we refactor out the .IsHomestead, .IsDiehard, hardcoders, etc.
+		if config.IsHomestead(num) {
+			return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
 		} else {
-			return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
-				fork.Block, explosionBlock)
+			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
+			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 		}
 	}
-	if config.IsHomestead(num) {
+	switch opts.Difficulty.Name {
+	case "diehard":
+		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff, fork.Block)
+	case "explosion":
+		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff, opts.Difficulty.Options)
+	case "homestead":
 		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
-	} else {
-		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
+	default:
+		if config.IsHomestead(num) {
+			return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
+		} else {
+			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
+			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
+		}
 	}
 }
+
 func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
 	// algorithm:
@@ -334,8 +352,8 @@ func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *bi
 	return x
 }
 
-func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, diehardBlock *big.Int, explosionBlock *big.Int) *big.Int {
-	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
+func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, opts map[string]interface{}) *big.Int {
+	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
 	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
@@ -368,10 +386,13 @@ func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *
 		x.Set(MinimumDifficulty)
 	}
 
-	// for the exponential factor
+	// for the exponential factor...
+
+	// Set retrospective bomb delay length from options config.
+	delayLength := big.NewInt(int64(opts["delay"].(int))) // will panic if error
+
 	delayedCount := new(big.Int).Add(parentNumber, common.Big1)
-	delayedCount.Sub(delayedCount, explosionBlock)
-	delayedCount.Add(delayedCount, diehardBlock)
+	delayedCount.Sub(delayedCount, delayLength)
 	delayedCount.Div(delayedCount, ExpDiffPeriod)
 
 	// the exponential factor, commonly referred to as "the bomb"
