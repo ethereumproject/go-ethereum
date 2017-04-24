@@ -132,7 +132,6 @@ func (c *ChainConfig) LookupForkByBlockNum(num *big.Int) *Fork {
 // GetForkForBlockNum gets a the most-recent Fork corresponding to a given block number for
 // a chain configuration.
 func (c *ChainConfig) GetForkForBlockNum(num *big.Int) *Fork {
-	sort.Sort(c.Forks) //TODO sort once after construction
 	var okFork = &Fork{}
 	for _, f := range c.Forks {
 		if f.Block.Cmp(num) <= 0 {
@@ -146,7 +145,6 @@ func (c *ChainConfig) GetForkForBlockNum(num *big.Int) *Fork {
 // for a calling ChainConfig
 func (c *ChainConfig) GetForksThroughBlockNum(num *big.Int) Forks {
 	var applicableForks Forks
-	sort.Sort(c.Forks)
 	for _, fork := range c.Forks {
 		if fork.Block.Cmp(num) <= 0 {
 			applicableForks = append(applicableForks, fork)
@@ -227,8 +225,14 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 	return t
 }
 
-// ExternalChainConfig holds necessary data for externalizing a given blockchain configuration.
-type ExternalChainConfig struct {
+// SortForks sorts a ChainConfiguration's forks by block number smallest to bigget (chronologically).
+func (c *ChainConfig) SortForks() *ChainConfig {
+	sort.Sort(c.Forks)
+	return c
+}
+
+// SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
+type SufficientChainConfig struct {
 	ID          string           `json:"id"`
 	Name        string           `json:"name"`
 	Genesis     *GenesisDump     `json:"genesis"`
@@ -238,7 +242,7 @@ type ExternalChainConfig struct {
 
 // WriteToJSONFile writes a given config to a specified file path.
 // It doesn't run any checks on the file path so make sure that's already squeaky clean.
-func (c *ExternalChainConfig) WriteToJSONFile(path string) error {
+func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	jsonConfig, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
 		return fmt.Errorf("Could not marshal json from chain config: %v", err)
@@ -252,14 +256,14 @@ func (c *ExternalChainConfig) WriteToJSONFile(path string) error {
 
 // ReadChainConfigFromJSONFile reads a given json file into a *ChainConfig.
 // Again, no checks are made on the file path.
-func ReadChainConfigFromJSONFile(path string) (*ExternalChainConfig, error) {
+func ReadChainConfigFromJSONFile(path string) (*SufficientChainConfig, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
 	}
 	defer f.Close()
 
-	var config = &ExternalChainConfig{}
+	var config = &SufficientChainConfig{}
 	if json.NewDecoder(f).Decode(config); err != nil {
 		return nil, fmt.Errorf("%s: %s", path, err)
 	}

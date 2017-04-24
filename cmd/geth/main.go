@@ -310,10 +310,10 @@ func dumpChainConfig(ctx *cli.Context) error {
 
 	chainConfig := MustMakeChainConfig(ctx)
 
-	var currentConfig = &core.ExternalChainConfig{
+	var currentConfig = &core.SufficientChainConfig{
 		ID: fmt.Sprintf("%s", chainConfig.ChainId),
 		Name: getChainNameFromContext(ctx),
-		ChainConfig: chainConfig, // get current/contextualized chain config
+		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
 		Genesis: genesisDump,
 		Bootstrap: MakeBootstrapNodes(ctx),
 	}

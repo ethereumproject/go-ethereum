@@ -499,6 +499,11 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	name := makeNodeName(version, ctx)
 
 	// global settings
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
+			filepath.Clean(ctx.GlobalString(UseChainConfigFlag.Name))))
+	}
+
 	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
 		s := ctx.GlobalString(ExtraDataFlag.Name)
 		if len(s) > types.HeaderExtraMax {
@@ -507,6 +512,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		miner.HeaderExtra = []byte(s)
 	}
 
+	// data migrations
 	if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
 		log.Fatalf("Failed to migrate existing Classic database: %v", migrationError)
 	}
@@ -556,7 +562,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	accman := MakeAccountManager(ctx)
 
 	ethConf := &eth.Config{
-		ChainConfig:             MustMakeChainConfig(ctx),
+		ChainConfig:             MustMakeChainConfig(ctx).SortForks(),
 		FastSync:                ctx.GlobalBool(FastSyncFlag.Name),
 		BlockChainVersion:       ctx.GlobalInt(BlockchainVersionFlag.Name),
 		DatabaseCache:           ctx.GlobalInt(CacheFlag.Name),
@@ -611,7 +617,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 			chainDB.Close()
 		} else {
-			glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom genesis state. Will use DB."))
+			panic("Chain configuration file JSON did not contain necessary genesis data.")
 		}
 	}
 
@@ -678,7 +684,7 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 	db := MakeChainDatabase(ctx)
 	defer db.Close()
 
-	// Override configs based on ExternalChainConfig flag file
+	// Override configs based on SufficientChainConfig flag file
 	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
 
 		// Use externalConfig in lieu of pertinent node+eth Configs
@@ -704,7 +710,7 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 
 // readExternalChainConfig reads a flagged external json file for blockchain configuration
 // it accepts the raw path argument and cleans it, returning either a valid config or an error
-func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.ExternalChainConfig, error) {
+func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.SufficientChainConfig, error) {
 
 	// ensure flag arg cleanliness
 	flaggedExternalChainConfigPath = filepath.Clean(flaggedExternalChainConfigPath)
@@ -717,7 +723,6 @@ func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.Exter
 	} else {
 		customC, err := core.ReadChainConfigFromJSONFile(flaggedExternalChainConfigPath)
 		if err == nil {
-			glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m", flaggedExternalChainConfigPath))
 			return customC, nil
 		} else {
 			return nil, fmt.Errorf("ERROR: Error reading configuration file (%s): %v", flaggedExternalChainConfigPath, err)
