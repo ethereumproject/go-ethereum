@@ -68,7 +68,7 @@ var DefaultConfig = &ChainConfig{
 			Features: []*ForkFeature{
 				DefaultEIP155Feature,
 				DefaultDiehardGasRepriceFeature,
-				&ForkFeature{
+				{
 					ID: "ecip1010Default",
 					Options: ChainFeatureConfigOptions{
 						"difficulty": `{
@@ -77,7 +77,7 @@ var DefaultConfig = &ChainConfig{
 						}`,
 					},
 				},
-				&ForkFeature{ // ecip1010 bomb delay
+				{ // ecip1010 bomb delay
 					ID:    "explosionDefault",
 					Block: big.NewInt(0).Add(big.NewInt(3000000), DefaultBombDelayLength),
 					Options: ChainFeatureConfigOptions{
@@ -110,7 +110,7 @@ var TestConfig = &ChainConfig{
 			Name:  "Homestead",
 			Block: big.NewInt(494000),
 			Features: []*ForkFeature{
-				&ForkFeature{
+				{
 					ID: "homestead",
 					Options: ChainFeatureConfigOptions{
 						"gastable": `{
@@ -146,7 +146,7 @@ var TestConfig = &ChainConfig{
 			Features: []*ForkFeature{
 				DefaultEIP155Feature,
 				DefaultDiehardGasRepriceFeature,
-				&ForkFeature{
+				{
 					ID: "ecip1010Default",
 					Options: ChainFeatureConfigOptions{
 						"difficulty": `{
@@ -155,7 +155,7 @@ var TestConfig = &ChainConfig{
 						}`,
 					},
 				},
-				&ForkFeature{ // ecip1010 bomb delay
+				{ // ecip1010 bomb delay
 					ID:    "explosionDefault",
 					Block: big.NewInt(0).Add(big.NewInt(1915000), DefaultBombDelayLength),
 					Options: ChainFeatureConfigOptions{

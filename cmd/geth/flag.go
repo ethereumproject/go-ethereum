@@ -695,9 +695,10 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 			glog.V(logger.Info).Info(fmt.Sprintf("Found custom chain configuration: \x1b[32m%s\x1b[39m", externalConfig.ChainConfig))
 			return externalConfig.ChainConfig
 		}
-
-		glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom chain configuration. Will use DB/context."))
+		// Chain config from file was nil. No go.
+		panic("Custom chain configuration file was invalid or empty: '" + ctx.GlobalString(UseChainConfigFlag.Name) + "'")
 	}
+
 	return MustMakeChainConfigFromDb(ctx, db)
 }
 

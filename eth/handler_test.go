@@ -66,7 +66,17 @@ func TestGetBlockHeaders62(t *testing.T) {
 		{
 			Name:  "Homestead",
 			Block: big.NewInt(0),
-			Features: []*core.ForkFeature{core.DefaultHomesteadFeature},
+			Features: []*core.ForkFeature{
+				{
+					ID: "homestead",
+					Options: core.ChainFeatureConfigOptions{
+						"difficulty": `{
+							"name": "homestead",
+							"options": {}
+						}`,
+					},
+				},
+			},
 		},
 	}
 	testGetBlockHeaders(t, 62)
