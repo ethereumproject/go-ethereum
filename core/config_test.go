@@ -187,3 +187,21 @@ func TestMakeGenesisDump(t *testing.T) {
 	}
 	db.Close()
 }
+
+// TestmustCompileStringToLowerAlphaOnly tests the sane-itizer used to parse key-values from chain configs
+func TestmustCompileStringToLowerAlphaOnly(t *testing.T) {
+	tests := map[string]string{
+		"DIFFICULTY":  "difficulty",
+		"gas_Table":   "gastable",
+		"gastable!<3": "gastable",
+		"chainid ":    "chainid",
+		"chainid":     "chainid",
+		"chainidABCDEFGHIJKLMNOPQRSTUVWXY1234567890!@#$%^&*()-_=+ ;:'/~`<>.,": "chainid",
+	}
+	for test, expected := range tests {
+		got := mustStringToLowerAlphaOnly(test)
+		if got != expected {
+			t.Errorf("test %s, got %s, expected %s\n", test, got, expected)
+		}
+	}
+}
