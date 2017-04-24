@@ -116,12 +116,11 @@ func TestWatchNoDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := os.OpenFile(ff.Name(), os.O_RDWR, 0666)
+	_, err = ff.Write(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Write(data)
-	f.Close()
+	ff.Close()
 
 	// am should see the account.
 	wantAccounts := []Account{cachetestAccounts[0]}
