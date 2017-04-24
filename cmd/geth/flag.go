@@ -361,12 +361,6 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	unclassicDataDirPath := common.DefaultUnclassicDataDir()
 	classicDataDirPath := common.DefaultDataDir()
 
-	// only if using default data dir (flagged dir can override)
-	if ctx.GlobalIsSet(DataDirFlag.Name) {
-		log.Printf("INFO: Global --datadir flag is set: %v \n", ctx.GlobalString(DataDirFlag.Name))
-		return nil
-	}
-
 	// only if default **classic** data dir doesn't already exist
 	if _, err := os.Stat(classicDataDirPath); err == nil {
 		// classic data dir already exists
@@ -513,11 +507,15 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	// data migrations
-	if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
-		log.Fatalf("Failed to migrate existing Classic database: %v", migrationError)
+
+	// only if using default data dir (flagged dir can override)
+	if !ctx.GlobalIsSet(DataDirFlag.Name) {
+		if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
+			log.Fatalf("Failed to migrate existing Classic database: %v", migrationError)
+		}
 	}
 
-	// Move existing data from <EthereumClassic>/ (without subdir structure) to pertinent chain-named subdir.
+	// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
 	// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
 	// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
 	// and the user is using the Default configuration (ie "mainnet")
@@ -680,10 +678,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
 func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 
-	// need to at least ensure the set up of the database files
-	db := MakeChainDatabase(ctx)
-	defer db.Close()
-
 	// Override configs based on SufficientChainConfig flag file
 	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
 
@@ -704,6 +698,11 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 		// Chain config from file was nil. No go.
 		panic("Custom chain configuration file was invalid or empty: '" + ctx.GlobalString(UseChainConfigFlag.Name) + "'")
 	}
+
+
+	db := MakeChainDatabase(ctx)
+	defer db.Close()
+	glog.V(logger.Info).Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx) + "/chaindata"))
 
 	return MustMakeChainConfigFromDb(ctx, db)
 }
