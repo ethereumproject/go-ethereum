@@ -195,8 +195,13 @@ func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 }
 
 func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
-	if c.IsDiehard(blockNumber) {
-		return types.NewChainIdSigner(c.ChainId)
+	feature, _, configured := c.GetFeature(blockNumber, "eip155")
+	if configured {
+		if chainId, ok := feature.GetBigInt("chainId"); ok {
+			return types.NewChainIdSigner(chainId)
+		} else {
+			panic(fmt.Errorf("ChainId is not set for EIP-155 at %v", blockNumber))
+		}
 	}
 	return types.BasicSigner{}
 }
