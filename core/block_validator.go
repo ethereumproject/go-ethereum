@@ -278,7 +278,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
 	switch f.GetStringOptions("type") {
-		case "diehard":
+		case "ecip1010":
 			if length, ok := f.GetBigInt("length"); ok {
 				explosionBlock := big.NewInt(0).Add(fork.Block, length)
 				if explosionBlock.Cmp(num) < 0 {
