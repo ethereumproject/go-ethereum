@@ -56,12 +56,3 @@ var DefaultDiehardGasTable = &vm.GasTable{
 	ExpByte:         big.NewInt(50),
 	CreateBySuicide: big.NewInt(25000),
 }
-
-// DefaultGasTableMap is useful for passing in the name of a default map from
-// key-value fork feature options, ie
-//  options: { "gastable": "defaulthomesteadgastable" }
-var DefaultGasTableMap = map[string]*vm.GasTable{
-	"defaulthomesteadgastable": DefaultHomeSteadGasTable,
-	"defaultgasrepricegastable": DefaultGasRepriceGasTable,
-	"defaultdiehardgastable": DefaultDiehardGasTable,
-}

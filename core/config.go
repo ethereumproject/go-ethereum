@@ -93,17 +93,17 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
-	opts, err := c.GetOptions(num)
-	if err != nil {
-		panic(err)
-	}
-	if opts == nil || opts.Difficulty == nil {
-		return false
-	}
-	if opts.Difficulty.Name == "explosion" {
-		return true
-	}
+	feat, fork, configured := c.GetFeature(num, "difficulty")
 
+	if configured && feat.GetStringOptions("type") == "ecip1010" {
+		block := big.NewInt(0)
+		if length, ok := feat.GetBigInt("length"); ok {
+			block = block.Add(fork.Block, length)
+		} else {
+			panic("Fork feature ecip1010 requires length value.")
+		}
+		return num.Cmp(block) >= 0
+	}
 	return false
 }
 
@@ -152,6 +152,8 @@ func (c *ChainConfig) GetForksThroughBlockNum(num *big.Int) Forks {
 	return applicableForks
 }
 
+// GetFeature looks up Fork features by id, where id can (currently) be [difficulty, gastable, eip155].
+// GetFeature returns the feature|nil, the latest fork configuring a given id, and if the given feature id was found at all
 func (c *ChainConfig) GetFeature(num *big.Int, name string) (*ForkFeature, *Fork, bool) {
 	var okForkFeature = &ForkFeature{}
 	var okFork = &Fork{}
@@ -196,10 +198,10 @@ func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
 	feature, _, configured := c.GetFeature(blockNumber, "eip155")
 	if configured {
-		if chainId, ok := feature.GetBigInt("chainId"); ok {
+		if chainId, ok := feature.GetBigInt("chainid"); ok {
 			return types.NewChainIdSigner(chainId)
 		} else {
-			panic(fmt.Errorf("ChainId is not set for EIP-155 at %v", blockNumber))
+			panic(fmt.Errorf("chainid is not set for EIP-155 at %v", blockNumber))
 		}
 	}
 	return types.BasicSigner{}
@@ -310,27 +312,28 @@ func (fs Forks) Swap(i, j int) {
 //  "homestead", "diehard", "eip155", "ecip1010", etc... ;-)
 type ForkFeature struct {
 	ID      string `json:"id"`
-	// Optional block number at which to implement this Feature.
-	// It will override fork/+feature configurations with earlier blocks, but can be overridden by subsequent forks/+features.
-	// It will be ineffectual if less than parent Fork's block.
-	Block *big.Int `json:"block"`
 	Options ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
 	ParsedOptions map[string]interface{} `json:"-"` // don't include in JSON dumps, since its for holding parsed JSON
+	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
 }
+
+// These are the raw key-value configuration options made available
+// by an external JSON file.
+type ChainFeatureConfigOptions map[string]interface{}
 
 func (o *ForkFeature) GetStringOptions(name string) (string) {
 	if o.ParsedOptions == nil {
-		o.ParsedOptions = make(map[string]interface{});
+		o.ParsedOptions = make(map[string]interface{})
 	} else if val, ok := o.ParsedOptions[name]; ok {
 		return val.(string)
 	}
 	val := o.Options[name].(string)
-	o.ParsedOptions[name] = val; //expect it as a string in config
+	o.ParsedOptions[name] = val //expect it as a string in config
 	return val
 }
 func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 	if o.ParsedOptions == nil {
-		o.ParsedOptions = make(map[string]interface{});
+		o.ParsedOptions = make(map[string]interface{})
 	} else if val, ok := o.ParsedOptions[name]; ok {
 		return val.(*big.Int), true
 	}
@@ -357,125 +360,10 @@ func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 	return nil, false
 }
 
-
-// These are the raw key-value configuration options made available
-// by an external JSON file.
-type ChainFeatureConfigOptions map[string]interface{}
-
-// FeatureOptions establishes the current concrete possibilities for arbitrary key-value pairs in configuration
-// options. These are options that are supported by the Ethereum protocol as it follows given Forks/+Features
-// of a given blockchain configuration.
-// See go-ethereum/core/data_features.go for exemplary defaults.
-type FeatureOptions struct {
-	GasTable     *vm.GasTable `json:"gasTable"` // Gas Price table
-	ChainID      *big.Int     `json:"chainId"`
-	Difficulty   *DifficultyConfig      `json:"difficulty"` // name/+options for eip/ecip difficulty algorithm
-	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
-}
-
-// GetOptions gets relevant chain configuration options for a given block number num.
-// The impact of this on the code is that queries to chain configuration will no longer
-// be made with regard to Fork name, but with regard to Block number.
-// GetOptions must parse arbitrary key-value pairs to available (ie non-unknown) fields, types, and values,
-// and return an error (which must be handled "hard") if it handles an unknown/unparseable option
-// key or value.
-// Must get unique options up to, but not beyond block number, prioritizing most-recent options
-// in cases of a single key being configured more than once for different Forks/+Features
-func (c *ChainConfig) GetOptions(num *big.Int) (*FeatureOptions, error) {
-	// find relevant fork
-	forks := c.GetForksThroughBlockNum(num) // these will be sorted
-	if forks.Len() == 0 {
-		return &FeatureOptions{}, nil
-	}
-
-	return forks.decodeAndFlattenOptions(num)
-}
-
-// merge merges one "incoming" set of FeatureOptions *onto* another base,
-// where the incoming feature option takes precedence.
-// it's usefulness in this application depends on "incoming" being chronologically later than "base", ie to override with the new
-func (base *FeatureOptions) merge(incoming *FeatureOptions) error {
-	if incoming.GasTable != nil {
-		base.GasTable = incoming.GasTable
-	}
-	if incoming.ChainID != nil {
-		base.ChainID = incoming.ChainID
-	}
-	if incoming.Difficulty != nil {
-		base.Difficulty = incoming.Difficulty
-	}
-	// error me?
-	return nil
-}
-
-// decodeAndFlattenOptions decode and aggregates all configured options on a Fork
-// it is the iterative form of decodeOptions()
-// it assume forks have been sorted chronologically (by block number), ie via GetForksThroughBlockNum
-func (fs Forks) decodeAndFlattenOptions(num *big.Int) (*FeatureOptions, error) {
-	var decodedOpts = &FeatureOptions{}
-	// parse
-	for _, fork := range fs {
-		if fork.Features != nil {
-			// fork has n features
-			for _, feat := range fork.Features {
-				// do not apply features with block numbers in the 'future'
-				if feat.Block != nil && feat.Block.Cmp(num) > 0 {
-					continue // break this Feature's for-loop
-				}
-				featOpts, e := feat.Options.decodeOptions()
-				if e != nil {
-					return nil, e
-				}
-				// merge newest options on top of old feature options
-				if e := decodedOpts.merge(featOpts); e != nil {
-					return nil, e
-				}
-			}
-		}
-	}
-	return decodedOpts, nil
-}
-
 func mustStringToLowerAlphaOnly(s string) string {
 	nonAlpha := regexp.MustCompile("[^a-zA-Z]")
 	onlyAlpha := nonAlpha.ReplaceAllString(s, "") // replace non-alphas with ""
 	return strings.ToLower(onlyAlpha)
-}
-
-// decodeOptions decodes arbitrary key-value data (JSON) to useable struct
-// ForkFeature.Options -> FeatureOptions
-func (f ChainFeatureConfigOptions) decodeOptions() (*FeatureOptions, error) {
-	var opts = &FeatureOptions{}
-	for key, val := range f {
-		saneKey := mustStringToLowerAlphaOnly(key)
-		if saneKey  == "gastable" {
-			var gs = &vm.GasTable{}
-			stringGasTableVal := val.(string) // type assertion, Go will panic if fail
-			json.Unmarshal([]byte(stringGasTableVal), &gs)
-
-			if !gs.IsEmpty() {
-				opts.GasTable = gs
-			} else {
-				opts.GasTable = DefaultGasTableMap[stringGasTableVal]
-			}
-
-		} else if saneKey == "chainid" {
-			opts.ChainID = big.NewInt(int64(val.(int))) // will panic if error
-
-		} else if saneKey == "difficulty" {
-			var difficulty = &DifficultyConfig{}
-			stringDifficultyVal := val.(string)
-			json.Unmarshal([]byte(stringDifficultyVal), &difficulty)
-
-			// Configured difficulty must have name attribute
-			if difficulty.Name != "" {
-				opts.Difficulty = difficulty
-			}
-		} else {
-			return nil, fmt.Errorf("Chain configuration contained invalid parameter: key: %v, val: %v", key, val)
-		}
-	}
-	return opts, nil
 }
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0

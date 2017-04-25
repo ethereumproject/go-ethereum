@@ -35,7 +35,8 @@ var DefaultTestnetChainConfigID = "morden"
 var DefaultTestnetChainConfigName = "Morden Testnet"
 
 // Chain ChainID
-// Compares with protected transactions in block processing.
+// Compares with protected transactions in block processing... ?
+// TODO move out of &ChainConfig and to fork features... ?
 var DefaultChainConfigChainID = big.NewInt(61)
 var DefaultTestnetChainConfigChainID = big.NewInt(62)
 
@@ -46,59 +47,59 @@ var DefaultConfig = &ChainConfig{
 			Name:  "Homestead",
 			Block: big.NewInt(1150000),
 			Features: []*ForkFeature{
-				&ForkFeature{
-					ID: "homestead",
+				{
+					ID: "difficulty",
 					Options: ChainFeatureConfigOptions{
-						"gastable": `{
-							"extcodesize":     20,
-							"extcodecopy":     20,
-							"balance":         20,
-							"sload":           50,
-							"calls":           40,
-							"suicide":         0,
-							"expbyte":         10
-						}`,
-						"difficulty": `{
-							"name": "homestead",
-							"options": {}
-						}`,
+						"type": "homestead",
+					},
+				},
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "homestead",
 					},
 				},
 			},
-		}, {
-			Name:         "ETF",
+		},
+		{
+			Name:         "TheDAO Hard Fork",
 			Block:        big.NewInt(1920000),
 			RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
 			Features:     []*ForkFeature{},
-		}, {
-			Name:     "GasReprice",
-			Block:    big.NewInt(2500000),
-			Features: []*ForkFeature{DefaultGasRepriceFeature},
-		}, {
+		},
+		{
+			Name:  "GasReprice",
+			Block: big.NewInt(2500000),
+			Features: []*ForkFeature{
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "gas-reprice",
+					},
+				},
+			},
+		},
+		{
 			Name:  "Diehard",
 			Block: big.NewInt(3000000),
 			Features: []*ForkFeature{
-				DefaultEIP155Feature,
-				DefaultDiehardGasRepriceFeature,
 				{
-					ID: "ecip1010Default",
+					ID: "eip155",
 					Options: ChainFeatureConfigOptions{
-						"difficulty": `{
-							"name": "diehard",
-							"options": {}
-						}`,
+						"chainid": 61,
 					},
 				},
 				{ // ecip1010 bomb delay
-					ID:    "explosionDefault",
-					Block: big.NewInt(0).Add(big.NewInt(3000000), DefaultBombDelayLength),
+					ID: "gastable",
 					Options: ChainFeatureConfigOptions{
-						"difficulty": `{
-							"name": "explosion",
-							"options": {
-								"delay": ` + DefaultBombDelayLength.String() + `
-							}
-						}`,
+						"type": "diehard",
+					},
+				},
+				{ // ecip1010 bomb delay
+					ID: "difficulty",
+					Options: ChainFeatureConfigOptions{
+						"type":   "ecip1010",
+						"length": 2000000,
 					},
 				},
 			},
@@ -123,29 +124,30 @@ var TestConfig = &ChainConfig{
 			Block: big.NewInt(494000),
 			Features: []*ForkFeature{
 				{
-					ID: "homestead",
+					ID: "difficulty",
 					Options: ChainFeatureConfigOptions{
-						"gastable": `{
-							"extcodesize":     20,
-							"extcodecopy":     20,
-							"balance":         20,
-							"sload":           50,
-							"calls":           40,
-							"suicide":         0,
-							"expbyte":         10
-						}`,
-						"difficulty": `{
-							"name": "homestead",
-							"options": {}
-						}`,
+						"type": "homestead",
+					},
+				},
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "homestead",
 					},
 				},
 			},
 		},
 		{
-			Name:     "GasReprice",
-			Block:    big.NewInt(1783000),
-			Features: []*ForkFeature{DefaultGasRepriceFeature},
+			Name:  "GasReprice",
+			Block: big.NewInt(1783000),
+			Features: []*ForkFeature{
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "gas-reprice",
+					},
+				},
+			},
 		},
 		{
 			Name:     "ETF",
@@ -156,27 +158,23 @@ var TestConfig = &ChainConfig{
 			Name:  "Diehard",
 			Block: big.NewInt(1915000),
 			Features: []*ForkFeature{
-				DefaultEIP155Feature,
-				DefaultDiehardGasRepriceFeature,
 				{
-					ID: "ecip1010Default",
+					ID: "eip155",
 					Options: ChainFeatureConfigOptions{
-						"difficulty": `{
-							"name": "diehard",
-							"options": {}
-						}`,
+						"chainid": 61,
 					},
 				},
 				{ // ecip1010 bomb delay
-					ID:    "explosionDefault",
-					Block: big.NewInt(0).Add(big.NewInt(1915000), DefaultBombDelayLength),
+					ID: "gastable",
 					Options: ChainFeatureConfigOptions{
-						"difficulty": `{
-							"name": "explosion",
-							"options": {
-								"delay": ` + DefaultBombDelayLength.String() + `
-							}
-						}`,
+						"type": "diehard",
+					},
+				},
+				{ // ecip1010 bomb delay
+					ID: "difficulty",
+					Options: ChainFeatureConfigOptions{
+						"type":   "ecip1010",
+						"length": 2000000,
 					},
 				},
 			},

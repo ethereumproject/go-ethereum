@@ -1314,10 +1314,45 @@ func TestEIP155Transition(t *testing.T) {
 				{
 					Name:  "Homestead",
 					Block: big.NewInt(0),
+					Features: []*ForkFeature{
+						{
+							ID: "difficulty",
+							Options: ChainFeatureConfigOptions{
+								"type": "homestead",
+							},
+						},
+						{
+							ID: "gastable",
+							Options: ChainFeatureConfigOptions{
+								"type": "homestead",
+							},
+						},
+					},
 				},
 				{
 					Name:  "Diehard",
 					Block: big.NewInt(2),
+					Features: []*ForkFeature{
+						{
+							ID: "eip155",
+							Options: ChainFeatureConfigOptions{
+								"chainid": 1,
+							},
+						},
+						{ // ecip1010 bomb delay
+							ID: "gastable",
+							Options: ChainFeatureConfigOptions{
+								"type": "diehard",
+							},
+						},
+						{ // ecip1010 bomb delay
+							ID: "difficulty",
+							Options: ChainFeatureConfigOptions{
+								"type":   "ecip1010",
+								"length": 2000000,
+							},
+						},
+					},
 				},
 			},
 		}
@@ -1398,10 +1433,45 @@ func TestEIP155Transition(t *testing.T) {
 			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
+				Features: []*ForkFeature{
+					{
+						ID: "difficulty",
+						Options: ChainFeatureConfigOptions{
+							"type": "homestead",
+						},
+					},
+					{
+						ID: "gastable",
+						Options: ChainFeatureConfigOptions{
+							"type": "homestead",
+						},
+					},
+				},
 			},
 			{
 				Name:  "Diehard",
 				Block: big.NewInt(2),
+				Features: []*ForkFeature{
+					{
+						ID: "eip155",
+						Options: ChainFeatureConfigOptions{
+							"chainid": 2,
+						},
+					},
+					{ // ecip1010 bomb delay
+						ID: "gastable",
+						Options: ChainFeatureConfigOptions{
+							"type": "diehard",
+						},
+					},
+					{ // ecip1010 bomb delay
+						ID: "difficulty",
+						Options: ChainFeatureConfigOptions{
+							"type":   "ecip1010",
+							"length": 2000000,
+						},
+					},
+				},
 			},
 		},
 	}

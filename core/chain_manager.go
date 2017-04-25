@@ -41,12 +41,9 @@ func MakeChainConfig() *ChainConfig {
 				Block: big.NewInt(0),
 				Features: []*ForkFeature{
 					{
-						ID: "homestead",
+						ID: "difficulty",
 						Options: ChainFeatureConfigOptions{
-							"difficulty": `{
-							"name": "homestead",
-							"options": {}
-						}`,
+							"type": "homestead",
 						},
 					},
 				},
@@ -64,12 +61,22 @@ func MakeDiehardChainConfig() *ChainConfig {
 				Block:  big.NewInt(0),
 				Features: []*ForkFeature{
 					{
-						ID: "ecip1010Default",
+						ID: "eip155",
 						Options: ChainFeatureConfigOptions{
-							"difficulty": `{
-								"name": "diehard",
-								"options": {}
-						}`,
+							"chainid": 63,
+						},
+					},
+					{ // ecip1010 bomb delay
+						ID:    "gastable",
+						Options: ChainFeatureConfigOptions{
+							"type": "diehard",
+						},
+					},
+					{ // ecip1010 bomb delay
+						ID:    "difficulty",
+						Options: ChainFeatureConfigOptions{
+							"type": "ecip1010",
+							"length": 2000000,
 						},
 					},
 				},
