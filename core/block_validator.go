@@ -277,7 +277,9 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	if !configured {
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
-	switch f.GetStringOptions("type") {
+	name, ok := f.GetStringOptions("type")
+	if !ok { name = "" } // will fall to default panic
+	switch name {
 		case "ecip1010":
 			if length, ok := f.GetBigInt("length"); ok {
 				explosionBlock := big.NewInt(0).Add(fork.Block, length)
@@ -296,7 +298,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		case "frontier":
 			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 		default:
-			panic(fmt.Sprintf("Unsupported difficulty %v for block %v", f.GetStringOptions("type"), num))
+			panic(fmt.Sprintf("Unsupported difficulty '%v' for block: %v", name, num))
 	}
 }
 

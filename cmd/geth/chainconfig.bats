@@ -56,12 +56,10 @@ teardown() {
 
 # Test loading chain configuration from JSON file.
 @test "chainconfig configurable from file" {
-	cp -R $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok.json $DATA_DIR/
-
 	# Ensure non-default nonce 43 (42 is default).
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $DATA_DIR/chain_config_dump-ok.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
-	[[ "$output" == *'"0x0000000000000043"'* ]]
+	[[ "$output" == *"0x0000000000000043"* ]]
 
 	# Ensure we're using the --chain named subdirectory under main $DATA_DIR.
 	[ -d $DATA_DIR/mainnet ]

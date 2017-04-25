@@ -26693,6 +26693,7 @@
         }
     },
     "chainConfig": {
+        "chainID": 61,
         "forks": [
             {
                 "id": "",
@@ -26763,7 +26764,7 @@
                 ]
             }
         ],
-        "bad_hashes": [
+        "badHashes": [
             {
                 "Block": 116522,
                 "Hash": "0x05bef30ef572270f654746da22639a7a0c97dd97a7050b9e252391996aaeb689"

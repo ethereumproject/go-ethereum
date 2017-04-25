@@ -459,7 +459,7 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	}
 
 	// mkdir -p ".../mainnet"
-	if err := os.Mkdir(mainnetSubdir, 0755); err != nil {
+	if err := os.MkdirAll(mainnetSubdir, 0755); err != nil {
 		return err
 	}
 

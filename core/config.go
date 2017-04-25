@@ -24,9 +24,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
-	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -38,53 +36,166 @@ import (
 )
 
 var (
-	ChainConfigNotFoundErr     = errors.New("ChainConfig not found")
-	ChainConfigForkNotFoundErr = errors.New("ChainConfig fork not found")
+	ErrChainConfigNotFound     = errors.New("ChainConfig not found")
+	ErrChainConfigForkNotFound = errors.New("ChainConfig fork not found")
 
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
 )
 
-// #chainconfigi
-// ChainConfig is the core config which determines the blockchain settings.
-//
+// SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
+type SufficientChainConfig struct {
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Genesis     *GenesisDump `json:"genesis"`
+	ChainConfig *ChainConfig `json:"chainConfig"`
+	Bootstrap   []string     `json:"bootstrap"`
+}
+
+// GenesisDump is the geth JSON format.
+// https://github.com/ethereumproject/wiki/wiki/Ethereum-Chain-Spec-Format#subformat-genesis
+type GenesisDump struct {
+	Nonce      prefixedHex `json:"nonce"`
+	Timestamp  prefixedHex `json:"timestamp"`
+	ParentHash prefixedHex `json:"parentHash"`
+	ExtraData  prefixedHex `json:"extraData"`
+	GasLimit   prefixedHex `json:"gasLimit"`
+	Difficulty prefixedHex `json:"difficulty"`
+	Mixhash    prefixedHex `json:"mixhash"`
+	Coinbase   prefixedHex `json:"coinbase"`
+
+	// Alloc maps accounts by their address.
+	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
+}
+
+// GenesisDumpAlloc is a GenesisDump.Alloc entry.
+type GenesisDumpAlloc struct {
+	Code    prefixedHex `json:"-"` // skip field for json encode
+	Storage map[hex]hex `json:"-"`
+	Balance string      `json:"balance"` // decimal string
+}
+
+type GenesisAccount struct {
+	Address common.Address `json:"address"`
+	Balance *big.Int       `json:"balance"`
+}
+
 // ChainConfig is stored in the database on a per block basis. This means
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
+	ChainId *big.Int `json:"chainID"` // don't include in JSON... ?
+
 	// Forks holds fork block requirements. See ErrHashKnownFork.
 	Forks Forks `json:"forks"`
 
 	// BadHashes holds well known blocks with consensus issues. See ErrHashKnownBad.
-	BadHashes []*BadHash `json:"bad_hashes"`
-
-	ChainId *big.Int `json:"-"` // don't include in JSON
+	BadHashes []*BadHash `json:"badHashes"`
 }
+
+type Fork struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Block is the block number where the hard-fork commences on
+	// the Ethereum network.
+	Block *big.Int `json:"block"`
+	// Used to improve sync for a known network split
+	RequiredHash common.Hash `json:"requiredHash"`
+	// Configurable features.
+	Features []*ForkFeature `json:"features"`
+}
+
+// Forks implements sort interface, sorting by block number
+type Forks []*Fork
+
+func (fs Forks) Len() int { return len(fs) }
+func (fs Forks) Less(i, j int) bool {
+	iF := fs[i]
+	jF := fs[j]
+	return iF.Block.Cmp(jF.Block) < 0
+}
+func (fs Forks) Swap(i, j int) {
+	fs[i], fs[j] = fs[j], fs[i]
+}
+
+// ForkFeatures are designed to decouple the implementation feature upgrades from Forks themselves.
+// For example, there are several 'set-gasprice' features, each using a different gastable,
+// as well as protocol upgrades including 'eip155', 'ecip1010', ... etc.
+type ForkFeature struct {
+	ID            string                    `json:"id"`
+	Options       ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
+	ParsedOptions map[string]interface{}    `json:"-"`       // don't include in JSON dumps, since its for holding parsed JSON in mem
+	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
+}
+
+// These are the raw key-value configuration options made available
+// by an external JSON file.
+type ChainFeatureConfigOptions map[string]interface{}
 
 type BadHash struct {
 	Block *big.Int
 	Hash  common.Hash
 }
 
+// Header returns the mapping.
+func (g *GenesisDump) Header() (*types.Header, error) {
+	var h types.Header
+
+	var err error
+	if err = g.Nonce.Decode(h.Nonce[:]); err != nil {
+		return nil, fmt.Errorf("malformed nonce: %s", err)
+	}
+	if h.Time, err = g.Timestamp.Int(); err != nil {
+		return nil, fmt.Errorf("malformed timestamp: %s", err)
+	}
+	if err = g.ParentHash.Decode(h.ParentHash[:]); err != nil {
+		return nil, fmt.Errorf("malformed parentHash: %s", err)
+	}
+	if h.Extra, err = g.ExtraData.Bytes(); err != nil {
+		return nil, fmt.Errorf("malformed extraData: %s", err)
+	}
+	if h.GasLimit, err = g.GasLimit.Int(); err != nil {
+		return nil, fmt.Errorf("malformed gasLimit: %s", err)
+	}
+	if h.Difficulty, err = g.Difficulty.Int(); err != nil {
+		return nil, fmt.Errorf("malformed difficulty: %s", err)
+	}
+	if err = g.Mixhash.Decode(h.MixDigest[:]); err != nil {
+		return nil, fmt.Errorf("malformed mixhash: %s", err)
+	}
+	if err := g.Coinbase.Decode(h.Coinbase[:]); err != nil {
+		return nil, fmt.Errorf("malformed coinbase: %s", err)
+	}
+
+	return &h, nil
+}
+
+// SortForks sorts a ChainConfiguration's forks by block number smallest to bigget (chronologically).
+// This should need be called only once after construction
+func (c *ChainConfig) SortForks() *ChainConfig {
+	sort.Sort(c.Forks)
+	return c
+}
+
 // IsHomestead returns whether num is either equal to the homestead block or greater.
 func (c *ChainConfig) IsHomestead(num *big.Int) bool {
-	if c.Fork("Homestead").Block == nil || num == nil {
+	if c.ForkByName("Homestead").Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(c.Fork("Homestead").Block) >= 0
+	return num.Cmp(c.ForkByName("Homestead").Block) >= 0
 }
 
 // IsETF returns whether num is equal to the bailout fork.
 func (c *ChainConfig) IsETF(num *big.Int) bool {
-	if c.Fork("ETF").Block == nil || num == nil {
+	if c.ForkByName("ETF").Block == nil || num == nil {
 		return false
 	}
-	return num.Cmp(c.Fork("ETF").Block) == 0
+	return num.Cmp(c.ForkByName("ETF").Block) == 0
 }
 
 // IsDiehard returns whether num is greater than or equal to the Diehard block, but less than explosion.
 func (c *ChainConfig) IsDiehard(num *big.Int) bool {
-	fork := c.Fork("Diehard")
+	fork := c.ForkByName("Diehard")
 	if fork.Block == nil || num == nil {
 		return false
 	}
@@ -95,20 +206,23 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	feat, fork, configured := c.GetFeature(num, "difficulty")
 
-	if configured && feat.GetStringOptions("type") == "ecip1010" {
-		block := big.NewInt(0)
-		if length, ok := feat.GetBigInt("length"); ok {
-			block = block.Add(fork.Block, length)
-		} else {
-			panic("Fork feature ecip1010 requires length value.")
+	if configured {
+		//name, exists := feat.GetStringOptions("type")
+		if name, exists := feat.GetStringOptions("type"); exists && name == "ecip1010" {
+			block := big.NewInt(0)
+			if length, ok := feat.GetBigInt("length"); ok {
+				block = block.Add(fork.Block, length)
+			} else {
+				panic("Fork feature ecip1010 requires length value.")
+			}
+			return num.Cmp(block) >= 0
 		}
-		return num.Cmp(block) >= 0
 	}
 	return false
 }
 
-// Fork looks up a Fork by its name, assumed to be unique
-func (c *ChainConfig) Fork(name string) *Fork {
+// ForkByName looks up a Fork by its name, assumed to be unique
+func (c *ChainConfig) ForkByName(name string) *Fork {
 	for i := range c.Forks {
 		if c.Forks[i].Name == name {
 			return c.Forks[i]
@@ -117,9 +231,9 @@ func (c *ChainConfig) Fork(name string) *Fork {
 	return &Fork{}
 }
 
-// LookupForkByBlockNum looks up a Fork by its block number, which is assumed to be unique.
-// If not Fork is found, empty fork is returned.
-func (c *ChainConfig) LookupForkByBlockNum(num *big.Int) *Fork {
+// ForkAtBlockNum looks up a Fork by its block number, which is assumed to be unique.
+// If not fork is found, empty fork is returned.
+func (c *ChainConfig) ForkAtBlockNum(num *big.Int) *Fork {
 	for i := range c.Forks {
 		if c.Forks[i].Block.Cmp(num) == 0 {
 			return c.Forks[i]
@@ -128,9 +242,9 @@ func (c *ChainConfig) LookupForkByBlockNum(num *big.Int) *Fork {
 	return &Fork{}
 }
 
-// GetForkForBlockNum gets a the most-recent Fork corresponding to a given block number for
+// ForkContainingBlockNum gets the most-recent Fork corresponding to a given block number for
 // a chain configuration.
-func (c *ChainConfig) GetForkForBlockNum(num *big.Int) *Fork {
+func (c *ChainConfig) ForkContainingBlockNum(num *big.Int) *Fork {
 	var okFork = &Fork{}
 	for _, f := range c.Forks {
 		if f.Block.Cmp(num) <= 0 {
@@ -152,7 +266,7 @@ func (c *ChainConfig) GetForksThroughBlockNum(num *big.Int) Forks {
 	return applicableForks
 }
 
-// GetFeature looks up Fork features by id, where id can (currently) be [difficulty, gastable, eip155].
+// GetFeature looks up fork features by id, where id can (currently) be [difficulty, gastable, eip155].
 // GetFeature returns the feature|nil, the latest fork configuring a given id, and if the given feature id was found at all
 func (c *ChainConfig) GetFeature(num *big.Int, name string) (*ForkFeature, *Fork, bool) {
 	var okForkFeature = &ForkFeature{}
@@ -225,27 +339,18 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 	if !configured {
 		return defaultTable
 	}
-	switch f.GetStringOptions("type") {
-	case "homestead": return DefaultHomeSteadGasTable
-	case "gas-reprise": return DefaultGasRepriceGasTable
-	case "diehard": return DefaultDiehardGasTable
-	default: panic(fmt.Errorf("Unsupported gastable %v at %v", f.GetStringOptions("type"), num))
+	name, ok := f.GetStringOptions("type")
+	if !ok { name = "" } // will wall to default panic
+	switch name {
+	case "homestead":
+		return DefaultHomeSteadGasTable
+	case "gas-reprise":
+		return DefaultGasRepriceGasTable
+	case "diehard":
+		return DefaultDiehardGasTable
+	default:
+		panic(fmt.Errorf("Unsupported gastable value '%v' at block: %v", name, num))
 	}
-}
-
-// SortForks sorts a ChainConfiguration's forks by block number smallest to bigget (chronologically).
-func (c *ChainConfig) SortForks() *ChainConfig {
-	sort.Sort(c.Forks)
-	return c
-}
-
-// SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
-type SufficientChainConfig struct {
-	ID          string           `json:"id"`
-	Name        string           `json:"name"`
-	Genesis     *GenesisDump     `json:"genesis"`
-	ChainConfig *ChainConfig     `json:"chainConfig"`
-	Bootstrap   []string         `json:"bootstrap"`
 }
 
 // WriteToJSONFile writes a given config to a specified file path.
@@ -278,58 +383,15 @@ func ReadChainConfigFromJSONFile(path string) (*SufficientChainConfig, error) {
 	return config, nil
 }
 
-type Fork struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	// Block is the block number where the hard-fork commences on
-	// the Ethereum network.
-	Block *big.Int `json:"block"`
-	// Used to improve sync for a known network split
-	RequiredHash common.Hash `json:"requiredHash"`
-	// Configurable features.
-	Features []*ForkFeature `json:"features"`
-}
-
-// Forks implements sort interface, sorting by block number
-type Forks []*Fork
-func (fs Forks) Len() int { return len(fs) }
-func (fs Forks) Less(i, j int) bool {
-	iF := fs[i]
-	jF := fs[j]
-	return iF.Block.Cmp(jF.Block) < 0
-}
-func (fs Forks) Swap(i, j int) {
-	fs[i], fs[j] = fs[j], fs[i]
-}
-
-// ForkFeatures are designed to decouple the implementation feature upgrades from Forks themselves.
-// For example, there are several 'set-gasprice' features, each using a different gastable.
-// In this case, the last-to-iterate (via `range`) ForkFeature with ID 'set-gasprice' in a given Fork will be used, but it's
-// obviously best practice to only have one 'set-gasprice' ForkFeature per Fork anyway.
-// Another example pertains to EIP/ECIP upgrades (so-called "hard-forks"). These are
-// political or economic decisions made by or in the interest of the community, and impacting
-// the implementation of the Ethereum Classic protocol. In these cases, given ID's will be more descriptive, ie
-//  "homestead", "diehard", "eip155", "ecip1010", etc... ;-)
-type ForkFeature struct {
-	ID      string `json:"id"`
-	Options ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
-	ParsedOptions map[string]interface{} `json:"-"` // don't include in JSON dumps, since its for holding parsed JSON
-	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
-}
-
-// These are the raw key-value configuration options made available
-// by an external JSON file.
-type ChainFeatureConfigOptions map[string]interface{}
-
-func (o *ForkFeature) GetStringOptions(name string) (string) {
+func (o *ForkFeature) GetStringOptions(name string) (string, bool) {
 	if o.ParsedOptions == nil {
 		o.ParsedOptions = make(map[string]interface{})
 	} else if val, ok := o.ParsedOptions[name]; ok {
-		return val.(string)
+		return val.(string), ok
 	}
-	val := o.Options[name].(string)
+	val, ok := o.Options[name].(string)
 	o.ParsedOptions[name] = val //expect it as a string in config
-	return val
+	return val, ok
 }
 func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 	if o.ParsedOptions == nil {
@@ -349,21 +411,10 @@ func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 		return i, true
 	}
 	if value, ok := originalValue.(string); ok {
-		i := new(big.Int);
-		_, err := fmt.Sscan(value, i);
-		if (err != nil) {
-			return nil, false
-		}
-		o.ParsedOptions[name] = i
-		return i, true
+		i := new(big.Int)
+		return i.SetString(value, 0)
 	}
 	return nil, false
-}
-
-func mustStringToLowerAlphaOnly(s string) string {
-	nonAlpha := regexp.MustCompile("[^a-zA-Z]")
-	onlyAlpha := nonAlpha.ReplaceAllString(s, "") // replace non-alphas with ""
-	return strings.ToLower(onlyAlpha)
 }
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0
@@ -443,11 +494,6 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	return block, nil
 }
 
-type GenesisAccount struct {
-	Address common.Address `json:"address"`
-	Balance *big.Int       `json:"balance"`
-}
-
 func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) *types.Block {
 	dump := GenesisDump{
 		GasLimit:   "0x47E7C4",
@@ -466,29 +512,6 @@ func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) 
 		panic(err)
 	}
 	return block
-}
-
-// GenesisDump is the geth JSON format.
-// https://github.com/ethereumproject/wiki/wiki/Ethereum-Chain-Spec-Format#subformat-genesis
-type GenesisDump struct {
-	Nonce      prefixedHex `json:"nonce"`
-	Timestamp  prefixedHex `json:"timestamp"`
-	ParentHash prefixedHex `json:"parentHash"`
-	ExtraData  prefixedHex `json:"extraData"`
-	GasLimit   prefixedHex `json:"gasLimit"`
-	Difficulty prefixedHex `json:"difficulty"`
-	Mixhash    prefixedHex `json:"mixhash"`
-	Coinbase   prefixedHex `json:"coinbase"`
-
-	// Alloc maps accounts by their address.
-	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
-}
-
-// GenesisDumpAlloc is a GenesisDump.Alloc entry.
-type GenesisDumpAlloc struct {
-	Code    prefixedHex `json:"-"` // skip field for json encode
-	Storage map[hex]hex `json:"-"`
-	Balance string      `json:"balance"` // decimal string
 }
 
 // MakeGenesisDump makes a genesis dump
@@ -558,101 +581,4 @@ func ReadGenesisFromJSONFile(jsonFilePath string) (dump *GenesisDump, err error)
 		return nil, fmt.Errorf("%s: %s", jsonFilePath, err)
 	}
 	return dump, nil
-}
-
-// Header returns the mapping.
-func (g *GenesisDump) Header() (*types.Header, error) {
-	var h types.Header
-
-	var err error
-	if err = g.Nonce.Decode(h.Nonce[:]); err != nil {
-		return nil, fmt.Errorf("malformed nonce: %s", err)
-	}
-	if h.Time, err = g.Timestamp.Int(); err != nil {
-		return nil, fmt.Errorf("malformed timestamp: %s", err)
-	}
-	if err = g.ParentHash.Decode(h.ParentHash[:]); err != nil {
-		return nil, fmt.Errorf("malformed parentHash: %s", err)
-	}
-	if h.Extra, err = g.ExtraData.Bytes(); err != nil {
-		return nil, fmt.Errorf("malformed extraData: %s", err)
-	}
-	if h.GasLimit, err = g.GasLimit.Int(); err != nil {
-		return nil, fmt.Errorf("malformed gasLimit: %s", err)
-	}
-	if h.Difficulty, err = g.Difficulty.Int(); err != nil {
-		return nil, fmt.Errorf("malformed difficulty: %s", err)
-	}
-	if err = g.Mixhash.Decode(h.MixDigest[:]); err != nil {
-		return nil, fmt.Errorf("malformed mixhash: %s", err)
-	}
-	if err := g.Coinbase.Decode(h.Coinbase[:]); err != nil {
-		return nil, fmt.Errorf("malformed coinbase: %s", err)
-	}
-
-	return &h, nil
-}
-
-// hex is a hexadecimal string.
-type hex string
-
-// Decode fills buf when h is not empty.
-func (h hex) Decode(buf []byte) error {
-	if len(h) != 2*len(buf) {
-		return fmt.Errorf("want %d hexadecimals", 2*len(buf))
-	}
-
-	_, err := hexlib.Decode(buf, []byte(h))
-	return err
-}
-
-// prefixedHex is a hexadecimal string with an "0x" prefix.
-type prefixedHex string
-
-var errNoHexPrefix = errors.New("want 0x prefix")
-
-// Decode fills buf when h is not empty.
-func (h prefixedHex) Decode(buf []byte) error {
-	i := len(h)
-	if i == 0 {
-		return nil
-	}
-	if i == 1 || h[0] != '0' || h[1] != 'x' {
-		return errNoHexPrefix
-	}
-	if i == 2 {
-		return nil
-	}
-	if i != 2*len(buf)+2 {
-		return fmt.Errorf("want %d hexadecimals with 0x prefix", 2*len(buf))
-	}
-
-	_, err := hexlib.Decode(buf, []byte(h[2:]))
-	return err
-}
-
-func (h prefixedHex) Bytes() ([]byte, error) {
-	l := len(h)
-	if l == 0 {
-		return nil, nil
-	}
-	if l == 1 || h[0] != '0' || h[1] != 'x' {
-		return nil, errNoHexPrefix
-	}
-	if l == 2 {
-		return nil, nil
-	}
-
-	bytes := make([]byte, l/2-1)
-	_, err := hexlib.Decode(bytes, []byte(h[2:]))
-	return bytes, err
-}
-
-func (h prefixedHex) Int() (*big.Int, error) {
-	bytes, err := h.Bytes()
-	if err != nil {
-		return nil, err
-	}
-
-	return new(big.Int).SetBytes(bytes), nil
 }

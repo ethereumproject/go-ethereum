@@ -411,7 +411,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// If we already have a header, we can check the peer's total difficulty against it. If
 			// the peer's ahead of this, it too must have a reply to the check
 			// DAO Split big.NewInt(1920000)
-			if splitHeader := pm.blockchain.GetHeaderByNumber(pm.chainConfig.Fork("ETF").Block.Uint64()); splitHeader != nil {
+			if splitHeader := pm.blockchain.GetHeaderByNumber(pm.chainConfig.ForkByName("ETF").Block.Uint64()); splitHeader != nil {
 				if _, td := p.Head(); td.Cmp(pm.blockchain.GetTd(splitHeader.Hash())) >= 0 {
 					forkPeer = false
 				}
