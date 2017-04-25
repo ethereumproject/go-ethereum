@@ -25,6 +25,7 @@ import (
 	"math/big"
 	"os"
 	"sort"
+	"sync"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -122,9 +123,11 @@ func (fs Forks) Swap(i, j int) {
 // For example, there are several 'set-gasprice' features, each using a different gastable,
 // as well as protocol upgrades including 'eip155', 'ecip1010', ... etc.
 type ForkFeature struct {
-	ID            string                    `json:"id"`
-	Options       ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
-	ParsedOptions map[string]interface{}    `json:"-"`       // don't include in JSON dumps, since its for holding parsed JSON in mem
+	ID                string                    `json:"id"`
+	Options           ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
+	optionsLock       sync.RWMutex
+	ParsedOptions     map[string]interface{} `json:"-"` // don't include in JSON dumps, since its for holding parsed JSON in mem
+	parsedOptionsLock sync.RWMutex
 	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
 }
 
@@ -340,7 +343,9 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 		return defaultTable
 	}
 	name, ok := f.GetStringOptions("type")
-	if !ok { name = "" } // will wall to default panic
+	if !ok {
+		name = ""
+	} // will wall to default panic
 	switch name {
 	case "homestead":
 		return DefaultHomeSteadGasTable
@@ -383,36 +388,71 @@ func ReadChainConfigFromJSONFile(path string) (*SufficientChainConfig, error) {
 	return config, nil
 }
 
+// GetStringOptions gets and option value for an options with key 'name',
+// returning value as a string.
 func (o *ForkFeature) GetStringOptions(name string) (string, bool) {
 	if o.ParsedOptions == nil {
+		o.parsedOptionsLock.Lock()
 		o.ParsedOptions = make(map[string]interface{})
-	} else if val, ok := o.ParsedOptions[name]; ok {
-		return val.(string), ok
+		o.parsedOptionsLock.Unlock()
+	} else {
+		o.parsedOptionsLock.RLock()
+		val, ok := o.ParsedOptions[name]
+		o.parsedOptionsLock.RUnlock()
+		if ok {
+			return val.(string), ok
+		}
 	}
+	o.optionsLock.RLock()
 	val, ok := o.Options[name].(string)
+	o.optionsLock.RUnlock()
+	o.parsedOptionsLock.Lock()
 	o.ParsedOptions[name] = val //expect it as a string in config
+	o.parsedOptionsLock.Unlock()
 	return val, ok
 }
+
+// GetBigInt gets and option value for an options with key 'name',
+// returning value as a *big.Int and ok if it exists.
 func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
+
 	if o.ParsedOptions == nil {
+		o.parsedOptionsLock.Lock()
 		o.ParsedOptions = make(map[string]interface{})
-	} else if val, ok := o.ParsedOptions[name]; ok {
-		return val.(*big.Int), true
+		o.parsedOptionsLock.Unlock()
+	} else {
+		o.parsedOptionsLock.RLock()
+		val, ok := o.ParsedOptions[name]
+		o.parsedOptionsLock.RUnlock()
+		if ok {
+			return val.(*big.Int), true
+		}
 	}
+	o.optionsLock.RLock()
 	originalValue := o.Options[name]
+	o.optionsLock.RUnlock()
 	if value, ok := originalValue.(int64); ok {
 		i := big.NewInt(value)
+		o.parsedOptionsLock.Lock()
 		o.ParsedOptions[name] = i
+		o.parsedOptionsLock.Unlock()
 		return i, true
 	}
 	if value, ok := originalValue.(int); ok {
 		i := big.NewInt(int64(value))
+		o.parsedOptionsLock.Lock()
 		o.ParsedOptions[name] = i
+		o.parsedOptionsLock.Unlock()
 		return i, true
 	}
 	if value, ok := originalValue.(string); ok {
-		i := new(big.Int)
-		return i.SetString(value, 0)
+		i, ok := new(big.Int).SetString(value, 0)
+		if ok {
+			o.parsedOptionsLock.Lock()
+			o.ParsedOptions[name] = i
+			o.parsedOptionsLock.Unlock()
+		}
+		return i, ok
 	}
 	return nil, false
 }
