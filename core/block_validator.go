@@ -273,34 +273,30 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	// be determined by a config flag
 	num := new(big.Int).Add(parentNumber, common.Big1)
 
-	fork := config.GetForkForBlockNum(num)
-	opts, err := config.GetOptions(num)
-	if err != nil {
-		panic(err)
+	f, fork, configured := config.GetFeature(num, "difficulty")
+	if !configured {
+		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
-	if opts.Difficulty == nil {
-		// Stand-ins until we refactor out the .IsHomestead, .IsDiehard, hardcoders, etc.
-		if config.IsHomestead(num) {
+	switch f.GetStringOptions("type") {
+		case "diehard":
+			if length, ok := f.GetBigInt("length"); ok {
+				explosionBlock := big.NewInt(0).Add(fork.Block, length)
+				if explosionBlock.Cmp(num) < 0 {
+					return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff,
+						fork.Block)
+				} else {
+					return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
+						fork.Block, explosionBlock)
+				}
+			} else {
+				panic(fmt.Sprintf("Length is not set for diehard difficulty at %v", num))
+			}
+		case "homestead":
 			return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
-		} else {
+		case "frontier":
 			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
-			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
-		}
-	}
-	switch opts.Difficulty.Name {
-	case "diehard":
-		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff, fork.Block)
-	case "explosion":
-		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff, opts.Difficulty.Options)
-	case "homestead":
-		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
-	default:
-		if config.IsHomestead(num) {
-			return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
-		} else {
-			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
-			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
-		}
+		default:
+			panic(fmt.Sprintf("Unsupported difficulty %v for block %v", f.GetStringOptions("type"), num))
 	}
 }
 
@@ -352,7 +348,7 @@ func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *bi
 	return x
 }
 
-func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, opts map[string]interface{}) *big.Int {
+func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, delayBlock *big.Int, continueBlock *big.Int) *big.Int {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
@@ -388,11 +384,9 @@ func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *
 
 	// for the exponential factor...
 
-	// Set retrospective bomb delay length from options config.
-	delayLength := big.NewInt(int64(opts["delay"].(int))) // will panic if error
-
 	delayedCount := new(big.Int).Add(parentNumber, common.Big1)
-	delayedCount.Sub(delayedCount, delayLength)
+	delayedCount.Sub(delayedCount, continueBlock)
+	delayedCount.Add(delayedCount, delayBlock)
 	delayedCount.Div(delayedCount, ExpDiffPeriod)
 
 	// the exponential factor, commonly referred to as "the bomb"
