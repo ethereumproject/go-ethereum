@@ -175,6 +175,23 @@ participating.
 	}
 
 	app.Before = func(ctx *cli.Context) error {
+
+		// It's a patch.
+		// Don't know why urfave/cli isn't catching the unknown command on its own.
+		if ctx.Args().Present() {
+			commandExists := false
+			for _, cmd := range app.Commands {
+				if cmd.HasName(ctx.Args().First()) {
+					commandExists = true
+				}
+			}
+			if !commandExists {
+				if e := cli.ShowCommandHelp(ctx, ctx.Args().First()); e != nil {
+					return e
+				}
+			}
+		}
+
 		runtime.GOMAXPROCS(runtime.NumCPU())
 
 		glog.CopyStandardLogTo("INFO")
@@ -202,6 +219,12 @@ participating.
 		logger.Flush()
 		console.Stdin.Close() // Resets terminal mode.
 		return nil
+	}
+
+	app.CommandNotFound = func(c *cli.Context, command string) {
+		fmt.Fprintf(c.App.Writer, "Invalid command: %q. Please find `geth` usage below. \n", command)
+		cli.ShowAppHelp(c)
+		os.Exit(3)
 	}
 
 	if err := app.Run(os.Args); err != nil {
