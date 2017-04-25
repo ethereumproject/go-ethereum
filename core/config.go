@@ -234,50 +234,16 @@ func (c *ChainConfig) ForkByName(name string) *Fork {
 	return &Fork{}
 }
 
-// ForkAtBlockNum looks up a Fork by its block number, which is assumed to be unique.
-// If not fork is found, empty fork is returned.
-func (c *ChainConfig) ForkAtBlockNum(num *big.Int) *Fork {
-	for i := range c.Forks {
-		if c.Forks[i].Block.Cmp(num) == 0 {
-			return c.Forks[i]
-		}
-	}
-	return &Fork{}
-}
-
-// ForkContainingBlockNum gets the most-recent Fork corresponding to a given block number for
-// a chain configuration.
-func (c *ChainConfig) ForkContainingBlockNum(num *big.Int) *Fork {
-	var okFork = &Fork{}
-	for _, f := range c.Forks {
-		if f.Block.Cmp(num) <= 0 {
-			okFork = f
-		}
-	}
-	return okFork
-}
-
-// GetForksThroughBlockNum get all forks up to but not exceeding a given block number
-// for a calling ChainConfig
-func (c *ChainConfig) GetForksThroughBlockNum(num *big.Int) Forks {
-	var applicableForks Forks
-	for _, fork := range c.Forks {
-		if fork.Block.Cmp(num) <= 0 {
-			applicableForks = append(applicableForks, fork)
-		}
-	}
-	return applicableForks
-}
-
 // GetFeature looks up fork features by id, where id can (currently) be [difficulty, gastable, eip155].
 // GetFeature returns the feature|nil, the latest fork configuring a given id, and if the given feature id was found at all
+// If queried feature is not found, returns *empty* ForkFeature, Fork, false
 func (c *ChainConfig) GetFeature(num *big.Int, name string) (*ForkFeature, *Fork, bool) {
 	var okForkFeature = &ForkFeature{}
 	var okFork = &Fork{}
 	var found = false
 	for _, f := range c.Forks {
 		if f.Block.Cmp(num) > 0 {
-			break
+			break // NOTE: break assumes chronological
 		}
 		for _, ff := range f.Features {
 			if ff.ID == name {
