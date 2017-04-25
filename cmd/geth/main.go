@@ -309,13 +309,17 @@ func dumpChainConfig(ctx *cli.Context) error {
 	}
 
 	chainConfig := MustMakeChainConfig(ctx)
+	var nodes []string
+	for _, node := range MakeBootstrapNodes(ctx) {
+		nodes = append(nodes, node.String())
+	}
 
 	var currentConfig = &core.SufficientChainConfig{
-		ID: fmt.Sprintf("%s", chainConfig.ChainId),
-		Name: getChainNameFromContext(ctx),
+		ID:          getChainConfigIDFromContext(ctx),
+		Name:        getChainConfigNameFromContext(ctx),
 		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
-		Genesis: genesisDump,
-		Bootstrap: MakeBootstrapNodes(ctx),
+		Genesis:     genesisDump,
+		Bootstrap:   nodes,
 	}
 
 	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {

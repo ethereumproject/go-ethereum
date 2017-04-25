@@ -24,8 +24,20 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 )
 
-var DefaultChainName = "mainnet"
-var DefaultTestChainName = "testnet"
+// Chain ID.
+// Used for `--chain custom` flag and determines EthereumDataDir/custom directory.
+var DefaultChainConfigID = "mainnet"
+var DefaultChainConfigName = "Ethereum Classic Mainnet"
+
+// Chain Name.
+// Human readable identifier.
+var DefaultTestnetChainConfigID = "morden"
+var DefaultTestnetChainConfigName = "Morden Testnet"
+
+// Chain ChainID
+// Compares with protected transactions in block processing.
+var DefaultChainConfigChainID = big.NewInt(61)
+var DefaultTestnetChainConfigChainID = big.NewInt(62)
 
 // DefaultConfig is the Ethereum Classic standard setup.
 var DefaultConfig = &ChainConfig{

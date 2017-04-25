@@ -35,7 +35,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/p2p/discover"
 )
 
 var (
@@ -59,7 +58,7 @@ type ChainConfig struct {
 	// BadHashes holds well known blocks with consensus issues. See ErrHashKnownBad.
 	BadHashes []*BadHash `json:"bad_hashes"`
 
-	ChainId *big.Int `json:"chain_id"`
+	ChainId *big.Int `json:"-"` // don't include in JSON
 }
 
 type BadHash struct {
@@ -222,7 +221,7 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 
 	f, _, configured := c.GetFeature(num, "gastable")
 	if !configured {
-		defaultTable
+		return defaultTable
 	}
 	switch f.GetStringOptions("type") {
 	case "homestead": return DefaultHomeSteadGasTable
@@ -244,7 +243,7 @@ type SufficientChainConfig struct {
 	Name        string           `json:"name"`
 	Genesis     *GenesisDump     `json:"genesis"`
 	ChainConfig *ChainConfig     `json:"chainConfig"`
-	Bootstrap   []*discover.Node `json:"bootstrap"`
+	Bootstrap   []string         `json:"bootstrap"`
 }
 
 // WriteToJSONFile writes a given config to a specified file path.
@@ -316,18 +315,18 @@ type ForkFeature struct {
 	// It will be ineffectual if less than parent Fork's block.
 	Block *big.Int `json:"block"`
 	Options ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
-	ParsedOptions map[string]interface{}
+	ParsedOptions map[string]interface{} `json:"-"` // don't include in JSON dumps, since its for holding parsed JSON
 }
 
-func (o *ForkFeature) GetStringOptions(name string) (string, bool) {
+func (o *ForkFeature) GetStringOptions(name string) (string) {
 	if o.ParsedOptions == nil {
 		o.ParsedOptions = make(map[string]interface{});
 	} else if val, ok := o.ParsedOptions[name]; ok {
-		return val.(string), true
+		return val.(string)
 	}
 	val := o.Options[name].(string)
 	o.ParsedOptions[name] = val; //expect it as a string in config
-	return val, true
+	return val
 }
 func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 	if o.ParsedOptions == nil {
@@ -599,8 +598,8 @@ type GenesisDump struct {
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.
 type GenesisDumpAlloc struct {
-	Code    prefixedHex `json:"code"`
-	Storage map[hex]hex `json:"storage"`
+	Code    prefixedHex `json:"-"` // skip field for json encode
+	Storage map[hex]hex `json:"-"`
 	Balance string      `json:"balance"` // decimal string
 }
 

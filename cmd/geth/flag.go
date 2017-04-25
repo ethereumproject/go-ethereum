@@ -75,22 +75,22 @@ OPTIONS:
 `
 }
 
-// getChainNameFromContext gets the --chain=my-custom-net value.
+// getChainConfigIDFromContext gets the --chain=my-custom-net value.
 // --testnet flag overrides --chain flag, thus return default testnet value.
 // Disallowed words which conflict with in-use data files will log the problem and return "",
 // which cause an error.
-func getChainNameFromContext(ctx *cli.Context) string {
+func getChainConfigIDFromContext(ctx *cli.Context) string {
 	if ctx.GlobalBool(TestNetFlag.Name) {
-		return core.DefaultTestChainName
+		return core.DefaultTestnetChainConfigID
 	}
 	if ctx.GlobalIsSet(ChainNameFlag.Name) {
-		if name := ctx.GlobalString(ChainNameFlag.Name); name != "" {
+		if id := ctx.GlobalString(ChainNameFlag.Name); id != "" {
 			reservedNames := map[string]bool{"chaindata": true, "dapp": true, "keystore": true, "nodekey": true, "nodes": true}
-			if reservedNames[name] {
+			if reservedNames[id] {
 				log.Fatal("Reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes'. Please use a different identifier.")
 				return ""
 			}
-			return name
+			return id
 		} else {
 			log.Fatal("Argument to --chain must not be blank.")
 			return ""
@@ -102,11 +102,33 @@ func getChainNameFromContext(ctx *cli.Context) string {
 			log.Fatalf("ERROR: Failed to read external chain configuration file: %v", err)
 			return ""
 		}
-		if conf.Name != "" {
-			return conf.Name
+		if conf.ID != "" {
+			return conf.ID
 		}
 	}
-	return core.DefaultChainName
+	return core.DefaultChainConfigID
+}
+
+// getChainConfigNameFromContext gets mainnet or testnet defaults if in use.
+// If a custom net is in use, it echoes the name of the ChainConfigID.
+// It is intended to be a human-readable name for a chain configuration.
+func getChainConfigNameFromContext(ctx *cli.Context) string {
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		return core.DefaultTestnetChainConfigName
+	}
+	if ctx.GlobalIsSet(ChainNameFlag.Name) {
+		return getChainConfigIDFromContext(ctx) // shortcut
+	}
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+		conf, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+		if err != nil {
+			log.Fatalf("ERROR: Failed to read external chain configuration file: %v", err)
+			return ""
+		}
+		// Don't check for name presence; it is non-essential to function and just for humans to read.
+		return conf.Name
+	}
+	return core.DefaultChainConfigName
 }
 
 // mustMakeDataDir retrieves the currently requested data directory, terminating
@@ -124,7 +146,7 @@ func mustMakeDataDir(ctx *cli.Context) string {
 // A subdir of the datadir is used for each chain configuration ("/mainnet", "/testnet", "/my-custom-net").
 // --> <home>/<EthereumClassic>/<mainnet|testnet|custom-net>, per --chain
 func MustMakeChainDataDir(ctx *cli.Context) string {
-	return common.EnsureAbsolutePath(mustMakeDataDir(ctx), getChainNameFromContext(ctx))
+	return common.EnsureAbsolutePath(mustMakeDataDir(ctx), getChainConfigIDFromContext(ctx))
 }
 
 // MakeIPCPath creates an IPC path configuration from the set command line flags,
@@ -164,6 +186,23 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 	return key
 }
 
+// parseBootstrapNodes is a helper function to parse stringified bs nodes, ie []"enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303",...
+// to usable Nodes. It takes a slice of strings and returns a slice of Nodes.
+func parseBootstrapNodes(nodeStrings []string) []*discover.Node {
+	// Otherwise parse and use the CLI bootstrap nodes
+	bootnodes := []*discover.Node{}
+
+	for _, url := range nodeStrings {
+		node, err := discover.ParseNode(url)
+		if err != nil {
+			glog.V(logger.Error).Infof("Bootstrap URL %s: %v\n", url, err)
+			continue
+		}
+		bootnodes = append(bootnodes, node)
+	}
+	return bootnodes
+}
+
 // MakeBootstrapNodes creates a list of bootstrap nodes from the command line
 // flags, reverting to pre-configured ones if none have been specified.
 func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
@@ -188,7 +227,7 @@ func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 			// if it doesn't, return default (ie "soft" config file)
 			if externalConfig.Bootstrap != nil {
 				glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes in config file: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
-				return externalConfig.Bootstrap
+				return parseBootstrapNodes(externalConfig.Bootstrap)
 			} else {
 				glog.V(logger.Info).Info(fmt.Sprint("Didn't find custom bootstrap nodes. Will not override."))
 				return HomesteadBootNodes
@@ -197,19 +236,7 @@ func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 			return HomesteadBootNodes
 		}
 	}
-
-	// Otherwise parse and use the CLI bootstrap nodes
-	bootnodes := []*discover.Node{}
-
-	for _, url := range strings.Split(ctx.GlobalString(BootnodesFlag.Name), ",") {
-		node, err := discover.ParseNode(url)
-		if err != nil {
-			glog.V(logger.Error).Infof("Bootstrap URL %s: %v\n", url, err)
-			continue
-		}
-		bootnodes = append(bootnodes, node)
-	}
-	return bootnodes
+	return parseBootstrapNodes(strings.Split(ctx.GlobalString(BootnodesFlag.Name), ","))
 }
 
 // MakeListenAddress creates a TCP listening address string from set command
@@ -406,10 +433,10 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 // migrateToChainSubdirIfNecessary migrates ".../EthereumClassic/nodes|chaindata|...|nodekey" --> ".../EthereumClassic/mainnet/nodes|chaindata|...|nodekey"
 func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
-	name := getChainNameFromContext(ctx) // "mainnet"
+	name := getChainConfigIDFromContext(ctx) // "mainnet"
 
 	// return ok if not default ("mainnet"); don't interfere with custom, and testnet already uses subdir
-	if name != core.DefaultChainName {
+	if name != core.DefaultChainConfigID {
 		return nil
 	}
 

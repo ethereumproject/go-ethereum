@@ -37,7 +37,7 @@ var (
 	ChainNameFlag = cli.StringFlag{
 		Name: "chain",
 		Usage: "Name of blockchain network to use (default='mainnnet', test='testnet'). These correlate to subdirectories under your base <EthereumClassic> data directory (--datadir). Chain name to use can also be configured from an external chain configuration file.",
-		Value: core.DefaultChainName,
+		Value: core.DefaultChainConfigID,
 	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "networkid",
