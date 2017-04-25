@@ -204,7 +204,7 @@ func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
 // GasTable returns the gas table corresponding to the current fork
 // The returned GasTable's fields shouldn't, under any circumstances, be changed.
 func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
-	t := &vm.GasTable{
+	defaultTable := &vm.GasTable{
 		ExtcodeSize:     big.NewInt(20),
 		ExtcodeCopy:     big.NewInt(20),
 		Balance:         big.NewInt(20),
@@ -215,14 +215,16 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 		CreateBySuicide: nil,
 	}
 
-	opts, err := c.GetOptions(num)
-	if err != nil {
-		panic(err)
+	f, _, configured := c.GetFeature(num, "gastable")
+	if !configured {
+		defaultTable
 	}
-	if opts.GasTable != nil {
-		return opts.GasTable
+	switch f.GetStringOptions("type") {
+	case "homestead": return DefaultHomeSteadGasTable
+	case "gas-reprise": return DefaultGasRepriceGasTable
+	case "diehard": return DefaultDiehardGasTable
+	default: panic(fmt.Errorf("Unsupported gastable %v at %v", f.GetStringOptions("type"), num))
 	}
-	return t
 }
 
 // SortForks sorts a ChainConfiguration's forks by block number smallest to bigget (chronologically).
