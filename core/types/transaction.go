@@ -230,7 +230,7 @@ func (tx *Transaction) String() string {
 	Hex:      %x
 `,
 		tx.Hash(),
-		len(tx.data.Recipient) == 0,
+		len(tx.data.Recipient.Bytes()) == 0,
 		from,
 		to,
 		tx.data.AccountNonce,
