@@ -116,7 +116,7 @@ var DefaultConfig = &ChainConfig{
 	},
 }
 
-// TestConfig is the semi-official setup for testing purposes.
+// TestConfig is the semi-official setup for testing (testnet) purposes.
 var TestConfig = &ChainConfig{
 	ChainId: big.NewInt(62),
 	Forks: []*Fork{

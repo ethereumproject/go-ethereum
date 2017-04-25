@@ -187,3 +187,149 @@ func TestMakeGenesisDump(t *testing.T) {
 	}
 	db.Close()
 }
+
+func makeTestChainConfig() *ChainConfig {
+	return DefaultConfig.SortForks()
+}
+
+// Unit-y tests.
+
+// TestChainConfig_GetFeature should be able to get all features described in DefaultConfig.
+func TestChainConfig_GetFeature(t *testing.T) {
+	c := makeTestChainConfig()
+	var dict = make(map[*big.Int][]string)
+	for _, fork := range c.Forks {
+		for _, feat := range fork.Features {
+			dict[fork.Block] = append(dict[fork.Block], feat.ID)
+		}
+	}
+	for block, ids := range dict {
+		for _, name := range ids {
+			feat, fork, ok := c.GetFeature(block, name)
+			if !ok {
+				t.Errorf("expected feature exist: feat: %v, fork: %v, block: %v", feat, fork, block)
+			}
+		}
+	}
+}
+
+var allAvailableConfigKeys = []string{
+	"difficulty",
+	"gastable",
+	"eip155",
+}
+
+// TestChainConfig_EventuallyGetAllPossibleFeatures should aggregate all available features from previous branches
+func TestChainConfig_EventuallyGetAllPossibleFeatures(t *testing.T) {
+	c := makeTestChainConfig()
+	for _, id := range allAvailableConfigKeys {
+		if _, _, ok := c.GetFeature(big.NewInt(5000000), id); !ok {
+			t.Errorf("could not get feature with id: %v, at block: %v", id, big.NewInt(5000000))
+		}
+	}
+}
+
+var unavailableConfigKeys = []string{
+	"foo",
+	"bar",
+	"monkey",
+}
+
+// TestChainConfig_NeverGetNonexistantFeatures should never eventually collect features that don't exist
+func TestChainConfig_NeverGetNonexistantFeatures(t *testing.T) {
+	c := makeTestChainConfig()
+	for _, id := range unavailableConfigKeys {
+		if feat, _, ok := c.GetFeature(big.NewInt(5000000), id); ok {
+			t.Errorf("found unexpected feature: %v, for name: %v, at block: %v", feat, id, big.NewInt(5000000))
+		}
+	}
+}
+
+// Acceptance-y tests.
+
+// TestChainConfig_GetFeature_DefaultEIP155 should get the eip155 feature for (only and above) its default implemented block.
+func TestChainConfig_GetFeature_DefaultEIP155(t *testing.T) {
+	c := makeTestChainConfig()
+	_, fork, configured := c.GetFeature(big.NewInt(2999999), "eip155")
+	if configured {
+		t.Errorf("Unexpected eip155 feature for block: %v", big.NewInt(2999999))
+	}
+	if fork.Name != "" {
+		t.Errorf("Expected empty fork for block: %v. Got: %v", big.NewInt(2999999), fork)
+	}
+
+	feat, fork, configured := c.GetFeature(big.NewInt(3000000), "eip155")
+	if !configured {
+		t.Errorf("Expected eip155 feature for block: %v", big.NewInt(3000000))
+	}
+	if fork.Name != "Diehard" {
+		t.Errorf("Expected fork 'Diehard', got: '%v', for block: %v", fork.Name, big.NewInt(3000000))
+	}
+
+	feat, fork, configured = c.GetFeature(big.NewInt(3000001), "eip155")
+	if !configured {
+		t.Errorf("Expected eip155 feature for block: %v", big.NewInt(3000001))
+	}
+	if fork.Name != "Diehard" {
+		t.Errorf("Expected fork 'Diehard', got: '%v', for block: %v", fork.Name, big.NewInt(3000001))
+	}
+
+	chainid, ok := feat.GetBigInt("chainid")
+	if !ok {
+		t.Errorf("Unexpected EIP155 empty chainid for block 3000001.")
+	}
+	if chainid.Cmp(big.NewInt(61)) != 0 {
+		t.Errorf("want: <bigInt>61, got: %v", chainid)
+	}
+}
+
+// TestChainConfig_GetFeature_DefaultGasTables sets that GetFeatures gets expected feature values for default fork configs.
+func TestChainConfig_GetFeature_DefaultGasTables(t *testing.T) {
+	c := makeTestChainConfig()
+	var tables = map[*big.Int]string{
+		DefaultConfig.ForkByName("Homestead").Block:  "homestead",
+		DefaultConfig.ForkByName("GasReprice").Block: "gas-reprice",
+		DefaultConfig.ForkByName("Diehard").Block:    "diehard",
+	}
+	for block, expected := range tables {
+		feat, fork, ok := c.GetFeature(block, "gastable")
+		if !ok {
+			t.Errorf("Expected gastable feature to exist. feat: %v, fork: %v, block: %v", feat, fork, block)
+		}
+		val, ok := feat.GetStringOptions("type")
+		if !ok {
+			t.Errorf("failed to get value for gastable feature. feat: %v, fork: %v, block: %v", feat, fork, block)
+		}
+		if val != expected {
+			t.Errorf("want: %v, got: %v", expected, val)
+		}
+
+		// add 1
+		feat, fork, ok = c.GetFeature(big.NewInt(0).Add(block, big.NewInt(1)), "gastable")
+		if !ok {
+			t.Errorf("Expected gastable feature to exist. feat: %v, fork: %v, block: %v", feat, fork, block)
+		}
+		val, ok = feat.GetStringOptions("type")
+		if !ok {
+			t.Errorf("failed to get value for gastable feature. feat: %v, fork: %v, block: %v", feat, fork, block)
+		}
+		if val != expected {
+			t.Errorf("want: %v, got: %v", expected, val)
+		}
+
+		// sub 1
+		feat, fork, ok = c.GetFeature(big.NewInt(0).Sub(block, big.NewInt(1)), "gastable")
+		if !ok && fork.Name != "" {
+			t.Errorf("Expected gastable feature to exist. feat: %v, fork: %v, block: %v", feat, fork, block)
+		}
+		if fork.Name != "" {
+			val, ok = feat.GetStringOptions("type")
+			if !ok {
+				t.Errorf("failed to get value for gastable feature. feat: %v, fork: %v, block: %v", feat, fork, block)
+			}
+			if val == expected {
+				t.Errorf("Unexpected: want: %v, got: %v", expected, val)
+			}
+		}
+	}
+}
