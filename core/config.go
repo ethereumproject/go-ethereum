@@ -184,9 +184,9 @@ func (c *ChainConfig) SortForks() *ChainConfig {
 // which means that it implicitly assumes to be only called for blocks >= Diehard fork block num.
 // If called/configured "incorrectly" it will "pass the buck" by returning a non-error (ie zero value).
 func (c *ChainConfig) GetChainID() (*big.Int) {
-	n := big.NewInt(0)
+	n := new(big.Int)
 	if feat, _, ok := c.GetFeature(c.ForkByName("Diehard").Block, "eip155"); ok {
-		if val, ok := feat.GetBigInt("chainID"); ok {
+		if val, k := feat.GetBigInt("chainID"); k {
 			n = val
 		}
 	}
@@ -241,20 +241,23 @@ func (c *ChainConfig) ForkByName(name string) *Fork {
 
 // GetFeature looks up fork features by id, where id can (currently) be [difficulty, gastable, eip155].
 // GetFeature returns the feature|nil, the latest fork configuring a given id, and if the given feature id was found at all
-// If queried feature is not found, returns *empty* ForkFeature, Fork, false
+// If queried feature is not found, returns ForkFeature{}, Fork{}, false.
+// If queried block number and/or feature is a zero-value, returns ForkFeature{}, Fork{}, false.
 func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, bool) {
 	var okForkFeature = &ForkFeature{}
 	var okFork = &Fork{}
 	var found = false
-	for _, f := range c.Forks {
-		if f.Block.Cmp(num) > 0 {
-			break // NOTE: break assumes chronological
-		}
-		for _, ff := range f.Features {
-			if ff.ID == id {
-				okForkFeature = ff
-				okFork = f
-				found = true
+	if num != nil && id != "" {
+		for _, f := range c.Forks {
+			if f.Block.Cmp(num) > 0 {
+				continue
+			}
+			for _, ff := range f.Features {
+				if ff.ID == id {
+					okForkFeature = ff
+					okFork = f
+					found = true
+				}
 			}
 		}
 	}
