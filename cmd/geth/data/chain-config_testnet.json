@@ -12,33 +12,24 @@
     "coinbase": "",
     "alloc": {
       "0000000000000000000000000000000000000001": {
-        "code": "",
-        "storage": null,
         "balance": "1"
       },
       "0000000000000000000000000000000000000002": {
-        "code": "",
-        "storage": null,
         "balance": "1"
       },
       "0000000000000000000000000000000000000003": {
-        "code": "",
-        "storage": null,
         "balance": "1"
       },
       "0000000000000000000000000000000000000004": {
-        "code": "",
-        "storage": null,
         "balance": "1"
       },
       "102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": {
-        "code": "",
-        "storage": null,
         "balance": "1606938044258990275541962092341162602522202993782792835301376"
       }
     }
   },
   "chainConfig": {
+    "chainID": 62,
     "forks": [
       {
         "name": "Homestead",
@@ -82,7 +73,7 @@
           {
             "id": "eip155",
             "options": {
-              "chainid": 62
+              "chainID": 62
             }
           },
           {
@@ -94,14 +85,14 @@
           {
             "id": "difficulty",
             "options": {
-              "type": "ecip1010",
-              "length": 2000000
+              "length": 2000000,
+              "type": "ecip1010"
             }
           }
         ]
       }
     ],
-    "bad_hashes": [
+    "badHashes": [
       {
         "Block": 383792,
         "Hash": "0x9690db54968a760704d99b8118bf79d565711669cefad24b51b5b1013d827808"
