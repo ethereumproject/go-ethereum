@@ -291,7 +291,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 				return err
 			}
 			// Start a timer to disconnect if the peer doesn't reply in time
-			p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
+			p.timeout = time.AfterFunc((5 * time.Second), func() {
 				glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
 				pm.removePeer(p.id)
 			})
