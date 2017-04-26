@@ -63,7 +63,7 @@ func MakeDiehardChainConfig() *ChainConfig {
 					{
 						ID: "eip155",
 						Options: ChainFeatureConfigOptions{
-							"chainid": 63,
+							"chainID": 63,
 						},
 					},
 					{ // ecip1010 bomb delay

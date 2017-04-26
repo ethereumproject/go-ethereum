@@ -87,7 +87,7 @@ var DefaultConfig = &ChainConfig{
 				{
 					ID: "eip155",
 					Options: ChainFeatureConfigOptions{
-						"chainid": 61,
+						"chainID": 61,
 					},
 				},
 				{ // ecip1010 bomb delay
@@ -162,7 +162,7 @@ var TestConfig = &ChainConfig{
 				{
 					ID: "eip155",
 					Options: ChainFeatureConfigOptions{
-						"chainid": 62,
+						"chainID": 62,
 					},
 				},
 				{ // ecip1010 bomb delay

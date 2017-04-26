@@ -95,13 +95,12 @@ type ChainConfig struct {
 }
 
 type Fork struct {
-	ID   string `json:"id"`
 	Name string `json:"name"`
 	// Block is the block number where the hard-fork commences on
 	// the Ethereum network.
 	Block *big.Int `json:"block"`
 	// Used to improve sync for a known network split
-	RequiredHash common.Hash `json:"requiredHash"`
+	RequiredHash common.Hash `json:"-"`
 	// Configurable features.
 	Features []*ForkFeature `json:"features"`
 }
@@ -281,10 +280,10 @@ func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
 	feature, _, configured := c.GetFeature(blockNumber, "eip155")
 	if configured {
-		if chainId, ok := feature.GetBigInt("chainid"); ok {
+		if chainId, ok := feature.GetBigInt("chainID"); ok {
 			return types.NewChainIdSigner(chainId)
 		} else {
-			panic(fmt.Errorf("chainid is not set for EIP-155 at %v", blockNumber))
+			panic(fmt.Errorf("chainID is not set for EIP-155 at %v", blockNumber))
 		}
 	}
 	return types.BasicSigner{}

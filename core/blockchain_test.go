@@ -1336,7 +1336,7 @@ func TestEIP155Transition(t *testing.T) {
 						{
 							ID: "eip155",
 							Options: ChainFeatureConfigOptions{
-								"chainid": 1,
+								"chainID": 1,
 							},
 						},
 						{ // ecip1010 bomb delay
@@ -1455,7 +1455,7 @@ func TestEIP155Transition(t *testing.T) {
 					{
 						ID: "eip155",
 						Options: ChainFeatureConfigOptions{
-							"chainid": 2,
+							"chainID": 2,
 						},
 					},
 					{ // ecip1010 bomb delay

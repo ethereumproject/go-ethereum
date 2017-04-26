@@ -274,12 +274,12 @@ func TestChainConfig_GetFeature_DefaultEIP155(t *testing.T) {
 		t.Errorf("Expected fork 'Diehard', got: '%v', for block: %v", fork.Name, big.NewInt(3000001))
 	}
 
-	chainid, ok := feat.GetBigInt("chainid")
+	chainID, ok := feat.GetBigInt("chainID")
 	if !ok {
 		t.Errorf("Unexpected EIP155 empty chainid for block 3000001.")
 	}
-	if chainid.Cmp(big.NewInt(61)) != 0 {
-		t.Errorf("want: <bigInt>61, got: %v", chainid)
+	if chainID.Cmp(big.NewInt(61)) != 0 {
+		t.Errorf("want: <bigInt>61, got: %v", chainID)
 	}
 }
 
