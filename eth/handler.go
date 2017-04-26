@@ -408,12 +408,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if len(headers) == 0 && p.timeout != nil {
 			// Possibly an empty reply to the fork header checks, sanity check total difficulty
 			forkPeer := true
-			// If we already have a header, we can check the peer's total difficulty against it. If
-			// the peer's ahead of this, it too must have a reply to the check
-			// DAO Split big.NewInt(1920000)
-			if splitHeader := pm.blockchain.GetHeaderByNumber(pm.chainConfig.ForkByName("ETF").Block.Uint64()); splitHeader != nil {
-				if _, td := p.Head(); td.Cmp(pm.blockchain.GetTd(splitHeader.Hash())) >= 0 {
-					forkPeer = false
+			for i := range pm.chainConfig.Forks {
+				fork := pm.chainConfig.Forks[i]
+				if splitHeader := pm.blockchain.GetHeaderByNumber(fork.Block.Uint64()); splitHeader != nil {
+					if err := pm.chainConfig.HeaderCheck(splitHeader); err != nil {
+						forkPeer = false
+					}
 				}
 			}
 			// If we're seemingly on the same chain, disable the drop timer
