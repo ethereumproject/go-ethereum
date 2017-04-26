@@ -237,7 +237,7 @@ func (c *ChainConfig) ForkByName(name string) *Fork {
 // GetFeature looks up fork features by id, where id can (currently) be [difficulty, gastable, eip155].
 // GetFeature returns the feature|nil, the latest fork configuring a given id, and if the given feature id was found at all
 // If queried feature is not found, returns *empty* ForkFeature, Fork, false
-func (c *ChainConfig) GetFeature(num *big.Int, name string) (*ForkFeature, *Fork, bool) {
+func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, bool) {
 	var okForkFeature = &ForkFeature{}
 	var okFork = &Fork{}
 	var found = false
@@ -246,7 +246,7 @@ func (c *ChainConfig) GetFeature(num *big.Int, name string) (*ForkFeature, *Fork
 			break // NOTE: break assumes chronological
 		}
 		for _, ff := range f.Features {
-			if ff.ID == name {
+			if ff.ID == id {
 				okForkFeature = ff
 				okFork = f
 				found = true

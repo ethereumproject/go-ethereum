@@ -75,7 +75,7 @@ var DefaultConfig = &ChainConfig{
 				{
 					ID: "gastable",
 					Options: ChainFeatureConfigOptions{
-						"type": "gas-reprice",
+						"type": "eip150",
 					},
 				},
 			},
@@ -93,7 +93,7 @@ var DefaultConfig = &ChainConfig{
 				{ // ecip1010 bomb delay
 					ID: "gastable",
 					Options: ChainFeatureConfigOptions{
-						"type": "diehard",
+						"type": "eip160",
 					},
 				},
 				{ // ecip1010 bomb delay
@@ -145,7 +145,7 @@ var TestConfig = &ChainConfig{
 				{
 					ID: "gastable",
 					Options: ChainFeatureConfigOptions{
-						"type": "gas-reprice",
+						"type": "eip150",
 					},
 				},
 			},
@@ -162,13 +162,13 @@ var TestConfig = &ChainConfig{
 				{
 					ID: "eip155",
 					Options: ChainFeatureConfigOptions{
-						"chainid": 61,
+						"chainid": 62,
 					},
 				},
 				{ // ecip1010 bomb delay
 					ID: "gastable",
 					Options: ChainFeatureConfigOptions{
-						"type": "diehard",
+						"type": "eip160",
 					},
 				},
 				{ // ecip1010 bomb delay

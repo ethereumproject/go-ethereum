@@ -1342,7 +1342,7 @@ func TestEIP155Transition(t *testing.T) {
 						{ // ecip1010 bomb delay
 							ID: "gastable",
 							Options: ChainFeatureConfigOptions{
-								"type": "diehard",
+								"type": "eip160",
 							},
 						},
 						{ // ecip1010 bomb delay
@@ -1461,7 +1461,7 @@ func TestEIP155Transition(t *testing.T) {
 					{ // ecip1010 bomb delay
 						ID: "gastable",
 						Options: ChainFeatureConfigOptions{
-							"type": "diehard",
+							"type": "eip160",
 						},
 					},
 					{ // ecip1010 bomb delay

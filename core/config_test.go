@@ -288,8 +288,8 @@ func TestChainConfig_GetFeature_DefaultGasTables(t *testing.T) {
 	c := makeTestChainConfig()
 	var tables = map[*big.Int]string{
 		DefaultConfig.ForkByName("Homestead").Block:  "homestead",
-		DefaultConfig.ForkByName("GasReprice").Block: "gas-reprice",
-		DefaultConfig.ForkByName("Diehard").Block:    "diehard",
+		DefaultConfig.ForkByName("GasReprice").Block: "eip150",
+		DefaultConfig.ForkByName("Diehard").Block:    "eip160",
 	}
 	for block, expected := range tables {
 		feat, fork, ok := c.GetFeature(block, "gastable")
