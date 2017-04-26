@@ -1,6 +1,6 @@
 {
-  "id": "mainnet",
-  "name": "Ethereum Classic Mainnet",
+  "id": "customnet",
+  "name": "My Custom Ethnet",
   "genesis": {
     "nonce": "0x0000000000000043",
     "timestamp": "0x0000000000000000000000000000000000000000000000000000000000000000",
