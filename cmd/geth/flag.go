@@ -47,6 +47,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
+	"flag"
 )
 
 func init() {
@@ -401,33 +402,42 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// it must be called before migrating to subdirectories
 
 	if _, err := os.Stat(unclassicChainDBPath); os.IsNotExist(err) {
-		log.Printf("INFO: No existing ETH/ETF default chaindata dir found at: %v \n Using default data directory at: %v.\n", unclassicChainDBPath, classicDataDirPath)
+		log.Printf(`
+		INFO: No existing ETH/ETF default chaindata dir found at: %v \n
+		  Using default data directory at: %v.\n`,
+			unclassicChainDBPath, classicDataDirPath)
 		return nil
 	}
 
 	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
 	chainDB, err := ethdb.NewLDBDatabase(unclassicChainDBPath, 0, 0)
 	if err != nil {
-		log.Fatalf("WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n  Using default data directory at: %v", err, classicDataDirPath)
+		log.Fatalf(`
+		WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n
+		  Using default data directory at: %v`,
+			err, classicDataDirPath)
 		return nil
 	}
 
 	defer chainDB.Close()
 
-	// FIXME:
-	// How do you tell an ETHF from an ETC blockchain?
-	//bcVersionNumber := core.GetBlockChainVersion(chainDB)
-	//isETF := core.DefaultConfig.IsETF(big.NewInt(int64(bcVersionNumber)))
-	//
-	//// if existing database in <home>/Ethereum isn't ETC, let it be
-	//if isETF {
-	//	log.Printf("INFO: Existing default Ethereum database at: %v isn't an ETClassic blockchain, it has version number: %v. Will not alter. \nUsing ETC chaindata database at: %v \n", unclassicDataDirPath, bcVersionNumber, classicDataDirPath)
-	//	return nil
-	//}
+	// Only move if defaulty ETC (mainnet or testnet).
+	chainConfigCheck := MustMakeChainConfigFromDb(ctx, chainDB)
+	cccID := chainConfigCheck.ChainId
+	if cccID.Cmp(core.DefaultConfig.ChainId) == 0 || cccID.Cmp(core.TestConfig.ChainId) == 0 {
+		log.Printf(`
+		INFO/WARNING: Found existing default 'Ethereum' data directory with default ETC chaindata configuration. \n
+		  Migrating it from: %v, to: %v \n
+		  To specify a different data directory use the '--datadir' flag.`,
+			unclassicDataDirPath, classicDataDirPath)
+		return os.Rename(unclassicDataDirPath, classicDataDirPath)
+	}
 
-	log.Printf("INFO/WARNING: Found existing Ethereum data directory with ETC chaindata. \n Moving it from: %v, to: %v \n To specify a data directory use the `--datadir` flag.", unclassicDataDirPath, classicDataDirPath)
-
-	return os.Rename(unclassicDataDirPath, classicDataDirPath)
+	log.Printf(`INFO: Existing default Ethereum database at: %v isn't an Ethereum Classic default blockchain (it has chainID: '%v')\n
+	  Will not migrate. \n
+	  Using ETC chaindata database at: %v \n`,
+		unclassicDataDirPath, cccID, classicDataDirPath)
+	return nil
 }
 
 
@@ -535,7 +545,10 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	// data migrations
 
-	// only if using default data dir (flagged dir can override)
+	// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
+	// Only do this if --datadir flag is not specified AND <home>/<EthereumClassic> does NOT already exist (only migrate once and only for defaulty).
+	// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
+	// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
 	if !ctx.GlobalIsSet(DataDirFlag.Name) {
 		if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
 			log.Fatalf("Failed to migrate existing Classic database: %v", migrationError)
@@ -545,7 +558,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
 	// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
 	// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
-	// and the user is using the Default configuration (ie "mainnet")
+	// and the user is using the Default configuration (ie "mainnet").
 	if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
 		log.Fatalf("An error occurred migrating existing data to named subdir : %v", subdirMigrateErr)
 	}

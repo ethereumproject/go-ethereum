@@ -187,14 +187,6 @@ func (c *ChainConfig) IsHomestead(num *big.Int) bool {
 	return num.Cmp(c.ForkByName("Homestead").Block) >= 0
 }
 
-// IsETF returns whether num is equal to the bailout fork.
-func (c *ChainConfig) IsETF(num *big.Int) bool {
-	if c.ForkByName("ETF").Block == nil || num == nil {
-		return false
-	}
-	return num.Cmp(c.ForkByName("ETF").Block) == 0
-}
-
 // IsDiehard returns whether num is greater than or equal to the Diehard block, but less than explosion.
 func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 	fork := c.ForkByName("Diehard")
