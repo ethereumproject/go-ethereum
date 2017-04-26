@@ -23,7 +23,6 @@
     }
   },
   "chainConfig": {
-    "chainID": 61,
     "forks": [
       {
         "name": "Homestead",
