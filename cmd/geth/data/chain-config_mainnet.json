@@ -26725,7 +26725,7 @@
           {
             "id": "gastable",
             "options": {
-              "tpe": "gas-reprice"
+              "tpe": "eip150"
             }
           }
         ]
@@ -26743,7 +26743,7 @@
           {
             "id": "gastable",
             "options": {
-              "type": "diehard"
+              "type": "eip160"
             }
           },
           {

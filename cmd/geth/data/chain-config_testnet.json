@@ -65,7 +65,7 @@
           {
             "id": "gastable",
             "options": {
-              "type": "gas-reprice"
+              "type": "eip150"
             }
           }
         ]
@@ -82,13 +82,13 @@
           {
             "id": "eip155",
             "options": {
-              "chainid": 61
+              "chainid": 62
             }
           },
           {
             "id": "gastable",
             "options": {
-              "type": "diehard"
+              "type": "eip160"
             }
           },
           {

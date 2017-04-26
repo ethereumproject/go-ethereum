@@ -315,9 +315,9 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 	switch name {
 	case "homestead":
 		return DefaultHomeSteadGasTable
-	case "gas-reprise":
+	case "eip150":
 		return DefaultGasRepriceGasTable
-	case "diehard":
+	case "eip160":
 		return DefaultDiehardGasTable
 	default:
 		panic(fmt.Errorf("Unsupported gastable value '%v' at block: %v", name, num))
