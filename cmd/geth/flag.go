@@ -419,9 +419,8 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	defer chainDB.Close()
 
 	// Only move if defaulty ETC (mainnet or testnet).
-	chainConfigCheck := MustMakeChainConfigFromDb(ctx, chainDB)
-	cccID := chainConfigCheck.ChainId
-	if cccID.Cmp(core.DefaultConfig.ChainId) == 0 || cccID.Cmp(core.TestConfig.ChainId) == 0 {
+	b := core.GetBlock(chainDB, core.DefaultConfig.ForkByName("TheDAO Hard Fork").RequiredHash)
+	if e := b.ValidateFields(); e == nil {
 		log.Printf(`
 		INFO/WARNING: Found existing default 'Ethereum' data directory with default ETC chaindata configuration. \n
 		  Migrating it from: %v, to: %v \n
@@ -430,10 +429,10 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 		return os.Rename(unclassicDataDirPath, classicDataDirPath)
 	}
 
-	log.Printf(`INFO: Existing default Ethereum database at: %v isn't an Ethereum Classic default blockchain (it has chainID: '%v')\n
+	log.Printf(`INFO: Existing default Ethereum database at: %v isn't an Ethereum Classic default blockchain.\n
 	  Will not migrate. \n
 	  Using ETC chaindata database at: %v \n`,
-		unclassicDataDirPath, cccID, classicDataDirPath)
+		unclassicDataDirPath, classicDataDirPath)
 	return nil
 }
 
