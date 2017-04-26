@@ -825,7 +825,7 @@ func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx
 		if fullTx {
 			formatTx = func(tx *types.Transaction) (interface{}, error) {
 				if tx.Protected() {
-					tx.SetSigner(types.NewChainIdSigner(s.bc.Config().ChainId))
+					tx.SetSigner(types.NewChainIdSigner(s.bc.Config().GetChainID()))
 				}
 				return newRPCTransaction(b, tx.Hash())
 			}

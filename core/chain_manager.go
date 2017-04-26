@@ -54,7 +54,6 @@ func MakeChainConfig() *ChainConfig {
 
 func MakeDiehardChainConfig() *ChainConfig {
 	return &ChainConfig{
-		ChainId: big.NewInt(63),
 		Forks: []*Fork{
 			{
 				Name:   "Diehard",

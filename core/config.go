@@ -85,8 +85,6 @@ type GenesisAccount struct {
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
-	ChainId *big.Int `json:"chainID"` // don't include in JSON... ?
-
 	// Forks holds fork block requirements. See ErrHashKnownFork.
 	Forks Forks `json:"forks"`
 
@@ -177,6 +175,22 @@ func (g *GenesisDump) Header() (*types.Header, error) {
 func (c *ChainConfig) SortForks() *ChainConfig {
 	sort.Sort(c.Forks)
 	return c
+}
+
+// GetChainID gets the chainID for a chainconfig.
+// It assumes chain configuration has a "Diehard" fork.
+// It assumes eip155 will only be set on the "Diehard" fork.
+// It returns big.Int zero-value if no chainID is set for eip155,
+// which means that it implicitly assumes to be only called for blocks >= Diehard fork block num.
+// If called/configured "incorrectly" it will "pass the buck" by returning a non-error (ie zero value).
+func (c *ChainConfig) GetChainID() (*big.Int) {
+	n := big.NewInt(0)
+	if feat, _, ok := c.GetFeature(c.ForkByName("Diehard").Block, "eip155"); ok {
+		if val, ok := feat.GetBigInt("chainID"); ok {
+			n = val
+		}
+	}
+	return n
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.

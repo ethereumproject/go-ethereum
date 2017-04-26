@@ -42,7 +42,6 @@ var DefaultTestnetChainConfigChainID = big.NewInt(62)
 
 // DefaultConfig is the Ethereum Classic standard setup.
 var DefaultConfig = &ChainConfig{
-	ChainId: big.NewInt(61),
 	Forks: []*Fork{
 		{
 			Name:  "Homestead",
@@ -118,7 +117,6 @@ var DefaultConfig = &ChainConfig{
 
 // TestConfig is the semi-official setup for testing (testnet) purposes.
 var TestConfig = &ChainConfig{
-	ChainId: big.NewInt(62),
 	Forks: []*Fork{
 		{
 			Name:  "Homestead",
