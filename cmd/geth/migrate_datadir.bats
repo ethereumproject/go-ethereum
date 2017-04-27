@@ -16,25 +16,34 @@ setup() {
 	TEST_OS_HF=placeholder
 	TEST_OS_C=placeholder
 	DATA_DIR_PARENT=placeholder
+	DATA_DIR_NAME=placeholder
+	DATA_DIR_NAME_EX=placeholder
+	# http://stackoverflow.com/questions/3466166/how-to-check-if-running-in-cygwin-mac-or-linux
 	if [ "$(uname)" == "Darwin" ]; then
 	    # Do something under Mac OS X platform
 	    TEST_OS_HF=darwin
 	    TEST_OS_C=osx
 	    DATA_DIR_PARENT="$HOME/Library"
+	    DATA_DIR_NAME_EX="Ethereum"
+	    DATA_DIR_NAME="EthereumClassic"
 	elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
 	    # Do something under GNU/Linux platform
 	    TEST_OS_HF=linux
 	    TEST_OS_C=linux
 	    DATA_DIR_PARENT="$HOME"
+	    DATA_DIR_NAME_EX=".ethereum"
+	    DATA_DIR_NAME=".ethereum-classic"
 	elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then
 	    # Do something under 32 bits Windows NT platform
-	    echo "Win32 bit not supported."
+	    echo "Win32 not supported."
 	    exit 1 
 	elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW64_NT" ]; then
 	    # Do something under 64 bits Windows NT platform
 	    TEST_OS_HF=windows
 	    TEST_OS_C=win64
 	    DATA_DIR_PARENT="$HOME/AppData/Roaming"
+	    DATA_DIR_NAME_EX="Ethereum"
+	    DATA_DIR_NAME="EthereumClassic"
 	fi
 
 	# Install 1.6 and 1.5 of Ethereum Geth
@@ -61,18 +70,196 @@ teardown() {
 	HOME="$HOME_DEF"
 }
 
-@test "migrate datadir Ethereum/ -> EthereumClassic/ with valid ETC3.3 config" {
+# Migrate ETC.
+# mainnet
+@test "should migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema" {
 	# Should create $HOME/Ethereum/chaindata,keystore,nodes,...
 	run "$CMD_DIR/gethc3.3" --fast console
 	echo "$output"
+	[ "$status" -eq 0 ]
 
-	[ -d "$DATA_DIR_PARENT"/Ethereum ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ] # 3.3 schema
 
 	run $GETH_CMD --fast console
 	echo "$output"
+	[ "$status" -eq 0 ]
 
-	[ -d "$DATA_DIR_PARENT"/EthereumClassic ]
-	! [ -d "$DATA_DIR_PARENT"/Ethereum ]
+	# Ensure datadir is renamed.
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/chaindata ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
 }
+
+# testnet
+@test "should migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --testnet" {
+	# Should create $HOME/Ethereum/testnet/chaindata,keystore,nodes,...
+	run "$CMD_DIR/gethc3.3" --fast --testnet console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/testnet ] # 3.3 schema
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/testnet/chaindata ]
+
+	run $GETH_CMD --fast --testnet console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	# Ensure datadir is renamed.
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/testnet ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/morden ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/morden/chaindata ]
+}
+
+# chainconfig VALID default
+@test "should migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig testdata/chain_config_dump-ok.json (mainnet)" {
+	run "$CMD_DIR/gethc3.3" --fast console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	run $GETH_CMD --fast --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-ok.json"  console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+}
+
+# customnet
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chain customnet" {
+	# Should create $HOME/Ethereum/chaindata,keystore,nodes,...
+	run "$CMD_DIR/gethc3.3" --fast console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ] # 3.3 schema
+
+	run $GETH_CMD --fast --chain customnet --ipcdisable console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	# Ensure datadir is not renamed.
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/chaindata ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/customnet ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/customnet/chaindata ]
+}
+
+# datadir
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --datadir data" {
+	run "$CMD_DIR/gethc3.3" --fast console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	run $GETH_CMD --fast --datadir "$DATA_DIR/data" console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	[ -d "$DATA_DIR"/data ]
+	[ -d "$DATA_DIR"/data/mainnet ]
+	[ -d "$DATA_DIR"/data/mainnet/chaindata ]
+}
+
+# chainconfig VALID custom
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig testdata/chain_config_dump-ok-custom.json (customnet)" {
+	run "$CMD_DIR/gethc3.3" --fast console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	run $GETH_CMD --fast --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-ok-custom.json" --ipcdisable  console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/customnet ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/customnet/chaindata ]
+}
+
+# chainconfig INVALID
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig testdata/chain_config_dump-invalid-coinbase.json" {
+	run "$CMD_DIR/gethc3.3" --fast console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	run $GETH_CMD --fast --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-invalid-coinbase.json" console
+	echo "$output"
+	[ "$status" -gt 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
+}
+
+# Don't migrate ETHF.
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETHF1.5 schema" {
+	run "$CMD_DIR/gethf1.5" --fast console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
+
+	run $GETH_CMD --fast console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+}
+
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETHF1.6 schema" {
+	run "$CMD_DIR/gethf1.6" --fast console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
+
+	run $GETH_CMD --fast console
+	echo "$output"	
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+}
+
+# Flags...
 
 
