@@ -320,20 +320,9 @@ func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
 // GasTable returns the gas table corresponding to the current fork
 // The returned GasTable's fields shouldn't, under any circumstances, be changed.
 func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
-	defaultTable := &vm.GasTable{
-		ExtcodeSize:     big.NewInt(20),
-		ExtcodeCopy:     big.NewInt(20),
-		Balance:         big.NewInt(20),
-		SLoad:           big.NewInt(50),
-		Calls:           big.NewInt(40),
-		Suicide:         big.NewInt(0),
-		ExpByte:         big.NewInt(10),
-		CreateBySuicide: nil,
-	}
-
 	f, _, configured := c.GetFeature(num, "gastable")
 	if !configured {
-		return defaultTable
+		return DefaultHomeSteadGasTable
 	}
 	name, ok := f.GetStringOptions("type")
 	if !ok {
@@ -408,7 +397,6 @@ func (o *ForkFeature) GetStringOptions(name string) (string, bool) {
 // GetBigInt gets and option value for an options with key 'name',
 // returning value as a *big.Int and ok if it exists.
 func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
-
 	if o.ParsedOptions == nil {
 		o.parsedOptionsLock.Lock()
 		o.ParsedOptions = make(map[string]interface{})
