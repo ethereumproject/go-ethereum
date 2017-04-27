@@ -218,8 +218,8 @@ freshconfig() {
 }
 
 @test "chainconfig configuration fails with any single invalid required attribute subkey in otherwise valid json file" {
-	declare -a OK_VARS=(nonce gasLimit difficulty forks) # 'name' can be blank... it's only for human consumption
-	declare -a NOTOK_VARS=(noneonce gasLim dificile knives)
+	declare -a OK_VARS=(nonce gasLimit difficulty forks alloc balance Block Hash) # 'name' can be blank... it's only for human consumption
+	declare -a NOTOK_VARS=(noneonce gasLim dificile knives allok bills Clock Cash)
 	
 	cp $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json $DATA_DIR/
 	
@@ -241,8 +241,8 @@ freshconfig() {
 }
 
 @test "chainconfig configuration fails with any single invalid required attribute value in otherwise valid json file" {
-	declare -a OK_VARS=(balance Block Hash) # 'name' can be blank... it's only for human consumption
-	declare -a NOTOK_VARS=(bills Clock Cash)
+	declare -a    OK_VARS=(0x0000000000000042 0x0000000000000000000000000000000000000000000000000000000000001388 0x0000000000000000000000000000000000000000 enode homestead) # 'name' can be blank... it's only for human consumption
+	declare -a NOTOK_VARS=(Ox0000000000000042 Ox0000000000000000000000000000000000000000000000000000000000001388 0x000000000000000000000000000000000000000  ewok  homeinbed)
 	
 	cp $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json $DATA_DIR/
 	
