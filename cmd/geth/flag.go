@@ -227,7 +227,11 @@ func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 			// if it doesn't, panic ("hard" config file requires all available fields to be actionable)
 			if externalConfig.Bootstrap != nil {
 				glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes in config file: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
-				return parseBootstrapNodes(externalConfig.Bootstrap)
+				nodes := parseBootstrapNodes(externalConfig.Bootstrap)
+				if len(nodes) == 0 {
+					panic("no bootstrap nodes found in configuration file")
+				}
+				return nodes
 			}
 			panic("configuration file must contain bootstrap nodes")
 		} else {
