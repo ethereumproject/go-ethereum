@@ -404,41 +404,22 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&headers); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		// If no headers were received, but we're expending a fork check, maybe it's that
-		if len(headers) == 0 && p.timeout != nil {
-			// Possibly an empty reply to the fork header checks, sanity check total difficulty
-			forkPeer := true
-			for i := range pm.chainConfig.Forks {
-				fork := pm.chainConfig.Forks[i]
-				if splitHeader := pm.blockchain.GetHeaderByNumber(fork.Block.Uint64()); splitHeader != nil {
-					if err := pm.chainConfig.HeaderCheck(splitHeader); err != nil {
-						forkPeer = false
-					}
-				}
-			}
-			// If we're seemingly on the same chain, disable the drop timer
-			if forkPeer {
+		// Filter out any explicitly requested headers, deliver the rest to the downloader
+		isForkCheck := len(headers) == 1
+		if isForkCheck {
+			if p.timeout != nil {
 				// Disable the fork drop timeout
 				p.timeout.Stop()
 				p.timeout = nil
-				return nil
 			}
-		}
-		// Filter out any explicitly requested headers, deliver the rest to the downloader
-		filter := len(headers) == 1
-		if filter {
 			if err := pm.chainConfig.HeaderCheck(headers[0]); err != nil {
-				if p.timeout != nil {
-					// Disable the fork drop timeout
-					p.timeout.Stop()
-					p.timeout = nil
-				}
+				pm.removePeer(p.id)
 				return err
 			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
 			headers = pm.fetcher.FilterHeaders(headers, time.Now())
 		}
-		if len(headers) > 0 || !filter {
+		if len(headers) > 0 || !isForkCheck {
 			err := pm.downloader.DeliverHeaders(p.id, headers)
 			if err != nil {
 				glog.V(logger.Debug).Infoln(err)
