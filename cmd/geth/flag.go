@@ -75,6 +75,15 @@ OPTIONS:
 `
 }
 
+var reservedChainIDS = map[string]bool{
+	"chaindata": true,
+	"dapp": true,
+	"keystore": true,
+	"nodekey": true,
+	"nodes": true,
+	"geth": true,
+}
+
 // getChainConfigIDFromContext gets the --chain=my-custom-net value.
 // --testnet flag overrides --chain flag, thus return default testnet value.
 // Disallowed words which conflict with in-use data files will log the problem and return "",
@@ -85,8 +94,7 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 	}
 	if ctx.GlobalIsSet(ChainNameFlag.Name) {
 		if id := ctx.GlobalString(ChainNameFlag.Name); id != "" {
-			reservedNames := map[string]bool{"chaindata": true, "dapp": true, "keystore": true, "nodekey": true, "nodes": true}
-			if reservedNames[id] {
+			if reservedChainIDS[id] {
 				log.Fatal("Reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes'. Please use a different identifier.")
 				return ""
 			}
@@ -387,36 +395,38 @@ func MakePasswordList(ctx *cli.Context) []string {
 // FIXME: do we really want to just rename users' data directory? they may have other scripts/programs that interact with the "old" default dir path...
 func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
-	unclassicDataDirPath := common.DefaultUnclassicDataDir()
-	classicDataDirPath := common.DefaultDataDir()
+	ethDataDirPath := common.DefaultUnclassicDataDir()
+	etcDataDirPath := common.DefaultDataDir()
 
-	// only if default **classic** data dir doesn't already exist
-	if _, err := os.Stat(classicDataDirPath); err == nil {
+	// only if default <EthereumClassic>/ datadir doesn't already exist
+	if _, err := os.Stat(etcDataDirPath); err == nil {
 		// classic data dir already exists
-		log.Printf("INFO: Using existing ETClassic data directory at: %v.\n", classicDataDirPath)
+		log.Printf("INFO: Using existing ETClassic data directory at: %v.\n", etcDataDirPath)
 		return nil
 	}
 
-	// only if **unclassic** ("<home>/Ethereum") datadir chaindb path DOES already exist, so return nil if it doesn't;
+	// only if ETHdatadir chaindb path DOES already exist, so return nil if it doesn't;
 	// otherwise NewLDBDatabase will create an empty one there.
-	unclassicChainDBPath := filepath.Join(unclassicDataDirPath, "chaindata") // note that this uses the 'old' non-subdirectory way of holding default data.
+	// note that this uses the 'old' non-subdirectory way of holding default data.
 	// it must be called before migrating to subdirectories
-
-	if _, err := os.Stat(unclassicChainDBPath); os.IsNotExist(err) {
+	// NOTE: Since ETH stores chaindata by default in Ethereum/geth/..., this path
+	// will not exist if the existing data belongs to ETH, so it works as a valid check for us as well.
+	ethChainDBPath := filepath.Join(ethDataDirPath, "chaindata")
+	if _, err := os.Stat(ethChainDBPath); os.IsNotExist(err) {
 		log.Printf(`
-		INFO: No existing ETH/ETF default chaindata dir found at: %v \n
+		INFO: No existing default chaindata dir found at: %v \n
 		  Using default data directory at: %v.\n`,
-			unclassicChainDBPath, classicDataDirPath)
+			ethChainDBPath, etcDataDirPath)
 		return nil
 	}
 
 	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
-	chainDB, err := ethdb.NewLDBDatabase(unclassicChainDBPath, 0, 0)
+	chainDB, err := ethdb.NewLDBDatabase(ethChainDBPath, 0, 0)
 	if err != nil {
 		log.Fatalf(`
 		WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n
 		  Using default data directory at: %v`,
-			err, classicDataDirPath)
+			err, etcDataDirPath)
 		return nil
 	}
 
@@ -424,27 +434,25 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	// Only move if defaulty ETC (mainnet or testnet).
 	b := core.GetBlock(chainDB, core.DefaultConfig.ForkByName("TheDAO Hard Fork").RequiredHash)
-	if b == nil {
-		// if not exist, chain is either too 'young' (ie haven't downloaded blocks till HF) or is HF
-		glog.Info("could not determine blockchain etf/etc, will not migrate datadir")
-		return nil
-	}
 
-	// Use default configuration to check if known fork.
+	// Use default configuration to check if known fork, if block 1920000 exists.
+	// If block1920000 doesn't exist, given above checks for directory structure expectations,
+	// I think it's safe to assume that the chaindata directory is just too 'young', where it hasn't
+	// synced until block 1920000, and therefore can be migrated.
 	defaultConf := core.DefaultConfig
-	if e := defaultConf.HeaderCheck(b.Header()); e == nil {
+	if b == nil || (b != nil && defaultConf.HeaderCheck(b.Header()) == nil) {
 		log.Printf(`
-		INFO/WARNING: Found existing default 'Ethereum' data directory with default ETC chaindata configuration. \n
+		INFO/WARNING: Found existing default 'Ethereum' data directory with default ETC chaindata. \n
 		  Migrating it from: %v, to: %v \n
 		  To specify a different data directory use the '--datadir' flag.`,
-			unclassicDataDirPath, classicDataDirPath)
-		return os.Rename(unclassicDataDirPath, classicDataDirPath)
+			ethDataDirPath, etcDataDirPath)
+		return os.Rename(ethDataDirPath, etcDataDirPath)
 	}
 
 	log.Printf(`INFO: Existing default Ethereum database at: %v isn't an Ethereum Classic default blockchain.\n
 	  Will not migrate. \n
 	  Using ETC chaindata database at: %v \n`,
-		unclassicDataDirPath, classicDataDirPath)
+		ethDataDirPath, etcDataDirPath)
 	return nil
 }
 
