@@ -220,7 +220,7 @@ var allAvailableConfigKeys = []string{
 }
 
 // TestChainConfig_EventuallyGetAllPossibleFeatures should aggregate all available features from previous branches
-func TestChainConfig_EventuallyGetAllPossibleFeatures(t *testing.T) {
+func TestChainConfig_GetFeature2_EventuallyGetAllPossibleFeatures(t *testing.T) {
 	c := makeTestChainConfig()
 	for _, id := range allAvailableConfigKeys {
 		if _, _, ok := c.GetFeature(big.NewInt(5000000), id); !ok {
@@ -236,7 +236,7 @@ var unavailableConfigKeys = []string{
 }
 
 // TestChainConfig_NeverGetNonexistantFeatures should never eventually collect features that don't exist
-func TestChainConfig_NeverGetNonexistantFeatures(t *testing.T) {
+func TestChainConfig_GetFeature3_NeverGetNonexistantFeatures(t *testing.T) {
 	c := makeTestChainConfig()
 	for _, id := range unavailableConfigKeys {
 		if feat, _, ok := c.GetFeature(big.NewInt(5000000), id); ok {
@@ -245,12 +245,20 @@ func TestChainConfig_NeverGetNonexistantFeatures(t *testing.T) {
 	}
 }
 
+func TestChainConfig_GetFeature4_WorkForHighNumbers(t *testing.T) {
+	c := makeTestChainConfig()
+	highBlock := big.NewInt(99999999999999999)
+	if _, _, ok := c.GetFeature(highBlock, "difficulty"); !ok {
+		t.Errorf("unexpected unfound difficulty feature for far-future block: %v", highBlock)
+	}
+}
+
 // Acceptance-y tests.
 
 // Test GetFeature gets expected feature values from default configuration data...
 
 // TestChainConfig_GetFeature_DefaultEIP155 should get the eip155 feature for (only and above) its default implemented block.
-func TestChainConfig_GetFeature_DefaultEIP155(t *testing.T) {
+func TestChainConfig_GetFeature5_DefaultEIP155(t *testing.T) {
 	c := makeTestChainConfig()
 	var tables = map[*big.Int]*big.Int{
 		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): nil,
@@ -287,7 +295,7 @@ func TestChainConfig_GetFeature_DefaultEIP155(t *testing.T) {
 }
 
 // TestChainConfig_GetFeature_DefaultGasTables sets that GetFeatures gets expected feature values for default fork configs.
-func TestChainConfig_GetFeature_DefaultGasTables(t *testing.T) {
+func TestChainConfig_GetFeature6_DefaultGasTables(t *testing.T) {
 	c := makeTestChainConfig()
 	var tables = map[*big.Int]string{
 		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): "",
@@ -324,7 +332,7 @@ func TestChainConfig_GetFeature_DefaultGasTables(t *testing.T) {
 }
 
 // TestChainConfig_GetFeature_DefaultGasTables sets that GetFeatures gets expected feature values for default fork configs.
-func TestChainConfig_GetFeature_DefaultDifficulty(t *testing.T) {
+func TestChainConfig_GetFeature7_DefaultDifficulty(t *testing.T) {
 	c := makeTestChainConfig()
 	var tables = map[*big.Int]string{
 		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): "",
@@ -360,3 +368,24 @@ func TestChainConfig_GetFeature_DefaultDifficulty(t *testing.T) {
 	}
 }
 
+func TestChainConfig_SortForks(t *testing.T) {
+	// check code data default
+	c := makeTestChainConfig()
+	n := big.NewInt(0)
+	for _, fork := range c.Forks {
+		if n.Cmp(fork.Block) > 0 { t.Errorf("unexpected fork block: %v is greater than: %v", fork.Block, n) }
+		n = fork.Block
+	}
+
+	// introduce disorder
+	f := &Fork{}
+	f.Block = big.NewInt(0).Sub(c.Forks[0].Block, big.NewInt(1))
+	c.Forks = append(c.Forks, f) // last fork should be out of order
+
+	c.SortForks()
+	n = big.NewInt(0)
+	for _, fork := range c.Forks {
+		if n.Cmp(fork.Block) > 0 { t.Errorf("unexpected fork block: %v is greater than: %v", fork.Block, n) }
+		n = fork.Block
+	}
+}
