@@ -190,7 +190,8 @@ teardown() {
 }
 
 freshconfig() {
-	rm "$DATA_DIR/chain-config_mainnet.json"
+	rm -fr $DATA_DIR
+	DATA_DIR=`mktemp -d`
 	cp "$BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json" "$DATA_DIR/"
 }
 
