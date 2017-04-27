@@ -784,11 +784,13 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		genesisHash = genesis.Hash().Hex()
 	}
 	glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
-	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
+	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain upgrades associated with this genesis block:", len(c.Forks)))
 
-	netsplitChoice := ""
 	for i := range c.Forks {
-		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v hard-fork %v", c.Forks[i].Block, c.Forks[i].Name, netsplitChoice))
+		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v", c.Forks[i].Block, c.Forks[i].Name))
+		if (!c.Forks[i].RequiredHash.IsEmpty()) {
+			glog.V(logger.Warn).Info(fmt.Sprintf("         with block %v", c.Forks[i].RequiredHash.Hex()))
+		}
 	}
 
 	if ctx.GlobalBool(TestNetFlag.Name) {
