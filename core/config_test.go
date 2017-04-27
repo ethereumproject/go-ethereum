@@ -247,6 +247,8 @@ func TestChainConfig_NeverGetNonexistantFeatures(t *testing.T) {
 
 // Acceptance-y tests.
 
+// Test GetFeature gets expected feature values from default configuration data...
+
 // TestChainConfig_GetFeature_DefaultEIP155 should get the eip155 feature for (only and above) its default implemented block.
 func TestChainConfig_GetFeature_DefaultEIP155(t *testing.T) {
 	c := makeTestChainConfig()
@@ -357,3 +359,4 @@ func TestChainConfig_GetFeature_DefaultDifficulty(t *testing.T) {
 		}
 	}
 }
+

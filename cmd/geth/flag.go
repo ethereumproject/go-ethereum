@@ -112,6 +112,8 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 		}
 		if conf.ID != "" {
 			return conf.ID
+		} else {
+			log.Fatalf("ERROR: external chain configuration file missing 'id' value: %v", err)
 		}
 	}
 	return core.DefaultChainConfigID
@@ -391,8 +393,6 @@ func MakePasswordList(ctx *cli.Context) []string {
 // and rename it to fit Classic naming convention ("/home/path/to/EthereumClassic") if that dir doesn't already exist.
 // This case only applies to Default, ie when a user **doesn't** provide a custom --datadir flag;
 // a user should be able to override a specified data dir if they want.
-// TODO: make test(s)
-// FIXME: do we really want to just rename users' data directory? they may have other scripts/programs that interact with the "old" default dir path...
 func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	ethDataDirPath := common.DefaultUnclassicDataDir()
@@ -565,8 +565,6 @@ func makeNodeName(version string, ctx *cli.Context) string {
 
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
-// TODO: refactor reading external chain config file so we don't have to do it three separate times... (ie global? getter?)
-// OR, is it better to just refactor the error handling and call mutliple garbage-able reads to keep sustained memory use down?
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	name := makeNodeName(version, ctx)
 
@@ -591,13 +589,26 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
 	nodes := MakeBootstrapNodes(ctx)
 
+	// Read genesis block if chain config file has genesis state data.
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+		if err != nil {
+			panic(err)
+		}
+		if externalConfig.Genesis != nil {
+			config.Genesis = externalConfig.Genesis
+		} else {
+			panic("Chain configuration file JSON did not contain necessary genesis data.")
+		}
+	}
+
+
 	// Data migrations...
 
 	// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
 	// Only do this if --datadir flag is not specified AND <home>/<EthereumClassic> does NOT already exist (only migrate once and only for defaulty).
 	// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
 	// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
-
 	if !ctx.GlobalIsSet(DataDirFlag.Name) &&
 		// Allows to use --chainconfig flag as long configuration specifies mainnet or morden
 		(config.ID == core.DefaultTestnetChainConfigID || config.ID == core.DefaultChainConfigID) {
@@ -682,31 +693,16 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		log.Fatalf("malformed %s flag value %q", GpoMaxGasPriceFlag.Name, ctx.GlobalString(GpoMaxGasPriceFlag.Name))
 	}
 
-	// Write genesis block if chain config file has genesis state data
-	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+	// Will be true if using valid --chainconfig flag json data, else will read from chaindata db.
+	if config.Genesis != nil {
+		chainDB := MakeChainDatabase(ctx)
+		block, err := core.WriteGenesisBlock(chainDB, config.Genesis)
 		if err != nil {
-			panic(err)
-		}
-		if externalConfig.Genesis != nil {
-
-			// This is yank-pasted from initGenesis command. TODO: refactor some serious shi
-			chainDB := MakeChainDatabase(ctx)
-			if err != nil {
-				log.Fatalf("could not open database: %v", err)
-			}
-
-			block, err := core.WriteGenesisBlock(chainDB, externalConfig.Genesis)
-			if err != nil {
-				log.Fatalf("failed to write genesis block: %v", err)
-			} else {
-				log.Printf("successfully wrote genesis block and allocations: %x", block.Hash())
-			}
-
-			chainDB.Close()
+			log.Fatalf("failed to write genesis block: %v", err)
 		} else {
-			panic("Chain configuration file JSON did not contain necessary genesis data.")
+			log.Printf("successfully wrote genesis block and allocations: %x", block.Hash())
 		}
+		chainDB.Close()
 	}
 
 	// Configure the Whisper service
@@ -812,6 +808,9 @@ func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.Suffi
 	} else {
 		customC, err := core.ReadChainConfigFromJSONFile(flaggedExternalChainConfigPath)
 		if err == nil {
+			if invalid, ok := customC.IsValid(); !ok {
+				return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
+			}
 			return customC, nil
 		} else {
 			return nil, fmt.Errorf("ERROR: Error reading configuration file (%s): %v", flaggedExternalChainConfigPath, err)

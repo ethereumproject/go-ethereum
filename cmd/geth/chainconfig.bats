@@ -189,9 +189,79 @@ teardown() {
 	[ "$status" -gt 0 ]
 }
 
+freshconfig() {
+	rm "$DATA_DIR/chain-config_mainnet.json"
+	cp "$BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json" "$DATA_DIR/"
+}
 
+@test "chainconfig configuration fails with any single invalid attribute key in otherwise valid json file" {
+	declare -a OK_VARS=(id genesis chainConfig bootstrap) # 'name' can be blank... it's only for human consumption
+	declare -a NOTOK_VARS=(did genes chainconfig bootsrap)
+	
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json $DATA_DIR/
+	
+	counter=0
+	for var in "${OK_VARS[@]}"
+	do
+		sed -i s/"${var}"/"${NOTOK_VARS[counter]}"/ "$DATA_DIR/chain-config_mainnet.json"
+		
+		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/chain-config_mainnet.json" console
+		echo "$output"
+		[ "$status" -gt 0 ]
+		if [ ! "$status" -gt 0 ]; then
+			echo "allowed invalid attribute: ${var}"
+		fi		
 
+		freshconfig()
+		((counter=counter+1))
+	done
+}
 
+@test "chainconfig configuration fails with any single invalid required attribute subkey in otherwise valid json file" {
+	declare -a OK_VARS=(nonce gasLimit difficulty forks) # 'name' can be blank... it's only for human consumption
+	declare -a NOTOK_VARS=(noneonce gasLim dificile knives)
+	
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json $DATA_DIR/
+	
+	counter=0
+	for var in "${OK_VARS[@]}"
+	do
+		sed -i s/"${var}"/"${NOTOK_VARS[counter]}"/ "$DATA_DIR/chain-config_mainnet.json"
+		
+		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/chain-config_mainnet.json" console
+		echo "$output"
+		[ "$status" -gt 0 ]
+		if [ ! "$status" -gt 0 ]; then
+			echo "allowed invalid attribute: ${var}"
+		fi		
+
+		freshconfig()
+		((counter=counter+1))
+	done
+}
+
+@test "chainconfig configuration fails with any single invalid required attribute value in otherwise valid json file" {
+	declare -a OK_VARS=(balance Block Hash) # 'name' can be blank... it's only for human consumption
+	declare -a NOTOK_VARS=(bills Clock Cash)
+	
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json $DATA_DIR/
+	
+	counter=0
+	for var in "${OK_VARS[@]}"
+	do
+		sed -i s/"${var}"/"${NOTOK_VARS[counter]}"/ "$DATA_DIR/chain-config_mainnet.json"
+		
+		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/chain-config_mainnet.json" console
+		echo "$output"
+		[ "$status" -gt 0 ]
+		if [ ! "$status" -gt 0 ]; then
+			echo "allowed invalid attribute: ${var}"
+		fi		
+
+		freshconfig()
+		((counter=counter+1))
+	done
+}
 
 
 

@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"reflect"
 )
 
 var (
@@ -135,6 +136,24 @@ type ChainFeatureConfigOptions map[string]interface{}
 type BadHash struct {
 	Block *big.Int
 	Hash  common.Hash
+}
+
+func (c *SufficientChainConfig) IsValid() (string, bool) {
+	// entirely empty
+	if reflect.DeepEqual(c, SufficientChainConfig{}) { return "the whole thing", false }
+
+	if c.ID == "" { return "id", false }
+
+	if len(c.Genesis.Nonce) == 0 { return "genesis.nonce", false }
+	if len(c.Genesis.GasLimit) == 0 { return "genesis.gasLimit", false }
+	if len(c.Genesis.Difficulty) == 0 { return "genesis.difficulty", false }
+	if _, e := c.Genesis.Header(); e != nil { return "genesis: " + e.Error(), false }
+
+	if len(c.ChainConfig.Forks) == 0 { return "forks", false }
+
+	if len(c.Bootstrap) == 0 { return "bootstrap", false }
+
+	return "", true
 }
 
 // Header returns the mapping.

@@ -1,14 +1,24 @@
 package main
 
-import "os"
+import (
+	"os"
+	"flag"
+	"fmt"
+	"testing"
+)
 
-func ExampleAppRunHelpCommand() {
-	os.Args = []string{"geth help"}
+// This doesn't work and I don't know why not...
+func ExampleRunCLIAppHelp() {
+	os.Args = []string{"geth", "help"}
+	flag.Parse()
 	app := makeCLIApp()
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	// Output:
+	// geth - the go-ethereum command line interface
 	// NAME:
-	//    geth - the go-ethereum command line interface
 
 	// USAGE:
 	//    geth [options] command [command options] [arguments...]
@@ -112,5 +122,5 @@ func ExampleAppRunHelpCommand() {
 	//   --chainconfig value	Specify a JSON format chain configuration file to use.
 	//   --chain value		Name of blockchain network to use (default='mainnnet', test='testnet'). These correlate to subdirectories under your base <EthereumClassic> data directory (--datadir). Chain name to use can also be configured from an external chain configuration file. (default: "mainnet")
 	//   --oppose-dao-fork	Use classic blockchain (always set, flag is unused and exists for compatibility only)
-	//   --help, -h		show help
+	//   --help, -h		show hel
 }
