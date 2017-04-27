@@ -98,7 +98,7 @@ type Fork struct {
 	// the Ethereum network.
 	Block *big.Int `json:"block"`
 	// Used to improve sync for a known network split
-	RequiredHash common.Hash `json:"-"`
+	RequiredHash common.Hash `json:"requiredHash"`
 	// Configurable features.
 	Features []*ForkFeature `json:"features"`
 }
