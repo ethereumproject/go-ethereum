@@ -420,7 +420,15 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	// Only move if defaulty ETC (mainnet or testnet).
 	b := core.GetBlock(chainDB, core.DefaultConfig.ForkByName("TheDAO Hard Fork").RequiredHash)
-	if e := b.ValidateFields(); e == nil {
+	if b == nil {
+		// if not exist, chain is either too 'young' (ie haven't downloaded blocks till HF) or is HF
+		glog.Info("could not determine blockchain etf/etc, will not migrate datadir")
+		return nil
+	}
+
+	// Use default configuration to check if known fork.
+	defaultConf := core.DefaultConfig
+	if e := defaultConf.HeaderCheck(b.Header()); e == nil {
 		log.Printf(`
 		INFO/WARNING: Found existing default 'Ethereum' data directory with default ETC chaindata configuration. \n
 		  Migrating it from: %v, to: %v \n
