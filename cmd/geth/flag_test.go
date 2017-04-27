@@ -4,7 +4,6 @@ import (
 	"os"
 	"flag"
 	"fmt"
-	"testing"
 )
 
 // This doesn't work and I don't know why not...
