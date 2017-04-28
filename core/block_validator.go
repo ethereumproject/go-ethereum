@@ -283,7 +283,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		case "ecip1010":
 			if length, ok := f.GetBigInt("length"); ok {
 				explosionBlock := big.NewInt(0).Add(fork.Block, length)
-				if explosionBlock.Cmp(num) < 0 {
+				if num.Cmp(explosionBlock) < 0 {
 					return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff,
 						fork.Block)
 				} else {
