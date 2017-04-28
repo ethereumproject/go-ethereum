@@ -39,10 +39,10 @@ func TestChainConfig_IsHomestead(t *testing.T) {
 		t.Errorf("Expected for %d", 3000000)
 	}
 	if !config.IsHomestead(big.NewInt(5000000)) {
-		t.Errorf("Unexpected for %d", 5000000)
+		t.Errorf("Expected for %d", 5000000)
 	}
 	if !config.IsHomestead(big.NewInt(5000001)) {
-		t.Errorf("Unexpected for %d", 5000001)
+		t.Errorf("Expected for %d", 5000001)
 	}
 }
 
@@ -68,10 +68,10 @@ func TestChainConfig_IsDiehard(t *testing.T) {
 	}
 
 	if !config.IsDiehard(big.NewInt(5000000)) {
-		t.Errorf("Unexpected for %d", 5000000)
+		t.Errorf("Expected for %d", 5000000)
 	}
 	if !config.IsDiehard(big.NewInt(5000001)) {
-		t.Errorf("Unexpected for %d", 5000001)
+		t.Errorf("Expected for %d", 5000001)
 	}
 }
 
