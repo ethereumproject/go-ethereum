@@ -260,6 +260,49 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
 }
 
-# Flags...
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema without any ETC data in it" {
+	
+	mkdir -p "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/{chaindata,nodes,dapp,keystore} # We're on Bash 4.0, right?
+	echo "bellow word" > "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/nodekey
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	run $GETH_CMD --fast console
+	echo "$output"	
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/nodes ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/dapp ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/keystore ]
+	[ -f "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/nodekey ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
+}
+
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETHF schema without any ETH data in it" {
+	
+	mkdir -p "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth # We're on Bash 4.0, right?
+	echo "bellow word" > "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth.ipc
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
+
+	run $GETH_CMD --fast console
+	echo "$output"	
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
+	[ -f "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth.ipc ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
+}
 
 
