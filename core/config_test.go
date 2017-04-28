@@ -16,7 +16,7 @@ func TestConfigErrorProperties(t *testing.T) {
 	}
 }
 
-func TestBombWait(t *testing.T) {
+func TestChainConfig_IsHomestead(t *testing.T) {
 	config := DefaultConfig
 
 	if config.IsHomestead(big.NewInt(10000)) {
@@ -46,7 +46,7 @@ func TestBombWait(t *testing.T) {
 	}
 }
 
-func TestBombDelay(t *testing.T) {
+func TestChainConfig_IsDiehard(t *testing.T) {
 	config := DefaultConfig
 
 	if config.IsDiehard(big.NewInt(1920000)) {
@@ -75,7 +75,7 @@ func TestBombDelay(t *testing.T) {
 	}
 }
 
-func TestBombExplode(t *testing.T) {
+func TestChainConfig_IsExplosion(t *testing.T) {
 	config := DefaultConfig
 
 	if config.IsExplosion(big.NewInt(1920000)) {
