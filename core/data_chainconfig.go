@@ -149,7 +149,7 @@ var TestConfig = &ChainConfig{
 			},
 		},
 		{
-			Name:     "ETF",
+			Name:     "TheDAO Hard Fork",
 			Block:    big.NewInt(1885000),
 			Features: []*ForkFeature{},
 		},
