@@ -223,7 +223,7 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 	}
 
 	if uncle {
-		if header.Time.Cmp(&common.MaxBig) == 1 {
+		if header.Time.Cmp(common.MaxBig) == 1 {
 			return BlockTSTooBigErr
 		}
 	} else {
