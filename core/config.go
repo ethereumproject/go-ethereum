@@ -234,8 +234,8 @@ func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	feat, fork, configured := c.GetFeature(num, "difficulty")
 
 	if configured {
-		//name, exists := feat.GetStringOptions("type")
-		if name, exists := feat.GetStringOptions("type"); exists && name == "ecip1010" {
+		//name, exists := feat.GetString("type")
+		if name, exists := feat.GetString("type"); exists && name == "ecip1010" {
 			block := big.NewInt(0)
 			if length, ok := feat.GetBigInt("length"); ok {
 				block = block.Add(fork.Block, length)
@@ -324,7 +324,7 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 	if !configured {
 		return DefaultHomeSteadGasTable
 	}
-	name, ok := f.GetStringOptions("type")
+	name, ok := f.GetString("type")
 	if !ok {
 		name = ""
 	} // will wall to default panic
@@ -370,9 +370,9 @@ func ReadChainConfigFromJSONFile(path string) (*SufficientChainConfig, error) {
 	return config, nil
 }
 
-// GetStringOptions gets and option value for an options with key 'name',
+// GetString gets and option value for an options with key 'name',
 // returning value as a string.
-func (o *ForkFeature) GetStringOptions(name string) (string, bool) {
+func (o *ForkFeature) GetString(name string) (string, bool) {
 	if o.ParsedOptions == nil {
 		o.parsedOptionsLock.Lock()
 		o.ParsedOptions = make(map[string]interface{})

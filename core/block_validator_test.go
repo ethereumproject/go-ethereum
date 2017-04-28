@@ -313,7 +313,7 @@ func TestCalcDifficulty1(t *testing.T) {
 		if !configured {
 			t.Errorf("difficulty not configured for diehard block: %v", dhB)
 		}
-		if val, ok := feat.GetStringOptions("type"); !ok || val != "ecip1010" {
+		if val, ok := feat.GetString("type"); !ok || val != "ecip1010" {
 			t.Errorf("ecip1010 not configured as difficulty for diehard block: %v", dhB)
 		}
 		delay, ok := feat.GetBigInt("length")

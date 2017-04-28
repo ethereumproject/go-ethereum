@@ -276,7 +276,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	if !configured {
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
-	name, ok := f.GetStringOptions("type")
+	name, ok := f.GetString("type")
 	if !ok { name = "" } // will fall to default panic
 	switch name {
 		case "ecip1010":

@@ -316,7 +316,7 @@ func TestChainConfig_GetFeature6_DefaultGasTables(t *testing.T) {
 			if !ok {
 				t.Errorf("Expected gastable feature to exist. feat: %v, fork: %v, block: %v", feat, fork, block)
 			}
-			val, ok := feat.GetStringOptions("type")
+			val, ok := feat.GetString("type")
 			if !ok {
 				t.Errorf("failed to get value for gastable feature. feat: %v, fork: %v, block: %v", feat, fork, block)
 			}
@@ -353,7 +353,7 @@ func TestChainConfig_GetFeature7_DefaultDifficulty(t *testing.T) {
 			if !ok {
 				t.Errorf("Expected difficulty feature to exist. feat: %v, fork: %v, block: %v", feat, fork, block)
 			}
-			val, ok := feat.GetStringOptions("type")
+			val, ok := feat.GetString("type")
 			if !ok {
 				t.Errorf("failed to get value for difficulty feature. feat: %v, fork: %v, block: %v", feat, fork, block)
 			}
