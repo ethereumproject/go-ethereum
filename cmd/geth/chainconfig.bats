@@ -204,7 +204,7 @@ freshconfig() {
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
+		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
 		
 		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
 		echo "$output"
@@ -227,7 +227,7 @@ freshconfig() {
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
+		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
 		
 		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
 		echo "$output"
@@ -250,7 +250,7 @@ freshconfig() {
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
+		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
 		
 		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
 		echo "$output"
