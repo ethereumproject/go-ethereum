@@ -283,7 +283,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 			if length, ok := f.GetBigInt("length"); ok {
 				explosionBlock := big.NewInt(0).Add(fork.Block, length)
 				if num.Cmp(explosionBlock) < 0 {
-					return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff,
+					return calcDifficultyDiehard(time, parentTime, parentDiff,
 						fork.Block)
 				} else {
 					return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
@@ -301,7 +301,7 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	}
 }
 
-func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
+func calcDifficultyDiehard(time, parentTime uint64 , parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +

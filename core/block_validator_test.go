@@ -132,12 +132,11 @@ func TestPutReceipt(t *testing.T) {
 
 func TestDifficultyBombFreeze(t *testing.T) {
 	diehardBlock := big.NewInt(3000000)
-	numIgnored := big.NewInt(3000000)
 	var parentTime uint64
 
 	// 20 seconds, parent diff 7654414978364
 	parentTime = 1452838500
-	act := calcDifficultyDiehard(parentTime+20, parentTime, numIgnored, big.NewInt(7654414978364), diehardBlock)
+	act := calcDifficultyDiehard(parentTime+20, parentTime, big.NewInt(7654414978364), diehardBlock)
 	exp := big.NewInt(7650945906507)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -145,7 +144,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 	}
 
 	// 5 seconds, parent diff 7654414978364
-	act = calcDifficultyDiehard(parentTime+5, parentTime, numIgnored, big.NewInt(7654414978364), diehardBlock)
+	act = calcDifficultyDiehard(parentTime+5, parentTime, big.NewInt(7654414978364), diehardBlock)
 	exp = big.NewInt(7658420921133)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -153,7 +152,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 	}
 
 	// 80 seconds, parent diff 7654414978364
-	act = calcDifficultyDiehard(parentTime+80, parentTime, numIgnored, big.NewInt(7654414978364), diehardBlock)
+	act = calcDifficultyDiehard(parentTime+80, parentTime, big.NewInt(7654414978364), diehardBlock)
 	exp = big.NewInt(7628520862629)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -162,7 +161,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 
 	// 76 seconds, parent diff 12657404717367
 	parentTime = 1469081721
-	act = calcDifficultyDiehard(parentTime+76, parentTime, numIgnored, big.NewInt(12657404717367), diehardBlock)
+	act = calcDifficultyDiehard(parentTime+76, parentTime, big.NewInt(12657404717367), diehardBlock)
 	exp = big.NewInt(12620590912441)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -171,7 +170,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 
 	// 1 second, parent diff 12620590912441
 	parentTime = 1469164521
-	act = calcDifficultyDiehard(parentTime+1, parentTime, numIgnored, big.NewInt(12620590912441), diehardBlock)
+	act = calcDifficultyDiehard(parentTime+1, parentTime, big.NewInt(12620590912441), diehardBlock)
 	exp = big.NewInt(12627021745803)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -180,7 +179,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 
 	// 10 seconds, parent diff 12627021745803
 	parentTime = 1469164522
-	act = calcDifficultyDiehard(parentTime+10, parentTime, numIgnored, big.NewInt(12627021745803), diehardBlock)
+	act = calcDifficultyDiehard(parentTime+10, parentTime, big.NewInt(12627021745803), diehardBlock)
 	exp = big.NewInt(12627290181259)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -192,7 +191,7 @@ func TestDifficultyBombFreeze(t *testing.T) {
 func TestDifficultyBombFreezeTestnet(t *testing.T) {
 	diehardBlock := big.NewInt(1915000)
 
-	act := calcDifficultyDiehard(1481895639, 1481850947, big.NewInt(1915000), big.NewInt(28670444), diehardBlock)
+	act := calcDifficultyDiehard(1481895639, 1481850947, big.NewInt(28670444), diehardBlock)
 	exp := big.NewInt(27415615)
 	if exp.Cmp(act) != 0 {
 		t.Errorf("Expected to have %d difficulty, got %d (difference: %d)",
@@ -297,7 +296,7 @@ func TestDifficultyBombExplodeTestnet(t *testing.T) {
 
 // Compare expected difficulties on edges of forks.
 func TestCalcDifficulty1(t *testing.T) {
-	configs := []*ChainConfig{DefaultConfig,TestConfig}
+	configs := []*ChainConfig{DefaultConfig, TestConfig}
 	for i, config := range configs {
 
 		parentTime := uint64(1513175023)
@@ -341,10 +340,10 @@ func TestCalcDifficulty1(t *testing.T) {
 			big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(0)), parentDiff),
 			big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(1)), parentDiff),
 
-			big.NewInt(0).Add(dhB, big.NewInt(-1)): calcDifficultyDiehard(time, parentTime, big.NewInt(0).Add(dhB, big.NewInt(-1)), parentDiff, dhFork.Block), // 2999999
-			big.NewInt(0).Add(dhB, big.NewInt(0)):  calcDifficultyDiehard(time, parentTime, big.NewInt(0).Add(dhB, big.NewInt(0)), parentDiff, dhFork.Block),  // 3000000
-			big.NewInt(0).Add(dhB, big.NewInt(1)):  calcDifficultyDiehard(time, parentTime, big.NewInt(0).Add(dhB, big.NewInt(1)), parentDiff, dhFork.Block),  // 3000001
-			big.NewInt(-2).Add(dhB, delay):         calcDifficultyDiehard(time, parentTime, big.NewInt(-2).Add(dhB, delay), parentDiff, dhFork.Block),         // 4999998
+			big.NewInt(0).Add(dhB, big.NewInt(-1)): calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 2999999
+			big.NewInt(0).Add(dhB, big.NewInt(0)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000000
+			big.NewInt(0).Add(dhB, big.NewInt(1)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000001
+			big.NewInt(-2).Add(dhB, delay):         calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 4999998
 
 			big.NewInt(-1).Add(dhB, delay): calcDifficultyExplosion(time, parentTime, big.NewInt(-1).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock), // 4999999
 			big.NewInt(0).Add(dhB, delay):  calcDifficultyExplosion(time, parentTime, big.NewInt(0).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock),  // 5000000
@@ -361,4 +360,3 @@ func TestCalcDifficulty1(t *testing.T) {
 		}
 	}
 }
-
