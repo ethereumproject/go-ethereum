@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/core/types"
 )
 
 func TestConfigErrorProperties(t *testing.T) {
@@ -388,4 +389,41 @@ func TestChainConfig_SortForks(t *testing.T) {
 		if n.Cmp(fork.Block) > 0 { t.Errorf("unexpected fork block: %v is greater than: %v", fork.Block, n) }
 		n = fork.Block
 	}
+}
+
+func TestChainConfig_GetSigner(t *testing.T) {
+	c := makeTestChainConfig()
+	var forkBlocks []*big.Int
+	for _, fork := range c.Forks {
+		forkBlocks = append(forkBlocks, fork.Block)
+	}
+
+	blockMinus := big.NewInt(-2)
+	blockPlus := big.NewInt(2)
+
+	for _, block := range forkBlocks {
+		bottom := big.NewInt(0).Add(block, blockMinus)
+		top := big.NewInt(0).Add(block, blockPlus)
+		current := bottom
+		for current.Cmp(top) <=0 {
+			signer := c.GetSigner(current)
+			feat, _, configured := c.GetFeature(current, "eip155")
+			if !configured {
+				if !signer.Equal(types.BasicSigner{}) {
+					t.Errorf("expected basic signer, block: %v", current)
+				}
+			} else {
+				cid, ok := feat.GetBigInt("chainID")
+				if !ok {
+					t.Errorf("unexpected missing eip155 chainid, block: %v", current)
+				}
+				shouldb := types.NewChainIdSigner(cid)
+				if !signer.Equal(shouldb) {
+					t.Errorf("want: %v, got: %v", shouldb, current)
+				}
+			}
+			current = big.NewInt(0).Add(current, big.NewInt(1))
+		}
+	}
+
 }
