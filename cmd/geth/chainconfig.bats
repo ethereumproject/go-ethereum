@@ -95,7 +95,7 @@ teardown() {
 # - use datadir/subdir schema (/mainnet)
 # - configured nonce matches external nonce (soft check since 42 is default, too)
 @test "chainconfig configurable from default mainnet json file" {
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"0x0000000000000042"* ]]
@@ -114,7 +114,7 @@ teardown() {
 # - external chain config can determine chain configuration
 # - use datadir/subdir schema (/morden)
 @test "chainconfig configurable from default testnet json file" {
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_testnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"0x00006d6f7264656e"* ]]
@@ -192,21 +192,21 @@ teardown() {
 freshconfig() {
 	rm -fr $DATA_DIR
 	DATA_DIR=`mktemp -d`
-	cp "$BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json" "$DATA_DIR/"
+	cp "$BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json" "$DATA_DIR/"
 }
 
 @test "chainconfig configuration fails with any single invalid attribute key in otherwise valid json file" {
 	declare -a OK_VARS=(id genesis chainConfig bootstrap) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(did genes chainconfig bootsrap)
 	
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json $DATA_DIR/
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/
 	
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i s/"${var}"/"${NOTOK_VARS[counter]}"/ "$DATA_DIR/chain-config_mainnet.json"
+		sed -i "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
 		
-		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/chain-config_mainnet.json" console
+		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
 		echo "$output"
 		[ "$status" -gt 0 ]
 		if [ ! "$status" -gt 0 ]; then
@@ -222,14 +222,14 @@ freshconfig() {
 	declare -a OK_VARS=(nonce gasLimit difficulty forks alloc balance Block Hash) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(noneonce gasLim dificile knives allok bills Clock Cash)
 	
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json $DATA_DIR/
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/
 	
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i s/"${var}"/"${NOTOK_VARS[counter]}"/ "$DATA_DIR/chain-config_mainnet.json"
+		sed -i "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
 		
-		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/chain-config_mainnet.json" console
+		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
 		echo "$output"
 		[ "$status" -gt 0 ]
 		if [ ! "$status" -gt 0 ]; then
@@ -245,14 +245,14 @@ freshconfig() {
 	declare -a    OK_VARS=(0x0000000000000042 0x0000000000000000000000000000000000000000000000000000000000001388 0x0000000000000000000000000000000000000000 enode homestead) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(Ox0000000000000042 Ox0000000000000000000000000000000000000000000000000000000000001388 0x000000000000000000000000000000000000000  ewok  homeinbed)
 	
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/data/chain-config_mainnet.json $DATA_DIR/
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/
 	
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i s/"${var}"/"${NOTOK_VARS[counter]}"/ "$DATA_DIR/chain-config_mainnet.json"
+		sed -i "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
 		
-		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/chain-config_mainnet.json" console
+		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
 		echo "$output"
 		[ "$status" -gt 0 ]
 		if [ ! "$status" -gt 0 ]; then
