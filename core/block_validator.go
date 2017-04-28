@@ -269,9 +269,8 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
 func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
-	// This is a placeholder for testing. The calcDiff function should
-	// be determined by a config flag
-	num := new(big.Int).Add(parentNumber, common.Big1)
+
+	num := new(big.Int).Add(parentNumber, common.Big1) // increment block number to current
 
 	f, fork, configured := config.GetFeature(num, "difficulty")
 	if !configured {
