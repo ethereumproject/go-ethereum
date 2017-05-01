@@ -646,7 +646,7 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 
 	for address, acct := range stateAccounts {
 		if common.IsHexAddress(address) {
-			dump.Alloc[hex(address)] = &GenesisDumpAlloc{
+			dump.Alloc[hex(hexlib.EncodeToString([]byte(address)[:]))] = &GenesisDumpAlloc{
 				Balance: acct.Balance,
 			}
 		} else {
