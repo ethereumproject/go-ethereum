@@ -77,11 +77,11 @@ OPTIONS:
 
 var reservedChainIDS = map[string]bool{
 	"chaindata": true,
-	"dapp": true,
-	"keystore": true,
-	"nodekey": true,
-	"nodes": true,
-	"geth": true,
+	"dapp":      true,
+	"keystore":  true,
+	"nodekey":   true,
+	"nodes":     true,
+	"geth":      true,
 }
 
 // getChainConfigIDFromContext gets the --chain=my-custom-net value.
@@ -104,18 +104,6 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 			return ""
 		}
 	}
-	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-		conf, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
-		if err != nil {
-			log.Fatalf("ERROR: Failed to read external chain configuration file: %v", err)
-			return ""
-		}
-		if conf.ID != "" {
-			return conf.ID
-		} else {
-			log.Fatalf("ERROR: external chain configuration file missing 'id' value: %v", err)
-		}
-	}
 	return core.DefaultChainConfigID
 }
 
@@ -128,15 +116,6 @@ func getChainConfigNameFromContext(ctx *cli.Context) string {
 	}
 	if ctx.GlobalIsSet(ChainNameFlag.Name) {
 		return getChainConfigIDFromContext(ctx) // shortcut
-	}
-	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-		conf, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
-		if err != nil {
-			log.Fatalf("ERROR: Failed to read external chain configuration file: %v", err)
-			return ""
-		}
-		// Don't check for name presence; it is non-essential to function and just for humans to read.
-		return conf.Name
 	}
 	return core.DefaultChainConfigName
 }
@@ -196,26 +175,9 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 	return key
 }
 
-// parseBootstrapNodes is a helper function to parse stringified bs nodes, ie []"enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303",...
-// to usable Nodes. It takes a slice of strings and returns a slice of Nodes.
-func parseBootstrapNodes(nodeStrings []string) []*discover.Node {
-	// Otherwise parse and use the CLI bootstrap nodes
-	bootnodes := []*discover.Node{}
-
-	for _, url := range nodeStrings {
-		node, err := discover.ParseNode(url)
-		if err != nil {
-			glog.V(logger.Error).Infof("Bootstrap URL %s: %v\n", url, err)
-			continue
-		}
-		bootnodes = append(bootnodes, node)
-	}
-	return bootnodes
-}
-
-// MakeBootstrapNodes creates a list of bootstrap nodes from the command line
+// MakeBootstrapNodesFromContext creates a list of bootstrap nodes from the command line
 // flags, reverting to pre-configured ones if none have been specified.
-func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
+func MakeBootstrapNodesFromContext(ctx *cli.Context) []*discover.Node {
 	// Return pre-configured nodes if none were manually requested
 	if !ctx.GlobalIsSet(BootnodesFlag.Name) {
 
@@ -223,32 +185,9 @@ func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
 		if ctx.GlobalBool(TestNetFlag.Name) {
 			return TestNetBootNodes
 		}
-
-		// --chainconfig flag
-		if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-
-			externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
-			if err != nil {
-				panic(err)
-			}
-
-			// check if config file contains bootnodes configuration data
-			// if it does, use it
-			// if it doesn't, panic ("hard" config file requires all available fields to be actionable)
-			if externalConfig.Bootstrap != nil {
-				glog.V(logger.Info).Info(fmt.Sprintf("Found custom bootstrap nodes in config file: \x1b[32m%s\x1b[39m", externalConfig.Bootstrap))
-				nodes := parseBootstrapNodes(externalConfig.Bootstrap)
-				if len(nodes) == 0 {
-					panic("no bootstrap nodes found in configuration file")
-				}
-				return nodes
-			}
-			panic("configuration file must contain bootstrap nodes")
-		} else {
-			return HomesteadBootNodes
-		}
+		return HomesteadBootNodes
 	}
-	return parseBootstrapNodes(strings.Split(ctx.GlobalString(BootnodesFlag.Name), ","))
+	return core.ParseBootstrapNodeStrings(strings.Split(ctx.GlobalString(BootnodesFlag.Name), ","))
 }
 
 // MakeListenAddress creates a TCP listening address string from set command
@@ -468,7 +407,6 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	return nil
 }
 
-
 // migrateToChainSubdirIfNecessary migrates ".../EthereumClassic/nodes|chaindata|...|nodekey" --> ".../EthereumClassic/mainnet/nodes|chaindata|...|nodekey"
 func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	name := getChainConfigIDFromContext(ctx) // "mainnet", "morden", "custom"
@@ -569,10 +507,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	name := makeNodeName(version, ctx)
 
 	// global settings
-	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
-			filepath.Clean(ctx.GlobalString(UseChainConfigFlag.Name))))
-	}
 
 	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
 		s := ctx.GlobalString(ExtraDataFlag.Name)
@@ -582,26 +516,9 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		miner.HeaderExtra = []byte(s)
 	}
 
-	// Initialise chain configuration before handling migrations or setting up node.
-	config := core.SufficientChainConfig{}
-	config.ID = getChainConfigIDFromContext(ctx)
-	config.Name = getChainConfigNameFromContext(ctx)
-	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
-	nodes := MakeBootstrapNodes(ctx)
-
-	// Read genesis block if chain config file has genesis state data.
-	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
-		if err != nil {
-			panic(err)
-		}
-		if externalConfig.Genesis != nil {
-			config.Genesis = externalConfig.Genesis
-		} else {
-			panic("Chain configuration file JSON did not contain necessary genesis data.")
-		}
-	}
-
+	// Makes sufficient configuration from JSON file or DB pending flags.
+	// Delegates flag usage.
+	config := mustMakeSufficientConfiguration(ctx)
 
 	// Data migrations...
 
@@ -641,7 +558,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		PrivateKey:      MakeNodeKey(ctx),
 		Name:            name,
 		NoDiscovery:     ctx.GlobalBool(NoDiscoverFlag.Name),
-		BootstrapNodes:  nodes,
+		BootstrapNodes:  config.ParsedBootstrap,
 		ListenAddr:      MakeListenAddress(ctx),
 		NAT:             MakeNAT(ctx),
 		MaxPeers:        ctx.GlobalInt(MaxPeersFlag.Name),
@@ -691,18 +608,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 	if _, ok := ethConf.GpoMaxGasPrice.SetString(ctx.GlobalString(GpoMaxGasPriceFlag.Name), 0); !ok {
 		log.Fatalf("malformed %s flag value %q", GpoMaxGasPriceFlag.Name, ctx.GlobalString(GpoMaxGasPriceFlag.Name))
-	}
-
-	// Will be true if using valid --chainconfig flag json data, else will read from chaindata db.
-	if config.Genesis != nil {
-		chainDB := MakeChainDatabase(ctx)
-		block, err := core.WriteGenesisBlock(chainDB, config.Genesis)
-		if err != nil {
-			log.Fatalf("failed to write genesis block: %v", err)
-		} else {
-			log.Printf("successfully wrote genesis block and allocations: %x", block.Hash())
-		}
-		chainDB.Close()
 	}
 
 	// Configure the Whisper service
@@ -764,85 +669,68 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
 func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 
-	// Override configs based on SufficientChainConfig flag file
-	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
-
-		// Use externalConfig in lieu of pertinent node+eth Configs
-		// This will allow partial externalChainConfig JSON files to override only specified settings, ie ChainConfig, Genesis, Nodes...,
-		// *which may or may not be desirable UI
-		// TODO: handle construction configs in a much more refactored, less redundant way
-
-		externalConfig, err := readExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
-		if err != nil {
-			panic(err)
-		}
-
-		if externalConfig.ChainConfig != nil {
-			glog.V(logger.Info).Info(fmt.Sprintf("Found custom chain configuration: \x1b[32m%s\x1b[39m", externalConfig.ChainConfig))
-			return externalConfig.ChainConfig
-		}
-		// Chain config from file was nil. No go.
-		panic("Custom chain configuration file was invalid or empty: '" + ctx.GlobalString(UseChainConfigFlag.Name) + "'")
-	}
-
-
 	db := MakeChainDatabase(ctx)
 	defer db.Close()
-	glog.V(logger.Info).Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx) + "/chaindata"))
+	glog.V(logger.Info).Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata"))
 
 	return MustMakeChainConfigFromDb(ctx, db)
 }
 
-// readExternalChainConfig reads a flagged external json file for blockchain configuration
-// it accepts the raw path argument and cleans it, returning either a valid config or an error
-func readExternalChainConfig(flaggedExternalChainConfigPath string) (*core.SufficientChainConfig, error) {
+// mustMakeSufficientConfiguration makes a sufficent chain configuration (id, chainconfig, nodes,...) from
+// either JSON file path, DB, or fails hard.
+// Forces users to provide a full and complete config file if any is specified.
+// Delegates flags to determine which source to use for configuration setup.
+func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConfig {
 
-	// ensure flag arg cleanliness
-	flaggedExternalChainConfigPath = filepath.Clean(flaggedExternalChainConfigPath)
+	config := &core.SufficientChainConfig{}
 
-	// ensure file exists and that it is NOT a directory
-	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("ERROR: No existing chain configuration file found at: %s", flaggedExternalChainConfigPath)
-	} else if info.IsDir() {
-		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
-	} else {
-		customC, err := core.ReadChainConfigFromJSONFile(flaggedExternalChainConfigPath)
-		if err == nil {
-			if invalid, ok := customC.IsValid(); !ok {
-				return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
-			}
-			return customC, nil
-		} else {
-			return nil, fmt.Errorf("ERROR: Error reading configuration file (%s): %v", flaggedExternalChainConfigPath, err)
+	// If external JSON --chainconfig specified.
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
+			filepath.Clean(ctx.GlobalString(UseChainConfigFlag.Name))))
+
+		// Returns surely valid suff chain config.
+		config, err := core.ReadExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+		if err != nil {
+			panic(err)
 		}
+
+		logChainConfiguration(ctx, config.ChainConfig)
+
+		chainDB := MakeChainDatabase(ctx)
+		block, err := core.WriteGenesisBlock(chainDB, config.Genesis)
+		if err != nil {
+			log.Fatalf("failed to write genesis block: %v", err)
+		} else {
+			log.Printf("successfully wrote genesis block and allocations: %x", block.Hash())
+		}
+		chainDB.Close()
+
+		return config
 	}
+
+	// Initialise chain configuration before handling migrations or setting up node.
+
+	config.ID = getChainConfigIDFromContext(ctx)
+	config.Name = getChainConfigNameFromContext(ctx)
+	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
+	config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
+
+	return config
 }
 
-// MustMakeChainConfigFromDb reads the chain configuration from the given database.
-func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
-
+func logChainConfiguration(ctx *cli.Context, config *core.ChainConfig) {
 	separator := strings.Repeat("-", 110) // for display formatting
-
-	c := core.DefaultConfig
-	if ctx.GlobalBool(TestNetFlag.Name) {
-		c = core.TestConfig
-	}
 
 	glog.V(logger.Warn).Info(separator)
 	glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
 
-	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
-	genesisHash := ""
-	if genesis != nil {
-		genesisHash = genesis.Hash().Hex()
-	}
-	glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
-	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain upgrades associated with this genesis block:", len(c.Forks)))
+	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain upgrades associated with this genesis block:", len(config.Forks)))
 
-	for i := range c.Forks {
-		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v", c.Forks[i].Block, c.Forks[i].Name))
-		if (!c.Forks[i].RequiredHash.IsEmpty()) {
-			glog.V(logger.Warn).Info(fmt.Sprintf("         with block %v", c.Forks[i].RequiredHash.Hex()))
+	for i := range config.Forks {
+		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v", config.Forks[i].Block, config.Forks[i].Name))
+		if !config.Forks[i].RequiredHash.IsEmpty() {
+			glog.V(logger.Warn).Info(fmt.Sprintf("         with block %v", config.Forks[i].RequiredHash.Hex()))
 		}
 	}
 
@@ -852,6 +740,27 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[32mEthereum (ETC) Classic\x1b[39m blockchain!")
 	}
 	glog.V(logger.Warn).Info(separator)
+}
+
+// MustMakeChainConfigFromDb reads the chain configuration from the given database.
+func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
+
+	c := core.DefaultConfig
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		c = core.TestConfig
+	}
+
+	logChainConfiguration(ctx, c)
+
+	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
+	genesisHash := ""
+	if genesis != nil {
+		genesisHash = genesis.Hash().Hex()
+	}
+	if genesisHash != "" {
+		glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
+	}
+
 	return c
 }
 

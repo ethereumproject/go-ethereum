@@ -334,7 +334,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 
 	chainConfig := MustMakeChainConfig(ctx)
 	var nodes []string
-	for _, node := range MakeBootstrapNodes(ctx) {
+	for _, node := range MakeBootstrapNodesFromContext(ctx) {
 		nodes = append(nodes, node.String())
 	}
 

@@ -27,6 +27,9 @@ import (
 	"sort"
 	"sync"
 
+	"path/filepath"
+	"reflect"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -34,7 +37,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"reflect"
+	"github.com/ethereumproject/go-ethereum/p2p/discover"
 )
 
 var (
@@ -52,6 +55,7 @@ type SufficientChainConfig struct {
 	Genesis     *GenesisDump `json:"genesis"`
 	ChainConfig *ChainConfig `json:"chainConfig"`
 	Bootstrap   []string     `json:"bootstrap"`
+	ParsedBootstrap []*discover.Node `json:"-"`
 }
 
 // GenesisDump is the geth JSON format.
@@ -140,18 +144,40 @@ type BadHash struct {
 
 func (c *SufficientChainConfig) IsValid() (string, bool) {
 	// entirely empty
-	if reflect.DeepEqual(c, SufficientChainConfig{}) { return "the whole thing", false }
+	if reflect.DeepEqual(c, SufficientChainConfig{}) {
+		return "the whole thing", false
+	}
 
-	if c.ID == "" { return "id", false }
+	if c.ID == "" {
+		return "id", false
+	}
 
-	if len(c.Genesis.Nonce) == 0 { return "genesis.nonce", false }
-	if len(c.Genesis.GasLimit) == 0 { return "genesis.gasLimit", false }
-	if len(c.Genesis.Difficulty) == 0 { return "genesis.difficulty", false }
-	if _, e := c.Genesis.Header(); e != nil { return "genesis: " + e.Error(), false }
+	if c.Genesis == nil {
+		return "genesis", false
+	}
+	if len(c.Genesis.Nonce) == 0 {
+		return "genesis.nonce", false
+	}
+	if len(c.Genesis.GasLimit) == 0 {
+		return "genesis.gasLimit", false
+	}
+	if len(c.Genesis.Difficulty) == 0 {
+		return "genesis.difficulty", false
+	}
+	if _, e := c.Genesis.Header(); e != nil {
+		return "genesis: " + e.Error(), false
+	}
 
-	if len(c.ChainConfig.Forks) == 0 { return "forks", false }
+	if c.ChainConfig == nil {
+		return "chainConfig", false
+	}
+	if len(c.ChainConfig.Forks) == 0 {
+		return "forks", false
+	}
 
-	if len(c.Bootstrap) == 0 { return "bootstrap", false }
+	if c.Bootstrap == nil || len(c.Bootstrap) == 0 {
+		return "bootstrap", false
+	}
 
 	return "", true
 }
@@ -202,7 +228,7 @@ func (c *ChainConfig) SortForks() *ChainConfig {
 // It returns big.Int zero-value if no chainID is set for eip155,
 // which means that it implicitly assumes to be only called for blocks >= Diehard fork block num.
 // If called/configured "incorrectly" it will "pass the buck" by returning a non-error (ie zero value).
-func (c *ChainConfig) GetChainID() (*big.Int) {
+func (c *ChainConfig) GetChainID() *big.Int {
 	n := new(big.Int)
 	if feat, _, ok := c.GetFeature(c.ForkByName("Diehard").Block, "eip155"); ok {
 		if val, k := feat.GetBigInt("chainID"); k {
@@ -354,10 +380,21 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
-// ReadChainConfigFromJSONFile reads a given json file into a *ChainConfig.
-// Again, no checks are made on the file path.
-func ReadChainConfigFromJSONFile(path string) (*SufficientChainConfig, error) {
-	f, err := os.Open(path)
+// ReadExternalChainConfig reads a flagged external json file for blockchain configuration.
+// It returns a valid and full ("hard") configuration or an error.
+func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error) {
+
+	// ensure flag arg cleanliness
+	flaggedExternalChainConfigPath := filepath.Clean(incomingPath)
+
+	// ensure file exists and that it is NOT a directory
+	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("ERROR: No existing chain configuration file found at: %s", flaggedExternalChainConfigPath)
+	} else if info.IsDir() {
+		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
+	}
+
+	f, err := os.Open(flaggedExternalChainConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
 	}
@@ -365,9 +402,40 @@ func ReadChainConfigFromJSONFile(path string) (*SufficientChainConfig, error) {
 
 	var config = &SufficientChainConfig{}
 	if json.NewDecoder(f).Decode(config); err != nil {
-		return nil, fmt.Errorf("%s: %s", path, err)
+		return nil, fmt.Errorf("%s: %s", flaggedExternalChainConfigPath, err)
 	}
-	return config, nil
+
+	if err == nil {
+		config.ParsedBootstrap = ParseBootstrapNodeStrings(config.Bootstrap)
+
+		if invalid, ok := config.IsValid(); !ok {
+			return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
+		}
+
+		if h, err := config.Genesis.Header(); err == nil {
+			glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", h.Hash().Hex()))
+		}
+
+		return config, nil
+	}
+	return nil, fmt.Errorf("ERROR: Error reading configuration file (%s): %v", flaggedExternalChainConfigPath, err)
+}
+
+// ParseBootstrapNodeStrings is a helper function to parse stringified bs nodes, ie []"enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303",...
+// to usable Nodes. It takes a slice of strings and returns a slice of Nodes.
+func ParseBootstrapNodeStrings(nodeStrings []string) []*discover.Node {
+	// Otherwise parse and use the CLI bootstrap nodes
+	bootnodes := []*discover.Node{}
+
+	for _, url := range nodeStrings {
+		node, err := discover.ParseNode(url)
+		if err != nil {
+			glog.V(logger.Error).Infof("Bootstrap URL %s: %v\n", url, err)
+			continue
+		}
+		bootnodes = append(bootnodes, node)
+	}
+	return bootnodes
 }
 
 // GetString gets and option value for an options with key 'name',
