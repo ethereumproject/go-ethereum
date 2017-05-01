@@ -44,34 +44,70 @@ This repository includes several wrappers/executables found in the `cmd` directo
 | `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/ethereumproject/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/ethereumproject/rpc-tests/blob/master/README.md) for details. |
 | `rlpdump` | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://github.com/ethereumproject/wiki/wiki/RLP)) dumps (data encoding used by the Ethereum protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
 
-## Running geth
+## Running _geth_: the basics
 
-Going through all the possible command line flags would be overwhelming here, but below you'll find a few common parameter combos to get you up to speed quickly on how you can run your own Geth instance. 
+By default, geth will store relevant node data in a __parent directory__ depending on your OS: 
+- Linux: `$HOME/.ethereum-classic/`
+- Mac: `$HOME/Library/EthereumClassic/`
+- Windows: `$HOME/AppData/Roaming/`
 
-For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
+You can specify this directory on the command line by using the `--datadir` flag.
+
+Within this parent directory, geth will use a __subdirectory__ to hold data for each network you run. The defaults are `/mainnet` for the Mainnet, and `/morden` for the Testnet. 
+
+You can specify the subdirectory with the `--chain` flag.
+
+> _If you have existing data created prior to the [3.4 Release](), geth will attempt to migrate your existing ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page]()._
 
 ### Full node on the main Ethereum network
 
 By far the most common scenario is people wanting to simply interact with the Ethereum network: create accounts; transfer funds; deploy and interact with contracts. For this particular use-case the user doesn't care about years-old historical data, so we can fast-sync quickly to the current state of the network. To do so:
 
 ```
-$ geth --fast --cache=512 console
+$ geth --fast --cache=512
 ```
 
 This command will:
 
  * Start geth in fast sync mode (`--fast`), causing it to download more data in exchange for avoiding processing the entire history of the Ethereum network, which is very CPU intensive.
  * Bump the memory allowance of the database to 512MB (`--cache=512`), which can help significantly in sync times especially for HDD users. This flag is optional and you can set it as high or as low as you'd like, though we'd recommend the 512MB - 2GB range.
- * Start up Geth's built-in interactive [JavaScript console](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console), (via the trailing `console` subcommand) through which you can invoke all official [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API) as well as Geth's own [management APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs). This too is optional and if you leave it out you can always attach to an already running Geth instance with `geth --attach`.
 
-## Developing and advanced useage
+----
+### Create or manage account(s)
+```
+$ geth account new
+```
 
-This project is migrated from the now hard-forked [Ethereum (ETHF) Github project](https://github.com/ethereum), and we will need to slowly migrate pieces of the infrastructure required to maintain the project. We will apply all upstream patches unrelated to the DAO HF while organizing development.
+This command will create a new account and prompt you to enter a passphrase to protect your account. 
 
-Comments are being made in the codebase with the tag `!EPROJECT`
-recommending actions that must be taken to help complete the migration.
+Other `account` subcommands include:
+```
+SUBCOMMANDS:
 
-### Full node on the Ethereum test network
+        list    print account addresses
+        new     create a new account
+        update  update an existing account
+        import  import a private key into a new account
+
+```
+
+To learn more about creating, importing, and managing accounts please visit the [Accounts Wiki Page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-your-accounts). And, as always: _do not lose, forget, confuse, conflate, misuse, misunderstand, or misremember your password._
+
+----
+### Interact with the Javascript console
+```
+$ geth console
+```
+
+This command will start up Geth's built-in interactive [JavaScript console](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console), through which you can invoke all official [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API) as well as Geth's own [management APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs). This too is optional and if you leave it out you can always attach to an already running Geth instance with `geth --attach`.
+
+----
+
+> Going through all the possible command line flags would be overwhelming here, but below you'll find a few common parameter combos to get you up to speed quickly on how you can run your own Geth instance. 
+> 
+> For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
+
+## Running _geth_: developing and advanced useage
 
 If you'd like to play around with creating Ethereum contracts, you
 almost certainly would like to do that without any real money involved until you get the hang of the entire system. In other words, instead of attaching to the main network, you want to join the **test** network with your node, which is fully equivalent to the main network, but with play-Ether only.
@@ -80,22 +116,15 @@ almost certainly would like to do that without any real money involved until you
 $ geth --testnet --fast --cache=512 console
 ```
 
-The `--fast`, `--cache` flags and `console` subcommand have the exact same meaning as above and they
-are equially useful on the testnet too. Please see above for their explanations if you've skipped to
-here.
+The `--fast`, `--cache` flags and `console` subcommand have the exact same meaning as above and they are equally useful on the testnet too. Please see above for their explanations if you've skipped to here.
 
-Specifying the `--testnet` flag however will reconfigure your Geth instance a bit:
+Specifying the `--testnet` flag will reconfigure your Geth instance a bit:
 
- * Instead of using the default data directory (`~/.ethereum` on Linux for example), Geth will nest
-   itself one level deeper into a `testnet` subfolder (`~/.ethereum/testnet` on Linux).
- * Instead of connecting the main Ethereum network, the client will connect to the test network,
-   which uses different P2P bootnodes, different network IDs and genesis states.
+ * Instead of using the default data directory (`~/.ethereum-classic/mainnet` on Linux for example), Geth will host its data in a a `testnet` subfolder (`~/.ethereum-classic/testnet` on Linux).
+ * Instead of connecting the main Ethereum network, the client will connect to the test network, which uses different P2P bootnodes, different network IDs and genesis states.
 
-*Note: Although there are some internal protective measures to prevent transactions from crossing
-over between the main network and test network (different starting nonces), you should make sure to
-always use separate accounts for play-money and real-money. Unless you manually move accounts, Geth
-will by default correctly separate the two networks and will not make any accounts available between
-them.*
+> *Note: Although there are some internal protective measures to prevent transactions from crossing over between the main network and test network (different starting nonces), you should make sure to always use separate accounts for play-money and real-money. Unless you manually move accounts, Geth
+will by default correctly separate the two networks and will not make any accounts available between them.*
 
 ### Programatically interfacing Geth nodes
 
@@ -125,109 +154,134 @@ HTTP based JSON-RPC API options:
   * `--ipcapi` API's offered over the IPC-RPC interface (default: "admin,debug,eth,miner,net,personal,shh,txpool,web3")
   * `--ipcpath` Filename for IPC socket/pipe within the datadir (explicit paths escape it)
 
-You'll need to use your own programming environments' capabilities (libraries, tools, etc) to connect
-via HTTP, WS or IPC to a Geth node configured with the above flags and you'll need to speak [JSON-RPC](http://www.jsonrpc.org/specification)
-on all transports. You can reuse the same connection for multiple requests!
+You'll need to use your own programming environments' capabilities (libraries, tools, etc) to connect via HTTP, WS or IPC to a Geth node configured with the above flags and you'll need to speak [JSON-RPC](http://www.jsonrpc.org/specification) on all transports. You can reuse the same connection for multiple requests!
 
-**Note: Please understand the security implications of opening up an HTTP/WS based transport before
-doing so! Hackers on the internet are actively trying to subvert Ethereum nodes with exposed APIs!
-Further, all browser tabs can access locally running webservers, so malicious webpages could try to
-subvert locally available APIs!**
+> Note: Please understand the security implications of opening up an HTTP/WS based transport before doing so! Hackers on the internet are actively trying to subvert Ethereum nodes with exposed APIs! Further, all browser tabs can access locally running webservers, so malicious webpages could try to subvert locally available APIs!*
 
-### Operating a private network
+### Operating a private/custom network
 
-Maintaining your own private network is more involved as a lot of configurations taken for granted in
-the official networks need to be manually set up.
+Maintaining your own private network is more involved as several options taken for granted in the official networks need to be manually configured.
 
-#### Defining the private genesis state
+As of [Geth 3.4]() you are now able to configure a private chain via:
+1. initializing nodes with a custom __Genesis state__.
+2. specifying an __external chain configuration__ file, which includes necessary Genesis fields _as well as feature configurations for protocol forks, bootnodes, and chainID_. 
+
+Both usages rely on a specified external JSON file.
+
+Usages 1 and 2 are outlined below. The following instructions __Create the rendezvous point__ and __Starting up your member nodes__ will remain the same for both configuration implementations.
+
+#### Usage 1: Define the private genesis state
+
+The "genesis state" defines _Block 0_. Since a blockchain deterministically depends on the ordering and individual characteristics of every block, the configuration of a genesis state uniquely influences the "fingerprint" at any point following on the chain. Different _Block 0_, different _Block n_. 
+
+##### Initialize identical genesis states
 
 First, you'll need to create the genesis state of your networks, which all nodes need to be aware of
 and agree upon. This consists of a small JSON file (e.g. call it `genesis.json`):
 
 ```json
-{
-  "alloc"      : {},
-  "coinbase"   : "0x0000000000000000000000000000000000000000",
-  "difficulty" : "0x20000",
-  "extraData"  : "",
-  "gasLimit"   : "0x2fefd8",
-  "nonce"      : "0x0000000000000042",
-  "mixhash"    : "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "timestamp"  : "0x00"
-}
+  {
+    "nonce": "0x0000fd6f72646561",
+    "timestamp": "",
+    "parentHash": "",
+    "extraData": "",
+    "gasLimit": "0x2FEFD8",
+    "difficulty": "0x020000",
+    "mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
+    "coinbase": "",
+    "alloc": {}
+  }
+
 ```
 
-The above fields should be fine for most purposes, although we'd recommend changing the `nonce` to
-some random value so you prevent unknown remote nodes from being able to connect to you. If you'd
-like to pre-fund some accounts for easier testing, you can populate the `alloc` field with account
-configs:
+The above fields should be fine for most purposes, although we'd recommend changing the `nonce` to some random value so you prevent unknown remote nodes from being able to connect to you. If you'd like to pre-fund some accounts for easier testing, you can populate the `alloc` field with account configs:
 
 ```json
 "alloc": {
-  "0x0000000000000000000000000000000000000001": {"balance": "111111111"},
-  "0x0000000000000000000000000000000000000002": {"balance": "222222222"}
-}
+      "0000000000000000000000000000000000000001": {
+        "balance": "1"
+      },
+      "0000000000000000000000000000000000000002": {
+        "balance": "1"
+      },
+      "0000000000000000000000000000000000000003": {
+        "balance": "1"
+      },
+      "0000000000000000000000000000000000000004": {
+        "balance": "1"
+      },
+      "102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": {
+        "balance": "1606938044258990275541962092341162602522202993782792835301376"
+      }
+    }
 ```
 
-With the genesis state defined in the above JSON file, you'll need to initialize **every** Geth node
-with it prior to starting it up to ensure all blockchain parameters are correctly set:
+With the genesis state defined in the above JSON file, you'll need to initialize **every** Geth node with it prior to starting it up to ensure congruent blockchain parameters: 
 
 ```
 $ geth init path/to/genesis.json
 ```
 
-#### Creating the rendezvous point
 
-With all nodes that you want to run initialized to the desired genesis state, you'll need to start a
-bootstrap node that others can use to find each other in your network and/or over the internet. The
-clean way is to configure and run a dedicated bootnode:
+#### Usage 2: Define external chain configuration
+
+Specifying an external chain configuration file will allow even finer-grained control over a custom blockchain/network configuration, including the genesis state and extending through bootnodes and forks/feature configurations (protocol upgrades). 
+
+```
+$ geth --chainconfig=/path/to/customnet.json
+```
+
+Please find external configuration files representing the Mainnet and Morden Testnet default specifications in the [/config]() subdirectory of this repo. You can use either of these files as a starting point for your own customizations.
+
+The external chain configuration file specifies valid settings for the following top-level fields. 
+
+| key | notes |
+--- | --- | ---
+| `chainID` |  Determines local __/subdir__ for chain data. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in `EIP-155`; that is configured within `forks.features`. |
+| `name` | Human readable name, ie _Ethereum Classic Mainnet_, _Morden Testnet._ |
+| `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block (just like `init`). The data required is identical to __Usage 1__. |
+| `forks` | Determines configuration for fork-based __protocol upgrades__, ie _EIP-150_, _EIP-155_, _EIP-160_, _ECIP-1010_, etc ;-). |
+| `bootstrap` | Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
+
+> Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chainconfig` incompatible with `--chain`, `--bootnodes`, `--testnet`. This "hard"/explicit configuration scheme is intended to ensure that "peeking silently" unwanted defaults do not disable your time and energy. 
+
+##### Create the rendezvous point
+
+Once all participating nodes have been initialized to the desired genesis state, you'll need to start a __bootstrap node__ that others can use to find each other in your network and/or over the internet. The clean way is to configure and run a dedicated bootnode:
 
 ```
 $ bootnode --genkey=boot.key
 $ bootnode --nodekey=boot.key
 ```
 
-With the bootnode online, it will display an [`enode` URL](https://github.com/ethereumproject/wiki/wiki/enode-url-format)
-that other nodes can use to connect to it and exchange peer information. Make sure to replace the
-displayed IP address information (most probably `[::]`) with your externally accessible IP to get the
-actual `enode` URL.
+With the bootnode online, it will display an [`enode` URL](https://github.com/ethereumproject/wiki/wiki/enode-url-format) that other nodes can use to connect to it and exchange peer information. Make sure to replace the
+displayed IP address information (most probably `[::]`) with your externally accessible IP to get the actual `enode` URL.
 
 *Note: You could also use a full fledged Geth node as a bootnode, but it's the less recommended way.*
 
-#### Starting up your member nodes
+##### Starting up your member nodes
 
-With the bootnode operational and externally reachable (you can try `telnet <ip> <port>` to ensure
-it's indeed reachable), start every subsequent Geth node pointed to the bootnode for peer discovery
-via the `--bootnodes` flag. It will probably also be desirable to keep the data directory of your
-private network separated, so do also specify a custom `--datadir` flag.
+With the bootnode operational and externally reachable (you can try `telnet <ip> <port>` to ensure it's indeed reachable), start every subsequent Geth node pointed to the bootnode for peer discovery via the `--bootnodes` flag. It will probably be desirable to keep private network data separate from defaults; to do so, specify a custom `--datadir` and/or `--chain` flag.
 
 ```
-$ geth --datadir=path/to/custom/data/folder --bootnodes=<bootnode-enode-url-from-above>
+$ geth --datadir=path/to/custom/data/folder \
+       --chain=kittynet \
+       --bootnodes=<bootnode-enode-url-from-above>
 ```
 
-*Note: Since your network will be completely cut off from the main and test networks, you'll also
-need to configure a miner to process transactions and create new blocks for you.*
+*Note: Since your network will be completely cut off from the main and test networks, you'll also need to configure a miner to process transactions and create new blocks for you.*
 
 #### Running a private miner
 
-Mining on the public Ethereum network is a complex task as it's only feasible using GPUs, requiring
-an OpenCL or CUDA enabled `ethminer` instance. For information on such a setup, please consult the
-[EtherMining subreddit](https://www.reddit.com/r/EtherMining/) and the [Genoil miner](https://github.com/Genoil/cpp-ethereum)
-repository.
+Mining on the public Ethereum network is a complex task as it's only feasible using GPUs, requiring an OpenCL or CUDA enabled `ethminer` instance. For information on such a setup, please consult the [EtherMining subreddit](https://www.reddit.com/r/EtherMining/) and the [Genoil miner](https://github.com/Genoil/cpp-ethereum) repository.
 
-In a private network setting however, a single CPU miner instance is more than enough for practical
-purposes as it can produce a stable stream of blocks at the correct intervals without needing heavy
-resources (consider running on a single thread, no need for multiple ones either). To start a Geth
-instance for mining, run it with all your usual flags, extended by:
+In a private network setting however, a single CPU miner instance is more than enough for practical purposes as it can produce a stable stream of blocks at the correct intervals without needing heavy resources (consider running on a single thread, no need for multiple ones either). To start a Geth instance for mining, run it with all your usual flags, extended by:
 
 ```
 $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x0000000000000000000000000000000000000000
 ```
 
-Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to
-the account specified by `--etherbase`. You can further tune the mining by changing the default gas
-limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
+Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to the account specified by `--etherbase`. You can further tune the mining by changing the default gas limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
 
 ## Contribution
 
@@ -235,16 +289,17 @@ Thank you for considering to help out with the source code!
 
 The core values of democratic engagement, transparency, and integrity run deep with us. We welcome contributions from everyone, and are grateful for even the smallest of fixes.  :clap:
 
+This project is migrated from the now hard-forked [Ethereum (ETHF) Github project](https://github.com/ethereum), and we will need to slowly migrate pieces of the infrastructure required to maintain the project. We will apply all upstream patches unrelated to the DAO HF while organizing development.
+
+Comments are being made in the codebase with the tag `!EPROJECT`
+recommending actions that must be taken to help complete the migration.
+
 If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes, please check up with the core devs first on [our gitter channel](https://gitter.im/ethereumproject/go-ethereum) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
 
 Please see the [Wiki](https://github.com/ethereumproject/go-ethereum/wiki) for more details on configuring your environment, managing project dependencies, and testing procedures.
 
 ## License
 
-The go-ethereum library (i.e. all code outside of the `cmd` directory) is licensed under the
-[GNU Lesser General Public License v3.0](http://www.gnu.org/licenses/lgpl-3.0.en.html), also
-included in our repository in the `COPYING.LESSER` file.
+The go-ethereum library (i.e. all code outside of the `cmd` directory) is licensed under the [GNU Lesser General Public License v3.0](http://www.gnu.org/licenses/lgpl-3.0.en.html), also included in our repository in the `COPYING.LESSER` file.
 
-The go-ethereum binaries (i.e. all code inside of the `cmd` directory) is licensed under the
-[GNU General Public License v3.0](http://www.gnu.org/licenses/gpl-3.0.en.html), also included
-in our repository in the `COPYING` file.
+The go-ethereum binaries (i.e. all code inside of the `cmd` directory) is licensed under the [GNU General Public License v3.0](http://www.gnu.org/licenses/gpl-3.0.en.html), also included in our repository in the `COPYING` file.
