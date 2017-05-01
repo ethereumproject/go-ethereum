@@ -75,6 +75,7 @@ OPTIONS:
 `
 }
 
+var currentChainID string
 var reservedChainIDS = map[string]bool{
 	"chaindata": true,
 	"dapp":      true,
@@ -103,6 +104,9 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 			log.Fatal("Argument to --chain must not be blank.")
 			return ""
 		}
+	}
+	if currentChainID != "" {
+		return currentChainID
 	}
 	return core.DefaultChainConfigID
 }
@@ -695,7 +699,9 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 			panic(err)
 		}
 
+		currentChainID = config.ID // Set global var. 
 		logChainConfiguration(ctx, config.ChainConfig)
+
 
 		chainDB := MakeChainDatabase(ctx)
 		block, err := core.WriteGenesisBlock(chainDB, config.Genesis)
