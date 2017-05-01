@@ -90,6 +90,13 @@ var reservedChainIDS = map[string]bool{
 // Disallowed words which conflict with in-use data files will log the problem and return "",
 // which cause an error.
 func getChainConfigIDFromContext(ctx *cli.Context) string {
+	chainFlagIsSet := ctx.GlobalIsSet(TestNetFlag.Name) || ctx.GlobalIsSet(ChainIDFlag.Name)
+	if chainFlagIsSet && currentChainID != "" {
+		panic("Flags --chainconfig and --chain are conflicting. Please use only one.")
+	}
+	if currentChainID != "" {
+		return currentChainID
+	}
 	if ctx.GlobalBool(TestNetFlag.Name) {
 		return core.DefaultTestnetChainConfigID
 	}
@@ -104,9 +111,6 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 			log.Fatal("Argument to --chain must not be blank.")
 			return ""
 		}
-	}
-	if currentChainID != "" {
-		return currentChainID
 	}
 	return core.DefaultChainConfigID
 }
@@ -697,6 +701,11 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 		config, err := core.ReadExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
 		if err != nil {
 			panic(err)
+		}
+
+		// Check for flagged bootnodes.
+		if ctx.GlobalIsSet(BootnodesFlag.Name) {
+			panic("Conflicting --chainconfig and --bootnodes flags. Please use either but not both.")
 		}
 
 		currentChainID = config.ID // Set global var.
