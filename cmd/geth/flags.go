@@ -34,9 +34,11 @@ var (
 		Name:  "keystore",
 		Usage: "Directory for the keystore (default = inside the datadir)",
 	}
-	ChainNameFlag = cli.StringFlag{
+	ChainIDFlag = cli.StringFlag{
 		Name: "chain",
-		Usage: "Name of blockchain network to use (default='mainnnet', test='testnet'). These correlate to subdirectories under your base <EthereumClassic> data directory (--datadir). Chain name to use can also be configured from an external chain configuration file.",
+		Usage: `Identifier of blockchain network to use (default='mainnet', test='morden').
+				Relevant data for this blockchain will correlate to subdirectories under your base data directory (--datadir), by ie $HOME/Library/EthereumClassic/mainnet/.
+				This variable can also be configured from an external JSON chain configuration file by setting the 'id' key.`,
 		Value: core.DefaultChainConfigID,
 	}
 	NetworkIdFlag = cli.IntFlag{

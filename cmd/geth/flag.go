@@ -93,8 +93,8 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 	if ctx.GlobalBool(TestNetFlag.Name) {
 		return core.DefaultTestnetChainConfigID
 	}
-	if ctx.GlobalIsSet(ChainNameFlag.Name) {
-		if id := ctx.GlobalString(ChainNameFlag.Name); id != "" {
+	if ctx.GlobalIsSet(ChainIDFlag.Name) {
+		if id := ctx.GlobalString(ChainIDFlag.Name); id != "" {
 			if reservedChainIDS[id] {
 				log.Fatal("Reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes'. Please use a different identifier.")
 				return ""
@@ -118,7 +118,7 @@ func getChainConfigNameFromContext(ctx *cli.Context) string {
 	if ctx.GlobalBool(TestNetFlag.Name) {
 		return core.DefaultTestnetChainConfigName
 	}
-	if ctx.GlobalIsSet(ChainNameFlag.Name) {
+	if ctx.GlobalIsSet(ChainIDFlag.Name) {
 		return getChainConfigIDFromContext(ctx) // shortcut
 	}
 	return core.DefaultChainConfigName
@@ -416,7 +416,7 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	name := getChainConfigIDFromContext(ctx) // "mainnet", "morden", "custom"
 
 	// return ok if custom
-	//if ctx.GlobalIsSet(ChainNameFlag.Name) {
+	//if ctx.GlobalIsSet(ChainIDFlag.Name) {
 	//	return nil
 	//}
 
@@ -699,7 +699,7 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 			panic(err)
 		}
 
-		currentChainID = config.ID // Set global var. 
+		currentChainID = config.ID // Set global var.
 		logChainConfiguration(ctx, config.ChainConfig)
 
 

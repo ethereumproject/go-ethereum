@@ -130,7 +130,7 @@ the configuration of a chain database. It includes genesis block data as well as
 		DataDirFlag,
 		UseChainConfigFlag,
 		KeyStoreDirFlag,
-		ChainNameFlag,
+		ChainIDFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,
 		CacheFlag,
