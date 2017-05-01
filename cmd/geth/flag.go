@@ -377,7 +377,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	// Only move if defaulty ETC (mainnet or testnet).
 	// Get head block if testnet, fork block if mainnet.
-	b := core.GetBlock(chainDB, core.DefaultConfig.ForkByName("TheDAO Hard Fork").RequiredHash)
+	b := core.GetBlock(chainDB, core.DefaultConfig.ForkByName("The DAO Hard Fork").RequiredHash)
 	if ctx.GlobalIsSet(TestNetFlag.Name) {
 		b = core.GetBlock(chainDB, core.GetHeadFastBlockHash(chainDB))
 	}

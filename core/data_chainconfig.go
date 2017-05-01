@@ -62,7 +62,7 @@ var DefaultConfig = &ChainConfig{
 			},
 		},
 		{
-			Name:         "TheDAO Hard Fork",
+			Name:         "The DAO Hard Fork",
 			Block:        big.NewInt(1920000),
 			RequiredHash: common.HexToHash("94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f"),
 			Features:     []*ForkFeature{},
@@ -149,7 +149,7 @@ var TestConfig = &ChainConfig{
 			},
 		},
 		{
-			Name:     "TheDAO Hard Fork",
+			Name:     "The DAO Hard Fork",
 			Block:    big.NewInt(1885000),
 			Features: []*ForkFeature{},
 		},

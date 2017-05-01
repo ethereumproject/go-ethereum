@@ -330,10 +330,10 @@ func TestCalcDifficulty1(t *testing.T) {
 			big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(0)), parentDiff),
 			big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(1)), parentDiff),
 
-			big.NewInt(0).Add(config.ForkByName("TheDAO Hard Fork").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("TheDAO Hard Fork").Block, big.NewInt(-2)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("TheDAO Hard Fork").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("TheDAO Hard Fork").Block, big.NewInt(-1)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("TheDAO Hard Fork").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("TheDAO Hard Fork").Block, big.NewInt(0)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("TheDAO Hard Fork").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("TheDAO Hard Fork").Block, big.NewInt(1)), parentDiff),
+			big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-2)), parentDiff),
+			big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-1)), parentDiff),
+			big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(0)), parentDiff),
+			big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(1)), parentDiff),
 
 			big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-2)), parentDiff),
 			big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-1)), parentDiff),

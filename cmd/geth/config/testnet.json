@@ -63,7 +63,7 @@
         ]
       },
       {
-        "name": "TheDAO Hard Fork",
+        "name": "The DAO Hard Fork",
         "block": 1885000,
         "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "features": []
