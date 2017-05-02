@@ -41,8 +41,8 @@ import (
 )
 
 var (
-	ErrChainConfigNotFound     = errors.New("ChainConfig not found")
-	ErrChainConfigForkNotFound = errors.New("ChainConfig fork not found")
+	ErrChainConfigNotFound     = errors.New("chain config not found")
+	ErrChainConfigForkNotFound = errors.New("chain config fork not found")
 
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")

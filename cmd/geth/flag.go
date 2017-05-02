@@ -28,6 +28,8 @@ import (
 	"strconv"
 	"strings"
 
+	"errors"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
@@ -75,6 +77,13 @@ OPTIONS:
 `
 }
 
+var (
+	ErrInvalidFlag        = errors.New("invalid flag or context value")
+	ErrInvalidChainID     = errors.New("invalid chainID")
+	ErrDirectoryStructure = errors.New("error in directory structure")
+	ErrStackFail          = errors.New("error in stack protocol")
+)
+
 var currentChainID string
 var reservedChainIDS = map[string]bool{
 	"chaindata": true,
@@ -93,7 +102,8 @@ var reservedChainIDS = map[string]bool{
 func getChainConfigIDFromContext(ctx *cli.Context) string {
 	chainFlagIsSet := ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx))
 	if chainFlagIsSet && currentChainID != "" {
-		panic("Flags --chain-config and --chain are conflicting. Please use only one.")
+		glog.Fatalf("%v: %v: external and flag configurations are conflicting, please use only one",
+			ErrInvalidFlag, ErrInvalidChainID)
 	}
 	if currentChainID != "" {
 		return currentChainID
@@ -104,12 +114,14 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 	if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) {
 		if id := ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx)); id != "" {
 			if reservedChainIDS[id] {
-				log.Fatal("Reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes'. Please use a different identifier.")
+				glog.Fatalf(`%v: %v: reserved word
+					reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes',
+					please use a different identifier`, ErrInvalidFlag, ErrInvalidChainID)
 				return ""
 			}
 			return id
 		} else {
-			log.Fatal("Argument to --chain must not be blank.")
+			glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
 			return ""
 		}
 	}
@@ -136,7 +148,8 @@ func mustMakeDataDir(ctx *cli.Context) string {
 	if path := ctx.GlobalString(aliasableName(DataDirFlag.Name, ctx)); path != "" {
 		return path
 	}
-	log.Fatal("Cannot determine data directory, please set manually (--datadir)")
+
+	glog.Fatalf("%v: cannot determine data directory, please set manually (--%v)", ErrDirectoryStructure, DataDirFlag.Name)
 	return ""
 }
 
@@ -246,11 +259,11 @@ func MakeWSRpcHost(ctx *cli.Context) string {
 // for Geth and returns half of the allowance to assign to the database.
 func MakeDatabaseHandles() int {
 	if err := raiseFdLimit(2048); err != nil {
-		log.Fatal("Failed to raise file descriptor allowance: ", err)
+		glog.Warning("Failed to raise file descriptor allowance: ", err)
 	}
 	limit, err := getFdLimit()
 	if err != nil {
-		log.Fatal("Failed to retrieve file descriptor allowance: ", err)
+		glog.Warning("Failed to retrieve file descriptor allowance: ", err)
 	}
 	if limit > 2048 { // cap database file descriptors even if more is available
 		limit = 2048
@@ -291,7 +304,7 @@ func MakeAddress(accman *accounts.Manager, account string) (accounts.Account, er
 	// Otherwise try to interpret the account as a keystore index
 	index, err := strconv.Atoi(account)
 	if err != nil {
-		return accounts.Account{}, fmt.Errorf("invalid account address or index %q", account)
+		return accounts.Account{}, fmt.Errorf("invalid account address or index: %q", account)
 	}
 	return accman.AccountByIndex(index)
 }
@@ -324,7 +337,7 @@ func MakePasswordList(ctx *cli.Context) []string {
 	}
 	text, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Fatal("Failed to read password file: ", err)
+		glog.Fatal("Failed to read password file: ", err)
 	}
 	lines := strings.Split(string(text), "\n")
 	// Sanitise DOS line endings.
@@ -349,7 +362,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// only if default <EthereumClassic>/ datadir doesn't already exist
 	if _, err := os.Stat(etcDataDirPath); err == nil {
 		// classic data dir already exists
-		log.Printf("INFO: Using existing ETClassic data directory at: %v.\n", etcDataDirPath)
+		glog.V(logger.Debug).Infof("Using existing ETClassic data directory at: %v.\n", etcDataDirPath)
 		return nil
 	}
 
@@ -365,9 +378,8 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// NOTE: Since ETH stores chaindata by default in Ethereum/geth/..., this path
 	// will not exist if the existing data belongs to ETH, so it works as a valid check for us as well.
 	if _, err := os.Stat(ethChainDBPath); os.IsNotExist(err) {
-		log.Printf(`
-		INFO: No existing default chaindata dir found at: %v \n
-		  Using default data directory at: %v.\n`,
+		glog.V(logger.Debug).Infof(`No existing default chaindata dir found at: %v
+		  	Using default data directory at: %v`,
 			ethChainDBPath, etcDataDirPath)
 		return nil
 	}
@@ -375,9 +387,8 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
 	chainDB, err := ethdb.NewLDBDatabase(ethChainDBPath, 0, 0)
 	if err != nil {
-		log.Fatalf(`
-		WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n
-		  Using default data directory at: %v`,
+		glog.Warningf(`Failed to check blockchain version for existing Ethereum chaindata database at: %v
+		 	Using default data directory at: %v`,
 			err, etcDataDirPath)
 		return nil
 	}
@@ -401,17 +412,16 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	}
 
 	if b == nil || (b != nil && conf.HeaderCheck(b.Header()) == nil) {
-		log.Printf(`
-		INFO/WARNING: Found existing default 'Ethereum' data directory with default ETC chaindata. \n
-		  Migrating it from: %v, to: %v \n
-		  To specify a different data directory use the '--datadir' flag.`,
+		glog.Warningf(`Found existing data directory named 'Ethereum' with default ETC chaindata.
+		  	Moving it from: %v, to: %v
+		  	To specify a different data directory use the '--datadir' flag.`,
 			ethDataDirPath, etcDataDirPath)
 		return os.Rename(ethDataDirPath, etcDataDirPath)
 	}
 
-	log.Printf(`INFO: Existing default Ethereum database at: %v isn't an Ethereum Classic default blockchain.\n
-	  Will not migrate. \n
-	  Using ETC chaindata database at: %v \n`,
+	glog.V(logger.Debug).Infof(`Existing default Ethereum database at: %v isn't an Ethereum Classic default blockchain.
+	  	Will not migrate.
+	  	Using ETC chaindata database at: %v`,
 		ethDataDirPath, etcDataDirPath)
 	return nil
 }
@@ -426,9 +436,6 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	//}
 
 	datapath := mustMakeDataDir(ctx) // ".../EthereumClassic/ | --datadir"
-	if datapath == "" {
-		return fmt.Errorf("Could not determine base data dir: %v", datapath)
-	}
 
 	subdirPath := MustMakeChainDataDir(ctx) // ie, <EthereumClassic>/mainnet
 
@@ -440,7 +447,8 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 		return nil
 	}
 	if subdirPathInfo != nil && !subdirPathInfo.IsDir() {
-		return fmt.Errorf("Found file named '%v' in EthereumClassic datadir, which conflicts with default chain directory naming convention: %v", name, subdirPath)
+		return fmt.Errorf(`%v: found file named '%v' in EthereumClassic datadir,
+			which conflicts with default chain directory naming convention: %v`, ErrDirectoryStructure, name, subdirPath)
 	}
 
 	// 3.3 testnet uses subdir '/testnet'
@@ -539,7 +547,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		// Allows to use --chainconfig flag as long configuration specifies mainnet or morden
 		(config.ID == core.DefaultTestnetChainConfigID || config.ID == core.DefaultChainConfigID) {
 		if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
-			log.Fatalf("Failed to migrate existing Classic database: %v", migrationError)
+			glog.Fatalf("%v: failed to migrate existing Classic database: %v", ErrDirectoryStructure, migrationError)
 		}
 	}
 	// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
@@ -547,7 +555,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
 	// and the user is using the Default configuration (ie "mainnet").
 	if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
-		log.Fatalf("An error occurred migrating existing data to named subdir : %v", subdirMigrateErr)
+		glog.Fatalf("%v: failed to migrate existing data to chain-specific subdir: %v", ErrDirectoryStructure, subdirMigrateErr)
 	}
 
 	// Avoid conflicting network flags
@@ -558,7 +566,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		}
 	}
 	if networks > 1 {
-		log.Fatalf("The %v flags are mutually exclusive", netFlags)
+		glog.Fatalf("%v: the %v flags are mutually exclusive", ErrInvalidFlag, netFlags)
 	}
 
 	// Configure the node's service container
@@ -659,21 +667,21 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Assemble and return the protocol stack
 	stack, err := node.New(stackConf)
 	if err != nil {
-		log.Fatal("Failed to create the protocol stack: ", err)
+		glog.Fatalf("%v: failed to create the protocol stack: ", ErrStackFail, err)
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
 		return eth.New(ctx, ethConf)
 	}); err != nil {
-		log.Fatal("Failed to register the Ethereum service: ", err)
+		glog.Fatalf("%v: failed to register the Ethereum service: ", ErrStackFail, err)
 	}
 	if shhEnable {
 		if err := stack.Register(func(*node.ServiceContext) (node.Service, error) { return whisper.New(), nil }); err != nil {
-			log.Fatal("Failed to register the Whisper service: ", err)
+			glog.Fatalf("%v: failed to register the Whisper service: ", ErrStackFail, err)
 		}
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {
-		glog.V(logger.Info).Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
+		glog.Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
 	}
 
 	return stack
@@ -684,7 +692,7 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 
 	db := MakeChainDatabase(ctx)
 	defer db.Close()
-	glog.V(logger.Info).Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata"))
+	glog.Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata"))
 
 	return MustMakeChainConfigFromDb(ctx, db)
 }
@@ -705,7 +713,7 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 		// Returns surely valid suff chain config.
 		config, err := core.ReadExternalChainConfig(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx)))
 		if err != nil {
-			panic(err)
+			glog.Fatalf("invalid external configuration JSON: %v", err)
 		}
 
 		// Check for flagged bootnodes.
@@ -720,30 +728,31 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 	}
 
 	// Initialise chain configuration before handling migrations or setting up node.
-
 	config.ID = getChainConfigIDFromContext(ctx)
 	config.Name = getChainConfigNameFromContext(ctx)
 	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
 	config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
+	logChainConfiguration(ctx, config)
 
 	return config
 }
 
-func logChainConfiguration(ctx *cli.Context, config *core.ChainConfig) {
-	separator := strings.Repeat("-", 110) // for display formatting
+func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
 
-	glog.V(logger.Warn).Info(separator)
-	glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
+	glog.Info(glog.Separator("-"))
 
-	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain upgrades associated with this genesis block:", len(config.Forks)))
+	glog.Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
+	glog.Info(fmt.Sprintf("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks)))
 
-	for i := range config.Forks {
-		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v", config.Forks[i].Block, config.Forks[i].Name))
-		if !config.Forks[i].RequiredHash.IsEmpty() {
-			glog.V(logger.Warn).Info(fmt.Sprintf("         with block %v", config.Forks[i].RequiredHash.Hex()))
+	for i := range config.ChainConfig.Forks {
+		glog.Info(fmt.Sprintf(" %7v %v", config.ChainConfig.Forks[i].Block, config.ChainConfig.Forks[i].Name))
+		if !config.ChainConfig.Forks[i].RequiredHash.IsEmpty() {
+			glog.Info(fmt.Sprintf("         with block %v", config.ChainConfig.Forks[i].RequiredHash.Hex()))
 		}
 	}
 
+	glog.Infof("Geth is configured to use blockchain: \x1b[32m%v (ETC)\x1b[39m", config.Name)
+	glog.Info(glog.Separator("-"))
 	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
 		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[33mEthereum (ETC) Testnet\x1b[39m blockchain!")
 	} else {
@@ -760,15 +769,13 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		c = core.TestConfig
 	}
 
-	logChainConfiguration(ctx, c)
-
 	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
 	genesisHash := ""
 	if genesis != nil {
 		genesisHash = genesis.Hash().Hex()
 	}
 	if genesisHash != "" {
-		glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
+		glog.Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
 	}
 
 	return c
@@ -784,7 +791,7 @@ func MakeChainDatabase(ctx *cli.Context) ethdb.Database {
 
 	chainDb, err := ethdb.NewLDBDatabase(filepath.Join(datadir, "chaindata"), cache, handles)
 	if err != nil {
-		log.Fatal("Could not open database: ", err)
+		glog.Fatal("Could not open database: ", err)
 	}
 	return chainDb
 }
@@ -802,7 +809,7 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	}
 	chain, err = core.NewBlockChain(chainDb, chainConfig, pow, new(event.TypeMux))
 	if err != nil {
-		log.Fatal("Could not start chainmanager: ", err)
+		glog.Fatal("Could not start chainmanager: ", err)
 	}
 	return chain, chainDb
 }
