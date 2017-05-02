@@ -19,6 +19,7 @@ package vm
 import (
 	"fmt"
 	"math/big"
+	"reflect"
 )
 
 const stackLimit = 1024 // maximum size of VM stack allowed.
@@ -71,6 +72,12 @@ func callGas(gasTable *GasTable, availableGas, base, callCost *big.Int) *big.Int
 		}
 	}
 	return callCost
+}
+
+// IsEmpty return true if all values are zero values,
+// which useful for checking JSON-decoded empty state.
+func (g *GasTable) IsEmpty() bool {
+	return reflect.DeepEqual(g, GasTable{})
 }
 
 // baseCheck checks for any stack error underflows

@@ -18,7 +18,7 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -39,14 +39,15 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Version is the application revision identifier. It can be set with the linker
 // as in: go build -ldflags "-X main.Version="`git describe --tags`
 var Version = "source"
 
-func main() {
-	app := cli.NewApp()
+func makeCLIApp() (app *cli.App) {
+	app = cli.NewApp()
 	app.Name = filepath.Base(os.Args[0])
 	app.Version = Version
 	app.Usage = "the go-ethereum command line interface"
@@ -110,6 +111,15 @@ This is a destructive action and changes the network in which you will be
 participating.
 `,
 		},
+		{
+			Action: dumpChainConfig,
+			Name:   "dumpChainConfig",
+			Usage:  "dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
+			Description: `
+The dump external configuration command writes a JSON file containing pertinent configuration data for
+the configuration of a chain database. It includes genesis block data as well as chain fork settings.
+`,
+		},
 	}
 
 	app.Flags = []cli.Flag{
@@ -118,7 +128,9 @@ participating.
 		PasswordFileFlag,
 		BootnodesFlag,
 		DataDirFlag,
+		UseChainConfigFlag,
 		KeyStoreDirFlag,
+		ChainIDFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,
 		CacheFlag,
@@ -226,7 +238,12 @@ participating.
 		cli.ShowAppHelp(c)
 		os.Exit(3)
 	}
+	return app
+}
 
+
+func main() {
+	app := makeCLIApp()
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -246,25 +263,21 @@ func geth(ctx *cli.Context) error {
 
 // initGenesis will initialise the given JSON format genesis file and writes it as
 // the zero'd block (i.e. genesis) or will fail hard if it can't succeed.
-func initGenesis(ctx *cli.Context) {
+func initGenesis(ctx *cli.Context) error {
 	path := ctx.Args().First()
 	if len(path) == 0 {
 		log.Fatal("need path argument to genesis JSON file")
+		return errors.New("need path argument to genesis JSON file")
 	}
 
-	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeDataDir(ctx), "chaindata"), 0, 0)
+	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeChainDataDir(ctx), "chaindata"), 0, 0)
 	if err != nil {
-		log.Fatal("could not open database: ", err)
+		log.Fatalf("could not open database: ", err)
+		return err
 	}
 
-	f, err := os.Open(path)
+	dump, err := core.ReadGenesisFromJSONFile(path)
 	if err != nil {
-		log.Fatal("failed to read genesis file: ", err)
-	}
-	defer f.Close()
-
-	dump := new(core.GenesisDump)
-	if json.NewDecoder(f).Decode(dump); err != nil {
 		log.Fatalf("%s: %s", path, err)
 	}
 
@@ -273,7 +286,75 @@ func initGenesis(ctx *cli.Context) {
 		log.Fatal("failed to write genesis block: ", err)
 	}
 	log.Printf("successfully wrote genesis block and/or chain rule set: %x", block.Hash())
+	return nil
 }
+
+
+// dumpExternailChainConfig exports chain configuration based on database to JSON file
+func dumpChainConfig(ctx *cli.Context) error {
+
+	chainConfigFilePath := ctx.Args().First()
+	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
+
+	if chainConfigFilePath == "" || chainConfigFilePath == "/" || chainConfigFilePath == "." {
+		log.Fatalf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank. You typed: %v ", chainConfigFilePath, ctx.Args().First())
+		return errors.New("invalid required filepath argument")
+	}
+
+	// pretty printy
+	cwd, _ := os.Getwd()
+	glog.V(logger.Info).Info(fmt.Sprintf("Dumping chain configuration JSON to \x1b[32m%s\x1b[39m, it may take a moment to tally genesis allocations...", common.EnsureAbsolutePath(cwd, chainConfigFilePath)))
+
+	db := MakeChainDatabase(ctx)
+
+	genesisDump, err := core.MakeGenesisDump(db)
+	if err != nil {
+		log.Fatalf("An error occurred dumping the genesis block state: %v", err)
+		return err
+	}
+	db.Close() // required to free for MustMakeChainConfig below
+
+	// Case: No genesis block exists in the given db.
+	// This case is probably that a user is running `dumpChainConfig` without
+	// having initialized any chaindata yet. If so, we should just dump defaulty values.
+	//
+	// FYI: here would be an inflection point for if we used a --genesis flag.
+	if genesisDump == nil {
+		if ctx.GlobalBool(TestNetFlag.Name) {
+			glog.V(logger.Info).Info("WARNING: No genesis block found in database. Dumping the testnet default genesis.")
+			genesisDump = core.TestNetGenesis
+		} else {
+			glog.V(logger.Info).Info("WARNING: No genesis block found in database. Dumping the mainnet default genesis.")
+			genesisDump = core.DefaultGenesis
+		}
+	} else {
+		// it'll only take a while if nondefaulty
+		glog.V(logger.Info).Info("Finished building genesis state dump. Whew!")
+	}
+
+	chainConfig := MustMakeChainConfig(ctx)
+	var nodes []string
+	for _, node := range MakeBootstrapNodesFromContext(ctx) {
+		nodes = append(nodes, node.String())
+	}
+
+	var currentConfig = &core.SufficientChainConfig{
+		ID:          getChainConfigIDFromContext(ctx),
+		Name:        getChainConfigNameFromContext(ctx),
+		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
+		Genesis:     genesisDump,
+		Bootstrap:   nodes,
+	}
+
+	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {
+		log.Fatalf("An error occurred while writing chain configuration: %v", writeError)
+		return writeError
+	}
+
+	glog.V(logger.Info).Info(fmt.Sprintf("Wrote chain config file to \x1b[32m%s\x1b[39m.", chainConfigFilePath))
+	return nil
+}
+
 
 // startNode boots up the system node and all registered protocols, after which
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces and the

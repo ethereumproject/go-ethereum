@@ -39,20 +39,22 @@ const nodeIDBits = 512
 // Node represents a host on the network.
 // The fields of Node may not be modified.
 type Node struct {
-	IP       net.IP // len 4 for IPv4 or 16 for IPv6
-	UDP, TCP uint16 // port numbers
-	ID       NodeID // the node's public key
+	IP       net.IP `json:"ip"`// len 4 for IPv4 or 16 for IPv6
+	// port numbers
+	UDP uint16 `json:"udp"`
+	TCP uint16 `json:"tcp"`
+	ID       NodeID `json:"node_id"`// the node's public key
 
 	// This is a cached copy of sha3(ID) which is used for node
 	// distance calculations. This is part of Node in order to make it
 	// possible to write tests that need a node at a certain distance.
 	// In those tests, the content of sha will not actually correspond
 	// with ID.
-	sha common.Hash
+	sha common.Hash `json:"sha"`
 
 	// whether this node is currently being pinged in order to replace
 	// it in a bucket
-	contested bool
+	contested bool `json:"contested"`
 }
 
 // NewNode creates a new node. It is mostly meant to be used for

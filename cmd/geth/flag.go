@@ -45,7 +45,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
 	"github.com/ethereumproject/go-ethereum/pow"
-	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -76,323 +75,75 @@ OPTIONS:
 `
 }
 
-// These are all the command line flags we support.
-// If you add to this list, please remember to include the
-// flag in the appropriate command definition.
-//
-// The flags are defined here so their names and help texts
-// are the same for all commands.
+var currentChainID string
+var reservedChainIDS = map[string]bool{
+	"chaindata": true,
+	"dapp":      true,
+	"keystore":  true,
+	"nodekey":   true,
+	"nodes":     true,
+	"geth":      true,
+}
 
-var (
-	// General settings
-	DataDirFlag = DirectoryFlag{
-		Name:  "datadir",
-		Usage: "Data directory for the databases and keystore",
-		Value: DirectoryString{common.DefaultDataDir()},
+// getChainConfigIDFromContext gets the --chain=my-custom-net value.
+// --testnet flag overrides --chain flag, thus return default testnet value.
+// Disallowed words which conflict with in-use data files will log the problem and return "",
+// which cause an error.
+func getChainConfigIDFromContext(ctx *cli.Context) string {
+	chainFlagIsSet := ctx.GlobalIsSet(TestNetFlag.Name) || ctx.GlobalIsSet(ChainIDFlag.Name)
+	if chainFlagIsSet && currentChainID != "" {
+		panic("Flags --chainconfig and --chain are conflicting. Please use only one.")
 	}
-	KeyStoreDirFlag = DirectoryFlag{
-		Name:  "keystore",
-		Usage: "Directory for the keystore (default = inside the datadir)",
+	if currentChainID != "" {
+		return currentChainID
 	}
-	NetworkIdFlag = cli.IntFlag{
-		Name:  "networkid",
-		Usage: "Network identifier (integer, 1=Homestead, 2=Morden)",
-		Value: eth.NetworkId,
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		return core.DefaultTestnetChainConfigID
 	}
-	TestNetFlag = cli.BoolFlag{
-		Name:  "testnet",
-		Usage: "Morden network: pre-configured test network with modified starting nonces (replay protection)",
-	}
-	DevModeFlag = cli.BoolFlag{
-		Name:  "dev",
-		Usage: "Developer mode: pre-configured private network with several debugging flags",
-	}
-	IdentityFlag = cli.StringFlag{
-		Name:  "identity",
-		Usage: "Custom node name",
-	}
-	NatspecEnabledFlag = cli.BoolFlag{
-		Name:  "natspec",
-		Usage: "Enable NatSpec confirmation notice",
-	}
-	DocRootFlag = DirectoryFlag{
-		Name:  "docroot",
-		Usage: "Document Root for HTTPClient file scheme",
-		Value: DirectoryString{common.HomeDir()},
-	}
-	CacheFlag = cli.IntFlag{
-		Name:  "cache",
-		Usage: "Megabytes of memory allocated to internal caching (min 16MB / database forced)",
-		Value: 128,
-	}
-	BlockchainVersionFlag = cli.IntFlag{
-		Name:  "blockchainversion",
-		Usage: "Blockchain version (integer)",
-		Value: core.BlockChainVersion,
-	}
-	FastSyncFlag = cli.BoolFlag{
-		Name:  "fast",
-		Usage: "Enable fast syncing through state downloads",
-	}
-	LightKDFFlag = cli.BoolFlag{
-		Name:  "lightkdf",
-		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
-	}
-	// Network Split settings
-	ETFChain = cli.BoolFlag{
-		Name:  "etf",
-		Usage: "Updates the chain rules to use the ETF hard-fork blockchain",
-	}
-	// Miner settings
-	// TODO Refactor CPU vs GPU mining flags
-	MiningEnabledFlag = cli.BoolFlag{
-		Name:  "mine",
-		Usage: "Enable mining",
-	}
-	MinerThreadsFlag = cli.IntFlag{
-		Name:  "minerthreads",
-		Usage: "Number of CPU threads to use for mining",
-		Value: runtime.NumCPU(),
-	}
-	MiningGPUFlag = cli.StringFlag{
-		Name:  "minergpus",
-		Usage: "List of GPUs to use for mining (e.g. '0,1' will use the first two GPUs found)",
-	}
-	TargetGasLimitFlag = cli.StringFlag{
-		Name:  "targetgaslimit",
-		Usage: "Target gas limit sets the artificial target gas floor for the blocks to mine",
-		Value: core.TargetGasLimit.String(),
-	}
-	AutoDAGFlag = cli.BoolFlag{
-		Name:  "autodag",
-		Usage: "Enable automatic DAG pregeneration",
-	}
-	EtherbaseFlag = cli.StringFlag{
-		Name:  "etherbase",
-		Usage: "Public address for block mining rewards (default = first account created)",
-		Value: "0",
-	}
-	GasPriceFlag = cli.StringFlag{
-		Name:  "gasprice",
-		Usage: "Minimal gas price to accept for mining a transactions",
-		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
-	}
-	ExtraDataFlag = cli.StringFlag{
-		Name:  "extradata",
-		Usage: "Freeform header field set by the miner",
-	}
-	// Account settings
-	UnlockedAccountFlag = cli.StringFlag{
-		Name:  "unlock",
-		Usage: "Comma separated list of accounts to unlock",
-		Value: "",
-	}
-	PasswordFileFlag = cli.StringFlag{
-		Name:  "password",
-		Usage: "Password file to use for non-inteactive password input",
-		Value: "",
-	}
-
-	// logging and debug settings
-	VerbosityFlag = cli.GenericFlag{
-		Name:  "verbosity",
-		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=core, 5=debug, 6=detail",
-		Value: glog.GetVerbosity(),
-	}
-	VModuleFlag = cli.GenericFlag{
-		Name:  "vmodule",
-		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
-		Value: glog.GetVModule(),
-	}
-	BacktraceAtFlag = cli.GenericFlag{
-		Name:  "backtrace",
-		Usage: "Request a stack trace at a specific logging statement (e.g. \"block.go:271\")",
-		Value: glog.GetTraceLocation(),
-	}
-	MetricsFlag = cli.StringFlag{
-		Name:  "metrics",
-		Usage: "Enables metrics reporting. When the value is a path, either relative or absolute, then a log is written to the respective file.",
-	}
-	FakePoWFlag = cli.BoolFlag{
-		Name:  "fakepow",
-		Usage: "Disables proof-of-work verification",
-	}
-
-	// RPC settings
-	RPCEnabledFlag = cli.BoolFlag{
-		Name:  "rpc",
-		Usage: "Enable the HTTP-RPC server",
-	}
-	RPCListenAddrFlag = cli.StringFlag{
-		Name:  "rpcaddr",
-		Usage: "HTTP-RPC server listening interface",
-		Value: common.DefaultHTTPHost,
-	}
-	RPCPortFlag = cli.IntFlag{
-		Name:  "rpcport",
-		Usage: "HTTP-RPC server listening port",
-		Value: common.DefaultHTTPPort,
-	}
-	RPCCORSDomainFlag = cli.StringFlag{
-		Name:  "rpccorsdomain",
-		Usage: "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
-		Value: "",
-	}
-	RPCApiFlag = cli.StringFlag{
-		Name:  "rpcapi",
-		Usage: "API's offered over the HTTP-RPC interface",
-		Value: rpc.DefaultHTTPApis,
-	}
-	IPCDisabledFlag = cli.BoolFlag{
-		Name:  "ipcdisable",
-		Usage: "Disable the IPC-RPC server",
-	}
-	IPCApiFlag = cli.StringFlag{
-		Name:  "ipcapi",
-		Usage: "API's offered over the IPC-RPC interface",
-		Value: rpc.DefaultIPCApis,
-	}
-	IPCPathFlag = DirectoryFlag{
-		Name:  "ipcpath",
-		Usage: "Filename for IPC socket/pipe within the datadir (explicit paths escape it)",
-		Value: DirectoryString{common.DefaultIPCSocket},
-	}
-	WSEnabledFlag = cli.BoolFlag{
-		Name:  "ws",
-		Usage: "Enable the WS-RPC server",
-	}
-	WSListenAddrFlag = cli.StringFlag{
-		Name:  "wsaddr",
-		Usage: "WS-RPC server listening interface",
-		Value: common.DefaultWSHost,
-	}
-	WSPortFlag = cli.IntFlag{
-		Name:  "wsport",
-		Usage: "WS-RPC server listening port",
-		Value: common.DefaultWSPort,
-	}
-	WSApiFlag = cli.StringFlag{
-		Name:  "wsapi",
-		Usage: "API's offered over the WS-RPC interface",
-		Value: rpc.DefaultHTTPApis,
-	}
-	WSAllowedOriginsFlag = cli.StringFlag{
-		Name:  "wsorigins",
-		Usage: "Origins from which to accept websockets requests",
-		Value: "",
-	}
-	ExecFlag = cli.StringFlag{
-		Name:  "exec",
-		Usage: "Execute JavaScript statement (only in combination with console/attach)",
-	}
-	PreloadJSFlag = cli.StringFlag{
-		Name:  "preload",
-		Usage: "Comma separated list of JavaScript files to preload into the console",
-	}
-
-	// Network Settings
-	MaxPeersFlag = cli.IntFlag{
-		Name:  "maxpeers",
-		Usage: "Maximum number of network peers (network disabled if set to 0)",
-		Value: 25,
-	}
-	MaxPendingPeersFlag = cli.IntFlag{
-		Name:  "maxpendpeers",
-		Usage: "Maximum number of pending connection attempts (defaults used if set to 0)",
-		Value: 0,
-	}
-	ListenPortFlag = cli.IntFlag{
-		Name:  "port",
-		Usage: "Network listening port",
-		Value: 30303,
-	}
-	BootnodesFlag = cli.StringFlag{
-		Name:  "bootnodes",
-		Usage: "Comma separated enode URLs for P2P discovery bootstrap",
-		Value: "",
-	}
-	NodeKeyFileFlag = cli.StringFlag{
-		Name:  "nodekey",
-		Usage: "P2P node key file",
-	}
-	NodeKeyHexFlag = cli.StringFlag{
-		Name:  "nodekeyhex",
-		Usage: "P2P node key as hex (for testing)",
-	}
-	NATFlag = cli.StringFlag{
-		Name:  "nat",
-		Usage: "NAT port mapping mechanism (any|none|upnp|pmp|extip:<IP>)",
-		Value: "any",
-	}
-	NoDiscoverFlag = cli.BoolFlag{
-		Name:  "nodiscover",
-		Usage: "Disables the peer discovery mechanism (manual peer addition)",
-	}
-	WhisperEnabledFlag = cli.BoolFlag{
-		Name:  "shh",
-		Usage: "Enable Whisper",
-	}
-	// ATM the url is left to the user and deployment to
-	JSpathFlag = cli.StringFlag{
-		Name:  "jspath",
-		Usage: "JavaScript root path for `loadScript` and document root for `admin.httpGet`",
-		Value: ".",
-	}
-	SolcPathFlag = cli.StringFlag{
-		Name:  "solc",
-		Usage: "Solidity compiler command to be used",
-		Value: "solc",
-	}
-
-	// Gas price oracle settings
-	GpoMinGasPriceFlag = cli.StringFlag{
-		Name:  "gpomin",
-		Usage: "Minimum suggested gas price",
-		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
-	}
-	GpoMaxGasPriceFlag = cli.StringFlag{
-		Name:  "gpomax",
-		Usage: "Maximum suggested gas price",
-		Value: new(big.Int).Mul(big.NewInt(500), common.Shannon).String(),
-	}
-	GpoFullBlockRatioFlag = cli.IntFlag{
-		Name:  "gpofull",
-		Usage: "Full block threshold for gas price calculation (%)",
-		Value: 80,
-	}
-	GpobaseStepDownFlag = cli.IntFlag{
-		Name:  "gpobasedown",
-		Usage: "Suggested gas price base step down ratio (1/1000)",
-		Value: 10,
-	}
-	GpobaseStepUpFlag = cli.IntFlag{
-		Name:  "gpobaseup",
-		Usage: "Suggested gas price base step up ratio (1/1000)",
-		Value: 100,
-	}
-	GpobaseCorrectionFactorFlag = cli.IntFlag{
-		Name:  "gpobasecf",
-		Usage: "Suggested gas price base correction factor (%)",
-		Value: 110,
-	}
-	Unused1 = cli.BoolFlag{
-		Name:  "oppose-dao-fork",
-		Usage: "Use classic blockchain (always set, flag is unused and exists for compatibility only)",
-	}
-)
-
-// MustMakeDataDir retrieves the currently requested data directory, terminating
-// if none (or the empty string) is specified. If the node is starting a testnet,
-// the a subdirectory of the specified datadir will be used.
-func MustMakeDataDir(ctx *cli.Context) string {
-	if path := ctx.GlobalString(DataDirFlag.Name); path != "" {
-		if ctx.GlobalBool(TestNetFlag.Name) {
-			return filepath.Join(path, "/testnet")
+	if ctx.GlobalIsSet(ChainIDFlag.Name) {
+		if id := ctx.GlobalString(ChainIDFlag.Name); id != "" {
+			if reservedChainIDS[id] {
+				log.Fatal("Reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes'. Please use a different identifier.")
+				return ""
+			}
+			return id
+		} else {
+			log.Fatal("Argument to --chain must not be blank.")
+			return ""
 		}
+	}
+	return core.DefaultChainConfigID
+}
+
+// getChainConfigNameFromContext gets mainnet or testnet defaults if in use.
+// If a custom net is in use, it echoes the name of the ChainConfigID.
+// It is intended to be a human-readable name for a chain configuration.
+func getChainConfigNameFromContext(ctx *cli.Context) string {
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		return core.DefaultTestnetChainConfigName
+	}
+	if ctx.GlobalIsSet(ChainIDFlag.Name) {
+		return getChainConfigIDFromContext(ctx) // shortcut
+	}
+	return core.DefaultChainConfigName
+}
+
+// mustMakeDataDir retrieves the currently requested data directory, terminating
+// if none (or the empty string) is specified.
+// --> <home>/<EthereumClassic>(defaulty) or --datadir
+func mustMakeDataDir(ctx *cli.Context) string {
+	if path := ctx.GlobalString(DataDirFlag.Name); path != "" {
 		return path
 	}
-	log.Fatal("Cannot determine default data directory, please set manually (--datadir)")
+	log.Fatal("Cannot determine data directory, please set manually (--datadir)")
 	return ""
+}
+
+// MustMakeChainDataDir retrieves the currently requested data directory including chain-specific subdirectory.
+// A subdir of the datadir is used for each chain configuration ("/mainnet", "/testnet", "/my-custom-net").
+// --> <home>/<EthereumClassic>/<mainnet|testnet|custom-net>, per --chain
+func MustMakeChainDataDir(ctx *cli.Context) string {
+	return common.EnsureAbsolutePath(mustMakeDataDir(ctx), getChainConfigIDFromContext(ctx))
 }
 
 // MakeIPCPath creates an IPC path configuration from the set command line flags,
@@ -432,28 +183,19 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 	return key
 }
 
-// MakeBootstrapNodes creates a list of bootstrap nodes from the command line
+// MakeBootstrapNodesFromContext creates a list of bootstrap nodes from the command line
 // flags, reverting to pre-configured ones if none have been specified.
-func MakeBootstrapNodes(ctx *cli.Context) []*discover.Node {
+func MakeBootstrapNodesFromContext(ctx *cli.Context) []*discover.Node {
 	// Return pre-configured nodes if none were manually requested
 	if !ctx.GlobalIsSet(BootnodesFlag.Name) {
+
+		// --testnet flag overrides --config flag
 		if ctx.GlobalBool(TestNetFlag.Name) {
 			return TestNetBootNodes
 		}
 		return HomesteadBootNodes
 	}
-	// Otherwise parse and use the CLI bootstrap nodes
-	bootnodes := []*discover.Node{}
-
-	for _, url := range strings.Split(ctx.GlobalString(BootnodesFlag.Name), ",") {
-		node, err := discover.ParseNode(url)
-		if err != nil {
-			glog.V(logger.Error).Infof("Bootstrap URL %s: %v\n", url, err)
-			continue
-		}
-		bootnodes = append(bootnodes, node)
-	}
-	return bootnodes
+	return core.ParseBootstrapNodeStrings(strings.Split(ctx.GlobalString(BootnodesFlag.Name), ","))
 }
 
 // MakeListenAddress creates a TCP listening address string from set command
@@ -524,7 +266,7 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 		scryptN = accounts.LightScryptN
 		scryptP = accounts.LightScryptP
 	}
-	datadir := MustMakeDataDir(ctx)
+	datadir := MustMakeChainDataDir(ctx)
 
 	keydir := filepath.Join(datadir, "keystore")
 	if path := ctx.GlobalString(KeyStoreDirFlag.Name); path != "" {
@@ -591,21 +333,220 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
-// MakeSystemNode sets up a local node, configures the services to launch and
-// assembles the P2P protocol stack.
-func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
+// migrateExistingDirToClassicNamingScheme renames default base data directory ".../Ethereum" to ".../EthereumClassic", pending os customs, etc... ;-)
+///
+// Check for preexisting **Un-classic** data directory, ie "/home/path/to/Ethereum".
+// If it exists, check if the data therein belongs to Classic blockchain (ie not configged as "ETF"),
+// and rename it to fit Classic naming convention ("/home/path/to/EthereumClassic") if that dir doesn't already exist.
+// This case only applies to Default, ie when a user **doesn't** provide a custom --datadir flag;
+// a user should be able to override a specified data dir if they want.
+func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
+
+	ethDataDirPath := common.DefaultUnclassicDataDir()
+	etcDataDirPath := common.DefaultDataDir()
+
+	// only if default <EthereumClassic>/ datadir doesn't already exist
+	if _, err := os.Stat(etcDataDirPath); err == nil {
+		// classic data dir already exists
+		log.Printf("INFO: Using existing ETClassic data directory at: %v.\n", etcDataDirPath)
+		return nil
+	}
+
+	ethChainDBPath := filepath.Join(ethDataDirPath, "chaindata")
+	if ctx.GlobalIsSet(TestNetFlag.Name) {
+		ethChainDBPath = filepath.Join(ethDataDirPath, "testnet", "chaindata")
+	}
+
+	// only if ETHdatadir chaindb path DOES already exist, so return nil if it doesn't;
+	// otherwise NewLDBDatabase will create an empty one there.
+	// note that this uses the 'old' non-subdirectory way of holding default data.
+	// it must be called before migrating to subdirectories
+	// NOTE: Since ETH stores chaindata by default in Ethereum/geth/..., this path
+	// will not exist if the existing data belongs to ETH, so it works as a valid check for us as well.
+	if _, err := os.Stat(ethChainDBPath); os.IsNotExist(err) {
+		log.Printf(`
+		INFO: No existing default chaindata dir found at: %v \n
+		  Using default data directory at: %v.\n`,
+			ethChainDBPath, etcDataDirPath)
+		return nil
+	}
+
+	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
+	chainDB, err := ethdb.NewLDBDatabase(ethChainDBPath, 0, 0)
+	if err != nil {
+		log.Fatalf(`
+		WARNING: Error checking blockchain version for existing Ethereum chaindata database at: %v \n
+		  Using default data directory at: %v`,
+			err, etcDataDirPath)
+		return nil
+	}
+
+	defer chainDB.Close()
+
+	// Only move if defaulty ETC (mainnet or testnet).
+	// Get head block if testnet, fork block if mainnet.
+	b := core.GetBlock(chainDB, core.DefaultConfig.ForkByName("The DAO Hard Fork").RequiredHash)
+	if ctx.GlobalIsSet(TestNetFlag.Name) {
+		b = core.GetBlock(chainDB, core.GetHeadFastBlockHash(chainDB))
+	}
+
+	// Use default configuration to check if known fork, if block 1920000 exists.
+	// If block1920000 doesn't exist, given above checks for directory structure expectations,
+	// I think it's safe to assume that the chaindata directory is just too 'young', where it hasn't
+	// synced until block 1920000, and therefore can be migrated.
+	conf := core.DefaultConfig
+	if ctx.GlobalIsSet(TestNetFlag.Name) {
+		conf = core.TestConfig
+	}
+
+	if b == nil || (b != nil && conf.HeaderCheck(b.Header()) == nil) {
+		log.Printf(`
+		INFO/WARNING: Found existing default 'Ethereum' data directory with default ETC chaindata. \n
+		  Migrating it from: %v, to: %v \n
+		  To specify a different data directory use the '--datadir' flag.`,
+			ethDataDirPath, etcDataDirPath)
+		return os.Rename(ethDataDirPath, etcDataDirPath)
+	}
+
+	log.Printf(`INFO: Existing default Ethereum database at: %v isn't an Ethereum Classic default blockchain.\n
+	  Will not migrate. \n
+	  Using ETC chaindata database at: %v \n`,
+		ethDataDirPath, etcDataDirPath)
+	return nil
+}
+
+// migrateToChainSubdirIfNecessary migrates ".../EthereumClassic/nodes|chaindata|...|nodekey" --> ".../EthereumClassic/mainnet/nodes|chaindata|...|nodekey"
+func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
+	name := getChainConfigIDFromContext(ctx) // "mainnet", "morden", "custom"
+
+	// return ok if custom
+	//if ctx.GlobalIsSet(ChainIDFlag.Name) {
+	//	return nil
+	//}
+
+	datapath := mustMakeDataDir(ctx) // ".../EthereumClassic/ | --datadir"
+	if datapath == "" {
+		return fmt.Errorf("Could not determine base data dir: %v", datapath)
+	}
+
+	subdirPath := MustMakeChainDataDir(ctx) // ie, <EthereumClassic>/mainnet
+
+	// check if default subdir "mainnet" exits
+	// NOTE: this assumes that if the migration has been run once, the "mainnet" dir will exist and will have necessary datum inside it
+	subdirPathInfo, err := os.Stat(subdirPath)
+	if err == nil {
+		// dir already exists
+		return nil
+	}
+	if subdirPathInfo != nil && !subdirPathInfo.IsDir() {
+		return fmt.Errorf("Found file named '%v' in EthereumClassic datadir, which conflicts with default chain directory naming convention: %v", name, subdirPath)
+	}
+
+	// 3.3 testnet uses subdir '/testnet'
+	if name == core.DefaultTestnetChainConfigID {
+		exTestDir := filepath.Join(subdirPath, "../testnet")
+		exTestDirInfo, e := os.Stat(exTestDir)
+		if e != nil && os.IsNotExist(e) {
+			return nil // ex testnet dir doesn't exist
+		}
+		if !exTestDirInfo.IsDir() {
+			return nil // don't interfere with user *file* that won't be relevant for geth
+		}
+		return os.Rename(exTestDir, subdirPath)
+	}
+
+	// mkdir -p ".../mainnet"
+	if err := os.MkdirAll(subdirPath, 0755); err != nil {
+		return err
+	}
+
+	// move if existing (nodekey, dapp/, keystore/, chaindata/, nodes/) into new subdirectories
+	for _, dir := range []string{"dapp", "keystore", "chaindata", "nodes"} {
+
+		dirPath := filepath.Join(datapath, dir)
+
+		dirInfo, e := os.Stat(dirPath)
+		if e != nil && os.IsNotExist(e) {
+			continue // dir doesn't exist
+		}
+		if !dirInfo.IsDir() {
+			continue // don't interfere with user *file* that won't be relevant for geth
+		}
+
+		dirPathUnderSubdir := filepath.Join(subdirPath, dir)
+		if err := os.Rename(dirPath, dirPathUnderSubdir); err != nil {
+			return err
+		}
+	}
+
+	// ensure nodekey exists and is file (loop lets us stay consistent in form here, an keep options open for easy other files to include)
+	for _, file := range []string{"nodekey", "geth.ipc"} {
+		filePath := filepath.Join(datapath, file)
+
+		// ensure exists and is a file
+		fileInfo, e := os.Stat(filePath)
+		if e != nil && os.IsNotExist(e) {
+			continue
+		}
+		if fileInfo.IsDir() {
+			continue // don't interfere with user dirs that won't be relevant for geth
+		}
+
+		filePathUnderSubdir := filepath.Join(subdirPath, file)
+		if err := os.Rename(filePath, filePathUnderSubdir); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// makeName makes the node name, which can be (in part) customized by the IdentityFlag
+func makeNodeName(version string, ctx *cli.Context) string {
 	name := fmt.Sprintf("Geth/%s/%s/%s", version, runtime.GOOS, runtime.Version())
 	if identity := ctx.GlobalString(IdentityFlag.Name); len(identity) > 0 {
 		name += "/" + identity
 	}
+	return name
+}
+
+// MakeSystemNode sets up a local node, configures the services to launch and
+// assembles the P2P protocol stack.
+func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
+	name := makeNodeName(version, ctx)
 
 	// global settings
+
 	if ctx.GlobalIsSet(ExtraDataFlag.Name) {
 		s := ctx.GlobalString(ExtraDataFlag.Name)
 		if len(s) > types.HeaderExtraMax {
 			log.Fatalf("%s flag %q exceeds size limit of %d", ExtraDataFlag.Name, s, types.HeaderExtraMax)
 		}
 		miner.HeaderExtra = []byte(s)
+	}
+
+	// Makes sufficient configuration from JSON file or DB pending flags.
+	// Delegates flag usage.
+	config := mustMakeSufficientConfiguration(ctx)
+
+	// Data migrations...
+
+	// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
+	// Only do this if --datadir flag is not specified AND <home>/<EthereumClassic> does NOT already exist (only migrate once and only for defaulty).
+	// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
+	// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
+	if !ctx.GlobalIsSet(DataDirFlag.Name) &&
+		// Allows to use --chainconfig flag as long configuration specifies mainnet or morden
+		(config.ID == core.DefaultTestnetChainConfigID || config.ID == core.DefaultChainConfigID) {
+		if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
+			log.Fatalf("Failed to migrate existing Classic database: %v", migrationError)
+		}
+	}
+	// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
+	// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
+	// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
+	// and the user is using the Default configuration (ie "mainnet").
+	if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
+		log.Fatalf("An error occurred migrating existing data to named subdir : %v", subdirMigrateErr)
 	}
 
 	// Avoid conflicting network flags
@@ -621,11 +562,11 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	// Configure the node's service container
 	stackConf := &node.Config{
-		DataDir:         MustMakeDataDir(ctx),
+		DataDir:         MustMakeChainDataDir(ctx),
 		PrivateKey:      MakeNodeKey(ctx),
 		Name:            name,
 		NoDiscovery:     ctx.GlobalBool(NoDiscoverFlag.Name),
-		BootstrapNodes:  MakeBootstrapNodes(ctx),
+		BootstrapNodes:  config.ParsedBootstrap,
 		ListenAddr:      MakeListenAddress(ctx),
 		NAT:             MakeNAT(ctx),
 		MaxPeers:        ctx.GlobalInt(MaxPeersFlag.Name),
@@ -645,7 +586,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	accman := MakeAccountManager(ctx)
 
 	ethConf := &eth.Config{
-		ChainConfig:             MustMakeChainConfig(ctx),
+		ChainConfig:             config.ChainConfig,
 		FastSync:                ctx.GlobalBool(FastSyncFlag.Name),
 		BlockChainVersion:       ctx.GlobalInt(BlockchainVersionFlag.Name),
 		DatabaseCache:           ctx.GlobalInt(CacheFlag.Name),
@@ -735,48 +676,77 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
 func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
+
 	db := MakeChainDatabase(ctx)
 	defer db.Close()
+	glog.V(logger.Info).Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata"))
 
 	return MustMakeChainConfigFromDb(ctx, db)
 }
 
-// MustMakeChainConfigFromDb reads the chain configuration from the given database.
-func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
-	c := core.DefaultConfig
-	if ctx.GlobalBool(TestNetFlag.Name) {
-		c = core.TestConfig
-	}
+// mustMakeSufficientConfiguration makes a sufficent chain configuration (id, chainconfig, nodes,...) from
+// either JSON file path, DB, or fails hard.
+// Forces users to provide a full and complete config file if any is specified.
+// Delegates flags to determine which source to use for configuration setup.
+func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConfig {
 
-	for i := range c.Forks {
-		// Force override any existing configs if explicitly requested
-		if c.Forks[i].Name == "ETF" {
-			if ctx.GlobalBool(ETFChain.Name) {
-				c.Forks[i].Support = true
-			}
+	config := &core.SufficientChainConfig{}
+
+	// If external JSON --chainconfig specified.
+	if ctx.GlobalIsSet(UseChainConfigFlag.Name) {
+		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
+			filepath.Clean(ctx.GlobalString(UseChainConfigFlag.Name))))
+
+		// Returns surely valid suff chain config.
+		config, err := core.ReadExternalChainConfig(ctx.GlobalString(UseChainConfigFlag.Name))
+		if err != nil {
+			panic(err)
 		}
+
+		// Check for flagged bootnodes.
+		if ctx.GlobalIsSet(BootnodesFlag.Name) {
+			panic("Conflicting --chainconfig and --bootnodes flags. Please use either but not both.")
+		}
+
+		currentChainID = config.ID // Set global var.
+		logChainConfiguration(ctx, config.ChainConfig)
+
+
+		chainDB := MakeChainDatabase(ctx)
+		block, err := core.WriteGenesisBlock(chainDB, config.Genesis)
+		if err != nil {
+			log.Fatalf("failed to write genesis block: %v", err)
+		} else {
+			log.Printf("successfully wrote genesis block and allocations: %x", block.Hash())
+		}
+		chainDB.Close()
+
+		return config
 	}
 
-	separator := strings.Repeat("-", 110)
+	// Initialise chain configuration before handling migrations or setting up node.
+
+	config.ID = getChainConfigIDFromContext(ctx)
+	config.Name = getChainConfigNameFromContext(ctx)
+	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
+	config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
+
+	return config
+}
+
+func logChainConfiguration(ctx *cli.Context, config *core.ChainConfig) {
+	separator := strings.Repeat("-", 110) // for display formatting
+
 	glog.V(logger.Warn).Info(separator)
 	glog.V(logger.Warn).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
 
-	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
-	genesisHash := ""
-	if genesis != nil {
-		genesisHash = genesis.Hash().Hex()
-	}
-	glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
-	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain hard-forks associated with this genesis block:", len(c.Forks)))
+	glog.V(logger.Warn).Info(fmt.Sprintf("%v blockchain upgrades associated with this genesis block:", len(config.Forks)))
 
-	netsplitChoice := ""
-	for i := range c.Forks {
-		if c.Forks[i].NetworkSplit {
-			netsplitChoice = fmt.Sprintf("resulted in a network split (support: %t)", c.Forks[i].Support)
-		} else {
-			netsplitChoice = ""
+	for i := range config.Forks {
+		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v", config.Forks[i].Block, config.Forks[i].Name))
+		if !config.Forks[i].RequiredHash.IsEmpty() {
+			glog.V(logger.Warn).Info(fmt.Sprintf("         with block %v", config.Forks[i].RequiredHash.Hex()))
 		}
-		glog.V(logger.Warn).Info(fmt.Sprintf(" %7v %v hard-fork %v", c.Forks[i].Block, c.Forks[i].Name, netsplitChoice))
 	}
 
 	if ctx.GlobalBool(TestNetFlag.Name) {
@@ -785,13 +755,34 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[32mEthereum (ETC) Classic\x1b[39m blockchain!")
 	}
 	glog.V(logger.Warn).Info(separator)
+}
+
+// MustMakeChainConfigFromDb reads the chain configuration from the given database.
+func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
+
+	c := core.DefaultConfig
+	if ctx.GlobalBool(TestNetFlag.Name) {
+		c = core.TestConfig
+	}
+
+	logChainConfiguration(ctx, c)
+
+	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
+	genesisHash := ""
+	if genesis != nil {
+		genesisHash = genesis.Hash().Hex()
+	}
+	if genesisHash != "" {
+		glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
+	}
+
 	return c
 }
 
 // MakeChainDatabase open an LevelDB using the flags passed to the client and will hard crash if it fails.
 func MakeChainDatabase(ctx *cli.Context) ethdb.Database {
 	var (
-		datadir = MustMakeDataDir(ctx)
+		datadir = MustMakeChainDataDir(ctx)
 		cache   = ctx.GlobalInt(CacheFlag.Name)
 		handles = MakeDatabaseHandles()
 	)
@@ -833,7 +824,7 @@ func MakeConsolePreloads(ctx *cli.Context) []string {
 
 	assets := ctx.GlobalString(JSpathFlag.Name)
 	for _, file := range strings.Split(ctx.GlobalString(PreloadJSFlag.Name), ",") {
-		preloads = append(preloads, common.AbsolutePath(assets, strings.TrimSpace(file)))
+		preloads = append(preloads, common.EnsureAbsolutePath(assets, strings.TrimSpace(file)))
 	}
 	return preloads
 }

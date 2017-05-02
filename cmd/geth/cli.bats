@@ -43,7 +43,6 @@ teardown() {
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Starting"* ]]
-	[[ "$output" == *"Loading blockchain: "* ]]
 	[[ "$output" == *"Blockchain DB Version: "* ]]
 	[[ "$output" == *"Starting Server"* ]]
 }

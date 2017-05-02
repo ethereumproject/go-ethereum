@@ -44,6 +44,12 @@ var (
 	bigMinus99 = big.NewInt(-99)
 )
 
+// Difficulty allows passing configurable options to a given difficulty algorithm.
+type DifficultyConfig struct {
+	Name string `json:"name"`
+	Options map[string]interface{} `json:"options"`
+}
+
 // BlockValidator is responsible for validating block headers, uncles and
 // processed state.
 //
@@ -263,21 +269,39 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
 func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
-	// This is a placeholder for testing. The calcDiff function should
-	// be determined by a config flag
-	num := new(big.Int).Add(parentNumber, common.Big1)
-	if config.IsDiehard(num) && !config.IsExplosion(num) {
-		return calcDifficultyDiehard(time, parentTime, parentNumber, parentDiff, config.Fork("Diehard").Block)
-	} else if config.IsExplosion(num) {
-		return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
-			config.Fork("Diehard").Block, big.NewInt(0).Add(config.Fork("Diehard").Block, config.Fork("Diehard").Length))
-	} else if config.IsHomestead(num) {
-		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
-	} else {
+
+	num := new(big.Int).Add(parentNumber, common.Big1) // increment block number to current
+
+	f, fork, configured := config.GetFeature(num, "difficulty")
+	if !configured {
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
+	name, ok := f.GetString("type")
+	if !ok { name = "" } // will fall to default panic
+	switch name {
+		case "ecip1010":
+			if length, ok := f.GetBigInt("length"); ok {
+				explosionBlock := big.NewInt(0).Add(fork.Block, length)
+				if num.Cmp(explosionBlock) < 0 {
+					return calcDifficultyDiehard(time, parentTime, parentDiff,
+						fork.Block)
+				} else {
+					return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
+						fork.Block, explosionBlock)
+				}
+			} else {
+				panic(fmt.Sprintf("Length is not set for diehard difficulty at %v", num))
+			}
+		case "homestead":
+			return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
+		case "frontier":
+			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
+		default:
+			panic(fmt.Sprintf("Unsupported difficulty '%v' for block: %v", name, num))
+	}
 }
-func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
+
+func calcDifficultyDiehard(time, parentTime uint64 , parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
@@ -325,8 +349,8 @@ func calcDifficultyDiehard(time, parentTime uint64, parentNumber, parentDiff *bi
 	return x
 }
 
-func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, diehardBlock *big.Int, explosionBlock *big.Int) *big.Int {
-	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
+func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, delayBlock *big.Int, continueBlock *big.Int) *big.Int {
+	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
 	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
@@ -359,10 +383,11 @@ func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *
 		x.Set(MinimumDifficulty)
 	}
 
-	// for the exponential factor
+	// for the exponential factor...
+
 	delayedCount := new(big.Int).Add(parentNumber, common.Big1)
-	delayedCount.Sub(delayedCount, explosionBlock)
-	delayedCount.Add(delayedCount, diehardBlock)
+	delayedCount.Sub(delayedCount, continueBlock)
+	delayedCount.Add(delayedCount, delayBlock)
 	delayedCount.Div(delayedCount, ExpDiffPeriod)
 
 	// the exponential factor, commonly referred to as "the bomb"

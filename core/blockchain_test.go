@@ -1309,15 +1309,49 @@ func TestEIP155Transition(t *testing.T) {
 		funds   = big.NewInt(1000000000)
 		genesis = WriteGenesisBlockForTesting(db, GenesisAccount{address, funds})
 		config  = &ChainConfig{
-			ChainId: big.NewInt(1),
 			Forks: []*Fork{
 				{
 					Name:  "Homestead",
 					Block: big.NewInt(0),
+					Features: []*ForkFeature{
+						{
+							ID: "difficulty",
+							Options: ChainFeatureConfigOptions{
+								"type": "homestead",
+							},
+						},
+						{
+							ID: "gastable",
+							Options: ChainFeatureConfigOptions{
+								"type": "homestead",
+							},
+						},
+					},
 				},
 				{
 					Name:  "Diehard",
 					Block: big.NewInt(2),
+					Features: []*ForkFeature{
+						{
+							ID: "eip155",
+							Options: ChainFeatureConfigOptions{
+								"chainID": 1,
+							},
+						},
+						{ // ecip1010 bomb delay
+							ID: "gastable",
+							Options: ChainFeatureConfigOptions{
+								"type": "eip160",
+							},
+						},
+						{ // ecip1010 bomb delay
+							ID: "difficulty",
+							Options: ChainFeatureConfigOptions{
+								"type":   "ecip1010",
+								"length": 2000000,
+							},
+						},
+					},
 				},
 			},
 		}
@@ -1352,7 +1386,7 @@ func TestEIP155Transition(t *testing.T) {
 			}
 			block.AddTx(tx)
 
-			tx, err = basicTx(types.NewChainIdSigner(config.ChainId))
+			tx, err = basicTx(types.NewChainIdSigner(config.GetChainID()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1364,7 +1398,7 @@ func TestEIP155Transition(t *testing.T) {
 			}
 			block.AddTx(tx)
 
-			tx, err = basicTx(types.NewChainIdSigner(config.ChainId))
+			tx, err = basicTx(types.NewChainIdSigner(config.GetChainID()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1393,15 +1427,49 @@ func TestEIP155Transition(t *testing.T) {
 
 	// generate an invalid chain id transaction
 	config = &ChainConfig{
-		ChainId: big.NewInt(2),
 		Forks: []*Fork{
 			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
+				Features: []*ForkFeature{
+					{
+						ID: "difficulty",
+						Options: ChainFeatureConfigOptions{
+							"type": "homestead",
+						},
+					},
+					{
+						ID: "gastable",
+						Options: ChainFeatureConfigOptions{
+							"type": "homestead",
+						},
+					},
+				},
 			},
 			{
 				Name:  "Diehard",
 				Block: big.NewInt(2),
+				Features: []*ForkFeature{
+					{
+						ID: "eip155",
+						Options: ChainFeatureConfigOptions{
+							"chainID": 2,
+						},
+					},
+					{ // ecip1010 bomb delay
+						ID: "gastable",
+						Options: ChainFeatureConfigOptions{
+							"type": "eip160",
+						},
+					},
+					{ // ecip1010 bomb delay
+						ID: "difficulty",
+						Options: ChainFeatureConfigOptions{
+							"type":   "ecip1010",
+							"length": 2000000,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -1417,7 +1485,7 @@ func TestEIP155Transition(t *testing.T) {
 		)
 		switch i {
 		case 0:
-			tx, err = basicTx(types.NewChainIdSigner(big.NewInt(2)))
+			tx, err = basicTx(types.NewChainIdSigner(config.GetChainID()))
 			if err != nil {
 				t.Fatal(err)
 			}

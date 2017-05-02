@@ -26,7 +26,7 @@ import (
 )
 
 func openLogFile(datadir string, filename string) *os.File {
-	path := common.AbsolutePath(datadir, filename)
+	path := common.EnsureAbsolutePath(datadir, filename)
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(fmt.Sprintf("error opening log file '%s': %v", filename, err))
