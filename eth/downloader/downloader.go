@@ -299,7 +299,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 		return true
 
 	case errBusy:
-		log.Print("sync busy")
+		glog.V(logger.Debug).Info("sync busy")
 
 	case errTimeout, errBadPeer, errStallingPeer, errEmptyHashSet,
 		errEmptyHeaderSet, errPeersUnavailable, errTooOld,
