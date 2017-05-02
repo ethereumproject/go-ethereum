@@ -170,14 +170,17 @@ Both usages rely on a specified external JSON file.
 
 Usages 1 and 2 are outlined below. The following instructions __Create the rendezvous point__ and __Starting up your member nodes__ will remain the same for both configuration implementations.
 
-#### Usage 1: Define the private genesis state
+#### Usage 1: Initialize identical genesis states
 
 The "genesis state" defines _Block 0_. Since a blockchain deterministically depends on the ordering and individual characteristics of every block, the configuration of a genesis state uniquely influences the "fingerprint" at any point following on the chain. Different _Block 0_, different _Block n_. 
 
-##### Initialize identical genesis states
+The `init` command allows you to write the specifications from a JSON file to the chain database as the genesis block. Use:
 
-First, you'll need to create the genesis state of your networks, which all nodes need to be aware of
-and agree upon. This consists of a small JSON file (e.g. call it `genesis.json`):
+```
+$ geth init path/to/genesis.json
+```
+
+Where `genesis.json` contains:
 
 ```json
   {
@@ -198,42 +201,35 @@ The above fields should be fine for most purposes, although we'd recommend chang
 
 ```json
 "alloc": {
-      "0000000000000000000000000000000000000001": {
-        "balance": "1"
+      "0x3030303861636137636530353865656161303936": {
+        "balance": "100000000000000000000000"
       },
-      "0000000000000000000000000000000000000002": {
-        "balance": "1"
+      "0x3030306164613834383336326436613033393261": {
+        "balance": "22100000000000000000000"
       },
-      "0000000000000000000000000000000000000003": {
-        "balance": "1"
+      "0x3030306433393066623866386536353865616565": {
+        "balance": "1000000000000000000000"
       },
-      "0000000000000000000000000000000000000004": {
-        "balance": "1"
-      },
-      "102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": {
-        "balance": "1606938044258990275541962092341162602522202993782792835301376"
+      "0x3030313464396162393061303264373863326130": {
+        "balance": "2000000000000000000000"
       }
     }
 ```
+> Note: Addresses may be either `0x`-prefixed or not. Testnet configuration default examples are unprefixed to signify difference from conventionally prefixed addresses.
 
-With the genesis state defined in the above JSON file, you'll need to initialize **every** Geth node with it prior to starting it up to ensure congruent blockchain parameters: 
-
-```
-$ geth init path/to/genesis.json
-```
-
+With the genesis state defined in the bespoke JSON file, you'll need to initialize **every** Geth node with it prior to starting it up to ensure congruent blockchain parameters: `$ geth init path/to/genesis.json`.
 
 #### Usage 2: Define external chain configuration
 
-Specifying an external chain configuration file will allow even finer-grained control over a custom blockchain/network configuration, including the genesis state and extending through bootnodes and forks/feature configurations (protocol upgrades). 
+Specifying an external chain configuration file will allow even finer-grained control over a custom blockchain/network configuration, _including the genesis state_ and extending through bootnodes and forks/feature configurations (protocol upgrades). 
 
 ```
-$ geth --chainconfig=/path/to/customnet.json
+$ geth --chainconfig=/path/to/customnet.json [--flags] [command]
 ```
 
-Please find external configuration files representing the Mainnet and Morden Testnet default specifications in the [/config]() subdirectory of this repo. You can use either of these files as a starting point for your own customizations.
+Please find exemplary  external configuration files representing the Mainnet and Morden Testnet default specs in the [/config]() subdirectory of this repo. You can use either of these files as a starting point for your own customizations.
 
-The external chain configuration file specifies valid settings for the following top-level fields. 
+The external chain configuration file specifies valid settings for the following top-level fields:
 
 | key | notes |
 --- | --- | ---
@@ -244,6 +240,8 @@ The external chain configuration file specifies valid settings for the following
 | `bootstrap` | Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
 
 > Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chainconfig` incompatible with `--chain`, `--bootnodes`, `--testnet`. This "hard"/explicit configuration scheme is intended to ensure that "peeking silently" unwanted defaults do not disable your time and energy. 
+> 
+> To learn more about external chain configuration, please visit the [External Chain Configuration Wiki page]().
 
 ##### Create the rendezvous point
 
