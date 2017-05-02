@@ -120,8 +120,8 @@ The `--fast`, `--cache` flags and `console` subcommand have the exact same meani
 
 Specifying the `--testnet` flag will reconfigure your Geth instance a bit:
 
- * Instead of using the default data directory (`~/.ethereum-classic/mainnet` on Linux for example), Geth will host its data in a a `testnet` subfolder (`~/.ethereum-classic/testnet` on Linux).
- * Instead of connecting the main Ethereum network, the client will connect to the test network, which uses different P2P bootnodes, different network IDs and genesis states.
+ -  Instead of using the default data directory (`~/.ethereum-classic/mainnet` on Linux for example), Geth will host its data in a a `morden` subfolder (`~/.ethereum-classic/morden`).
+ - Instead of connecting the main Ethereum network, the client will connect to the test network, which uses different P2P bootnodes, different network IDs and genesis states.
 
 > *Note: Although there are some internal protective measures to prevent transactions from crossing over between the main network and test network (different starting nonces), you should make sure to always use separate accounts for play-money and real-money. Unless you manually move accounts, Geth
 will by default correctly separate the two networks and will not make any accounts available between them.*
@@ -219,7 +219,7 @@ If you'd like to pre-fund some accounts for easier testing, you can populate the
       }
     }
 ```
-*Note: Addresses may be either `0x`-prefixed or not. Testnet configuration default examples are unprefixed to signify difference from conventionally prefixed addresses.*
+*Addresses may be either `0x`-prefixed or not. Testnet configuration default examples are unprefixed to signify difference from conventionally prefixed addresses.*
 
 
 #### Usage 2: Define external chain configuration
