@@ -17,7 +17,6 @@
 package core
 
 import (
-	hexlib "encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -71,7 +70,7 @@ type GenesisDump struct {
 	Coinbase   prefixedHex `json:"coinbase"`
 
 	// Alloc maps accounts by their address.
-	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
+	Alloc map[prefixedHex]*GenesisDumpAlloc `json:"alloc"`
 }
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.
@@ -514,10 +513,11 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	}
 
 	for addrHex, account := range genesis.Alloc {
-		var addr common.Address
-		if err := addrHex.Decode(addr[:]); err != nil {
-			return nil, fmt.Errorf("malformed addres %q: %s", addrHex, err)
+		strAddrHex := string(addrHex)
+		if !common.IsHexAddress(strAddrHex) {
+			return nil, fmt.Errorf("malformed address %q: %s", addrHex, err)
 		}
+		addr := common.HexToAddress(strAddrHex)
 
 		balance, ok := new(big.Int).SetString(account.Balance, 0)
 		if !ok {
@@ -587,11 +587,11 @@ func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) 
 	dump := GenesisDump{
 		GasLimit:   "0x47E7C4",
 		Difficulty: "0x020000",
-		Alloc:      make(map[hex]*GenesisDumpAlloc, len(accounts)),
+		Alloc:      make(map[prefixedHex]*GenesisDumpAlloc, len(accounts)),
 	}
 
 	for _, a := range accounts {
-		dump.Alloc[hex(hexlib.EncodeToString(a.Address[:]))] = &GenesisDumpAlloc{
+		dump.Alloc[prefixedHex(a.Address.Hex())] = &GenesisDumpAlloc{
 			Balance: a.Balance.String(),
 		}
 	}
@@ -642,11 +642,12 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	stateDump := genState.RawDump()
 
 	stateAccounts := stateDump.Accounts
-	dump.Alloc = make(map[hex]*GenesisDumpAlloc, len(stateAccounts))
+	dump.Alloc = make(map[prefixedHex]*GenesisDumpAlloc, len(stateAccounts))
 
 	for address, acct := range stateAccounts {
-		if common.IsHexAddress(address) {
-			dump.Alloc[hex(address)] = &GenesisDumpAlloc{
+		addrHex := common.StringToAddress(address).Hex()
+		if common.IsHexAddress(addrHex) {
+			dump.Alloc[prefixedHex(addrHex)] = &GenesisDumpAlloc{
 				Balance: acct.Balance,
 			}
 		} else {

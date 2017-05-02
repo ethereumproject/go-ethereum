@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/ethdb"
 )
 
 func TestConfigErrorProperties(t *testing.T) {
@@ -108,15 +108,32 @@ func TestChainConfig_IsExplosion(t *testing.T) {
 
 }
 
-func sameGenesisDumpAllocationsBalances(gd1, gd2 *GenesisDump) bool {
-	for address, alloc := range gd2.Alloc {
-		bal1, _ := new(big.Int).SetString(gd1.Alloc[address].Balance, 0)
-		bal2, _ := new(big.Int).SetString(alloc.Balance, 0)
-		if bal1.Cmp(bal2) != 0 {
-			return false
-		}
+// Ensure default genesis hardcodes are valid.
+func TestChainConfig_DefaultGenesis_Mainnet(t *testing.T) {
+	db, _ := ethdb.NewMemDatabase()
+	gBlock1, err := WriteGenesisBlock(db, DefaultGenesis)
+	if err != nil {
+		t.Errorf("WriteGenesisBlock could not setup genesisDump: err: %v", err)
 	}
-	return true
+	if gBlock1 == nil {
+		t.Error("wrote nil Genesis block")
+	}
+	if e := gBlock1.ValidateFields(); e != nil {
+		t.Errorf("invalid field(s) gblock1: %v", e)
+	}
+}
+func TestChainConfig_DefaultGenesis_Testnet(t *testing.T) {
+	db, _ := ethdb.NewMemDatabase()
+	gBlock1, err := WriteGenesisBlock(db, TestNetGenesis)
+	if err != nil {
+		t.Errorf("WriteGenesisBlock could not setup genesisDump: err: %v", err)
+	}
+	if gBlock1 == nil {
+		t.Error("wrote nil Genesis block")
+	}
+	if e := gBlock1.ValidateFields(); e != nil {
+		t.Errorf("invalid field(s) gblock1: %v", e)
+	}
 }
 
 // TestMakeGenesisDump is a unit-ish test for MakeGenesisDump()
@@ -132,60 +149,75 @@ func TestMakeGenesisDump(t *testing.T) {
 		GasLimit:   "0x0000000000000000000000000000000000000000000000000000000000001388",
 		Mixhash:    "0x0000000000000000000000000000000000000000000000000000000000000000",
 		ParentHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
-		Alloc: map[hex]*GenesisDumpAlloc{
-			"000d836201318ec6899a67540690382780743280": {Balance: "200000000000000000000"},
-			"001762430ea9c3a26e5749afdb70da5f78ddbb8c": {Balance: "200000000000000000000"},
-			"001d14804b399c6ef80e64576f657660804fec0b": {Balance: "4200000000000000000000"},
-			"0032403587947b9f15622a68d104d54d33dbd1cd": {Balance: "77500000000000000000"},
-			"00497e92cdc0e0b963d752b2296acb87da828b24": {Balance: "194800000000000000000"},
-			"004bfbe1546bc6c65b5c7eaa55304b38bbfec6d3": {Balance: "2000000000000000000000"},
-			"005a9c03f69d17d66cbb8ad721008a9ebbb836fb": {Balance: "2000000000000000000000"},
+		Alloc: map[prefixedHex]*GenesisDumpAlloc{
+			"0x3030303861636137636530353865656161303936": {
+				Balance: "100000000000000000000000",
+			},
+			"0x3030306164613834383336326436613033393261": {
+				Balance: "22100000000000000000000",
+			},
+			"0x3030306433393066623866386536353865616565": {
+				Balance: "1000000000000000000000",
+			},
+			"0x3030313464396162393061303264373863326130": {
+				Balance: "2000000000000000000000",
+			},
+			"0x3030313831323730616364323762386666363166": {
+				Balance: "5348000000000000000000",
+			},
+			"0x3030323265386362636161383262343931376233": {
+				Balance: "2000000000000000000000",
+			},
+			"0x3030323831343438643535376132306266633833": {
+				Balance: "895000000000000000000",
+			},
 		},
 	}
 	gBlock1, err := WriteGenesisBlock(db, genesisDump)
 	if err != nil {
 		t.Errorf("WriteGenesisBlock could not setup genesisDump: err: %v", err)
 	}
+	if gBlock1 == nil {
+		t.Error("wrote nil Genesis block")
+	}
+	if e := gBlock1.ValidateFields(); e != nil {
+		t.Errorf("invalid field(s) gblock1: %v", e)
+	}
 
 	// ensure equivalent genesis dumps in and out
-	gotGenesisDump, err := MakeGenesisDump(db)
-	if gotGenesisDump.Nonce != genesisDump.Nonce {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump nonce: wanted: %v, got: %v", genesisDump.Nonce, gotGenesisDump.Nonce)
-	}
-	if gotGenesisDump.Timestamp != genesisDump.Timestamp {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump timestamp: wanted: %v, got: %v", genesisDump.Timestamp, gotGenesisDump.Timestamp)
-	}
-	if gotGenesisDump.Coinbase != genesisDump.Coinbase {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump coinbase: wanted: %v, got: %v", genesisDump.Coinbase, gotGenesisDump.Coinbase)
-	}
-	if gotGenesisDump.Difficulty != genesisDump.Difficulty {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump difficulty: wanted: %v, got: %v", genesisDump.Difficulty, gotGenesisDump.Difficulty)
-	}
-	if gotGenesisDump.ExtraData != genesisDump.ExtraData {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump extra data: wanted: %v, got: %v", genesisDump.ExtraData, gotGenesisDump.ExtraData)
-	}
-	if gotGenesisDump.GasLimit != genesisDump.GasLimit {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump gaslimit: wanted: %v, got: %v", genesisDump.GasLimit, gotGenesisDump.GasLimit)
-	}
-	if gotGenesisDump.Mixhash != genesisDump.Mixhash {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump mixhash: wanted: %v, got: %v", genesisDump.Mixhash, gotGenesisDump.Mixhash)
-	}
-	if gotGenesisDump.ParentHash != genesisDump.ParentHash {
-		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump parenthash: wanted: %v, got: %v", genesisDump.ParentHash, gotGenesisDump.ParentHash)
-	}
-	if !sameGenesisDumpAllocationsBalances(genesisDump, gotGenesisDump) {
-		t.Error("MakeGenesisDump failed to make equivalent genesis dump allocations.")
-	}
-
-	// ensure equivalent genesis blocks in and out
-	gBlock2, err := WriteGenesisBlock(db, gotGenesisDump)
+	gBlock1Dump, err := MakeGenesisDump(db)
 	if err != nil {
-		t.Errorf("WriteGenesisBlock could not setup gotGenesisDump: err: %v", err)
+		t.Errorf("failed to make genesis dump: %v", err)
+	}
+	if gBlock1Dump == nil {
+		t.Error("gotgenesis dump nil")
 	}
 
-	if gBlock1.Hash() != gBlock2.Hash() {
-		t.Errorf("MakeGenesisDump failed to make genesis block with equivalent hashes: wanted: %, got: %v", gBlock1.Hash(), gBlock2.Hash())
+	if gBlock1Dump.Nonce != genesisDump.Nonce {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump nonce: wanted: %v, got: %v", genesisDump.Nonce, gBlock1Dump.Nonce)
 	}
+	if gBlock1Dump.Timestamp != genesisDump.Timestamp {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump timestamp: wanted: %v, got: %v", genesisDump.Timestamp, gBlock1Dump.Timestamp)
+	}
+	if gBlock1Dump.Coinbase != genesisDump.Coinbase {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump coinbase: wanted: %v, got: %v", genesisDump.Coinbase, gBlock1Dump.Coinbase)
+	}
+	if gBlock1Dump.Difficulty != genesisDump.Difficulty {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump difficulty: wanted: %v, got: %v", genesisDump.Difficulty, gBlock1Dump.Difficulty)
+	}
+	if gBlock1Dump.ExtraData != genesisDump.ExtraData {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump extra data: wanted: %v, got: %v", genesisDump.ExtraData, gBlock1Dump.ExtraData)
+	}
+	if gBlock1Dump.GasLimit != genesisDump.GasLimit {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump gaslimit: wanted: %v, got: %v", genesisDump.GasLimit, gBlock1Dump.GasLimit)
+	}
+	if gBlock1Dump.Mixhash != genesisDump.Mixhash {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump mixhash: wanted: %v, got: %v", genesisDump.Mixhash, gBlock1Dump.Mixhash)
+	}
+	if gBlock1Dump.ParentHash != genesisDump.ParentHash {
+		t.Errorf("MakeGenesisDump failed to make equivalent genesis dump parenthash: wanted: %v, got: %v", genesisDump.ParentHash, gBlock1Dump.ParentHash)
+	}
+
 	db.Close()
 }
 
@@ -374,7 +406,9 @@ func TestChainConfig_SortForks(t *testing.T) {
 	c := makeTestChainConfig()
 	n := big.NewInt(0)
 	for _, fork := range c.Forks {
-		if n.Cmp(fork.Block) > 0 { t.Errorf("unexpected fork block: %v is greater than: %v", fork.Block, n) }
+		if n.Cmp(fork.Block) > 0 {
+			t.Errorf("unexpected fork block: %v is greater than: %v", fork.Block, n)
+		}
 		n = fork.Block
 	}
 
@@ -386,7 +420,9 @@ func TestChainConfig_SortForks(t *testing.T) {
 	c.SortForks()
 	n = big.NewInt(0)
 	for _, fork := range c.Forks {
-		if n.Cmp(fork.Block) > 0 { t.Errorf("unexpected fork block: %v is greater than: %v", fork.Block, n) }
+		if n.Cmp(fork.Block) > 0 {
+			t.Errorf("unexpected fork block: %v is greater than: %v", fork.Block, n)
+		}
 		n = fork.Block
 	}
 }
@@ -405,7 +441,7 @@ func TestChainConfig_GetSigner(t *testing.T) {
 		bottom := big.NewInt(0).Add(block, blockMinus)
 		top := big.NewInt(0).Add(block, blockPlus)
 		current := bottom
-		for current.Cmp(top) <=0 {
+		for current.Cmp(top) <= 0 {
 			signer := c.GetSigner(current)
 			feat, _, configured := c.GetFeature(current, "eip155")
 			if !configured {
@@ -427,3 +463,4 @@ func TestChainConfig_GetSigner(t *testing.T) {
 	}
 
 }
+
