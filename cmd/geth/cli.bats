@@ -67,6 +67,29 @@ teardown() {
 	[[ "$output" == *"USAGE"* ]]
 }
 
+@test "alias for snake-case-commands" {
+	old_command_names=(maxpeers nodiscover ipcdisable)
+	new_command_names=(max-peers no-discover ipc-disable)
+	
+	for var in "${old_command_names[@]}"
+	do
+		run $GETH_CMD --$var --datadir $DATA_DIR --exec 'exit' console
+		[ "$status" -eq 0 ]
+		[[ "$output" == *"Starting"* ]]
+		[[ "$output" == *"Blockchain DB Version: "* ]]
+		[[ "$output" == *"Starting Server"* ]]
+	done
+
+	for var in "${new_command_names[@]}"
+	do
+		run $GETH_CMD --$var --data-dir $DATA_DIR --exec 'exit' console
+		[ "$status" -eq 0 ]
+		[[ "$output" == *"Starting"* ]]
+		[[ "$output" == *"Blockchain DB Version: "* ]]
+		[[ "$output" == *"Starting Server"* ]]
+	done
+}
+
 # TODO
 # This doesn't pass, and that's an issue.
 # @test "displays help with valid command and invalid subcommand" {
