@@ -40,7 +40,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/event"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -286,24 +285,8 @@ func rollback(ctx *cli.Context) error {
 		return errors.New("invalid flag usage")
 	}
 
-	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeChainDataDir(ctx), "chaindata"), 0, 0)
-	if err != nil {
-		glog.Fatalf("could not open database: ", err)
-		return err
-	}
+	bc, chainDB := MakeChain(ctx)
 	defer chainDB.Close()
-
-	//stateDB, err := state.New(common.Hash{}, chainDB)
-	//if err != nil {
-	//	glog.Fatalf("could not make state db: %v", err)
-	//	return nil
-	//}
-
-	config := mustMakeSufficientConfiguration(ctx)
-	bc, err := core.NewBlockChain(chainDB, config.ChainConfig, core.FakePow{}, &event.TypeMux{})
-	if err != nil {
-		glog.Fatalf("could not initialize blockchain: %v", err)
-	}
 
 	glog.Warning("Rolling back blockchain...")
 	glog.Info("Original head block of blockchain was: %v", bc.CurrentBlock().Number())
@@ -317,7 +300,6 @@ func rollback(ctx *cli.Context) error {
 	} else {
 		glog.Info("SUCCESS: Head block set to: %v", nowCurrentState)
 	}
-
 
 	return nil
 
