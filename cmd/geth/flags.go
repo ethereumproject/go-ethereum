@@ -29,7 +29,7 @@ var (
 		Value: DirectoryString{common.DefaultDataDir()},
 	}
 	UseChainConfigFlag = cli.StringFlag{
-		Name:  "chain-config, chainconfig",
+		Name:  "chain-config,chainconfig",
 		Usage: "Specify a JSON format chain configuration file to use.",
 	}
 	KeyStoreDirFlag = DirectoryFlag{
@@ -75,7 +75,7 @@ var (
 		Value: 128,
 	}
 	BlockchainVersionFlag = cli.IntFlag{
-		Name:  "blockchain-version, blockchainversion",
+		Name:  "blockchain-version,blockchainversion",
 		Usage: "Blockchain version (integer)",
 		Value: core.BlockChainVersion,
 	}
@@ -84,7 +84,7 @@ var (
 		Usage: "Enable fast syncing through state downloads",
 	}
 	LightKDFFlag = cli.BoolFlag{
-		Name:  "light-kdf, lightkdf",
+		Name:  "light-kdf,lightkdf",
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
 	}
 	// Network Split settings
@@ -99,21 +99,21 @@ var (
 		Usage: "Enable mining",
 	}
 	MinerThreadsFlag = cli.IntFlag{
-		Name:  "miner-threads, minerthreads",
+		Name:  "miner-threads,minerthreads",
 		Usage: "Number of CPU threads to use for mining",
 		Value: runtime.NumCPU(),
 	}
 	MiningGPUFlag = cli.StringFlag{
-		Name:  "miner-gpus, minergpus",
+		Name:  "miner-gpus,minergpus",
 		Usage: "List of GPUs to use for mining (e.g. '0,1' will use the first two GPUs found)",
 	}
 	TargetGasLimitFlag = cli.StringFlag{
-		Name:  "target-gas-limit, targetgaslimit",
+		Name:  "target-gas-limit,targetgaslimit",
 		Usage: "Target gas limit sets the artificial target gas floor for the blocks to mine",
 		Value: core.TargetGasLimit.String(),
 	}
 	AutoDAGFlag = cli.BoolFlag{
-		Name:  "auto-dag, autodag",
+		Name:  "auto-dag,autodag",
 		Usage: "Enable automatic DAG pregeneration",
 	}
 	EtherbaseFlag = cli.StringFlag{
@@ -122,12 +122,12 @@ var (
 		Value: "0",
 	}
 	GasPriceFlag = cli.StringFlag{
-		Name:  "gas-price, gasprice",
+		Name:  "gas-price,gasprice",
 		Usage: "Minimal gas price to accept for mining a transactions",
 		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
 	}
 	ExtraDataFlag = cli.StringFlag{
-		Name:  "extra-data, extradata",
+		Name:  "extra-data,extradata",
 		Usage: "Freeform header field set by the miner",
 	}
 	// Account settings
@@ -173,36 +173,36 @@ var (
 		Usage: "Enable the HTTP-RPC server",
 	}
 	RPCListenAddrFlag = cli.StringFlag{
-		Name:  "rpc-addr, rpcaddr",
+		Name:  "rpc-addr,rpcaddr",
 		Usage: "HTTP-RPC server listening interface",
 		Value: common.DefaultHTTPHost,
 	}
 	RPCPortFlag = cli.IntFlag{
-		Name:  "rpc-port, rpcport",
+		Name:  "rpc-port,rpcport",
 		Usage: "HTTP-RPC server listening port",
 		Value: common.DefaultHTTPPort,
 	}
 	RPCCORSDomainFlag = cli.StringFlag{
-		Name:  "rpc-cors-domain, rpccorsdomain",
+		Name:  "rpc-cors-domain,rpccorsdomain",
 		Usage: "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
 		Value: "",
 	}
 	RPCApiFlag = cli.StringFlag{
-		Name:  "rpc-api, rpcapi",
+		Name:  "rpc-api,rpcapi",
 		Usage: "API's offered over the HTTP-RPC interface",
 		Value: rpc.DefaultHTTPApis,
 	}
 	IPCDisabledFlag = cli.BoolFlag{
-		Name:  "ipc-disable, ipcdisable",
+		Name:  "ipc-disable,ipcdisable",
 		Usage: "Disable the IPC-RPC server",
 	}
 	IPCApiFlag = cli.StringFlag{
-		Name:  "ipc-api, ipcapi",
+		Name:  "ipc-api,ipcapi",
 		Usage: "API's offered over the IPC-RPC interface",
 		Value: rpc.DefaultIPCApis,
 	}
 	IPCPathFlag = DirectoryFlag{
-		Name:  "ipc-path, ipcpath",
+		Name:  "ipc-path,ipcpath",
 		Usage: "Filename for IPC socket/pipe within the datadir (explicit paths escape it)",
 		Value: DirectoryString{common.DefaultIPCSocket},
 	}
@@ -211,22 +211,22 @@ var (
 		Usage: "Enable the WS-RPC server",
 	}
 	WSListenAddrFlag = cli.StringFlag{
-		Name:  "ws-addr, wsaddr",
+		Name:  "ws-addr,wsaddr",
 		Usage: "WS-RPC server listening interface",
 		Value: common.DefaultWSHost,
 	}
 	WSPortFlag = cli.IntFlag{
-		Name:  "ws-port, wsport",
+		Name:  "ws-port,wsport",
 		Usage: "WS-RPC server listening port",
 		Value: common.DefaultWSPort,
 	}
 	WSApiFlag = cli.StringFlag{
-		Name:  "ws-api, wsapi",
+		Name:  "ws-api,wsapi",
 		Usage: "API's offered over the WS-RPC interface",
 		Value: rpc.DefaultHTTPApis,
 	}
 	WSAllowedOriginsFlag = cli.StringFlag{
-		Name:  "ws-origins, wsorigins",
+		Name:  "ws-origins,wsorigins",
 		Usage: "Origins from which to accept websockets requests",
 		Value: "",
 	}
@@ -241,12 +241,12 @@ var (
 
 	// Network Settings
 	MaxPeersFlag = cli.IntFlag{
-		Name:  "max-peers, maxpeers",
+		Name:  "max-peers,maxpeers",
 		Usage: "Maximum number of network peers (network disabled if set to 0)",
 		Value: 25,
 	}
 	MaxPendingPeersFlag = cli.IntFlag{
-		Name:  "max-pend-peers, maxpendpeers",
+		Name:  "max-pend-peers,maxpendpeers",
 		Usage: "Maximum number of pending connection attempts (defaults used if set to 0)",
 		Value: 0,
 	}
@@ -265,7 +265,7 @@ var (
 		Usage: "P2P node key file",
 	}
 	NodeKeyHexFlag = cli.StringFlag{
-		Name:  "nodekey-hex, nodekeyhex",
+		Name:  "nodekey-hex,nodekeyhex",
 		Usage: "P2P node key as hex (for testing)",
 	}
 	NATFlag = cli.StringFlag{
@@ -274,7 +274,7 @@ var (
 		Value: "any",
 	}
 	NoDiscoverFlag = cli.BoolFlag{
-		Name:  "no-discover, nodiscover",
+		Name:  "no-discover,nodiscover",
 		Usage: "Disables the peer discovery mechanism (manual peer addition)",
 	}
 	WhisperEnabledFlag = cli.BoolFlag{
@@ -283,7 +283,7 @@ var (
 	}
 	// ATM the url is left to the user and deployment to
 	JSpathFlag = cli.StringFlag{
-		Name:  "js-path, jspath",
+		Name:  "js-path,jspath",
 		Usage: "JavaScript root path for `loadScript` and document root for `admin.httpGet`",
 		Value: ".",
 	}
@@ -295,32 +295,32 @@ var (
 
 	// Gas price oracle settings
 	GpoMinGasPriceFlag = cli.StringFlag{
-		Name:  "gpo-min, gpomin",
+		Name:  "gpo-min,gpomin",
 		Usage: "Minimum suggested gas price",
 		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
 	}
 	GpoMaxGasPriceFlag = cli.StringFlag{
-		Name:  "gpo-max, gpomax",
+		Name:  "gpo-max,gpomax",
 		Usage: "Maximum suggested gas price",
 		Value: new(big.Int).Mul(big.NewInt(500), common.Shannon).String(),
 	}
 	GpoFullBlockRatioFlag = cli.IntFlag{
-		Name:  "gpo-full, gpofull",
+		Name:  "gpo-full,gpofull",
 		Usage: "Full block threshold for gas price calculation (%)",
 		Value: 80,
 	}
 	GpobaseStepDownFlag = cli.IntFlag{
-		Name:  "gpo-base-down, gpobasedown",
+		Name:  "gpo-base-down,gpobasedown",
 		Usage: "Suggested gas price base step down ratio (1/1000)",
 		Value: 10,
 	}
 	GpobaseStepUpFlag = cli.IntFlag{
-		Name:  "gpo-base-up, gpobaseup",
+		Name:  "gpo-base-up,gpobaseup",
 		Usage: "Suggested gas price base step up ratio (1/1000)",
 		Value: 100,
 	}
 	GpobaseCorrectionFactorFlag = cli.IntFlag{
-		Name:  "gpo-base-cf, gpobasecf",
+		Name:  "gpo-base-cf,gpobasecf",
 		Usage: "Suggested gas price base correction factor (%)",
 		Value: 110,
 	}
