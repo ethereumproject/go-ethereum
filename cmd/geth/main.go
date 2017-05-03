@@ -128,6 +128,7 @@ the configuration of a chain database. It includes genesis block data as well as
 		PasswordFileFlag,
 		BootnodesFlag,
 		DataDirFlag,
+		DocRootFlag,
 		UseChainConfigFlag,
 		KeyStoreDirFlag,
 		ChainIDFlag,
