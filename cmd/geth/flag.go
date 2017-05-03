@@ -132,7 +132,7 @@ func getChainConfigNameFromContext(ctx *cli.Context) string {
 // if none (or the empty string) is specified.
 // --> <home>/<EthereumClassic>(defaulty) or --datadir
 func mustMakeDataDir(ctx *cli.Context) string {
-	if path := ctx.GlobalString(aliasableName(aliasableName(DataDirFlag.Name, ctx), ctx)); path != "" {
+	if path := ctx.GlobalString(aliasableName(DataDirFlag.Name, ctx)); path != "" {
 		return path
 	}
 	log.Fatal("Cannot determine data directory, please set manually (--datadir)")
@@ -152,7 +152,7 @@ func MakeIPCPath(ctx *cli.Context) string {
 	if ctx.GlobalBool(aliasableName(IPCDisabledFlag.Name, ctx)) {
 		return ""
 	}
-	return ctx.GlobalString(aliasableName(aliasableName(IPCPathFlag.Name, ctx), ctx))
+	return ctx.GlobalString(aliasableName(IPCPathFlag.Name, ctx))
 }
 
 // MakeNodeKey creates a node key from set command line flags, either loading it
@@ -596,7 +596,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		Etherbase:               MakeEtherbase(accman, ctx),
 		MinerThreads:            ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)),
 		NatSpec:                 ctx.GlobalBool(aliasableName(NatspecEnabledFlag.Name, ctx)),
-		DocRoot:                 ctx.GlobalString(aliasableName(aliasableName(DocRootFlag.Name, ctx), ctx)),
+		DocRoot:                 ctx.GlobalString(aliasableName(DocRootFlag.Name, ctx)),
 		GasPrice:                new(big.Int),
 		GpoMinGasPrice:          new(big.Int),
 		GpoMaxGasPrice:          new(big.Int),
