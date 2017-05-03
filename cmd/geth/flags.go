@@ -10,6 +10,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"gopkg.in/urfave/cli.v1"
+	"strings"
 )
 
 // These are all the command line flags we support.
@@ -22,7 +23,7 @@ import (
 var (
 	// General settings
 	DataDirFlag = DirectoryFlag{
-		Name:  "datadir",
+		Name:  "data-dir,datadir",
 		Usage: "Data directory for the databases and keystore",
 		Value: DirectoryString{common.DefaultDataDir()},
 	}
@@ -63,7 +64,7 @@ var (
 		Usage: "Enable NatSpec confirmation notice",
 	}
 	DocRootFlag = DirectoryFlag{
-		Name:  "docroot",
+		Name:  "doc-root,docroot",
 		Usage: "Document Root for HTTPClient file scheme",
 		Value: DirectoryString{common.HomeDir()},
 	}
@@ -200,7 +201,7 @@ var (
 		Value: rpc.DefaultIPCApis,
 	}
 	IPCPathFlag = DirectoryFlag{
-		Name:  "ipcpath",
+		Name:  "ipc-path,ipcpath",
 		Usage: "Filename for IPC socket/pipe within the datadir (explicit paths escape it)",
 		Value: DirectoryString{common.DefaultIPCSocket},
 	}
@@ -327,3 +328,19 @@ var (
 		Usage: "Use classic blockchain (always set, flag is unused and exists for compatibility only)",
 	}
 )
+
+// aliasableName check global vars for aliases flag and directoryFlag names.
+// These can be "comma,sep-arated", and ensures that if one is set (and/or not the other),
+// only one var will be returned and it will be decided in order of appearance.
+func aliasableName(commaSeparatedName string, ctx *cli.Context) (string) {
+	names := strings.Split(commaSeparatedName, ",")
+	returnName := names[0] // first name as default
+	last := len(names) - 1
+	// for in reverse, so that we prioritize the first appearing
+	for i := last; i >= 0; i-- {
+		if ctx.GlobalIsSet(names[i]) {
+			returnName = names[i]
+		}
+	}
+	return returnName
+}
