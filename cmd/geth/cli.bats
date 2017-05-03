@@ -143,3 +143,4 @@ teardown() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Alloted 17MB cache"* ]]
 }
+
