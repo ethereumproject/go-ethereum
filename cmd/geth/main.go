@@ -67,9 +67,10 @@ func makeCLIApp() (app *cli.App) {
 		attachCommand,
 		javascriptCommand,
 		{
-			Action: makedag,
-			Name:   "makedag",
-			Usage:  "generate ethash dag (for testing)",
+			Action:  makedag,
+			Name:    "make-dag",
+			Aliases: []string{"makedag"},
+			Usage:   "generate ethash dag (for testing)",
 			Description: `
 The makedag command generates an ethash DAG in /tmp/dag.
 
@@ -78,17 +79,19 @@ Regular users do not need to execute it.
 `,
 		},
 		{
-			Action: gpuinfo,
-			Name:   "gpuinfo",
-			Usage:  "gpuinfo",
+			Action:  gpuinfo,
+			Name:    "gpu-info",
+			Aliases: []string{"gpuinfo"},
+			Usage:   "gpuinfo",
 			Description: `
 Prints OpenCL device info for all found GPUs.
 `,
 		},
 		{
-			Action: gpubench,
-			Name:   "gpubench",
-			Usage:  "benchmark GPU",
+			Action:  gpubench,
+			Name:    "gpu-bench",
+			Aliases: []string{"gpubench"},
+			Usage:   "benchmark GPU",
 			Description: `
 Runs quick benchmark on first GPU found.
 `,
@@ -104,7 +107,7 @@ The output of this command is supposed to be machine-readable.
 		{
 			Action: initGenesis,
 			Name:   "init",
-			Usage:  "bootstraps and initialises a new genesis block (JSON)",
+			Usage:  "bootstraps and initialises a new genesis block (JSON) [REQUIRED argument: filepath.json]",
 			Description: `
 The init command initialises a new genesis block and definition for the network.
 This is a destructive action and changes the network in which you will be
@@ -112,9 +115,10 @@ participating.
 `,
 		},
 		{
-			Action: dumpChainConfig,
-			Name:   "dumpChainConfig",
-			Usage:  "dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
+			Action:  dumpChainConfig,
+			Name:    "dump-chain-config",
+			Aliases: []string{"dumpchainconfig"},
+			Usage:   "dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
 			Description: `
 The dump external configuration command writes a JSON file containing pertinent configuration data for
 the configuration of a chain database. It includes genesis block data as well as chain fork settings.
