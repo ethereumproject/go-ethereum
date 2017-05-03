@@ -67,63 +67,55 @@ teardown() {
 	[[ "$output" == *"USAGE"* ]]
 }
 
+# TODO
+# This doesn't pass, and that's an issue.
+# @test "displays help with valid command and invalid subcommand" {
+# 	# lisr
+# 	run $GETH_CMD account lisr
+# 	echo "$output"
+
+# 	[ "$status" -eq 3 ]
+# 	[[ "$output" == *"SUBCOMMANDS"* ]]
+# }
+
 @test "aliases for directory-flags" {
-	VAR_DIR=`mktemp -d`
+
+	# keystore not hyphenated
+	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/keyhere console
+	[ "$status" -eq 0 ]
+	[ -d $DATA_DIR/keyhere ]
+
+	# data-dir/datadir
+	run $GETH_CMD --datadir $DATA_DIR console
+	[ "$status" -eq 0 ]
+	[ -d $DATA_DIR ]
+
+	run $GETH_CMD --data-dir $DATA_DIR console
+	[ "$status" -eq 0 ]
+	[ -d $DATA_DIR ]
+
+	# # ipc-path/ipcpath
+	run $GETH_CMD --data-dir $DATA_DIR --ipc-path abc.ipc console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc.ipc"* ]]
+
+	run $GETH_CMD --data-dir $DATA_DIR --ipcpath $DATA_DIR/mainnet/abc.ipc console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc.ipc"* ]]
+
+	run $GETH_CMD --data-dir $DATA_DIR --ipc-path $DATA_DIR/mainnet/abc console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc"* ]]
+
+	run $GETH_CMD --data-dir $DATA_DIR --ipcpath $DATA_DIR/mainnet/abc console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc"* ]]
 	
-	old_command_names=(keystore docroot ipcpath)
-	new_command_names=(keystore doc-root ipc-path)
-	paths_args=($DATA_DIR/keyhere $VAR_DIR/docroothere $DATA_DIR/abc.ipc)
-	paths_types=(ddd none ff)
-
-	counter=0
-	for var in "${old_command_names[@]}"
-	do
-		# hardcode --datadir/--data-dir
-		run $GETH_CMD --datadir $DATA_DIR --$var "${paths_args[counter]}" console
-		echo "$output"
-
-		[ "$status" -eq 0 ]
-		[[ "$output" == *"Starting"* ]]
-		[[ "$output" == *"Blockchain DB Version: "* ]]
-		[[ "$output" == *"Starting Server"* ]]
-
-		if [[ "${paths_types[counter]}" == "ddd" ]]; then
-			[ -d "${paths_args[counter]}" ]
-		elif [[ "${paths_types[counter]}" == "ff" ]]; then
-			[ -f "${paths_args[counter]}" ]
-		#else
-			# flag not parsed
-		fi
-
-		((counter=counter+1))
-	done
-	counter=0
-	for var in "${new_command_names[@]}"
-	do
-		run $GETH_CMD --data-dir $DATA_DIR --$var "${paths_args[counter]}" console
-		echo "$output"
-		
-		[ "$status" -eq 0 ]
-		[[ "$output" == *"Starting"* ]]
-		[[ "$output" == *"Blockchain DB Version: "* ]]
-		[[ "$output" == *"Starting Server"* ]]
-
-		if [[ "${paths_types[counter]}" == "ddd" ]]; then
-			[ -d "${paths_args[counter]}" ]
-		elif [[ "${paths_types[counter]}" == "ff" ]]; then
-			[ -f "${paths_args[counter]}" ]
-		#else
-			# flag not parsed
-		fi
-
-		((counter=counter+1))
-	done
-
-	rm -rf $VAR_DIR
 }
 
+# ... assuming that if two work, the rest will work.
 @test "alias for hyphenated-commands" {
-	old_command_names=(nodiscover ipcdisable) # ... assuming that if two work, the rest will work.
+	old_command_names=(nodiscover ipcdisable) 
 	new_command_names=(no-discover ipc-disable)
 	
 	for var in "${old_command_names[@]}"
@@ -146,13 +138,8 @@ teardown() {
 	done
 }
 
-# TODO
-# This doesn't pass, and that's an issue.
-# @test "displays help with valid command and invalid subcommand" {
-# 	# lisr
-# 	run $GETH_CMD account lisr
-# 	echo "$output"
-
-# 	[ "$status" -eq 3 ]
-# 	[[ "$output" == *"SUBCOMMANDS"* ]]
-# }
+@test "int flags get parsed" {
+	run $GETH_CMD --data-dir $DATA_DIR --cache 17 console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Alloted 17MB cache"* ]]
+}
