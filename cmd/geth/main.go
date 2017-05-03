@@ -220,7 +220,7 @@ the configuration of a chain database. It includes genesis block data as well as
 		// for chains with the main network genesis block and network id 1.
 		eth.EnableBadBlockReporting = true
 
-		gasLimit := ctx.GlobalString(aliasableName(TargetGasLimitFlag.Name, ctx))
+		gasLimit := TargetGasLimitFlag.Value
 		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
 			log.Fatalf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
 		}
@@ -369,7 +369,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	accman := ethereum.AccountManager()
 	passwords := MakePasswordList(ctx)
 
-	accounts := strings.Split(ctx.GlobalString(aliasableName(UnlockedAccountFlag.Name, ctx)), ",")
+	accounts := strings.Split(UnlockedAccountFlag.Value, ",")
 	for i, account := range accounts {
 		if trimmed := strings.TrimSpace(account); trimmed != "" {
 			unlockAccount(ctx, accman, trimmed, i, passwords)
@@ -377,7 +377,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	}
 	// Start auxiliary services if enabled
 	if ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)) {
-		if err := ethereum.StartMining(ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)), ctx.GlobalString(aliasableName(MiningGPUFlag.Name, ctx))); err != nil {
+		if err := ethereum.StartMining(MinerThreadsFlag.Value, MiningGPUFlag.Value); err != nil {
 			log.Fatalf("Failed to start mining: ", err)
 		}
 	}
@@ -442,7 +442,7 @@ func version(ctx *cli.Context) error {
 	fmt.Println("Geth")
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
-	fmt.Println("Network Id:", ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)))
+	fmt.Println("Network Id:", ctx.GlobalString(aliasableName(NetworkIdFlag.Name, ctx)))
 	fmt.Println("Go Version:", runtime.Version())
 	fmt.Println("OS:", runtime.GOOS)
 	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
