@@ -300,7 +300,7 @@ var (
 		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
 	}
 	GpoMaxGasPriceFlag = cli.StringFlag{
-		Name:  "gpo-min, gpomin",
+		Name:  "gpo-max, gpomax",
 		Usage: "Maximum suggested gas price",
 		Value: new(big.Int).Mul(big.NewInt(500), common.Shannon).String(),
 	}

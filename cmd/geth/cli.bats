@@ -67,7 +67,7 @@ teardown() {
 	[[ "$output" == *"USAGE"* ]]
 }
 
-@test "aliases for directory flags" {
+@test "aliases for directory-flags" {
 	old_command_names=(datadir keystore docroot ipcpath)
 	new_command_names=(data-dir keystore doc-root ipc-path)
 
@@ -93,29 +93,29 @@ teardown() {
 	done
 }
 
-# @test "alias for snake-case-commands" {
-# 	old_command_names=(nodiscover ipcdisable)
-# 	new_command_names=(no-discover ipc-disable)
+@test "alias for hyphenated-commands" {
+	old_command_names=(nodiscover ipcdisable) # ... assuming that if two work, the rest will work.
+	new_command_names=(no-discover ipc-disable)
 	
-# 	for var in "${old_command_names[@]}"
-# 	do
-# 		# hardcode --datadir/--data-dir
-# 		run $GETH_CMD --datadir $DATA_DIR --$var --exec 'exit' console
-# 		[ "$status" -eq 0 ]
-# 		[[ "$output" == *"Starting"* ]]
-# 		[[ "$output" == *"Blockchain DB Version: "* ]]
-# 		[[ "$output" == *"Starting Server"* ]]
-# 	done
+	for var in "${old_command_names[@]}"
+	do
+		# hardcode --datadir/--data-dir
+		run $GETH_CMD --datadir $DATA_DIR --$var --exec 'exit' console
+		[ "$status" -eq 0 ]
+		[[ "$output" == *"Starting"* ]]
+		[[ "$output" == *"Blockchain DB Version: "* ]]
+		[[ "$output" == *"Starting Server"* ]]
+	done
 
-# 	for var in "${new_command_names[@]}"
-# 	do
-# 		run $GETH_CMD --data-dir $DATA_DIR --$var --exec 'exit' console
-# 		[ "$status" -eq 0 ]
-# 		[[ "$output" == *"Starting"* ]]
-# 		[[ "$output" == *"Blockchain DB Version: "* ]]
-# 		[[ "$output" == *"Starting Server"* ]]
-# 	done
-# }
+	for var in "${new_command_names[@]}"
+	do
+		run $GETH_CMD --data-dir $DATA_DIR --$var --exec 'exit' console
+		[ "$status" -eq 0 ]
+		[[ "$output" == *"Starting"* ]]
+		[[ "$output" == *"Blockchain DB Version: "* ]]
+		[[ "$output" == *"Starting Server"* ]]
+	done
+}
 
 # TODO
 # This doesn't pass, and that's an issue.

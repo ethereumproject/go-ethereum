@@ -31,6 +31,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/ethash"
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -39,7 +40,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -220,9 +220,9 @@ the configuration of a chain database. It includes genesis block data as well as
 		// for chains with the main network genesis block and network id 1.
 		eth.EnableBadBlockReporting = true
 
-		gasLimit := ctx.GlobalString(TargetGasLimitFlag.Name)
+		gasLimit := ctx.GlobalString(aliasableName(TargetGasLimitFlag.Name, ctx))
 		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
-			log.Fatalf("malformed %s flag value %q", TargetGasLimitFlag.Name, gasLimit)
+			log.Fatalf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
 		}
 
 		return nil
@@ -241,7 +241,6 @@ the configuration of a chain database. It includes genesis block data as well as
 	}
 	return app
 }
-
 
 func main() {
 	app := makeCLIApp()
@@ -290,7 +289,6 @@ func initGenesis(ctx *cli.Context) error {
 	return nil
 }
 
-
 // dumpExternailChainConfig exports chain configuration based on database to JSON file
 func dumpChainConfig(ctx *cli.Context) error {
 
@@ -321,7 +319,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 	//
 	// FYI: here would be an inflection point for if we used a --genesis flag.
 	if genesisDump == nil {
-		if ctx.GlobalBool(TestNetFlag.Name) {
+		if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
 			glog.V(logger.Info).Info("WARNING: No genesis block found in database. Dumping the testnet default genesis.")
 			genesisDump = core.TestNetGenesis
 		} else {
@@ -356,7 +354,6 @@ func dumpChainConfig(ctx *cli.Context) error {
 	return nil
 }
 
-
 // startNode boots up the system node and all registered protocols, after which
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces and the
 // miner.
@@ -372,15 +369,15 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	accman := ethereum.AccountManager()
 	passwords := MakePasswordList(ctx)
 
-	accounts := strings.Split(ctx.GlobalString(UnlockedAccountFlag.Name), ",")
+	accounts := strings.Split(ctx.GlobalString(aliasableName(UnlockedAccountFlag.Name, ctx)), ",")
 	for i, account := range accounts {
 		if trimmed := strings.TrimSpace(account); trimmed != "" {
 			unlockAccount(ctx, accman, trimmed, i, passwords)
 		}
 	}
 	// Start auxiliary services if enabled
-	if ctx.GlobalBool(MiningEnabledFlag.Name) {
-		if err := ethereum.StartMining(ctx.GlobalInt(MinerThreadsFlag.Name), ctx.GlobalString(MiningGPUFlag.Name)); err != nil {
+	if ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)) {
+		if err := ethereum.StartMining(ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)), ctx.GlobalString(aliasableName(MiningGPUFlag.Name, ctx))); err != nil {
 			log.Fatalf("Failed to start mining: ", err)
 		}
 	}
@@ -441,11 +438,11 @@ func gpubench(ctx *cli.Context) error {
 	return nil
 }
 
-func version(c *cli.Context) error {
+func version(ctx *cli.Context) error {
 	fmt.Println("Geth")
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
-	fmt.Println("Network Id:", c.GlobalInt(NetworkIdFlag.Name))
+	fmt.Println("Network Id:", ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)))
 	fmt.Println("Go Version:", runtime.Version())
 	fmt.Println("OS:", runtime.GOOS)
 	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
