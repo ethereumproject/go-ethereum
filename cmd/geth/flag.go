@@ -201,7 +201,7 @@ func MakeBootstrapNodesFromContext(ctx *cli.Context) []*discover.Node {
 // MakeListenAddress creates a TCP listening address string from set command
 // line flags.
 func MakeListenAddress(ctx *cli.Context) string {
-	return fmt.Sprintf(":%d", ListenPortFlag.Value)
+	return fmt.Sprintf(":%d", ctx.GlobalInt(aliasableName(ListenPortFlag.Name, ctx)))
 }
 
 // MakeNAT creates a port mapper from set command line flags.
@@ -569,15 +569,15 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		BootstrapNodes:  config.ParsedBootstrap,
 		ListenAddr:      MakeListenAddress(ctx),
 		NAT:             MakeNAT(ctx),
-		MaxPeers:        MaxPeersFlag.Value,
-		MaxPendingPeers: MaxPendingPeersFlag.Value,
+		MaxPeers:        ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)),
+		MaxPendingPeers: ctx.GlobalInt(aliasableName(MaxPendingPeersFlag.Name, ctx)),
 		IPCPath:         MakeIPCPath(ctx),
 		HTTPHost:        MakeHTTPRpcHost(ctx),
-		HTTPPort:        RPCPortFlag.Value,
+		HTTPPort:        ctx.GlobalInt(aliasableName(RPCPortFlag.Name, ctx)),
 		HTTPCors:        ctx.GlobalString(aliasableName(RPCCORSDomainFlag.Name, ctx)),
 		HTTPModules:     MakeRPCModules(ctx.GlobalString(aliasableName(RPCApiFlag.Name, ctx))),
 		WSHost:          MakeWSRpcHost(ctx),
-		WSPort:          WSPortFlag.Value,
+		WSPort:          ctx.GlobalInt(aliasableName(WSPortFlag.Name, ctx)),
 		WSOrigins:       ctx.GlobalString(aliasableName(WSAllowedOriginsFlag.Name, ctx)),
 		WSModules:       MakeRPCModules(ctx.GlobalString(aliasableName(WSApiFlag.Name, ctx))),
 	}
@@ -588,22 +588,22 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	ethConf := &eth.Config{
 		ChainConfig:             config.ChainConfig,
 		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
-		BlockChainVersion:       BlockchainVersionFlag.Value,
-		DatabaseCache:           CacheFlag.Value,
+		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
+		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
 		DatabaseHandles:         MakeDatabaseHandles(),
-		NetworkId:               NetworkIdFlag.Value,
+		NetworkId:               ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)),
 		AccountManager:          accman,
 		Etherbase:               MakeEtherbase(accman, ctx),
-		MinerThreads:            MinerThreadsFlag.Value,
+		MinerThreads:            ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)),
 		NatSpec:                 ctx.GlobalBool(aliasableName(NatspecEnabledFlag.Name, ctx)),
 		DocRoot:                 ctx.GlobalString(aliasableName(aliasableName(DocRootFlag.Name, ctx), ctx)),
 		GasPrice:                new(big.Int),
 		GpoMinGasPrice:          new(big.Int),
 		GpoMaxGasPrice:          new(big.Int),
-		GpoFullBlockRatio:       GpoFullBlockRatioFlag.Value,
-		GpobaseStepDown:         GpobaseStepDownFlag.Value,
-		GpobaseStepUp:           GpobaseStepUpFlag.Value,
-		GpobaseCorrectionFactor: GpobaseCorrectionFactorFlag.Value,
+		GpoFullBlockRatio:       ctx.GlobalInt(aliasableName(GpoFullBlockRatioFlag.Name, ctx)),
+		GpobaseStepDown:         ctx.GlobalInt(aliasableName(GpobaseStepDownFlag.Name, ctx)),
+		GpobaseStepUp:           ctx.GlobalInt(aliasableName(GpobaseStepUpFlag.Name, ctx)),
+		GpobaseCorrectionFactor: ctx.GlobalInt(aliasableName(GpobaseCorrectionFactorFlag.Name, ctx)),
 		SolcPath:                ctx.GlobalString(aliasableName(SolcPathFlag.Name, ctx)),
 		AutoDAG:                 ctx.GlobalBool(aliasableName(AutoDAGFlag.Name, ctx)) || ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)),
 	}
@@ -782,7 +782,7 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 func MakeChainDatabase(ctx *cli.Context) ethdb.Database {
 	var (
 		datadir = MustMakeChainDataDir(ctx)
-		cache   = CacheFlag.Value
+		cache   = ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx))
 		handles = MakeDatabaseHandles()
 	)
 
