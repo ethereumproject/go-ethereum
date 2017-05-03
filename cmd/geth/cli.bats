@@ -68,29 +68,58 @@ teardown() {
 }
 
 @test "aliases for directory-flags" {
-	old_command_names=(datadir keystore docroot ipcpath)
-	new_command_names=(data-dir keystore doc-root ipc-path)
+	VAR_DIR=`mktemp -d`
+	
+	old_command_names=(keystore docroot ipcpath)
+	new_command_names=(keystore doc-root ipc-path)
+	paths_args=($DATA_DIR/keyhere $VAR_DIR/docroothere $DATA_DIR/abc.ipc)
+	paths_types=(ddd none ff)
 
+	counter=0
 	for var in "${old_command_names[@]}"
 	do
 		# hardcode --datadir/--data-dir
-		run $GETH_CMD --$var $DATA_DIR/abc$var console
+		run $GETH_CMD --datadir $DATA_DIR --$var "${paths_args[counter]}" console
 		echo "$output"
 
 		[ "$status" -eq 0 ]
 		[[ "$output" == *"Starting"* ]]
 		[[ "$output" == *"Blockchain DB Version: "* ]]
 		[[ "$output" == *"Starting Server"* ]]
-	done
 
+		if [[ "${paths_types[counter]}" == "ddd" ]]; then
+			[ -d "${paths_args[counter]}" ]
+		elif [[ "${paths_types[counter]}" == "ff" ]]; then
+			[ -f "${paths_args[counter]}" ]
+		#else
+			# flag not parsed
+		fi
+
+		((counter=counter+1))
+	done
+	counter=0
 	for var in "${new_command_names[@]}"
 	do
-		run $GETH_CMD --$var $DATA_DIR/abc$var console
+		run $GETH_CMD --data-dir $DATA_DIR --$var "${paths_args[counter]}" console
+		echo "$output"
+		
 		[ "$status" -eq 0 ]
 		[[ "$output" == *"Starting"* ]]
 		[[ "$output" == *"Blockchain DB Version: "* ]]
 		[[ "$output" == *"Starting Server"* ]]
+
+		if [[ "${paths_types[counter]}" == "ddd" ]]; then
+			[ -d "${paths_args[counter]}" ]
+		elif [[ "${paths_types[counter]}" == "ff" ]]; then
+			[ -f "${paths_args[counter]}" ]
+		#else
+			# flag not parsed
+		fi
+
+		((counter=counter+1))
 	done
+
+	rm -rf $VAR_DIR
 }
 
 @test "alias for hyphenated-commands" {
