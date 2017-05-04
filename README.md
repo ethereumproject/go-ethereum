@@ -17,7 +17,7 @@ The simplest way to get started running a node is to visit our [Releases page](h
 
 CLI one-liner for Darwin:
 ```bash
-$ curl -L -o ~/Downloads/geth-classic-3.4.zip https://github.com/ethereumproject/go-ethereum/releases/download/v3.4.0/geth-classic-darwin-v3.4.0-1-TODO.zip && unzip ~/Downloads/geth-3.4-etc.zip -d $HOME/bin/
+$ curl -L -o ~/Downloads/geth-classic-3.4.zip https://github.com/ethereumproject/go-ethereum/releases/download/v3.4.0/geth-classic-darwin-v3.4.0-1-TODO.zip && unzip ~/Downloads/geth-classic-3.4.zip -d $HOME/bin/
 
 $ geth help
 ```
