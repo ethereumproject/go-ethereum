@@ -54,7 +54,7 @@ This repository includes several wrappers/executables found in the `cmd` directo
 
 ## :green_book: Geth: the basics
 
-### Where does the data livea?
+### Where does the data live?
 By default, geth will store relevant node and blockchain data in a __parent directory__ depending on your OS: 
 - Linux: `$HOME/.ethereum-classic/`
 - Mac: `$HOME/Library/EthereumClassic/`
