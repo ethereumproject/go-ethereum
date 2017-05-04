@@ -83,6 +83,7 @@ var reservedChainIDS = map[string]bool{
 	"nodekey":   true,
 	"nodes":     true,
 	"geth":      true,
+	"morden",    true,
 }
 
 // getChainConfigIDFromContext gets the --chain=my-custom-net value.
