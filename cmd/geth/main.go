@@ -124,6 +124,17 @@ The dump external configuration command writes a JSON file containing pertinent 
 the configuration of a chain database. It includes genesis block data as well as chain fork settings.
 `,
 		},
+		{
+			Action: rollback,
+			Name: "rollback",
+			Aliases: []string{"roll-back", "set-head", "sethead"},
+			Usage: "rollback [block index number] - set current head for blockchain",
+			Description: `
+Rollback set the current head block for block chain already in the database.
+This is a destructive action, purging any block more recent than the index specified.
+Syncing will require downloading contemporary block information from the index onwards.
+`,
+		},
 	}
 
 	app.Flags = []cli.Flag{
@@ -265,6 +276,37 @@ func geth(ctx *cli.Context) error {
 	return nil
 }
 
+func rollback(ctx *cli.Context) error {
+	index := ctx.Args().First()
+	if len(index) == 0 {
+		log.Fatal("missing argument: use `rollback 12345` to specify required block number to roll back to")
+		return errors.New("invalid flag usage")
+	}
+
+	blockIndex, err := strconv.ParseUint(index, 10, 64)
+	if err != nil {
+		glog.Fatalf("invalid argument: use `rollback 12345`, were '12345' is a required number specifying which block number to roll back to")
+		return errors.New("invalid flag usage")
+	}
+
+	bc, chainDB := MakeChain(ctx)
+	defer chainDB.Close()
+
+	glog.Warning("Rolling back blockchain...")
+
+	bc.SetHead(blockIndex)
+	glog.Warningf("Setting current (head) block to: %v", blockIndex)
+
+	nowCurrentState := bc.CurrentBlock().Number().Uint64()
+	if nowCurrentState != blockIndex {
+		glog.Fatalf("ERROR: Expected rollback to set head to: %v, instead current head is: %v", blockIndex, nowCurrentState)
+	} else {
+		glog.Infof("SUCCESS: Head block set to: %v", nowCurrentState)
+	}
+
+	return nil
+}
+
 // initGenesis will initialise the given JSON format genesis file and writes it as
 // the zero'd block (i.e. genesis) or will fail hard if it can't succeed.
 func initGenesis(ctx *cli.Context) error {
@@ -275,6 +317,7 @@ func initGenesis(ctx *cli.Context) error {
 	}
 
 	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeChainDataDir(ctx), "chaindata"), 0, 0)
+	defer chainDB.Close()
 	if err != nil {
 		log.Fatalf("could not open database: ", err)
 		return err
