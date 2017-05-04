@@ -25,4 +25,3 @@ teardown() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *'"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"'* ]]
 }
-

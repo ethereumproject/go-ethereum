@@ -4,16 +4,20 @@
 
 setup() {
 	DATA_DIR=`mktemp -d`
+	default_mainnet_genesis_hash='"0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"'
+	customnet_genesis_hash='"0x76bc07fbdfe084b9aff37425c24453f774d1945b28412a3b4b8c25d8d3c81df2"'
 }
 
 teardown() {
 	rm -fr $DATA_DIR
+	unset default_mainnet_genesis_hash
+	unset customnet_genesis_hash
 }
 
 ## dump-chain-config JSON 
 
 # Test dumping chain configuration to JSON file.
-@test "chainconfig default dump" {
+@test "dump-chain-config | exit 0" {
 	run $GETH_CMD --datadir $DATA_DIR --maxpeers 0 dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
 
@@ -27,7 +31,7 @@ teardown() {
 	[[ "$output" == *"\"id\": \"mainnet\","* ]]
 }
 
-@test "chainconfig testnet dump" {
+@test "--testnet dump-chain-config | exit 0" {
 	run $GETH_CMD --datadir $DATA_DIR --testnet dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
 
@@ -40,7 +44,7 @@ teardown() {
 	[[ "$output" == *"\"id\": \"morden\"," ]]
 }
 
-@test "chainconfig customnet dump" {
+@test "--chain kittyCoin dump-chain-config | exit 0" {
 	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
 	[ "$status" -eq 0 ]
@@ -60,7 +64,7 @@ teardown() {
 	[[ "$output" == *"\"name\": \"kittyCoin\"," ]]
 }
 
-@test "chainconfig dump-chain-config JSON dump is usable as external chainconfig" {
+@test "dump-chain-config | --chain-config | exit 0" {
 # Same as 'chainconfig customnet dump'... higher complexity::more confidence
 	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
@@ -80,11 +84,18 @@ teardown() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"\"name\": \"kittyCoin\"," ]]
 
-# Ensure JSON file dump is loadable as external config
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $DATA_DIR/dump.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+	# Ensure JSON file dump is loadable as external config
+	run $GETH_CMD --datadir $DATA_DIR --chainconfig $DATA_DIR/dump.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"0x0000000000000042"* ]]
+	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]
+
+	# Ensure we can specify this chaindata subdir with --chain comand.
+	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]	
+
 }
 
 ## load /data
@@ -94,11 +105,11 @@ teardown() {
 # - can load default external JSON config
 # - use datadir/subdir schema (/mainnet)
 # - configured nonce matches external nonce (soft check since 42 is default, too)
-@test "chainconfig configurable from default mainnet json file" {
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+@test "--chain-config config/mainnet.json | exit 0" {
+	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"0x0000000000000042"* ]]
+	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]
 
 	# Ensure we're using the --chain named subdirectory under main $DATA_DIR.
 	[ -d $DATA_DIR/mainnet ]
@@ -113,7 +124,7 @@ teardown() {
 # Test ensures
 # - external chain config can determine chain configuration
 # - use datadir/subdir schema (/morden)
-@test "chainconfig configurable from default testnet json file" {
+@test "--chain-config config/testnet.json | exit 0" {
 	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
 	[ "$status" -eq 0 ]
@@ -131,36 +142,16 @@ teardown() {
 
 ## load /testdata
 
-# Test loading mainnet chain configuration from testdata/ JSON file.
-# Test ensures
-# - nonce is loaded from custom external rather than default (hard check)
-@test "chainconfig configurable from testdata mainnet json file" {
-	# Ensure non-default nonce 43 (42 is default).
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
-	echo "$output"
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"0x0000000000000043"* ]]
-
-	# Ensure we're using the --chain named subdirectory under main $DATA_DIR.
-	[ -d $DATA_DIR/mainnet ]
-	[ -d $DATA_DIR/mainnet ]
-	[ -d $DATA_DIR/mainnet/chaindata ]
-	[ -f $DATA_DIR/mainnet/chaindata/CURRENT ]
-	[ -f $DATA_DIR/mainnet/chaindata/LOCK ]
-	[ -f $DATA_DIR/mainnet/chaindata/LOG ]
-	[ -d $DATA_DIR/mainnet/keystore ]
-}
-
 # Test loading customnet chain configuration from testdata/ JSON file.
 # Test ensures
 # - chain is loaded from custom external file and determines datadir/subdir scheme
-@test "chainconfig configurable from testdata customnet json file" {
+@test "--chain-config testdata/chain_config_dump-ok-custom.json | exit 0" {
 	# Ensure non-default nonce 43 (42 is default).
 	# Ensure chain subdir is determined by config `id`
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok-custom.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok-custom.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"0x0000000000000043"* ]]
+	[[ "$output" == *"$customnet_genesis_hash"* ]]
 
 	# Ensure we're using the --chain named subdirectory under main $DATA_DIR.
 	[ -d $DATA_DIR/customnet ]
@@ -174,7 +165,7 @@ teardown() {
 # Test fails to load invalid chain configuration from testdata/ JSON file.
 # Test ensures
 # - external chain configuration should require JSON to parse
-@test "chainconfig configuration fails with invalid-comment testdata mainnet json file" {
+@test "--chain-config testdata/chain_config_dump-invalid-comment.json | exit 1" {
 	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-comment.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
 	[ "$status" -eq 1 ]
@@ -183,7 +174,7 @@ teardown() {
 # Test fails to load invalid chain configuration from testdata/ JSON file.
 # Test ensures
 # - external chain configuration should require JSON to parse
-@test "chainconfig configuration fails with invalid-coinbase testdata mainnet json file" {
+@test "--chain-config testdata/chain_config_dump-invalid-coinbase.json | exit >0" {
 	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-coinbase.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
 	[ "$status" -gt 0 ]
@@ -195,7 +186,7 @@ freshconfig() {
 	cp "$BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json" "$DATA_DIR/"
 }
 
-@test "chainconfig configuration fails with any single invalid attribute key in otherwise valid json file" {
+@test "--chain-config @ sed -i s/key/badkey/ config/mainnet.json | exit >0" {
 	declare -a OK_VARS=(id genesis chainConfig bootstrap) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(did genes chainconfig bootsrap)
 	
@@ -218,7 +209,7 @@ freshconfig() {
 	done
 }
 
-@test "chainconfig configuration fails with any single invalid required attribute subkey in otherwise valid json file" {
+@test "--chain-config @ sed -i s/subkey/badsubkey/ config/mainnet.json | exit >0" {
 	declare -a OK_VARS=(nonce gasLimit difficulty forks alloc balance Block Hash) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(noneonce gasLim dificile knives allok bills Clock Cash)
 	
@@ -241,7 +232,7 @@ freshconfig() {
 	done
 }
 
-@test "chainconfig configuration fails with any single invalid required attribute value in otherwise valid json file" {
+@test "--chain-config @ sed -i s/value/badvalue/ config/mainnet.json | exit >0" {
 	declare -a    OK_VARS=(0x0000000000000042 0x0000000000000000000000000000000000000000000000000000000000001388 0x0000000000000000000000000000000000000000 enode homestead) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(Ox0000000000000042 Ox0000000000000000000000000000000000000000000000000000000000001388 0x000000000000000000000000000000000000000  ewok  homeinbed)
 	
@@ -262,6 +253,23 @@ freshconfig() {
 		freshconfig()
 		((counter=counter+1))
 	done
+}
+
+@test "--chain-config config/mainnet.json && --chain-config testdata/chain_config_dump-ok-custom.json | does overwrite genesis" {
+
+	# establish default mainnet chaindata
+	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --exec="eth.getBlock(0).hash" console
+	echo "$output"
+	[ "$status" -eq 0 ]
+	# ensure genesis block is mainnet default (by hash)
+	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]
+
+	# start with --chain-config customnet data
+	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok-custom.json --exec="eth.getBlock(0).hash" console
+	echo "$output"
+	[ "$status" -eq 0 ]
+	# ensure genesis block is different	(by hash)
+	[[ "$output" == *"$customnet_genesis_hash"* ]]
 }
 
 
