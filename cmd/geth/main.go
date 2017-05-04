@@ -289,21 +289,18 @@ func rollback(ctx *cli.Context) error {
 	defer chainDB.Close()
 
 	glog.Warning("Rolling back blockchain...")
-	glog.Info("Original head block of blockchain was: %v", bc.CurrentBlock().Number())
 
 	bc.SetHead(blockIndex)
-	glog.Warning("Setting current (head) block to: %v", blockIndex)
+	glog.Warningf("Setting current (head) block to: %v", blockIndex)
 
 	nowCurrentState := bc.CurrentBlock().Number().Uint64()
 	if nowCurrentState != blockIndex {
-		glog.Warningf("ERROR: Expected rollback to set head to: %v, instead head is: %v", blockIndex, nowCurrentState)
+		glog.Fatalf("ERROR: Expected rollback to set head to: %v, instead current head is: %v", blockIndex, nowCurrentState)
 	} else {
-		glog.Info("SUCCESS: Head block set to: %v", nowCurrentState)
+		glog.Infof("SUCCESS: Head block set to: %v", nowCurrentState)
 	}
 
 	return nil
-
-	// TODO: add more contextual information?
 }
 
 // initGenesis will initialise the given JSON format genesis file and writes it as

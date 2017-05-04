@@ -799,7 +799,7 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	var err error
 	chainDb = MakeChainDatabase(ctx)
 
-	chainConfig := mustMakeSufficientConfiguration(ctx).ChainConfig
+	chainConfig := MustMakeChainConfigFromDb(ctx, chainDb)
 
 	pow := pow.PoW(core.FakePow{})
 	if !ctx.GlobalBool(FakePoWFlag.Name) {
