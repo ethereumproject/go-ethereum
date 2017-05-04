@@ -92,7 +92,7 @@ var reservedChainIDS = map[string]bool{
 func getChainConfigIDFromContext(ctx *cli.Context) string {
 	chainFlagIsSet := ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx))
 	if chainFlagIsSet && currentChainID != "" {
-		panic("Flags --chainconfig and --chain are conflicting. Please use only one.")
+		panic("Flags --chain-config and --chain are conflicting. Please use only one.")
 	}
 	if currentChainID != "" {
 		return currentChainID
@@ -709,7 +709,7 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 
 		// Check for flagged bootnodes.
 		if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
-			panic("Conflicting --chainconfig and --bootnodes flags. Please use either but not both.")
+			panic("Conflicting --chain-config and --bootnodes flags. Please use either but not both.")
 		}
 
 		currentChainID = config.ID // Set global var.
