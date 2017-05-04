@@ -117,7 +117,7 @@ teardown() {
 }
 
 # chainconfig VALID default
-@test "should migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig testdata/chain_config_dump-ok.json (mainnet)" {
+@test "should migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig config/mainnet.json (mainnet)" {
 	run "$CMD_DIR/gethc3.3" --fast console
 	echo "$output"
 	[ "$status" -eq 0 ]
@@ -125,7 +125,7 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
-	run $GETH_CMD --fast --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-ok.json"  console
+	run $GETH_CMD --fast --chainconfig "$BATS_TEST_DIRNAME/config/mainnet.json"  console
 	echo "$output"
 	[ "$status" -eq 0 ]
 

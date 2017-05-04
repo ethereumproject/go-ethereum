@@ -655,19 +655,3 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	}
 	return dump, nil
 }
-
-// ReadGenesisFromJSONFile allows the use a genesis file in JSON format.
-// Implemented in `init` command via initGenesis method.
-func ReadGenesisFromJSONFile(jsonFilePath string) (dump *GenesisDump, err error) {
-	f, err := os.Open(jsonFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read genesis file: %s", err)
-	}
-	defer f.Close()
-
-	dump = new(GenesisDump)
-	if json.NewDecoder(f).Decode(dump); err != nil {
-		return nil, fmt.Errorf("%s: %s", jsonFilePath, err)
-	}
-	return dump, nil
-}

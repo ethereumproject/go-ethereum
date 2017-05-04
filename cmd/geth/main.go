@@ -35,7 +35,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
@@ -102,16 +101,6 @@ Runs quick benchmark on first GPU found.
 			Usage:  "print ethereum version numbers",
 			Description: `
 The output of this command is supposed to be machine-readable.
-`,
-		},
-		{
-			Action: initGenesis,
-			Name:   "init",
-			Usage:  "bootstraps and initialises a new genesis block (JSON) [REQUIRED argument: filepath.json]",
-			Description: `
-The init command initialises a new genesis block and definition for the network.
-This is a destructive action and changes the network in which you will be
-participating.
 `,
 		},
 		{
@@ -304,35 +293,6 @@ func rollback(ctx *cli.Context) error {
 		glog.Infof("SUCCESS: Head block set to: %v", nowCurrentState)
 	}
 
-	return nil
-}
-
-// initGenesis will initialise the given JSON format genesis file and writes it as
-// the zero'd block (i.e. genesis) or will fail hard if it can't succeed.
-func initGenesis(ctx *cli.Context) error {
-	path := ctx.Args().First()
-	if len(path) == 0 {
-		log.Fatal("need path argument to genesis JSON file")
-		return errors.New("need path argument to genesis JSON file")
-	}
-
-	chainDB, err := ethdb.NewLDBDatabase(filepath.Join(MustMakeChainDataDir(ctx), "chaindata"), 0, 0)
-	defer chainDB.Close()
-	if err != nil {
-		log.Fatalf("could not open database: ", err)
-		return err
-	}
-
-	dump, err := core.ReadGenesisFromJSONFile(path)
-	if err != nil {
-		log.Fatalf("%s: %s", path, err)
-	}
-
-	block, err := core.WriteGenesisBlock(chainDB, dump)
-	if err != nil {
-		log.Fatal("failed to write genesis block: ", err)
-	}
-	log.Printf("successfully wrote genesis block and/or chain rule set: %x", block.Hash())
 	return nil
 }
 

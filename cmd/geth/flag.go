@@ -92,7 +92,7 @@ var reservedChainIDS = map[string]bool{
 func getChainConfigIDFromContext(ctx *cli.Context) string {
 	chainFlagIsSet := ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx))
 	if chainFlagIsSet && currentChainID != "" {
-		panic("Flags --chainconfig and --chain are conflicting. Please use only one.")
+		panic("Flags --chain-config and --chain are conflicting. Please use only one.")
 	}
 	if currentChainID != "" {
 		return currentChainID
@@ -621,6 +621,10 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Configure the Whisper service
 	shhEnable := ctx.GlobalBool(aliasableName(WhisperEnabledFlag.Name, ctx))
 
+	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
+		ethConf.Genesis = config.Genesis // from parsed JSON file
+	}
+
 	// Override any default configs in dev mode or the test net
 	switch {
 	case ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)):
@@ -705,20 +709,11 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 
 		// Check for flagged bootnodes.
 		if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
-			panic("Conflicting --chainconfig and --bootnodes flags. Please use either but not both.")
+			panic("Conflicting --chain-config and --bootnodes flags. Please use either but not both.")
 		}
 
 		currentChainID = config.ID // Set global var.
 		logChainConfiguration(ctx, config.ChainConfig)
-
-		chainDB := MakeChainDatabase(ctx)
-		block, err := core.WriteGenesisBlock(chainDB, config.Genesis)
-		if err != nil {
-			log.Fatalf("failed to write genesis block: %v", err)
-		} else {
-			log.Printf("successfully wrote genesis block and allocations: %x", block.Hash())
-		}
-		chainDB.Close()
 
 		return config
 	}

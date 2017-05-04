@@ -12,10 +12,18 @@ _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and power
 
 ## Install
 
-### From a release binary
-The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth --help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum). For common useage, just scroll down a little.
+### :rocket: From a release binary
+The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum). 
 
-### Building the source
+CLI one-liner for Darwin:
+```bash
+$ curl -L -o ~/Downloads/geth-classic-3.4.zip https://github.com/ethereumproject/go-ethereum/releases/download/v3.4.0/geth-classic-darwin-v3.4.0-1-TODO.zip && unzip ~/Downloads/geth-3.4-etc.zip -d $HOME/bin/
+
+$ geth help
+```
+> Linux, Windows: just replace `darwin` with your matching os/arch.
+
+### :hammer: Building the source
 
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
@@ -28,7 +36,7 @@ To install...
 - the full suite of utilities: `$ go install github.com/ethereumproject/go-ethereum/cmd/...`
 - just __geth__: `$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
 
-Executables built from source will, by default, be installed in `$GOPATH/bin/`
+Executables built from source will, by default, be installed in `$GOPATH/bin/`.
 
 ## Executables
 
@@ -44,35 +52,39 @@ This repository includes several wrappers/executables found in the `cmd` directo
 | `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/ethereumproject/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/ethereumproject/rpc-tests/blob/master/README.md) for details. |
 | `rlpdump` | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://github.com/ethereumproject/wiki/wiki/RLP)) dumps (data encoding used by the Ethereum protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
 
-## Running _geth_: the basics
+## :green_book: Geth: the basics
 
-By default, geth will store relevant node data in a __parent directory__ depending on your OS: 
+### Where does the data livea?
+By default, geth will store relevant node and blockchain data in a __parent directory__ depending on your OS: 
 - Linux: `$HOME/.ethereum-classic/`
 - Mac: `$HOME/Library/EthereumClassic/`
-- Windows: `$HOME/AppData/Roaming/`
+- Windows: `$HOME/AppData/Roaming/EthereumClassic/`
 
-You can specify this directory on the command line by using the `--datadir` flag.
+You can specify this directory on the command line using `--data-dir=$HOME/id/rather/put/it/here`.
 
-Within this parent directory, geth will use a __subdirectory__ to hold data for each network you run. The defaults are `/mainnet` for the Mainnet, and `/morden` for the Testnet. 
+Within this parent directory, geth will use a __/subdirectory__ to hold data for each network you run. The defaults are:
+ - `/mainnet` for the Mainnet
+ - `/morden` for the Morden Testnet (activated with `--testnet`)
 
 You can specify the subdirectory with the `--chain` flag.
 
-> _If you have existing data created prior to the [3.4 Release](), geth will attempt to migrate your existing ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page]()._
+> __Migrating__: If you have existing data created prior to the [3.4 Release](), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page]().
 
 ### Full node on the main Ethereum network
 
-By far the most common scenario is people wanting to simply interact with the Ethereum network: create accounts; transfer funds; deploy and interact with contracts. For this particular use-case the user doesn't care about years-old historical data, so we can fast-sync quickly to the current state of the network. To do so:
-
+```
+$ geth 
+```
+It's that easy! This will establish an ETC blockchain node and download ("sync") the entirety of the ETC blockchain. However, the most common scenario is people wanting to simply interact with the Ethereum Classic network: create accounts; transfer funds; deploy and interact with contracts. For this particular use-case the user doesn't care about years-old historical data, so we can _fast-sync_ to the current state of the network. To do so:
 ```
 $ geth --fast --cache=512
 ```
 
 This command will:
 
- * Start geth in fast sync mode (`--fast`), causing it to download more data in exchange for avoiding processing the entire history of the Ethereum network, which is very CPU intensive.
+ * Start geth in fast sync mode (`--fast`), causing it to download more data in exchange for avoiding processing the entire history of the Ethereum Classic network, which is very CPU intensive.
  * Bump the memory allowance of the database to 512MB (`--cache=512`), which can help significantly in sync times especially for HDD users. This flag is optional and you can set it as high or as low as you'd like, though we'd recommend the 512MB - 2GB range.
 
-----
 ### Create or manage account(s)
 ```
 $ geth account new
@@ -91,9 +103,9 @@ SUBCOMMANDS:
 
 ```
 
-To learn more about creating, importing, and managing accounts please visit the [Accounts Wiki Page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-your-accounts). And, as always: _do not lose, forget, confuse, conflate, misuse, misunderstand, or misremember your password._
+Learn more at the [Accounts Wiki Page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-your-accounts).
 
-----
+
 ### Interact with the Javascript console
 ```
 $ geth console
@@ -101,14 +113,16 @@ $ geth console
 
 This command will start up Geth's built-in interactive [JavaScript console](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console), through which you can invoke all official [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API) as well as Geth's own [management APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs). This too is optional and if you leave it out you can always attach to an already running Geth instance with `geth --attach`.
 
-----
+Learn more at the [Javascript Console Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console).
 
-> Going through all the possible command line flags would be overwhelming here, but below you'll find a few common parameter combos to get you up to speed quickly on how you can run your own Geth instance. 
-> 
-> For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
 
-## Running _geth_: developing and advanced useage
+### ... and so much more!
 
+For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
+
+## :orange_book: Geth: developing and advanced useage
+
+### Morden Testnet
 If you'd like to play around with creating Ethereum contracts, you
 almost certainly would like to do that without any real money involved until you get the hang of the entire system. In other words, instead of attaching to the main network, you want to join the **test** network with your node, which is fully equivalent to the main network, but with play-Ether only.
 
@@ -120,7 +134,7 @@ The `--fast`, `--cache` flags and `console` subcommand have the exact same meani
 
 Specifying the `--testnet` flag will reconfigure your Geth instance a bit:
 
- -  Instead of using the default data directory (`~/.ethereum-classic/mainnet` on Linux for example), Geth will host its data in a a `morden` subfolder (`~/.ethereum-classic/morden`).
+ -  As mentioned above, Geth will host its testnet data in a `morden` subfolder (`~/.ethereum-classic/morden`).
  - Instead of connecting the main Ethereum network, the client will connect to the test network, which uses different P2P bootnodes, different network IDs and genesis states.
 
 > *Note: Although there are some internal protective measures to prevent transactions from crossing over between the main network and test network (different starting nonces), you should make sure to always use separate accounts for play-money and real-money. Unless you manually move accounts, Geth
@@ -128,15 +142,10 @@ will by default correctly separate the two networks and will not make any accoun
 
 ### Programatically interfacing Geth nodes
 
-As a developer, sooner rather than later you'll want to start interacting with Geth and the Ethereum
-network via your own programs and not manually through the console. To aid this, Geth has built in
-support for a JSON-RPC based APIs ([standard APIs](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) and
-[Geth specific APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs)). These can be
-exposed via HTTP, WebSockets and IPC (unix sockets on unix based platroms, and named pipes on Windows).
+As a developer, sooner rather than later you'll want to start interacting with Geth and the Ethereum network via your own programs and not manually through the console. To aid this, Geth has built in support for a JSON-RPC based APIs ([standard APIs](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) and
+[Geth specific APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs)). These can be exposed via HTTP, WebSockets and IPC (unix sockets on unix based platroms, and named pipes on Windows).
 
-The IPC interface is enabled by default and exposes all the APIs supported by Geth, whereas the HTTP
-and WS interfaces need to manually be enabled and only expose a subset of APIs due to security reasons.
-These can be turned on/off and configured as you'd expect.
+The IPC interface is enabled by default and exposes all the APIs supported by Geth, whereas the HTTP and WS interfaces need to manually be enabled and only expose a subset of APIs due to security reasons. These can be turned on/off and configured as you'd expect.
 
 HTTP based JSON-RPC API options:
 
@@ -160,87 +169,30 @@ You'll need to use your own programming environments' capabilities (libraries, t
 
 ### Operating a private/custom network
 
-Maintaining your own private network is more involved as several options taken for granted in the official networks need to be manually configured.
+As of [Geth 3.4]() you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID. 
 
-As of [Geth 3.4]() you are now able to configure a private chain via:
-1. initializing nodes with a custom __Genesis state__.
-2. specifying an __external chain configuration__ file, which includes necessary Genesis fields _as well as feature configurations for protocol forks, bootnodes, and chainID_. 
+Please find full [example  external configuration files representing the Mainnet and Morden Testnet specs in the /config subdirectory of this repo](). You can use either of these files as a starting point for your own customizations.
 
-Both usages rely on a specified external JSON file. In both cases, __the same JSON file may be used__. However, the `init` command will not require any JSON fields besides the _genesis object_, which means that when using `init`, the external file may be an abbreviated version of the provided `mainnet.json` example.
 
-Please find full [exemplary  external configuration files representing the Mainnet and Morden Testnet default specs in the /config subdirectory of this repo](). You can use either of these files as a starting point for your own customizations.
+#### Define external chain configuration
 
-__Usages 1__ and __2__ are outlined below. The following instructions __Create the rendezvous point__ and __Starting up your member nodes__ will remain the same for both configuration implementations.
-
-#### Usage 1: Initialize identical genesis states
-
-> The "genesis state" of a blockchain defines _Block 0_. Since a blockchain deterministically depends on the ordering and individual characteristics of every block, the configuration of a genesis state uniquely influences the "fingerprint" at any point following on the chain; different _Block 0_, different _Block n_. 
-
-The `init` command allows you to write the genesis state specifications from a JSON file to a chain database as the genesis block, which you'll need to initialize for **every** Geth node prior to starting it up to ensure congruent blockchain parameters:
+Specifying an external chain configuration file will allow fine-grained control over a custom blockchain/network configuration, including the genesis state and extending through bootnodes and fork-based protocol upgrades. 
 
 ```
-$ geth init path/to/customnet.json
-```
-
-Where `customnet.json` must contain:
-
-```json
-  {
-    "nonce": "0x0000fd6f72646561",
-    "timestamp": "",
-    "parentHash": "",
-    "extraData": "",
-    "gasLimit": "0x2FEFD8",
-    "difficulty": "0x020000",
-    "mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
-    "coinbase": "",
-    "alloc": {}
-  }
-
-```
-
-The above fields should be fine for most purposes, although we'd recommend changing the `nonce` to some random value so you prevent unknown remote nodes from being able to connect to you. 
-
-If you'd like to pre-fund some accounts for easier testing, you can populate the `alloc` field with account balances:
-
-```json
-"alloc": {
-      "0x3030303861636137636530353865656161303936": {
-        "balance": "100000000000000000000000"
-      },
-      "0x3030306164613834383336326436613033393261": {
-        "balance": "22100000000000000000000"
-      },
-      "0x3030306433393066623866386536353865616565": {
-        "balance": "1000000000000000000000"
-      },
-      "0x3030313464396162393061303264373863326130": {
-        "balance": "2000000000000000000000"
-      }
-    }
-```
-*Addresses may be either `0x`-prefixed or not. Testnet configuration default examples are unprefixed to signify difference from conventionally prefixed addresses.*
-
-
-#### Usage 2: Define external chain configuration
-
-Specifying an external chain configuration file will allow even finer-grained control over a custom blockchain/network configuration, _including the genesis state_ and extending through bootnodes and fork-based protocol upgrades. 
-
-```
-$ geth --chainconfig=/path/to/customnet.json [--flags] [command]
+$ geth --chain-config=/path/to/customnet.json [--flags] [command]
 ```
 
 The external chain configuration file specifies valid settings for the following top-level fields:
 
-| key | notes |
+| JSON Key | Notes |
 --- | --- | ---
-| `chainID` |  Determines local __/subdir__ for chain data. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in `EIP-155`; that is configured within `forks.features`. |
+| `chainID` |  Determines local __/subdir__ for chain data. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in _EIP-155_; that is configured as a protocal upgrade within `forks.features`. |
 | `name` | Human readable name, ie _Ethereum Classic Mainnet_, _Morden Testnet._ |
-| `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block (just like `init`). The data required is identical to __Usage 1__. |
+| `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block. If configuring an existing chain database with a different genesis block, it will overwrite it. |
 | `forks` | Determines configuration for fork-based __protocol upgrades__, ie _EIP-150_, _EIP-155_, _EIP-160_, _ECIP-1010_, etc ;-). |
 | `bootstrap` | Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
 
-*Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chainconfig` incompatible with `--chain`, `--bootnodes`, `--testnet`.* 
+*Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain-config` __incompatible__ with `--chain`, `--bootnodes`, and `--testnet`. It remains __compatible__ with `--data-dir`.* 
 
 To learn more about external chain configuration, please visit the [External Chain Configuration Wiki page]().
 
@@ -253,10 +205,12 @@ $ bootnode --genkey=boot.key
 $ bootnode --nodekey=boot.key
 ```
 
-With the bootnode online, it will display an [`enode` URL](https://github.com/ethereumproject/wiki/wiki/enode-url-format) that other nodes can use to connect to it and exchange peer information. Make sure to replace the
+With the bootnode online, it will display an `enode` URL that other nodes can use to connect to it and exchange peer information. Make sure to replace the
 displayed IP address information (most probably `[::]`) with your externally accessible IP to get the actual `enode` URL.
 
 *Note: You could also use a full fledged Geth node as a bootnode, but it's the less recommended way.*
+
+To learn more about enodes and enode format, visit the [Enode Wiki page](https://github.com/ethereumproject/wiki/wiki/enode-url-format).
 
 ##### Starting up your member nodes
 
