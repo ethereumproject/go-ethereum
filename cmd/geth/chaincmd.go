@@ -51,14 +51,16 @@ if already existing.
 		`,
 	}
 	upgradedbCommand = cli.Command{
-		Action: upgradeDB,
-		Name:   "upgradedb",
-		Usage:  "upgrade chainblock database",
+		Action:  upgradeDB,
+		Name:    "upgrade-db",
+		Aliases: []string{"upgradedb"},
+		Usage:   "upgrade chainblock database",
 	}
 	removedbCommand = cli.Command{
-		Action: removeDB,
-		Name:   "removedb",
-		Usage:  "Remove blockchain and state databases",
+		Action:  removeDB,
+		Name:    "remove-db",
+		Aliases: []string{"removedb"},
+		Usage:   "Remove blockchain and state databases",
 	}
 	dumpCommand = cli.Command{
 		Action: dump,

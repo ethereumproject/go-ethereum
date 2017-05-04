@@ -88,7 +88,7 @@ func (self DirectoryFlag) Apply(set *flag.FlagSet) {
 	}
 
 	eachName(self.Name, func(name string) {
-		set.Var(&self.Value, self.Name, self.Usage)
+		set.Var(&self.Value, name, self.Usage)
 	})
 }
 
