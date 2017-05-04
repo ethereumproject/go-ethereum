@@ -109,6 +109,7 @@ This command will start up Geth's built-in interactive [JavaScript console](http
 
 ## Running _geth_: developing and advanced useage
 
+### Morden Testnet
 If you'd like to play around with creating Ethereum contracts, you
 almost certainly would like to do that without any real money involved until you get the hang of the entire system. In other words, instead of attaching to the main network, you want to join the **test** network with your node, which is fully equivalent to the main network, but with play-Ether only.
 
@@ -162,85 +163,30 @@ You'll need to use your own programming environments' capabilities (libraries, t
 
 Maintaining your own private network is more involved as several options taken for granted in the official networks need to be manually configured.
 
-As of [Geth 3.4]() you are now able to configure a private chain via:
-1. initializing nodes with a custom __Genesis state__.
-2. specifying an __external chain configuration__ file, which includes necessary Genesis fields _as well as feature configurations for protocol forks, bootnodes, and chainID_. 
+As of [Geth 3.4]() you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary Genesis fields _as well as feature configurations for protocol forks, bootnodes, and chainID_. 
 
-Both usages rely on a specified external JSON file. In both cases, __the same JSON file may be used__. However, the `init` command will not require any JSON fields besides the _genesis object_, which means that when using `init`, the external file may be an abbreviated version of the provided `mainnet.json` example.
+Please find full [example  external configuration files representing the Mainnet and Morden Testnet default specs in the /config subdirectory of this repo](). You can use either of these files as a starting point for your own customizations.
 
-Please find full [exemplary  external configuration files representing the Mainnet and Morden Testnet default specs in the /config subdirectory of this repo](). You can use either of these files as a starting point for your own customizations.
 
-__Usages 1__ and __2__ are outlined below. The following instructions __Create the rendezvous point__ and __Starting up your member nodes__ will remain the same for both configuration implementations.
+#### Define external chain configuration
 
-#### Usage 1: Initialize identical genesis states
-
-> The "genesis state" of a blockchain defines _Block 0_. Since a blockchain deterministically depends on the ordering and individual characteristics of every block, the configuration of a genesis state uniquely influences the "fingerprint" at any point following on the chain; different _Block 0_, different _Block n_. 
-
-The `init` command allows you to write the genesis state specifications from a JSON file to a chain database as the genesis block, which you'll need to initialize for **every** Geth node prior to starting it up to ensure congruent blockchain parameters:
+Specifying an external chain configuration file will allow fine-grained control over a custom blockchain/network configuration, including the genesis state and extending through bootnodes and fork-based protocol upgrades. 
 
 ```
-$ geth init path/to/customnet.json
-```
-
-Where `customnet.json` must contain:
-
-```json
-  {
-    "nonce": "0x0000fd6f72646561",
-    "timestamp": "",
-    "parentHash": "",
-    "extraData": "",
-    "gasLimit": "0x2FEFD8",
-    "difficulty": "0x020000",
-    "mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
-    "coinbase": "",
-    "alloc": {}
-  }
-
-```
-
-The above fields should be fine for most purposes, although we'd recommend changing the `nonce` to some random value so you prevent unknown remote nodes from being able to connect to you. 
-
-If you'd like to pre-fund some accounts for easier testing, you can populate the `alloc` field with account balances:
-
-```json
-"alloc": {
-      "0x3030303861636137636530353865656161303936": {
-        "balance": "100000000000000000000000"
-      },
-      "0x3030306164613834383336326436613033393261": {
-        "balance": "22100000000000000000000"
-      },
-      "0x3030306433393066623866386536353865616565": {
-        "balance": "1000000000000000000000"
-      },
-      "0x3030313464396162393061303264373863326130": {
-        "balance": "2000000000000000000000"
-      }
-    }
-```
-*Addresses may be either `0x`-prefixed or not. Testnet configuration default examples are unprefixed to signify difference from conventionally prefixed addresses.*
-
-
-#### Usage 2: Define external chain configuration
-
-Specifying an external chain configuration file will allow even finer-grained control over a custom blockchain/network configuration, _including the genesis state_ and extending through bootnodes and fork-based protocol upgrades. 
-
-```
-$ geth --chainconfig=/path/to/customnet.json [--flags] [command]
+$ geth --chain-config=/path/to/customnet.json [--flags] [command]
 ```
 
 The external chain configuration file specifies valid settings for the following top-level fields:
 
-| key | notes |
+| JSON Key | Notes |
 --- | --- | ---
-| `chainID` |  Determines local __/subdir__ for chain data. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in `EIP-155`; that is configured within `forks.features`. |
+| `chainID` |  Determines local __/subdir__ for chain data. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in _EIP-155_; that is configured as a protocal upgrade within `forks.features`. |
 | `name` | Human readable name, ie _Ethereum Classic Mainnet_, _Morden Testnet._ |
-| `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block (just like `init`). The data required is identical to __Usage 1__. |
+| `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block. If configuring an existing chain database with a different genesis block, it will overwrite it. |
 | `forks` | Determines configuration for fork-based __protocol upgrades__, ie _EIP-150_, _EIP-155_, _EIP-160_, _ECIP-1010_, etc ;-). |
 | `bootstrap` | Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
 
-*Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chainconfig` incompatible with `--chain`, `--bootnodes`, `--testnet`.* 
+*Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain-config` __incompatible__ with `--chain`, `--bootnodes`, `--testnet`. It remains __compatible__ with `--data-dir`.* 
 
 To learn more about external chain configuration, please visit the [External Chain Configuration Wiki page]().
 
