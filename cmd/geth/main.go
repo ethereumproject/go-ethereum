@@ -123,7 +123,7 @@ the configuration of a chain database. It includes genesis block data as well as
 		{
 			Action: rollback,
 			Name: "rollback",
-			Aliases: []string{"set-head", "sethead"},
+			Aliases: []string{"roll-back", "set-head", "sethead"},
 			Usage: "rollback [block index number] - set current head for blockchain",
 			Description: `
 Rollback set the current head block for block chain already in the database.
