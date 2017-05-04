@@ -10,11 +10,11 @@ teardown() {
 	rm -fr $DATA_DIR
 }
 
-## dumpChainConfig JSON 
+## dump-chain-config JSON 
 
 # Test dumping chain configuration to JSON file.
 @test "chainconfig default dump" {
-	run $GETH_CMD --datadir $DATA_DIR --maxpeers 0 dumpChainConfig $DATA_DIR/dump.json
+	run $GETH_CMD --datadir $DATA_DIR --maxpeers 0 dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -28,7 +28,7 @@ teardown() {
 }
 
 @test "chainconfig testnet dump" {
-	run $GETH_CMD --datadir $DATA_DIR --testnet dumpChainConfig $DATA_DIR/dump.json
+	run $GETH_CMD --datadir $DATA_DIR --testnet dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -41,7 +41,7 @@ teardown() {
 }
 
 @test "chainconfig customnet dump" {
-	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dumpChainConfig $DATA_DIR/dump.json
+	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
@@ -60,9 +60,9 @@ teardown() {
 	[[ "$output" == *"\"name\": \"kittyCoin\"," ]]
 }
 
-@test "chainconfig dumpChainConfig JSON dump is usable as external chainconfig" {
+@test "chainconfig dump-chain-config JSON dump is usable as external chainconfig" {
 # Same as 'chainconfig customnet dump'... higher complexity::more confidence
-	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dumpChainConfig $DATA_DIR/dump.json
+	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
