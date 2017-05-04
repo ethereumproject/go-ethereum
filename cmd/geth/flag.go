@@ -621,6 +621,10 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Configure the Whisper service
 	shhEnable := ctx.GlobalBool(aliasableName(WhisperEnabledFlag.Name, ctx))
 
+	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
+		ethConf.Genesis = config.Genesis // from parsed JSON file
+	}
+
 	// Override any default configs in dev mode or the test net
 	switch {
 	case ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)):
@@ -710,15 +714,6 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 
 		currentChainID = config.ID // Set global var.
 		logChainConfiguration(ctx, config.ChainConfig)
-
-		chainDB := MakeChainDatabase(ctx)
-		block, err := core.WriteGenesisBlock(chainDB, config.Genesis)
-		if err != nil {
-			log.Fatalf("failed to write genesis block: %v", err)
-		} else {
-			log.Printf("successfully wrote genesis block and allocations: %x", block.Hash())
-		}
-		chainDB.Close()
 
 		return config
 	}
