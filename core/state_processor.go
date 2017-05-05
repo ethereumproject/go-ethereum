@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	BlockReward = big.NewInt(5e+18)
+	BlockReward = big.NewInt(5e+18) // that's shiny 5 ether
 	big8        = big.NewInt(8)
 	big32       = big.NewInt(32)
 )
