@@ -166,21 +166,21 @@ teardown() {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --testnet console
 	echo "$output"
 	[ "$status" -gt 0 ]
-	[[ "$output" == *"Flags --chain-config and --chain are conflicting. Please use only one."* ]]
+	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
 @test "--chain-config config/mainnet.json --chain mainnet | exit >1" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --chain mainnet console
 	echo "$output"
 	[ "$status" -gt 0 ]
-	[[ "$output" == *"Flags --chain-config and --chain are conflicting. Please use only one."* ]]
+	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
 @test "--chain-config config/mainnet.json --chain kittyCoin | exit >1" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --chain kittyCoin console
 	echo "$output"
 	[ "$status" -gt 0 ]
-	[[ "$output" == *"Flags --chain-config and --chain are conflicting. Please use only one."* ]]
+	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
 @test "--chain-config config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 | exit >1" {
@@ -193,10 +193,10 @@ teardown() {
 # Test fails to load invalid chain configuration from testdata/ JSON file.
 # Test ensures
 # - external chain configuration should require JSON to parse
-@test "--chain-config testdata/chain_config_dump-invalid-comment.json | exit 1" {
+@test "--chain-config testdata/chain_config_dump-invalid-comment.json | exit >0" {
 	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-comment.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
-	[ "$status" -eq 1 ]
+	[ "$status" -gt 0 ]
 }
 
 # Test fails to load invalid chain configuration from testdata/ JSON file.

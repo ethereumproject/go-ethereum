@@ -159,7 +159,12 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infof("Successfully wrote custom genesis block: %x", block.Hash())
+		if fmt.Sprintf("%x", block.Hash()) == "0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303" {
+			glog.V(logger.Info).Infof("Successfully established morden testnet genesis block: %s", block.Hash().Hex())
+		} else {
+			glog.V(logger.Info).Infof("Successfully established custom genesis block: %s", block.Hash().Hex())
+		}
+
 	}
 
 	// Load up a test setup if directly injected
@@ -226,7 +231,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infoln("WARNING: Wrote default ethereum genesis block")
+		glog.V(logger.Info).Infoln("Successfully wrote default ethereum mainnet genesis block: %s", genesis.Hash().Hex())
 	}
 
 	if config.ChainConfig == nil {

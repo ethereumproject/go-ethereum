@@ -78,7 +78,7 @@ teardown() {
 # 	[[ "$output" == *"SUBCOMMANDS"* ]]
 # }
 
-@test "aliases for directory-flags" {
+@test "aliasing directory flags: --data-dir==--datadir, --ipc-path==--ipcpath" {
 
 	# keystore not hyphenated
 	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/keyhere console
@@ -114,7 +114,7 @@ teardown() {
 }
 
 # ... assuming that if two work, the rest will work.
-@test "alias for hyphenated-commands" {
+@test "aliasing hyphenated flags: --no-discover==--nodiscover, --ipc-disable==--ipcdisable | exit 0" {
 	old_command_names=(nodiscover ipcdisable) 
 	new_command_names=(no-discover ipc-disable)
 	
@@ -138,7 +138,7 @@ teardown() {
 	done
 }
 
-@test "int flags get parsed" {
+@test "--cache 16 | exit 0" {
 	run $GETH_CMD --data-dir $DATA_DIR --cache 17 console
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Alloted 17MB cache"* ]]

@@ -10,7 +10,7 @@ teardown() {
 	rm -fr $DATA_DIR
 }
 
-@test "check genesis default block hash mainnet" {
+@test "defaults: genesis block hash mainnet" {
 	run $GETH_CMD --data-dir $DATA_DIR --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 
@@ -18,7 +18,7 @@ teardown() {
 	[[ "$output" == *'"0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"'* ]]
 }
 
-@test "check genesis default block hash testnet" {
+@test "defaults: genesis block hash testnet" {
 	run $GETH_CMD --testnet --data-dir $DATA_DIR --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 

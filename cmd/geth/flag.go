@@ -92,7 +92,7 @@ var reservedChainIDS = map[string]bool{
 	"nodekey":   true,
 	"nodes":     true,
 	"geth":      true,
-	"morden",    true,
+	"morden":    true,
 }
 
 // getChainConfigIDFromContext gets the --chain=my-custom-net value.
@@ -259,11 +259,11 @@ func MakeWSRpcHost(ctx *cli.Context) string {
 // for Geth and returns half of the allowance to assign to the database.
 func MakeDatabaseHandles() int {
 	if err := raiseFdLimit(2048); err != nil {
-		glog.Warning("Failed to raise file descriptor allowance: ", err)
+		glog.V(logger.Warn).Info("Failed to raise file descriptor allowance: ", err)
 	}
 	limit, err := getFdLimit()
 	if err != nil {
-		glog.Warning("Failed to retrieve file descriptor allowance: ", err)
+		glog.V(logger.Warn).Info("Failed to retrieve file descriptor allowance: ", err)
 	}
 	if limit > 2048 { // cap database file descriptors even if more is available
 		limit = 2048
@@ -387,7 +387,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
 	chainDB, err := ethdb.NewLDBDatabase(ethChainDBPath, 0, 0)
 	if err != nil {
-		glog.Warningf(`Failed to check blockchain version for existing Ethereum chaindata database at: %v
+		glog.V(logger.Warn).Info(`Failed to check blockchain version for existing Ethereum chaindata database at: %v
 		 	Using default data directory at: %v`,
 			err, etcDataDirPath)
 		return nil
@@ -412,7 +412,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	}
 
 	if b == nil || (b != nil && conf.HeaderCheck(b.Header()) == nil) {
-		glog.Warningf(`Found existing data directory named 'Ethereum' with default ETC chaindata.
+		glog.V(logger.Warn).Info(`Found existing data directory named 'Ethereum' with default ETC chaindata.
 		  	Moving it from: %v, to: %v
 		  	To specify a different data directory use the '--datadir' flag.`,
 			ethDataDirPath, etcDataDirPath)
@@ -681,7 +681,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {
-		glog.Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
+		glog.V(logger.Info).Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
 	}
 
 	return stack
@@ -692,7 +692,7 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 
 	db := MakeChainDatabase(ctx)
 	defer db.Close()
-	glog.Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata"))
+	glog.V(logger.Info).Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata"))
 
 	return MustMakeChainConfigFromDb(ctx, db)
 }
@@ -739,34 +739,33 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 
 func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
 
-	glog.Info(glog.Separator("-"))
+	glog.V(logger.Info).Info(glog.Separator("-"))
 
-	glog.Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
-	glog.Info(fmt.Sprintf("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks)))
+	glog.V(logger.Info).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
+	glog.V(logger.Info).Infof("Geth is configured to use blockchain: \x1b[32m%v (ETC)\x1b[39m", config.Name)
+
+	glog.V(logger.Info).Info(fmt.Sprintf("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks)))
 
 	for i := range config.ChainConfig.Forks {
-		glog.Info(fmt.Sprintf(" %7v %v", config.ChainConfig.Forks[i].Block, config.ChainConfig.Forks[i].Name))
+		glog.V(logger.Info).Info(fmt.Sprintf(" %7v %v", config.ChainConfig.Forks[i].Block, config.ChainConfig.Forks[i].Name))
 		if !config.ChainConfig.Forks[i].RequiredHash.IsEmpty() {
-			glog.Info(fmt.Sprintf("         with block %v", config.ChainConfig.Forks[i].RequiredHash.Hex()))
+			glog.V(logger.Info).Info(fmt.Sprintf("         with block %v", config.ChainConfig.Forks[i].RequiredHash.Hex()))
 		}
 	}
 
-	glog.Infof("Geth is configured to use blockchain: \x1b[32m%v (ETC)\x1b[39m", config.Name)
-	glog.Info(glog.Separator("-"))
-	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
-		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[33mEthereum (ETC) Testnet\x1b[39m blockchain!")
-	} else {
-		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[32mEthereum (ETC) Classic\x1b[39m blockchain!")
-	}
-	glog.Info(glog.Separator("-"))
+
+	glog.V(logger.Info).Info(glog.Separator("-"))
 }
 
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
 
+
 	c := core.DefaultConfig
+	configName := "mainnet"
 	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
 		c = core.TestConfig
+		configName= "morden testnet"
 	}
 
 	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
@@ -775,7 +774,7 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		genesisHash = genesis.Hash().Hex()
 	}
 	if genesisHash != "" {
-		glog.Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", genesisHash))
+		glog.V(logger.Info).Info(fmt.Sprintf("Loading %v configuration from database with \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", configName, genesisHash))
 	}
 
 	return c

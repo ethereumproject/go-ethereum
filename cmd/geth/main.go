@@ -265,11 +265,10 @@ func rollback(ctx *cli.Context) error {
 	glog.Warning("Rolling back blockchain...")
 
 	bc.SetHead(blockIndex)
-	glog.Warningf("Setting current (head) block to: %v", blockIndex)
 
 	nowCurrentState := bc.CurrentBlock().Number().Uint64()
 	if nowCurrentState != blockIndex {
-		glog.Fatalf("ERROR: Expected rollback to set head to: %v, instead current head is: %v", blockIndex, nowCurrentState)
+		glog.Fatalf("ERROR: Wanted rollback to set head to: %v, instead current head is: %v", blockIndex, nowCurrentState)
 	} else {
 		glog.Infof("SUCCESS: Head block set to: %v", nowCurrentState)
 	}
