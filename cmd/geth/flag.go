@@ -722,7 +722,7 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 		}
 
 		currentChainID = config.ID // Set global var.
-		logChainConfiguration(ctx, config.ChainConfig)
+		logChainConfiguration(ctx, config)
 
 		return config
 	}
@@ -758,7 +758,7 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	} else {
 		glog.V(logger.Warn).Info("Geth is configured to use the \x1b[32mEthereum (ETC) Classic\x1b[39m blockchain!")
 	}
-	glog.V(logger.Warn).Info(separator)
+	glog.Info(glog.Separator("-"))
 }
 
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
