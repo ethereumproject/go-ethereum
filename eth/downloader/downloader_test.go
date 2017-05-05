@@ -1770,7 +1770,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 		if err := tester.sync("peer", nil, FastSync); err == nil {
 			t.Fatalf("failing fast sync succeeded: %v", err)
 		}
-		time.Sleep(time.Duration(int32(i * 100)) * time.Millisecond) // Make sure no in-flight requests remain
+		time.Sleep(800 * time.Millisecond) // Make sure no in-flight requests remain
 
 		// If it's the first failure, pivot should be locked => reenable all others to detect pivot changes
 		if i == 0 {
@@ -1781,7 +1781,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	}
 
 	// Wait to make sure all data is set after sync
-	time.Sleep(time.Duration(int32(fsCriticalTrials * 100)) * time.Millisecond)
+	time.Sleep(400 * time.Millisecond)
 
 	// Retry limit exhausted, downloader will switch to full sync, should succeed
 	if err := tester.sync("peer", nil, FastSync); err != nil {
