@@ -145,12 +145,14 @@ type BadHash struct {
 func (c *SufficientChainConfig) IsValid() (string, bool) {
 	// entirely empty
 	if reflect.DeepEqual(c, SufficientChainConfig{}) {
-		return "the whole thing", false
+		return "all empty", false
 	}
 
 	if c.ID == "" {
 		return "id", false
 	}
+
+	// note: no check for name, the only optional field
 
 	if c.Genesis == nil {
 		return "genesis", false
@@ -165,12 +167,13 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "genesis.difficulty", false
 	}
 	if _, e := c.Genesis.Header(); e != nil {
-		return "genesis: " + e.Error(), false
+		return "genesis.header(): " + e.Error(), false
 	}
 
 	if c.ChainConfig == nil {
 		return "chainConfig", false
 	}
+
 	if len(c.ChainConfig.Forks) == 0 {
 		return "forks", false
 	}
