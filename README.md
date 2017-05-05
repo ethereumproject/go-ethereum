@@ -150,18 +150,18 @@ The IPC interface is enabled by default and exposes all the APIs supported by Ge
 HTTP based JSON-RPC API options:
 
   * `--rpc` Enable the HTTP-RPC server
-  * `--rpcaddr` HTTP-RPC server listening interface (default: "localhost")
-  * `--rpcport` HTTP-RPC server listening port (default: 8545)
-  * `--rpcapi` API's offered over the HTTP-RPC interface (default: "eth,net,web3")
-  * `--rpccorsdomain` Comma separated list of domains from which to accept cross origin requests (browser enforced)
+  * `--rpc-addr` HTTP-RPC server listening interface (default: "localhost")
+  * `--rpc-port` HTTP-RPC server listening port (default: 8545)
+  * `--rpc-api` API's offered over the HTTP-RPC interface (default: "eth,net,web3")
+  * `--rpc-cors-domain` Comma separated list of domains from which to accept cross origin requests (browser enforced)
   * `--ws` Enable the WS-RPC server
-  * `--wsaddr` WS-RPC server listening interface (default: "localhost")
-  * `--wsport` WS-RPC server listening port (default: 8546)
-  * `--wsapi` API's offered over the WS-RPC interface (default: "eth,net,web3")
-  * `--wsorigins` Origins from which to accept websockets requests
-  * `--ipcdisable` Disable the IPC-RPC server
-  * `--ipcapi` API's offered over the IPC-RPC interface (default: "admin,debug,eth,miner,net,personal,shh,txpool,web3")
-  * `--ipcpath` Filename for IPC socket/pipe within the datadir (explicit paths escape it)
+  * `--ws-addr` WS-RPC server listening interface (default: "localhost")
+  * `--ws-port` WS-RPC server listening port (default: 8546)
+  * `--ws-api` API's offered over the WS-RPC interface (default: "eth,net,web3")
+  * `--ws-origins` Origins from which to accept websockets requests
+  * `--ipc-disable` Disable the IPC-RPC server
+  * `--ipc-api` API's offered over the IPC-RPC interface (default: "admin,debug,eth,miner,net,personal,shh,txpool,web3")
+  * `--ipc-path` Filename for IPC socket/pipe within the datadir (explicit paths escape it)
 
 You'll need to use your own programming environments' capabilities (libraries, tools, etc) to connect via HTTP, WS or IPC to a Geth node configured with the above flags and you'll need to speak [JSON-RPC](http://www.jsonrpc.org/specification) on all transports. You can reuse the same connection for multiple requests!
 

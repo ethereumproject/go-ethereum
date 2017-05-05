@@ -56,9 +56,11 @@ func makeCLIApp() (app *cli.App) {
 	app.Commands = []cli.Command{
 		importCommand,
 		exportCommand,
+		dumpChainConfigCommand,
 		upgradedbCommand,
 		removedbCommand,
 		dumpCommand,
+		rollbackCommand,
 		monitorCommand,
 		accountCommand,
 		walletCommand,
@@ -101,27 +103,6 @@ Runs quick benchmark on first GPU found.
 			Usage:  "print ethereum version numbers",
 			Description: `
 The output of this command is supposed to be machine-readable.
-`,
-		},
-		{
-			Action:  dumpChainConfig,
-			Name:    "dump-chain-config",
-			Aliases: []string{"dumpchainconfig"},
-			Usage:   "dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
-			Description: `
-The dump external configuration command writes a JSON file containing pertinent configuration data for
-the configuration of a chain database. It includes genesis block data as well as chain fork settings.
-`,
-		},
-		{
-			Action: rollback,
-			Name: "rollback",
-			Aliases: []string{"roll-back", "set-head", "sethead"},
-			Usage: "rollback [block index number] - set current head for blockchain",
-			Description: `
-Rollback set the current head block for block chain already in the database.
-This is a destructive action, purging any block more recent than the index specified.
-Syncing will require downloading contemporary block information from the index onwards.
 `,
 		},
 	}
