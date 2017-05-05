@@ -68,7 +68,7 @@ Within this parent directory, geth will use a __/subdirectory__ to hold data for
 
 You can specify the subdirectory with the `--chain` flag.
 
-> __Migrating__: If you have existing data created prior to the [3.4 Release](), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page]().
+> __Migrating__: If you have existing data created prior to the [3.4 Release](), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes.md).
 
 ### Full node on the main Ethereum network
 
@@ -194,7 +194,7 @@ The external chain configuration file specifies valid settings for the following
 
 *Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain-config` __incompatible__ with `--chain`, `--bootnodes`, and `--testnet`. It remains __compatible__ with `--data-dir`.* 
 
-To learn more about external chain configuration, please visit the [External Chain Configuration Wiki page]().
+To learn more about external chain configuration, please visit the [External Command Line Options Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options.md).
 
 ##### Create the rendezvous point
 
