@@ -37,5 +37,5 @@ teardown() {
 	run $GETH_CMD --datadir $DATA_DIR rollback 420
 	echo "$output"
 	[ "$status" -gt 0 ]
-	[[ "$output" == *'ERROR: Expected rollback to set head to: 420, instead current head is: 384'* ]] # original head	
+	[[ "$output" == *'ERROR: Wanted rollback to set head to: 420, instead current head is: 384'* ]] # original head	
 }
