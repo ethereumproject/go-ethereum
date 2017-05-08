@@ -168,14 +168,15 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 		}
 
 		// Ensure value 'era' is configured.
-		eraVal, ok := feat.GetBigInt("era")
-		if !ok || eraVal.Cmp(big.NewInt(0)) <= 0 {
+		eraLen, ok := feat.GetBigInt("era")
+		if !ok || eraLen.Cmp(big.NewInt(0)) <= 0 {
 			panic(ErrConfiguration)
 		}
 
-		era := GetBlockEra(header.Number, eraVal)
+		era := GetBlockEra(header.Number, eraLen)
 
 		wr := GetBlockWinnerRewardByEra(era) // wr "winner reward". 5, 4, 3.2, 2.56, ...
+
 		wurs := GetBlockWinnerRewardForUnclesByEra(era, uncles) // wurs "winner uncle rewards"
 		wr.Add(wr, wurs)
 
@@ -192,12 +193,7 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 // As of "Era 2", uncle miners and winners are rewarded equally for each included block.
 // So they share this function.
 func getEraUncleBlockReward(era *big.Int) *big.Int {
-
-	r := new(big.Int)
-	r.Add(r, GetBlockWinnerRewardByEra(era))
-	r.Div(r, big.NewInt(32))
-
-	return r
+	return new(big.Int).Div(GetBlockWinnerRewardByEra(era), big32)
 }
 
 // GetBlockUncleRewardByEra gets called _for each uncle miner_ associated with a winner block's uncles.
@@ -219,7 +215,7 @@ func GetBlockUncleRewardByEra(era *big.Int, header, uncle *types.Header) *big.In
 
 // GetBlockWinnerRewardForUnclesByEra gets called _per winner_, and accumulates rewards for each included uncle.
 func GetBlockWinnerRewardForUnclesByEra(era *big.Int, uncles []*types.Header) *big.Int {
-	r := new(big.Int)
+	r := big.NewInt(0)
 
 	for range uncles {
 		r.Add(r, getEraUncleBlockReward(era)) // can reuse this, since 1/32 for winner's uncles remain unchanged from "Era 1"
@@ -255,5 +251,5 @@ func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
 	d := big.NewInt(0).Div(base, eraLength)
 	dremainder := big.NewInt(0).Mod(d, big.NewInt(1))
 
-	return big.NewInt(0).Sub(d, dremainder)
+	return new(big.Int).Sub(d, dremainder)
 }
