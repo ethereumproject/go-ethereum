@@ -32,7 +32,8 @@ var (
 	MaximumBlockReward = big.NewInt(5e+18) // that's shiny 5 ether
 	big8               = big.NewInt(8)
 	big32              = big.NewInt(32)
-	DisinflationRate = big.NewInt(0).Div(big.NewInt(4), big.NewInt(5))
+	DisinflationRateQuotient = big.NewInt(4)
+	DisinflationRateDivisor = big.NewInt(5)
 	EraLength = big.NewInt(5000000)
 )
 
@@ -153,10 +154,20 @@ func AccumulateRewards(statedb *state.StateDB, header *types.Header, uncles []*t
 	statedb.AddBalance(header.Coinbase, reward) //  $$ => 5e+18 + (1/32*5e+18)
 }
 
-func GetRewardByEra(maxReward, disinflationRate, era *big.Int) *big.Int {
-	if era.Cmp(big.NewInt(0)) == 0 { return maxReward }
-	multiplier := big.NewInt(0).Exp(disinflationRate, era,nil) // %m ignored for m == nil||0
-	return big.NewInt(0).Mul(maxReward, multiplier)
+// GetRewardByEra gets a block reward at disinflation rate.
+// Constants MaxBlockReward, DisinflationRateQuotient, and DisinflationRateDivisor assumed.
+func GetRewardByEra(era *big.Int) *big.Int {
+	if era.Cmp(big.NewInt(0)) == 0 { return MaximumBlockReward }
+
+	var q, d, r *big.Int = new(big.Int), new(big.Int), new(big.Int)
+
+	q.Exp(DisinflationRateQuotient, era, nil)
+	d.Exp(DisinflationRateDivisor, era, nil)
+
+	r.Mul(MaximumBlockReward, q)
+	r.Div(r, d)
+
+	return r
 }
 
 

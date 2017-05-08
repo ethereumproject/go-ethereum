@@ -33,25 +33,29 @@ func TestGetBlockEra(t *testing.T) {
 func TestGetRewardByEra(t *testing.T) {
 
 	cases := map[*big.Int]*big.Int{
-		big.NewInt(0):         MaximumBlockReward,
-		big.NewInt(1):         MaximumBlockReward,
-		big.NewInt(4999999):   MaximumBlockReward,
-		big.NewInt(5000000):   MaximumBlockReward,
-		big.NewInt(5000001):   big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(1), nil)),
-		big.NewInt(9999999):   big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(1), nil)),
-		big.NewInt(10000000):  big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(1), nil)),
-		big.NewInt(10000001):  big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(2), nil)),
-		big.NewInt(14999999):  big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(2), nil)),
-		big.NewInt(15000000):  big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(2), nil)),
-		big.NewInt(15000001):  big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(3), nil)),
-		big.NewInt(100000001): big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(20), nil)),
-		big.NewInt(123456789): big.NewInt(0).Mul(MaximumBlockReward, big.NewInt(0).Exp(DisinflationRate, big.NewInt(24), nil)),
+		big.NewInt(0):        MaximumBlockReward,
+		big.NewInt(1):        MaximumBlockReward,
+		big.NewInt(4999999):  MaximumBlockReward,
+		big.NewInt(5000000):  MaximumBlockReward,
+		big.NewInt(5000001):  big.NewInt(4e+18),
+		big.NewInt(9999999):  big.NewInt(4e+18),
+		big.NewInt(10000000): big.NewInt(4e+18),
+		big.NewInt(10000001): big.NewInt(3.2e+18),
+		big.NewInt(14999999): big.NewInt(3.2e+18),
+		big.NewInt(15000000): big.NewInt(3.2e+18),
+		big.NewInt(15000001): big.NewInt(2.56e+18),
 	}
 
 	for bn, expectedReward := range cases {
-		gotReward := GetRewardByEra(MaximumBlockReward, DisinflationRate, GetBlockEra(bn, EraLength))
+		gotReward := GetRewardByEra(GetBlockEra(bn, EraLength))
 		if gotReward.Cmp(expectedReward) != 0 {
-			t.Errorf("got: %v, want: %v", gotReward, expectedReward)
+			t.Errorf("@ %v, got: %v, want: %v", bn, gotReward, expectedReward)
+		}
+		if gotReward.Cmp(big.NewInt(0)) <= 0 {
+			t.Errorf("@ %v, got: %v, want: %v", bn, gotReward, expectedReward)
+		}
+		if gotReward.Cmp(MaximumBlockReward) > 0 {
+			t.Errorf("@ %v, got: %v, want %v", bn, gotReward, expectedReward)
 		}
 	}
 
