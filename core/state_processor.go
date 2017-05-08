@@ -29,9 +29,9 @@ import (
 )
 
 var (
-	BlockReward = big.NewInt(5e+18) // that's shiny 5 ether
-	big8        = big.NewInt(8)
-	big32       = big.NewInt(32)
+	MaximumBlockReward = big.NewInt(5e+18) // that's shiny 5 ether
+	big8               = big.NewInt(8)
+	big32              = big.NewInt(32)
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning
@@ -129,16 +129,18 @@ func ApplyTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb 
 // and rewards for included uncles. The coinbase of each uncle block is
 // also rewarded.
 func AccumulateRewards(statedb *state.StateDB, header *types.Header, uncles []*types.Header) {
-	reward := new(big.Int).Set(BlockReward)
+	reward := new(big.Int).Set(MaximumBlockReward)
 	r := new(big.Int)
+	// An uncle is a block that would be considered an orphan because its not on the longest chain (it's an alternative block at the same height as your parent).
+	// https://www.reddit.com/r/ethereum/comments/3c9jbf/wtf_are_uncles_and_why_do_they_matter/
 	for _, uncle := range uncles {
-		r.Add(uncle.Number, big8)
-		r.Sub(r, header.Number)
-		r.Mul(r, BlockReward)
-		r.Div(r, big8)
+		r.Add(uncle.Number, big8) // 2,534,999 + 8
+		r.Sub(r, header.Number) // 2,535,007 - 2,535,008
+		r.Mul(r, MaximumBlockReward) // -1 * 5e+18
+		r.Div(r, big8) // -5e+18 / 8
 		statedb.AddBalance(uncle.Coinbase, r)
 
-		r.Div(BlockReward, big32)
+		r.Div(MaximumBlockReward, big32)
 		reward.Add(reward, r)
 	}
 	statedb.AddBalance(header.Coinbase, reward)
