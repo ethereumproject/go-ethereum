@@ -26,13 +26,14 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 var (
 	MaximumBlockReward = big.NewInt(5e+18) // that's shiny 5 ether
 	big8               = big.NewInt(8)
 	big32              = big.NewInt(32)
+	DisinflationRate = big.NewInt(0).Div(big.NewInt(4), big.NewInt(5))
+	EraLength = big.NewInt(5000000)
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning
@@ -152,9 +153,22 @@ func AccumulateRewards(statedb *state.StateDB, header *types.Header, uncles []*t
 	statedb.AddBalance(header.Coinbase, reward) //  $$ => 5e+18 + (1/32*5e+18)
 }
 
+func GetRewardByEra(maxReward, disinflationRate, era *big.Int) *big.Int {
+	if era.Cmp(big.NewInt(0)) == 0 { return maxReward }
+	multiplier := big.NewInt(0).Exp(disinflationRate, era,nil) // %m ignored for m == nil||0
+	return big.NewInt(0).Mul(maxReward, multiplier)
+}
+
 
 // getBlockEra gets which "era" a given block is within, given era length (ecip-1017 -> era=5,000,000 blocks)
-func getBlockEra(blockNum, eraLength *big.Int) *big.Int {
-	_, m := big.NewInt(0).DivMod(blockNum, eraLength, big.NewInt(0))
-	return big.NewInt(0).Add(m, common.Big1)
+func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
+	if blockNum.Cmp(big.NewInt(0)) <= 0 { return big.NewInt(0) }
+
+	remainder := big.NewInt(0).Mod(big.NewInt(0).Sub(blockNum, big.NewInt(1)), eraLength)
+	base := big.NewInt(0).Sub(blockNum, remainder)
+
+	d := big.NewInt(0).Div(base, eraLength)
+	dremainder := big.NewInt(0).Mod(d, big.NewInt(1))
+
+	return big.NewInt(0).Sub(d, dremainder)
 }
