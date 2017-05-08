@@ -10,6 +10,8 @@
 Official Go language implementation of the Ethereum protocol supporting the
 _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and powerful application platform for developers in parallel to Ethereum (ETHF), while differentially rejecting the DAO bailout.
 
+> Please Note: Geth 3.4.0 has been merged to the master branch, and is currently in internal testing. Please be advised that all references and instructions in the README in regard to 3.4.0 are forward-looking; we're aiming to release 3.4 this week (of 8 May 2017). Thanks for your patience.
+
 ## Install
 
 ### :rocket: From a release binary
