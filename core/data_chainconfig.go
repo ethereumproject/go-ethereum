@@ -176,6 +176,13 @@ var TestConfig = &ChainConfig{
 						"length": 2000000,
 					},
 				},
+				{
+					ID: "reward",
+					Options: ChainFeatureConfigOptions{
+						"type": "ecip1017",
+						"era": 5000000,
+					},
+				},
 			},
 		},
 	},

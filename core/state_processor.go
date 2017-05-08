@@ -26,15 +26,18 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"errors"
 )
 
 var (
-	MaximumBlockReward = big.NewInt(5e+18) // that's shiny 5 ether
-	big8               = big.NewInt(8)
-	big32              = big.NewInt(32)
+	MaximumBlockReward       = big.NewInt(5e+18) // that's shiny 5 ether
+	big8                     = big.NewInt(8)
+	big32                    = big.NewInt(32)
 	DisinflationRateQuotient = big.NewInt(4)
-	DisinflationRateDivisor = big.NewInt(5)
-	EraLength = big.NewInt(5000000)
+	DisinflationRateDivisor  = big.NewInt(5)
+	DefaultEraLength         = big.NewInt(5000000) // Convenient for testing.
+
+	ErrConfiguration = errors.New("invalid configuration")
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning
@@ -90,7 +93,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, logs...)
 	}
-	AccumulateRewards(statedb, header, block.Uncles())
+	AccumulateRewards(p.config, statedb, header, block.Uncles())
 
 	return receipts, allLogs, totalUsedGas, err
 }
@@ -131,9 +134,8 @@ func ApplyTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb 
 // mining reward. The total reward consists of the static block reward
 // and rewards for included uncles. The coinbase of each uncle block is
 // also rewarded.
-func AccumulateRewards(statedb *state.StateDB, header *types.Header, uncles []*types.Header) {
-	reward := new(big.Int).Set(MaximumBlockReward)
-	r := new(big.Int)
+func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *types.Header, uncles []*types.Header) {
+
 	// An uncle is a block that would be considered an orphan because its not on the longest chain (it's an alternative block at the same height as your parent).
 	// https://www.reddit.com/r/ethereum/comments/3c9jbf/wtf_are_uncles_and_why_do_they_matter/
 
@@ -141,22 +143,93 @@ func AccumulateRewards(statedb *state.StateDB, header *types.Header, uncles []*t
 	// block.Number = 2,534,999 // uncles are at same height (?)
 	// ... as uncles get older (within validation), reward drops
 
-	for _, uncle := range uncles {
-		r.Add(uncle.Number, big8) // 2,534,998 + 8              = 2,535,006
-		r.Sub(r, header.Number) // 2,535,006 - 2,534,999        = 7
-		r.Mul(r, MaximumBlockReward) // 7 * 5e+18               = 35e+18
-		r.Div(r, big8) // 35e+18 / 8                            = 7/8 * 5e+18
-		statedb.AddBalance(uncle.Coinbase, r) // $$
+	feat, _, configured := config.GetFeature(header.Number, "reward")
+	if !configured {
+		reward := new(big.Int).Set(MaximumBlockReward)
+		r := new(big.Int)
 
-		r.Div(MaximumBlockReward, big32) // 5e+18 / 32
-		reward.Add(reward, r) // 5e+18 + (1/32*5e+18)
+		for _, uncle := range uncles {
+			r.Add(uncle.Number, big8) // 2,534,998 + 8              = 2,535,006
+			r.Sub(r, header.Number) // 2,535,006 - 2,534,999        = 7
+			r.Mul(r, MaximumBlockReward) // 7 * 5e+18               = 35e+18
+			r.Div(r, big8) // 35e+18 / 8                            = 7/8 * 5e+18
+
+			statedb.AddBalance(uncle.Coinbase, r) // $$
+
+			r.Div(MaximumBlockReward, big32) // 5e+18 / 32
+			reward.Add(reward, r) // 5e+18 + (1/32*5e+18)
+		}
+		statedb.AddBalance(header.Coinbase, reward) //  $$ => 5e+18 + (1/32*5e+18)
+	} else {
+		// Check that configuration specifies ECIP1017.
+		val, ok := feat.GetString("type")
+		if !ok || val != "ecip1017" {
+			panic(ErrConfiguration)
+		}
+
+		// Ensure value 'era' is configured.
+		eraVal, ok := feat.GetBigInt("era")
+		if !ok || eraVal.Cmp(big.NewInt(0)) <= 0 {
+			panic(ErrConfiguration)
+		}
+
+		era := GetBlockEra(header.Number, eraVal)
+
+		wr := GetBlockWinnerRewardByEra(era) // wr "winner reward". 5, 4, 3.2, 2.56, ...
+		wurs := GetBlockWinnerRewardForUnclesByEra(era, uncles) // wurs "winner uncle rewards"
+		wr.Add(wr, wurs)
+
+		statedb.AddBalance(header.Coinbase, wr) // $$
+
+		// Reward uncle miners.
+		for _, uncle := range uncles {
+			ur := GetBlockUncleRewardByEra(era, header, uncle)
+			statedb.AddBalance(uncle.Coinbase, ur) // $$
+		}
 	}
-	statedb.AddBalance(header.Coinbase, reward) //  $$ => 5e+18 + (1/32*5e+18)
+}
+
+// As of "Era 2", uncle miners and winners are rewarded equally for each included block.
+// So they share this function.
+func getEraUncleBlockReward(era *big.Int) *big.Int {
+
+	r := new(big.Int)
+	r.Add(r, GetBlockWinnerRewardByEra(era))
+	r.Div(r, big.NewInt(32))
+
+	return r
+}
+
+// GetBlockUncleRewardByEra gets called _for each uncle miner_ associated with a winner block's uncles.
+func GetBlockUncleRewardByEra(era *big.Int, header, uncle *types.Header) *big.Int {
+	// Era 1 (index 0):
+	//   An extra reward to the winning miner for including uncles as part of the block, in the form of an extra 1/32 (0.15625ETC) per uncle included, up to a maximum of two (2) uncles.
+	if era.Cmp(big.NewInt(0)) == 0 {
+		r := new(big.Int)
+		r.Add(uncle.Number, big8)    // 2,534,998 + 8              = 2,535,006
+		r.Sub(r, header.Number)      // 2,535,006 - 2,534,999        = 7
+		r.Mul(r, MaximumBlockReward) // 7 * 5e+18               = 35e+18
+		r.Div(r, big8)               // 35e+18 / 8                            = 7/8 * 5e+18
+
+		return r
+	}
+
+	return getEraUncleBlockReward(era)
+}
+
+// GetBlockWinnerRewardForUnclesByEra gets called _per winner_, and accumulates rewards for each included uncle.
+func GetBlockWinnerRewardForUnclesByEra(era *big.Int, uncles []*types.Header) *big.Int {
+	r := new(big.Int)
+
+	for range uncles {
+		r.Add(r, getEraUncleBlockReward(era)) // can reuse this, since 1/32 for winner's uncles remain unchanged from "Era 1"
+	}
+	return r
 }
 
 // GetRewardByEra gets a block reward at disinflation rate.
 // Constants MaxBlockReward, DisinflationRateQuotient, and DisinflationRateDivisor assumed.
-func GetRewardByEra(era *big.Int) *big.Int {
+func GetBlockWinnerRewardByEra(era *big.Int) *big.Int {
 	if era.Cmp(big.NewInt(0)) == 0 { return MaximumBlockReward }
 
 	var q, d, r *big.Int = new(big.Int), new(big.Int), new(big.Int)
@@ -172,6 +245,7 @@ func GetRewardByEra(era *big.Int) *big.Int {
 
 
 // getBlockEra gets which "era" a given block is within, given era length (ecip-1017 -> era=5,000,000 blocks)
+// Returns a zero-index era number, so "Era 1" -> 0, "Era 2" -> 1,...
 func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
 	if blockNum.Cmp(big.NewInt(0)) <= 0 { return big.NewInt(0) }
 
