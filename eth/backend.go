@@ -231,7 +231,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infoln("Successfully wrote default ethereum mainnet genesis block: %s", genesis.Hash().Hex())
+		glog.V(logger.Info).Infof("Successfully wrote default ethereum mainnet genesis block: %s", genesis.Hash().Hex())
 	}
 
 	if config.ChainConfig == nil {
