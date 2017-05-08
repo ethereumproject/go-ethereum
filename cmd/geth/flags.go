@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"runtime"
 
+	"strings"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -22,12 +24,12 @@ import (
 var (
 	// General settings
 	DataDirFlag = DirectoryFlag{
-		Name:  "datadir",
+		Name:  "data-dir,datadir",
 		Usage: "Data directory for the databases and keystore",
 		Value: DirectoryString{common.DefaultDataDir()},
 	}
 	UseChainConfigFlag = cli.StringFlag{
-		Name: "chainconfig",
+		Name:  "chain-config,chainconfig",
 		Usage: "Specify a JSON format chain configuration file to use.",
 	}
 	KeyStoreDirFlag = DirectoryFlag{
@@ -42,7 +44,7 @@ var (
 		Value: core.DefaultChainConfigID,
 	}
 	NetworkIdFlag = cli.IntFlag{
-		Name:  "networkid",
+		Name:  "network-id, networkid",
 		Usage: "Network identifier (integer, 0=Olympic, 1=Homestead, 2=Morden)",
 		Value: eth.NetworkId,
 	}
@@ -63,7 +65,7 @@ var (
 		Usage: "Enable NatSpec confirmation notice",
 	}
 	DocRootFlag = DirectoryFlag{
-		Name:  "docroot",
+		Name:  "doc-root,docroot",
 		Usage: "Document Root for HTTPClient file scheme",
 		Value: DirectoryString{common.HomeDir()},
 	}
@@ -73,7 +75,7 @@ var (
 		Value: 128,
 	}
 	BlockchainVersionFlag = cli.IntFlag{
-		Name:  "blockchainversion",
+		Name:  "blockchain-version,blockchainversion",
 		Usage: "Blockchain version (integer)",
 		Value: core.BlockChainVersion,
 	}
@@ -82,7 +84,7 @@ var (
 		Usage: "Enable fast syncing through state downloads",
 	}
 	LightKDFFlag = cli.BoolFlag{
-		Name:  "lightkdf",
+		Name:  "light-kdf,lightkdf",
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
 	}
 	// Network Split settings
@@ -97,21 +99,21 @@ var (
 		Usage: "Enable mining",
 	}
 	MinerThreadsFlag = cli.IntFlag{
-		Name:  "minerthreads",
+		Name:  "miner-threads,minerthreads",
 		Usage: "Number of CPU threads to use for mining",
 		Value: runtime.NumCPU(),
 	}
 	MiningGPUFlag = cli.StringFlag{
-		Name:  "minergpus",
+		Name:  "miner-gpus,minergpus",
 		Usage: "List of GPUs to use for mining (e.g. '0,1' will use the first two GPUs found)",
 	}
 	TargetGasLimitFlag = cli.StringFlag{
-		Name:  "targetgaslimit",
+		Name:  "target-gas-limit,targetgaslimit",
 		Usage: "Target gas limit sets the artificial target gas floor for the blocks to mine",
 		Value: core.TargetGasLimit.String(),
 	}
 	AutoDAGFlag = cli.BoolFlag{
-		Name:  "autodag",
+		Name:  "auto-dag,autodag",
 		Usage: "Enable automatic DAG pregeneration",
 	}
 	EtherbaseFlag = cli.StringFlag{
@@ -120,12 +122,12 @@ var (
 		Value: "0",
 	}
 	GasPriceFlag = cli.StringFlag{
-		Name:  "gasprice",
+		Name:  "gas-price,gasprice",
 		Usage: "Minimal gas price to accept for mining a transactions",
 		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
 	}
 	ExtraDataFlag = cli.StringFlag{
-		Name:  "extradata",
+		Name:  "extra-data,extradata",
 		Usage: "Freeform header field set by the miner",
 	}
 	// Account settings
@@ -161,7 +163,7 @@ var (
 		Usage: "Enables metrics reporting. When the value is a path, either relative or absolute, then a log is written to the respective file.",
 	}
 	FakePoWFlag = cli.BoolFlag{
-		Name:  "fakepow",
+		Name:  "fake-pow, fakepow",
 		Usage: "Disables proof-of-work verification",
 	}
 
@@ -171,36 +173,36 @@ var (
 		Usage: "Enable the HTTP-RPC server",
 	}
 	RPCListenAddrFlag = cli.StringFlag{
-		Name:  "rpcaddr",
+		Name:  "rpc-addr,rpcaddr",
 		Usage: "HTTP-RPC server listening interface",
 		Value: common.DefaultHTTPHost,
 	}
 	RPCPortFlag = cli.IntFlag{
-		Name:  "rpcport",
+		Name:  "rpc-port,rpcport",
 		Usage: "HTTP-RPC server listening port",
 		Value: common.DefaultHTTPPort,
 	}
 	RPCCORSDomainFlag = cli.StringFlag{
-		Name:  "rpccorsdomain",
+		Name:  "rpc-cors-domain,rpccorsdomain",
 		Usage: "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
 		Value: "",
 	}
 	RPCApiFlag = cli.StringFlag{
-		Name:  "rpcapi",
+		Name:  "rpc-api,rpcapi",
 		Usage: "API's offered over the HTTP-RPC interface",
 		Value: rpc.DefaultHTTPApis,
 	}
 	IPCDisabledFlag = cli.BoolFlag{
-		Name:  "ipcdisable",
+		Name:  "ipc-disable,ipcdisable",
 		Usage: "Disable the IPC-RPC server",
 	}
 	IPCApiFlag = cli.StringFlag{
-		Name:  "ipcapi",
+		Name:  "ipc-api,ipcapi",
 		Usage: "API's offered over the IPC-RPC interface",
 		Value: rpc.DefaultIPCApis,
 	}
 	IPCPathFlag = DirectoryFlag{
-		Name:  "ipcpath",
+		Name:  "ipc-path,ipcpath",
 		Usage: "Filename for IPC socket/pipe within the datadir (explicit paths escape it)",
 		Value: DirectoryString{common.DefaultIPCSocket},
 	}
@@ -209,22 +211,22 @@ var (
 		Usage: "Enable the WS-RPC server",
 	}
 	WSListenAddrFlag = cli.StringFlag{
-		Name:  "wsaddr",
+		Name:  "ws-addr,wsaddr",
 		Usage: "WS-RPC server listening interface",
 		Value: common.DefaultWSHost,
 	}
 	WSPortFlag = cli.IntFlag{
-		Name:  "wsport",
+		Name:  "ws-port,wsport",
 		Usage: "WS-RPC server listening port",
 		Value: common.DefaultWSPort,
 	}
 	WSApiFlag = cli.StringFlag{
-		Name:  "wsapi",
+		Name:  "ws-api,wsapi",
 		Usage: "API's offered over the WS-RPC interface",
 		Value: rpc.DefaultHTTPApis,
 	}
 	WSAllowedOriginsFlag = cli.StringFlag{
-		Name:  "wsorigins",
+		Name:  "ws-origins,wsorigins",
 		Usage: "Origins from which to accept websockets requests",
 		Value: "",
 	}
@@ -239,12 +241,12 @@ var (
 
 	// Network Settings
 	MaxPeersFlag = cli.IntFlag{
-		Name:  "maxpeers",
+		Name:  "max-peers,maxpeers",
 		Usage: "Maximum number of network peers (network disabled if set to 0)",
 		Value: 25,
 	}
 	MaxPendingPeersFlag = cli.IntFlag{
-		Name:  "maxpendpeers",
+		Name:  "max-pend-peers,maxpendpeers",
 		Usage: "Maximum number of pending connection attempts (defaults used if set to 0)",
 		Value: 0,
 	}
@@ -263,7 +265,7 @@ var (
 		Usage: "P2P node key file",
 	}
 	NodeKeyHexFlag = cli.StringFlag{
-		Name:  "nodekeyhex",
+		Name:  "nodekey-hex,nodekeyhex",
 		Usage: "P2P node key as hex (for testing)",
 	}
 	NATFlag = cli.StringFlag{
@@ -272,7 +274,7 @@ var (
 		Value: "any",
 	}
 	NoDiscoverFlag = cli.BoolFlag{
-		Name:  "nodiscover",
+		Name:  "no-discover,nodiscover",
 		Usage: "Disables the peer discovery mechanism (manual peer addition)",
 	}
 	WhisperEnabledFlag = cli.BoolFlag{
@@ -281,7 +283,7 @@ var (
 	}
 	// ATM the url is left to the user and deployment to
 	JSpathFlag = cli.StringFlag{
-		Name:  "jspath",
+		Name:  "js-path,jspath",
 		Usage: "JavaScript root path for `loadScript` and document root for `admin.httpGet`",
 		Value: ".",
 	}
@@ -293,32 +295,32 @@ var (
 
 	// Gas price oracle settings
 	GpoMinGasPriceFlag = cli.StringFlag{
-		Name:  "gpomin",
+		Name:  "gpo-min,gpomin",
 		Usage: "Minimum suggested gas price",
 		Value: new(big.Int).Mul(big.NewInt(20), common.Shannon).String(),
 	}
 	GpoMaxGasPriceFlag = cli.StringFlag{
-		Name:  "gpomax",
+		Name:  "gpo-max,gpomax",
 		Usage: "Maximum suggested gas price",
 		Value: new(big.Int).Mul(big.NewInt(500), common.Shannon).String(),
 	}
 	GpoFullBlockRatioFlag = cli.IntFlag{
-		Name:  "gpofull",
+		Name:  "gpo-full,gpofull",
 		Usage: "Full block threshold for gas price calculation (%)",
 		Value: 80,
 	}
 	GpobaseStepDownFlag = cli.IntFlag{
-		Name:  "gpobasedown",
+		Name:  "gpo-base-down,gpobasedown",
 		Usage: "Suggested gas price base step down ratio (1/1000)",
 		Value: 10,
 	}
 	GpobaseStepUpFlag = cli.IntFlag{
-		Name:  "gpobaseup",
+		Name:  "gpo-base-up,gpobaseup",
 		Usage: "Suggested gas price base step up ratio (1/1000)",
 		Value: 100,
 	}
 	GpobaseCorrectionFactorFlag = cli.IntFlag{
-		Name:  "gpobasecf",
+		Name:  "gpo-base-cf,gpobasecf",
 		Usage: "Suggested gas price base correction factor (%)",
 		Value: 110,
 	}
@@ -327,3 +329,19 @@ var (
 		Usage: "Use classic blockchain (always set, flag is unused and exists for compatibility only)",
 	}
 )
+
+// aliasableName check global vars for aliases flag and directoryFlag names.
+// These can be "comma,sep-arated", and ensures that if one is set (and/or not the other),
+// only one var will be returned and it will be decided in order of appearance.
+func aliasableName(commaSeparatedName string, ctx *cli.Context) string {
+	names := strings.Split(commaSeparatedName, ",")
+	returnName := names[0] // first name as default
+	last := len(names) - 1
+	// for in reverse, so that we prioritize the first appearing
+	for i := last; i >= 0; i-- {
+		if ctx.GlobalIsSet(strings.TrimSpace(names[i])) {
+			returnName = names[i]
+		}
+	}
+	return returnName
+}

@@ -56,6 +56,8 @@ var AppHelpFlagGroups = []flagGroup{
 		Name: "ETHEREUM",
 		Flags: []cli.Flag{
 			DataDirFlag,
+			ChainIDFlag,
+			UseChainConfigFlag,
 			KeyStoreDirFlag,
 			NetworkIdFlag,
 			TestNetFlag,

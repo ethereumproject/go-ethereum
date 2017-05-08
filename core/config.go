@@ -41,8 +41,8 @@ import (
 )
 
 var (
-	ErrChainConfigNotFound     = errors.New("ChainConfig not found")
-	ErrChainConfigForkNotFound = errors.New("ChainConfig fork not found")
+	ErrChainConfigNotFound     = errors.New("chain config not found")
+	ErrChainConfigForkNotFound = errors.New("chain config fork not found")
 
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
@@ -145,12 +145,14 @@ type BadHash struct {
 func (c *SufficientChainConfig) IsValid() (string, bool) {
 	// entirely empty
 	if reflect.DeepEqual(c, SufficientChainConfig{}) {
-		return "the whole thing", false
+		return "all empty", false
 	}
 
 	if c.ID == "" {
 		return "id", false
 	}
+
+	// note: no check for name, the only optional field
 
 	if c.Genesis == nil {
 		return "genesis", false
@@ -165,12 +167,13 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "genesis.difficulty", false
 	}
 	if _, e := c.Genesis.Header(); e != nil {
-		return "genesis: " + e.Error(), false
+		return "genesis.header(): " + e.Error(), false
 	}
 
 	if c.ChainConfig == nil {
 		return "chainConfig", false
 	}
+
 	if len(c.ChainConfig.Forks) == 0 {
 		return "forks", false
 	}
@@ -553,7 +556,7 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	block := types.NewBlock(header, nil, nil, nil)
 
 	if block := GetBlock(chainDb, block.Hash()); block != nil {
-		glog.V(logger.Info).Infoln("Genesis block already in chain. Writing canonical number")
+		glog.V(logger.Info).Infof("Genesis block %s already exists in chain -- writing canonical number", block.Hash().Hex())
 		err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64())
 		if err != nil {
 			return nil, err
@@ -652,22 +655,6 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 		} else {
 			return nil, fmt.Errorf("Invalid address in genesis state: %v", address)
 		}
-	}
-	return dump, nil
-}
-
-// ReadGenesisFromJSONFile allows the use a genesis file in JSON format.
-// Implemented in `init` command via initGenesis method.
-func ReadGenesisFromJSONFile(jsonFilePath string) (dump *GenesisDump, err error) {
-	f, err := os.Open(jsonFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read genesis file: %s", err)
-	}
-	defer f.Close()
-
-	dump = new(GenesisDump)
-	if json.NewDecoder(f).Decode(dump); err != nil {
-		return nil, fmt.Errorf("%s: %s", jsonFilePath, err)
 	}
 	return dump, nil
 }

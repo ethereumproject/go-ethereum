@@ -1092,6 +1092,11 @@ func (v Verbose) Infof(format string, args ...interface{}) {
 	}
 }
 
+// Separator creates a line, ie ---------------------------------
+func Separator(iterable string) string {
+	return strings.Repeat(iterable, 110)
+}
+
 // Info logs to the INFO log.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Info(args ...interface{}) {
