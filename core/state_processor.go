@@ -26,6 +26,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 var (
@@ -133,15 +134,27 @@ func AccumulateRewards(statedb *state.StateDB, header *types.Header, uncles []*t
 	r := new(big.Int)
 	// An uncle is a block that would be considered an orphan because its not on the longest chain (it's an alternative block at the same height as your parent).
 	// https://www.reddit.com/r/ethereum/comments/3c9jbf/wtf_are_uncles_and_why_do_they_matter/
-	for _, uncle := range uncles {
-		r.Add(uncle.Number, big8) // 2,534,999 + 8
-		r.Sub(r, header.Number) // 2,535,007 - 2,535,008
-		r.Mul(r, MaximumBlockReward) // -1 * 5e+18
-		r.Div(r, big8) // -5e+18 / 8
-		statedb.AddBalance(uncle.Coinbase, r)
 
-		r.Div(MaximumBlockReward, big32)
-		reward.Add(reward, r)
+	// uncle.Number = 2,535,998 // assuming "latest" uncle...
+	// block.Number = 2,534,999 // uncles are at same height (?)
+	// ... as uncles get older (within validation), reward drops
+
+	for _, uncle := range uncles {
+		r.Add(uncle.Number, big8) // 2,534,998 + 8              = 2,535,006
+		r.Sub(r, header.Number) // 2,535,006 - 2,534,999        = 7
+		r.Mul(r, MaximumBlockReward) // 7 * 5e+18               = 35e+18
+		r.Div(r, big8) // 35e+18 / 8                            = 7/8 * 5e+18
+		statedb.AddBalance(uncle.Coinbase, r) // $$
+
+		r.Div(MaximumBlockReward, big32) // 5e+18 / 32
+		reward.Add(reward, r) // 5e+18 + (1/32*5e+18)
 	}
-	statedb.AddBalance(header.Coinbase, reward)
+	statedb.AddBalance(header.Coinbase, reward) //  $$ => 5e+18 + (1/32*5e+18)
+}
+
+
+// getBlockEra gets which "era" a given block is within, given era length (ecip-1017 -> era=5,000,000 blocks)
+func getBlockEra(blockNum, eraLength *big.Int) *big.Int {
+	_, m := big.NewInt(0).DivMod(blockNum, eraLength, big.NewInt(0))
+	return big.NewInt(0).Add(m, common.Big1)
 }
