@@ -143,7 +143,7 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 	// block.Number = 2,534,999 // uncles are at same height (?)
 	// ... as uncles get older (within validation), reward drops
 
-	feat, _, configured := config.GetFeature(header.Number, "reward")
+	feat, _, configured := config.HasFeature("reward")
 	if !configured {
 		reward := new(big.Int).Set(MaximumBlockReward)
 		r := new(big.Int)
@@ -183,6 +183,7 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 		statedb.AddBalance(header.Coinbase, wr) // $$
 
 		// Reward uncle miners.
+
 		for _, uncle := range uncles {
 			ur := GetBlockUncleRewardByEra(era, header, uncle)
 			statedb.AddBalance(uncle.Coinbase, ur) // $$
