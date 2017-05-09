@@ -19,14 +19,15 @@ package core
 import (
 	"math/big"
 
+	"errors"
 	"fmt"
+
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"errors"
 )
 
 var (
@@ -149,15 +150,15 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 		r := new(big.Int)
 
 		for _, uncle := range uncles {
-			r.Add(uncle.Number, big8) // 2,534,998 + 8              = 2,535,006
-			r.Sub(r, header.Number) // 2,535,006 - 2,534,999        = 7
+			r.Add(uncle.Number, big8)    // 2,534,998 + 8              = 2,535,006
+			r.Sub(r, header.Number)      // 2,535,006 - 2,534,999        = 7
 			r.Mul(r, MaximumBlockReward) // 7 * 5e+18               = 35e+18
-			r.Div(r, big8) // 35e+18 / 8                            = 7/8 * 5e+18
+			r.Div(r, big8)               // 35e+18 / 8                            = 7/8 * 5e+18
 
 			statedb.AddBalance(uncle.Coinbase, r) // $$
 
 			r.Div(MaximumBlockReward, big32) // 5e+18 / 32
-			reward.Add(reward, r) // 5e+18 + (1/32*5e+18)
+			reward.Add(reward, r)            // 5e+18 + (1/32*5e+18)
 		}
 		statedb.AddBalance(header.Coinbase, reward) //  $$ => 5e+18 + (1/32*5e+18)
 	} else {
@@ -210,7 +211,6 @@ func GetBlockUncleRewardByEra(era *big.Int, header, uncle *types.Header) *big.In
 
 		return r
 	}
-
 	return getEraUncleBlockReward(era)
 }
 
@@ -227,7 +227,9 @@ func GetBlockWinnerRewardForUnclesByEra(era *big.Int, uncles []*types.Header) *b
 // GetRewardByEra gets a block reward at disinflation rate.
 // Constants MaxBlockReward, DisinflationRateQuotient, and DisinflationRateDivisor assumed.
 func GetBlockWinnerRewardByEra(era *big.Int) *big.Int {
-	if era.Cmp(big.NewInt(0)) == 0 { return MaximumBlockReward }
+	if era.Cmp(big.NewInt(0)) == 0 {
+		return new(big.Int).Set(MaximumBlockReward)
+	}
 
 	var q, d, r *big.Int = new(big.Int), new(big.Int), new(big.Int)
 
@@ -240,11 +242,12 @@ func GetBlockWinnerRewardByEra(era *big.Int) *big.Int {
 	return r
 }
 
-
 // getBlockEra gets which "era" a given block is within, given era length (ecip-1017 -> era=5,000,000 blocks)
 // Returns a zero-index era number, so "Era 1" -> 0, "Era 2" -> 1,...
 func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
-	if blockNum.Cmp(big.NewInt(0)) <= 0 { return big.NewInt(0) }
+	if blockNum.Cmp(big.NewInt(0)) <= 0 {
+		return big.NewInt(0)
+	}
 
 	remainder := big.NewInt(0).Mod(big.NewInt(0).Sub(blockNum, big.NewInt(1)), eraLength)
 	base := big.NewInt(0).Sub(blockNum, remainder)
