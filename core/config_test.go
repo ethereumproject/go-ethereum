@@ -432,6 +432,21 @@ func TestChainConfig_GetSigner(t *testing.T) {
 
 }
 
+func TestChainConfig_GetChainID(t *testing.T) {
+	d := DefaultConfig
+	cid := d.GetChainID()
+	if cid.Cmp(new(big.Int)) == 0 {
+		t.Errorf("got: %v, want: %v", cid, DefaultChainConfigChainID)
+	}
+
+	d = &ChainConfig{} // no chain id feature
+	cid = d.GetChainID()
+	if cid.Cmp(new(big.Int)) != 0 {
+		t.Errorf("got: %v, want: %v", cid, new(big.Int))
+	}
+
+}
+
 func makeOKSufficientChainConfig(dump *GenesisDump, config *ChainConfig) *SufficientChainConfig {
 	// Setup.
 	whole := &SufficientChainConfig{}

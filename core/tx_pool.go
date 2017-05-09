@@ -43,6 +43,7 @@ var (
 	ErrIntrinsicGas       = errors.New("Intrinsic gas too low")
 	ErrGasLimit           = errors.New("Exceeds block gas limit")
 	ErrNegativeValue      = errors.New("Negative value")
+	ErrChainID = errors.New("Invalid (zero-value) chain id")
 )
 
 const (
@@ -78,9 +79,13 @@ type TxPool struct {
 }
 
 func NewTxPool(config *ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() *big.Int) *TxPool {
+	chainid := config.GetChainID()
+	if chainid.Cmp(new(big.Int)) == 0 {
+		panic(ErrChainID)
+	}
 	pool := &TxPool{
 		config:       config,
-		signer:       types.NewChainIdSigner(config.GetChainID()),
+		signer:       types.NewChainIdSigner(chainid),
 		pending:      make(map[common.Hash]*types.Transaction),
 		queue:        make(map[common.Address]map[common.Hash]*types.Transaction),
 		eventMux:     eventMux,

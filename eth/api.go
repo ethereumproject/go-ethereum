@@ -825,7 +825,11 @@ func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx
 		if fullTx {
 			formatTx = func(tx *types.Transaction) (interface{}, error) {
 				if tx.Protected() {
-					tx.SetSigner(types.NewChainIdSigner(s.bc.Config().GetChainID()))
+					chainid := s.bc.Config().GetChainID()
+					if chainid.Cmp(new(big.Int)) == 0 {
+						return nil, errors.New("invalid chain configuration: chainid is zero-value")
+					}
+					tx.SetSigner(types.NewChainIdSigner(chainid))
 				}
 				return newRPCTransaction(b, tx.Hash())
 			}
