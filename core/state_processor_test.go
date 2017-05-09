@@ -193,9 +193,8 @@ func TestGetBlockWinnerRewardForUnclesByEra(t *testing.T) {
 	}
 }
 
-// Accruing over block cases simulates compounding longevity of an account.
-// Tests using maps of running sums for winner & 2 uncles to keep tally.
-// "all star" miners win repeatedly
+// Accruing over block cases simulates miner account winning many times.
+// Uses maps of running sums for winner & 2 uncles to keep tally.
 func TestAccumulateRewards1(t *testing.T) {
 	configs := []*ChainConfig{TestConfig}
 	for i, config := range configs {
@@ -311,8 +310,9 @@ var (
 	Era4UncleReward       = new(big.Int).Div(new(big.Int).Mul(new(big.Int).Div(Era3WinnerReward, big.NewInt(5)), big.NewInt(4)), big32)
 )
 
-// Non-accruing over block cases simulates instance, ie "one hit wonder" miners
-func TestAccumulateRewards3(t *testing.T) {
+// Non-accruing over block cases simulates instance,
+// ie. a miner wins once at different blocks.
+func TestAccumulateRewards2(t *testing.T) {
 
 	type rewards map[common.Address]*big.Int
 

@@ -141,8 +141,8 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 	// https://www.reddit.com/r/ethereum/comments/3c9jbf/wtf_are_uncles_and_why_do_they_matter/
 
 	// uncle.Number = 2,535,998 // assuming "latest" uncle...
-	// block.Number = 2,534,999 // uncles are at same height (?)
-	// ... as uncles get older (within validation), reward drops
+	// block.Number = 2,534,999 // uncles can be at same height as each other
+	// ... as uncles get older (within validation; <=n-7), reward drops
 
 	// Since ECIP1017 impacts "Era 1" idempotently and with constant 0-block based eras,
 	// we don't care about where the block/fork implementing it is.
@@ -193,7 +193,7 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 	}
 }
 
-// As of "Era 2", uncle miners and winners are rewarded equally for each included block.
+// As of "Era 2" (zero-index era 1), uncle miners and winners are rewarded equally for each included block.
 // So they share this function.
 func getEraUncleBlockReward(era *big.Int) *big.Int {
 	return new(big.Int).Div(GetBlockWinnerRewardByEra(era), big32)
@@ -216,6 +216,7 @@ func GetBlockUncleRewardByEra(era *big.Int, header, uncle *types.Header) *big.In
 }
 
 // GetBlockWinnerRewardForUnclesByEra gets called _per winner_, and accumulates rewards for each included uncle.
+// Assumes uncles have been validated and limited (@ func (v *BlockValidator) VerifyUncles).
 func GetBlockWinnerRewardForUnclesByEra(era *big.Int, uncles []*types.Header) *big.Int {
 	r := big.NewInt(0)
 
@@ -232,6 +233,9 @@ func GetBlockWinnerRewardByEra(era *big.Int) *big.Int {
 		return new(big.Int).Set(MaximumBlockReward)
 	}
 
+	// MaxBlockReward _r_ * (4/5)**era == MaxBlockReward * (4**era) / (5**era)
+	// since (q/d)**n == q**n / d**n
+	// qed
 	var q, d, r *big.Int = new(big.Int), new(big.Int), new(big.Int)
 
 	q.Exp(DisinflationRateQuotient, era, nil)
@@ -243,8 +247,8 @@ func GetBlockWinnerRewardByEra(era *big.Int) *big.Int {
 	return r
 }
 
-// getBlockEra gets which "era" a given block is within, given era length (ecip-1017 -> era=5,000,000 blocks)
-// Returns a zero-index era number, so "Era 1" -> 0, "Era 2" -> 1,...
+// getBlockEra gets which "Era" a given block is within, given an era length (ecip-1017 has era=5,000,000 blocks)
+// Returns a zero-index era number, so "Era 1": 0, "Era 2": 1, "Era 3": 2 ...
 func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
 	if blockNum.Cmp(big.NewInt(0)) <= 0 {
 		return big.NewInt(0)
