@@ -208,6 +208,20 @@ func TestChainConfig_HasFeature(t *testing.T) {
 			t.Errorf("feature not found: %v", id)
 		}
 	}
+
+	// never gets unavailable keys
+	c = TestConfig.SortForks()
+	for _, id := range unavailableConfigKeys {
+		if _, _, ok := c.HasFeature(id); ok {
+			t.Errorf("nonexisting feature found: %v", id)
+		}
+	}
+	c = getDefaultChainConfigSorted()
+	for _, id := range unavailableConfigKeys {
+		if _, _, ok := c.HasFeature(id); ok {
+			t.Errorf("nonexisting feature found: %v", id)
+		}
+	}
 }
 
 // TestChainConfig_GetFeature should be able to get all features described in DefaultConfig.
