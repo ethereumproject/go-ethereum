@@ -144,6 +144,8 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 	// block.Number = 2,534,999 // uncles are at same height (?)
 	// ... as uncles get older (within validation), reward drops
 
+	// Since ECIP1017 impacts "Era 1" idempotently and with constant 0-block based eras,
+	// we don't care about where the block/fork implementing it is.
 	feat, _, configured := config.HasFeature("reward")
 	if !configured {
 		reward := new(big.Int).Set(MaximumBlockReward)
@@ -184,7 +186,6 @@ func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *type
 		statedb.AddBalance(header.Coinbase, wr) // $$
 
 		// Reward uncle miners.
-
 		for _, uncle := range uncles {
 			ur := GetBlockUncleRewardByEra(era, header, uncle)
 			statedb.AddBalance(uncle.Coinbase, ur) // $$
