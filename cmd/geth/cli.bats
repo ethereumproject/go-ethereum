@@ -144,3 +144,93 @@ teardown() {
 	[[ "$output" == *"Alloted 17MB cache"* ]]
 }
 
+
+# Test `dump` command.
+@test "dump [noargs] | exit >0" {
+	run $GETH_CMD --data-dir $DATA_DIR dump
+	echo "$output"
+	[ "$status" -gt 0 ]
+	[[ "$output" == *"invalid"* ]] # invalid use
+}
+@test "dump 0 [noaddress] | exit 0" {
+	run $GETH_CMD --data-dir $DATA_DIR dump 0
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"root"* ]] # block state root
+	[[ "$output" == *"balance"* ]]
+	[[ "$output" == *"accounts"* ]]
+	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block state root
+	[[ "$output" == *"0xffec0913c635baca2f5e57a37aa9fb7b6c9b6e26"* ]] # random prefixed hex address existing in genesis 
+	[[ "$output" == *"253319000000000000000"* ]] # random address balance existing in genesis 
+}
+@test "dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181 | exit 0" {
+	run $GETH_CMD --data-dir $DATA_DIR dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"root"* ]] # block state root
+	[[ "$output" == *"balance"* ]]
+	[[ "$output" == *"accounts"* ]]
+	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block state root
+	[[ "$output" == *"0xfff7ac99c8e4feb60c9750054bdc14ce1857f181"* ]] # prefixed hex address
+	[[ "$output" == *"1000000000000000000000"* ]] # address balance
+}
+@test "dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f | exit 0" {
+	run $GETH_CMD --data-dir $DATA_DIR dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"root"* ]] # block state root
+	[[ "$output" == *"balance"* ]]
+	[[ "$output" == *"accounts"* ]]
+	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block 0  state root
+	
+	[[ "$output" == *"0xfff7ac99c8e4feb60c9750054bdc14ce1857f181"* ]] # prefixed hex address
+	[[ "$output" == *"1000000000000000000000"* ]] # address balance
+
+	[[ "$output" == *"0xffe8cbc1681e5e9db74a0f93f8ed25897519120f"* ]] # prefixed hex address
+	[[ "$output" == *"1507000000000000000000"* ]] # address balance
+}
+@test "dump 0,1 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f | exit 0" {
+	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/ $DATA_DIR/
+	run $GETH_CMD --data-dir $DATA_DIR dump 0,1 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"root"* ]] # block state root
+	[[ "$output" == *"balance"* ]]
+	[[ "$output" == *"accounts"* ]]
+	
+	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block 0  state root
+	[[ "$output" == *"d67e4d450343046425ae4271474353857ab860dbc0a1dde64b41b5cd3a532bf3"* ]] # block 1  state root
+	
+	[[ "$output" == *"0xfff7ac99c8e4feb60c9750054bdc14ce1857f181"* ]] # prefixed hex address
+	[[ "$output" == *"1000000000000000000000"* ]] # address balance
+
+	[[ "$output" == *"0xffe8cbc1681e5e9db74a0f93f8ed25897519120f"* ]] # prefixed hex address
+	[[ "$output" == *"1507000000000000000000"* ]] # address balance
+}
+@test "dump 0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f | exit 0" {
+	run $GETH_CMD --data-dir $DATA_DIR dump 0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"root"* ]] # block state root
+	[[ "$output" == *"balance"* ]]
+	[[ "$output" == *"accounts"* ]]
+	
+	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block 0  state root
+	
+	[[ "$output" == *"0xfff7ac99c8e4feb60c9750054bdc14ce1857f181"* ]] # prefixed hex address
+	[[ "$output" == *"1000000000000000000000"* ]] # address balance
+
+	[[ "$output" == *"0xffe8cbc1681e5e9db74a0f93f8ed25897519120f"* ]] # prefixed hex address
+	[[ "$output" == *"1507000000000000000000"* ]] # address balance
+}
+
+
+
+
+
+
+
+
+
+
+
