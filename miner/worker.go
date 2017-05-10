@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"errors"
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -357,13 +356,9 @@ func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error
 	if err != nil {
 		return err
 	}
-	chainid := self.config.GetChainID()
-	if chainid.Cmp(new(big.Int)) == 0 {
-		return errors.New("invalid chain configuration: chainid is zero-value")
-	}
 	work := &Work{
 		config:    self.config,
-		signer:    types.NewChainIdSigner(chainid),
+		signer:    types.NewChainIdSigner(self.config.GetChainID()),
 		state:     state,
 		ancestors: set.New(),
 		family:    set.New(),

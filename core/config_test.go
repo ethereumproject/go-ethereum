@@ -435,12 +435,19 @@ func TestChainConfig_GetSigner(t *testing.T) {
 func TestChainConfig_GetChainID(t *testing.T) {
 	d := DefaultConfig
 	cid := d.GetChainID()
+	// check is not zero
 	if cid.Cmp(new(big.Int)) == 0 {
 		t.Errorf("got: %v, want: %v", cid, DefaultChainConfigChainID)
 	}
+	// check is expected default 61
+	if cid.Cmp(DefaultChainConfigChainID) != 0 {
+		t.Errorf("got: %v, want: %v", cid, DefaultChainConfigChainID)
+	}
 
-	d = &ChainConfig{} // no chain id feature
+	// no chain id feature configured, should return zero-value (0)
+	d = &ChainConfig{}
 	cid = d.GetChainID()
+	// check is zero
 	if cid.Cmp(new(big.Int)) != 0 {
 		t.Errorf("got: %v, want: %v", cid, new(big.Int))
 	}

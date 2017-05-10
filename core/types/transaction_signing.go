@@ -137,10 +137,7 @@ func (s ChainIdSigner) Equal(s2 Signer) bool {
 	if !ok {
 		return false
 	}
-	if  other.chainId.Cmp(new(big.Int)) == 0 || other.chainId == nil {
-		return false
-	}
-	if s.chainId.Cmp(new(big.Int)) == 0 || s.chainId == nil {
+	if other.chainId == nil || s.chainId == nil {
 		return false
 	}
 
