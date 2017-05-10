@@ -306,7 +306,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 	//
 	// FYI: here would be an inflection point for if we used a --genesis flag.
 	if genesisDump == nil {
-		if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
+		if isTestMode(ctx) {
 			glog.V(logger.Info).Info("WARNING: No genesis block found in database. Dumping the testnet default genesis.")
 			genesisDump = core.TestNetGenesis
 		} else {

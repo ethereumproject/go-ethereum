@@ -44,6 +44,19 @@ teardown() {
 	[[ "$output" == *"\"id\": \"morden\"," ]]
 }
 
+@test "--chain morden dump-chain-config | exit 0" {
+	run $GETH_CMD --datadir $DATA_DIR --chain morden dump-chain-config $DATA_DIR/dump.json
+	echo "$output"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Wrote chain config file"* ]]
+	[ -f $DATA_DIR/dump.json ]
+	[ -d $DATA_DIR/morden ]
+
+	run grep -R "morden" $DATA_DIR/dump.json
+	[[ "$output" == *"\"id\": \"morden\"," ]]
+}
+
 @test "--chain kittyCoin dump-chain-config | exit 0" {
 	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
@@ -162,28 +175,28 @@ teardown() {
 	[ -d $DATA_DIR/customnet/keystore ]
 }
 
-@test "--chain-config config/testnet.json --testnet | exit >1" {
+@test "--chain-config config/testnet.json --testnet | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --testnet console
 	echo "$output"
 	[ "$status" -gt 0 ]
 	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
-@test "--chain-config config/mainnet.json --chain mainnet | exit >1" {
+@test "--chain-config config/mainnet.json --chain mainnet | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --chain mainnet console
 	echo "$output"
 	[ "$status" -gt 0 ]
 	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
-@test "--chain-config config/mainnet.json --chain kittyCoin | exit >1" {
+@test "--chain-config config/mainnet.json --chain kittyCoin | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --chain kittyCoin console
 	echo "$output"
 	[ "$status" -gt 0 ]
 	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
-@test "--chain-config config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 | exit >1" {
+@test "--chain-config config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 console
 	echo "$output"
 	[ "$status" -gt 0 ]

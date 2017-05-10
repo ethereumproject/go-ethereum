@@ -19,7 +19,7 @@ teardown() {
 }
 
 @test "defaults: genesis block hash testnet" {
-	run $GETH_CMD --testnet --data-dir $DATA_DIR --exec 'eth.getBlock(0).hash' console
+	run $GETH_CMD --chain=morden --data-dir $DATA_DIR --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 
 	[ "$status" -eq 0 ]

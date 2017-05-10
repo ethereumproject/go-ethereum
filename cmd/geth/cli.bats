@@ -67,6 +67,26 @@ teardown() {
 	[[ "$output" == *"USAGE"* ]]
 }
 
+@test "exactly overlapping flags allowed: --chain=morden --testnet" {
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
+	echo "$output"
+	[ "$status" -eq 0 ]
+}
+
+@test "overlapping flags not allowed: --chain=morden --dev" {
+	run $GETH_CMD --data-dir $DATA_DIR --dev --chain=morden --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
+	echo "$output"
+	[ "$status" -gt 0 ]
+	[[ "$output" == *"invalid flag "* ]]
+}
+
+@test "--testnet --chain=morden2 | exit >0" {
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden2 --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
+	echo "$output"
+	[ "$status" -gt 0 ]
+	
+}
+
 # TODO
 # This doesn't pass, and that's an issue.
 # @test "displays help with valid command and invalid subcommand" {

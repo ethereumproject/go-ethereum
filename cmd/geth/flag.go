@@ -92,7 +92,11 @@ var reservedChainIDS = map[string]bool{
 	"nodekey":   true,
 	"nodes":     true,
 	"geth":      true,
-	"morden":    true,
+}
+
+// isTestMode checks if either '--testnet' or '--chain=morden' in use for context
+func isTestMode(ctx *cli.Context) bool {
+	return ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx)) == "morden" || currentChainID == "morden"
 }
 
 // getChainConfigIDFromContext gets the --chain=my-custom-net value.
@@ -100,15 +104,18 @@ var reservedChainIDS = map[string]bool{
 // Disallowed words which conflict with in-use data files will log the problem and return "",
 // which cause an error.
 func getChainConfigIDFromContext(ctx *cli.Context) string {
-	chainFlagIsSet := ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx))
+	chainFlagIsSet := ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx))
+
+	// make external config (sets chainid) incompatible with overlapping --chainid flag
 	if chainFlagIsSet && currentChainID != "" {
 		glog.Fatalf("%v: %v: external and flag configurations are conflicting, please use only one",
 			ErrInvalidFlag, ErrInvalidChainID)
 	}
+	// set from external config
 	if currentChainID != "" {
 		return currentChainID
 	}
-	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
+	if isTestMode(ctx) {
 		return core.DefaultTestnetChainConfigID
 	}
 	if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) {
@@ -129,10 +136,10 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 }
 
 // getChainConfigNameFromContext gets mainnet or testnet defaults if in use.
-// If a custom net is in use, it echoes the name of the ChainConfigID.
+// _If a custom net is in use, it echoes the name of the ChainConfigID._
 // It is intended to be a human-readable name for a chain configuration.
 func getChainConfigNameFromContext(ctx *cli.Context) string {
-	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
+	if isTestMode(ctx) {
 		return core.DefaultTestnetChainConfigName
 	}
 	if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) {
@@ -203,8 +210,8 @@ func MakeBootstrapNodesFromContext(ctx *cli.Context) []*discover.Node {
 	// Return pre-configured nodes if none were manually requested
 	if !ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
 
-		// --testnet flag overrides --config flag
-		if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
+		// --testnet/--chain=morden flag overrides --config flag
+		if isTestMode(ctx) {
 			return TestNetBootNodes
 		}
 		return HomesteadBootNodes
@@ -407,7 +414,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// I think it's safe to assume that the chaindata directory is just too 'young', where it hasn't
 	// synced until block 1920000, and therefore can be migrated.
 	conf := core.DefaultConfig
-	if ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) {
+	if isTestMode(ctx) {
 		conf = core.TestConfig
 	}
 
@@ -521,6 +528,7 @@ func makeNodeName(version string, ctx *cli.Context) string {
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
+
 	name := makeNodeName(version, ctx)
 
 	// global settings
@@ -537,6 +545,14 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Delegates flag usage.
 	config := mustMakeSufficientConfiguration(ctx)
 
+	// Avoid conflicting flags
+	if ctx.GlobalBool(DevModeFlag.Name) && isTestMode(ctx) {
+		glog.Fatalf("%v: flags --%v and --%v/--%v=morden are mutually exclusive", ErrInvalidFlag, DevModeFlag.Name, TestNetFlag.Name, ChainIDFlag.Name)
+	}
+	if ctx.GlobalBool(TestNetFlag.Name) && ctx.GlobalIsSet(ChainIDFlag.Name) && ctx.GlobalString(ChainIDFlag.Name) != "morden" {
+		glog.Fatalf("%v: flags --%v and --%v are mutually exclusive: please use only one", ErrInvalidFlag, TestNetFlag.Name, ChainIDFlag.Name)
+	}
+
 	// Data migrations...
 
 	// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
@@ -544,7 +560,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
 	// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
 	if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) &&
-		// Allows to use --chainconfig flag as long configuration specifies mainnet or morden
+		// Allows to use --chain-config flag as long configuration specifies mainnet or morden
 		(config.ID == core.DefaultTestnetChainConfigID || config.ID == core.DefaultChainConfigID) {
 		if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
 			glog.Fatalf("%v: failed to migrate existing Classic database: %v", ErrDirectoryStructure, migrationError)
@@ -556,17 +572,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// and the user is using the Default configuration (ie "mainnet").
 	if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
 		glog.Fatalf("%v: failed to migrate existing data to chain-specific subdir: %v", ErrDirectoryStructure, subdirMigrateErr)
-	}
-
-	// Avoid conflicting network flags
-	networks, netFlags := 0, []cli.BoolFlag{DevModeFlag, TestNetFlag}
-	for _, flag := range netFlags {
-		if ctx.GlobalBool(flag.Name) {
-			networks++
-		}
-	}
-	if networks > 1 {
-		glog.Fatalf("%v: the %v flags are mutually exclusive", ErrInvalidFlag, netFlags)
 	}
 
 	// Configure the node's service container
@@ -636,7 +641,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	// Override any default configs in dev mode or the test net
 	switch {
-	case ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)):
+	case isTestMode(ctx):
 		if !ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
 			ethConf.NetworkId = 2
 		}
@@ -753,19 +758,17 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 		}
 	}
 
-
 	glog.V(logger.Info).Info(glog.Separator("-"))
 }
 
 // MustMakeChainConfigFromDb reads the chain configuration from the given database.
 func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
 
-
 	c := core.DefaultConfig
 	configName := "mainnet"
-	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
+	if isTestMode(ctx) {
 		c = core.TestConfig
-		configName= "morden testnet"
+		configName = "morden testnet"
 	}
 
 	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
