@@ -45,19 +45,19 @@ func TestGetBlockEra1(t *testing.T) {
 // Use custom era length 2
 func TestGetBlockEra2(t *testing.T) {
 	cases := map[*big.Int]*big.Int{
-		big.NewInt(0):         big.NewInt(0),
-		big.NewInt(1):         big.NewInt(0),
-		big.NewInt(2):   big.NewInt(0),
-		big.NewInt(3):   big.NewInt(1),
-		big.NewInt(4):   big.NewInt(1),
-		big.NewInt(5):   big.NewInt(2),
-		big.NewInt(6):   big.NewInt(2),
-		big.NewInt(7):   big.NewInt(3),
-		big.NewInt(8):   big.NewInt(3),
+		big.NewInt(0):  big.NewInt(0),
+		big.NewInt(1):  big.NewInt(0),
+		big.NewInt(2):  big.NewInt(0),
+		big.NewInt(3):  big.NewInt(1),
+		big.NewInt(4):  big.NewInt(1),
+		big.NewInt(5):  big.NewInt(2),
+		big.NewInt(6):  big.NewInt(2),
+		big.NewInt(7):  big.NewInt(3),
+		big.NewInt(8):  big.NewInt(3),
 		big.NewInt(9):  big.NewInt(4),
-		big.NewInt(10):  big.NewInt(4),
-		big.NewInt(11):  big.NewInt(5),
-		big.NewInt(12):  big.NewInt(5),
+		big.NewInt(10): big.NewInt(4),
+		big.NewInt(11): big.NewInt(5),
+		big.NewInt(12): big.NewInt(5),
 	}
 
 	for bn, expectedEra := range cases {
@@ -235,7 +235,7 @@ func TestAccumulateRewards1(t *testing.T) {
 		}
 
 		cases := []*big.Int{
-			big.NewInt(1),
+			big.NewInt(11), // avoid messy if-switches for ommer availability/numbering
 			big.NewInt(4999999),
 			big.NewInt(5000000),
 			big.NewInt(5000001),
@@ -255,9 +255,14 @@ func TestAccumulateRewards1(t *testing.T) {
 
 			for i, uncle := range uncles {
 
-				// Randomize uncle numbers with bound ( 0 < n < 8 )
+				// Randomize uncle numbers with bound ( n-1 <= uncleNum <= n-7 ), where n is current head number
+				// See yellowpaper@11.1 for ommer validation reference. I expect n-7 is 6th-generation ommer.
+				// Note that ommer nth-generation impacts reward only for "Era 1".
 				rand.Seed(time.Now().UTC().UnixNano())
-				uncle.Number = new(big.Int).Sub(header.Number, big.NewInt(int64(rand.Int31n(int32(7)))))
+
+				// 1 + [0..rand..7) == 1 + 0, 1 + 1, ... 1 + 6
+				un := new(big.Int).Add(big.NewInt(1), big.NewInt(int64(rand.Int31n(int32(7)))))
+				uncle.Number = new(big.Int).Sub(header.Number, un) // n - un
 
 				ur := GetBlockUncleRewardByEra(era, header, uncle)
 				unclesB[i].Add(unclesB[i], ur)
@@ -312,7 +317,9 @@ var (
 
 // Non-accruing over block cases simulates instance,
 // ie. a miner wins once at different blocks.
-func TestAccumulateRewards2(t *testing.T) {
+//
+// Tests winner includes 2 ommer headers.
+func TestAccumulateRewards2_2Uncles(t *testing.T) {
 
 	type rewards map[common.Address]*big.Int
 
@@ -322,7 +329,7 @@ func TestAccumulateRewards2(t *testing.T) {
 		rewards rewards
 	}{
 		{
-			block: big.NewInt(1),
+			block: big.NewInt(2),
 			rewards: rewards{
 				WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, new(big.Int).Mul(Era1WinnerUncleReward, common.Big2)),
 				Uncle1Coinbase: Era1UncleReward,
@@ -441,7 +448,7 @@ func TestAccumulateRewards2(t *testing.T) {
 				Coinbase: WinnerCoinbase,
 			}
 			var uncles []*types.Header = []*types.Header{{
-				Number:   new(big.Int).Sub(c.block, common.Big1),
+				Number:   new(big.Int).Sub(c.block, common.Big1), // use 1st-generation ommer, since random n-[1,7) is tested by accrual above
 				Coinbase: Uncle1Coinbase,
 			}, {
 				Number:   new(big.Int).Sub(c.block, common.Big1),
@@ -498,6 +505,326 @@ func TestAccumulateRewards2(t *testing.T) {
 				}
 				if gotUncle2Balance.Cmp(Era1UncleReward) != 0 {
 					t.Errorf("Config: %v | Era %v: uncle2 balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, Era1UncleReward, gotUncle2Balance, new(big.Int).Sub(gotUncle2Balance, c.rewards[Uncle2Coinbase]))
+				}
+			}
+
+			db.Close()
+		}
+	}
+}
+
+// Non-accruing over block cases simulates instance,
+// ie. a miner wins once at different blocks.
+//
+// Tests winner includes 1 ommer header.
+func TestAccumulateRewards3_1Uncle(t *testing.T) {
+
+	type rewards map[common.Address]*big.Int
+
+	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	cases := []struct {
+		block   *big.Int
+		rewards rewards
+	}{
+		{
+			block: big.NewInt(2),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
+				Uncle1Coinbase: Era1UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(13),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
+				Uncle1Coinbase: Era1UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(1914999),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
+				Uncle1Coinbase: Era1UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(1915000),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
+				Uncle1Coinbase: Era1UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(1915001),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
+				Uncle1Coinbase: Era1UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(4999999),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
+				Uncle1Coinbase: Era1UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(5000001),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
+				Uncle1Coinbase: Era2UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(5000010),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
+				Uncle1Coinbase: Era2UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(10000000),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
+				Uncle1Coinbase: Era2UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(10000001),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era3WinnerReward, Era3WinnerUncleReward),
+				Uncle1Coinbase: Era3UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(15000000),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era3WinnerReward, Era3WinnerUncleReward),
+				Uncle1Coinbase: Era3UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(15000001),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era4WinnerReward, Era4WinnerUncleReward),
+				Uncle1Coinbase: Era4UncleReward,
+			},
+		},
+		{
+			block: big.NewInt(20000000),
+			rewards: rewards{
+				WinnerCoinbase: new(big.Int).Add(Era4WinnerReward, Era4WinnerUncleReward),
+				Uncle1Coinbase: Era4UncleReward,
+			},
+		},
+	}
+
+	for i, config := range configs {
+		for _, c := range cases {
+
+			db, _ := ethdb.NewMemDatabase()
+			stateDB, err := state.New(common.Hash{}, db)
+			if err != nil {
+				t.Fatalf("could not open statedb: %v", err)
+			}
+
+			var winner *types.Header = &types.Header{
+				Number:   c.block,
+				Coinbase: WinnerCoinbase,
+			}
+			var uncles []*types.Header = []*types.Header{{
+				Number:   new(big.Int).Sub(c.block, common.Big1), // use 1st-generation ommer, since random n-[1,7) is tested by accrual above
+				Coinbase: Uncle1Coinbase,
+			}}
+
+			gotWinnerBalance := stateDB.GetBalance(winner.Coinbase)
+			gotUncle1Balance := stateDB.GetBalance(Uncle1Coinbase)
+			r := new(big.Int)
+			r.Add(gotWinnerBalance, gotUncle1Balance)
+			if r.Cmp(big.NewInt(0)) != 0 {
+				t.Errorf("unexpected: %v", r)
+			}
+
+			AccumulateRewards(config, stateDB, winner, uncles)
+			gotWinnerBalance = stateDB.GetBalance(winner.Coinbase)
+			gotUncle1Balance = stateDB.GetBalance(Uncle1Coinbase)
+
+			// Use config if possible. Currently on testnet only.
+			eraLen := new(big.Int)
+			feat, _, configured := config.HasFeature("reward")
+			if !configured {
+				eraLen = DefaultEraLength
+			} else {
+				elen, ok := feat.GetBigInt("era")
+				if !ok {
+					t.Error("unexpected reward length not configured")
+				} else {
+					eraLen = elen
+				}
+			}
+			era := GetBlockEra(c.block, eraLen)
+
+			// Check balances.
+			if configured {
+				if gotWinnerBalance.Cmp(c.rewards[WinnerCoinbase]) != 0 {
+					t.Errorf("Config: %v | Era %v: winner balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, c.rewards[WinnerCoinbase], gotWinnerBalance, new(big.Int).Sub(gotWinnerBalance, c.rewards[WinnerCoinbase]))
+				}
+				if gotUncle1Balance.Cmp(c.rewards[Uncle1Coinbase]) != 0 {
+					t.Errorf("Config: %v | Era %v: uncle1 balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, c.rewards[Uncle1Coinbase], gotUncle1Balance, new(big.Int).Sub(gotUncle1Balance, c.rewards[Uncle1Coinbase]))
+				}
+			} else {
+				if gotWinnerBalance.Cmp(new(big.Int).Add(Era1WinnerReward, new(big.Int).Mul(Era1WinnerUncleReward, big.NewInt(1)))) != 0 {
+					t.Errorf("Config: %v | Era %v: winner balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, new(big.Int).Add(Era1WinnerReward, new(big.Int).Mul(Era1WinnerUncleReward, big.NewInt(1))), gotWinnerBalance, new(big.Int).Sub(gotWinnerBalance, c.rewards[WinnerCoinbase]))
+				}
+				if gotUncle1Balance.Cmp(Era1UncleReward) != 0 {
+					t.Errorf("Config: %v | Era %v: uncle1 balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, Era1UncleReward, gotUncle1Balance, new(big.Int).Sub(gotUncle1Balance, c.rewards[Uncle1Coinbase]))
+				}
+			}
+
+			db.Close()
+		}
+	}
+}
+
+// Non-accruing over block cases simulates instance,
+// ie. a miner wins once at different blocks.
+//
+// Tests winner includes 0 ommer headers.
+func TestAccumulateRewards4_0Uncles(t *testing.T) {
+
+	type rewards map[common.Address]*big.Int
+
+	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	cases := []struct {
+		block   *big.Int
+		rewards rewards
+	}{
+		{
+			block: big.NewInt(2),
+			rewards: rewards{
+				WinnerCoinbase: Era1WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(13),
+			rewards: rewards{
+				WinnerCoinbase: Era1WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(1914999),
+			rewards: rewards{
+				WinnerCoinbase: Era1WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(1915000),
+			rewards: rewards{
+				WinnerCoinbase: Era1WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(1915001),
+			rewards: rewards{
+				WinnerCoinbase: Era1WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(4999999),
+			rewards: rewards{
+				WinnerCoinbase: Era1WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(5000001),
+			rewards: rewards{
+				WinnerCoinbase: Era2WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(5000010),
+			rewards: rewards{
+				WinnerCoinbase: Era2WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(10000000),
+			rewards: rewards{
+				WinnerCoinbase: Era2WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(10000001),
+			rewards: rewards{
+				WinnerCoinbase: Era3WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(15000000),
+			rewards: rewards{
+				WinnerCoinbase: Era3WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(15000001),
+			rewards: rewards{
+				WinnerCoinbase: Era4WinnerReward,
+			},
+		},
+		{
+			block: big.NewInt(20000000),
+			rewards: rewards{
+				WinnerCoinbase: Era4WinnerReward,
+			},
+		},
+	}
+
+	for i, config := range configs {
+		for _, c := range cases {
+
+			db, _ := ethdb.NewMemDatabase()
+			stateDB, err := state.New(common.Hash{}, db)
+			if err != nil {
+				t.Fatalf("could not open statedb: %v", err)
+			}
+
+			var winner *types.Header = &types.Header{
+				Number:   c.block,
+				Coinbase: WinnerCoinbase,
+			}
+			var uncles []*types.Header = []*types.Header{}
+
+			gotWinnerBalance := stateDB.GetBalance(winner.Coinbase)
+			if gotWinnerBalance.Cmp(big.NewInt(0)) != 0 {
+				t.Errorf("unexpected: %v", gotWinnerBalance)
+			}
+
+			AccumulateRewards(config, stateDB, winner, uncles)
+			gotWinnerBalance = stateDB.GetBalance(winner.Coinbase)
+
+			// Use config if possible. Currently on testnet only.
+			eraLen := new(big.Int)
+			feat, _, configured := config.HasFeature("reward")
+			if !configured {
+				eraLen = DefaultEraLength
+			} else {
+				elen, ok := feat.GetBigInt("era")
+				if !ok {
+					t.Error("unexpected reward length not configured")
+				} else {
+					eraLen = elen
+				}
+			}
+			era := GetBlockEra(c.block, eraLen)
+
+			// Check balances.
+			if configured {
+				if gotWinnerBalance.Cmp(c.rewards[WinnerCoinbase]) != 0 {
+					t.Errorf("Config: %v | Era %v: winner balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, c.rewards[WinnerCoinbase], gotWinnerBalance, new(big.Int).Sub(gotWinnerBalance, c.rewards[WinnerCoinbase]))
+				}
+			} else {
+				if gotWinnerBalance.Cmp(Era1WinnerReward) != 0 {
+					t.Errorf("Config: %v | Era %v: winner balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, Era1WinnerReward, gotWinnerBalance, new(big.Int).Sub(gotWinnerBalance, c.rewards[WinnerCoinbase]))
 				}
 			}
 
