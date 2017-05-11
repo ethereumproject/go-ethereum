@@ -74,14 +74,14 @@ teardown() {
 # mainnet
 @test "should migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema" {
 	# Should create $HOME/Ethereum/chaindata,keystore,nodes,...
-	run "$CMD_DIR/gethc3.3" --fast --verbosity 5 console
+	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ] # 3.3 schema
 
-	run $GETH_CMD --fast --verbosity 5 console
+	run $GETH_CMD --fast --verbosity 5 --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -96,10 +96,33 @@ teardown() {
 	[[ "$output" == *"Moving it from"* ]]
 }
 
-# testnet
-@test "should migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chain=morden" {
+@test "should migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chain=mainnet" {
 	# Should create $HOME/Ethereum/testnet/chaindata,keystore,nodes,...
-	run "$CMD_DIR/gethc3.3" --fast --verbosity 5 --testnet console
+	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
+
+	run $GETH_CMD --fast --verbosity 5 --chain mainnet --exec='exit' console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	# Ensure datadir is renamed.
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
+
+	[[ "$output" == *"Moving it from"* ]]
+}
+
+# testnet
+@test "should migrate datadir /Ethereum/testnet -> /EthereumClassic/ from ETC3.3 schema | --chain=morden" {
+	# Should create $HOME/Ethereum/testnet/chaindata,keystore,nodes,...
+	run "$CMD_DIR/gethc3.3" --fast --testnet --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -107,7 +130,7 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/testnet ] # 3.3 schema
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/testnet/chaindata ]
 
-	run $GETH_CMD --fast --verbosity 5 --chain morden console
+	run $GETH_CMD --fast --verbosity 5 --chain morden --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -122,17 +145,43 @@ teardown() {
 	[[ "$output" == *"Moving it from"* ]]
 }
 
+# testnet
+@test "shouldnot migrate datadir /Ethereum/testnet -> /EthereumClassic/ from ETC3.3 schema | --chain=mainnet" {
+	# Should create $HOME/Ethereum/testnet/chaindata,keystore,nodes,...
+	run "$CMD_DIR/gethc3.3" --fast --testnet --exec='exit' console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/testnet ] # 3.3 schema
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/testnet/chaindata ]
+
+	run $GETH_CMD --fast --verbosity 5 --chain mainnet --exec='exit' console
+	echo "$output"
+	[ "$status" -eq 0 ]
+
+	# Ensure datadir is NOT renamed.
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/testnet ] # 3.3 schema
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/testnet/chaindata ]
+
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
+	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/testnet ]
+}
+
 # customnet
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chain customnet" {
 	# Should create $HOME/Ethereum/chaindata,keystore,nodes,...
-	run "$CMD_DIR/gethc3.3" --fast --verbosity 5 console
+	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ] # 3.3 schema
 
-	run $GETH_CMD --fast --verbosity 5 --chain customnet --ipc-disable console
+	run $GETH_CMD --fast --verbosity 5 --chain customnet --ipc-disable --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -148,14 +197,14 @@ teardown() {
 
 # chainconfig VALID default -- --chain-config use causes skip across the board
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig config/mainnet.json (mainnet)" {
-	run "$CMD_DIR/gethc3.3" --fast --verbosity 5 console
+	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
-	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/config/mainnet.json" console
+	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/config/mainnet.json" --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -171,14 +220,14 @@ teardown() {
 
 # datadir
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --datadir data" {
-	run "$CMD_DIR/gethc3.3" --fast --verbosity 5 console
+	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
-	run $GETH_CMD --fast --verbosity 5 --datadir "$DATA_DIR/data" console
+	run $GETH_CMD --fast --verbosity 5 --datadir "$DATA_DIR/data" --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -192,14 +241,14 @@ teardown() {
 
 # chainconfig VALID custom
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig testdata/chain_config_dump-ok-custom.json (customnet)" {
-	run "$CMD_DIR/gethc3.3" --fast --verbosity 5 console
+	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
-	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-ok-custom.json" --ipcdisable  console
+	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-ok-custom.json" --ipcdisable  --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -213,14 +262,14 @@ teardown() {
 
 # chainconfig INVALID
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig testdata/chain_config_dump-invalid-coinbase.json" {
-	run "$CMD_DIR/gethc3.3" --fast --verbosity 5 console
+	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
-	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-invalid-coinbase.json" console
+	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-invalid-coinbase.json" --exec='exit' console
 	echo "$output"
 	[ "$status" -gt 0 ]
 
@@ -234,14 +283,14 @@ teardown() {
 
 # Don't migrate ETHF.
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETHF1.5 schema" {
-	run "$CMD_DIR/gethf1.5" --fast --verbosity 5 console
+	run "$CMD_DIR/gethf1.5" --fast --verbosity 5 --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
 
-	run $GETH_CMD --fast --verbosity 5 console
+	run $GETH_CMD --fast --verbosity 5 --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -253,14 +302,14 @@ teardown() {
 }
 
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETHF1.6 schema" {
-	run "$CMD_DIR/gethf1.6" --fast --verbosity 5 console
+	run "$CMD_DIR/gethf1.6" --fast --verbosity 5 --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
 
-	run $GETH_CMD --fast --verbosity 5 console
+	run $GETH_CMD --fast --verbosity 5 --exec='exit' console
 	echo "$output"	
 	[ "$status" -eq 0 ]
 
@@ -279,7 +328,7 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
-	run $GETH_CMD --fast --verbosity 5 console
+	run $GETH_CMD --fast --verbosity 5 --exec='exit' console
 	echo "$output"	
 	[ "$status" -eq 0 ]
 
@@ -303,7 +352,7 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
 
-	run $GETH_CMD --fast --verbosity 5 console
+	run $GETH_CMD --fast --verbosity 5 --exec='exit' console
 	echo "$output"	
 	[ "$status" -eq 0 ]
 
