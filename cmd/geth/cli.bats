@@ -80,10 +80,12 @@ teardown() {
 	[[ "$output" == *"invalid flag "* ]]
 }
 
-@test "--testnet --chain=morden2 | exit >0" {
+@test "custom testnet subdir --testnet --chain=morden2 | exit 0" {
 	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden2 --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
 	echo "$output"
-	[ "$status" -gt 0 ]	
+	[ "$status" -eq 0 ]	
+
+	[ -d $DATA_DIR/morden2 ]
 }
 
 # TODO
@@ -164,23 +166,35 @@ teardown() {
 }
 
 # Ensure --testnet and --chain=morden/testnet set up respective subdirs with default 'morden'
-@test "--chain=testnet creates /morden subdir" { # This is kind of weird, but it is expected.
-	run $GETH_CMD --data-dir $DATA_DIR --testnet --exec 'exit' console
+@test "--chain=testnet creates /morden subdir, activating testnet genesis" { # This is kind of weird, but it is expected.
+	run $GETH_CMD --data-dir $DATA_DIR --chain=testnet --exec 'eth.getBlock(0).hash' console
 	[ "$status" -eq 0 ]
+
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
 	[ -d $DATA_DIR/morden ]
 }
 
-@test "--testnet creates /morden subdir" {
-	run $GETH_CMD --data-dir $DATA_DIR --chain testnet --exec 'exit' console
+@test "--testnet creates /morden subdir, activating testnet genesis" {
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --exec 'eth.getBlock(0).hash' console
 	[ "$status" -eq 0 ]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
 	[ -d $DATA_DIR/morden ]
 }
 
-@test "--chain=morden creates /morden subdir" {
-	run $GETH_CMD --data-dir $DATA_DIR --chain=morden --exec 'exit' console
+@test "--testnet --chain=faketestnet creates /faketestnet subdir, activating testnet genesis" {
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=faketestnet --exec 'eth.getBlock(0).hash' console
 	[ "$status" -eq 0 ]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
+
+	[ -d $DATA_DIR/faketestnet ]
+}
+
+@test "--chain=morden creates /morden subdir, activating testnet genesis" {
+	run $GETH_CMD --data-dir $DATA_DIR --chain=morden --exec 'eth.getBlock(0).hash' console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
 	[ -d $DATA_DIR/morden ]
 }
