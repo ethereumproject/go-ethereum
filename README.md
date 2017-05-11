@@ -70,7 +70,7 @@ Within this parent directory, geth will use a __/subdirectory__ to hold data for
 
 __You can specify this subdirectory__ with `--chain=mycustomnet`.
 
-> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/ethereumproject/go-ethereum/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes.md).
+> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/ethereumproject/go-ethereum/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes).
 
 ### Full node on the main Ethereum network
 
