@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"path/filepath"
 )
 
 func TestConfigErrorProperties(t *testing.T) {
@@ -287,6 +288,28 @@ func TestChainConfig_GetFeature4_WorkForHighNumbers(t *testing.T) {
 	highBlock := big.NewInt(99999999999999999)
 	if _, _, ok := c.GetFeature(highBlock, "difficulty"); !ok {
 		t.Errorf("unexpected unfound difficulty feature for far-future block: %v", highBlock)
+	}
+}
+
+func TestChainConfig_GetChainID(t *testing.T) {
+	if DefaultConfig.GetChainID().Cmp(DefaultChainConfigChainID) != 0 {
+		t.Error("got: %v, want: %v", DefaultConfig.GetChainID(), DefaultTestnetChainConfigChainID)
+	}
+	if TestConfig.GetChainID().Cmp(DefaultTestnetChainConfigChainID) != 0 {
+		t.Error("got: %v, want: %v", TestConfig.GetChainID(), DefaultTestnetChainConfigChainID)
+	}
+
+	// Test parsing default external config.
+	p, e := filepath.Abs("../cmd/geth/config/mainnet.json")
+	if e != nil {
+		t.Errorf("filepath err: %v", e)
+	}
+	extConfig, err := ReadExternalChainConfig(p)
+	if err != nil {
+		t.Errorf("could not find file: %v", err)
+	}
+	if extConfig.ChainConfig.GetChainID().Cmp(big.NewInt(61)) != 0 {
+		t.Error("found 0 chainid for eip155")
 	}
 }
 
