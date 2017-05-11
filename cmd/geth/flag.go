@@ -765,9 +765,9 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 			glog.V(logger.Info).Info(fmt.Sprintf("         with block %v", config.ChainConfig.Forks[i].RequiredHash.Hex()))
 		}
 		for _, feat := range config.ChainConfig.Forks[i].Features {
-			glog.V(logger.Info).Infof("    id: %v", feat.ID)
+			glog.V(logger.Debug).Infof("    id: %v", feat.ID)
 			for k, v := range feat.Options {
-				glog.V(logger.Info).Infof("        %v: %v", k, v)
+				glog.V(logger.Debug).Infof("        %v: %v", k, v)
 			}
 		}
 	}
