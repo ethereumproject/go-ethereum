@@ -121,6 +121,10 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 		return currentChainID
 	}
 	if isTestMode(ctx) {
+		// this is a double-check, allows user to place testnet chain in either /morden or /testnet (or other testnetChainID val)
+		if testnetChaidIDs[ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx))] {
+			return ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx))
+		}
 		return core.DefaultTestnetChainConfigID
 	}
 	if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) {
@@ -554,7 +558,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	if ctx.GlobalBool(DevModeFlag.Name) && isTestMode(ctx) {
 		glog.Fatalf("%v: flags --%v and --%v/--%v=morden are mutually exclusive", ErrInvalidFlag, DevModeFlag.Name, TestNetFlag.Name, ChainIDFlag.Name)
 	}
-	if ctx.GlobalBool(TestNetFlag.Name) && ctx.GlobalIsSet(ChainIDFlag.Name) && ctx.GlobalString(ChainIDFlag.Name) != "morden" {
+	if ctx.GlobalBool(TestNetFlag.Name) && ctx.GlobalIsSet(ChainIDFlag.Name) && !testnetChaidIDs[ctx.GlobalString(ChainIDFlag.Name)] {
 		glog.Fatalf("%v: flags --%v and --%v are mutually exclusive: please use only one", ErrInvalidFlag, TestNetFlag.Name, ChainIDFlag.Name)
 	}
 

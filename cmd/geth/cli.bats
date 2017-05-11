@@ -163,3 +163,25 @@ teardown() {
 	[[ "$output" == *"Alloted 17MB cache"* ]]
 }
 
+# Ensure --testnet and --chain=morden/testnet set up respective subdirs with default 'morden'
+@test "--chain=testnet creates /morden subdir" { # This is kind of weird, but it is expected.
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --exec 'exit' console
+	[ "$status" -eq 0 ]
+
+	[ -d $DATA_DIR/morden ]
+}
+
+@test "--testnet creates /testnet subdir" {
+	run $GETH_CMD --data-dir $DATA_DIR --chain testnet --exec 'exit' console
+	[ "$status" -eq 0 ]
+
+	[ -d $DATA_DIR/testnet ]
+}
+
+@test "--chain=morden creates /morden subdir" {
+	run $GETH_CMD --data-dir $DATA_DIR --chain=morden --exec 'exit' console
+	[ "$status" -eq 0 ]
+
+	[ -d $DATA_DIR/morden ]
+}
+
