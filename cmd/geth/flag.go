@@ -380,12 +380,12 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// only if default <EthereumClassic>/ datadir doesn't already exist
 	if _, err := os.Stat(etcDataDirPath); err == nil {
 		// classic data dir already exists
-		glog.V(logger.Debug).Infof("Using existing ETClassic data directory at: %v.\n", etcDataDirPath)
+		glog.V(logger.Debug).Infof("Using existing ETClassic data directory at: %v\n", etcDataDirPath)
 		return nil
 	}
 
 	ethChainDBPath := filepath.Join(ethDataDirPath, "chaindata")
-	if ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) {
+	if isTestMode(ctx) {
 		ethChainDBPath = filepath.Join(ethDataDirPath, "testnet", "chaindata")
 	}
 
@@ -402,10 +402,28 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 		return nil
 	}
 
+	foundCorrectLookingFiles := []string{}
+	requiredFiles := []string{"LOG", "LOCK", "CURRENT"}
+	for _, f := range requiredFiles {
+		p := filepath.Join(ethChainDBPath, f)
+		if _, err := os.Stat(p); os.IsNotExist(err) {
+			glog.V(logger.Debug).Infof(`No existing default file found at: %v
+		  	Using default data directory at: %v`,
+				p, etcDataDirPath)
+		} else {
+			foundCorrectLookingFiles = append(foundCorrectLookingFiles, f)
+		}
+	}
+	hasRequiredFiles := len(requiredFiles) == len(foundCorrectLookingFiles)
+	if !hasRequiredFiles {
+		return nil
+	}
+
+
 	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
 	chainDB, err := ethdb.NewLDBDatabase(ethChainDBPath, 0, 0)
 	if err != nil {
-		glog.V(logger.Warn).Info(`Failed to check blockchain version for existing Ethereum chaindata database at: %v
+		glog.V(logger.Error).Info(`Failed to check blockchain compatibility for existing Ethereum chaindata database at: %v
 		 	Using default data directory at: %v`,
 			err, etcDataDirPath)
 		return nil
@@ -413,24 +431,66 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	defer chainDB.Close()
 
+
 	// Only move if defaulty ETC (mainnet or testnet).
 	// Get head block if testnet, fork block if mainnet.
-	b := core.GetBlock(chainDB, core.DefaultConfig.ForkByName("The DAO Hard Fork").RequiredHash)
-	if ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) {
-		b = core.GetBlock(chainDB, core.GetHeadFastBlockHash(chainDB))
+	hh := core.GetHeadBlockHash(chainDB) // get last block in fork
+	if ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)) {
+		hh = core.GetHeadFastBlockHash(chainDB)
+	}
+	if hh.IsEmpty() {
+		glog.V(logger.Debug).Info("There was no head block for the old database. It could be very young.")
 	}
 
-	// Use default configuration to check if known fork, if block 1920000 exists.
-	// If block1920000 doesn't exist, given above checks for directory structure expectations,
-	// I think it's safe to assume that the chaindata directory is just too 'young', where it hasn't
-	// synced until block 1920000, and therefore can be migrated.
-	conf := core.DefaultConfig
-	if isTestMode(ctx) {
-		conf = core.TestConfig
+	hasRequiredForkIfSufficientHeight := true
+	if !hh.IsEmpty() {
+		// if head block < 1920000, then its compatible
+		// if head block >= 1920000, then it must have a hash matching required hash
+
+		// Use default configuration to check if known fork, if block 1920000 exists.
+		// If block1920000 doesn't exist, given above checks for directory structure expectations,
+		// I think it's safe to assume that the chaindata directory is just too 'young', where it hasn't
+		// synced until block 1920000, and therefore can be migrated.
+		conf := core.DefaultConfig
+		if isTestMode(ctx) {
+			conf = core.TestConfig
+		}
+
+		hf := conf.ForkByName("The DAO Hard Fork")
+		if hf == nil || hf.Block == nil || new(big.Int).Cmp(hf.Block) == 0 || hf.RequiredHash.IsEmpty(){
+			glog.V(logger.Debug).Info("DAO Hard Fork required hash not configured for database chain. Not migrating.")
+			return nil
+		}
+
+		b := core.GetBlock(chainDB, hh)
+		if b == nil {
+			glog.V(logger.Debug).Info("There was a problem checking the head block of old-namespaced database. The head hash was: %v", hh.Hex())
+			return nil
+		}
+
+		// if head block >= 1920000
+		if b.Number().Cmp(hf.Block) >= 0 {
+			// now, since we know that the height is bigger than the hardfork, we have to check that the db contains the required hardfork hash
+			glog.V(logger.Debug).Infof("Existing head block in old data dir has sufficient height: %v", b.String())
+
+			hasRequiredForkIfSufficientHeight = false
+			bf := core.GetBlock(chainDB, hf.RequiredHash)
+			// does not have required block by hash
+			if bf != nil {
+				glog.V(logger.Debug).Infof("Head block has sufficient height AND required hash: %v", b.String())
+				hasRequiredForkIfSufficientHeight = true
+			} else {
+				glog.V(logger.Debug).Infof("Head block has sufficient height but not required hash: %v", b.String())
+			}
+		// head block < 1920000
+		} else {
+			glog.V(logger.Debug).Infof("Existing head block in old data dir has INSUFFICIENT height to differentiate ETC/ETF: %v", b.String())
+		}
 	}
 
-	if b == nil || (b != nil && conf.HeaderCheck(b.Header()) == nil) {
-		glog.V(logger.Warn).Info(`Found existing data directory named 'Ethereum' with default ETC chaindata.
+	if hasRequiredForkIfSufficientHeight {
+		// if any of the LOG, LOCK, or CURRENT files are missing from old chaindata/, don't migrate
+		glog.V(logger.Info).Infof(`Found existing data directory named 'Ethereum' with default ETC chaindata.
 		  	Moving it from: %v, to: %v
 		  	To specify a different data directory use the '--datadir' flag.`,
 			ethDataDirPath, etcDataDirPath)
@@ -447,11 +507,6 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 // migrateToChainSubdirIfNecessary migrates ".../EthereumClassic/nodes|chaindata|...|nodekey" --> ".../EthereumClassic/mainnet/nodes|chaindata|...|nodekey"
 func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	name := getChainConfigIDFromContext(ctx) // "mainnet", "morden", "custom"
-
-	// return ok if custom
-	//if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) {
-	//	return nil
-	//}
 
 	datapath := mustMakeDataDir(ctx) // ".../EthereumClassic/ | --datadir"
 
@@ -470,7 +525,7 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	}
 
 	// 3.3 testnet uses subdir '/testnet'
-	if name == core.DefaultTestnetChainConfigID {
+	if testnetChaidIDs[name] {
 		exTestDir := filepath.Join(subdirPath, "../testnet")
 		exTestDirInfo, e := os.Stat(exTestDir)
 		if e != nil && os.IsNotExist(e) {
@@ -479,7 +534,7 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 		if !exTestDirInfo.IsDir() {
 			return nil // don't interfere with user *file* that won't be relevant for geth
 		}
-		return os.Rename(exTestDir, subdirPath)
+		return os.Rename(exTestDir, subdirPath) // /testnet -> /morden
 	}
 
 	// mkdir -p ".../mainnet"
@@ -536,6 +591,20 @@ func makeNodeName(version string, ctx *cli.Context) string {
 	return name
 }
 
+// iff the --chain flag is set AND it is not contained in [mainnet, testnet, OR morden]
+func chainIdIsCustom(ctx *cli.Context) bool {
+	// Chain id set from flag.
+	if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) {
+		n := ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx))
+		return n != "mainnet" && !testnetChaidIDs[n]
+	}
+	// Chain id set from external file.
+	if currentChainID != "" {
+		return currentChainID != "mainnet" && !testnetChaidIDs[currentChainID]
+	}
+	return false
+}
+
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
@@ -552,6 +621,35 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		miner.HeaderExtra = []byte(s)
 	}
 
+	// Data migrations...
+
+	// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
+	// Only do this if --datadir flag is not specified AND <home>/<EthereumClassic> does NOT already exist (only migrate once and only for defaulty).
+	// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
+	// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
+	if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
+		if !chainIdIsCustom(ctx) {
+			if !ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
+				if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
+					glog.Fatalf("%v: failed to migrate existing Classic database: %v", ErrDirectoryStructure, migrationError)
+				}
+			}
+
+		}
+	}
+	// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
+	// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
+	// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
+	if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
+		if !chainIdIsCustom(ctx) {
+			if !ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
+				if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
+					glog.Fatalf("%v: failed to migrate existing data to chain-specific subdir: %v", ErrDirectoryStructure, subdirMigrateErr)
+				}
+			}
+		}
+	}
+
 	// Makes sufficient configuration from JSON file or DB pending flags.
 	// Delegates flag usage.
 	config := mustMakeSufficientConfiguration(ctx)
@@ -559,27 +657,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Avoid conflicting flags
 	if ctx.GlobalBool(DevModeFlag.Name) && isTestMode(ctx) {
 		glog.Fatalf("%v: flags --%v and --%v/--%v=morden are mutually exclusive", ErrInvalidFlag, DevModeFlag.Name, TestNetFlag.Name, ChainIDFlag.Name)
-	}
-
-	// Data migrations...
-
-	// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
-	// Only do this if --datadir flag is not specified AND <home>/<EthereumClassic> does NOT already exist (only migrate once and only for defaulty).
-	// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
-	// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
-	if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) &&
-		// Allows to use --chain-config flag as long configuration specifies mainnet or morden
-		(config.ID == core.DefaultTestnetChainConfigID || config.ID == core.DefaultChainConfigID) {
-		if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
-			glog.Fatalf("%v: failed to migrate existing Classic database: %v", ErrDirectoryStructure, migrationError)
-		}
-	}
-	// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
-	// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
-	// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
-	// and the user is using the Default configuration (ie "mainnet").
-	if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
-		glog.Fatalf("%v: failed to migrate existing data to chain-specific subdir: %v", ErrDirectoryStructure, subdirMigrateErr)
 	}
 
 	// Configure the node's service container
