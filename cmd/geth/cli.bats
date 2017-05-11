@@ -171,11 +171,11 @@ teardown() {
 	[ -d $DATA_DIR/morden ]
 }
 
-@test "--testnet creates /testnet subdir" {
+@test "--testnet creates /morden subdir" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain testnet --exec 'exit' console
 	[ "$status" -eq 0 ]
 
-	[ -d $DATA_DIR/testnet ]
+	[ -d $DATA_DIR/morden ]
 }
 
 @test "--chain=morden creates /morden subdir" {

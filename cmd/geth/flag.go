@@ -121,11 +121,7 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 		return currentChainID
 	}
 	if isTestMode(ctx) {
-		// this is a double-check, allows user to place testnet chain in either /morden or /testnet (or other testnetChainID val)
-		if testnetChaidIDs[ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx))] {
-			return ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx))
-		}
-		return core.DefaultTestnetChainConfigID
+		return core.DefaultTestnetChainConfigID // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory
 	}
 	if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) {
 		if id := ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx)); id != "" {
