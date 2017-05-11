@@ -184,9 +184,45 @@ func TestMakeGenesisDump(t *testing.T) {
 	}
 
 	if gBlock1.Hash() != gBlock2.Hash() {
-		t.Errorf("MakeGenesisDump failed to make genesis block with equivalent hashes: wanted: %, got: %v", gBlock1.Hash(), gBlock2.Hash())
+		t.Errorf("MakeGenesisDump failed to make genesis block with equivalent hashes: wanted: %v, got: %v", gBlock1.Hash(), gBlock2.Hash())
 	}
 	db.Close()
+}
+
+func TestMakeGenesisDump2(t *testing.T) {
+	// setup so we have a genesis block in this test db
+	for i, gen := range []*GenesisDump{DefaultGenesis, TestNetGenesis} {
+		db, _ := ethdb.NewMemDatabase()
+		genesisDump := gen
+		gBlock1, err := WriteGenesisBlock(db, genesisDump)
+		if err != nil {
+			t.Errorf("WriteGenesisBlock could not setup initial genesisDump: %v, err: %v", i, err)
+		}
+
+		// ensure equivalent genesis dumps in and out
+		gotGenesisDump, err := MakeGenesisDump(db)
+
+		// ensure equivalent genesis blocks in and out
+		gBlock2, err := WriteGenesisBlock(db, gotGenesisDump)
+		if err != nil {
+			t.Errorf("WriteGenesisBlock could not setup gotGenesisDump: %v, err: %v", i, err)
+		}
+
+		if !sameGenesisDumpAllocationsBalances(genesisDump, gotGenesisDump) {
+			t.Error("MakeGenesisDump failed to make equivalent genesis dump allocations.")
+		}
+
+		if gBlock1.Hash() != gBlock2.Hash() {
+			t.Errorf(`MakeGenesisDump failed to make genesis block with equivalent hashes: %v: wanted: %v, got: %v
+			WANTED:
+			%v
+
+			GOT:
+			%v`, i, gBlock1.Hash().Hex(), gBlock2.Hash().Hex(), gBlock1.String(), gBlock2.String())
+
+		}
+		db.Close()
+	}
 }
 
 func makeTestChainConfig() *ChainConfig {

@@ -94,15 +94,33 @@ var reservedChainIDS = map[string]bool{
 	"geth":      true,
 }
 
-// isTestMode checks if either '--testnet' or '--chain=morden' in use for context
-func isTestMode(ctx *cli.Context) bool {
-	return ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx)) == "morden" || currentChainID == "morden"
+var testnetChaidIDs = map[string]bool{
+	"morden": true,
+	"testnet": true,
 }
 
-// getChainConfigIDFromContext gets the --chain=my-custom-net value.
-// --testnet flag overrides --chain flag, thus return default testnet value.
-// Disallowed words which conflict with in-use data files will log the problem and return "",
-// which cause an error.
+// isTestMode checks if either '--testnet' or '--chain=morden|testnet' or {"id": "morden"/"testnet"} in use for context, checking flags and external config settings
+func isTestMode(ctx *cli.Context) bool {
+	return ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || testnetChaidIDs[ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx))] || testnetChaidIDs[currentChainID]
+}
+
+func getChainIDFromFlag(ctx *cli.Context) string {
+	if id := ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx)); id != "" {
+		if reservedChainIDS[id] {
+			glog.Fatalf(`%v: %v: reserved word
+					reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes',
+					please use a different identifier`, ErrInvalidFlag, ErrInvalidChainID)
+			return ""
+		}
+		return id
+	} else {
+		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
+		return ""
+	}
+}
+
+// getChainConfigIDFromContext gets the --chain=my-custom-net value
+// Disallowed words which conflict with in-use data files will log the problem and return "", which cause an error.
 func getChainConfigIDFromContext(ctx *cli.Context) string {
 	chainFlagIsSet := ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx))
 
@@ -116,21 +134,14 @@ func getChainConfigIDFromContext(ctx *cli.Context) string {
 		return currentChainID
 	}
 	if isTestMode(ctx) {
-		return core.DefaultTestnetChainConfigID
+		// ie '--testnet --chain customtestnet'
+		if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) && !testnetChaidIDs[ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx))] {
+			return getChainIDFromFlag(ctx)
+		}
+		return core.DefaultTestnetChainConfigID // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
 	}
 	if ctx.GlobalIsSet(aliasableName(ChainIDFlag.Name, ctx)) {
-		if id := ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx)); id != "" {
-			if reservedChainIDS[id] {
-				glog.Fatalf(`%v: %v: reserved word
-					reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes',
-					please use a different identifier`, ErrInvalidFlag, ErrInvalidChainID)
-				return ""
-			}
-			return id
-		} else {
-			glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
-			return ""
-		}
+		return getChainIDFromFlag(ctx)
 	}
 	return core.DefaultChainConfigID
 }
@@ -548,9 +559,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Avoid conflicting flags
 	if ctx.GlobalBool(DevModeFlag.Name) && isTestMode(ctx) {
 		glog.Fatalf("%v: flags --%v and --%v/--%v=morden are mutually exclusive", ErrInvalidFlag, DevModeFlag.Name, TestNetFlag.Name, ChainIDFlag.Name)
-	}
-	if ctx.GlobalBool(TestNetFlag.Name) && ctx.GlobalIsSet(ChainIDFlag.Name) && ctx.GlobalString(ChainIDFlag.Name) != "morden" {
-		glog.Fatalf("%v: flags --%v and --%v are mutually exclusive: please use only one", ErrInvalidFlag, TestNetFlag.Name, ChainIDFlag.Name)
 	}
 
 	// Data migrations...

@@ -619,7 +619,6 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	nonce := fmt.Sprintf(`0x%x`, genesisHeader.Nonce)
 	time := common.BigToHash(genesisHeader.Time).Hex()
 	parentHash := genesisHeader.ParentHash.Hex()
-	extra := common.ToHex(genesisHeader.Extra)
 	gasLimit := common.BigToHash(genesisHeader.GasLimit).Hex()
 	difficulty := common.BigToHash(genesisHeader.Difficulty).Hex()
 	mixHash := genesisHeader.MixDigest.Hex()
@@ -629,12 +628,15 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 		Nonce:      prefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
 		Timestamp:  prefixedHex(time),
 		ParentHash: prefixedHex(parentHash),
-		ExtraData:  prefixedHex(extra),
+		//ExtraData:  prefixedHex(extra),
 		GasLimit:   prefixedHex(gasLimit),
 		Difficulty: prefixedHex(difficulty),
 		Mixhash:    prefixedHex(mixHash),
 		Coinbase:   prefixedHex(coinbase),
 		//Alloc: ,
+	}
+	if genesisHeader.Extra != nil && len(genesisHeader.Extra) > 0 {
+		dump.ExtraData = prefixedHex(common.ToHex(genesisHeader.Extra))
 	}
 
 	// State allocations.
