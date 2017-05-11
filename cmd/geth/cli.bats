@@ -83,8 +83,7 @@ teardown() {
 @test "--testnet --chain=morden2 | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden2 --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
 	echo "$output"
-	[ "$status" -gt 0 ]
-	
+	[ "$status" -gt 0 ]	
 }
 
 # TODO

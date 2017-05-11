@@ -94,9 +94,14 @@ var reservedChainIDS = map[string]bool{
 	"geth":      true,
 }
 
-// isTestMode checks if either '--testnet' or '--chain=morden' in use for context
+var testnetChaidIDs = map[string]bool{
+	"morden": true,
+	"testnet": true,
+}
+
+// isTestMode checks if either '--testnet' or '--chain=morden|testnet' in use for context, checking flags and external config settings
 func isTestMode(ctx *cli.Context) bool {
-	return ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx)) == "morden" || currentChainID == "morden"
+	return ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || testnetChaidIDs[ctx.GlobalString(aliasableName(ChainIDFlag.Name, ctx))] || testnetChaidIDs[currentChainID]
 }
 
 // getChainConfigIDFromContext gets the --chain=my-custom-net value.
