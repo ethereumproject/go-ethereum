@@ -764,6 +764,12 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 		if !config.ChainConfig.Forks[i].RequiredHash.IsEmpty() {
 			glog.V(logger.Info).Info(fmt.Sprintf("         with block %v", config.ChainConfig.Forks[i].RequiredHash.Hex()))
 		}
+		for _, feat := range config.ChainConfig.Forks[i].Features {
+			glog.V(logger.Info).Infof("    id: %v", feat.ID)
+			for k, v := range feat.Options {
+				glog.V(logger.Info).Infof("        %v: %v", k, v)
+			}
+		}
 	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
@@ -779,14 +785,7 @@ func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainC
 		configName = "morden testnet"
 	}
 
-	genesis := core.GetBlock(db, core.GetCanonicalHash(db, 0))
-	genesisHash := ""
-	if genesis != nil {
-		genesisHash = genesis.Hash().Hex()
-	}
-	if genesisHash != "" {
-		glog.V(logger.Info).Info(fmt.Sprintf("Loading %v configuration from database with \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", configName, genesisHash))
-	}
+	glog.V(logger.Info).Info(fmt.Sprintf("Loading \x1b[36m%v\x1b[39m configuration from database...", configName))
 
 	return c
 }
