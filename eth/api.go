@@ -865,21 +865,32 @@ type RPCTransaction struct {
 	To               *common.Address `json:"to"`
 	TransactionIndex *rpc.HexNumber  `json:"transactionIndex"`
 	Value            *rpc.HexNumber  `json:"value"`
+	ReplayProtected  bool            `json:"replayProtected"`
+	ChainId          *big.Int        `json:"chainId,omitempty"`
 }
 
 // newRPCPendingTransaction returns a pending transaction that will serialize to the RPC representation
 func newRPCPendingTransaction(tx *types.Transaction) *RPCTransaction {
 	from, _ := tx.From()
 
+	var protected bool
+	var chainId *big.Int
+	if tx.Protected() {
+		protected = true
+		chainId = tx.ChainId()
+	}
+
 	return &RPCTransaction{
-		From:     from,
-		Gas:      rpc.NewHexNumber(tx.Gas()),
-		GasPrice: rpc.NewHexNumber(tx.GasPrice()),
-		Hash:     tx.Hash(),
-		Input:    fmt.Sprintf("0x%x", tx.Data()),
-		Nonce:    rpc.NewHexNumber(tx.Nonce()),
-		To:       tx.To(),
-		Value:    rpc.NewHexNumber(tx.Value()),
+		From:            from,
+		Gas:             rpc.NewHexNumber(tx.Gas()),
+		GasPrice:        rpc.NewHexNumber(tx.GasPrice()),
+		Hash:            tx.Hash(),
+		Input:           fmt.Sprintf("0x%x", tx.Data()),
+		Nonce:           rpc.NewHexNumber(tx.Nonce()),
+		To:              tx.To(),
+		Value:           rpc.NewHexNumber(tx.Value()),
+		ReplayProtected: protected,
+		ChainId:         chainId,
 	}
 }
 
@@ -888,8 +899,12 @@ func newRPCTransactionFromBlockIndex(b *types.Block, txIndex int) (*RPCTransacti
 	if txIndex >= 0 && txIndex < len(b.Transactions()) {
 		tx := b.Transactions()[txIndex]
 		var signer types.Signer = types.BasicSigner{}
+		var protected bool
+		var chainId *big.Int
 		if tx.Protected() {
 			signer = types.NewChainIdSigner(tx.ChainId())
+			protected = true
+			chainId = tx.ChainId()
 		}
 		from, _ := types.Sender(signer, tx)
 
@@ -905,6 +920,8 @@ func newRPCTransactionFromBlockIndex(b *types.Block, txIndex int) (*RPCTransacti
 			To:               tx.To(),
 			TransactionIndex: rpc.NewHexNumber(txIndex),
 			Value:            rpc.NewHexNumber(tx.Value()),
+			ReplayProtected:  protected,
+			ChainId:          chainId,
 		}, nil
 	}
 
