@@ -187,7 +187,7 @@ func TestSignRace(t *testing.T) {
 }
 
 func tmpManager(t *testing.T) (string, *Manager) {
-	dir, err := ioutil.TempDir("", "eth-keystore-test")
+	dir, err := ioutil.TempDir("", "eth-manager-test")
 	if err != nil {
 		t.Fatal(err)
 	}
