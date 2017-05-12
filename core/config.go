@@ -178,6 +178,14 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "forks", false
 	}
 
+	if dhfork := c.ChainConfig.ForkByName("Diehard"); dhfork != nil {
+		if feat, _, ok := c.ChainConfig.GetFeature(dhfork.Block, "eip155"); ok {
+			if _, ok := feat.GetBigInt("chainID"); !ok {
+				return "diehard chainid", false
+			}
+		}
+	}
+
 	if c.Bootstrap == nil || len(c.Bootstrap) == 0 {
 		return "bootstrap", false
 	}
@@ -233,9 +241,10 @@ func (c *ChainConfig) SortForks() *ChainConfig {
 // If called/configured "incorrectly" it will "pass the buck" by returning a non-error (ie zero value).
 func (c *ChainConfig) GetChainID() *big.Int {
 	n := new(big.Int)
-	if feat, _, ok := c.GetFeature(c.ForkByName("Diehard").Block, "eip155"); ok {
-		if val, k := feat.GetBigInt("chainID"); k {
-			n = val
+	fork := c.ForkByName("Diehard")
+	if feat, _, ok := c.GetFeature(fork.Block, "eip155"); ok {
+		if val, ok := feat.GetBigInt("chainID"); ok {
+			n.Set(val)
 		}
 	}
 	return n
@@ -415,9 +424,7 @@ func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error
 			return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
 		}
 
-		if h, err := config.Genesis.Header(); err == nil {
-			glog.V(logger.Warn).Info(fmt.Sprintf("Loading blockchain: \x1b[36mgenesis\x1b[39m block \x1b[36m%s\x1b[39m.", h.Hash().Hex()))
-		}
+		config.ChainConfig = config.ChainConfig.SortForks()
 
 		return config, nil
 	}
@@ -468,6 +475,7 @@ func (o *ForkFeature) GetString(name string) (string, bool) {
 // GetBigInt gets and option value for an options with key 'name',
 // returning value as a *big.Int and ok if it exists.
 func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
+	i := new(big.Int)
 	if o.ParsedOptions == nil {
 		o.parsedOptionsLock.Lock()
 		o.ParsedOptions = make(map[string]interface{})
@@ -477,29 +485,45 @@ func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 		val, ok := o.ParsedOptions[name]
 		o.parsedOptionsLock.RUnlock()
 		if ok {
-			return val.(*big.Int), true
+			if vv, ok := val.(*big.Int); ok {
+				return i.Set(vv), true
+			}
 		}
 	}
 	o.optionsLock.RLock()
-	originalValue := o.Options[name]
+	originalValue, ok := o.Options[name]
 	o.optionsLock.RUnlock()
+	if !ok {
+		return nil, false
+	}
+
+	// interface{} type assertion for _61_ is float64
+	if value, ok := originalValue.(float64); ok {
+		i.SetInt64(int64(value))
+		o.parsedOptionsLock.Lock()
+		o.ParsedOptions[name] = i
+		o.parsedOptionsLock.Unlock()
+		return i, true
+	}
+	// handle other user-generated incoming options with some, albeit limited, degree of lenience
 	if value, ok := originalValue.(int64); ok {
-		i := big.NewInt(value)
+		i.SetInt64(value)
 		o.parsedOptionsLock.Lock()
 		o.ParsedOptions[name] = i
 		o.parsedOptionsLock.Unlock()
 		return i, true
 	}
 	if value, ok := originalValue.(int); ok {
-		i := big.NewInt(int64(value))
+		i.SetInt64(int64(value))
 		o.parsedOptionsLock.Lock()
 		o.ParsedOptions[name] = i
 		o.parsedOptionsLock.Unlock()
 		return i, true
 	}
 	if value, ok := originalValue.(string); ok {
-		i, ok := new(big.Int).SetString(value, 0)
+		ii, ok := new(big.Int).SetString(value, 0)
 		if ok {
+			i.Set(ii)
 			o.parsedOptionsLock.Lock()
 			o.ParsedOptions[name] = i
 			o.parsedOptionsLock.Unlock()
@@ -619,7 +643,6 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	nonce := fmt.Sprintf(`0x%x`, genesisHeader.Nonce)
 	time := common.BigToHash(genesisHeader.Time).Hex()
 	parentHash := genesisHeader.ParentHash.Hex()
-	extra := common.ToHex(genesisHeader.Extra)
 	gasLimit := common.BigToHash(genesisHeader.GasLimit).Hex()
 	difficulty := common.BigToHash(genesisHeader.Difficulty).Hex()
 	mixHash := genesisHeader.MixDigest.Hex()
@@ -629,12 +652,15 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 		Nonce:      prefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
 		Timestamp:  prefixedHex(time),
 		ParentHash: prefixedHex(parentHash),
-		ExtraData:  prefixedHex(extra),
+		//ExtraData:  prefixedHex(extra),
 		GasLimit:   prefixedHex(gasLimit),
 		Difficulty: prefixedHex(difficulty),
 		Mixhash:    prefixedHex(mixHash),
 		Coinbase:   prefixedHex(coinbase),
 		//Alloc: ,
+	}
+	if genesisHeader.Extra != nil && len(genesisHeader.Extra) > 0 {
+		dump.ExtraData = prefixedHex(common.ToHex(genesisHeader.Extra))
 	}
 
 	// State allocations.
