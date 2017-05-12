@@ -12,8 +12,8 @@ import (
 	"math/rand"
 )
 
-var accountsNInit int = 10000
-var accountsNMax int = 1000000
+var accountsNInit int = 1000
+var accountsNMax int = 5000
 var accountsNDiff int = accountsNMax - accountsNInit
 var scaleTestDirPath = "scale-acct-test"
 var scaleTestDir string // set on new tmp dir
@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(e)
 	}
 	os.Exit(m.Run())
-	os.RemoveAll(scaleTestDirPath)
+	//os.RemoveAll(scaleTestDirPath)
 }
 
 func createTestAccount(am *Manager, dir string) error {
@@ -112,7 +112,7 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 	}
 
 	for i, a := range amG.Accounts() {
-		// Get time to update one account 10 times linearly over new accounts n.
+		// Get time to update one account 10 times over new accounts n.
 		if i != 0 && (accountsNDiff/10) % i == 0 {
 			start := time.Now()
 			if err := amG.Update(a, "foo", "bar"); err != nil {
@@ -121,8 +121,8 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 			dur := time.Since(start)
 			t.Logf("updating %v account took %v", accountsNInit+i, dur)
 		} else {
-			if err := createTestAccount(amG, scaleTestDir); err != nil {
-				t.Fatalf("error creating new account #%v", accountsNInit+i)
+			if err := amG.Update(a, "foo", "bar"); err != nil {
+				t.Errorf("Update error: %v", err)
 			}
 		}
 	}
@@ -172,9 +172,11 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 	for i := 0; i < smallPortionNInt; i++ {
 
 		rand.Seed(time.Now().UTC().UnixNano())
-		a := accts[int(rand.Int31n(int32(l)))] // pick a random account
+		randInt := int(rand.Int31n(int32(l-1)))
+		a := accts[randInt] // pick a random account
+
 		if err := amG.DeleteAccount(a, "bar"); err != nil {
-			t.Errorf("DeleteAccount error: %v", err)
+			t.Errorf("DeleteAccount error #%v @%v, %v", randInt, i, err)
 		}
 		if _, err := os.Stat(a.File); err == nil || !os.IsNotExist(err) {
 			t.Errorf("account file %s should be gone after DeleteAccount", a.File)
