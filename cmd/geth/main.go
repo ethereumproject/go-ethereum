@@ -158,6 +158,7 @@ The output of this command is supposed to be machine-readable.
 		RPCCORSDomainFlag,
 		VerbosityFlag,
 		VModuleFlag,
+		LogDirFlag,
 		BacktraceAtFlag,
 		MetricsFlag,
 		FakePoWFlag,
@@ -193,7 +194,15 @@ The output of this command is supposed to be machine-readable.
 		runtime.GOMAXPROCS(runtime.NumCPU())
 
 		glog.CopyStandardLogTo("INFO")
-		glog.SetToStderr(true)
+		if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
+			if p := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx)); p != "" {
+
+				// TODO: check for dir exist, exit fatal if not.
+
+				glog.SetLogDir(p)
+			}
+		}
+		//glog.SetToStderr(true) // I don't know why...
 
 		if s := ctx.String("metrics"); s != "" {
 			go metrics.Collect(s)
