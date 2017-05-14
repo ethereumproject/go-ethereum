@@ -10,14 +10,22 @@ import (
 	"strings"
 	"time"
 	"math/rand"
+	"path/filepath"
 )
 
+// Global constants.
 var accountsNInit int = 1000
 var accountsNMax int = 5000
 var accountsNDiff int = accountsNMax - accountsNInit
-var scaleTestDirPath = "scale-acct-test"
-var scaleTestDir string // set on new tmp dir
-var amG *Manager // set on create initial accounts
+var scaleTestBasePath = "testdata" // use relative directory (instead of passing "" to ioutil.TempDir which select defaulty)
+var scaleTestTmpPrefix = "scale-acct-test"
+
+// At 100ms signing fails because account locks at index 2464.
+var gracePeriodUnlockToSign time.Duration = 200*time.Millisecond // max length for unlock in order to sign with an account
+
+// Global to assign.
+var scaleTestTmpDirName string // global, abs, set on new tmp dir by ioutil.TempDir
+var amG *Manager               // set on create initial accounts
 
 // TestMain is called *once per file*.
 func TestMain(m *testing.M) {
@@ -25,7 +33,13 @@ func TestMain(m *testing.M) {
 		log.Fatal(e)
 	}
 	os.Exit(m.Run())
-	//os.RemoveAll(scaleTestDirPath)
+	p, err := filepath.Abs(scaleTestTmpDirName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if e := os.RemoveAll(p); e != nil {
+		log.Fatal(e)
+	}
 }
 
 func createTestAccount(am *Manager, dir string) error {
@@ -33,8 +47,12 @@ func createTestAccount(am *Manager, dir string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(a.File, scaleTestDir) {
-		return fmt.Errorf("account file %s doesn't have dir prefix", a.File)
+	p, e := filepath.Abs(dir)
+	if e != nil {
+		return fmt.Errorf("could not determine absolute path for temp dir: %v", e)
+	}
+	if !strings.HasPrefix(a.File, p + "/") {
+		return fmt.Errorf("account file %s doesn't have dir prefix; %v", a.File, p)
 	}
 	stat, err := os.Stat(a.File)
 	if err != nil {
@@ -50,16 +68,18 @@ func createTestAccount(am *Manager, dir string) error {
 }
 
 func createTestAccounts(n int) error {
-	am, dir, err := scaleTmpManager(scaleTestDirPath)
+	am, tmpDirName, err := scaleTmpManager(scaleTestBasePath)
 	if err != nil {
 		return err
 	}
+	// assign globals
 	amG = am
-	scaleTestDir = dir
+	scaleTestTmpDirName = tmpDirName
 
+	// Only creates account *initially*.
 	if len(amG.Accounts()) == 0 {
 		for i := 0; i < n; i++ {
-			if err := createTestAccount(am, dir); err != nil {
+			if err := createTestAccount(am, tmpDirName); err != nil {
 				return err
 			}
 		}
@@ -67,13 +87,13 @@ func createTestAccounts(n int) error {
 	return nil
 }
 
-// Can create _even more_ accounts?
-var gracePeriodUnlockToSign time.Duration = 100*time.Millisecond // max length for unlock in order to sign with an account
+// Can create and manage _more_ accounts?
+
 func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 	if amG == nil {
 		t.Fatal("global account manager not established")
 	}
-	if scaleTestDir == "" {
+	if scaleTestTmpDirName == "" {
 		t.Fatal("empty scale test tmp dir")
 	}
 
@@ -87,13 +107,13 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 		// Get time to create one new account 10 times linearly over new accounts n.
 		if i != 0 && (accountsNDiff/10) % i == 0 {
 			start := time.Now()
-			if err := createTestAccount(amG, scaleTestDir); err != nil {
+			if err := createTestAccount(amG, scaleTestTmpDirName); err != nil {
 				t.Fatalf("error creating new account #%v", accountsNInit+i)
 			}
 			dur := time.Since(start)
 			t.Logf("creating %v account took %v", accountsNInit+i, dur)
 		} else {
-			if err := createTestAccount(amG, scaleTestDir); err != nil {
+			if err := createTestAccount(amG, scaleTestTmpDirName); err != nil {
 				t.Fatalf("error creating new account #%v", accountsNInit+i)
 			}
 		}
@@ -101,7 +121,7 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 
 	// Update.
 	amG = nil // clear mem
-	am, err := NewManager(scaleTestDir, veryLightScryptN, veryLightScryptP)
+	am, err := NewManager(scaleTestTmpDirName, veryLightScryptN, veryLightScryptP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,12 +148,6 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 	}
 
 	// Sign.
-	amG = nil // clear mem
-	am, err = NewManager(scaleTestDir, veryLightScryptN, veryLightScryptP)
-	if err != nil {
-		t.Fatal(err)
-	}
-	amG = am
 
 	if l := len(amG.Accounts()); l != accountsNInit+accountsNDiff {
 		t.Fatalf("wrong number of final accounts: got: %v, want: %v", l, accountsNInit)
@@ -154,13 +168,6 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 
 
 	// Delete.
-	amG = nil // clear mem
-	am, err = NewManager(scaleTestDir, veryLightScryptN, veryLightScryptP)
-	if err != nil {
-		t.Fatal(err)
-	}
-	amG = am
-
 	accts := amG.Accounts()
 	l := len(accts)
 	if l != accountsNInit+accountsNDiff {
@@ -188,15 +195,15 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 }
 
 func scaleTmpManager(tpath string) (*Manager, string, error) {
-	dir, err := ioutil.TempDir("", scaleTestDirPath)
-	scaleTestDir = dir
+	name, err := ioutil.TempDir(scaleTestBasePath, scaleTestTmpPrefix)
+	scaleTestTmpDirName = name // assign global
 	if err != nil {
-		return nil, "", err
+		return nil, name, err
 	}
 
-	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
+	m, err := NewManager(name, veryLightScryptN, veryLightScryptP)
 	if err != nil {
 		return nil, "", err
 	}
-	return m, dir, nil
+	return m, name, nil
 }
