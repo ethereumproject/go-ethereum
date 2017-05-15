@@ -575,7 +575,7 @@ func (s *PublicBlockChainAPI) GetBlockByNumber(blockNr rpc.BlockNumber, fullTx b
 		response, err := s.rpcOutputBlock(block, true, fullTx)
 		if err == nil && blockNr == rpc.PendingBlockNumber {
 			// Pending blocks need to nil out a few fields
-			for _, field := range []string{"hash", "nonce", "logsBloom", "miner"} {
+			for _, field := range []string{"hash", "nonce", "miner"} {
 				response[field] = nil
 			}
 		}
@@ -825,7 +825,7 @@ func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx
 		if fullTx {
 			formatTx = func(tx *types.Transaction) (interface{}, error) {
 				if tx.Protected() {
-					tx.SetSigner(types.NewChainIdSigner(s.bc.Config().ChainId))
+					tx.SetSigner(types.NewChainIdSigner(s.bc.Config().GetChainID()))
 				}
 				return newRPCTransaction(b, tx.Hash())
 			}
@@ -1696,10 +1696,10 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 		value:    args.Value.BigInt(),
 		data:     common.FromHex(args.Data),
 	}
-	if msg.gas.Cmp(common.Big0) == 0 {
+	if msg.gas.Sign() == 0 {
 		msg.gas = big.NewInt(50000000)
 	}
-	if msg.gasPrice.Cmp(common.Big0) == 0 {
+	if msg.gasPrice.Sign() == 0 {
 		msg.gasPrice = new(big.Int).Mul(big.NewInt(50), common.Shannon)
 	}
 

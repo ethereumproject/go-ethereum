@@ -281,19 +281,20 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	var fork *core.Fork
 	for i := range pm.chainConfig.Forks {
 		fork = pm.chainConfig.Forks[i]
-		if fork.NetworkSplit {
-			if fork.Support {
-				// Request the peer's fork block header for extra-dat
-				if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
-					glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
-					return err
-				}
-				// Start a timer to disconnect if the peer doesn't reply in time
-				p.timeout = time.AfterFunc((500 * time.Millisecond), func() {
-					glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
-					pm.removePeer(p.id)
-				})
+		if _, height := p.Head(); height.Cmp(fork.Block) < 0 {
+			break
+		}
+		if !fork.RequiredHash.IsEmpty() {
+			// Request the peer's fork block header for extra-dat
+			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
+				glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
+				return err
 			}
+			// Start a timer to disconnect if the peer doesn't reply in time
+			p.timeout = time.AfterFunc((5 * time.Second), func() {
+				glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
+				pm.removePeer(p.id)
+			})
 			// Make sure it's cleaned up if the peer dies off
 			defer func() {
 				if p.timeout != nil {
@@ -403,41 +404,22 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&headers); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		// If no headers were received, but we're expending a fork check, maybe it's that
-		if len(headers) == 0 && p.timeout != nil {
-			// Possibly an empty reply to the fork header checks, sanity check total difficulty
-			forkPeer := true
-			// If we already have a header, we can check the peer's total difficulty against it. If
-			// the peer's ahead of this, it too must have a reply to the check
-			// DAO Split big.NewInt(1920000)
-			if splitHeader := pm.blockchain.GetHeaderByNumber(pm.chainConfig.Fork("ETF").Block.Uint64()); splitHeader != nil {
-				if _, td := p.Head(); td.Cmp(pm.blockchain.GetTd(splitHeader.Hash())) >= 0 {
-					forkPeer = false
-				}
-			}
-			// If we're seemingly on the same chain, disable the drop timer
-			if forkPeer {
+		// Filter out any explicitly requested headers, deliver the rest to the downloader
+		isForkCheck := len(headers) == 1
+		if isForkCheck {
+			if p.timeout != nil {
 				// Disable the fork drop timeout
 				p.timeout.Stop()
 				p.timeout = nil
-				return nil
 			}
-		}
-		// Filter out any explicitly requested headers, deliver the rest to the downloader
-		filter := len(headers) == 1
-		if filter {
 			if err := pm.chainConfig.HeaderCheck(headers[0]); err != nil {
-				if p.timeout != nil {
-					// Disable the fork drop timeout
-					p.timeout.Stop()
-					p.timeout = nil
-				}
+				pm.removePeer(p.id)
 				return err
 			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
 			headers = pm.fetcher.FilterHeaders(headers, time.Now())
 		}
-		if len(headers) > 0 || !filter {
+		if len(headers) > 0 || !isForkCheck {
 			err := pm.downloader.DeliverHeaders(p.id, headers)
 			if err != nil {
 				glog.V(logger.Debug).Infoln(err)

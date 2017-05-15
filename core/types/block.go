@@ -33,7 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
-
 // HeaderExtraMax is the byte size limit for Header.Extra.
 var HeaderExtraMax = 32
 
@@ -112,7 +111,9 @@ func (h *Header) UnmarshalJSON(data []byte) error {
 
 	h.ParentHash = common.HexToHash(ext.ParentHash)
 	h.Coinbase = common.HexToAddress(ext.Coinbase)
-	h.Difficulty = common.String2Big(ext.Difficulty)
+	if _, ok := h.Difficulty.SetString(ext.Difficulty, 0); !ok {
+		return fmt.Errorf("malformed difficulty %q", ext.Difficulty)
+	}
 	h.Time = ext.Time
 	h.Extra = []byte(ext.Extra)
 	return nil

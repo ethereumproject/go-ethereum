@@ -28,7 +28,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 func BenchmarkInsertChain_empty_memdb(b *testing.B) {
@@ -110,8 +109,8 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 	return func(i int, gen *BlockGen) {
 		gas := CalcGasLimit(gen.PrevBlock(i - 1))
 		for {
-			gas.Sub(gas, params.TxGas)
-			if gas.Cmp(params.TxGas) < 0 {
+			gas.Sub(gas, TxGas)
+			if gas.Cmp(TxGas) < 0 {
 				break
 			}
 			to := (from + 1) % naccounts
@@ -119,7 +118,7 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 				gen.TxNonce(ringAddrs[from]),
 				ringAddrs[to],
 				benchRootFunds,
-				params.TxGas,
+				TxGas,
 				nil,
 				nil,
 			)

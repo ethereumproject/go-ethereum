@@ -23,7 +23,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
 )
 
 // PrecompiledAccount represents a native ethereum contract
@@ -46,28 +45,27 @@ func PrecompiledContracts() map[string]*PrecompiledAccount {
 	return map[string]*PrecompiledAccount{
 		// ECRECOVER
 		string(common.LeftPadBytes([]byte{1}, 20)): {func(l int) *big.Int {
-			return params.EcrecoverGas
+			return big.NewInt(3000)
 		}, ecrecoverFunc},
 
 		// SHA256
 		string(common.LeftPadBytes([]byte{2}, 20)): {func(l int) *big.Int {
 			n := big.NewInt(int64(l+31) / 32)
-			n.Mul(n, params.Sha256WordGas)
-			return n.Add(n, params.Sha256Gas)
+			n.Mul(n, big.NewInt(12))
+			return n.Add(n, big.NewInt(60))
 		}, sha256Func},
 
 		// RIPEMD160
 		string(common.LeftPadBytes([]byte{3}, 20)): {func(l int) *big.Int {
 			n := big.NewInt(int64(l+31) / 32)
-			n.Mul(n, params.Ripemd160WordGas)
-			return n.Add(n, params.Ripemd160Gas)
+			n.Mul(n, big.NewInt(120))
+			return n.Add(n, big.NewInt(600))
 		}, ripemd160Func},
 
 		string(common.LeftPadBytes([]byte{4}, 20)): {func(l int) *big.Int {
 			n := big.NewInt(int64(l+31) / 32)
-			n.Mul(n, params.IdentityWordGas)
-
-			return n.Add(n, params.IdentityGas)
+			n.Mul(n, big.NewInt(3))
+			return n.Add(n, big.NewInt(15))
 		}, memCpy},
 	}
 }
@@ -85,10 +83,10 @@ func ecrecoverFunc(in []byte) []byte {
 	// "in" is (hash, v, r, s), each 32 bytes
 	// but for ecrecover we want (r, s, v)
 
-	r := common.BytesToBig(in[64:96])
-	s := common.BytesToBig(in[96:128])
+	r := new(big.Int).SetBytes(in[64:96])
+	s := new(big.Int).SetBytes(in[96:128])
 	// Treat V as a 256bit integer
-	vbig := common.Bytes2Big(in[32:64])
+	vbig := new(big.Int).SetBytes(in[32:64])
 	v := byte(vbig.Uint64())
 
 	// tighter sig s values in homestead only apply to tx sigs

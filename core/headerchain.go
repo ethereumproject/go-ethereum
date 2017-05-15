@@ -87,7 +87,7 @@ func NewHeaderChain(chainDb ethdb.Database, config *ChainConfig, getValidator ge
 
 	hc.genesisHeader = hc.GetHeaderByNumber(0)
 	if hc.genesisHeader == nil {
-		genesisBlock, err := WriteDefaultGenesisBlock(chainDb)
+		genesisBlock, err := WriteGenesisBlock(chainDb, DefaultGenesis)
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +317,7 @@ func (hc *HeaderChain) GetBlockHashesFromHash(hash common.Hash, max uint64) []co
 			break
 		}
 		chain = append(chain, next)
-		if header.Number.Cmp(common.Big0) == 0 {
+		if header.Number.Sign() == 0 {
 			break
 		}
 	}

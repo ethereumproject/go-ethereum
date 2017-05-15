@@ -80,7 +80,7 @@ type TxPool struct {
 func NewTxPool(config *ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() *big.Int) *TxPool {
 	pool := &TxPool{
 		config:       config,
-		signer:       types.NewChainIdSigner(config.ChainId),
+		signer:       types.NewChainIdSigner(config.GetChainID()),
 		pending:      make(map[common.Hash]*types.Transaction),
 		queue:        make(map[common.Address]map[common.Hash]*types.Transaction),
 		eventMux:     eventMux,
@@ -260,7 +260,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	// Transactions can't be negative. This may never happen
 	// using RLP decoded transactions but may occur if you create
 	// a transaction using the RPC for example.
-	if tx.Value().Cmp(common.Big0) < 0 {
+	if tx.Value().Sign() < 0 {
 		return ErrNegativeValue
 	}
 

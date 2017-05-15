@@ -17,12 +17,17 @@
 package core
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/params"
+)
+
+var (
+	callCreateDepthMax = 1024 // limit call/create stack
+	errCallCreateDepth = fmt.Errorf("Max call depth exceeded (%d)", callCreateDepthMax)
 )
 
 // Call executes within the given contract
@@ -63,10 +68,10 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	evm := env.Vm()
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
-	if env.Depth() > int(params.CallCreateDepth.Int64()) {
+	if env.Depth() > callCreateDepthMax {
 		caller.ReturnGas(gas, gasPrice)
 
-		return nil, common.Address{}, vm.DepthError
+		return nil, common.Address{}, errCallCreateDepth
 	}
 
 	if !env.CanTransfer(caller.Address(), value) {
@@ -115,7 +120,8 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	// by the error checking condition below.
 	if err == nil && createAccount {
 		dataGas := big.NewInt(int64(len(ret)))
-		dataGas.Mul(dataGas, params.CreateDataGas)
+		// create data gas
+		dataGas.Mul(dataGas, big.NewInt(200))
 		if contract.UseGas(dataGas) {
 			env.Db().SetCode(*address, ret)
 		} else {
@@ -139,9 +145,9 @@ func execDelegateCall(env vm.Environment, caller vm.ContractRef, originAddr, toA
 	evm := env.Vm()
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
-	if env.Depth() > int(params.CallCreateDepth.Int64()) {
+	if env.Depth() > callCreateDepthMax {
 		caller.ReturnGas(gas, gasPrice)
-		return nil, common.Address{}, vm.DepthError
+		return nil, common.Address{}, errCallCreateDepth
 	}
 
 	snapshot := env.SnapshotDatabase()

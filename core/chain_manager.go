@@ -39,6 +39,14 @@ func MakeChainConfig() *ChainConfig {
 			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
+				Features: []*ForkFeature{
+					{
+						ID: "difficulty",
+						Options: ChainFeatureConfigOptions{
+							"type": "homestead",
+						},
+					},
+				},
 			},
 		},
 	}
@@ -46,12 +54,31 @@ func MakeChainConfig() *ChainConfig {
 
 func MakeDiehardChainConfig() *ChainConfig {
 	return &ChainConfig{
-		ChainId: big.NewInt(63),
 		Forks: []*Fork{
 			{
 				Name:   "Diehard",
 				Block:  big.NewInt(0),
-				Length: big.NewInt(1000),
+				Features: []*ForkFeature{
+					{
+						ID: "eip155",
+						Options: ChainFeatureConfigOptions{
+							"chainID": 63,
+						},
+					},
+					{ // ecip1010 bomb delay
+						ID:    "gastable",
+						Options: ChainFeatureConfigOptions{
+							"type": "eip160",
+						},
+					},
+					{ // ecip1010 bomb delay
+						ID:    "difficulty",
+						Options: ChainFeatureConfigOptions{
+							"type": "ecip1010",
+							"length": 2000000,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -252,13 +279,24 @@ func makeHeader(config *ChainConfig, parent *types.Block, state *state.StateDB) 
 // header only chain.
 func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *BlockChain, error) {
 	// Create the new chain database
-	db, _ := ethdb.NewMemDatabase()
+	db, err := ethdb.NewMemDatabase()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	evmux := &event.TypeMux{}
 
 	// Initialize a fresh chain with only a genesis block
-	genesis, _ := WriteTestNetGenesisBlock(db)
+	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	blockchain, _ := NewBlockChain(db, MakeChainConfig(), FakePow{}, evmux)
+	blockchain, err := NewBlockChain(db, MakeChainConfig(), FakePow{}, evmux)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Create and inject the requested chain
 	if n == 0 {
 		return db, blockchain, nil
@@ -271,7 +309,7 @@ func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *Block
 	}
 	// Header-only chain requested
 	headers := makeHeaderChain(config, genesis.Header(), n, db, canonicalSeed)
-	_, err := blockchain.InsertHeaderChain(headers, 1)
+	_, err = blockchain.InsertHeaderChain(headers, 1)
 	return db, blockchain, err
 }
 

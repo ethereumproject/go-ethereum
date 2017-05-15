@@ -21,8 +21,9 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/params"
 )
+
+var callStipend = big.NewInt(2300) // Free gas given at beginning of call.
 
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
 
@@ -64,7 +65,7 @@ func opMul(instr instruction, pc *uint64, env Environment, contract *Contract, m
 
 func opDiv(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := stack.pop(), stack.pop()
-	if y.Cmp(common.Big0) != 0 {
+	if y.Sign() != 0 {
 		stack.push(U256(x.Div(x, y)))
 	} else {
 		stack.push(new(big.Int))
@@ -73,12 +74,12 @@ func opDiv(instr instruction, pc *uint64, env Environment, contract *Contract, m
 
 func opSdiv(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := S256(stack.pop()), S256(stack.pop())
-	if y.Cmp(common.Big0) == 0 {
+	if y.Sign() == 0 {
 		stack.push(new(big.Int))
 		return
 	} else {
 		n := new(big.Int)
-		if new(big.Int).Mul(x, y).Cmp(common.Big0) < 0 {
+		if new(big.Int).Mul(x, y).Sign() < 0 {
 			n.SetInt64(-1)
 		} else {
 			n.SetInt64(1)
@@ -93,7 +94,7 @@ func opSdiv(instr instruction, pc *uint64, env Environment, contract *Contract, 
 
 func opMod(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := stack.pop(), stack.pop()
-	if y.Cmp(common.Big0) == 0 {
+	if y.Sign() == 0 {
 		stack.push(new(big.Int))
 	} else {
 		stack.push(U256(x.Mod(x, y)))
@@ -103,11 +104,11 @@ func opMod(instr instruction, pc *uint64, env Environment, contract *Contract, m
 func opSmod(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y := S256(stack.pop()), S256(stack.pop())
 
-	if y.Cmp(common.Big0) == 0 {
+	if y.Sign() == 0 {
 		stack.push(new(big.Int))
 	} else {
 		n := new(big.Int)
-		if x.Cmp(common.Big0) < 0 {
+		if x.Sign() < 0 {
 			n.SetInt64(-1)
 		} else {
 			n.SetInt64(1)
@@ -194,7 +195,7 @@ func opEq(instr instruction, pc *uint64, env Environment, contract *Contract, me
 
 func opIszero(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x := stack.pop()
-	if x.Cmp(common.Big0) > 0 {
+	if x.Sign() != 0 {
 		stack.push(new(big.Int))
 	} else {
 		stack.push(big.NewInt(1))
@@ -224,7 +225,7 @@ func opByte(instr instruction, pc *uint64, env Environment, contract *Contract, 
 }
 func opAddmod(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y, z := stack.pop(), stack.pop(), stack.pop()
-	if z.Cmp(Zero) > 0 {
+	if z.Sign() > 0 {
 		add := x.Add(x, y)
 		add.Mod(add, z)
 		stack.push(U256(add))
@@ -234,7 +235,7 @@ func opAddmod(instr instruction, pc *uint64, env Environment, contract *Contract
 }
 func opMulmod(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	x, y, z := stack.pop(), stack.pop(), stack.pop()
-	if z.Cmp(Zero) > 0 {
+	if z.Sign() > 0 {
 		mul := x.Mul(x, y)
 		mul.Mod(mul, z)
 		stack.push(U256(mul))
@@ -247,11 +248,11 @@ func opSha3(instr instruction, pc *uint64, env Environment, contract *Contract, 
 	offset, size := stack.pop(), stack.pop()
 	hash := crypto.Keccak256(memory.Get(offset.Int64(), size.Int64()))
 
-	stack.push(common.BytesToBig(hash))
+	stack.push(new(big.Int).SetBytes(hash))
 }
 
 func opAddress(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	stack.push(common.Bytes2Big(contract.Address().Bytes()))
+	stack.push(new(big.Int).SetBytes(contract.Address().Bytes()))
 }
 
 func opBalance(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
@@ -274,7 +275,7 @@ func opCallValue(instr instruction, pc *uint64, env Environment, contract *Contr
 }
 
 func opCalldataLoad(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	stack.push(common.Bytes2Big(getData(contract.Input, stack.pop(), common.Big32)))
+	stack.push(new(big.Int).SetBytes(getData(contract.Input, stack.pop(), common.Big32)))
 }
 
 func opCalldataSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
@@ -365,7 +366,7 @@ func opPop(instr instruction, pc *uint64, env Environment, contract *Contract, m
 
 func opMload(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	offset := stack.pop()
-	val := common.BigD(memory.Get(offset.Int64(), 32))
+	val := new(big.Int).SetBytes(memory.Get(offset.Int64(), 32))
 	stack.push(val)
 }
 
@@ -450,7 +451,7 @@ func opCall(instr instruction, pc *uint64, env Environment, contract *Contract, 
 	args := memory.Get(inOffset.Int64(), inSize.Int64())
 
 	if len(value.Bytes()) > 0 {
-		gas.Add(gas, params.CallStipend)
+		gas.Add(gas, callStipend)
 	}
 
 	ret, err := env.Call(contract, address, args, gas, contract.Price, value)
@@ -481,7 +482,7 @@ func opCallCode(instr instruction, pc *uint64, env Environment, contract *Contra
 	args := memory.Get(inOffset.Int64(), inSize.Int64())
 
 	if len(value.Bytes()) > 0 {
-		gas.Add(gas, params.CallStipend)
+		gas.Add(gas, callStipend)
 	}
 
 	ret, err := env.CallCode(contract, address, args, gas, contract.Price, value)
@@ -537,8 +538,8 @@ func makeLog(size int) instrFn {
 // make push instruction function
 func makePush(size uint64, bsize *big.Int) instrFn {
 	return func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-		byts := getData(contract.Code, new(big.Int).SetUint64(*pc+1), bsize)
-		stack.push(common.Bytes2Big(byts))
+		bytes := getData(contract.Code, new(big.Int).SetUint64(*pc+1), bsize)
+		stack.push(new(big.Int).SetBytes(bytes))
 		*pc += size
 	}
 }

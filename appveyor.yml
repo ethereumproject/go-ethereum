@@ -4,20 +4,26 @@ os: Visual Studio 2015
 environment:
   GOPATH: c:\gopath
 install:
-  - git describe --tags > version.txt
-  - set /p VERSION=<version.txt
-  - echo %VERSION%
+  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
+  - git describe --tags --always > version.txt
+  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+)-g([a-f0-9]+)/v\1.\2+\3/' version.txt > version-app.txt
+  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.\2/' version.txt > version-only.txt
+  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.x/' version.txt > version-base.txt
+  - set /p VERSION=<version-app.txt
+  - set /p VERSION_ONLY=<version-only.txt
+  - set /p VERSION_BASE=<version-base.txt
+  - echo %VERSION_BASE% %VERSION_ONLY% %VERSION%
   - echo %PATH%
   - echo %GOPATH%
-  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
   - go version
   - go env
   - go get golang.org/x/sys/windows
 build_script:
   - go test ./...
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
+  - 7z a geth-classic-win64-%VERSION%.zip geth.exe
 artifacts:
-  - path: geth.exe
+  - path: '*.zip'
     name: geth
 deploy:
   - provider: BinTray
@@ -27,7 +33,7 @@ deploy:
     subject: ethereumproject
     repo: GoEthereumClassic
     package: go-ethereum
-    version: master
+    version: "%VERSION_BASE%"
     publish: true
     override: true
     on:

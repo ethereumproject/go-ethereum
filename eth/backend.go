@@ -24,7 +24,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -60,9 +59,9 @@ const (
 type Config struct {
 	ChainConfig *core.ChainConfig // chain configuration
 
-	NetworkId int    // Network ID to use for selecting peers to connect to
-	Genesis   string // Genesis JSON to seed the chain database with
-	FastSync  bool   // Enables the state download based fast synchronisation algorithm
+	NetworkId int // Network ID to use for selecting peers to connect to
+	Genesis   *core.GenesisDump
+	FastSync  bool // Enables the state download based fast synchronisation algorithm
 
 	BlockChainVersion  int
 	SkipBcVersionCheck bool // e.g. blockchain export
@@ -152,15 +151,15 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if err != nil {
 		return nil, err
 	}
-	glog.V(logger.Info).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", ProtocolVersions, config.NetworkId, config.ChainConfig.ChainId)
+
+	glog.V(logger.Info).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", ProtocolVersions, config.NetworkId, config.ChainConfig.GetChainID())
 
 	// Load up any custom genesis block if requested
-	if len(config.Genesis) > 0 {
-		block, err := core.WriteGenesisBlock(chainDb, strings.NewReader(config.Genesis))
+	if config.Genesis != nil {
+		_, err := core.WriteGenesisBlock(chainDb, config.Genesis)
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infof("Successfully wrote custom genesis block: %x", block.Hash())
 	}
 
 	// Load up a test setup if directly injected
@@ -223,11 +222,20 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	// block is prenent in the database.
 	genesis := core.GetBlock(chainDb, core.GetCanonicalHash(chainDb, 0))
 	if genesis == nil {
-		genesis, err = core.WriteDefaultGenesisBlock(chainDb)
+		genesis, err = core.WriteGenesisBlock(chainDb, core.DefaultGenesis)
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infoln("WARNING: Wrote default ethereum genesis block")
+		glog.V(logger.Info).Infof("Successfully wrote default ethereum mainnet genesis block: %s", genesis.Hash().Hex())
+	}
+
+	// Log genesis block information.
+	if fmt.Sprintf("%x", genesis.Hash()) == "0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303" {
+		glog.V(logger.Info).Infof("Successfully established morden testnet genesis block: \x1b[36m%s\x1b[39m", genesis.Hash().Hex())
+	} else if fmt.Sprintf("%x", genesis.Hash()) == "d4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3" {
+		glog.V(logger.Info).Infof("Successfully established mainnet genesis block: \x1b[36m%s\x1b[39m", genesis.Hash().Hex())
+	} else {
+		glog.V(logger.Info).Infof("Successfully established custom genesis block: \x1b[36m%s\x1b[39m", genesis.Hash().Hex())
 	}
 
 	if config.ChainConfig == nil {
@@ -252,7 +260,9 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.pow)
-	eth.miner.SetGasPrice(config.GasPrice)
+	if err = eth.miner.SetGasPrice(config.GasPrice); err != nil {
+		return nil, err
+	}
 
 	return eth, nil
 }

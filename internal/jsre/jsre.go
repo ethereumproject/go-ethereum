@@ -236,7 +236,7 @@ func (self *JSRE) Stop(waitForCallbacks bool) {
 // Exec(file) loads and runs the contents of a file
 // if a relative path is given, the jsre's assetPath is used
 func (self *JSRE) Exec(file string) error {
-	code, err := ioutil.ReadFile(common.AbsolutePath(self.assetPath, file))
+	code, err := ioutil.ReadFile(common.EnsureAbsolutePath(self.assetPath, file))
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func (self *JSRE) loadScript(call otto.FunctionCall) otto.Value {
 		// TODO: throw exception
 		return otto.FalseValue()
 	}
-	file = common.AbsolutePath(self.assetPath, file)
+	file = common.EnsureAbsolutePath(self.assetPath, file)
 	source, err := ioutil.ReadFile(file)
 	if err != nil {
 		// TODO: throw exception

@@ -171,9 +171,9 @@ func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error 
 	core.WriteHeadBlockHash(db, test.Genesis.Hash())
 	evmux := new(event.TypeMux)
 
-	core.DefaultConfig.Fork("Homestead").Block = homesteadBlock
+	core.DefaultConfig.ForkByName("Homestead").Block = homesteadBlock
 	if gasPriceFork != nil {
-		core.DefaultConfig.Fork("GasReprice").Block = gasPriceFork
+		core.DefaultConfig.ForkByName("GasReprice").Block = gasPriceFork
 	}
 
 	chain, err := core.NewBlockChain(db, core.DefaultConfig, ethash.NewShared(), evmux)

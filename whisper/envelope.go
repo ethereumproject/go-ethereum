@@ -23,6 +23,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/binary"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -66,7 +67,7 @@ func (self *Envelope) Seal(pow time.Duration) {
 		for i := 0; i < 1024; i++ {
 			binary.BigEndian.PutUint32(d[60:], nonce)
 
-			firstBit := common.FirstBitSet(common.BigD(crypto.Keccak256(d)))
+			firstBit := common.FirstBitSet(new(big.Int).SetBytes(crypto.Keccak256(d)))
 			if firstBit > bestBit {
 				self.Nonce, bestBit = nonce, firstBit
 			}

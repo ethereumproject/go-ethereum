@@ -90,7 +90,7 @@ func ToECDSA(prv []byte) *ecdsa.PrivateKey {
 
 	priv := new(ecdsa.PrivateKey)
 	priv.PublicKey.Curve = secp256k1.S256()
-	priv.D = common.BigD(prv)
+	priv.D = new(big.Int).SetBytes(prv)
 	priv.PublicKey.X, priv.PublicKey.Y = secp256k1.S256().ScalarBaseMult(prv)
 	return priv
 }
@@ -162,7 +162,7 @@ func GenerateKey() (*ecdsa.PrivateKey, error) {
 }
 
 func ValidateSignatureValues(v byte, r, s *big.Int, homestead bool) bool {
-	if r.Cmp(common.Big1) < 0 || s.Cmp(common.Big1) < 0 {
+	if r.Sign() <= 0 || s.Sign() <= 0 {
 		return false
 	}
 	vint := uint32(v)

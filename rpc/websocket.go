@@ -108,12 +108,6 @@ type wsClient struct {
 	conn     *websocket.Conn
 }
 
-// NewWSClientj creates a new RPC client that communicates with a RPC server
-// that is listening on the given endpoint using JSON encoding.
-func NewWSClient(endpoint string) (Client, error) {
-	return &wsClient{endpoint: endpoint}, nil
-}
-
 // connection will return a websocket connection to the RPC server. It will
 // (re)connect when necessary.
 func (client *wsClient) connection() (*websocket.Conn, error) {

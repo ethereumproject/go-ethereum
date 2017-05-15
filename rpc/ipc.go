@@ -35,10 +35,10 @@ type ipcClient struct {
 	in       *json.Decoder
 }
 
-// NewIPCClient create a new IPC client that will connect on the given endpoint. Messages are JSON encoded and encoded.
+// newIPCClient create a new IPC client that will connect on the given endpoint. Messages are JSON encoded and encoded.
 // On Unix it assumes the endpoint is the full path to a unix socket, and Windows the endpoint is an identifier for a
 // named pipe.
-func NewIPCClient(endpoint string) (Client, error) {
+func newIPCClient(endpoint string) (Client, error) {
 	conn, err := newIPCConnection(endpoint)
 	if err != nil {
 		return nil, err

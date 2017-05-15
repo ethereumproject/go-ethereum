@@ -21,6 +21,24 @@ import (
 	"testing"
 )
 
+type ruleSet struct {
+	hs *big.Int
+}
+
+func (r ruleSet) IsHomestead(n *big.Int) bool { return n.Cmp(r.hs) >= 0 }
+
+func (r ruleSet) GasTable(*big.Int) *GasTable {
+	return &GasTable{
+		ExtcodeSize: big.NewInt(20),
+		ExtcodeCopy: big.NewInt(20),
+		Balance:     big.NewInt(20),
+		SLoad:       big.NewInt(50),
+		Calls:       big.NewInt(40),
+		Suicide:     big.NewInt(0),
+		ExpByte:     big.NewInt(10),
+	}
+}
+
 func TestInit(t *testing.T) {
 	jumpTable := newJumpTable(ruleSet{big.NewInt(1)}, big.NewInt(0))
 	if jumpTable[DELEGATECALL].valid {

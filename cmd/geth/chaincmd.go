@@ -51,14 +51,16 @@ if already existing.
 		`,
 	}
 	upgradedbCommand = cli.Command{
-		Action: upgradeDB,
-		Name:   "upgradedb",
-		Usage:  "upgrade chainblock database",
+		Action:  upgradeDB,
+		Name:    "upgrade-db",
+		Aliases: []string{"upgradedb"},
+		Usage:   "upgrade chainblock database",
 	}
 	removedbCommand = cli.Command{
-		Action: removeDB,
-		Name:   "removedb",
-		Usage:  "Remove blockchain and state databases",
+		Action:  removeDB,
+		Name:    "remove-db",
+		Aliases: []string{"removedb"},
+		Usage:   "Remove blockchain and state databases",
 	}
 	dumpCommand = cli.Command{
 		Action: dump,
@@ -68,6 +70,27 @@ if already existing.
 The arguments are interpreted as block numbers or hashes.
 Use "ethereum dump 0" to dump the genesis block.
 `,
+	}
+	dumpChainConfigCommand = cli.Command{
+		Action:  dumpChainConfig,
+		Name:    "dump-chain-config",
+		Aliases: []string{"dumpchainconfig"},
+		Usage:   "dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
+		Description: `
+		The dump external configuration command writes a JSON file containing pertinent configuration data for
+		the configuration of a chain database. It includes genesis block data as well as chain fork settings.
+		`,
+	}
+	rollbackCommand = cli.Command{
+		Action: rollback,
+		Name: "rollback",
+		Aliases: []string{"roll-back", "set-head", "sethead"},
+		Usage: "rollback [block index number] - set current head for blockchain",
+		Description: `
+		Rollback set the current head block for block chain already in the database.
+		This is a destructive action, purging any block more recent than the index specified.
+		Syncing will require downloading contemporary block information from the index onwards.
+		`,
 	}
 )
 

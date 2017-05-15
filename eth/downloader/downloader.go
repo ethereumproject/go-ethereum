@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 	"strings"
@@ -35,11 +36,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
-	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/trie"
 )
 
-var (
+const (
 	MaxHashFetch    = 512 // Amount of hashes to be fetched per retrieval request
 	MaxBlockFetch   = 128 // Amount of blocks to be fetched per retrieval request
 	MaxHeaderFetch  = 192 // Amount of block headers to be fetched per retrieval request
@@ -48,12 +48,16 @@ var (
 	MaxReceiptFetch = 256 // Amount of transaction receipts to allow fetching per request
 	MaxStateFetch   = 384 // Amount of node state values to allow fetching per request
 
-	MaxForkAncestry  = 3 * params.EpochDuration.Uint64() // Maximum chain reorganisation
-	rttMinEstimate   = 2 * time.Second                   // Minimum round-trip time to target for download requests
-	rttMaxEstimate   = 20 * time.Second                  // Maximum rount-trip time to target for download requests
-	rttMinConfidence = 0.1                               // Worse confidence factor in our estimated RTT value
-	ttlScaling       = 3                                 // Constant scaling factor for RTT -> TTL conversion
-	ttlLimit         = time.Minute                       // Maximum TTL allowance to prevent reaching crazy timeouts
+	EpochDuration   = 30000             // Duration between proof-of-work epochs
+	MaxForkAncestry = 3 * EpochDuration // Maximum chain reorganisation
+)
+
+var (
+	rttMinEstimate   = 2 * time.Second  // Minimum round-trip time to target for download requests
+	rttMaxEstimate   = 20 * time.Second // Maximum rount-trip time to target for download requests
+	rttMinConfidence = 0.1              // Worse confidence factor in our estimated RTT value
+	ttlScaling       = 3                // Constant scaling factor for RTT -> TTL conversion
+	ttlLimit         = time.Minute      // Maximum TTL allowance to prevent reaching crazy timeouts
 
 	qosTuningPeers   = 5    // Number of peers to tune based on (best peers)
 	qosConfidenceCap = 10   // Number of peers above which not to modify RTT confidence
@@ -95,6 +99,15 @@ var (
 	errCancelContentProcessing = errors.New("content processing canceled (requested)")
 	errNoSyncActive            = errors.New("no sync active")
 	errTooOld                  = errors.New("peer doesn't speak recent enough protocol version (need version >= 62)")
+)
+
+// SyncMode represents the synchronisation mode of the downloader.
+type SyncMode int
+
+const (
+	FullSync  SyncMode = iota // Synchronise the entire blockchain history from full blocks
+	FastSync                  // Quickly download the headers, full sync only at the chain head
+	LightSync                 // Download only the headers and terminate afterwards
 )
 
 type Downloader struct {
@@ -278,27 +291,29 @@ func (d *Downloader) UnregisterPeer(id string) error {
 
 // Synchronise tries to sync up our local block chain with a remote peer, both
 // adding various sanity checks as well as wrapping it with various log entries.
-func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode SyncMode) error {
-	glog.V(logger.Detail).Infof("Attempting synchronisation: %v, head [%x…], TD %v", id, head[:4], td)
-
+func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode SyncMode) bool {
 	err := d.synchronise(id, head, td, mode)
 	switch err {
 	case nil:
-		glog.V(logger.Detail).Infof("Synchronisation completed")
+		log.Printf("peer %q sync complete", id)
+		return true
 
 	case errBusy:
-		glog.V(logger.Detail).Infof("Synchronisation already in progress")
+		glog.V(logger.Debug).Info("sync busy")
 
 	case errTimeout, errBadPeer, errStallingPeer, errEmptyHashSet,
 		errEmptyHeaderSet, errPeersUnavailable, errTooOld,
 		errInvalidAncestor, errInvalidChain:
-		glog.V(logger.Debug).Infof("Removing peer %v: %v", id, err)
+		log.Printf("peer %q drop: %s", id, err)
 		d.dropPeer(id)
 
+	case errCancelBlockFetch, errCancelHeaderFetch, errCancelBodyFetch, errCancelReceiptFetch, errCancelStateFetch, errCancelHeaderProcessing, errCancelContentProcessing:
+
 	default:
-		glog.V(logger.Warn).Infof("Synchronisation failed: %v", err)
+		log.Printf("peer %q sync: %s", id, err)
 	}
-	return err
+
+	return false
 }
 
 // synchronise will select the peer and use it for synchronising. If an empty string is given
@@ -320,7 +335,7 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 		glog.V(logger.Info).Infoln("Block synchronisation started")
 	}
 	// Reset the queue, peer set and wake channels to clean any internal leftover state
-	d.queue.Reset()
+	d.queue = newQueue(d.queue.stateDatabase)
 	d.peers.Reset()
 
 	for _, ch := range []chan bool{d.bodyWakeCh, d.receiptWakeCh, d.stateWakeCh} {
@@ -384,164 +399,112 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		glog.V(logger.Debug).Infof("Synchronisation terminated after %v", time.Since(start))
 	}(time.Now())
 
-	switch {
-	case p.version >= 62:
-		glog.V(logger.Debug).Infoln("Synchronising with eth/62 peer.")
-		// Look up the sync boundaries: the common ancestor and the target block
-		latest, err := d.fetchHeight(p)
-		if err != nil {
-			return err
-		}
-		height := latest.Number.Uint64()
-
-		origin, err := d.findAncestor(p, height)
-		if err != nil {
-			return err
-		}
-		d.syncStatsLock.Lock()
-		if d.syncStatsChainHeight <= origin || d.syncStatsChainOrigin > origin {
-			d.syncStatsChainOrigin = origin
-		}
-		d.syncStatsChainHeight = height
-		d.syncStatsLock.Unlock()
-
-		// Initiate the sync using a concurrent header and content retrieval algorithm
-		pivot := uint64(0)
-		switch d.mode {
-		case LightSync:
-			pivot = height
-		case FastSync:
-			// Calculate the new fast/slow sync pivot point
-			if d.fsPivotLock == nil {
-				pivotOffset, err := rand.Int(rand.Reader, big.NewInt(int64(fsPivotInterval)))
-				if err != nil {
-					panic(fmt.Sprintf("Failed to access crypto random source: %v", err))
-				}
-				if height > uint64(fsMinFullBlocks)+pivotOffset.Uint64() {
-					pivot = height - uint64(fsMinFullBlocks) - pivotOffset.Uint64()
-				}
-			} else {
-				// Pivot point locked in, use this and do not pick a new one!
-				pivot = d.fsPivotLock.Number.Uint64()
-			}
-			// If the point is below the origin, move origin back to ensure state download
-			if pivot < origin {
-				if pivot > 0 {
-					origin = pivot - 1
-				} else {
-					origin = 0
-				}
-			}
-			glog.V(logger.Debug).Infof("Fast syncing until pivot block #%d", pivot)
-		}
-		d.queue.Prepare(origin+1, d.mode, pivot, latest)
-		if d.syncInitHook != nil {
-			d.syncInitHook(origin, height)
-		}
-		return d.spawnSync(origin+1,
-			func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
-			func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
-			func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
-			func() error { return d.fetchReceipts(origin + 1) },    // Receipts are retrieved during fast sync
-			func() error { return d.fetchNodeData() },              // Node state data is retrieved during fast sync
-		)
-
-	case p.version >= 63:
-		glog.V(logger.Debug).Infoln("Synchronising with eth/63 peer.")
-		// Look up the sync boundaries: the common ancestor and the target block
-		latest, err := d.fetchHeight(p)
-		if err != nil {
-			return err
-		}
-		height := latest.Number.Uint64()
-
-		origin, err := d.findAncestor(p, height)
-		if err != nil {
-			return err
-		}
-		d.syncStatsLock.Lock()
-		if d.syncStatsChainHeight <= origin || d.syncStatsChainOrigin > origin {
-			d.syncStatsChainOrigin = origin
-		}
-		d.syncStatsChainHeight = height
-		d.syncStatsLock.Unlock()
-
-		// Initiate the sync using a concurrent header and content retrieval algorithm
-		pivot := uint64(0)
-		switch d.mode {
-		case LightSync:
-			pivot = height
-		case FastSync:
-			// Calculate the new fast/slow sync pivot point
-			if d.fsPivotLock == nil {
-				pivotOffset, err := rand.Int(rand.Reader, big.NewInt(int64(fsPivotInterval)))
-				if err != nil {
-					panic(fmt.Sprintf("Failed to access crypto random source: %v", err))
-				}
-				if height > uint64(fsMinFullBlocks)+pivotOffset.Uint64() {
-					pivot = height - uint64(fsMinFullBlocks) - pivotOffset.Uint64()
-				}
-			} else {
-				// Pivot point locked in, use this and do not pick a new one!
-				pivot = d.fsPivotLock.Number.Uint64()
-			}
-			// If the point is below the origin, move origin back to ensure state download
-			if pivot < origin {
-				if pivot > 0 {
-					origin = pivot - 1
-				} else {
-					origin = 0
-				}
-			}
-			glog.V(logger.Debug).Infof("Fast syncing until pivot block #%d", pivot)
-		}
-		d.queue.Prepare(origin+1, d.mode, pivot, latest)
-		if d.syncInitHook != nil {
-			d.syncInitHook(origin, height)
-		}
-		return d.spawnSync(origin+1,
-			func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
-			func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
-			func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
-			func() error { return d.fetchReceipts(origin + 1) },    // Receipts are retrieved during fast sync
-			func() error { return d.fetchNodeData() },              // Node state data is retrieved during fast sync
-		)
-
-	default:
-		// Something very wrong, stop right here
-		glog.V(logger.Error).Infof("Unsupported eth protocol: %d", p.version)
+	if p.version < 62 {
+		glog.Infof("download: peer %q protocol %d too old", p.id, p.version)
 		return errBadPeer
 	}
+
+	// Look up the sync boundaries: the common ancestor and the target block
+	latest, err := d.fetchHeight(p)
+	if err != nil {
+		return err
+	}
+	height := latest.Number.Uint64()
+
+	origin, err := d.findAncestor(p, height)
+	if err != nil {
+		return err
+	}
+	d.syncStatsLock.Lock()
+	if d.syncStatsChainHeight <= origin || d.syncStatsChainOrigin > origin {
+		d.syncStatsChainOrigin = origin
+	}
+	d.syncStatsChainHeight = height
+	d.syncStatsLock.Unlock()
+
+	// Initiate the sync using a concurrent header and content retrieval algorithm
+	pivot := uint64(0)
+	switch d.mode {
+	case LightSync:
+		pivot = height
+	case FastSync:
+		// Calculate the new fast/slow sync pivot point
+		if d.fsPivotLock == nil {
+			pivotOffset, err := rand.Int(rand.Reader, big.NewInt(int64(fsPivotInterval)))
+			if err != nil {
+				panic(fmt.Sprintf("Failed to access crypto random source: %v", err))
+			}
+			if height > uint64(fsMinFullBlocks)+pivotOffset.Uint64() {
+				pivot = height - uint64(fsMinFullBlocks) - pivotOffset.Uint64()
+			}
+		} else {
+			// Pivot point locked in, use this and do not pick a new one!
+			pivot = d.fsPivotLock.Number.Uint64()
+		}
+		// If the point is below the origin, move origin back to ensure state download
+		if pivot < origin {
+			if pivot > 0 {
+				origin = pivot - 1
+			} else {
+				origin = 0
+			}
+		}
+		glog.V(logger.Debug).Infof("Fast syncing until pivot block #%d", pivot)
+	}
+	d.queue.Prepare(origin+1, d.mode, pivot, latest)
+	if d.syncInitHook != nil {
+		d.syncInitHook(origin, height)
+	}
+	return d.spawnSync(origin+1,
+		func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
+		func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
+		func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
+		func() error { return d.fetchReceipts(origin + 1) },    // Receipts are retrieved during fast sync
+		func() error { return d.fetchNodeData() },              // Node state data is retrieved during fast sync
+	)
 }
 
 // spawnSync runs d.process and all given fetcher functions to completion in
 // separate goroutines, returning the first error that appears.
 func (d *Downloader) spawnSync(origin uint64, fetchers ...func() error) error {
-	var wg sync.WaitGroup
+	defer d.cancel()
+
+	// fetchers and processor must not block
 	errc := make(chan error, len(fetchers)+1)
-	wg.Add(len(fetchers) + 1)
-	go func() { defer wg.Done(); errc <- d.processContent() }()
-	for _, fn := range fetchers {
-		fn := fn
-		go func() { defer wg.Done(); errc <- fn() }()
+
+	var wg sync.WaitGroup
+	wg.Add(len(fetchers))
+
+	go func() {
+		errc <- d.processContent()
+
+		wg.Wait()
+		close(errc)
+	}()
+
+	for _, fetcher := range fetchers {
+		go func(f func() error) {
+			defer wg.Done()
+
+			err := f()
+			if err != nil {
+				d.cancel()
+			}
+			errc <- err
+		}(fetcher)
 	}
-	// Wait for the first error, then terminate the others.
-	var err error
-	for i := 0; i < len(fetchers)+1; i++ {
-		if i == len(fetchers) {
-			// Close the queue when all fetchers have exited.
-			// This will cause the block processor to end when
-			// it has processed the queue.
-			d.queue.Close()
-		}
-		if err = <-errc; err != nil {
-			break
-		}
-	}
-	d.queue.Close()
-	d.cancel()
+
 	wg.Wait()
-	return err
+	// causes the block processor to end when
+	// it has processed the queue.
+	d.queue.Done()
+
+	for err := range errc {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // cancel cancels all of the operations and resets the queue. It returns true
@@ -922,7 +885,7 @@ func (d *Downloader) fillHeaderSkeleton(from uint64, skeleton []*types.Header) (
 	)
 	err := d.fetchParts(errCancelHeaderFetch, d.headerCh, deliver, d.queue.headerContCh, expire,
 		d.queue.PendingHeaders, d.queue.InFlightHeaders, throttle, reserve,
-		nil, fetch, d.queue.CancelHeaders, capacity, d.peers.HeaderIdlePeers, setIdle, "Header")
+		nil, fetch, capacity, d.peers.HeaderIdlePeers, setIdle, "Header")
 
 	glog.V(logger.Debug).Infof("Skeleton fill terminated: %v", err)
 
@@ -948,7 +911,7 @@ func (d *Downloader) fetchBodies(from uint64) error {
 	)
 	err := d.fetchParts(errCancelBodyFetch, d.bodyCh, deliver, d.bodyWakeCh, expire,
 		d.queue.PendingBlocks, d.queue.InFlightBlocks, d.queue.ShouldThrottleBlocks, d.queue.ReserveBodies,
-		d.bodyFetchHook, fetch, d.queue.CancelBodies, capacity, d.peers.BodyIdlePeers, setIdle, "Body")
+		d.bodyFetchHook, fetch, capacity, d.peers.BodyIdlePeers, setIdle, "Body")
 
 	glog.V(logger.Debug).Infof("Block body download terminated: %v", err)
 	return err
@@ -972,7 +935,7 @@ func (d *Downloader) fetchReceipts(from uint64) error {
 	)
 	err := d.fetchParts(errCancelReceiptFetch, d.receiptCh, deliver, d.receiptWakeCh, expire,
 		d.queue.PendingReceipts, d.queue.InFlightReceipts, d.queue.ShouldThrottleReceipts, d.queue.ReserveReceipts,
-		d.receiptFetchHook, fetch, d.queue.CancelReceipts, capacity, d.peers.ReceiptIdlePeers, setIdle, "Receipt")
+		d.receiptFetchHook, fetch, capacity, d.peers.ReceiptIdlePeers, setIdle, "Receipt")
 
 	glog.V(logger.Debug).Infof("Receipt download terminated: %v", err)
 	return err
@@ -1028,7 +991,7 @@ func (d *Downloader) fetchNodeData() error {
 	)
 	err := d.fetchParts(errCancelStateFetch, d.stateCh, deliver, d.stateWakeCh, expire,
 		d.queue.PendingNodeData, d.queue.InFlightNodeData, throttle, reserve, nil, fetch,
-		d.queue.CancelNodeData, capacity, d.peers.NodeDataIdlePeers, setIdle, "State")
+		capacity, d.peers.NodeDataIdlePeers, setIdle, "State")
 
 	glog.V(logger.Debug).Infof("Node state data download terminated: %v", err)
 	return err
@@ -1054,14 +1017,13 @@ func (d *Downloader) fetchNodeData() error {
 //  - reserve:     task callback to reserve new download tasks to a particular peer (also signals partial completions)
 //  - fetchHook:   tester callback to notify of new tasks being initiated (allows testing the scheduling logic)
 //  - fetch:       network callback to actually send a particular download request to a physical remote peer
-//  - cancel:      task callback to abort an in-flight download request and allow rescheduling it (in case of lost peer)
 //  - capacity:    network callback to retreive the estimated type-specific bandwidth capacity of a peer (traffic shaping)
 //  - idle:        network callback to retrieve the currently (type specific) idle peers that can be assigned tasks
 //  - setIdle:     network callback to set a peer back to idle and update its estimated capacity (traffic shaping)
 //  - kind:        textual label of the type being downloaded to display in log mesages
 func (d *Downloader) fetchParts(errCancel error, deliveryCh chan dataPack, deliver func(dataPack) (int, error), wakeCh chan bool,
 	expire func() map[string]int, pending func() int, inFlight func() bool, throttle func() bool, reserve func(*peer, int) (*fetchRequest, bool, error),
-	fetchHook func([]*types.Header), fetch func(*peer, *fetchRequest) error, cancel func(*fetchRequest), capacity func(*peer) int,
+	fetchHook func([]*types.Header), fetch func(*peer, *fetchRequest) error, capacity func(*peer) int,
 	idle func() ([]*peer, int), setIdle func(*peer, int), kind string) error {
 
 	// Create a ticker to detect expired retrieval tasks

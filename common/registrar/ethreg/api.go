@@ -18,7 +18,9 @@ package ethreg
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
@@ -149,6 +151,27 @@ func (m callmsg) Data() []byte {
 // a private VM with a copy of the state. Any changes are therefore only temporary
 // and not part of the actual state. This allows for local execution/queries.
 func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr, dataStr string) (string, string, error) {
+	value, ok := new(big.Int).SetString(valueStr, 0)
+	if !ok {
+		return "", "", fmt.Errorf("malformed value %q", valueStr)
+	}
+
+	var gas *big.Int
+	if gasStr != "" {
+		gas, ok = new(big.Int).SetString(gasStr, 0)
+		if !ok {
+			return "", "", fmt.Errorf("malformed gas %q", gasStr)
+		}
+	}
+
+	var gasPrice *big.Int
+	if gasPriceStr != "" {
+		gasPrice, ok = new(big.Int).SetString(gasPriceStr, 0)
+		if !ok {
+			return "", "", fmt.Errorf("malformed gas price %q", gasPriceStr)
+		}
+	}
+
 	block := be.bc.CurrentBlock()
 	statedb, err := state.New(block.Root(), be.chainDb)
 	if err != nil {
@@ -156,7 +179,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 	}
 
 	var from *state.StateObject
-	if len(fromStr) == 0 {
+	if fromStr == "" {
 		accounts := be.am.Accounts()
 		if len(accounts) == 0 {
 			from = statedb.GetOrNewStateObject(common.Address{})
@@ -169,14 +192,8 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 
 	from.SetBalance(common.MaxBig)
 
-	msg := callmsg{
-		from:     from,
-		gas:      common.Big(gasStr),
-		gasPrice: common.Big(gasPriceStr),
-		value:    common.Big(valueStr),
-		data:     common.FromHex(dataStr),
-	}
-	if len(toStr) > 0 {
+	msg := callmsg{from: from, gas: gas, gasPrice: gasPrice, value: value, data: common.FromHex(dataStr)}
+	if toStr != "" {
 		addr := common.HexToAddress(toStr)
 		msg.to = &addr
 	}
@@ -215,42 +232,49 @@ func (be *registryAPIBackend) Transact(fromStr, toStr, nonceStr, valueStr, gasSt
 	}
 
 	var (
-		from             = common.HexToAddress(fromStr)
-		to               = common.HexToAddress(toStr)
-		value            = common.Big(valueStr)
-		gas              *big.Int
-		price            *big.Int
-		data             []byte
-		contractCreation bool
+		from = common.HexToAddress(fromStr)
+		to   = common.HexToAddress(toStr)
 	)
 
-	if len(gasStr) == 0 {
+	value, ok := new(big.Int).SetString(valueStr, 0)
+	if !ok {
+		return "", fmt.Errorf("malformed value %q", valueStr)
+	}
+
+	var gas *big.Int
+	if gasStr == "" {
 		gas = big.NewInt(90000)
 	} else {
-		gas = common.Big(gasStr)
+		if gas, ok = new(big.Int).SetString(gasStr, 0); !ok {
+			return "", fmt.Errorf("malformed gas %q", gasStr)
+		}
 	}
 
-	if len(gasPriceStr) == 0 {
-		price = big.NewInt(10000000000000)
+	var gasPrice *big.Int
+	if gasPriceStr == "" {
+		gasPrice = big.NewInt(10000000000000)
 	} else {
-		price = common.Big(gasPriceStr)
+		if gasPrice, ok = new(big.Int).SetString(gasPriceStr, 0); !ok {
+			return "", fmt.Errorf("malformed gas price %q", gasPriceStr)
+		}
 	}
 
-	data = common.FromHex(codeStr)
-	if len(toStr) == 0 {
-		contractCreation = true
-	}
+	data := common.FromHex(codeStr)
 
 	nonce := be.txPool.State().GetNonce(from)
 	if len(nonceStr) != 0 {
-		nonce = common.Big(nonceStr).Uint64()
+		var err error
+		nonce, err = strconv.ParseUint(nonceStr, 0, 64)
+		if err != nil {
+			return "", fmt.Errorf("malformed nonce %q", nonceStr)
+		}
 	}
 
 	var tx *types.Transaction
-	if contractCreation {
-		tx = types.NewContractCreation(nonce, value, gas, price, data)
+	if toStr == "" {
+		tx = types.NewContractCreation(nonce, value, gas, gasPrice, data)
 	} else {
-		tx = types.NewTransaction(nonce, to, value, gas, price, data)
+		tx = types.NewTransaction(nonce, to, value, gas, gasPrice, data)
 	}
 
 	sigHash := (types.BasicSigner{}).Hash(tx)
@@ -268,7 +292,7 @@ func (be *registryAPIBackend) Transact(fromStr, toStr, nonceStr, valueStr, gasSt
 		return "", nil
 	}
 
-	if contractCreation {
+	if toStr == "" {
 		addr := crypto.CreateAddress(from, nonce)
 		glog.V(logger.Info).Infof("Tx(%s) created: %s\n", signedTx.Hash().Hex(), addr.Hex())
 	} else {
