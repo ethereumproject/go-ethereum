@@ -60,6 +60,31 @@ func testAccountFlow(am *Manager, dir string) error {
 	return nil
 }
 
+func createTestAccount(am *Manager, dir string) error {
+	a, err := am.NewAccount("foo")
+	if err != nil {
+		return err
+	}
+	p, e := filepath.Abs(dir)
+	if e != nil {
+		return fmt.Errorf("could not determine absolute path for temp dir: %v", e)
+	}
+	if !strings.HasPrefix(a.File, p + "/") {
+		return fmt.Errorf("account file %s doesn't have dir prefix; %v", a.File, p)
+	}
+	stat, err := os.Stat(a.File)
+	if err != nil {
+		return fmt.Errorf("account file %s doesn't exist (%v)", a.File, err)
+	}
+	if runtime.GOOS != "windows" && stat.Mode() != 0600 {
+		return fmt.Errorf("account file has wrong mode: got %o, want %o", stat.Mode(), 0600)
+	}
+	if !am.HasAddress(a.Address) {
+		return fmt.Errorf("HasAddres(%x) should've returned true", a.Address)
+	}
+	return nil
+}
+
 // want to run for 10, 100, 1000, 10k, (100k) accounts
 func benchmarkAccountFlow(n int, b *testing.B) {
 	start := time.Now()
