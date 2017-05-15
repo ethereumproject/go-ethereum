@@ -85,7 +85,8 @@ func createTestAccount(am *Manager, dir string) error {
 	return nil
 }
 
-// want to run for 10, 100, 1000, 10k, (100k) accounts
+// Test benchmark for CRUSD/account; create, update, sign, delete.
+// Runs against setting of 10, 100, 1000, 10k, (100k, 1m) _existing_ accounts.
 func benchmarkAccountFlow(n int, b *testing.B) {
 	start := time.Now()
 	dir, err := ioutil.TempDir("", "eth-acctmanager-test")
