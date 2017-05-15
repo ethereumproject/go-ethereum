@@ -199,32 +199,3 @@ func TestSignRace(t *testing.T) {
 	}
 	t.Error("Account did not lock within the timeout")
 }
-
-func TestManager_Accounts(t *testing.T) {
-	testThruAccountsN := 100
-	failsCount := 0
-	for i := 1; i <= testThruAccountsN; i++ {
-		if err := createTestAccounts(i); err != nil {
-			t.Fatalf("error creating accounts: %v", err)
-		}
-
-		// amG should be set
-		if amG == nil {
-			t.Fatal("global account manager not set")
-		}
-
-		if l := len(amG.Accounts()); l != i {
-			failsCount++
-			t.Errorf("got: %v, want: %v", l, i)
-		}
-
-		//p, err := filepath.Abs(scaleTestTmpDirName)
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
-		//if e := os.RemoveAll(p); e != nil {
-		//	log.Fatal(e)
-		//}
-	}
-	t.Logf("failed counting accounts %v/%v", failsCount, testThruAccountsN)
-}
