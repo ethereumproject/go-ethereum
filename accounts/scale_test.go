@@ -6,16 +6,14 @@ import (
 	"os"
 	"runtime"
 	"testing"
-	"io/ioutil"
 	"strings"
 	"time"
-	"math/rand"
 	"path/filepath"
 )
 
 // Global constants.
-var accountsNInit int = 1000
-var accountsNMax int = 5000
+var accountsNInit int = 3
+var accountsNMax int = 5
 var accountsNDiff int = accountsNMax - accountsNInit
 var scaleTestBasePath = "testdata" // use relative directory (instead of passing "" to ioutil.TempDir which select defaulty)
 var scaleTestTmpPrefix = "scale-acct-test"
@@ -24,22 +22,41 @@ var scaleTestTmpPrefix = "scale-acct-test"
 var gracePeriodUnlockToSign time.Duration = 200*time.Millisecond // max length for unlock in order to sign with an account
 
 // Global to assign.
-var scaleTestTmpDirName string // global, abs, set on new tmp dir by ioutil.TempDir
+var scaleTestTmpDirName string = filepath.Join("testdata","scale-acct-test") // global, abs, set on new tmp dir by ioutil.TempDir
 var amG *Manager               // set on create initial accounts
+
+
+func scaleTmpManager(tpath string) (*Manager, string, error) {
+	name := scaleTestTmpDirName
+	m, err := NewManager(name, veryLightScryptN, veryLightScryptP)
+	if err != nil {
+		return nil, "", err
+	}
+	return m, name, nil
+}
+
 
 // TestMain is called *once per file*.
 func TestMain(m *testing.M) {
-	if e := createTestAccounts(accountsNInit); e != nil {
-		log.Fatal(e)
+	am, tmpDirName, err := scaleTmpManager(scaleTestBasePath)
+	if err != nil {
+		log.Fatal(err)
 	}
+	// assign globals
+	amG = am
+	scaleTestTmpDirName = tmpDirName
+
 	os.Exit(m.Run())
 	p, err := filepath.Abs(scaleTestTmpDirName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if e := os.RemoveAll(p); e != nil {
-		log.Fatal(e)
+	if _, err := os.Stat(p); err != nil {
+		log.Fatal(err)
 	}
+	//if e := os.RemoveAll(p); e != nil {
+	//	log.Fatal(e)
+	//}
 }
 
 func createTestAccount(am *Manager, dir string) error {
@@ -68,20 +85,10 @@ func createTestAccount(am *Manager, dir string) error {
 }
 
 func createTestAccounts(n int) error {
-	am, tmpDirName, err := scaleTmpManager(scaleTestBasePath)
-	if err != nil {
-		return err
-	}
-	// assign globals
-	amG = am
-	scaleTestTmpDirName = tmpDirName
-
 	// Only creates account *initially*.
-	if len(amG.Accounts()) == 0 {
-		for i := 0; i < n; i++ {
-			if err := createTestAccount(am, tmpDirName); err != nil {
-				return err
-			}
+	for len(amG.Accounts()) < n {
+		if err := createTestAccount(amG, scaleTestTmpDirName); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -90,6 +97,11 @@ func createTestAccounts(n int) error {
 // Can create and manage _more_ accounts?
 
 func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
+
+	if e := createTestAccounts(accountsNInit); e != nil {
+		log.Fatal(e)
+	}
+
 	if amG == nil {
 		t.Fatal("global account manager not established")
 	}
@@ -99,11 +111,11 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 
 	// Create.
 	// Ensure got expected number of initial test accounts.
-	if l := len(amG.Accounts()); l != accountsNInit {
-		t.Fatalf("wrong number of initial accounts: got: %v, want: %v", l, accountsNInit)
+	if l := len(amG.Accounts()); l < accountsNInit {
+		t.Fatalf("too few initial accounts: got: %v, want: %v", l, accountsNInit)
 	}
 
-	for i := 0; i < accountsNDiff; i++ {
+	for i := 0; len(amG.Accounts()) <= accountsNMax; i++ {
 		// Get time to create one new account 10 times linearly over new accounts n.
 		if i != 0 && (accountsNDiff/10) % i == 0 {
 			start := time.Now()
@@ -120,15 +132,9 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 	}
 
 	// Update.
-	amG = nil // clear mem
-	am, err := NewManager(scaleTestTmpDirName, veryLightScryptN, veryLightScryptP)
-	if err != nil {
-		t.Fatal(err)
-	}
-	amG = am
 
-	if l := len(amG.Accounts()); l != accountsNInit+accountsNDiff {
-		t.Fatalf("wrong number of final accounts: got: %v, want: %v", l, accountsNInit)
+	if l := len(amG.Accounts()); l < accountsNMax {
+		t.Fatalf("too few accounts (@updating): got: %v, want: %v", l, accountsNMax)
 	}
 
 	for i, a := range amG.Accounts() {
@@ -149,8 +155,8 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 
 	// Sign.
 
-	if l := len(amG.Accounts()); l != accountsNInit+accountsNDiff {
-		t.Fatalf("wrong number of final accounts: got: %v, want: %v", l, accountsNInit)
+	if l := len(amG.Accounts()); l < accountsNMax {
+		t.Fatalf("too few accounts (@sign): got: %v, want: %v", l, accountsNMax)
 	}
 
 	for i, a := range amG.Accounts() {
@@ -170,20 +176,18 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 	// Delete.
 	accts := amG.Accounts()
 	l := len(accts)
-	if l != accountsNInit+accountsNDiff {
-		t.Fatalf("wrong number of final accounts: got: %v, want: %v", l, accountsNInit)
+	if l < accountsNMax {
+		t.Fatalf("wrong number of final accounts: got: %v, want: %v", l, accountsNMax)
 	}
 
-	smallPortionN := float64(l) * 0.05
-	smallPortionNInt := int(smallPortionN)
-	for i := 0; i < smallPortionNInt; i++ {
+	// Delete diffN accounts to return to initN number of accounts.
+	for i := 0; i < l - accountsNInit; i++ {
 
-		rand.Seed(time.Now().UTC().UnixNano())
-		randInt := int(rand.Int31n(int32(l-1)))
-		a := accts[randInt] // pick a random account
+		a := accts[i]
+		// TODO: randomize accounts to remove? or otherwise some reasonable order
 
 		if err := amG.DeleteAccount(a, "bar"); err != nil {
-			t.Errorf("DeleteAccount error #%v @%v, %v", randInt, i, err)
+			t.Errorf("DeleteAccount error (@%v/%v): %v\nacct: %v", i, l, err, a)
 		}
 		if _, err := os.Stat(a.File); err == nil || !os.IsNotExist(err) {
 			t.Errorf("account file %s should be gone after DeleteAccount", a.File)
@@ -192,18 +196,4 @@ func TestManager_Accounts_Scale_CreateUpdateSignDelete(t *testing.T) {
 			t.Errorf("HasAddress(%x) should've returned true after DeleteAccount", a.Address)
 		}
 	}
-}
-
-func scaleTmpManager(tpath string) (*Manager, string, error) {
-	name, err := ioutil.TempDir(scaleTestBasePath, scaleTestTmpPrefix)
-	scaleTestTmpDirName = name // assign global
-	if err != nil {
-		return nil, name, err
-	}
-
-	m, err := NewManager(name, veryLightScryptN, veryLightScryptP)
-	if err != nil {
-		return nil, "", err
-	}
-	return m, name, nil
 }

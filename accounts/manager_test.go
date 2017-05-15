@@ -23,11 +23,23 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"path/filepath"
-	"log"
 )
 
 var testSigData = make([]byte, 32)
+
+func tmpManager(t *testing.T) (string, *Manager) {
+	dir, err := ioutil.TempDir("", "eth-manager-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir, m
+}
+
 
 func TestManager(t *testing.T) {
 	dir, am := tmpManager(t)
@@ -185,7 +197,7 @@ func TestSignRace(t *testing.T) {
 		}
 		time.Sleep(1 * time.Millisecond)
 	}
-	t.Errorf("Account did not lock within the timeout")
+	t.Error("Account did not lock within the timeout")
 }
 
 func TestManager_Accounts(t *testing.T) {
@@ -215,17 +227,4 @@ func TestManager_Accounts(t *testing.T) {
 		//}
 	}
 	t.Logf("failed counting accounts %v/%v", failsCount, testThruAccountsN)
-}
-
-func tmpManager(t *testing.T) (string, *Manager) {
-	dir, err := ioutil.TempDir("", "eth-manager-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dir, m
 }
