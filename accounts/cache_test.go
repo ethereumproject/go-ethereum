@@ -248,6 +248,7 @@ func TestCacheAddDeleteOrder(t *testing.T) {
 
 func TestCacheFind(t *testing.T) {
 	dir := filepath.Join("testdata", "dir")
+	defer os.RemoveAll(dir)
 	cache := newAddrCache(dir)
 	cache.watcher.running = true // prevent unexpected reloads
 
@@ -271,6 +272,14 @@ func TestCacheFind(t *testing.T) {
 	}
 	for _, a := range accounts {
 		cache.add(a)
+	}
+
+	if lca := cache.accounts(); len(lca) != len(accounts) {
+		t.Fatalf("wrong number of accounts, got: %v, want: %v", len(lca), len(accounts))
+	}
+
+	if !reflect.DeepEqual(cache.accounts(), accounts) {
+		t.Fatalf("not matching initial accounts: got %v, want: %v", spew.Sdump(cache.accounts()), spew.Sdump(accounts))
 	}
 
 	nomatchAccount := Account{

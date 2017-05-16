@@ -43,6 +43,7 @@ var addrBucketName = []byte("byAddr")
 var fileBucketName = []byte("byFile")
 
 type accountsByFile []Account
+type accountFile string
 
 func (s accountsByFile) Len() int           { return len(s) }
 func (s accountsByFile) Less(i, j int) bool { return s[i].File < s[j].File }
@@ -123,8 +124,11 @@ func (ac *addrCache) accounts() []Account {
 		c := b.Cursor()
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			as = append(as, bytesToAccount(v))
+			a := bytesToAccount(v)
+			a.File = string(k)
+			as = append(as, a)
 		}
+
 		return nil
 	}); e != nil {
 		panic(e)
@@ -144,7 +148,7 @@ func (ac *addrCache) getCachedAccountsByAddress(addr common.Address) (accounts [
 	err = ac.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(addrBucketName)
 		if v := b.Get(addr.Bytes()); v != nil {
-			accounts = bytesToAccounts(v)
+			accounts = bytesAccountFilesToAccounts(addr.Bytes(), v)
 		}
 		return nil
 	})
@@ -156,6 +160,9 @@ func (ac *addrCache) getCachedAccountsByAddress(addr common.Address) (accounts [
 
 // ... and this returns an Account
 func (ac *addrCache) getCachedAccountByFile(file string) (account Account, err error) {
+	if file == "" {
+		return Account{}, ErrNoMatch
+	}
 	err = ac.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(fileBucketName)
 		if v := b.Get([]byte(file)); v != nil {
@@ -187,9 +194,11 @@ func (ac *addrCache) hasAddress(addr common.Address) bool {
 func (ac *addrCache) add(newAccount Account) {
 
 	// check cached accounts by file
-	a, e := ac.getCachedAccountByFile(newAccount.File)
-
-	exists := a != Account{} && e != nil
+	exists := false
+	if newAccount.File != "" {
+		a, e := ac.getCachedAccountByFile(newAccount.File)
+		exists = a != Account{} && e == nil
+	}
 
 	if !exists {
 		ac.db.Update(func (tx *bolt.Tx) error {
@@ -197,8 +206,23 @@ func (ac *addrCache) add(newAccount Account) {
 
 			// since it doesn't exist yet, we know that we don't have to do any fancy appending for addr cache
 			b := tx.Bucket(addrBucketName)
-			b.Put(newAccount.Address.Bytes(), accountsToBytes([]Account{newAccount}))
-
+			efs := b.Get(newAccount.Address.Bytes())
+			if efs == nil {
+				b.Put(newAccount.Address.Bytes(), accountsToAccountFilesBytes([]Account{newAccount}))
+			}
+			efsas := bytesAccountFilesToAccounts(newAccount.Address.Bytes(), efs)
+			hasEvilTwin := false
+			for _, a := range efsas {
+				if a.File == newAccount.File {
+					hasEvilTwin = true
+				}
+			}
+			if !hasEvilTwin {
+				efsas = append(efsas, newAccount)
+				efsasb := accountsToAccountFilesBytes(efsas)
+				b.Put(newAccount.Address.Bytes(), efsasb)
+			}
+			// hasEvilTwin means file already is accounted for... get it?
 
 			b = tx.Bucket(fileBucketName)
 			b.Put([]byte(newAccount.File), accountToBytes(newAccount))
@@ -228,7 +252,7 @@ func (ac *addrCache) delete(removed Account) {
 		if ass := removeAccount(as, removed); len(ass) > 0 {
 			ac.db.Update(func (tx *bolt.Tx) error {
 				b := tx.Bucket(addrBucketName)
-				return b.Put(removed.Address.Bytes(), accountsToBytes(ass))
+				return b.Put(removed.Address.Bytes(), accountsToAccountFilesBytes(ass))
 			})
 		} else {
 			ac.db.Update(func (tx *bolt.Tx) error {
@@ -273,9 +297,7 @@ func (ac *addrCache) find(a Account) (Account, error) {
 
 	// Limit search to address candidates if possible.
 	if (a.Address != common.Address{}) {
-		if matches, e = ac.getCachedAccountsByAddress(a.Address); e != nil {
-			return acc, e
-		}
+		matches, e = ac.getCachedAccountsByAddress(a.Address)
 	}
 
 	if a.File != "" {
@@ -283,7 +305,8 @@ func (ac *addrCache) find(a Account) (Account, error) {
 		if !strings.ContainsRune(a.File, filepath.Separator) {
 			a.File = filepath.Join(ac.keydir, a.File)
 		}
-		if acc, e := ac.getCachedAccountByFile(a.File); e == nil && (acc != Account{}) {
+		acc, e = ac.getCachedAccountByFile(a.File)
+		if e == nil && (acc != Account{}) {
 			return acc, e
 		}
 		// no other possible way
@@ -314,7 +337,7 @@ func (ac *addrCache) find(a Account) (Account, error) {
 	//}
 	switch len(matches) {
 	case 1:
-		return matches[0], nil
+		return matches[0], e
 	case 0:
 		return Account{}, ErrNoMatch
 	default:
@@ -424,12 +447,12 @@ func (ac *addrCache) setViaFile(path string) error {
 		// get existing accounts by address, if any
 		xasb := b.Get(keyJSON.Address.Bytes())
 		if xasb != nil {
-			xaccs := bytesToAccounts(xasb)
+			xaccs := bytesAccountFilesToAccounts(keyJSON.Address.Bytes(), xasb)
 			accs = append(xaccs, acc)
 		} else {
 			accs = append(accs, acc)
 		}
-		asb := accountsToBytes(accs)
+		asb := accountsToAccountFilesBytes(accs)
 
 		return b.Put(keyJSON.Address.Bytes(), asb)
 	})
@@ -456,10 +479,10 @@ func (ac *addrCache) removeViaFile(path string) error {
 		if asb == nil {
 			return nil
 		}
-		xacs := bytesToAccounts(asb)
+		xacs := bytesAccountFilesToAccounts(acc.Address.Bytes(), asb)
 		accs := removeAccount(xacs, acc)
 		if len(accs) > 0 {
-			accsb := accountsToBytes(accs)
+			accsb := accountsToAccountFilesBytes(accs)
 			return b.Put([]byte(acc.Address.Bytes()), accsb)
 		} else {
 			return b.Delete(acc.Address.Bytes())
@@ -587,12 +610,12 @@ func (ac *addrCache) scan() (errs []error) {
 
 				a := bytesToAccount(k)
 				if acsb := ab.Get(a.Address.Bytes()); acsb != nil {
-					accs := bytesToAccounts(acsb)
+					accs := bytesAccountFilesToAccounts(a.Address.Bytes(), acsb)
 					xacs := removeAccount(accs, a)
 					if len(xacs) == 0 {
 						ab.Delete(a.Address.Bytes())
 					} else {
-						ab.Put(a.Address.Bytes(), accountsToBytes(xacs))
+						ab.Put(a.Address.Bytes(), accountsToAccountFilesBytes(xacs))
 					}
 				}
 			}
@@ -627,11 +650,20 @@ func skipKeyFile(fi os.FileInfo) bool {
 }
 
 
-func bytesToAccounts(bs []byte) []Account {
+func bytesAccountFilesToAccounts(addressBytes, bs []byte) []Account {
+	var afs []string
 	var as []Account
-	if e := json.Unmarshal(bs, &as); e != nil {
+	if e := json.Unmarshal(bs, &afs); e != nil {
 		panic(e)
 	}
+	for _, f := range afs {
+		aa := Account{
+			Address: common.BytesToAddress(addressBytes),
+			File: f,
+		}
+		as = append(as, aa)
+	}
+
 	return as
 }
 func bytesToAccount(bs []byte) Account {
@@ -644,7 +676,16 @@ func bytesToAccount(bs []byte) Account {
 	//}
 	return a
 }
-func accountsToBytes(accounts []Account) []byte {
+func accountsToAccountFilesBytes(accounts []Account) []byte {
+	var afs []string
+	for _, a := range accounts {
+		afs = append(afs, a.File)
+	}
+	b, e := json.Marshal(afs)
+	if e != nil {
+		panic(e)
+	}
+	return b
 	//js := `[`
 	//for i, a := range accounts {
 	//	js += `{"address":"`+a.Address.Hex()+`","file":"`+a.File+`"}`
@@ -655,12 +696,12 @@ func accountsToBytes(accounts []Account) []byte {
 	//js += `]`
 	//
 	//b := []byte(js)
-	b, e := json.Marshal(accounts)
-
-	if e != nil {
-		panic(e)
-	}
-	return b
+	//b, e := json.Marshal(accounts)
+	//
+	//if e != nil {
+	//	panic(e)
+	//}
+	//return b
 	//if b, e :=
 }
 func accountToBytes(account Account) []byte {
