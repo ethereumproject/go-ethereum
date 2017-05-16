@@ -55,12 +55,65 @@ type Account struct {
 }
 
 func (acc *Account) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + acc.Address.Hex() + `"`), nil
+	return json.Marshal(&struct {
+		Address string `json:"address"`
+		File string `json:"file"`
+	}{
+		Address: acc.Address.Hex(),
+		File: acc.File,
+	})
+	//return []byte(`"` + acc.Address.Hex() + `"`), nil
 }
 
 func (acc *Account) UnmarshalJSON(raw []byte) error {
-	return json.Unmarshal(raw, &acc.Address)
+	aux := &struct {
+		Address string `json:"address"`
+		File string `json:"file"`
+	}{}
+	if err := json.Unmarshal(raw, aux); err != nil {
+		return err
+	}
+	acc.Address = common.HexToAddress(aux.Address)
+	acc.File = aux.File
+	return nil
+	//return json.Unmarshal(raw, &acc.Address)
 }
+
+//type Accounts []Account
+//func (acs Accounts) MarshalJSON() ([]byte, error) {
+//	type aux struct{
+//		Address string `json:"address"`
+//		File string `json:"string"`
+//	}
+//	var auxs []*aux
+//
+//	for _, a := range acs {
+//		auxs = append(auxs, &aux{
+//			Address: a.Address.Hex(),
+//			File: a.File,
+//		})
+//	}
+//
+//	return json.Marshal(auxs)
+//}
+//
+//func (acs Accounts) UnmarshalJSON(raw []byte) error {
+//	type aux struct{
+//		Address string `json:"address"`
+//		File string `json:"file"`
+//	}
+//	var auxs []aux
+//	if err := json.Unmarshal(raw, &auxs); err != nil {
+//		return err
+//	}
+//	for _, x := range auxs {
+//		acs = append(acs, Account{
+//			Address: common.HexToAddress(x.Address),
+//			File: x.File,
+//		})
+//	}
+//	return nil
+//}
 
 // Manager manages a key storage directory on disk.
 type Manager struct {
@@ -100,6 +153,8 @@ func NewManager(keydir string, scryptN, scryptP int) (*Manager, error) {
 		unlocked: make(map[common.Address]*unlocked),
 		cache:    newAddrCache(keydir),
 	}
+
+	am.cache.watcher.start()
 
 	// TODO: In order for this finalizer to work, there must be no references
 	// to am. addrCache doesn't keep a reference but unlocked keys do,
@@ -222,7 +277,7 @@ func (am *Manager) TimedUnlock(a Account, passphrase string, timeout time.Durati
 }
 
 func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error) {
-	am.cache.maybeReload()
+	//am.cache.maybeReload()
 	am.cache.mu.Lock()
 	a, err := am.cache.find(a)
 	am.cache.mu.Unlock()

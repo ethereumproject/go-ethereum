@@ -69,9 +69,18 @@ func TestWatchNewFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := ioutil.WriteFile(a.File, data, 0666); err != nil {
+		ff, err := os.Create(a.File)
+		if err != nil {
 			t.Fatal(err)
 		}
+		_, err = ff.Write(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ff.Close()
+		//if err := ioutil.WriteFile(a.File, data, 0666); err != nil {
+		//	t.Fatal(err)
+		//}
 	}
 
 	// am should see the accounts.
@@ -126,7 +135,7 @@ func TestWatchNoDir(t *testing.T) {
 	wantAccounts := []Account{cachetestAccounts[0]}
 	wantAccounts[0].File = file
 	var seen, gotAccounts = make(map[time.Duration]bool), make(map[time.Duration][]Account)
-	for d := 200 * time.Second; d < 8*time.Second; d *= 2 {
+	for d := 200 * time.Millisecond; d < 8*time.Second; d *= 2 {
 		list = am.Accounts()
 		seen[d] = false
 		if reflect.DeepEqual(list, wantAccounts) {
@@ -145,6 +154,7 @@ func TestWatchNoDir(t *testing.T) {
 
 func TestCacheInitialReload(t *testing.T) {
 	cache := newAddrCache(cachetestDir)
+	defer os.Remove(filepath.Join(cachetestDir, "accounts.db"))
 	accounts := cache.accounts()
 	if !reflect.DeepEqual(accounts, cachetestAccounts) {
 		t.Fatalf("got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
@@ -153,6 +163,7 @@ func TestCacheInitialReload(t *testing.T) {
 
 func TestCacheAddDeleteOrder(t *testing.T) {
 	cache := newAddrCache("testdata/no-such-dir")
+	defer os.RemoveAll("testdata/no-such-dir")
 	cache.watcher.running = true // prevent unexpected reloads
 
 	accounts := []Account{

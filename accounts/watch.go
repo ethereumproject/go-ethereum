@@ -85,6 +85,7 @@ func (w *watcher) loop() {
 		debounce          = time.NewTimer(0)
 		debounceDuration  = 500 * time.Millisecond
 		inCycle, hadEvent bool
+		evsWere []notify.EventInfo
 	)
 	defer debounce.Stop()
 	for {
@@ -98,9 +99,12 @@ func (w *watcher) loop() {
 			} else {
 				hadEvent = true
 			}
+			e := <-w.ev
+			evsWere = append(evsWere, e)
 		case <-debounce.C:
 			w.ac.mu.Lock()
-			w.ac.reload()
+			//w.ac.scan()
+			evsWere = w.ac.reload(evsWere)
 			w.ac.mu.Unlock()
 			if hadEvent {
 				debounce.Reset(debounceDuration)
