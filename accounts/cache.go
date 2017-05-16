@@ -33,6 +33,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/rjeczalik/notify"
 	"sort"
+	"gopkg.in/mgo.v2/bson"
+	"bytes"
 )
 
 // Minimum amount of time between cache reloads. This limit applies if the platform does
@@ -114,7 +116,14 @@ func newAddrCache(keydir string) *addrCache {
 	if e := os.MkdirAll(keydir, os.ModePerm); e != nil {
 		panic(e)
 	}
-	bdb, e := bolt.Open(filepath.Join(keydir, "accounts.db"), 0600, nil) // TODO configure more?
+	dbexists := false
+	dbpath := filepath.Join(keydir, "accounts.db")
+	// TODO: get db fi updatedAt to inform sync2db
+	if _, e := os.Stat(dbpath); e == nil || !os.IsNotExist(e) { // ie os.ErrNotExist
+		dbexists = true
+	}
+
+	bdb, e := bolt.Open(dbpath, 0600, nil) // TODO configure more?
 	if e != nil {
 		panic(e) // FIXME
 	}
@@ -138,13 +147,24 @@ func newAddrCache(keydir string) *addrCache {
 	}
 
 	// Initializes db to match fs.
-	if errs := ac.scan(); len(errs) != 0 {
-		for _, e := range errs {
-			if e != nil {
-				glog.V(logger.Error).Infof("error: %v", e)
+	if dbexists {
+		if errs := ac.syncfs2db(); len(errs) != 0 {
+			for _, e := range errs {
+				if e != nil {
+					glog.V(logger.Error).Infof("error db sync: %v", e)
+				}
+			}
+		}
+	} else {
+		if errs := ac.scan(); len(errs) != 0 {
+			for _, e := range errs {
+				if e != nil {
+					glog.V(logger.Error).Infof("error db scan: %v", e)
+				}
 			}
 		}
 	}
+
 	ac.watcher = newWatcher(ac)
 	return ac
 }
@@ -184,9 +204,11 @@ func (ac *addrCache) accounts() []Account {
 // note, again, that this return an _slice_
 func (ac *addrCache) getCachedAccountsByAddress(addr common.Address) (accounts []Account, err error) {
 	err = ac.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(addrBucketName)
-		if v := b.Get(addr.Bytes()); v != nil {
-			accounts = bytesAccountFilesToAccounts(v)
+		c := tx.Bucket(addrBucketName).Cursor()
+
+		prefix := []byte(addr.Hex())
+		for k, _ := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = c.Next() {
+			accounts = append(accounts, Account{Address: addr, File: string(bytes.Replace(k, prefix, []byte(""), 1))})
 		}
 		return nil
 	})
@@ -240,27 +262,8 @@ func (ac *addrCache) add(newAccount Account) {
 
 	if !exists {
 		ac.db.Update(func(tx *bolt.Tx) error {
-			// like the original implementation, we're not going to check for .File == "" or common.Address{
-
-			// since it doesn't exist yet, we know that we don't have to do any fancy appending for addr cache
 			b := tx.Bucket(addrBucketName)
-			efs := b.Get(newAccount.Address.Bytes())
-			if efs == nil {
-				b.Put(newAccount.Address.Bytes(), accountsToAccountFilesBytes([]Account{newAccount}))
-			}
-			efsas := bytesAccountFilesToAccounts(efs)
-			hasEvilTwin := false
-			for _, a := range efsas {
-				if a.File == newAccount.File {
-					hasEvilTwin = true
-				}
-			}
-			if !hasEvilTwin {
-				efsas = append(efsas, newAccount)
-				efsasb := accountsToAccountFilesBytes(efsas)
-				b.Put(newAccount.Address.Bytes(), efsasb)
-			}
-			// hasEvilTwin means file already is accounted for... get it?
+			b.Put([]byte(newAccount.Address.Hex() + newAccount.File), []byte(time.Now().String()))
 
 			b = tx.Bucket(fileBucketName)
 			b.Put([]byte(newAccount.File), accountToBytes(newAccount))
@@ -286,24 +289,20 @@ func (ac *addrCache) add(newAccount Account) {
 // note: removed needs to be unique here (i.e. both File and Address must be set).
 func (ac *addrCache) delete(removed Account) {
 
-	if as, e := ac.getCachedAccountsByAddress(removed.Address); e == nil {
-		if ass := removeAccount(as, removed); len(ass) > 0 {
-			ac.db.Update(func(tx *bolt.Tx) error {
-				b := tx.Bucket(addrBucketName)
-				return b.Put(removed.Address.Bytes(), accountsToAccountFilesBytes(ass))
-			})
-		} else {
-			ac.db.Update(func(tx *bolt.Tx) error {
-				b := tx.Bucket(addrBucketName)
-				return b.Delete(removed.Address.Bytes())
-			})
-		}
-	}
-
-	ac.db.Update(func(tx *bolt.Tx) error {
+	if e := ac.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(fileBucketName)
-		return b.Delete([]byte(removed.File))
-	})
+		if e := b.Delete([]byte(removed.File)); e != nil {
+			return e
+		}
+
+		ba := tx.Bucket(addrBucketName)
+		if e := ba.Delete([]byte(removed.Address.Hex() + removed.File)); e != nil {
+			return e
+		}
+		return nil
+	}); e != nil {
+		glog.V(logger.Error).Infof("failed to delete from cache: %v \n%v", e, removed.File)
+	}
 
 	//ac.mu.Lock()
 	//defer ac.mu.Unlock()
@@ -443,7 +442,6 @@ func (ac *addrCache) setViaFile(path string) error {
 	var (
 		buf     = new(bufio.Reader)
 		acc     Account
-		accs    []Account
 		keyJSON struct {
 			Address common.Address `json:"address"`
 		}
@@ -473,25 +471,13 @@ func (ac *addrCache) setViaFile(path string) error {
 	}
 
 	ab := accountToBytes(acc)
-
 	return ac.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(fileBucketName)
 		if e := b.Put([]byte(path), ab); e != nil {
 			return e
 		}
 		b = tx.Bucket(addrBucketName)
-
-		// get existing accounts by address, if any
-		xasb := b.Get(keyJSON.Address.Bytes())
-		if xasb != nil {
-			xaccs := bytesAccountFilesToAccounts(xasb)
-			accs = append(xaccs, acc)
-		} else {
-			accs = append(accs, acc)
-		}
-		asb := accountsToAccountFilesBytes(accs)
-
-		return b.Put(keyJSON.Address.Bytes(), asb)
+		return b.Put([]byte(keyJSON.Address.Hex()+path), []byte(time.Now().String()))
 	})
 }
 
@@ -500,7 +486,7 @@ func (ac *addrCache) removeViaFile(path string) error {
 
 	var acc Account
 
-	if e := ac.db.View(func(tx *bolt.Tx) error {
+	if e := ac.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(fileBucketName)
 		ab := b.Get([]byte(path))
 		if ab == nil {
@@ -511,19 +497,8 @@ func (ac *addrCache) removeViaFile(path string) error {
 			return e
 		}
 
-		b = tx.Bucket(addrBucketName)
-		asb := b.Get(acc.Address.Bytes())
-		if asb == nil {
-			return nil
-		}
-		xacs := bytesAccountFilesToAccounts(asb)
-		accs := removeAccount(xacs, acc)
-		if len(accs) > 0 {
-			accsb := accountsToAccountFilesBytes(accs)
-			return b.Put([]byte(acc.Address.Bytes()), accsb)
-		} else {
-			return b.Delete(acc.Address.Bytes())
-		}
+		return tx.Bucket(addrBucketName).Delete([]byte(acc.Address.Hex() + acc.File))
+
 	}); e != nil {
 		return e
 	}
@@ -613,51 +588,83 @@ func (ac *addrCache) reload(events []notify.EventInfo) []notify.EventInfo {
 	return []notify.EventInfo{}
 }
 
-// scan is designed to *initialize* the cachedb, reading all files in keydir/* and adding them to the respective
-// buckets
-//func (ac *addrCache) scan() ([]Account, error) {
-func (ac *addrCache) scan() (errs []error) {
+func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
+	tx, err := ac.db.Begin(true)
+	if err != nil {
+		return append(errs, err)
+	}
+
+	ba := tx.Bucket(addrBucketName)
+	bf := tx.Bucket(fileBucketName)
+	for _, a := range accs {
+		// Put in byAddr bucket.
+		if e := ba.Put([]byte(a.Address.Hex() + a.File), []byte(time.Now().String())); e != nil {
+			errs = append(errs, e)
+		}
+		// Put in byFile bucket.
+		if e := bf.Put([]byte(a.File), accountToBytes(a)); e != nil {
+			errs = append(errs, e)
+		}
+	}
+	if len(errs) == 0 {
+		// Close tx.
+		if err := tx.Commit(); err != nil {
+			return append(errs, err)
+		}
+	} else {
+		tx.Rollback()
+	}
+	return errs
+}
+
+// TODO: add time-since-update logic to fs/db
+// syncfs2db is designed to syncronise an existing cachedb with a corresponding fs.
+// it is relatively slow.
+func (ac *addrCache) syncfs2db() (errs []error) {
 	files, err := ioutil.ReadDir(ac.keydir)
 	if err != nil {
 		return append(errs, err)
 	}
 
 	// first sync fs -> cachedb, update all accounts in cache from fs
-	//var (
-	//	buf     = new(bufio.Reader)
-	//	addrs []Account
-	//	keyJSON struct {
-	//		Address common.Address `json:"address"`
-	//	}
-	//)
+	var (
+		buf     = new(bufio.Reader)
+		addrs []Account
+		keyJSON struct {
+			Address common.Address `json:"address"`
+		}
+	)
+
 	for _, fi := range files {
 
 		path := filepath.Join(ac.keydir, fi.Name())
+		// This is rather slow because bolt waits for the disk to commit for every tx.
 		if e := ac.setViaFile(path); e != nil {
 			errs = append(errs, e)
-		} // TODO: use bolt Batches
-		//if skipKeyFile(fi) {
-		//	glog.V(logger.Detail).Infof("ignoring file %s", path)
-		//	continue
-		//}
-		//fd, err := os.Open(path)
-		//if err != nil {
-		//	glog.V(logger.Detail).Infoln(err)
-		//	continue
-		//}
-		//buf.Reset(fd)
-		//// Parse the address.
-		//keyJSON.Address = common.Address{}
-		//err = json.NewDecoder(buf).Decode(&keyJSON)
-		//switch {
-		//case err != nil:
-		//	glog.V(logger.Debug).Infof("can't decode key %s: %v", path, err)
-		//case (keyJSON.Address == common.Address{}):
-		//	glog.V(logger.Debug).Infof("can't decode key %s: missing or zero address", path)
-		//default:
-		//	addrs = append(addrs, Account{Address: keyJSON.Address, File: path})
-		//}
-		//fd.Close()
+		}
+
+		if skipKeyFile(fi) {
+			glog.V(logger.Detail).Infof("ignoring file %s", path)
+			continue
+		}
+		fd, err := os.Open(path)
+		if err != nil {
+			glog.V(logger.Detail).Infoln(err)
+			continue
+		}
+		buf.Reset(fd)
+		// Parse the address.
+		keyJSON.Address = common.Address{}
+		err = json.NewDecoder(buf).Decode(&keyJSON)
+		switch {
+		case err != nil:
+			glog.V(logger.Debug).Infof("can't decode key %s: %v", path, err)
+		case (keyJSON.Address == common.Address{}):
+			glog.V(logger.Debug).Infof("can't decode key %s: missing or zero address", path)
+		default:
+			addrs = append(addrs, Account{Address: keyJSON.Address, File: path})
+		}
+		fd.Close()
 	}
 
 	// first sync cachedb -> fs, are there any cached accounts that don't exist in the fs anymore?
@@ -666,23 +673,12 @@ func (ac *addrCache) scan() (errs []error) {
 		ab := tx.Bucket(addrBucketName)
 		c := fb.Cursor()
 
-		var removedFilesB [][]byte
-		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+		var removedAccounts []Account
+		for k, v := c.First(); k != nil; k, v = c.Next() {
 			_, e := os.Stat(string(k))
 			if e != nil && e == os.ErrNotExist {
-
-				removedFilesB = append(removedFilesB, k)
-
-				a := bytesToAccount(k)
-				if acsb := ab.Get(a.Address.Bytes()); acsb != nil {
-					accs := bytesAccountFilesToAccounts(acsb)
-					xacs := removeAccount(accs, a)
-					if len(xacs) == 0 {
-						ab.Delete(a.Address.Bytes())
-					} else {
-						ab.Put(a.Address.Bytes(), accountsToAccountFilesBytes(xacs))
-					}
-				}
+				// This account file has been removed.
+				removedAccounts = append(removedAccounts, bytesToAccount(v))
 			}
 			if e != nil {
 				errs = append(errs, err)
@@ -690,8 +686,12 @@ func (ac *addrCache) scan() (errs []error) {
 			}
 		}
 
-		for _, rb := range removedFilesB {
-			if e := fb.Delete(rb); e != nil {
+		// Remove from both caches.
+		for _, ra := range removedAccounts {
+			if e := fb.Delete([]byte(ra.File)); e != nil {
+				errs = append(errs, e)
+			}
+			if e := ab.Delete([]byte(ra.Address.Hex() + ra.File)); e != nil {
 				errs = append(errs, e)
 			}
 		}
@@ -699,7 +699,64 @@ func (ac *addrCache) scan() (errs []error) {
 	})
 	errs = append(errs, e)
 	return errs
-	//return addrs, err
+}
+
+// scan is designed to *initialize* the cachedb, reading all files in keydir/* and adding them to the respective
+// buckets. it is fast and dumb.
+func (ac *addrCache) scan() (errs []error) {
+	files, err := ioutil.ReadDir(ac.keydir)
+	if err != nil {
+		return append(errs, err)
+	}
+
+	// first sync fs -> cachedb, update all accounts in cache from fs
+	var (
+		buf     = new(bufio.Reader)
+		addrs []Account
+		keyJSON struct {
+			Address common.Address `json:"address"`
+		}
+	)
+	for i, fi := range files {
+		path := filepath.Join(ac.keydir, fi.Name())
+
+		if skipKeyFile(fi) {
+			glog.V(logger.Detail).Infof("ignoring file %s", path)
+			continue
+		}
+
+		fd, err := os.Open(path)
+		if err != nil {
+			glog.V(logger.Detail).Infoln(err)
+			continue
+		}
+		buf.Reset(fd)
+
+		// Parse the address.
+		keyJSON.Address = common.Address{}
+		err = json.NewDecoder(buf).Decode(&keyJSON)
+		switch {
+		case err != nil:
+			glog.V(logger.Debug).Infof("can't decode key %s: %v", path, err)
+		case (keyJSON.Address == common.Address{}):
+			glog.V(logger.Debug).Infof("can't decode key %s: missing or zero address", path)
+		default:
+			addrs = append(addrs, Account{Address: keyJSON.Address, File: path})
+		}
+		fd.Close()
+
+		// Every thousand for large numbers of files, or at the last file,
+		// send a batch set to the db.
+		isLastFile := i == len(files) - 1
+		at1000th := i != 0 && (1000-1 % i == 0)
+		if at1000th || isLastFile {
+			go func(es []error) {
+				e := ac.setBatchAccounts(addrs)
+				es = append(es, e...)
+			}(errs)
+		}
+	}
+	return errs
 }
 
 func skipKeyFile(fi os.FileInfo) bool {
@@ -716,68 +773,72 @@ func skipKeyFile(fi os.FileInfo) bool {
 	}
 	return false
 }
-
-func bytesAccountFilesToAccounts(bs []byte) []Account {
-	if bs == nil {
-		return []Account{}
-	}
-	as, e := UnmarshalJSONBytesToAccounts(bs)
-	if e != nil {
-		panic(e)
-	}
-	return as
-
-}
+//func bytesAccountFilesToAccounts(bs []byte) []Account {
+//	as := accountsByFile{}
+//	ass := []Account{}
+//	if bs == nil {
+//		return as
+//	}
+//	e := bson.Unmarshal(bs, &as)
+//	if e != nil {
+//		panic(e)
+//	}
+//	for _, a := range as {
+//		ass = append(ass, Account{a.Address, a.File})
+//	}
+//	return ass
+//}
+//func accountsToAccountFilesBytes(accounts []Account) []byte {
+//	b, e := bson.Marshal(accounts)
+//	if e != nil {
+//		panic(e)
+//	}
+//	return b
+//}
 func bytesToAccount(bs []byte) Account {
 	var a Account
-	if e := a.UnmarshalJSON(bs); e != nil {
+	if e := bson.Unmarshal(bs, &a); e != nil {
 		panic(e)
 	}
-	//if e := json.Unmarshal(bs, &a); e != nil {
-	//	panic(e)
-	//}
 	return a
 }
-func accountsToAccountFilesBytes(accounts []Account) []byte {
-	as := accountsByFile(accounts)
-	b, e := as.MarshalJSON()
-	if e != nil {
-		panic(e)
-	}
-	return b
-	//var afs []string
-	//for _, a := range accounts {
-	//	afs = append(afs, a.File)
-	//}
-	//b, e := json.Marshal(afs)
-	//if e != nil {
-	//	panic(e)
-	//}
-	//return b
-	//js := `[`
-	//for i, a := range accounts {
-	//	js += `{"address":"`+a.Address.Hex()+`","file":"`+a.File+`"}`
-	//	if i != (len(accounts) - 1) {
-	//		js += `,`
-	//	}
-	//}
-	//js += `]`
-	//
-	//b := []byte(js)
-	//b, e := json.Marshal(accounts)
-	//
-	//if e != nil {
-	//	panic(e)
-	//}
-	//return b
-	//if b, e :=
-}
 func accountToBytes(account Account) []byte {
-	//js := `{"address": "` + account.Address.Hex() + `", "file": " ` + account.File + `"}`
-	b, e := account.MarshalJSON()
+	b, e := bson.Marshal(account)
 	if e != nil {
 		panic(e)
 	}
-	//b := []byte(js)
 	return b
 }
+//func bytesAccountFilesToAccounts(bs []byte) []Account {
+//	if bs == nil {
+//		return []Account{}
+//	}
+//	as, e := UnmarshalJSONBytesToAccounts(bs)
+//	if e != nil {
+//		panic(e)
+//	}
+//	return as
+//
+//}
+//func bytesToAccount(bs []byte) Account {
+//	var a Account
+//	if e := a.UnmarshalJSON(bs); e != nil {
+//		panic(e)
+//	}
+//	return a
+//}
+//func accountsToAccountFilesBytes(accounts []Account) []byte {
+//	as := accountsByFile(accounts)
+//	b, e := as.MarshalJSON()
+//	if e != nil {
+//		panic(e)
+//	}
+//	return b
+//}
+//func accountToBytes(account Account) []byte {
+//	b, e := account.MarshalJSON()
+//	if e != nil {
+//		panic(e)
+//	}
+//	return b
+//}
