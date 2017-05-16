@@ -23,6 +23,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"path/filepath"
+	"reflect"
+	"github.com/davecgh/go-spew/spew"
 )
 
 var testSigData = make([]byte, 32)
@@ -74,6 +77,19 @@ func TestManager(t *testing.T) {
 	if am.HasAddress(a.Address) {
 		t.Errorf("HasAddress(%x) should've returned true after DeleteAccount", a.Address)
 	}
+}
+
+func TestManager_Accounts(t *testing.T) {
+	defer os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounts := am.Accounts()
+	if !reflect.DeepEqual(accounts, cachetestAccounts) {
+		t.Fatalf("got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
+	}
+
 }
 
 func TestSignWithPassphrase(t *testing.T) {

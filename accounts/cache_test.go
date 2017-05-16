@@ -57,7 +57,10 @@ func TestWatchNewFile(t *testing.T) {
 
 	// Ensure the watcher is started before adding any files.
 	am.Accounts()
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(5 * time.Second)
+	if !am.cache.watcher.running {
+		t.Fatalf("watcher not running after %v: %v", 5 * time.Second, spew.Sdump(am.cache.watcher))
+	}
 
 	// Move in the files.
 	wantAccounts := make([]Account, len(cachetestAccounts))
@@ -69,19 +72,11 @@ func TestWatchNewFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ff, err := os.Create(a.File)
-		if err != nil {
+		if err := ioutil.WriteFile(a.File, data, 0666); err != nil {
 			t.Fatal(err)
 		}
-		_, err = ff.Write(data)
-		if err != nil {
-			t.Fatal(err)
-		}
-		ff.Close()
-		//if err := ioutil.WriteFile(a.File, data, 0666); err != nil {
-		//	t.Fatal(err)
-		//}
 	}
+	sort.Sort(accountsByFile(wantAccounts))
 
 	// am should see the accounts.
 	var list []Account
@@ -110,7 +105,10 @@ func TestWatchNoDir(t *testing.T) {
 	if len(list) > 0 {
 		t.Error("initial account list not empty:", list)
 	}
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(5 * time.Second)
+	if !am.cache.watcher.running {
+		t.Fatalf("watcher not running after %v: %v", 5 * time.Second, spew.Sdump(am.cache.watcher))
+	}
 
 	// Create the directory and copy a key file into it.
 	os.MkdirAll(dir, 0700)
@@ -135,7 +133,7 @@ func TestWatchNoDir(t *testing.T) {
 	wantAccounts := []Account{cachetestAccounts[0]}
 	wantAccounts[0].File = file
 	var seen, gotAccounts = make(map[time.Duration]bool), make(map[time.Duration][]Account)
-	for d := 200 * time.Millisecond; d < 8*time.Second; d *= 2 {
+	for d := 500 * time.Millisecond; d < 5*time.Second; d *= 2 {
 		list = am.Accounts()
 		seen[d] = false
 		if reflect.DeepEqual(list, wantAccounts) {
@@ -145,19 +143,35 @@ func TestWatchNoDir(t *testing.T) {
 		gotAccounts[d] = list
 		time.Sleep(d)
 	}
+	numSaw := 0
 	for i, saw := range seen {
 		if !saw {
-			t.Errorf("\nat %v got  %v\nwant %v", i, gotAccounts[i], wantAccounts)
+			t.Logf("account watcher DID NOT see changes at %v/%v...", i, 5*time.Second)
+		} else {
+			t.Logf("account watcher DID see changes at %v/%v...", i, 5*time.Second)
+			numSaw++
 		}
+	}
+	if numSaw == 0 {
+		t.Errorf("account watcher never saw changes: want: %v, got %v", spew.Sdump(wantAccounts), spew.Sdump(gotAccounts))
 	}
 }
 
 func TestCacheInitialReload(t *testing.T) {
 	cache := newAddrCache(cachetestDir)
-	defer os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+	cachedbpath := filepath.Join(cachetestDir, "accounts.db")
+	defer os.Remove(cachedbpath)
 	accounts := cache.accounts()
 	if !reflect.DeepEqual(accounts, cachetestAccounts) {
-		t.Fatalf("got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
+		t.Errorf("got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
+	}
+	// check cachedb file exists properly
+	fi, e := os.Stat(cachedbpath)
+	if e != nil {
+		t.Errorf("missing cache db: %v", e)
+	}
+	if fi.Name() != "accounts.db" {
+		t.Errorf("wrong db name: want: %v, got %v", "accounts.db", fi.Name())
 	}
 }
 

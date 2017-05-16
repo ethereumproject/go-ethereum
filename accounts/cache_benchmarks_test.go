@@ -32,8 +32,7 @@ func benchmarkCacheAccounts(n int, b *testing.B) {
 	b.ResetTimer() // _benchmark_ timer, not setup timer.
 
 	for i := 0; i < b.N; i++ {
-		cache := newAddrCache(dir)
-		as := cache.accounts()
+		as := am.Accounts()
 		if len(as) != n {
 			b.Errorf("missing or extra accounts in cache: got: %v, want: %v", len(as), n)
 		}

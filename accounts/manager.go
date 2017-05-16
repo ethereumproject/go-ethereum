@@ -154,8 +154,6 @@ func NewManager(keydir string, scryptN, scryptP int) (*Manager, error) {
 		cache:    newAddrCache(keydir),
 	}
 
-	am.cache.watcher.start()
-
 	// TODO: In order for this finalizer to work, there must be no references
 	// to am. addrCache doesn't keep a reference but unlocked keys do,
 	// so the finalizer will not trigger until all timed unlocks have expired.
