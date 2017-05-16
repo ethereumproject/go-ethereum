@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 	"runtime"
-	"io/ioutil"
 	"path/filepath"
 	"fmt"
 	"time"
@@ -89,24 +88,34 @@ func createTestAccount(am *Manager, dir string) error {
 // Runs against setting of 10, 100, 1000, 10k, (100k, 1m) _existing_ accounts.
 func benchmarkAccountFlow(n int, b *testing.B) {
 	start := time.Now()
-	dir, err := ioutil.TempDir("", "eth-acctmanager-test")
-	if err != nil {
-		b.Fatal(err)
+	//dir, err := ioutil.TempDir("", "eth-acctmanager-test")
+	//if err != nil {
+	//	b.Fatal(err)
+	//}
+
+	dir := filepath.Join("testdata", "benchmark_keystore")
+	if e := os.MkdirAll(dir, os.ModePerm); e != nil {
+		b.Fatalf("could not create dir: %v", e)
 	}
-	defer os.RemoveAll(dir)
+
+	// Optionally: don't remove so we can compound accounts more quickly.
+	//defer os.RemoveAll(dir)
 
 	am, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	for len(am.Accounts()) < n {
+	initAccountsN := len(am.Accounts())
+
+	for len(am.Accounts()) < n + initAccountsN {
 		if e := createTestAccount(am, dir); e != nil {
 			b.Fatalf("error setting up acount: %v", e)
 		}
 	}
 	elapsed := time.Since(start)
-	b.Logf("setting up %v accounts took %v", n, elapsed)
+
+	b.Logf("setting up %v+%v new accounts took %v", n, initAccountsN, elapsed)
 
 	b.ResetTimer() // _benchmark_ timer, not setup timer.
 
@@ -117,10 +126,11 @@ func benchmarkAccountFlow(n int, b *testing.B) {
 	}
 }
 
+// These compound now...
 func BenchmarkAccountFlow100(b *testing.B) { benchmarkAccountFlow(100, b)}
-func BenchmarkAccountFlow500(b *testing.B) { benchmarkAccountFlow(500, b)}
-func BenchmarkAccountFlow1000(b *testing.B) { benchmarkAccountFlow(1000, b)}
-func BenchmarkAccountFlow5000(b *testing.B) { benchmarkAccountFlow(5000, b)}
-func BenchmarkAccountFlow10000(b *testing.B) { benchmarkAccountFlow(10000, b)}
-func BenchmarkAccountFlow20000(b *testing.B) { benchmarkAccountFlow(20000, b)}
+func BenchmarkAccountFlow500(b *testing.B) { benchmarkAccountFlow(500, b)} // ie 600
+func BenchmarkAccountFlow1000(b *testing.B) { benchmarkAccountFlow(1000, b)} // ie >=1600
+func BenchmarkAccountFlow5000(b *testing.B) { benchmarkAccountFlow(5000, b)} // ie >=6600
+func BenchmarkAccountFlow10000(b *testing.B) { benchmarkAccountFlow(10000, b)} // >=16600
+func BenchmarkAccountFlow20000(b *testing.B) { benchmarkAccountFlow(20000, b)} // >=36600
 
