@@ -44,6 +44,7 @@ const minReloadInterval = 2 * time.Second
 
 var addrBucketName = []byte("byAddr")
 var fileBucketName = []byte("byFile")
+var statsBucketName = []byte("stats")
 
 type accountsByFile []Account
 
@@ -141,6 +142,9 @@ func newAddrCache(keydir string) *addrCache {
 		if _, e := tx.CreateBucketIfNotExists(fileBucketName); e != nil {
 			return e
 		}
+		if _, e := tx.CreateBucketIfNotExists(statsBucketName); e != nil {
+			return e
+		}
 		return nil
 	}); e != nil {
 		panic(e)
@@ -148,7 +152,11 @@ func newAddrCache(keydir string) *addrCache {
 
 	// Initializes db to match fs.
 	if dbexists {
-		if errs := ac.syncfs2db(); len(errs) != 0 {
+		t, e := ac.getLastUpdated()
+		if e != nil {
+			glog.V(logger.Error).Infof("error getting db lastUpdated: %v", e)
+		}
+		if errs := ac.syncfs2db(t); len(errs) != 0 {
 			for _, e := range errs {
 				if e != nil {
 					glog.V(logger.Error).Infof("error db sync: %v", e)
@@ -252,7 +260,7 @@ func (ac *addrCache) hasAddress(addr common.Address) bool {
 // it makes the assumption that if the account is not cached by file, it won't be listed
 // by address either. thusly, when and iff it adds an account to the cache(s), it adds bothly.
 func (ac *addrCache) add(newAccount Account) {
-
+	defer ac.setLastUpdated()
 	// check cached accounts by file
 	exists := false
 	if newAccount.File != "" {
@@ -288,7 +296,7 @@ func (ac *addrCache) add(newAccount Account) {
 
 // note: removed needs to be unique here (i.e. both File and Address must be set).
 func (ac *addrCache) delete(removed Account) {
-
+	defer ac.setLastUpdated()
 	if e := ac.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(fileBucketName)
 		if e := b.Delete([]byte(removed.File)); e != nil {
@@ -528,6 +536,7 @@ func (ac *addrCache) maybeReload() {
 // reload caches addresses of existing accounts.
 // Callers must hold ac.mu.
 func (ac *addrCache) reload(events []notify.EventInfo) []notify.EventInfo {
+	defer ac.setLastUpdated()
 
 	// Decide kind of event.
 	for _, ev := range events {
@@ -588,7 +597,29 @@ func (ac *addrCache) reload(events []notify.EventInfo) []notify.EventInfo {
 	return []notify.EventInfo{}
 }
 
+func (ac *addrCache) setLastUpdated() error {
+	return ac.db.Update(func (tx *bolt.Tx) error {
+		b := tx.Bucket(statsBucketName)
+		return b.Put([]byte("lastUpdated"), []byte(time.Now().String()))
+	})
+}
+
+func (ac *addrCache) getLastUpdated() (t time.Time, err error) {
+	e := ac.db.View(func (tx *bolt.Tx) error {
+		b := tx.Bucket(statsBucketName)
+		v := b.Get([]byte("lastUpdated"))
+		pt, e := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", string(v))
+		if e != nil {
+			return e
+		}
+		t = pt
+		return nil
+	})
+	return t, e
+}
+
 func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
+	defer ac.setLastUpdated()
 	tx, err := ac.db.Begin(true)
 	if err != nil {
 		return append(errs, err)
@@ -606,6 +637,8 @@ func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
 			errs = append(errs, e)
 		}
 	}
+
+
 	if len(errs) == 0 {
 		// Close tx.
 		if err := tx.Commit(); err != nil {
@@ -620,7 +653,7 @@ func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
 // TODO: add time-since-update logic to fs/db
 // syncfs2db is designed to syncronise an existing cachedb with a corresponding fs.
 // it is relatively slow.
-func (ac *addrCache) syncfs2db() (errs []error) {
+func (ac *addrCache) syncfs2db(t time.Time) (errs []error) {
 	files, err := ioutil.ReadDir(ac.keydir)
 	if err != nil {
 		return append(errs, err)
@@ -638,6 +671,14 @@ func (ac *addrCache) syncfs2db() (errs []error) {
 	for _, fi := range files {
 
 		path := filepath.Join(ac.keydir, fi.Name())
+		// Don't fs -> db if db has been more recently modified than file.
+		// This assumes that ac.scan() has been run.
+		if fi, fe := os.Stat(path); fe == nil {
+			if t.After(fi.ModTime()) {
+				continue
+			}
+		}
+
 		// This is rather slow because bolt waits for the disk to commit for every tx.
 		if e := ac.setViaFile(path); e != nil {
 			errs = append(errs, e)
@@ -704,6 +745,7 @@ func (ac *addrCache) syncfs2db() (errs []error) {
 // scan is designed to *initialize* the cachedb, reading all files in keydir/* and adding them to the respective
 // buckets. it is fast and dumb.
 func (ac *addrCache) scan() (errs []error) {
+	defer ac.setLastUpdated()
 	files, err := ioutil.ReadDir(ac.keydir)
 	if err != nil {
 		return append(errs, err)

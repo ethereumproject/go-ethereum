@@ -93,7 +93,7 @@ func benchmarkAccountFlow(n int, b *testing.B) {
 	//	b.Fatal(err)
 	//}
 
-	dir := filepath.Join("testdata", "benchmark_keystore")
+	dir := filepath.Join("testdata", "benchmark_keystore100")
 	if e := os.MkdirAll(dir, os.ModePerm); e != nil {
 		b.Fatalf("could not create dir: %v", e)
 	}
@@ -108,7 +108,7 @@ func benchmarkAccountFlow(n int, b *testing.B) {
 
 	initAccountsN := len(am.Accounts())
 
-	for len(am.Accounts()) < n + initAccountsN {
+	for len(am.Accounts()) < n { //  + initAccountsN
 		if e := createTestAccount(am, dir); e != nil {
 			b.Fatalf("error setting up acount: %v", e)
 		}
