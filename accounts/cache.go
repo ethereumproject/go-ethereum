@@ -119,8 +119,7 @@ func newAddrCache(keydir string) *addrCache {
 	}
 	dbexists := false
 	dbpath := filepath.Join(keydir, "accounts.db")
-	// TODO: get db fi updatedAt to inform sync2db
-	if _, e := os.Stat(dbpath); e == nil || !os.IsNotExist(e) { // ie os.ErrNotExist
+	if _, e := os.Stat(dbpath); e == nil { // ie os.ErrNotExist
 		dbexists = true
 	}
 
@@ -255,9 +254,7 @@ func (ac *addrCache) hasAddress(addr common.Address) bool {
 	//return len(ac.byAddr[addr]) > 0
 }
 
-// add is smart (kind of); it is where adding logic is. it could be other places, but it is here.
-// add checks if it _should_ add, and if it should, it does. otherwise it doesn't.
-// it makes the assumption that if the account is not cached by file, it won't be listed
+// add makes the assumption that if the account is not cached by file, it won't be listed
 // by address either. thusly, when and iff it adds an account to the cache(s), it adds bothly.
 func (ac *addrCache) add(newAccount Account) {
 	defer ac.setLastUpdated()
@@ -447,20 +444,15 @@ func (ac *addrCache) close() {
 // it has some logic;
 // -- it will _overwrite_ any existing cache entry by file and addr, making it useful for CREATE and UPDATE
 func (ac *addrCache) setViaFile(path string) error {
+	// first sync fs -> cachedb, update all accounts in cache from fs
 	var (
 		buf     = new(bufio.Reader)
-		acc     Account
+		acc Account
 		keyJSON struct {
-			Address common.Address `json:"address"`
-		}
+			   Address common.Address `json:"address"`
+		   }
 	)
-	fi, e := os.Stat(path)
-	if e != nil {
-		return e
-	}
-	if skipKeyFile(fi) {
-		return nil
-	}
+
 	fd, err := os.Open(path)
 	if err != nil {
 		return err
@@ -477,6 +469,7 @@ func (ac *addrCache) setViaFile(path string) error {
 	default:
 		acc = Account{Address: keyJSON.Address, File: path}
 	}
+
 
 	ab := accountToBytes(acc)
 	return ac.db.Update(func(tx *bolt.Tx) error {
@@ -619,7 +612,11 @@ func (ac *addrCache) getLastUpdated() (t time.Time, err error) {
 }
 
 func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
+	if len(accs) == 0 {
+		return nil
+	}
 	defer ac.setLastUpdated()
+
 	tx, err := ac.db.Begin(true)
 	if err != nil {
 		return append(errs, err)
@@ -627,6 +624,7 @@ func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
 
 	ba := tx.Bucket(addrBucketName)
 	bf := tx.Bucket(fileBucketName)
+
 	for _, a := range accs {
 		// Put in byAddr bucket.
 		if e := ba.Put([]byte(a.Address.Hex() + a.File), []byte(time.Now().String())); e != nil {
@@ -637,7 +635,6 @@ func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
 			errs = append(errs, e)
 		}
 	}
-
 
 	if len(errs) == 0 {
 		// Close tx.
@@ -650,10 +647,10 @@ func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
 	return errs
 }
 
-// TODO: add time-since-update logic to fs/db
 // syncfs2db is designed to syncronise an existing cachedb with a corresponding fs.
 // it is relatively slow.
-func (ac *addrCache) syncfs2db(t time.Time) (errs []error) {
+func (ac *addrCache) syncfs2db(lastUpdated time.Time) (errs []error) {
+	defer ac.setLastUpdated()
 	files, err := ioutil.ReadDir(ac.keydir)
 	if err != nil {
 		return append(errs, err)
@@ -668,30 +665,34 @@ func (ac *addrCache) syncfs2db(t time.Time) (errs []error) {
 		}
 	)
 
+	// TODO: iterate addrFiles and touch all, so ensure have "updated" all files present in db, and
+	// that any _new_ files will not have been touched.
+	// or... use git to provide working tree diffs?
+	// or some other better way?
 	for _, fi := range files {
 
 		path := filepath.Join(ac.keydir, fi.Name())
 		// Don't fs -> db if db has been more recently modified than file.
-		// This assumes that ac.scan() has been run.
+		// This assumes that ac.scan() has been run, and that any files having entered the directory in the meantime
+		// have been *updated* after entrance.
+		/// It is ugly and not to be trusted. FIXME.
 		if fi, fe := os.Stat(path); fe == nil {
-			if t.After(fi.ModTime()) {
+			if lastUpdated.UTC().After(fi.ModTime().UTC()) {
 				continue
 			}
-		}
-
-		// This is rather slow because bolt waits for the disk to commit for every tx.
-		if e := ac.setViaFile(path); e != nil {
-			errs = append(errs, e)
+		} else if fe != nil {
+			errs = append(errs, fe)
+			continue
 		}
 
 		if skipKeyFile(fi) {
 			glog.V(logger.Detail).Infof("ignoring file %s", path)
 			continue
 		}
+
 		fd, err := os.Open(path)
 		if err != nil {
-			glog.V(logger.Detail).Infoln(err)
-			continue
+			return append(errs, err)
 		}
 		buf.Reset(fd)
 		// Parse the address.
@@ -699,16 +700,20 @@ func (ac *addrCache) syncfs2db(t time.Time) (errs []error) {
 		err = json.NewDecoder(buf).Decode(&keyJSON)
 		switch {
 		case err != nil:
-			glog.V(logger.Debug).Infof("can't decode key %s: %v", path, err)
+			errs = append(errs, fmt.Errorf("can't decode key %s: %v", path, err))
 		case (keyJSON.Address == common.Address{}):
-			glog.V(logger.Debug).Infof("can't decode key %s: missing or zero address", path)
+			errs = append(errs, fmt.Errorf("can't decode key %s: missing or zero address", path))
 		default:
 			addrs = append(addrs, Account{Address: keyJSON.Address, File: path})
 		}
 		fd.Close()
 	}
 
-	// first sync cachedb -> fs, are there any cached accounts that don't exist in the fs anymore?
+	if e := ac.setBatchAccounts(addrs); len(e) != 0 {
+		errs = append(errs, e...)
+	}
+
+	// are there any cached accounts that don't exist in the fs anymore?
 	e := ac.db.Update(func(tx *bolt.Tx) error {
 		fb := tx.Bucket(fileBucketName)
 		ab := tx.Bucket(addrBucketName)
@@ -717,11 +722,11 @@ func (ac *addrCache) syncfs2db(t time.Time) (errs []error) {
 		var removedAccounts []Account
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			_, e := os.Stat(string(k))
-			if e != nil && e == os.ErrNotExist {
-				// This account file has been removed.
+
+			// This account file has been removed.
+			if e != nil && os.IsNotExist(e) {
 				removedAccounts = append(removedAccounts, bytesToAccount(v))
-			}
-			if e != nil {
+			} else {
 				errs = append(errs, err)
 				continue
 			}
@@ -759,7 +764,7 @@ func (ac *addrCache) scan() (errs []error) {
 			Address common.Address `json:"address"`
 		}
 	)
-	for i, fi := range files {
+	for _, fi := range files {
 		path := filepath.Join(ac.keydir, fi.Name())
 
 		if skipKeyFile(fi) {
@@ -786,17 +791,10 @@ func (ac *addrCache) scan() (errs []error) {
 			addrs = append(addrs, Account{Address: keyJSON.Address, File: path})
 		}
 		fd.Close()
+	}
 
-		// Every thousand for large numbers of files, or at the last file,
-		// send a batch set to the db.
-		isLastFile := i == len(files) - 1
-		at1000th := i != 0 && (1000-1 % i == 0)
-		if at1000th || isLastFile {
-			go func(es []error) {
-				e := ac.setBatchAccounts(addrs)
-				es = append(es, e...)
-			}(errs)
-		}
+	if es := ac.setBatchAccounts(addrs); len(es) > 0 {
+		errs = append(errs, es...)
 	}
 	return errs
 }
