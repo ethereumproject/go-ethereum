@@ -56,21 +56,21 @@ This repository includes several wrappers/executables found in the `cmd` directo
 
 ## :green_book: Geth: the basics
 
-### Where does the data live?
-By default, geth will store relevant node and blockchain data in a __parent directory__ depending on your OS: 
+### Data directory
+By default, geth will store all node and blockchain data in a __parent directory__ depending on your OS: 
 - Linux: `$HOME/.ethereum-classic/`
 - Mac: `$HOME/Library/EthereumClassic/`
 - Windows: `$HOME/AppData/Roaming/EthereumClassic/`
 
-You can specify this directory on the command line using `--data-dir=$HOME/id/rather/put/it/here`.
+__You can specify this directory__ with `--data-dir=$HOME/id/rather/put/it/here`.
 
 Within this parent directory, geth will use a __/subdirectory__ to hold data for each network you run. The defaults are:
  - `/mainnet` for the Mainnet
- - `/morden` for the Morden Testnet (activated with `--testnet`)
+ - `/morden` for the Morden Testnet
 
-You can specify the subdirectory with the `--chain` flag.
+__You can specify this subdirectory__ with `--chain=mycustomnet`.
 
-> __Migrating__: If you have existing data created prior to the [3.4 Release](), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes.md).
+> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/ethereumproject/go-ethereum/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes).
 
 ### Full node on the main Ethereum network
 
@@ -129,15 +129,17 @@ If you'd like to play around with creating Ethereum contracts, you
 almost certainly would like to do that without any real money involved until you get the hang of the entire system. In other words, instead of attaching to the main network, you want to join the **test** network with your node, which is fully equivalent to the main network, but with play-Ether only.
 
 ```
-$ geth --testnet --fast --cache=512 console
+$ geth --chain=morden --fast --cache=512 console
 ```
 
 The `--fast`, `--cache` flags and `console` subcommand have the exact same meaning as above and they are equally useful on the testnet too. Please see above for their explanations if you've skipped to here.
 
-Specifying the `--testnet` flag will reconfigure your Geth instance a bit:
+Specifying the `--chain=morden` flag will reconfigure your Geth instance a bit:
 
  -  As mentioned above, Geth will host its testnet data in a `morden` subfolder (`~/.ethereum-classic/morden`).
  - Instead of connecting the main Ethereum network, the client will connect to the test network, which uses different P2P bootnodes, different network IDs and genesis states.
+
+You may also optionally use `--testnet` and `--chain=testnet` to enable this configuration. If you'd like to use a custom data subdirectory with a testnet configuration use `--testnet --chain mycustomtestnet`.
 
 > *Note: Although there are some internal protective measures to prevent transactions from crossing over between the main network and test network (different starting nonces), you should make sure to always use separate accounts for play-money and real-money. Unless you manually move accounts, Geth
 will by default correctly separate the two networks and will not make any accounts available between them.*

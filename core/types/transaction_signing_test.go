@@ -135,3 +135,28 @@ func TestCompatibleSign(t *testing.T) {
 		t.Errorf("Incorrect pubkey for Basic Signer:\n%v\n%v", common.ToHex(pub), common.ToHex(pub_tx2))
 	}
 }
+
+func TestChainIdSigner_Equal(t *testing.T) {
+
+	defaultChainID := big.NewInt(61)
+
+	s := NewChainIdSigner(defaultChainID)
+	if s.chainId == nil || s.chainId.Cmp(new(big.Int)) == 0 || s.chainId.Cmp(big.NewInt(0)) == 0 || s.chainId.Cmp(defaultChainID) != 0 {
+		t.Errorf("unexpected: %v", s)
+	}
+
+	s2Invalid0 := NewChainIdSigner(new(big.Int))
+	if s.Equal(s2Invalid0) {
+		t.Errorf("unexpected: s: %v, s2: %v", s, s2Invalid0)
+	}
+
+	s262 := NewChainIdSigner(big.NewInt(62))
+	if s.Equal(s262) {
+		t.Errorf("unexpected: s: %v, s2: %v", s, s262)
+	}
+
+	s261 := NewChainIdSigner(defaultChainID)
+	if !s.Equal(s261) {
+		t.Errorf("unexpected: s: %v, s2: %v", s, s261)
+	}
+}

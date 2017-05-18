@@ -6,12 +6,14 @@ setup() {
 	DATA_DIR=`mktemp -d`
 	default_mainnet_genesis_hash='"0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"'
 	customnet_genesis_hash='"0x76bc07fbdfe084b9aff37425c24453f774d1945b28412a3b4b8c25d8d3c81df2"'
+	GENESIS_TESTNET=0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303
 }
 
 teardown() {
 	rm -fr $DATA_DIR
 	unset default_mainnet_genesis_hash
 	unset customnet_genesis_hash
+	unset GENESIS_TESTNET
 }
 
 ## dump-chain-config JSON 
@@ -33,6 +35,19 @@ teardown() {
 
 @test "--testnet dump-chain-config | exit 0" {
 	run $GETH_CMD --datadir $DATA_DIR --testnet dump-chain-config $DATA_DIR/dump.json
+	echo "$output"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Wrote chain config file"* ]]
+	[ -f $DATA_DIR/dump.json ]
+	[ -d $DATA_DIR/morden ]
+
+	run grep -R "morden" $DATA_DIR/dump.json
+	[[ "$output" == *"\"id\": \"morden\"," ]]
+}
+
+@test "--chain morden dump-chain-config | exit 0" {
+	run $GETH_CMD --datadir $DATA_DIR --chain morden dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -125,10 +140,10 @@ teardown() {
 # - external chain config can determine chain configuration
 # - use datadir/subdir schema (/morden)
 @test "--chain-config config/testnet.json | exit 0" {
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"0x00006d6f7264656e"* ]]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
 	# Ensure we're using the --chain named subdirectory under main $DATA_DIR.
 	[ -d $DATA_DIR/morden ]
@@ -162,28 +177,28 @@ teardown() {
 	[ -d $DATA_DIR/customnet/keystore ]
 }
 
-@test "--chain-config config/testnet.json --testnet | exit >1" {
+@test "--chain-config config/testnet.json --testnet | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --testnet console
 	echo "$output"
 	[ "$status" -gt 0 ]
 	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
-@test "--chain-config config/mainnet.json --chain mainnet | exit >1" {
+@test "--chain-config config/mainnet.json --chain mainnet | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --chain mainnet console
 	echo "$output"
 	[ "$status" -gt 0 ]
 	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
-@test "--chain-config config/mainnet.json --chain kittyCoin | exit >1" {
+@test "--chain-config config/mainnet.json --chain kittyCoin | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --chain kittyCoin console
 	echo "$output"
 	[ "$status" -gt 0 ]
 	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
 }
 
-@test "--chain-config config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 | exit >1" {
+@test "--chain-config config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 | exit >0" {
 	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 console
 	echo "$output"
 	[ "$status" -gt 0 ]

@@ -507,8 +507,7 @@ func (d *Downloader) spawnSync(origin uint64, fetchers ...func() error) error {
 	return nil
 }
 
-// cancel cancels all of the operations and resets the queue. It returns true
-// if the cancel operation was completed.
+// cancel cancels all of the operations and resets the queue.
 func (d *Downloader) cancel() {
 	// Close the current cancel channel
 	d.cancelLock.Lock()
