@@ -13,12 +13,6 @@ import (
 )
 
 func benchmarkCacheAccounts(n int, b *testing.B) {
-	dir, err := ioutil.TempDir("", "eth-acctcache-test")
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	// 20000 -> 20k
 	staticKeyFilesResourcePath := strconv.Itoa(n)
 	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
@@ -27,15 +21,12 @@ func benchmarkCacheAccounts(n int, b *testing.B) {
 	}
 
 	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
-	if err := CopyDir(staticKeyFilesResourcePath, dir); err != nil {
-		b.Fatal(err)
-	}
 
-	kfiles, _ := ioutil.ReadDir(dir)
-	lf := len(kfiles)
+	kfiles, _ := ioutil.ReadDir(staticKeyFilesResourcePath)
+	lf := len(kfiles) - 1 // accounts.db
 
 	start := time.Now()
-	cache := newAddrCache(dir)
+	cache := newAddrCache(staticKeyFilesResourcePath)
 	elapsed := time.Since(start)
 
 	b.Logf("establishing cache for %v accs: %v", n, elapsed)
@@ -68,12 +59,6 @@ func BenchmarkCacheAccounts20000(b *testing.B) { benchmarkCacheAccounts(20000, b
 // Note that this _does not_ include ac.newAddrCache.
 func benchmarkCacheAdd(n int, b *testing.B) {
 
-	dir, err := ioutil.TempDir("", "eth-acctcache-test")
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	// 20000 -> 20k
 	staticKeyFilesResourcePath := strconv.Itoa(n)
 	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
@@ -82,12 +67,9 @@ func benchmarkCacheAdd(n int, b *testing.B) {
 	}
 
 	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
-	if err := CopyDir(staticKeyFilesResourcePath, dir); err != nil {
-		b.Fatal(err)
-	}
 
 	start := time.Now()
-	cache := newAddrCache(dir)
+	cache := newAddrCache(staticKeyFilesResourcePath)
 	elapsed := time.Since(start)
 
 	b.Logf("establishing cache for %v accs: %v", n, elapsed)
@@ -117,12 +99,7 @@ func BenchmarkCacheAdd20000(b *testing.B) { benchmarkCacheAdd(20000, b) }
 // cached, breaking only upon a find. There is no sort. method here.
 //
 // Note that this _does not_ include ac.newAddrCache.
-func benchmarkCacheFind(n int, b *testing.B) {
-	dir, err := ioutil.TempDir("", "eth-acctcache-test")
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+func benchmarkCacheFind(n int, onlyExisting bool, b *testing.B) {
 
 	// 20000 -> 20k
 	staticKeyFilesResourcePath := strconv.Itoa(n)
@@ -132,12 +109,9 @@ func benchmarkCacheFind(n int, b *testing.B) {
 	}
 
 	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
-	if err := CopyDir(staticKeyFilesResourcePath, dir); err != nil {
-		b.Fatal(err)
-	}
 
 	start := time.Now()
-	cache := newAddrCache(dir)
+	cache := newAddrCache(staticKeyFilesResourcePath)
 	elapsed := time.Since(start)
 	b.Logf("establishing cache for %v accs: %v", n, elapsed)
 
@@ -145,10 +119,17 @@ func benchmarkCacheFind(n int, b *testing.B) {
 
 	// Set up 1 DNE and 3 existing accs.
 	// Using the last accs because they should take the longest to iterate to.
-	findAccounts := append(cachetestAccounts[(len(cachetestAccounts)-1):], accs[(len(accs)-3):]...)
-	if len(findAccounts) != 4 {
-		b.Fatalf("wrong number find accs: got: %v, want: 4", len(findAccounts))
+	var findAccounts []Account
+
+	if !onlyExisting {
+		findAccounts = append(cachetestAccounts[(len(cachetestAccounts)-1):], accs[(len(accs)-3):]...)
+		if len(findAccounts) != 4 {
+			b.Fatalf("wrong number find accs: got: %v, want: 4", len(findAccounts))
+		}
+	} else {
+		findAccounts = accs[(len(accs) - 1):]
 	}
+	accs = nil // clear mem?
 
 	b.ResetTimer() // _benchmark_ timer, not setup timer.
 
@@ -160,14 +141,14 @@ func benchmarkCacheFind(n int, b *testing.B) {
 	cache.close()
 }
 
-func BenchmarkCacheFind100(b *testing.B)   { benchmarkCacheFind(100, b) }
-func BenchmarkCacheFind500(b *testing.B)   { benchmarkCacheFind(500, b) }
-func BenchmarkCacheFind1000(b *testing.B)  { benchmarkCacheFind(1000, b) }
-func BenchmarkCacheFind5000(b *testing.B)  { benchmarkCacheFind(5000, b) }
-func BenchmarkCacheFind10000(b *testing.B) { benchmarkCacheFind(10000, b) }
-func BenchmarkCacheFind20000(b *testing.B) { benchmarkCacheFind(20000, b) }
-func BenchmarkCacheFind100000(b *testing.B) { benchmarkCacheFind(100000, b) }
-func BenchmarkCacheFind500000(b *testing.B) { benchmarkCacheFind(500000, b) }
+func BenchmarkCacheFind100(b *testing.B)               { benchmarkCacheFind(100, false, b) }
+func BenchmarkCacheFind500(b *testing.B)               { benchmarkCacheFind(500, false, b) }
+func BenchmarkCacheFind1000(b *testing.B)              { benchmarkCacheFind(1000, false, b) }
+func BenchmarkCacheFind5000(b *testing.B)              { benchmarkCacheFind(5000, false, b) }
+func BenchmarkCacheFind10000(b *testing.B)             { benchmarkCacheFind(10000, false, b) }
+func BenchmarkCacheFind20000(b *testing.B)             { benchmarkCacheFind(20000, false, b) }
+func BenchmarkCacheFind100000(b *testing.B)            { benchmarkCacheFind(100000, false, b) }
+func BenchmarkCacheFind500000(b *testing.B)            { benchmarkCacheFind(500000, false, b) }
 
 // https://gist.github.com/m4ng0squ4sh/92462b38df26839a3ca324697c8cba04
 // CopyFile copies the contents of the file named src to the file named

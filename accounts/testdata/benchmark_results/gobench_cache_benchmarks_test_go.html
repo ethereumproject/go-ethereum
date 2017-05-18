@@ -572,8 +572,8 @@ jQuery.cookie = function(name, value, options) {
 <body>
 <div id="container">
 <div id="header">
-<div class="time">11 m 14 s</div>
-<h1>gobench cache_benchmarks_test.go: <strong><span class="total">18 total, </span><span class="passed">18 passed</span></strong>
+<div class="time">5 m 20 s</div>
+<h1>gobench cache_benchmarks_test.go: <strong><span class="total">21 total, </span><span class="passed">21 passed</span></strong>
 </h1>
 <div id="treecontrol">
 <ul>
@@ -591,181 +591,211 @@ jQuery.cookie = function(name, value, options) {
 <ul id="tree">
 <li class="level test">
 <span><em class="time">
-<div class="time">3.71 s</div>
+<div class="time">1.37 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAccounts100</span>
 <ul>
 <li class="text">
-<span class="stdout">300	   6110933 ns/op<br/>--- BENCH: BenchmarkCacheAccounts100-2<br/>	cache_benchmarks_test.go:30: setting up 100 accounts took 75.429961ms<br/>	cache_benchmarks_test.go:30: setting up 100 accounts took 84.400413ms<br/>	cache_benchmarks_test.go:30: setting up 100 accounts took 72.312949ms<br/></span>
+<span class="stdout">1	1052217781 ns/op<br/>--- BENCH: BenchmarkCacheAccounts100-2<br/>	cache_benchmarks_test.go:32: establishing cache for 100 accs: 170.786562ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">5.32 s</div>
+<div class="time">4.04 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAccounts500</span>
 <ul>
 <li class="text">
-<span class="stdout">50	  32230394 ns/op<br/>--- BENCH: BenchmarkCacheAccounts500-2<br/>	cache_benchmarks_test.go:30: setting up 500 accounts took 480.235787ms<br/>	cache_benchmarks_test.go:30: setting up 500 accounts took 419.496538ms<br/>	cache_benchmarks_test.go:30: setting up 500 accounts took 449.834574ms<br/></span>
+<span class="stdout">1	1179621319 ns/op<br/>--- BENCH: BenchmarkCacheAccounts500-2<br/>	cache_benchmarks_test.go:32: establishing cache for 500 accs: 89.841663ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">19.29 s</div>
+<div class="time">2.47 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAccounts1000</span>
 <ul>
 <li class="text">
-<span class="stdout">20	  69674657 ns/op<br/>--- BENCH: BenchmarkCacheAccounts1000-2<br/>	cache_benchmarks_test.go:30: setting up 1000 accounts took 979.47675ms<br/>	cache_benchmarks_test.go:30: setting up 1000 accounts took 1.042136943s<br/>	cache_benchmarks_test.go:30: setting up 1000 accounts took 825.524972ms<br/></span>
+<span class="stdout">200	   8843283 ns/op<br/>--- BENCH: BenchmarkCacheAccounts1000-2<br/>	cache_benchmarks_test.go:32: establishing cache for 1000 accs: 228.442995ms<br/>	cache_benchmarks_test.go:32: establishing cache for 1000 accs: 52.811405ms<br/>	cache_benchmarks_test.go:32: establishing cache for 1000 accs: 6.490966ms<br/>	cache_benchmarks_test.go:32: establishing cache for 1000 accs: 4.270576ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">26.74 s</div>
+<div class="time">3.84 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAccounts5000</span>
 <ul>
 <li class="text">
-<span class="stdout">2	 507183940 ns/op<br/>--- BENCH: BenchmarkCacheAccounts5000-2<br/>	cache_benchmarks_test.go:30: setting up 5000 accounts took 7.833492901s<br/>	cache_benchmarks_test.go:30: setting up 5000 accounts took 9.493256168s<br/></span>
+<span class="stdout">1	1475641544 ns/op<br/>--- BENCH: BenchmarkCacheAccounts5000-2<br/>	cache_benchmarks_test.go:32: establishing cache for 5000 accs: 25.922759ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">1 m 47 s</div>
+<div class="time">4.20 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAccounts10000</span>
 <ul>
 <li class="text">
-<span class="stdout">1	2033286463 ns/op<br/>--- BENCH: BenchmarkCacheAccounts10000-2<br/>	cache_benchmarks_test.go:30: setting up 10000 accounts took 24.680634703s<br/></span>
+<span class="stdout">1	2705393741 ns/op<br/>--- BENCH: BenchmarkCacheAccounts10000-2<br/>	cache_benchmarks_test.go:32: establishing cache for 10000 accs: 52.977648ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">3.34 s</div>
+<div class="time">1.07 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAccounts20000</span>
 <ul>
 <li class="text">
-<span class="stdout">1	4098746490 ns/op<br/>--- BENCH: BenchmarkCacheAccounts20000-2<br/>	cache_benchmarks_test.go:30: setting up 20000 accounts took 1m42.870147016s<br/></span>
+<span class="stdout">1	3978681230 ns/op<br/>--- BENCH: BenchmarkCacheAccounts20000-2<br/>	cache_benchmarks_test.go:32: establishing cache for 20000 accs: 32.626476ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">4.96 s</div>
+<div class="time">2.40 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAdd100</span>
 <ul>
 <li class="text">
-<span class="stdout">2000000	       714 ns/op<br/>--- BENCH: BenchmarkCacheAdd100-2<br/>	cache_benchmarks_test.go:78: setting up 100 accounts took 196.77205ms<br/>	cache_benchmarks_test.go:78: setting up 100 accounts took 172.128905ms<br/>	cache_benchmarks_test.go:78: setting up 100 accounts took 121.162963ms<br/>	cache_benchmarks_test.go:78: setting up 100 accounts took 101.144062ms<br/>	cache_benchmarks_test.go:78: setting up 100 accounts took 133.872361ms<br/>	cache_benchmarks_test.go:78: setting up 100 accounts took 140.321059ms<br/></span>
+<span class="stdout">30	  33737812 ns/op<br/>--- BENCH: BenchmarkCacheAdd100-2<br/>	cache_benchmarks_test.go:75: establishing cache for 100 accs: 3.947876ms<br/>	cache_benchmarks_test.go:75: establishing cache for 100 accs: 4.196601ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">13.15 s</div>
+<div class="time">2.93 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAdd500</span>
 <ul>
 <li class="text">
-<span class="stdout">2000000	       738 ns/op<br/>--- BENCH: BenchmarkCacheAdd500-2<br/>	cache_benchmarks_test.go:78: setting up 500 accounts took 457.720648ms<br/>	cache_benchmarks_test.go:78: setting up 500 accounts took 496.115343ms<br/>	cache_benchmarks_test.go:78: setting up 500 accounts took 475.003158ms<br/>	cache_benchmarks_test.go:78: setting up 500 accounts took 463.233172ms<br/>	cache_benchmarks_test.go:78: setting up 500 accounts took 450.198968ms<br/>	cache_benchmarks_test.go:78: setting up 500 accounts took 495.737765ms<br/></span>
+<span class="stdout">30	  47241798 ns/op<br/>--- BENCH: BenchmarkCacheAdd500-2<br/>	cache_benchmarks_test.go:75: establishing cache for 500 accs: 6.824927ms<br/>	cache_benchmarks_test.go:75: establishing cache for 500 accs: 4.139891ms<br/>	cache_benchmarks_test.go:75: establishing cache for 500 accs: 4.870357ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">2 m 57 s</div>
+<div class="time">3.26 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAdd1000</span>
 <ul>
 <li class="text">
-<span class="stdout">2000000	       881 ns/op<br/>--- BENCH: BenchmarkCacheAdd1000-2<br/>	cache_benchmarks_test.go:78: setting up 1000 accounts took 1.709828355s<br/>	cache_benchmarks_test.go:78: setting up 1000 accounts took 2.277899937s<br/>	cache_benchmarks_test.go:78: setting up 1000 accounts took 1.202774474s<br/>	cache_benchmarks_test.go:78: setting up 1000 accounts took 1.271242396s<br/>	cache_benchmarks_test.go:78: setting up 1000 accounts took 1.180118124s<br/>	cache_benchmarks_test.go:78: setting up 1000 accounts took 1.283619137s<br/>	cache_benchmarks_test.go:78: setting up 1000 accounts took 1.335141174s<br/></span>
+<span class="stdout">30	  64906423 ns/op<br/>--- BENCH: BenchmarkCacheAdd1000-2<br/>	cache_benchmarks_test.go:75: establishing cache for 1000 accs: 9.382474ms<br/>	cache_benchmarks_test.go:75: establishing cache for 1000 accs: 5.048712ms<br/>	cache_benchmarks_test.go:75: establishing cache for 1000 accs: 6.242166ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">25.81 s</div>
+<div class="time">1.94 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAdd5000</span>
 <ul>
 <li class="text">
-<span class="stdout">300000	      3685 ns/op<br/>--- BENCH: BenchmarkCacheAdd5000-2<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 7.68775612s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 9.151000958s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 9.21473965s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 9.094646375s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 8.55230121s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 8.315147564s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 7.920562007s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 7.457310565s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 9.312860793s<br/>	cache_benchmarks_test.go:78: setting up 5000 accounts took 8.912039715s<br/>	... [output truncated]<br/></span>
+<span class="stdout">30	  47398699 ns/op<br/>--- BENCH: BenchmarkCacheAdd5000-2<br/>	cache_benchmarks_test.go:75: establishing cache for 5000 accs: 5.282622ms<br/>	cache_benchmarks_test.go:75: establishing cache for 5000 accs: 19.28839ms<br/>	cache_benchmarks_test.go:75: establishing cache for 5000 accs: 11.686483ms<br/>	cache_benchmarks_test.go:75: establishing cache for 5000 accs: 4.80756ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">1 m 52 s</div>
+<div class="time">2.59 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAdd10000</span>
 <ul>
 <li class="text">
-<span class="stdout">1	1628893918 ns/op<br/>--- BENCH: BenchmarkCacheAdd10000-2<br/>	cache_benchmarks_test.go:78: setting up 10000 accounts took 24.129762158s<br/></span>
+<span class="stdout">20	  59481003 ns/op<br/>--- BENCH: BenchmarkCacheAdd10000-2<br/>	cache_benchmarks_test.go:75: establishing cache for 10000 accs: 7.797366ms<br/>	cache_benchmarks_test.go:75: establishing cache for 10000 accs: 13.077253ms<br/>	cache_benchmarks_test.go:75: establishing cache for 10000 accs: 11.692327ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">4.28 s</div>
+<div class="time">1.74 s</div>
 </em><em class="status">passed</em>BenchmarkCacheAdd20000</span>
 <ul>
 <li class="text">
-<span class="stdout">1	4317626543 ns/op<br/>--- BENCH: BenchmarkCacheAdd20000-2<br/>	cache_benchmarks_test.go:78: setting up 20000 accounts took 1m47.917050738s<br/></span>
+<span class="stdout">50	  42096020 ns/op<br/>--- BENCH: BenchmarkCacheAdd20000-2<br/>	cache_benchmarks_test.go:75: establishing cache for 20000 accs: 9.606157ms<br/>	cache_benchmarks_test.go:75: establishing cache for 20000 accs: 4.94103ms<br/>	cache_benchmarks_test.go:75: establishing cache for 20000 accs: 4.82905ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">14.31 s</div>
+<div class="time">1.87 s</div>
 </em><em class="status">passed</em>BenchmarkCacheFind100</span>
 <ul>
 <li class="text">
-<span class="stdout">2000000	       697 ns/op<br/>--- BENCH: BenchmarkCacheFind100-2<br/>	cache_benchmarks_test.go:125: setting up 100 accounts took 210.248935ms<br/>	cache_benchmarks_test.go:125: setting up 100 accounts took 125.942219ms<br/>	cache_benchmarks_test.go:125: setting up 100 accounts took 147.445763ms<br/>	cache_benchmarks_test.go:125: setting up 100 accounts took 233.141901ms<br/>	cache_benchmarks_test.go:125: setting up 100 accounts took 180.533621ms<br/>	cache_benchmarks_test.go:125: setting up 100 accounts took 192.27021ms<br/>	cache_benchmarks_test.go:125: setting up 100 accounts took 142.083456ms<br/></span>
+<span class="stdout">50000	     28352 ns/op<br/>--- BENCH: BenchmarkCacheFind100-2<br/>	cache_benchmarks_test.go:116: establishing cache for 100 accs: 5.027706ms<br/>	cache_benchmarks_test.go:116: establishing cache for 100 accs: 21.441754ms<br/>	cache_benchmarks_test.go:116: establishing cache for 100 accs: 4.422038ms<br/>	cache_benchmarks_test.go:116: establishing cache for 100 accs: 5.63747ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">20.89 s</div>
+<div class="time">1.96 s</div>
 </em><em class="status">passed</em>BenchmarkCacheFind500</span>
 <ul>
 <li class="text">
-<span class="stdout">5000000	       377 ns/op<br/>--- BENCH: BenchmarkCacheFind500-2<br/>	cache_benchmarks_test.go:125: setting up 500 accounts took 1.330222583s<br/>	cache_benchmarks_test.go:125: setting up 500 accounts took 962.461857ms<br/>	cache_benchmarks_test.go:125: setting up 500 accounts took 1.583698662s<br/>	cache_benchmarks_test.go:125: setting up 500 accounts took 1.082355715s<br/>	cache_benchmarks_test.go:125: setting up 500 accounts took 932.867772ms<br/>	cache_benchmarks_test.go:125: setting up 500 accounts took 2.154477538s<br/>	cache_benchmarks_test.go:125: setting up 500 accounts took 1.019294284s<br/>	cache_benchmarks_test.go:125: setting up 500 accounts took 729.381064ms<br/></span>
+<span class="stdout">50000	     30232 ns/op<br/>--- BENCH: BenchmarkCacheFind500-2<br/>	cache_benchmarks_test.go:116: establishing cache for 500 accs: 4.71364ms<br/>	cache_benchmarks_test.go:116: establishing cache for 500 accs: 6.511988ms<br/>	cache_benchmarks_test.go:116: establishing cache for 500 accs: 7.699787ms<br/>	cache_benchmarks_test.go:116: establishing cache for 500 accs: 4.091363ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">11.83 s</div>
+<div class="time">2.04 s</div>
 </em><em class="status">passed</em>BenchmarkCacheFind1000</span>
 <ul>
 <li class="text">
-<span class="stdout">3000000	       373 ns/op<br/>--- BENCH: BenchmarkCacheFind1000-2<br/>	cache_benchmarks_test.go:125: setting up 1000 accounts took 2.107992344s<br/>	cache_benchmarks_test.go:125: setting up 1000 accounts took 1.656137452s<br/>	cache_benchmarks_test.go:125: setting up 1000 accounts took 1.737995519s<br/>	cache_benchmarks_test.go:125: setting up 1000 accounts took 2.400662856s<br/>	cache_benchmarks_test.go:125: setting up 1000 accounts took 2.58239258s<br/>	cache_benchmarks_test.go:125: setting up 1000 accounts took 1.536114383s<br/>	cache_benchmarks_test.go:125: setting up 1000 accounts took 3.195364417s<br/>	cache_benchmarks_test.go:125: setting up 1000 accounts took 2.690070695s<br/></span>
+<span class="stdout">50000	     29357 ns/op<br/>--- BENCH: BenchmarkCacheFind1000-2<br/>	cache_benchmarks_test.go:116: establishing cache for 1000 accs: 43.781024ms<br/>	cache_benchmarks_test.go:116: establishing cache for 1000 accs: 5.943794ms<br/>	cache_benchmarks_test.go:116: establishing cache for 1000 accs: 8.307788ms<br/>	cache_benchmarks_test.go:116: establishing cache for 1000 accs: 3.997783ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">31.57 s</div>
+<div class="time">3.30 s</div>
 </em><em class="status">passed</em>BenchmarkCacheFind5000</span>
 <ul>
 <li class="text">
-<span class="stdout">1	1173806311 ns/op<br/>--- BENCH: BenchmarkCacheFind5000-2<br/>	cache_benchmarks_test.go:125: setting up 5000 accounts took 10.616213962s<br/></span>
+<span class="stdout">50000	     29316 ns/op<br/>--- BENCH: BenchmarkCacheFind5000-2<br/>	cache_benchmarks_test.go:116: establishing cache for 5000 accs: 18.151038ms<br/>	cache_benchmarks_test.go:116: establishing cache for 5000 accs: 4.515783ms<br/>	cache_benchmarks_test.go:116: establishing cache for 5000 accs: 4.1807ms<br/>	cache_benchmarks_test.go:116: establishing cache for 5000 accs: 7.657098ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">1 m 33 s</div>
+<div class="time">2.61 s</div>
 </em><em class="status">passed</em>BenchmarkCacheFind10000</span>
 <ul>
 <li class="text">
-<span class="stdout">1	1939250211 ns/op<br/>--- BENCH: BenchmarkCacheFind10000-2<br/>	cache_benchmarks_test.go:125: setting up 10000 accounts took 29.587927686s<br/></span>
+<span class="stdout">50000	     30855 ns/op<br/>--- BENCH: BenchmarkCacheFind10000-2<br/>	cache_benchmarks_test.go:116: establishing cache for 10000 accs: 10.801577ms<br/>	cache_benchmarks_test.go:116: establishing cache for 10000 accs: 6.449855ms<br/>	cache_benchmarks_test.go:116: establishing cache for 10000 accs: 4.053268ms<br/>	cache_benchmarks_test.go:116: establishing cache for 10000 accs: 29.008227ms<br/>	cache_benchmarks_test.go:116: establishing cache for 10000 accs: 4.451939ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">65 ms</div>
+<div class="time">2.42 s</div>
 </em><em class="status">passed</em>BenchmarkCacheFind20000</span>
 <ul>
 <li class="text">
-<span class="stdout">1	3373369498 ns/op<br/>--- BENCH: BenchmarkCacheFind20000-2<br/>	cache_benchmarks_test.go:125: setting up 20000 accounts took 1m29.494568746s<br/>PASS<br/>Process finished with exit code 0<br/></span>
+<span class="stdout">50000	     33674 ns/op<br/>--- BENCH: BenchmarkCacheFind20000-2<br/>	cache_benchmarks_test.go:116: establishing cache for 20000 accs: 10.57879ms<br/>	cache_benchmarks_test.go:116: establishing cache for 20000 accs: 6.471353ms<br/>	cache_benchmarks_test.go:116: establishing cache for 20000 accs: 5.793685ms<br/>	cache_benchmarks_test.go:116: establishing cache for 20000 accs: 4.4368ms<br/></span>
+</li>
+</ul>
+</li>
+<li class="level test">
+<span><em class="time">
+<div class="time">30.22 s</div>
+</em><em class="status">passed</em>BenchmarkCacheFind20000OnlyExisting</span>
+<ul>
+<li class="text">
+<span class="stdout">200000	      8419 ns/op<br/>--- BENCH: BenchmarkCacheFind20000OnlyExisting-2<br/>	cache_benchmarks_test.go:116: establishing cache for 20000 accs: 4.091706ms<br/>	cache_benchmarks_test.go:116: establishing cache for 20000 accs: 4.516564ms<br/>	cache_benchmarks_test.go:116: establishing cache for 20000 accs: 4.443072ms<br/>	cache_benchmarks_test.go:116: establishing cache for 20000 accs: 5.373376ms<br/></span>
+</li>
+</ul>
+</li>
+<li class="level test">
+<span><em class="time">
+<div class="time">4 m 3 s</div>
+</em><em class="status">passed</em>BenchmarkCacheFind100000</span>
+<ul>
+<li class="text">
+<span class="stdout">50000	     34502 ns/op<br/>--- BENCH: BenchmarkCacheFind100000-2<br/>	cache_benchmarks_test.go:116: establishing cache for 100000 accs: 87.155455ms<br/>	cache_benchmarks_test.go:116: establishing cache for 100000 accs: 6.160416ms<br/>	cache_benchmarks_test.go:116: establishing cache for 100000 accs: 33.175313ms<br/>	cache_benchmarks_test.go:116: establishing cache for 100000 accs: 9.454176ms<br/>	cache_benchmarks_test.go:116: establishing cache for 100000 accs: 9.07904ms<br/></span>
+</li>
+</ul>
+</li>
+<li class="level test">
+<span><em class="time">
+<div class="time">99 ms</div>
+</em><em class="status">passed</em>BenchmarkCacheFind500000</span>
+<ul>
+<li class="text">
+<span class="stdout">30000	     37641 ns/op<br/>--- BENCH: BenchmarkCacheFind500000-2<br/>	cache_benchmarks_test.go:116: establishing cache for 500000 accs: 98.255849ms<br/>	cache_benchmarks_test.go:116: establishing cache for 500000 accs: 151.472314ms<br/>	cache_benchmarks_test.go:116: establishing cache for 500000 accs: 10.375694ms<br/>	cache_benchmarks_test.go:116: establishing cache for 500000 accs: 32.840139ms<br/>	cache_benchmarks_test.go:116: establishing cache for 500000 accs: 18.064186ms<br/>PASS<br/>Process finished with exit code 0<br/></span>
 </li>
 </ul>
 </li>
@@ -773,7 +803,7 @@ jQuery.cookie = function(name, value, options) {
 </div>
 </div>
 <div id="footer">
-<p>Generated by Gogland on 5/15/17 8:19 AM</p>
+<p>Generated by Gogland on 5/18/17 4:45 PM</p>
 </div>
 </body>
 </html>
