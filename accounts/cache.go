@@ -252,10 +252,6 @@ func (ac *addrCache) find(a Account) (Account, error) {
 	var e error
 
 	if a.File != "" {
-		// If only the basename is specified, complete the path.
-		if !strings.ContainsRune(a.File, filepath.Separator) {
-			a.File = filepath.Join(ac.keydir, a.File)
-		}
 		acc, e = ac.getCachedAccountByFile(a.File)
 		if e == nil && (acc != Account{}) {
 			return acc, e
@@ -413,7 +409,10 @@ func (ac *addrCache) reload(events []notify.EventInfo) []notify.EventInfo {
 			continue // only want files, no dirs
 		}
 
-		p = fi.Name()
+		p, re := filepath.Rel(ac.keydir, p)
+		if re != nil {
+			continue
+		}
 
 		// TODO: don't ignore the returned errors
 		switch ev.Event() {
@@ -590,7 +589,14 @@ func (ac *addrCache) syncfs2db(lastUpdated time.Time) (errs []error) {
 	for i, fi := range files {
 
 		newy := false
+		// fi.Name() is used for storing the file in the case db
+		// This assumes that the keystore/ dir is not designed to walk recursively.
+		// See testdata/keystore/foo/UTC-afd..... compared with cacheTestAccounts for
+		// test proof of this assumption.
 		path := filepath.Join(ac.keydir, fi.Name())
+		if e != nil {
+			errs = append(errs, e)
+		}
 
 		if skipKeyFile(fi) {
 			glog.V(logger.Detail).Infof("ignoring file %s", path)
