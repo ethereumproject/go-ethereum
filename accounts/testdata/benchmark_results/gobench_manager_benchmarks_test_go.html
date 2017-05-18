@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Test Results &mdash; gobench cache_benchmarks_test.go</title>
+<title>Test Results &mdash; gobench manager_benchmarks_test.go</title>
 <style type="text/css">
           html {
             height: 100%
@@ -572,8 +572,8 @@ jQuery.cookie = function(name, value, options) {
 <body>
 <div id="container">
 <div id="header">
-<div class="time">16 m 54 s</div>
-<h1>gobench cache_benchmarks_test.go: <strong><span class="total">32 total, </span><span class="failed">2 failed, </span><span class="passed">30 passed</span></strong>
+<div class="time">2 m 21 s</div>
+<h1>gobench manager_benchmarks_test.go: <strong><span class="total">16 total, </span><span class="passed">16 passed</span></strong>
 </h1>
 <div id="treecontrol">
 <ul>
@@ -591,311 +591,161 @@ jQuery.cookie = function(name, value, options) {
 <ul id="tree">
 <li class="level test">
 <span><em class="time">
-<div class="time">1.44 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAccounts100</span>
+<div class="time">4.12 s</div>
+</em><em class="status">passed</em>BenchmarkManager_SignWithPassphrase100</span>
 <ul>
 <li class="text">
-<span class="stdout">3000	    434397 ns/op<br/>--- BENCH: BenchmarkCacheAccounts100-2<br/>	cache_benchmarks_test.go:32: establishing cache for 100 accs: 5.130101ms<br/>	cache_benchmarks_test.go:32: establishing cache for 100 accs: 3.883681ms<br/>	cache_benchmarks_test.go:32: establishing cache for 100 accs: 4.402677ms<br/>	cache_benchmarks_test.go:32: establishing cache for 100 accs: 3.704741ms<br/></span>
+<span class="stdout">500	   3298326 ns/op<br/>--- BENCH: BenchmarkManager_SignWithPassphrase100-2<br/>	manager_benchmarks_test.go:309: establishing manager for 100 accs: 109.002763ms<br/>	manager_benchmarks_test.go:309: establishing manager for 100 accs: 60.44696ms<br/>	manager_benchmarks_test.go:309: establishing manager for 100 accs: 3.045473ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">1.17 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAccounts500</span>
+<div class="time">2.96 s</div>
+</em><em class="status">passed</em>BenchmarkManager_SignWithPassphrase500</span>
 <ul>
 <li class="text">
-<span class="stdout">500	   2214490 ns/op<br/>--- BENCH: BenchmarkCacheAccounts500-2<br/>	cache_benchmarks_test.go:32: establishing cache for 500 accs: 6.699653ms<br/>	cache_benchmarks_test.go:32: establishing cache for 500 accs: 8.991376ms<br/>	cache_benchmarks_test.go:32: establishing cache for 500 accs: 5.785804ms<br/></span>
+<span class="stdout">500	   3276475 ns/op<br/>--- BENCH: BenchmarkManager_SignWithPassphrase500-2<br/>	manager_benchmarks_test.go:309: establishing manager for 500 accs: 33.418506ms<br/>	manager_benchmarks_test.go:309: establishing manager for 500 accs: 58.884629ms<br/>	manager_benchmarks_test.go:309: establishing manager for 500 accs: 59.746996ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">2.32 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAccounts1000</span>
+<div class="time">4.57 s</div>
+</em><em class="status">passed</em>BenchmarkManager_SignWithPassphrase1000</span>
 <ul>
 <li class="text">
-<span class="stdout">100	  10887682 ns/op<br/>--- BENCH: BenchmarkCacheAccounts1000-2<br/>	cache_benchmarks_test.go:32: establishing cache for 1000 accs: 6.068964ms<br/>	cache_benchmarks_test.go:32: establishing cache for 1000 accs: 8.436565ms<br/></span>
+<span class="stdout">500	   3202891 ns/op<br/>--- BENCH: BenchmarkManager_SignWithPassphrase1000-2<br/>	manager_benchmarks_test.go:309: establishing manager for 1000 accs: 103.699423ms<br/>	manager_benchmarks_test.go:309: establishing manager for 1000 accs: 60.112226ms<br/>	manager_benchmarks_test.go:309: establishing manager for 1000 accs: 73.236982ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">1.39 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAccounts5000</span>
+<div class="time">3.78 s</div>
+</em><em class="status">passed</em>BenchmarkManager_SignWithPassphrase5000</span>
 <ul>
 <li class="text">
-<span class="stdout">50	  27254377 ns/op<br/>--- BENCH: BenchmarkCacheAccounts5000-2<br/>	cache_benchmarks_test.go:32: establishing cache for 5000 accs: 4.378312ms<br/>	cache_benchmarks_test.go:32: establishing cache for 5000 accs: 4.146479ms<br/>	cache_benchmarks_test.go:32: establishing cache for 5000 accs: 4.105339ms<br/></span>
+<span class="stdout">500	   3069767 ns/op<br/>--- BENCH: BenchmarkManager_SignWithPassphrase5000-2<br/>	manager_benchmarks_test.go:309: establishing manager for 5000 accs: 35.704349ms<br/>	manager_benchmarks_test.go:309: establishing manager for 5000 accs: 23.318539ms<br/>	manager_benchmarks_test.go:309: establishing manager for 5000 accs: 59.224371ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">5.17 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAccounts10000</span>
+<div class="time">5.89 s</div>
+</em><em class="status">passed</em>BenchmarkManager_SignWithPassphrase10000</span>
 <ul>
 <li class="text">
-<span class="stdout">20	  55995882 ns/op<br/>--- BENCH: BenchmarkCacheAccounts10000-2<br/>	cache_benchmarks_test.go:32: establishing cache for 10000 accs: 4.232035ms<br/>	cache_benchmarks_test.go:32: establishing cache for 10000 accs: 4.75007ms<br/></span>
+<span class="stdout">500	   3400757 ns/op<br/>--- BENCH: BenchmarkManager_SignWithPassphrase10000-2<br/>	manager_benchmarks_test.go:309: establishing manager for 10000 accs: 43.803984ms<br/>	manager_benchmarks_test.go:309: establishing manager for 10000 accs: 58.443376ms<br/>	manager_benchmarks_test.go:309: establishing manager for 10000 accs: 61.027546ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">4 m 24 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAccounts20000</span>
+<div class="time">28.29 s</div>
+</em><em class="status">passed</em>BenchmarkManager_SignWithPassphrase20000</span>
 <ul>
 <li class="text">
-<span class="stdout">1	4839684491 ns/op<br/>--- BENCH: BenchmarkCacheAccounts20000-2<br/>	cache_benchmarks_test.go:32: establishing cache for 20000 accs: 25.373979ms<br/>	cache_benchmarks_test.go:32: establishing cache for 100000 accs: 45.331149ms<br/>	cache_benchmarks_test.go:39: cacheaccount/files mismatch: cacheacounts: 102274, files: 102275<br/>	cache_benchmarks_test.go:32: establishing cache for 500000 accs: 117.366375ms<br/>	cache_benchmarks_test.go:39: cacheaccount/files mismatch: cacheacounts: 270000, files: 500001<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test failed open">
-<span><em class="time">
-<div class="time">43.49 s</div>
-</em><em class="status">failed</em>BenchmarkCacheAccounts100000</span>
-</li>
-<li class="level test failed open">
-<span><em class="time">
-<div class="time">4 m 22 s</div>
-</em><em class="status">failed</em>BenchmarkCacheAccounts500000</span>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">1.33 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAdd100</span>
-<ul>
-<li class="text">
-<span class="stdout">20	  84673014 ns/op<br/>--- BENCH: BenchmarkCacheAdd100-2<br/>	cache_benchmarks_test.go:78: establishing cache for 100 accs: 48.656261ms<br/>	cache_benchmarks_test.go:78: establishing cache for 100 accs: 4.02753ms<br/></span>
+<span class="stdout">500	   3394578 ns/op<br/>--- BENCH: BenchmarkManager_SignWithPassphrase20000-2<br/>	manager_benchmarks_test.go:309: establishing manager for 20000 accs: 75.370248ms<br/>	manager_benchmarks_test.go:309: establishing manager for 20000 accs: 58.691241ms<br/>	manager_benchmarks_test.go:309: establishing manager for 20000 accs: 58.309409ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">2.49 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAdd500</span>
+<div class="time">1 m 15 s</div>
+</em><em class="status">passed</em>BenchmarkManager_SignWithPassphrase100000</span>
 <ul>
 <li class="text">
-<span class="stdout">30	  41468462 ns/op<br/>--- BENCH: BenchmarkCacheAdd500-2<br/>	cache_benchmarks_test.go:78: establishing cache for 500 accs: 35.30715ms<br/>	cache_benchmarks_test.go:78: establishing cache for 500 accs: 5.745184ms<br/></span>
+<span class="stdout">500	   3538710 ns/op<br/>--- BENCH: BenchmarkManager_SignWithPassphrase100000-2<br/>	manager_benchmarks_test.go:309: establishing manager for 100000 accs: 208.317403ms<br/>	manager_benchmarks_test.go:309: establishing manager for 100000 accs: 64.148611ms<br/>	manager_benchmarks_test.go:309: establishing manager for 100000 accs: 8.122843ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">2.13 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAdd1000</span>
+<div class="time">2.20 s</div>
+</em><em class="status">passed</em>BenchmarkManager_SignWithPassphrase500000</span>
 <ul>
 <li class="text">
-<span class="stdout">30	  60002994 ns/op<br/>--- BENCH: BenchmarkCacheAdd1000-2<br/>	cache_benchmarks_test.go:78: establishing cache for 1000 accs: 66.538312ms<br/>	cache_benchmarks_test.go:78: establishing cache for 1000 accs: 5.040161ms<br/>	cache_benchmarks_test.go:78: establishing cache for 1000 accs: 8.577603ms<br/></span>
+<span class="stdout">300	   4279667 ns/op<br/>--- BENCH: BenchmarkManager_SignWithPassphrase500000-2<br/>	manager_benchmarks_test.go:309: establishing manager for 500000 accs: 168.247823ms<br/>	manager_benchmarks_test.go:309: establishing manager for 500000 accs: 62.266334ms<br/>	manager_benchmarks_test.go:309: establishing manager for 500000 accs: 113.526807ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">4.71 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAdd5000</span>
+<div class="time">2.94 s</div>
+</em><em class="status">passed</em>BenchmarkManager_CRUSD100</span>
 <ul>
 <li class="text">
-<span class="stdout">30	  49478967 ns/op<br/>--- BENCH: BenchmarkCacheAdd5000-2<br/>	cache_benchmarks_test.go:78: establishing cache for 5000 accs: 220.05183ms<br/>	cache_benchmarks_test.go:78: establishing cache for 5000 accs: 5.494888ms<br/>	cache_benchmarks_test.go:78: establishing cache for 5000 accs: 4.662998ms<br/></span>
+<span class="stdout">50	  27181788 ns/op<br/>--- BENCH: BenchmarkManager_CRUSD100-2<br/>	manager_benchmarks_test.go:368: establishing manager for 100 accs: 32.842985ms<br/>	manager_benchmarks_test.go:368: establishing manager for 100 accs: 60.173237ms<br/>	manager_benchmarks_test.go:368: establishing manager for 100 accs: 64.633671ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">1.94 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAdd10000</span>
+<div class="time">1.49 s</div>
+</em><em class="status">passed</em>BenchmarkManager_CRUSD500</span>
 <ul>
 <li class="text">
-<span class="stdout">20	  58029842 ns/op<br/>--- BENCH: BenchmarkCacheAdd10000-2<br/>	cache_benchmarks_test.go:78: establishing cache for 10000 accs: 239.83154ms<br/>	cache_benchmarks_test.go:78: establishing cache for 10000 accs: 109.932668ms<br/>	cache_benchmarks_test.go:78: establishing cache for 10000 accs: 22.576432ms<br/>	cache_benchmarks_test.go:78: establishing cache for 10000 accs: 40.115009ms<br/>	cache_benchmarks_test.go:78: establishing cache for 10000 accs: 6.078025ms<br/></span>
+<span class="stdout">50	  56427840 ns/op<br/>--- BENCH: BenchmarkManager_CRUSD500-2<br/>	manager_benchmarks_test.go:368: establishing manager for 500 accs: 33.973351ms<br/>	manager_benchmarks_test.go:368: establishing manager for 500 accs: 57.644326ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">3.09 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAdd20000</span>
+<div class="time">1.25 s</div>
+</em><em class="status">passed</em>BenchmarkManager_CRUSD1000</span>
 <ul>
 <li class="text">
-<span class="stdout">30	  41492334 ns/op<br/>--- BENCH: BenchmarkCacheAdd20000-2<br/>	cache_benchmarks_test.go:78: establishing cache for 20000 accs: 60.204804ms<br/>	cache_benchmarks_test.go:78: establishing cache for 20000 accs: 5.034289ms<br/>	cache_benchmarks_test.go:78: establishing cache for 20000 accs: 5.269119ms<br/></span>
+<span class="stdout">20	  67916777 ns/op<br/>--- BENCH: BenchmarkManager_CRUSD1000-2<br/>	manager_benchmarks_test.go:368: establishing manager for 1000 accs: 40.803863ms<br/>	manager_benchmarks_test.go:368: establishing manager for 1000 accs: 16.295654ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">2.89 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAdd100000</span>
+<div class="time">3.63 s</div>
+</em><em class="status">passed</em>BenchmarkManager_CRUSD5000</span>
 <ul>
 <li class="text">
-<span class="stdout">20	  93526923 ns/op<br/>--- BENCH: BenchmarkCacheAdd100000-2<br/>	cache_benchmarks_test.go:78: establishing cache for 100000 accs: 87.548516ms<br/>	cache_benchmarks_test.go:78: establishing cache for 100000 accs: 10.637192ms<br/>	cache_benchmarks_test.go:78: establishing cache for 100000 accs: 7.171697ms<br/></span>
+<span class="stdout">10	 104075917 ns/op<br/>--- BENCH: BenchmarkManager_CRUSD5000-2<br/>	manager_benchmarks_test.go:368: establishing manager for 5000 accs: 28.398398ms<br/>	manager_benchmarks_test.go:368: establishing manager for 5000 accs: 65.975823ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">2.08 s</div>
-</em><em class="status">passed</em>BenchmarkCacheAdd500000</span>
+<div class="time">1.48 s</div>
+</em><em class="status">passed</em>BenchmarkManager_CRUSD10000</span>
 <ul>
 <li class="text">
-<span class="stdout">10	 162532131 ns/op<br/>--- BENCH: BenchmarkCacheAdd500000-2<br/>	cache_benchmarks_test.go:78: establishing cache for 500000 accs: 82.856923ms<br/>	cache_benchmarks_test.go:78: establishing cache for 500000 accs: 14.389393ms<br/>	cache_benchmarks_test.go:78: establishing cache for 500000 accs: 98.082942ms<br/></span>
+<span class="stdout">20	  86868763 ns/op<br/>--- BENCH: BenchmarkManager_CRUSD10000-2<br/>	manager_benchmarks_test.go:368: establishing manager for 10000 accs: 93.766465ms<br/>	manager_benchmarks_test.go:368: establishing manager for 10000 accs: 67.604284ms<br/>	manager_benchmarks_test.go:368: establishing manager for 10000 accs: 78.234665ms<br/>	manager_benchmarks_test.go:368: establishing manager for 10000 accs: 15.877264ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">2.32 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind100</span>
+<div class="time">1.59 s</div>
+</em><em class="status">passed</em>BenchmarkManager_CRUSD20000</span>
 <ul>
 <li class="text">
-<span class="stdout">30000	     42234 ns/op<br/>--- BENCH: BenchmarkCacheFind100-2<br/>	cache_benchmarks_test.go:121: establishing cache for 100 accs: 24.697653ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100 accs: 4.306602ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100 accs: 4.264659ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100 accs: 83.81965ms<br/></span>
+<span class="stdout">20	  65038529 ns/op<br/>--- BENCH: BenchmarkManager_CRUSD20000-2<br/>	manager_benchmarks_test.go:368: establishing manager for 20000 accs: 38.232096ms<br/>	manager_benchmarks_test.go:368: establishing manager for 20000 accs: 60.857884ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">4.08 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind500</span>
+<div class="time">1.35 s</div>
+</em><em class="status">passed</em>BenchmarkManager_CRUSD100000</span>
 <ul>
 <li class="text">
-<span class="stdout">50000	     31611 ns/op<br/>--- BENCH: BenchmarkCacheFind500-2<br/>	cache_benchmarks_test.go:121: establishing cache for 500 accs: 59.090965ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500 accs: 9.046244ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500 accs: 4.090376ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500 accs: 6.698421ms<br/></span>
+<span class="stdout">10	 134423789 ns/op<br/>--- BENCH: BenchmarkManager_CRUSD100000-2<br/>	manager_benchmarks_test.go:368: establishing manager for 100000 accs: 44.62387ms<br/>	manager_benchmarks_test.go:368: establishing manager for 100000 accs: 83.820913ms<br/></span>
 </li>
 </ul>
 </li>
 <li class="level test">
 <span><em class="time">
-<div class="time">3.43 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind1000</span>
+<div class="time">39 ms</div>
+</em><em class="status">passed</em>BenchmarkManager_CRUSD500000</span>
 <ul>
 <li class="text">
-<span class="stdout">50000	     33702 ns/op<br/>--- BENCH: BenchmarkCacheFind1000-2<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 16.644853ms<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 5.09637ms<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 57.596635ms<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 43.140187ms<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 7.401ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">6.46 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind5000</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     28632 ns/op<br/>--- BENCH: BenchmarkCacheFind5000-2<br/>	cache_benchmarks_test.go:121: establishing cache for 5000 accs: 20.921666ms<br/>	cache_benchmarks_test.go:121: establishing cache for 5000 accs: 41.281122ms<br/>	cache_benchmarks_test.go:121: establishing cache for 5000 accs: 3.383304ms<br/>	cache_benchmarks_test.go:121: establishing cache for 5000 accs: 5.518601ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">21.34 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind10000</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     30852 ns/op<br/>--- BENCH: BenchmarkCacheFind10000-2<br/>	cache_benchmarks_test.go:121: establishing cache for 10000 accs: 102.564183ms<br/>	cache_benchmarks_test.go:121: establishing cache for 10000 accs: 7.725566ms<br/>	cache_benchmarks_test.go:121: establishing cache for 10000 accs: 6.097058ms<br/>	cache_benchmarks_test.go:121: establishing cache for 10000 accs: 5.660287ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">44.05 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind20000</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     31883 ns/op<br/>--- BENCH: BenchmarkCacheFind20000-2<br/>	cache_benchmarks_test.go:121: establishing cache for 20000 accs: 21.834358ms<br/>	cache_benchmarks_test.go:121: establishing cache for 20000 accs: 5.880463ms<br/>	cache_benchmarks_test.go:121: establishing cache for 20000 accs: 6.013156ms<br/>	cache_benchmarks_test.go:121: establishing cache for 20000 accs: 12.901998ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">2 m 19 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind100000</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     33579 ns/op<br/>--- BENCH: BenchmarkCacheFind100000-2<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 43.466658ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 9.528022ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 9.138373ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 28.950903ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 17.549608ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">2.41 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind500000</span>
-<ul>
-<li class="text">
-<span class="stdout">30000	     37301 ns/op<br/>--- BENCH: BenchmarkCacheFind500000-2<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 138.702543ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 51.674986ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 61.99408ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 9.071671ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 18.7083ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">3.16 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind100OnlyExisting</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     34692 ns/op<br/>--- BENCH: BenchmarkCacheFind100OnlyExisting-2<br/>	cache_benchmarks_test.go:121: establishing cache for 100 accs: 78.429751ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100 accs: 4.159572ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100 accs: 3.969306ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100 accs: 6.258552ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">6.49 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind500OnlyExisting</span>
-<ul>
-<li class="text">
-<span class="stdout">30000	     35155 ns/op<br/>--- BENCH: BenchmarkCacheFind500OnlyExisting-2<br/>	cache_benchmarks_test.go:121: establishing cache for 500 accs: 183.878245ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500 accs: 12.034228ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500 accs: 4.60545ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500 accs: 120.93647ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">3.51 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind1000OnlyExisting</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     39392 ns/op<br/>--- BENCH: BenchmarkCacheFind1000OnlyExisting-2<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 94.003447ms<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 112.063077ms<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 30.163878ms<br/>	cache_benchmarks_test.go:121: establishing cache for 1000 accs: 55.974073ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">5.67 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind5000OnlyExisting</span>
-<ul>
-<li class="text">
-<span class="stdout">30000	     38393 ns/op<br/>--- BENCH: BenchmarkCacheFind5000OnlyExisting-2<br/>	cache_benchmarks_test.go:121: establishing cache for 5000 accs: 56.338554ms<br/>	cache_benchmarks_test.go:121: establishing cache for 5000 accs: 4.532574ms<br/>	cache_benchmarks_test.go:121: establishing cache for 5000 accs: 5.30663ms<br/>	cache_benchmarks_test.go:121: establishing cache for 5000 accs: 61.745435ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">7.98 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind10000OnlyExisting</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     39084 ns/op<br/>--- BENCH: BenchmarkCacheFind10000OnlyExisting-2<br/>	cache_benchmarks_test.go:121: establishing cache for 10000 accs: 60.858815ms<br/>	cache_benchmarks_test.go:121: establishing cache for 10000 accs: 4.492851ms<br/>	cache_benchmarks_test.go:121: establishing cache for 10000 accs: 7.458046ms<br/>	cache_benchmarks_test.go:121: establishing cache for 10000 accs: 7.281596ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">1 m 8 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind20000OnlyExisting</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     36456 ns/op<br/>--- BENCH: BenchmarkCacheFind20000OnlyExisting-2<br/>	cache_benchmarks_test.go:121: establishing cache for 20000 accs: 60.065026ms<br/>	cache_benchmarks_test.go:121: establishing cache for 20000 accs: 5.039528ms<br/>	cache_benchmarks_test.go:121: establishing cache for 20000 accs: 6.73507ms<br/>	cache_benchmarks_test.go:121: establishing cache for 20000 accs: 11.552259ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">1 m 34 s</div>
-</em><em class="status">passed</em>BenchmarkCacheFind100000OnlyExisting</span>
-<ul>
-<li class="text">
-<span class="stdout">50000	     37137 ns/op<br/>--- BENCH: BenchmarkCacheFind100000OnlyExisting-2<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 176.113766ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 93.64281ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 11.175224ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 14.059861ms<br/>	cache_benchmarks_test.go:121: establishing cache for 100000 accs: 204.130267ms<br/></span>
-</li>
-</ul>
-</li>
-<li class="level test">
-<span><em class="time">
-<div class="time">88 ms</div>
-</em><em class="status">passed</em>BenchmarkCacheFind500000OnlyExisting</span>
-<ul>
-<li class="text">
-<span class="stdout">30000	     37095 ns/op<br/>--- BENCH: BenchmarkCacheFind500000OnlyExisting-2<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 78.77702ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 10.068361ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 8.807031ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 29.177191ms<br/>	cache_benchmarks_test.go:121: establishing cache for 500000 accs: 8.563907ms<br/>FAIL<br/>Process finished with exit code 1<br/></span>
+<span class="stdout">10	 107799087 ns/op<br/>--- BENCH: BenchmarkManager_CRUSD500000-2<br/>	manager_benchmarks_test.go:368: establishing manager for 500000 accs: 18.051389ms<br/>	manager_benchmarks_test.go:368: establishing manager for 500000 accs: 67.470907ms<br/>PASS<br/>Process finished with exit code 0<br/></span>
 </li>
 </ul>
 </li>
@@ -903,7 +753,7 @@ jQuery.cookie = function(name, value, options) {
 </div>
 </div>
 <div id="footer">
-<p>Generated by Gogland on 5/18/17 5:58 PM</p>
+<p>Generated by Gogland on 5/18/17 5:33 PM</p>
 </div>
 </body>
 </html>
