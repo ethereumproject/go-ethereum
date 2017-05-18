@@ -50,40 +50,6 @@ var ErrCacheDBNoUpdateStamp = errors.New("cachedb has no updated timestamp; expe
 
 type accountsByFile []Account
 
-func (as accountsByFile) MarshalJSON() ([]byte, error) {
-	type aux struct {
-		Address string `json:"address,omitempty"`
-		File    string `json:"file,omitempty"`
-	}
-	var auxs []aux
-	for _, a := range as {
-		auxs = append(auxs, aux{
-			Address: a.Address.Hex(),
-			File:    a.File,
-		})
-	}
-	return json.Marshal(auxs)
-}
-
-func UnmarshalJSONBytesToAccounts(raw []byte) ([]Account, error) {
-	type aux struct {
-		Address string `json:"address,omitempty"`
-		File    string `json:"file,omitempty"`
-	}
-	var auxs []aux
-	var accs []Account
-	if e := json.Unmarshal(raw, &auxs); e != nil {
-		return accs, e
-	}
-	for _, x := range auxs {
-		accs = append(accs, Account{
-			Address: common.HexToAddress(x.Address),
-			File:    x.File,
-		})
-	}
-	return accs, nil
-}
-
 func (s accountsByFile) Len() int           { return len(s) }
 func (s accountsByFile) Less(i, j int) bool { return s[i].File < s[j].File }
 func (s accountsByFile) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
