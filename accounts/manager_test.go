@@ -80,7 +80,7 @@ func TestManager(t *testing.T) {
 }
 
 func TestManager_Accounts(t *testing.T) {
-	defer os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
 	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP)
 	if err != nil {
 		t.Fatal(err)

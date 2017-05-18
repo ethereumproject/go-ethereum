@@ -46,6 +46,7 @@ var (
 // When used as an argument, it selects a unique key file to act on.
 type Account struct {
 	Address common.Address // Ethereum account address derived from the key
+	EncryptedKey string // web3JSON format
 
 	// File contains the key file name.
 	// When Acccount is used as an argument to select a key, File can be left blank to
@@ -283,7 +284,13 @@ func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error
 		return Account{}, nil, err
 	}
 
-	key, err := am.keyStore.Lookup(a.File, auth)
+	key := &key{}
+	if a.EncryptedKey != "" {
+		key, err = am.keyStore.DecryptKey([]byte(a.EncryptedKey), auth)
+	} else {
+		key, err = am.keyStore.Lookup(a.File, auth)
+	}
+
 	if err != nil {
 		return Account{}, nil, err
 	}

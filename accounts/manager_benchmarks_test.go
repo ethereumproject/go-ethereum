@@ -12,6 +12,74 @@ import (
 	"math/rand"
 )
 
+func BenchmarkAccountSignScaling(b *testing.B) {
+	var cases = []struct {
+		dir                  string
+		numKeyFiles          int
+		resetAll, resetCache bool
+	}{
+		// You can use resetCache: false to save some time if you've already run the benchmark.
+		// Note that if you make any changes to the structure of the cachedb you'll need to
+		// dump and reinitialize accounts.db.
+		{dir: "benchmark_keystore100", numKeyFiles: 100, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore100", numKeyFiles: 100, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore500", numKeyFiles: 500, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore500", numKeyFiles: 500, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore1k", numKeyFiles: 1000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore1k", numKeyFiles: 1000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore5k", numKeyFiles: 5000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore5k", numKeyFiles: 5000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore10k", numKeyFiles: 10000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore10k", numKeyFiles: 10000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore20k", numKeyFiles: 20000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore20k", numKeyFiles: 20000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore100k", numKeyFiles: 100000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore100k", numKeyFiles: 100000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore500k", numKeyFiles: 500000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore500k", numKeyFiles: 500000, resetAll: false, resetCache: false},
+	}
+
+	for _, c := range cases {
+		b.Run(fmt.Sprintf("KeyFiles#:%v, CacheFromScratch:%v", c.numKeyFiles, c.resetCache), func(b *testing.B) {
+			am := setupBenchmarkAccountFlowFast(filepath.Join("testdata", c.dir), c.numKeyFiles, c.resetAll, c.resetCache, b)
+			benchmarkAccountSignFast(am.keyStore.baseDir, am, c.numKeyFiles-1, b)
+		})
+	}
+}
+
+
+func BenchmarkAccountFlowScaling(b *testing.B) {
+	var cases = []struct {
+		dir                  string
+		numKeyFiles          int
+		resetAll, resetCache bool
+	}{
+		{dir: "benchmark_keystore100", numKeyFiles: 100, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore100", numKeyFiles: 100, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore500", numKeyFiles: 500, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore500", numKeyFiles: 500, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore1k", numKeyFiles: 1000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore1k", numKeyFiles: 1000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore5k", numKeyFiles: 5000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore5k", numKeyFiles: 5000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore10k", numKeyFiles: 10000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore10k", numKeyFiles: 10000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore20k", numKeyFiles: 20000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore20k", numKeyFiles: 20000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore100k", numKeyFiles: 100000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore100k", numKeyFiles: 100000, resetAll: false, resetCache: false},
+		{dir: "benchmark_keystore500k", numKeyFiles: 500000, resetAll: false, resetCache: true},
+		//{dir: "benchmark_keystore500k", numKeyFiles: 500000, resetAll: false, resetCache: false},
+	}
+
+	for _, c := range cases {
+		b.Run(fmt.Sprintf("KeyFiles#:%v, CacheFromScratch:%v", c.numKeyFiles, c.resetCache), func(b *testing.B) {
+			am := setupBenchmarkAccountFlowFast(filepath.Join("testdata", c.dir), c.numKeyFiles, c.resetAll, c.resetCache, b)
+			benchmarkAccountFlowFast(filepath.Join("testdata", c.dir), am, b)
+		})
+	}
+}
+
 // Signing an account requires finding the keyfile.
 func testAccountSign(am *Manager, account Account, dir string) error {
 	if _, err := am.SignWithPassphrase(account.Address, "foo", testSigData); err != nil {
@@ -94,59 +162,6 @@ func createTestAccount(am *Manager, dir string) error {
 	return nil
 }
 
-// Test benchmark for CRUSD/account; create, update, sign, delete.
-// Runs against setting of 10, 100, 1000, 10k, (100k, 1m) _existing_ accounts.
-func benchmarkAccountFlow(dir string, n int, reset bool, b *testing.B) {
-	start := time.Now()
-	//dir, err := ioutil.TempDir("", "eth-acctmanager-test")
-	//if err != nil {
-	//	b.Fatal(err)
-	//}
-
-	if e := os.MkdirAll(dir, os.ModePerm); e != nil {
-		b.Fatalf("could not create dir: %v", e)
-	}
-
-	// Optionally: don't remove so we can compound accounts more quickly.
-	if reset {
-		defer func() {
-			b.Log("removing testdata keydir")
-			os.RemoveAll(dir)
-		}()
-	}
-
-	am, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	initAccountsN := len(am.Accounts())
-
-	for len(am.Accounts()) < n { //  + initAccountsN
-		if e := createTestAccount(am, dir); e != nil {
-			b.Fatalf("error setting up acount: %v", e)
-		}
-	}
-	elapsed := time.Since(start)
-	defer b.Logf("setting up %v(want)/%v(existing) accounts took %v", n, initAccountsN, elapsed)
-	if len(am.Accounts()) != n {
-		b.Fatalf("wrong number accounts: want: %v, got: %v", n, len(am.Accounts()))
-	}
-
-	files, _ := ioutil.ReadDir(dir)
-	if len(files)-1 != n {
-		b.Fatalf("files/account mismatch: files: %v, cacheaccounts: %v", len(files)-1, n)
-	}
-
-	b.ResetTimer() // _benchmark_ timer, not setup timer.
-
-	for i := 0; i < b.N; i++ {
-		if e := testAccountFlow(am, dir); e != nil {
-			b.Fatalf("error setting up acount: %v", e)
-		}
-	}
-}
-
 func getRandomIntN(n int) int {
 	rand.Seed(time.Now().UTC().UnixNano())
 	return int(rand.Int31n(int32(n)))
@@ -166,73 +181,6 @@ func benchmarkAccountSignFast(dir string, am *Manager, accountsN int, b *testing
 		if e := testAccountSign(am, account, dir); e != nil {
 			b.Fatalf("error signing with account: %v", e)
 		}
-	}
-}
-
-func BenchmarkAccountSignScaling(b *testing.B) {
-	cases := []struct {
-		dir                  string
-		numKeyFiles          int
-		resetAll, resetCache bool
-	}{
-		//{dir: "benchmark_keystore100", numKeyFiles: 100, resetAll: false, resetCache: true},
-		{dir: "benchmark_keystore100", numKeyFiles: 100, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore500", numKeyFiles: 500, resetAll: false, resetCache: true},
-		{dir: "benchmark_keystore500", numKeyFiles: 500, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore1k", numKeyFiles: 1000, resetAll: false, resetCache: true},
-		{dir: "benchmark_keystore1k", numKeyFiles: 1000, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore5k", numKeyFiles: 5000, resetAll: false, resetCache: true},
-		{dir: "benchmark_keystore5k", numKeyFiles: 5000, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore10k", numKeyFiles: 10000, resetAll: false, resetCache: true},
-		{dir: "benchmark_keystore10k", numKeyFiles: 10000, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore20k", numKeyFiles: 20000, resetAll: false, resetCache: true},
-		{dir: "benchmark_keystore20k", numKeyFiles: 20000, resetAll: false, resetCache: false},
-		{dir: "benchmark_keystore100k", numKeyFiles: 100000, resetAll: false, resetCache: true},
-		//{dir: "benchmark_keystore100k", numKeyFiles: 100000, resetAll: false, resetCache: false},
-		{dir: "benchmark_keystore500k", numKeyFiles: 500000, resetAll: false, resetCache: true},
-		//{dir: "benchmark_keystore500k", numKeyFiles: 500000, resetAll: false, resetCache: false},
-	}
-
-	for _, c := range cases {
-
-		b.Run(fmt.Sprintf("KeyFiles#:%v, CacheFromScratch:%v", c.numKeyFiles, c.resetCache), func(b *testing.B) {
-			am := setupBenchmarkAccountFlowFast(filepath.Join("testdata", c.dir), c.numKeyFiles, c.resetAll, c.resetCache, b)
-			benchmarkAccountSignFast(am.keyStore.baseDir, am, c.numKeyFiles-1, b)
-		})
-	}
-}
-
-
-func BenchmarkAccountFlowScaling(b *testing.B) {
-	cases := []struct {
-		dir                  string
-		numKeyFiles          int
-		resetAll, resetCache bool
-	}{
-		//{dir: "benchmark_keystore100", numKeyFiles: 100, resetAll: false, resetCache: true},
-		//{dir: "benchmark_keystore100", numKeyFiles: 100, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore500", numKeyFiles: 500, resetAll: false, resetCache: true},
-		//{dir: "benchmark_keystore500", numKeyFiles: 500, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore1k", numKeyFiles: 1000, resetAll: false, resetCache: true},
-		//{dir: "benchmark_keystore1k", numKeyFiles: 1000, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore5k", numKeyFiles: 5000, resetAll: false, resetCache: true},
-		//{dir: "benchmark_keystore5k", numKeyFiles: 5000, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore10k", numKeyFiles: 10000, resetAll: false, resetCache: true},
-		//{dir: "benchmark_keystore10k", numKeyFiles: 10000, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore20k", numKeyFiles: 20000, resetAll: false, resetCache: true},
-		//{dir: "benchmark_keystore20k", numKeyFiles: 20000, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore100k", numKeyFiles: 100000, resetAll: false, resetCache: true},
-		{dir: "benchmark_keystore100k", numKeyFiles: 100000, resetAll: false, resetCache: false},
-		//{dir: "benchmark_keystore500k", numKeyFiles: 500000, resetAll: false, resetCache: true},
-		{dir: "benchmark_keystore500k", numKeyFiles: 500000, resetAll: false, resetCache: false},
-	}
-
-	for _, c := range cases {
-
-		b.Run(fmt.Sprintf("KeyFiles#:%v, CacheFromScratch:%v", c.numKeyFiles, c.resetCache), func(b *testing.B) {
-			am := setupBenchmarkAccountFlowFast(filepath.Join("testdata", c.dir), c.numKeyFiles, c.resetAll, c.resetCache, b)
-			benchmarkAccountFlowFast(filepath.Join("testdata", c.dir), am, b)
-		})
 	}
 }
 
