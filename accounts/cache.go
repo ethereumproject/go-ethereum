@@ -670,7 +670,8 @@ func skipKeyFile(fi os.FileInfo) bool {
 func bytesToAccount(bs []byte) Account {
 	var a Account
 	if e := bson.Unmarshal(bs, &a); e != nil {
-		panic(e)
+		//panic(e)
+		return a
 	}
 	return a
 }
@@ -678,7 +679,8 @@ func bytesToAccount(bs []byte) Account {
 func accountToBytes(account Account) []byte {
 	b, e := bson.Marshal(account)
 	if e != nil {
-		panic(e)
+		return nil
+		//panic(e)
 	}
 	return b
 }
