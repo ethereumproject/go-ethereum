@@ -33,8 +33,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/rjeczalik/notify"
 	"sort"
-	"gopkg.in/mgo.v2/bson"
 	"bytes"
+	"errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Minimum amount of time between cache reloads. This limit applies if the platform does
@@ -45,6 +46,7 @@ const minReloadInterval = 2 * time.Second
 var addrBucketName = []byte("byAddr")
 var fileBucketName = []byte("byFile")
 var statsBucketName = []byte("stats")
+var ErrCacheDBNoUpdateStamp = errors.New("cachedb has no updated timestamp; expected for newborn dbs.")
 
 type accountsByFile []Account
 
@@ -117,17 +119,12 @@ func newAddrCache(keydir string) *addrCache {
 	if e := os.MkdirAll(keydir, os.ModePerm); e != nil {
 		panic(e)
 	}
-	dbexists := false
-	dbpath := filepath.Join(keydir, "accounts.db")
-	if _, e := os.Stat(dbpath); e == nil { // ie os.ErrNotExist
-		dbexists = true
-	}
 
+	dbpath := filepath.Join(keydir, "accounts.db")
 	bdb, e := bolt.Open(dbpath, 0600, nil) // TODO configure more?
 	if e != nil {
 		panic(e) // FIXME
 	}
-	//defer bdb.Close()
 
 	ac := &addrCache{
 		keydir: keydir,
@@ -150,28 +147,18 @@ func newAddrCache(keydir string) *addrCache {
 	}
 
 	// Initializes db to match fs.
-	if dbexists {
-		t, e := ac.getLastUpdated()
-		if e != nil {
-			glog.V(logger.Error).Infof("error getting db lastUpdated: %v", e)
-		}
-		if errs := ac.syncfs2db(t); len(errs) != 0 {
-			for _, e := range errs {
-				if e != nil {
-					glog.V(logger.Error).Infof("error db sync: %v", e)
-				}
-			}
-		}
-	} else {
-		if errs := ac.scan(); len(errs) != 0 {
-			for _, e := range errs {
-				if e != nil {
-					glog.V(logger.Error).Infof("error db scan: %v", e)
-				}
+	lu, e := ac.getLastUpdated()
+	if e != nil && e != ErrCacheDBNoUpdateStamp {
+		glog.V(logger.Error).Infof("cachedb getupdated error: %v", e)
+	}
+	if errs := ac.syncfs2db(lu); len(errs) != 0 {
+		for _, e := range errs {
+			if e != nil {
+				glog.V(logger.Error).Infof("error db sync: %v", e)
 			}
 		}
 	}
-
+	
 	ac.watcher = newWatcher(ac)
 	return ac
 }
@@ -337,11 +324,6 @@ func (ac *addrCache) find(a Account) (Account, error) {
 	var matches []Account
 	var e error
 
-	// Limit search to address candidates if possible.
-	if (a.Address != common.Address{}) {
-		matches, e = ac.getCachedAccountsByAddress(a.Address)
-	}
-
 	if a.File != "" {
 		// If only the basename is specified, complete the path.
 		if !strings.ContainsRune(a.File, filepath.Separator) {
@@ -355,6 +337,11 @@ func (ac *addrCache) find(a Account) (Account, error) {
 		if (a.Address == common.Address{}) {
 			return Account{}, ErrNoMatch
 		}
+	}
+
+	// Limit search to address candidates if possible.
+	if (a.Address != common.Address{}) {
+		matches, e = ac.getCachedAccountsByAddress(a.Address)
 	}
 
 	//// Limit search to address candidates if possible.
@@ -443,7 +430,7 @@ func (ac *addrCache) close() {
 // set is used by the fs watcher to update the cache from a given file path.
 // it has some logic;
 // -- it will _overwrite_ any existing cache entry by file and addr, making it useful for CREATE and UPDATE
-func (ac *addrCache) setViaFile(path string) error {
+func (ac *addrCache) setViaFile(name string) error {
 	// first sync fs -> cachedb, update all accounts in cache from fs
 	var (
 		buf     = new(bufio.Reader)
@@ -453,6 +440,7 @@ func (ac *addrCache) setViaFile(path string) error {
 		   }
 	)
 
+	path := filepath.Join(ac.keydir, name)
 	fd, err := os.Open(path)
 	if err != nil {
 		return err
@@ -467,7 +455,7 @@ func (ac *addrCache) setViaFile(path string) error {
 	case (keyJSON.Address == common.Address{}):
 		return fmt.Errorf("can't decode key %s: missing or zero address", path)
 	default:
-		acc = Account{Address: keyJSON.Address, File: path}
+		acc = Account{Address: keyJSON.Address, File: name}
 	}
 
 
@@ -478,7 +466,7 @@ func (ac *addrCache) setViaFile(path string) error {
 			return e
 		}
 		b = tx.Bucket(addrBucketName)
-		return b.Put([]byte(keyJSON.Address.Hex()+path), []byte(time.Now().String()))
+		return b.Put([]byte(keyJSON.Address.Hex()+name), []byte(time.Now().String()))
 	})
 }
 
@@ -551,7 +539,7 @@ func (ac *addrCache) reload(events []notify.EventInfo) []notify.EventInfo {
 			// TODO: recursively watch tree? not so important, i think
 		}
 
-
+		p = fi.Name()
 
 		// TODO: don't ignore the returned errors
 		switch ev.Event() {
@@ -560,7 +548,7 @@ func (ac *addrCache) reload(events []notify.EventInfo) []notify.EventInfo {
 			ac.setViaFile(p)
 		case notify.Rename:
 			glog.V(logger.Debug).Infof("reloading rename event (doing nothing): %v", ev.Event())
-			// TODO: do something
+			// TODO: do something... how to get old vs. new paths?
 		case notify.Remove:
 			glog.V(logger.Debug).Infof("reloading remove event: %v", ev.Event())
 			ac.removeViaFile(p)
@@ -569,8 +557,6 @@ func (ac *addrCache) reload(events []notify.EventInfo) []notify.EventInfo {
 			ac.setViaFile(p)
 		default:
 			// do nothing
-			//glog.V(logger.Debug).Infof("reloading default event: %v", ev.Event())
-			//ac.setViaFile(p)
 		}
 	}
 
@@ -601,6 +587,10 @@ func (ac *addrCache) getLastUpdated() (t time.Time, err error) {
 	e := ac.db.View(func (tx *bolt.Tx) error {
 		b := tx.Bucket(statsBucketName)
 		v := b.Get([]byte("lastUpdated"))
+		if v == nil {
+			t, err = time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", "1900-01-02 15:04:05.999999999 -0700 MST")
+			return ErrCacheDBNoUpdateStamp
+		}
 		pt, e := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", string(v))
 		if e != nil {
 			return e
@@ -611,6 +601,8 @@ func (ac *addrCache) getLastUpdated() (t time.Time, err error) {
 	return t, e
 }
 
+// setBatchAccounts sets many accounts in a single db tx.
+// It saves a lot of time in disk write.
 func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
 	if len(accs) == 0 {
 		return nil
@@ -647,8 +639,7 @@ func (ac *addrCache) setBatchAccounts(accs []Account) (errs []error) {
 	return errs
 }
 
-// syncfs2db is designed to syncronise an existing cachedb with a corresponding fs.
-// it is relatively slow.
+// syncfs2db syncronises an existing cachedb with a corresponding fs.
 func (ac *addrCache) syncfs2db(lastUpdated time.Time) (errs []error) {
 	defer ac.setLastUpdated()
 	files, err := ioutil.ReadDir(ac.keydir)
@@ -656,73 +647,37 @@ func (ac *addrCache) syncfs2db(lastUpdated time.Time) (errs []error) {
 		return append(errs, err)
 	}
 
-	// first sync fs -> cachedb, update all accounts in cache from fs
 	var (
 		buf     = new(bufio.Reader)
-		addrs []Account
+		accounts []Account
 		keyJSON struct {
 			Address common.Address `json:"address"`
 		}
 	)
 
-	// TODO: iterate addrFiles and touch all, so ensure have "updated" all files present in db, and
-	// that any _new_ files will not have been touched.
-	// or... use git to provide working tree diffs?
-	// or some other better way?
-	for _, fi := range files {
-
-		path := filepath.Join(ac.keydir, fi.Name())
-		// Don't fs -> db if db has been more recently modified than file.
-		// This assumes that ac.scan() has been run, and that any files having entered the directory in the meantime
-		// have been *updated* after entrance.
-		/// It is ugly and not to be trusted. FIXME.
-		if fi, fe := os.Stat(path); fe == nil {
-			if lastUpdated.UTC().After(fi.ModTime().UTC()) {
-				continue
-			}
-		} else if fe != nil {
-			errs = append(errs, fe)
-			continue
-		}
-
-		if skipKeyFile(fi) {
-			glog.V(logger.Detail).Infof("ignoring file %s", path)
-			continue
-		}
-
-		fd, err := os.Open(path)
-		if err != nil {
-			return append(errs, err)
-		}
-		buf.Reset(fd)
-		// Parse the address.
-		keyJSON.Address = common.Address{}
-		err = json.NewDecoder(buf).Decode(&keyJSON)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Errorf("can't decode key %s: %v", path, err))
-		case (keyJSON.Address == common.Address{}):
-			errs = append(errs, fmt.Errorf("can't decode key %s: missing or zero address", path))
-		default:
-			addrs = append(addrs, Account{Address: keyJSON.Address, File: path})
-		}
-		fd.Close()
-	}
-
-	if e := ac.setBatchAccounts(addrs); len(e) != 0 {
-		errs = append(errs, e...)
-	}
-
-	// are there any cached accounts that don't exist in the fs anymore?
-	e := ac.db.Update(func(tx *bolt.Tx) error {
+	// SYNC: DB --> FS.
+	// Iterate addrFiles and touch all in FS, so ensure have "updated" all files which are present in db.
+	// Any _new_ files will not have been touched.
+	n := time.Now()
+	e := ac.db.Update(func (tx *bolt.Tx) error {
+		var removedAccounts []Account
 		fb := tx.Bucket(fileBucketName)
 		ab := tx.Bucket(addrBucketName)
 		c := fb.Cursor()
 
-		var removedAccounts []Account
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			_, e := os.Stat(string(k))
 
+			p := filepath.Join(ac.keydir, string(k))
+			fi, e := os.Stat(p)
+			if e == nil {
+				// only touch files that haven't been modified since db was updated
+				if lastUpdated.After(fi.ModTime()) {
+					// FIXME: is there a better way to `touch`?
+					if cherr := os.Chtimes(p, n, n); cherr != nil {
+						errs = append(errs, err)
+					}
+				}
+			}
 			// This account file has been removed.
 			if e != nil && os.IsNotExist(e) {
 				removedAccounts = append(removedAccounts, bytesToAccount(v))
@@ -743,58 +698,61 @@ func (ac *addrCache) syncfs2db(lastUpdated time.Time) (errs []error) {
 		}
 		return nil
 	})
-	errs = append(errs, e)
-	return errs
-}
-
-// scan is designed to *initialize* the cachedb, reading all files in keydir/* and adding them to the respective
-// buckets. it is fast and dumb.
-func (ac *addrCache) scan() (errs []error) {
-	defer ac.setLastUpdated()
-	files, err := ioutil.ReadDir(ac.keydir)
-	if err != nil {
-		return append(errs, err)
+	if e != nil {
+		errs = append(errs, e)
 	}
 
-	// first sync fs -> cachedb, update all accounts in cache from fs
-	var (
-		buf     = new(bufio.Reader)
-		addrs []Account
-		keyJSON struct {
-			Address common.Address `json:"address"`
-		}
-	)
-	for _, fi := range files {
+	// SYNC: FS --> DB.
+	for i, fi := range files {
+
+		newy := false
 		path := filepath.Join(ac.keydir, fi.Name())
 
 		if skipKeyFile(fi) {
 			glog.V(logger.Detail).Infof("ignoring file %s", path)
-			continue
+
+		} else {
+			// Check touch time from above iterator.
+			if fi, fe := os.Stat(path); fe == nil {
+				// newy == mod time is before n because we just touched the files we have indexed
+				if fi.ModTime().UTC().Before(n) {
+					newy = true
+				}
+			} else if fe != nil {
+				errs = append(errs, fe)
+				continue
+			}
+
+			if newy {
+				fd, err := os.Open(path)
+				if err != nil {
+					errs = append(errs, err)
+				}
+				buf.Reset(fd)
+				// Parse the address.
+				keyJSON.Address = common.Address{}
+				err = json.NewDecoder(buf).Decode(&keyJSON)
+				switch {
+				case err != nil:
+					errs = append(errs, fmt.Errorf("can't decode key %s: %v", path, err))
+				case (keyJSON.Address == common.Address{}):
+					errs = append(errs, fmt.Errorf("can't decode key %s: missing or zero address", path))
+				default:
+					accounts = append(accounts, Account{Address: keyJSON.Address, File: fi.Name()})
+				}
+				fd.Close()
+			}
+
 		}
 
-		fd, err := os.Open(path)
-		if err != nil {
-			glog.V(logger.Detail).Infoln(err)
-			continue
+		// Stash a batch or finish up.
+		if (len(accounts) == 10000) || (i == len(files) - 1 ) {
+			if e := ac.setBatchAccounts(accounts); len(e) != 0 {
+				errs = append(errs, e...)
+			} else {
+				accounts = nil
+			}
 		}
-		buf.Reset(fd)
-
-		// Parse the address.
-		keyJSON.Address = common.Address{}
-		err = json.NewDecoder(buf).Decode(&keyJSON)
-		switch {
-		case err != nil:
-			glog.V(logger.Debug).Infof("can't decode key %s: %v", path, err)
-		case (keyJSON.Address == common.Address{}):
-			glog.V(logger.Debug).Infof("can't decode key %s: missing or zero address", path)
-		default:
-			addrs = append(addrs, Account{Address: keyJSON.Address, File: path})
-		}
-		fd.Close()
-	}
-
-	if es := ac.setBatchAccounts(addrs); len(es) > 0 {
-		errs = append(errs, es...)
 	}
 	return errs
 }
@@ -813,72 +771,30 @@ func skipKeyFile(fi os.FileInfo) bool {
 	}
 	return false
 }
-//func bytesAccountFilesToAccounts(bs []byte) []Account {
-//	as := accountsByFile{}
-//	ass := []Account{}
-//	if bs == nil {
-//		return as
-//	}
-//	e := bson.Unmarshal(bs, &as)
-//	if e != nil {
-//		panic(e)
-//	}
-//	for _, a := range as {
-//		ass = append(ass, Account{a.Address, a.File})
-//	}
-//	return ass
-//}
-//func accountsToAccountFilesBytes(accounts []Account) []byte {
-//	b, e := bson.Marshal(accounts)
-//	if e != nil {
-//		panic(e)
-//	}
-//	return b
-//}
+
 func bytesToAccount(bs []byte) Account {
 	var a Account
 	if e := bson.Unmarshal(bs, &a); e != nil {
 		panic(e)
 	}
 	return a
+
+	//if e := a.UnmarshalJSON(bs); e != nil {
+	//	panic(e)
+	//}
+	//return a
 }
+
 func accountToBytes(account Account) []byte {
+	//b, e := account.MarshalJSON()
+	//if e != nil {
+	//	panic(e)
+	//}
+	//return b
+
 	b, e := bson.Marshal(account)
 	if e != nil {
 		panic(e)
 	}
 	return b
 }
-//func bytesAccountFilesToAccounts(bs []byte) []Account {
-//	if bs == nil {
-//		return []Account{}
-//	}
-//	as, e := UnmarshalJSONBytesToAccounts(bs)
-//	if e != nil {
-//		panic(e)
-//	}
-//	return as
-//
-//}
-//func bytesToAccount(bs []byte) Account {
-//	var a Account
-//	if e := a.UnmarshalJSON(bs); e != nil {
-//		panic(e)
-//	}
-//	return a
-//}
-//func accountsToAccountFilesBytes(accounts []Account) []byte {
-//	as := accountsByFile(accounts)
-//	b, e := as.MarshalJSON()
-//	if e != nil {
-//		panic(e)
-//	}
-//	return b
-//}
-//func accountToBytes(account Account) []byte {
-//	b, e := account.MarshalJSON()
-//	if e != nil {
-//		panic(e)
-//	}
-//	return b
-//}

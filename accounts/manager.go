@@ -55,28 +55,28 @@ type Account struct {
 }
 
 func (acc *Account) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Address string `json:"address"`
-		File string `json:"file"`
-	}{
-		Address: acc.Address.Hex(),
-		File: acc.File,
-	})
-	//return []byte(`"` + acc.Address.Hex() + `"`), nil
+	//return json.Marshal(&struct {
+	//	Address string `json:"address"`
+	//	File string `json:"file"`
+	//}{
+	//	Address: acc.Address.Hex(),
+	//	File: acc.File,
+	//})
+	return []byte(`"` + acc.Address.Hex() + `"`), nil
 }
 
 func (acc *Account) UnmarshalJSON(raw []byte) error {
-	aux := &struct {
-		Address string `json:"address"`
-		File string `json:"file"`
-	}{}
-	if err := json.Unmarshal(raw, aux); err != nil {
-		return err
-	}
-	acc.Address = common.HexToAddress(aux.Address)
-	acc.File = aux.File
-	return nil
-	//return json.Unmarshal(raw, &acc.Address)
+	//aux := &struct {
+	//	Address string `json:"address"`
+	//	File string `json:"file"`
+	//}{}
+	//if err := json.Unmarshal(raw, aux); err != nil {
+	//	return err
+	//}
+	//acc.Address = common.HexToAddress(aux.Address)
+	//acc.File = aux.File
+	//return nil
+	return json.Unmarshal(raw, &acc.Address)
 }
 
 //type Accounts []Account

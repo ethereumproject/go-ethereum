@@ -1,42 +1,54 @@
 package accounts
 
 import (
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
 
 func benchmarkCacheAccounts(n int, b *testing.B) {
-
-	start := time.Now()
 	dir, err := ioutil.TempDir("", "eth-acctcache-test")
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
-	am, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
-	if err != nil {
+	// 20000 -> 20k
+	staticKeyFilesResourcePath := strconv.Itoa(n)
+	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
+		staticKeyFilesResourcePath = strings.TrimSuffix(staticKeyFilesResourcePath, "000")
+		staticKeyFilesResourcePath += "k"
+	}
+
+	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
+	if err := CopyDir(staticKeyFilesResourcePath, dir); err != nil {
 		b.Fatal(err)
 	}
 
-	for len(am.Accounts()) < n {
-		if e := createTestAccount(am, dir); e != nil {
-			b.Fatalf("error setting up acount: %v", e)
-		}
-	}
+	kfiles, _ := ioutil.ReadDir(dir)
+	lf := len(kfiles)
+
+	start := time.Now()
+	cache := newAddrCache(dir)
 	elapsed := time.Since(start)
-	b.Logf("setting up %v accounts took %v", n, elapsed)
+
+	b.Logf("establishing cache for %v accs: %v", n, elapsed)
 
 	b.ResetTimer() // _benchmark_ timer, not setup timer.
 
 	for i := 0; i < b.N; i++ {
-		as := am.Accounts()
-		if len(as) != n {
-			b.Errorf("missing or extra accounts in cache: got: %v, want: %v", len(as), n)
+		as := cache.accounts()
+		if len(as) != lf {
+			b.Errorf("missing or extra accounts in cache: got: %v, want: %v", len(as), lf)
 		}
 	}
+	cache.close()
 }
 
 func BenchmarkCacheAccounts100(b *testing.B)   { benchmarkCacheAccounts(100, b) }
@@ -56,27 +68,30 @@ func BenchmarkCacheAccounts20000(b *testing.B) { benchmarkCacheAccounts(20000, b
 // Note that this _does not_ include ac.newAddrCache.
 func benchmarkCacheAdd(n int, b *testing.B) {
 
-	start := time.Now()
 	dir, err := ioutil.TempDir("", "eth-acctcache-test")
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
-	am, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
-	if err != nil {
+	// 20000 -> 20k
+	staticKeyFilesResourcePath := strconv.Itoa(n)
+	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
+		staticKeyFilesResourcePath = strings.TrimSuffix(staticKeyFilesResourcePath, "000")
+		staticKeyFilesResourcePath += "k"
+	}
+
+	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
+	if err := CopyDir(staticKeyFilesResourcePath, dir); err != nil {
 		b.Fatal(err)
 	}
 
-	for len(am.Accounts()) < n {
-		if e := createTestAccount(am, dir); e != nil {
-			b.Fatalf("error setting up acount: %v", e)
-		}
-	}
-	elapsed := time.Since(start)
-	b.Logf("setting up %v accounts took %v", n, elapsed)
-
+	start := time.Now()
 	cache := newAddrCache(dir)
+	elapsed := time.Since(start)
+
+	b.Logf("establishing cache for %v accs: %v", n, elapsed)
+
 	b.ResetTimer() // _benchmark_ timer, not setup timer.
 
 	for i := 0; i < b.N; i++ {
@@ -85,6 +100,7 @@ func benchmarkCacheAdd(n int, b *testing.B) {
 			cache.add(a)
 		}
 	}
+	cache.close()
 }
 
 func BenchmarkCacheAdd100(b *testing.B)   { benchmarkCacheAdd(100, b) }
@@ -102,34 +118,36 @@ func BenchmarkCacheAdd20000(b *testing.B) { benchmarkCacheAdd(20000, b) }
 //
 // Note that this _does not_ include ac.newAddrCache.
 func benchmarkCacheFind(n int, b *testing.B) {
-
-	start := time.Now()
 	dir, err := ioutil.TempDir("", "eth-acctcache-test")
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
-	am, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
-	if err != nil {
+	// 20000 -> 20k
+	staticKeyFilesResourcePath := strconv.Itoa(n)
+	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
+		staticKeyFilesResourcePath = strings.TrimSuffix(staticKeyFilesResourcePath, "000")
+		staticKeyFilesResourcePath += "k"
+	}
+
+	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
+	if err := CopyDir(staticKeyFilesResourcePath, dir); err != nil {
 		b.Fatal(err)
 	}
 
-	for len(am.Accounts()) < n {
-		if e := createTestAccount(am, dir); e != nil {
-			b.Fatalf("error setting up acount: %v", e)
-		}
-	}
-	elapsed := time.Since(start)
-	b.Logf("setting up %v accounts took %v", n, elapsed)
-
+	start := time.Now()
 	cache := newAddrCache(dir)
+	elapsed := time.Since(start)
+	b.Logf("establishing cache for %v accs: %v", n, elapsed)
 
-	// Set up 1 DNE and 3 existing accounts.
-	// Using the last accounts because they should take the longest to iterate to.
-	findAccounts := append(cachetestAccounts[(len(cachetestAccounts)-1):], am.Accounts()[(len(am.Accounts()) - 3):]...)
+	accs := cache.accounts()
+
+	// Set up 1 DNE and 3 existing accs.
+	// Using the last accs because they should take the longest to iterate to.
+	findAccounts := append(cachetestAccounts[(len(cachetestAccounts)-1):], accs[(len(accs)-3):]...)
 	if len(findAccounts) != 4 {
-		b.Fatalf("wrong number find accounts: got: %v, want: 4", len(findAccounts))
+		b.Fatalf("wrong number find accs: got: %v, want: 4", len(findAccounts))
 	}
 
 	b.ResetTimer() // _benchmark_ timer, not setup timer.
@@ -139,6 +157,7 @@ func benchmarkCacheFind(n int, b *testing.B) {
 			cache.find(a)
 		}
 	}
+	cache.close()
 }
 
 func BenchmarkCacheFind100(b *testing.B)   { benchmarkCacheFind(100, b) }
@@ -147,3 +166,111 @@ func BenchmarkCacheFind1000(b *testing.B)  { benchmarkCacheFind(1000, b) }
 func BenchmarkCacheFind5000(b *testing.B)  { benchmarkCacheFind(5000, b) }
 func BenchmarkCacheFind10000(b *testing.B) { benchmarkCacheFind(10000, b) }
 func BenchmarkCacheFind20000(b *testing.B) { benchmarkCacheFind(20000, b) }
+func BenchmarkCacheFind100000(b *testing.B) { benchmarkCacheFind(100000, b) }
+func BenchmarkCacheFind500000(b *testing.B) { benchmarkCacheFind(500000, b) }
+
+// https://gist.github.com/m4ng0squ4sh/92462b38df26839a3ca324697c8cba04
+// CopyFile copies the contents of the file named src to the file named
+// by dst. The file will be created if it does not already exist. If the
+// destination file exists, all it's contents will be replaced by the contents
+// of the source file. The file mode will be copied from the source and
+// the copied data is synced/flushed to stable storage.
+func CopyFile(src, dst string) (err error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if e := out.Close(); e != nil {
+			err = e
+		}
+	}()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return
+	}
+
+	err = out.Sync()
+	if err != nil {
+		return
+	}
+
+	si, err := os.Stat(src)
+	if err != nil {
+		return
+	}
+	err = os.Chmod(dst, si.Mode())
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+// CopyDir recursively copies a directory tree, attempting to preserve permissions.
+// Source directory must exist, destination directory must *not* exist.
+// Symlinks are ignored and skipped.
+func CopyDir(src string, dst string) (err error) {
+	src = filepath.Clean(src)
+	dst = filepath.Clean(dst)
+
+	si, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if !si.IsDir() {
+		return fmt.Errorf("source is not a directory")
+	}
+
+	//_, err = os.Stat(dst)
+	//if err != nil && !os.IsNotExist(err) {
+	//	return
+	//}
+	//if err == nil {
+	//	return fmt.Errorf("destination already exists")
+	//}
+
+	//err = os.MkdirAll(dst, si.Mode())
+	//if err != nil {
+	//	return
+	//}
+
+	entries, err := ioutil.ReadDir(src)
+	if err != nil {
+		return
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			err = CopyDir(srcPath, dstPath)
+			if err != nil {
+				return
+			}
+		} else {
+			// Skip symlinks.
+			if entry.Mode()&os.ModeSymlink != 0 {
+				continue
+			}
+			if skipKeyFile(entry) {
+				continue
+			}
+
+			err = CopyFile(srcPath, dstPath)
+			if err != nil {
+				return
+			}
+		}
+	}
+
+	return
+}

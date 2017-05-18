@@ -159,9 +159,12 @@ func TestWatchNoDir(t *testing.T) {
 
 func TestCacheInitialReload(t *testing.T) {
 	cache := newAddrCache(cachetestDir)
+
 	cachedbpath := filepath.Join(cachetestDir, "accounts.db")
 	defer os.Remove(cachedbpath)
+
 	accounts := cache.accounts()
+
 	if !reflect.DeepEqual(accounts, cachetestAccounts) {
 		t.Errorf("got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
 	}
