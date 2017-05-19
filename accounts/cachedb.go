@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -36,6 +35,8 @@ import (
 	"errors"
 	"gopkg.in/mgo.v2/bson"
 	"sync"
+	"github.com/davecgh/go-spew/spew"
+	"strings"
 )
 
 var addrBucketName = []byte("byAddr")
@@ -274,7 +275,7 @@ func (cdb *cacheDB) close() {
 // set is used by the fs watcher to update the cache from a given file path.
 // it has some logic;
 // -- it will _overwrite_ any existing cache entry by file and addr, making it useful for CREATE and UPDATE
-func (cdb *cacheDB) setViaFile(name string) error {
+func (cdb *cacheDB) setViaFile(fileBaseName string) error {
 	// first sync fs -> cachedb, update all accounts in cache from fs
 	var (
 		buf     = new(bufio.Reader)
@@ -285,7 +286,7 @@ func (cdb *cacheDB) setViaFile(name string) error {
 		web3JSON []byte
 	)
 
-	path := filepath.Join(cdb.getKeydir(), name)
+	path := filepath.Join(cdb.getKeydir(), fileBaseName)
 	fd, err := os.Open(path)
 	if err != nil {
 		return err
@@ -309,33 +310,33 @@ func (cdb *cacheDB) setViaFile(name string) error {
 	case (keyJSON.Address == common.Address{}):
 		return fmt.Errorf("can't decode key %s: missing or zero address", path)
 	default:
-		acc = Account{Address: keyJSON.Address, File: name, EncryptedKey: string(web3JSON)}
+		acc = Account{Address: keyJSON.Address, File: fileBaseName, EncryptedKey: string(web3JSON)}
 	}
 
 	ab := accountToBytes(acc)
 	return cdb.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(fileBucketName)
-		if e := b.Put([]byte(name), ab); e != nil {
+		if e := b.Put([]byte(fileBaseName), ab); e != nil {
 			return e
 		}
 		b = tx.Bucket(addrBucketName)
-		return b.Put([]byte(keyJSON.Address.Hex()+name), []byte(time.Now().String()))
+		return b.Put([]byte(keyJSON.Address.Hex()+fileBaseName), []byte(time.Now().String()))
 	})
 }
 
 // remove is used by the fs watcher to update the cache from a given path.
-func (cdb *cacheDB) removeViaFile(path string) error {
+func (cdb *cacheDB) removeViaFile(fileBaseName string) error {
 
 	var acc Account
 
 	if e := cdb.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(fileBucketName)
-		ab := b.Get([]byte(path))
+		ab := b.Get([]byte(fileBaseName))
 		if ab == nil {
 			return ErrNoMatch
 		}
 		acc = bytesToAccount(ab)
-		if e := b.Delete([]byte(path)); e != nil {
+		if e := b.Delete([]byte(fileBaseName)); e != nil {
 			return e
 		}
 

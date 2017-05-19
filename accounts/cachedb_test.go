@@ -346,3 +346,73 @@ func TestCacheFind_CacheFind(t *testing.T) {
 		}
 	}
 }
+
+func TestAccountCache_CacheDB_WatchRemove(t *testing.T) {
+	// setup temp dir
+	tmpDir, e := ioutil.TempDir("", "cachedb-remover-test")
+	if e != nil {
+		t.Fatalf("create temp dir: %v", e)
+	}
+
+	// copy 3 test account files into temp dir
+	for _, acc := range cachedbtestAccounts {
+		data, err := ioutil.ReadFile(filepath.Join(cachetestDir, acc.File))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ff, err := os.Create(filepath.Join(tmpDir, acc.File))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = ff.Write(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ff.Close()
+	}
+
+	// make manager in temp dir
+	ma, e := NewManager(tmpDir, veryLightScryptN, veryLightScryptP, true)
+	if e != nil {
+		t.Errorf("create manager in temp dir: %v", e)
+	}
+
+	// test manager has all accounts
+	initAccs := ma.Accounts()
+	if !reflect.DeepEqual(initAccs, cachedbtestAccounts) {
+		t.Errorf("got %v, want: %v", spew.Sdump(initAccs), spew.Sdump(cachedbtestAccounts))
+	}
+	time.Sleep(2 * time.Second)
+
+	// test watcher is watching
+	if w := ma.ac.getWatcher(); !w.running {
+		t.Errorf("watcher not running")
+	}
+
+	// remove file
+	rmPath := filepath.Join(tmpDir, cachedbtestAccounts[0].File)
+	if e := os.Remove(rmPath); e != nil {
+		t.Fatalf("removing key file: %v", e)
+	}
+	// ensure it's gone
+	if _, e := os.Stat(filepath.Join(tmpDir, cachedbtestAccounts[0].File)); e == nil {
+		t.Fatalf("removed file not actually rm'd")
+	}
+
+	// test manager does not have account
+	wantAccounts := cachedbtestAccounts[1:]
+	if len(wantAccounts) != 2 {
+		t.Errorf("dummy")
+	}
+
+	gotAccounts := []Account{}
+	for d := 500 * time.Millisecond; d < 5*time.Second; d *= 2 {
+		gotAccounts = ma.Accounts()
+		// If it's ever all the same, we're good. Exit with aplomb.
+		if reflect.DeepEqual(gotAccounts, wantAccounts) {
+			return
+		}
+		time.Sleep(d)
+	}
+	t.Errorf("got: %v, want: %v", spew.Sdump(gotAccounts), spew.Sdump(wantAccounts))
+}

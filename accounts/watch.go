@@ -102,8 +102,6 @@ func (w *watcher) loop() {
 			w.evs = append(w.evs, <-w.ev)
 		case <-debounce.C:
 			w.ac.muLock()
-			//w.ac.syncfs2db()
-			//w.evs = w.ac.reload(w.ac, w.evs)
 			w.evs = w.ac.reload(w.evs)
 			w.ac.muUnlock()
 			if hadEvent {
