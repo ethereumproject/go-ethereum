@@ -65,7 +65,7 @@ func (acc *Account) UnmarshalJSON(raw []byte) error {
 
 // Manager manages a key storage directory on disk.
 type Manager struct {
-	ac       *cache
+	ac       caching
 	keyStore keyStore
 	mu       sync.RWMutex
 	unlocked map[common.Address]*unlocked
@@ -230,9 +230,9 @@ func (am *Manager) TimedUnlock(a Account, passphrase string, timeout time.Durati
 
 func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error) {
 	//am.cache.maybeReload()
-	am.ac.mu.Lock()
+	am.ac.getCache().mu.Lock()
 	a, err := am.ac.find(a)
-	am.ac.mu.Unlock()
+	am.ac.getCache().mu.Unlock()
 	if err != nil {
 		return Account{}, nil, err
 	}

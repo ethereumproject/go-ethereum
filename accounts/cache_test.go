@@ -61,8 +61,8 @@ func TestWatchNewFile(t *testing.T) {
 	// Ensure the watcher is started before adding any files.
 	am.Accounts()
 	time.Sleep(5 * time.Second)
-	if !am.ac.getCache().watcher.running {
-		t.Fatalf("watcher not running after %v: %v", 5 * time.Second, spew.Sdump(am.ac.watcher))
+	if w := am.ac.getCache().watcher; !w.running {
+		t.Fatalf("watcher not running after %v: %v", 5 * time.Second, spew.Sdump(w))
 	}
 
 	// Move in the files.
@@ -109,8 +109,8 @@ func TestWatchNoDir(t *testing.T) {
 		t.Error("initial account list not empty:", list)
 	}
 	time.Sleep(5 * time.Second)
-	if !am.ac.getCache().watcher.running {
-		t.Fatalf("watcher not running after %v: %v", 5 * time.Second, spew.Sdump(am.ac.watcher))
+	if w := am.ac.getCache().watcher; !w.running {
+		t.Fatalf("watcher not running after %v: %v", 5 * time.Second, spew.Sdump(w))
 	}
 
 	// Create the directory and copy a key file into it.
