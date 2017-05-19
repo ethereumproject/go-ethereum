@@ -36,7 +36,7 @@ func tmpManager(t *testing.T) (string, *Manager) {
 		t.Fatal(err)
 	}
 
-	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
+	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestManager(t *testing.T) {
 
 func TestManager_Accounts(t *testing.T) {
 	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
-	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP)
+	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, false)
 	if err != nil {
 		t.Fatal(err)
 	}

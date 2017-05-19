@@ -301,7 +301,7 @@ func benchmarkManager_SignWithPassphrase(n int, b *testing.B) {
 	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
 
 	start := time.Now()
-	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP)
+	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP, true)
 	if me != nil {
 		b.Fatal(me)
 	}
@@ -361,8 +361,8 @@ func benchmarkManager_CRUSD(n int, b *testing.B) {
 	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
 
 	start := time.Now()
-	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP)
-	am.cache.watcher.running = true
+	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP, true)
+	am.ac.watcher.running = true
 	if me != nil {
 		b.Fatal(me)
 	}

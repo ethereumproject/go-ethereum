@@ -73,6 +73,7 @@ type caching interface {
 	find(Account) (Account, error)
 	//scan() ([]Account, error)
 	close()
+	getCache() *cache
 }
 
 type cache struct {
@@ -83,9 +84,13 @@ type cache struct {
 	throttle *time.Timer
 }
 
+func (c *cache) getCache() *cache {
+	return c
+}
+
 // addrCache is a live index of all accounts in the keystore.
 type addrCache struct {
-	cache
+	*cache
 	all      accountsByFile
 	byAddr   map[common.Address][]Account
 }
@@ -93,9 +98,11 @@ type addrCache struct {
 func newAddrCache(keydir string) *addrCache {
 	ac := &addrCache{
 		byAddr: make(map[common.Address][]Account),
+		cache: &cache{
+			keydir: keydir,
+		},
 	}
-	ac.keydir = keydir
-	ac.watcher = newWatcher(ac.cache)
+	ac.cache.watcher = newWatcher(ac.cache)
 	return ac
 }
 

@@ -27,15 +27,15 @@ import (
 )
 
 type watcher struct {
-	ac       cache // *addrCache
+	ac       caching
 	starting bool
 	running  bool
 	ev       chan notify.EventInfo
-	evs []notify.EventInfo
+	evs      []notify.EventInfo
 	quit     chan struct{}
 }
 
-func newWatcher(ac cache) *watcher {
+func newWatcher(ac *cache) *watcher {
 	return &watcher{
 		ac:   ac,
 		ev:   make(chan notify.EventInfo, 10),
@@ -60,24 +60,24 @@ func (w *watcher) close() {
 
 func (w *watcher) loop() {
 	defer func() {
-		w.ac.mu.Lock()
+		w.ac.getCache().mu.Lock()
 		w.running = false
 		w.starting = false
-		w.ac.mu.Unlock()
+		w.ac.getCache().mu.Unlock()
 	}()
 
-	err := notify.Watch(w.ac.keydir, w.ev, notify.All)
+	err := notify.Watch(w.ac.getCache().keydir, w.ev, notify.All)
 	if err != nil {
-		glog.V(logger.Detail).Infof("can't watch %s: %v", w.ac.keydir, err)
+		glog.V(logger.Detail).Infof("can't watch %s: %v", w.ac.getCache().keydir, err)
 		return
 	}
 	defer notify.Stop(w.ev)
-	glog.V(logger.Detail).Infof("now watching %s", w.ac.keydir)
-	defer glog.V(logger.Detail).Infof("no longer watching %s", w.ac.keydir)
+	glog.V(logger.Detail).Infof("now watching %s", w.ac.getCache().keydir)
+	defer glog.V(logger.Detail).Infof("no longer watching %s", w.ac.getCache().keydir)
 
-	w.ac.mu.Lock()
+	w.ac.getCache().mu.Lock()
 	w.running = true
-	w.ac.mu.Unlock()
+	w.ac.getCache().mu.Unlock()
 
 	// Wait for file system events and reload.
 	// When an event occurs, the reload call is delayed a bit so that
@@ -101,11 +101,11 @@ func (w *watcher) loop() {
 			}
 			w.evs = append(w.evs, <-w.ev)
 		case <-debounce.C:
-			w.ac.mu.Lock()
+			w.ac.getCache().mu.Lock()
 			//w.ac.syncfs2db()
 			//w.evs = w.ac.reload(w.ac, w.evs)
 			w.evs = w.ac.reload(w.evs)
-			w.ac.mu.Unlock()
+			w.ac.getCache().mu.Unlock()
 			if hadEvent {
 				debounce.Reset(debounceDuration)
 				inCycle, hadEvent = true, false

@@ -44,7 +44,7 @@ var ErrCacheDBNoUpdateStamp = errors.New("cachedb has no updated timestamp; expe
 
 // addrCache is a live index of all accounts in the keystore.
 type cacheDB struct {
-	cache
+	*cache
 	db       *bolt.DB
 }
 
@@ -92,7 +92,7 @@ func newCacheDB(keydir string) *cacheDB {
 		}
 	}
 	
-	cdb.watcher = newWatcher(cdb.cache)
+	cdb.cache.watcher = newWatcher(cdb.cache)
 	return cdb
 }
 

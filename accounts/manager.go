@@ -65,8 +65,7 @@ func (acc *Account) UnmarshalJSON(raw []byte) error {
 
 // Manager manages a key storage directory on disk.
 type Manager struct {
-	caching  caching // *addrCache
-	ac       cache
+	ac       *cache
 	keyStore keyStore
 	mu       sync.RWMutex
 	unlocked map[common.Address]*unlocked
@@ -100,18 +99,19 @@ func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager
 	am := &Manager{
 		keyStore: *store,
 		unlocked: make(map[common.Address]*unlocked),
+		ac: &cache{},
 	}
 	if wantCacheDB {
-		am.caching = newCacheDB(keydir)
+		am.ac = newCacheDB(keydir).getCache()
 	} else {
-		am.caching = newAddrCache(keydir)
+		am.ac = newAddrCache(keydir).getCache()
 	}
 
 	// TODO: In order for this finalizer to work, there must be no references
 	// to am. addrCache doesn't keep a reference but unlocked keys do,
 	// so the finalizer will not trigger until all timed unlocks have expired.
 	runtime.SetFinalizer(am, func(m *Manager) {
-		m.caching.close()
+		m.ac.close()
 	})
 
 	return am, nil
@@ -119,12 +119,12 @@ func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager
 
 // HasAddress reports whether a key with the given address is present.
 func (am *Manager) HasAddress(addr common.Address) bool {
-	return am.caching.hasAddress(addr)
+	return am.ac.hasAddress(addr)
 }
 
 // Accounts returns all key files present in the directory.
 func (am *Manager) Accounts() []Account {
-	return am.caching.accounts()
+	return am.ac.accounts()
 }
 
 // DeleteAccount deletes the key matched by account if the passphrase is correct.
@@ -145,7 +145,7 @@ func (am *Manager) DeleteAccount(a Account, passphrase string) error {
 	// between won't insert it into the cache again.
 	err = os.Remove(a.File)
 	if err == nil {
-		am.caching.delete(a)
+		am.ac.delete(a)
 	}
 	return err
 }
@@ -231,7 +231,7 @@ func (am *Manager) TimedUnlock(a Account, passphrase string, timeout time.Durati
 func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error) {
 	//am.cache.maybeReload()
 	am.ac.mu.Lock()
-	a, err := am.caching.find(a)
+	a, err := am.ac.find(a)
 	am.ac.mu.Unlock()
 	if err != nil {
 		return Account{}, nil, err
@@ -283,7 +283,7 @@ func (am *Manager) NewAccount(passphrase string) (Account, error) {
 	}
 	// Add the account to the cache immediately rather
 	// than waiting for file system notifications to pick it up.
-	am.caching.add(account)
+	am.ac.add(account)
 	return account, nil
 }
 
@@ -324,7 +324,7 @@ func (am *Manager) ImportECDSA(priv *ecdsa.PrivateKey, passphrase string) (Accou
 		return Account{}, err
 	}
 
-	if am.caching.hasAddress(key.Address) {
+	if am.ac.hasAddress(key.Address) {
 		return Account{}, fmt.Errorf("account already exists")
 	}
 
@@ -338,7 +338,7 @@ func (am *Manager) importKey(key *key, passphrase string) (Account, error) {
 	}
 
 	a := Account{File: file, Address: key.Address}
-	am.caching.add(a)
+	am.ac.add(a)
 	return a, nil
 }
 
@@ -358,7 +358,7 @@ func (am *Manager) ImportPreSaleKey(keyJSON []byte, passphrase string) (Account,
 	if err != nil {
 		return a, err
 	}
-	am.caching.add(a)
+	am.ac.add(a)
 	return a, nil
 }
 
