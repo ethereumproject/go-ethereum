@@ -141,7 +141,7 @@ func (cdb *cacheDB) accounts() []Account {
 	}); e != nil {
 		panic(e)
 	}
-	sort.Sort(accountsByFile(as))
+	sort.Sort(accountsByFile(as)) // this is important for getting AccountByIndex
 	cpy := make([]Account, len(as))
 	copy(cpy, as)
 	return cpy
@@ -285,7 +285,7 @@ func (cdb *cacheDB) setViaFile(name string) error {
 		web3JSON []byte
 	)
 
-	path := filepath.Join(cdb.keydir, name)
+	path := filepath.Join(cdb.getKeydir(), name)
 	fd, err := os.Open(path)
 	if err != nil {
 		return err
@@ -315,7 +315,7 @@ func (cdb *cacheDB) setViaFile(name string) error {
 	ab := accountToBytes(acc)
 	return cdb.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(fileBucketName)
-		if e := b.Put([]byte(path), ab); e != nil {
+		if e := b.Put([]byte(name), ab); e != nil {
 			return e
 		}
 		b = tx.Bucket(addrBucketName)
@@ -392,29 +392,40 @@ func (cdb *cacheDB) reload(events []notify.EventInfo) []notify.EventInfo {
 			continue // only want files, no dirs
 		}
 
-		p, re := filepath.Rel(cdb.keydir, p)
-		if re != nil {
-			continue
-		}
+		//p, re := filepath.Rel(cdb.getKeydir(), p)
+		//if re != nil {
+		//	continue
+		//}
+		p = filepath.Base(p)
 
 		// TODO: don't ignore the returned errors
 		switch ev.Event() {
 		case notify.Create:
 			glog.V(logger.Debug).Infof("reloading create event: %v", ev.Event())
-			cdb.setViaFile(p)
+			if e := cdb.setViaFile(p); e != nil {
+				continue // FIXME
+			}
 		case notify.Rename:
 			glog.V(logger.Debug).Infof("reloading rename event (doing nothing): %v", ev.Event())
-			// TODO: do something... how to get old vs. new paths?
+			// TODO: do something... how to get old vs. new paths? or do nothing because is redundant to remove/+create?
 		case notify.Remove:
 			glog.V(logger.Debug).Infof("reloading remove event: %v", ev.Event())
-			cdb.removeViaFile(p) // TODO: write test
+			// TODO: write test
+			if e := cdb.removeViaFile(p); e != nil {
+				continue // FIXME
+			}
 		case notify.Write:
 			glog.V(logger.Debug).Infof("reloading write event: %v", ev.Event())
-			cdb.setViaFile(p)
+			if e := cdb.setViaFile(p); e != nil {
+				continue // FIXME
+			}
 		default:
 			// do nothing
 		}
 	}
+	// I thought of peeling off successful events from the slice, and returning
+	// failed ones so it would try, try again. I don't think it's very safe.
+	// But I like danger and redlines.
 	return []notify.EventInfo{}
 }
 
@@ -485,7 +496,7 @@ func (cdb *cacheDB) setBatchAccounts(accs []Account) (errs []error) {
 func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 	defer cdb.setLastUpdated()
 
-	di, de := os.Stat(cdb.keydir)
+	di, de := os.Stat(cdb.getKeydir())
 	if de != nil {
 		errs = append(errs, de)
 		return errs
@@ -494,7 +505,7 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 		return errs
 	}
 
-	files, err := ioutil.ReadDir(cdb.keydir)
+	files, err := ioutil.ReadDir(cdb.getKeydir())
 	if err != nil {
 		return append(errs, err)
 	}
@@ -528,7 +539,7 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 				}
 			}
 
-			p := filepath.Join(cdb.keydir, fp)
+			p := filepath.Join(cdb.getKeydir(), fp)
 			fi, e := os.Stat(p)
 			if e == nil {
 				// only touch files that haven't been modified since entry was updated
@@ -576,7 +587,7 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 		// This assumes that the keystore/ dir is not designed to walk recursively.
 		// See testdata/keystore/foo/UTC-afd..... compared with cacheTestAccounts for
 		// test proof of this assumption.
-		path := filepath.Join(cdb.keydir, fi.Name())
+		path := filepath.Join(cdb.getKeydir(), fi.Name())
 		if e != nil {
 			errs = append(errs, e)
 		}

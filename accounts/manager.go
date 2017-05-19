@@ -101,7 +101,7 @@ func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager
 		unlocked: make(map[common.Address]*unlocked),
 	}
 	if wantCacheDB {
-		//am.ac = newCacheDB(keydir)
+		am.ac = newCacheDB(keydir)
 	} else {
 		am.ac = newAddrCache(keydir)
 	}
