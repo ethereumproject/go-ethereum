@@ -35,6 +35,7 @@ import (
 	"bytes"
 	"errors"
 	"gopkg.in/mgo.v2/bson"
+	"sync"
 )
 
 var addrBucketName = []byte("byAddr")
@@ -44,7 +45,10 @@ var ErrCacheDBNoUpdateStamp = errors.New("cachedb has no updated timestamp; expe
 
 // addrCache is a live index of all accounts in the keystore.
 type cacheDB struct {
-	*cache
+	keydir   string
+	watcher  *watcher
+	mu       sync.Mutex
+	throttle *time.Timer
 	db       *bolt.DB
 }
 
@@ -92,8 +96,29 @@ func newCacheDB(keydir string) *cacheDB {
 		}
 	}
 	
-	cdb.cache.watcher = newWatcher(cdb.cache)
+	cdb.watcher = newWatcher(cdb)
 	return cdb
+}
+
+func (cdb *cacheDB) muLock() {
+	cdb.mu.Lock()
+}
+
+func (cdb *cacheDB) muUnlock() {
+	cdb.mu.Unlock()
+}
+
+func (cdb *cacheDB) getKeydir() string {
+	return cdb.keydir
+}
+
+
+func (cdb *cacheDB) getWatcher() *watcher {
+	return cdb.watcher
+}
+
+func (cdb *cacheDB) getThrottle() *time.Timer {
+	return cdb.throttle
 }
 
 // Gets all accounts _byFile_, which contains and possibly exceed byAddr content

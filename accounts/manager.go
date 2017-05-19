@@ -99,12 +99,11 @@ func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager
 	am := &Manager{
 		keyStore: *store,
 		unlocked: make(map[common.Address]*unlocked),
-		ac: &cache{},
 	}
 	if wantCacheDB {
-		am.ac = newCacheDB(keydir).getCache()
+		//am.ac = newCacheDB(keydir)
 	} else {
-		am.ac = newAddrCache(keydir).getCache()
+		am.ac = newAddrCache(keydir)
 	}
 
 	// TODO: In order for this finalizer to work, there must be no references
@@ -230,9 +229,9 @@ func (am *Manager) TimedUnlock(a Account, passphrase string, timeout time.Durati
 
 func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error) {
 	//am.cache.maybeReload()
-	am.ac.getCache().mu.Lock()
+	am.ac.muLock()
 	a, err := am.ac.find(a)
-	am.ac.getCache().mu.Unlock()
+	am.ac.muUnlock()
 	if err != nil {
 		return Account{}, nil, err
 	}

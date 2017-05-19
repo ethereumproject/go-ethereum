@@ -61,21 +61,22 @@ func TestWatchNewFile(t *testing.T) {
 	// Ensure the watcher is started before adding any files.
 	am.Accounts()
 	time.Sleep(5 * time.Second)
-	if w := am.ac.getCache().watcher; !w.running {
+	if w := am.ac.getWatcher(); !w.running {
 		t.Fatalf("watcher not running after %v: %v", 5 * time.Second, spew.Sdump(w))
 	}
 
 	// Move in the files.
 	wantAccounts := make([]Account, len(cachetestAccounts))
-	for i, a := range cachetestAccounts {
-		p := filepath.Join(dir, a.File)
-		a.File = p
-			wantAccounts[i] = a
-		data, err := ioutil.ReadFile(filepath.Join(cachetestDir, filepath.Base(a.File)))
+	for i := range cachetestAccounts {
+		a := cachetestAccounts[i]
+		a.File = filepath.Join(dir, filepath.Base(a.File)) // rename test file to base from temp dir
+		wantAccounts[i] = a
+		data, err := ioutil.ReadFile(cachetestAccounts[i].File) // but we still have to read from original file path
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := ioutil.WriteFile(p, data, 0666); err != nil {
+		// write to temp dir
+		if err := ioutil.WriteFile(a.File, data, 0666); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -109,7 +110,7 @@ func TestWatchNoDir(t *testing.T) {
 		t.Error("initial account list not empty:", list)
 	}
 	time.Sleep(5 * time.Second)
-	if w := am.ac.getCache().watcher; !w.running {
+	if w := am.ac.getWatcher(); !w.running {
 		t.Fatalf("watcher not running after %v: %v", 5 * time.Second, spew.Sdump(w))
 	}
 
@@ -118,7 +119,7 @@ func TestWatchNoDir(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	file := filepath.Join(dir, "aaa")
-	data, err := ioutil.ReadFile(filepath.Join(cachetestDir, cachetestAccounts[0].File))
+	data, err := ioutil.ReadFile(cachetestAccounts[0].File)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -64,33 +64,30 @@ func (err *AmbiguousAddrError) Error() string {
 }
 
 type caching interface {
-	accounts() []Account
+	muLock()
+	muUnlock()
+	getKeydir() string
+	getWatcher() *watcher
+	getThrottle() *time.Timer
+
 	maybeReload()
 	reload([]notify.EventInfo) ([]notify.EventInfo)
+
 	hasAddress(address common.Address) bool
+	accounts() []Account
 	add(Account)
 	delete(Account)
 	find(Account) (Account, error)
-	//scan() ([]Account, error)
+
 	close()
-	getCache() *cache
-}
-
-type cache struct {
-	caching
-	keydir   string
-	watcher  *watcher
-	mu       sync.Mutex
-	throttle *time.Timer
-}
-
-func (c *cache) getCache() *cache {
-	return c
 }
 
 // addrCache is a live index of all accounts in the keystore.
 type addrCache struct {
-	*cache
+	keydir   string
+	watcher  *watcher
+	mu       sync.Mutex
+	throttle *time.Timer
 	all      accountsByFile
 	byAddr   map[common.Address][]Account
 }
@@ -98,12 +95,29 @@ type addrCache struct {
 func newAddrCache(keydir string) *addrCache {
 	ac := &addrCache{
 		byAddr: make(map[common.Address][]Account),
-		cache: &cache{
-			keydir: keydir,
-		},
+		keydir: keydir,
 	}
-	ac.cache.watcher = newWatcher(ac.cache)
+	ac.watcher = newWatcher(ac)
 	return ac
+}
+
+func (ac *addrCache) muLock() {
+	ac.mu.Lock()
+}
+func (ac *addrCache) muUnlock() {
+	ac.mu.Unlock()
+}
+
+func (ac *addrCache) getKeydir() string {
+	return ac.keydir
+}
+
+func (ac *addrCache) getWatcher() *watcher {
+	return ac.watcher
+}
+
+func (ac *addrCache) getThrottle() *time.Timer {
+	return ac.throttle
 }
 
 func (ac *addrCache) accounts() []Account {

@@ -362,7 +362,7 @@ func benchmarkManager_CRUSD(n int, b *testing.B) {
 
 	start := time.Now()
 	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP, true)
-	am.ac.getCache().watcher.running = true
+	am.ac.getWatcher().running = true
 	if me != nil {
 		b.Fatal(me)
 	}
