@@ -27,7 +27,7 @@ import (
 )
 
 type watcher struct {
-	ac       *addrCache
+	ac       cache // *addrCache
 	starting bool
 	running  bool
 	ev       chan notify.EventInfo
@@ -35,7 +35,7 @@ type watcher struct {
 	quit     chan struct{}
 }
 
-func newWatcher(ac *addrCache) *watcher {
+func newWatcher(ac cache) *watcher {
 	return &watcher{
 		ac:   ac,
 		ev:   make(chan notify.EventInfo, 10),
@@ -102,7 +102,8 @@ func (w *watcher) loop() {
 			w.evs = append(w.evs, <-w.ev)
 		case <-debounce.C:
 			w.ac.mu.Lock()
-			//w.ac.scan()
+			//w.ac.syncfs2db()
+			//w.evs = w.ac.reload(w.ac, w.evs)
 			w.evs = w.ac.reload(w.evs)
 			w.ac.mu.Unlock()
 			if hadEvent {

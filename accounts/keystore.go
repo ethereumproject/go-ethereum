@@ -192,9 +192,10 @@ func (store *keyStore) Insert(key *key, secret string) (file string, err error) 
 
 	timestamp := time.Now().UTC().Format("2006-01-02T15-04-05.999999999")
 	file = fmt.Sprintf("UTC--%sZ--%x", timestamp, key.Address[:])
-	file = filepath.Join(store.baseDir, file)
 
-	if err := writeKeyFile(file, data); err != nil {
+	absFile := filepath.Join(store.baseDir, file)
+
+	if err := writeKeyFile(absFile, data); err != nil {
 		return "", err
 	}
 	return file, nil

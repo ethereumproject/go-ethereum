@@ -30,6 +30,10 @@ import (
 )
 
 var (
+	AccountsIndexFlag = cli.BoolFlag{
+		Name: "index-accounts,indexaccounts",
+		Usage: "enable key-value db store for indexing large amounts of key files",
+	}
 	walletCommand = cli.Command{
 		Name:  "wallet",
 		Usage: "ethereum presale wallet",
