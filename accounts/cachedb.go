@@ -32,7 +32,6 @@ import (
 	"sort"
 	"bytes"
 	"errors"
-	"gopkg.in/mgo.v2/bson"
 	"sync"
 )
 
@@ -545,16 +544,34 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 }
 
 func bytesToAccount(bs []byte) Account {
-	var a Account
-	if e := bson.Unmarshal(bs, &a); e != nil {
+	aux := &struct{
+		Address string `json:"address"`
+		EncryptedKey string `json:"key"`
+		File string `json:"file"`
+	}{}
+	if e := json.Unmarshal(bs, aux); e != nil {
 		//panic(e)
-		return a
+		return Account{}
+	}
+	a := Account{
+		Address: common.HexToAddress(aux.Address),
+		EncryptedKey: aux.EncryptedKey,
+		File: aux.File,
 	}
 	return a
 }
 
 func accountToBytes(account Account) []byte {
-	b, e := bson.Marshal(account)
+	aux := &struct{
+		Address string `json:"address"`
+		EncryptedKey string `json:"key"`
+		File string `json:"file"`
+	}{
+		Address: account.Address.Hex(),
+		EncryptedKey: account.EncryptedKey,
+		File: account.File,
+	}
+	b, e := json.Marshal(aux)
 	if e != nil {
 		return nil
 		//panic(e)

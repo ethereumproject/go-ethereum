@@ -19,7 +19,6 @@ install:
   - go env
   - go get golang.org/x/sys/windows
 build_script:
-  - go get -v -t ./...
   - go test ./...
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
