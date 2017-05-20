@@ -29,13 +29,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/rjeczalik/notify"
 	"sort"
 	"bytes"
 	"errors"
 	"gopkg.in/mgo.v2/bson"
 	"sync"
-	"strings"
 )
 
 var addrBucketName = []byte("byAddr")
@@ -363,70 +361,8 @@ func (cdb *cacheDB) maybeReload() {
 		}
 	}
 	cdb.watcher.start()
-	cdb.reload(cdb.watcher.evs)
+	cdb.reload()
 	cdb.throttle.Reset(minReloadInterval)
-}
-
-// reload caches addresses of existing accounts.
-// Callers must hold ac.mu.
-func (cdb *cacheDB) reload(events []notify.EventInfo) []notify.EventInfo {
-	defer cdb.setLastUpdated()
-
-	// Decide kind of event.
-	for _, ev := range events {
-
-		glog.V(logger.Debug).Infof("reloading event: %v", ev)
-
-		p := ev.Path() // provides a clean absolute path
-
-		// Nuance of Notify package Path():
-		// on /tmp will report events with paths rooted at /private/tmp etc.
-		if strings.HasPrefix(p, "/private") {
-			p = strings.Replace(p, "/private","",1) // only replace first occurance
-		}
-		fi, e := os.Stat(p)
-		if e != nil {
-			continue // TODO handle better
-		}
-		if fi.IsDir() { // don't expect many of these from Notify, but just in case
-			continue // only want files, no dirs
-		}
-
-		//p, re := filepath.Rel(cdb.getKeydir(), p)
-		//if re != nil {
-		//	continue
-		//}
-		p = filepath.Base(p)
-
-		// TODO: don't ignore the returned errors
-		switch ev.Event() {
-		case notify.Create:
-			glog.V(logger.Debug).Infof("reloading create event: %v", ev.Event())
-			if e := cdb.setViaFile(p); e != nil {
-				continue // FIXME
-			}
-		case notify.Rename:
-			glog.V(logger.Debug).Infof("reloading rename event (doing nothing): %v", ev.Event())
-			// TODO: do something... how to get old vs. new paths? or do nothing because is redundant to remove/+create?
-		case notify.Remove:
-			glog.V(logger.Debug).Infof("reloading remove event: %v", ev.Event())
-			// TODO: write test
-			if e := cdb.removeViaFile(p); e != nil {
-				continue // FIXME
-			}
-		case notify.Write:
-			glog.V(logger.Debug).Infof("reloading write event: %v", ev.Event())
-			if e := cdb.setViaFile(p); e != nil {
-				continue // FIXME
-			}
-		default:
-			// do nothing
-		}
-	}
-	// I thought of peeling off successful events from the slice, and returning
-	// failed ones so it would try, try again. I don't think it's very safe.
-	// But I like danger and redlines.
-	return []notify.EventInfo{}
 }
 
 func (cdb *cacheDB) setLastUpdated() error {
@@ -492,18 +428,76 @@ func (cdb *cacheDB) setBatchAccounts(accs []Account) (errs []error) {
 	return errs
 }
 
+// reload caches addresses of existing accounts.
+// Callers must hold ac.mu.
+func (cdb *cacheDB) reload() {
+	defer cdb.setLastUpdated()
+
+	cdb.syncfs2db(time.Now().Add(-minReloadInterval))
+	//if len(errs) > 0 {
+	//	panic(spew.Sdump(errs))
+	//}
+
+	// Decide kind of event.
+	//for _, ev := range events {
+	//
+	//	glog.V(logger.Debug).Infof("reloading event: %v", ev)
+	//
+	//	p := ev.Path() // provides a clean absolute path
+	//
+	//	// Nuance of Notify package Path():
+	//	// on /tmp will report events with paths rooted at /private/tmp etc.
+	//	if strings.HasPrefix(p, "/private") {
+	//		p = strings.Replace(p, "/private","",1) // only replace first occurance
+	//	}
+	//	fi, e := os.Stat(p)
+	//	if e != nil {
+	//		continue // TODO handle better
+	//	}
+	//	if fi.IsDir() { // don't expect many of these from Notify, but just in case
+	//		continue // only want files, no dirs
+	//	}
+	//
+	//	//p, re := filepath.Rel(cdb.getKeydir(), p)
+	//	//if re != nil {
+	//	//	continue
+	//	//}
+	//	p = filepath.Base(p)
+	//
+	//	// TODO: don't ignore the returned errors
+	//	switch ev.Event() {
+	//	case notify.Create:
+	//		glog.V(logger.Debug).Infof("reloading create event: %v", ev.Event())
+	//		if e := cdb.setViaFile(p); e != nil {
+	//			continue // FIXME
+	//		}
+	//	case notify.Rename:
+	//		glog.V(logger.Debug).Infof("reloading rename event (doing nothing): %v", ev.Event())
+	//		// TODO: do something... how to get old vs. new paths? or do nothing because is redundant to remove/+create?
+	//	case notify.Remove:
+	//		glog.V(logger.Debug).Infof("reloading remove event: %v", ev.Event())
+	//		// TODO: write test
+	//		if e := cdb.removeViaFile(p); e != nil {
+	//			continue // FIXME
+	//		}
+	//	case notify.Write:
+	//		glog.V(logger.Debug).Infof("reloading write event: %v", ev.Event())
+	//		if e := cdb.setViaFile(p); e != nil {
+	//			continue // FIXME
+	//		}
+	//	default:
+	//		// do nothing
+	//	}
+	//}
+	// I thought of peeling off successful events from the slice, and returning
+	// failed ones so it would try, try again. I don't think it's very safe.
+	// But I like danger and redlines.
+	//return []notify.EventInfo{}
+}
+
 // syncfs2db syncronises an existing cachedb with a corresponding fs.
 func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 	defer cdb.setLastUpdated()
-
-	di, de := os.Stat(cdb.getKeydir())
-	if de != nil {
-		errs = append(errs, de)
-		return errs
-	}
-	if lastUpdated.After(di.ModTime()) {
-		return errs
-	}
 
 	files, err := ioutil.ReadDir(cdb.getKeydir())
 	if err != nil {
@@ -517,6 +511,8 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 			Address common.Address `json:"address"`
 		}
 		web3JSON []byte
+		removedKeyAddrsFiles [][]byte
+		removedKeyFiles []string
 	)
 
 	// SYNC: DB --> FS.
@@ -524,17 +520,26 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 	// Any _new_ files will not have been touched.
 	n := time.Now()
 	e := cdb.db.Update(func (tx *bolt.Tx) error {
-		var removedAccounts []Account
-		fb := tx.Bucket(fileBucketName)
+
 		ab := tx.Bucket(addrBucketName)
+		fb := tx.Bucket(fileBucketName)
+
 		c := ab.Cursor()
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 
 			// Has address prefix.
+			// 0x3ce3a47893f187b0e9f9b2b7e8bdf9052b8e6968UTC--2017-05-19T19-32-22.434229436Z--3ce3a47893f187b0...
 			fp := string(k)
+
+			// FIXME: don't hardcode this number.
+			// common.Address len?
 			if len(fp) >= 42 {
+
+				// Get just the file name.
 				fp = fp[42:]
+
+				// No file available as suffix to account address.
 				if fp == "" {
 					// FIXME: if no file available, this address will become stagnant
 					// if more than a week old, remove it?
@@ -542,46 +547,54 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 					if te != nil {
 						errs = append(errs, te)
 					}
-					if tt.Before(time.Now().Add(7 * 24 * 60 * time.Minute)) {
-						removedAccounts = append(removedAccounts, bytesToAccount(v))
+					if tt.Before(time.Now().Add(-24 * 60 * time.Minute)) {
+						removedKeyAddrsFiles = append(removedKeyAddrsFiles, k)
 					}
-					continue
+				// Key includes file name.
+				} else {
+					// /home/data-dir/mainnet/keystore/UTC--2017-05-19T19-32-22.434229436Z--3ce3a47893f187b0...
+					p := filepath.Join(cdb.getKeydir(), fp)
+
+					fi, e := os.Stat(p)
+					// File exists. Check modification time.
+					if e == nil {
+
+						// Only touch files that haven't been modified since entry was updated
+						tt, te := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", string(v))
+						if te != nil {
+							errs = append(errs, te)
+						} else {
+							// DB has been updated more recently than file.
+							if tt.After(fi.ModTime()) {
+
+								// FIXME: is there a better way to `touch`?
+								if cherr := os.Chtimes(p, n, n); cherr != nil {
+									errs = append(errs, cherr)
+								}
+							}
+						}
+					}
+					// This account file has been removed.
+					if e != nil && os.IsNotExist(e) {
+						removedKeyFiles = append(removedKeyFiles, fp)
+					} else {
+						errs = append(errs, err)
+						continue
+					}
 				}
 			}
 
-			p := filepath.Join(cdb.getKeydir(), fp)
-			fi, e := os.Stat(p)
-			if e == nil {
-				// only touch files that haven't been modified since entry was updated
-				tt, te := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", string(v))
-				if te != nil {
-					errs = append(errs, err)
-				} else {
-					if tt.After(fi.ModTime()) {
-						// FIXME: is there a better way to `touch`?
-						if cherr := os.Chtimes(p, n, n); cherr != nil {
-							errs = append(errs, err)
-						}
-					}
-				}
-			}
-			// This account file has been removed.
-			if e != nil && os.IsNotExist(e) {
-				removedAccounts = append(removedAccounts, bytesToAccount(v))
-			} else {
-				errs = append(errs, err)
-				continue
-			}
+
 		}
 
 		// Remove from both caches.
-		for _, ra := range removedAccounts {
-			if ra.File != "" {
-				if e := fb.Delete([]byte(ra.File)); e != nil {
-					errs = append(errs, e)
-				}
+		for _, kaf := range removedKeyAddrsFiles {
+			if e := ab.Delete(kaf); e != nil {
+				errs = append(errs, e)
 			}
-			if e := ab.Delete([]byte(ra.Address.Hex() + ra.File)); e != nil {
+		}
+		for _, kf := range removedKeyFiles {
+			if e := fb.Delete([]byte(kf)); e != nil {
 				errs = append(errs, e)
 			}
 		}
@@ -594,7 +607,6 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 	// SYNC: FS --> DB.
 	for i, fi := range files {
 
-		newy := false
 		// fi.Name() is used for storing the file in the case db
 		// This assumes that the keystore/ dir is not designed to walk recursively.
 		// See testdata/keystore/foo/UTC-afd..... compared with cacheTestAccounts for
@@ -609,6 +621,7 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 
 		} else {
 			// Check touch time from above iterator.
+			newy := false
 			if fi, fe := os.Stat(path); fe == nil {
 				// newy == mod time is before n because we just touched the files we have indexed
 				if fi.ModTime().UTC().Before(n) {
@@ -649,7 +662,12 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 		// Stash a batch or finish up.
 		if (len(accounts) == 10000) || (i == len(files) - 1 ) {
 			if e := cdb.setBatchAccounts(accounts); len(e) != 0 {
-				errs = append(errs, e...)
+				for _, ee := range e {
+					if ee != nil {
+						errs = append(errs, e...)
+					}
+				}
+
 			} else {
 				accounts = nil
 			}

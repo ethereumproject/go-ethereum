@@ -31,7 +31,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/rjeczalik/notify"
 )
 
 // Minimum amount of time between cache reloads. This limit applies if the platform does
@@ -71,7 +70,7 @@ type caching interface {
 	getThrottle() *time.Timer
 
 	maybeReload()
-	reload([]notify.EventInfo) ([]notify.EventInfo)
+	reload()
 
 	hasAddress(address common.Address) bool
 	accounts() []Account
@@ -223,7 +222,7 @@ func (ac *addrCache) maybeReload() {
 		}
 	}
 	ac.watcher.start()
-	ac.reload([]notify.EventInfo{})
+	ac.reload()
 	ac.throttle.Reset(minReloadInterval)
 }
 
@@ -238,7 +237,7 @@ func (ac *addrCache) close() {
 
 // reload caches addresses of existing accounts.
 // Callers must hold ac.mu.
-func (ac *addrCache) reload(evs []notify.EventInfo) ([]notify.EventInfo) {
+func (ac *addrCache) reload() {
 	accounts, err := ac.scan()
 	if err != nil && glog.V(logger.Debug) {
 		glog.Errorf("can't load keys: %v", err)
@@ -251,11 +250,11 @@ func (ac *addrCache) reload(evs []notify.EventInfo) ([]notify.EventInfo) {
 	for _, a := range accounts {
 		ac.byAddr[a.Address] = append(ac.byAddr[a.Address], a)
 	}
-	for _, ev := range evs {
-		glog.V(logger.Debug).Infof("cache watch event: %v", ev)
-	}
+	//for _, ev := range evs {
+	//	glog.V(logger.Debug).Infof("cache watch event: %v", ev)
+	//}
 	glog.V(logger.Debug).Infof("reloaded keys, cache has %d accounts", len(ac.all))
-	return nil
+	//return nil
 }
 
 func (ac *addrCache) scan() ([]Account, error) {

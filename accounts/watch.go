@@ -31,7 +31,7 @@ type watcher struct {
 	starting bool
 	running  bool
 	ev       chan notify.EventInfo
-	evs      []notify.EventInfo
+	//evs      []notify.EventInfo
 	quit     chan struct{}
 }
 
@@ -99,14 +99,16 @@ func (w *watcher) loop() {
 			} else {
 				hadEvent = true
 			}
-			w.evs = append(w.evs, <-w.ev)
+			//w.evs = append(w.evs, <-w.ev)
 		case <-debounce.C:
 			w.ac.muLock()
-			w.evs = w.ac.reload(w.evs)
+			//w.evs = w.ac.reload(w.evs)
+			w.ac.reload()
 			w.ac.muUnlock()
 			if hadEvent {
 				debounce.Reset(debounceDuration)
 				inCycle, hadEvent = true, false
+
 			} else {
 				inCycle, hadEvent = false, false
 			}

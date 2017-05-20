@@ -158,9 +158,9 @@ func TestWatchNoDir_CacheDB(t *testing.T) {
 	numSaw := 0
 	for i, saw := range seen {
 		if !saw {
-			t.Logf("account watcher DID NOT see changes at %v/%v...", i, 5*time.Second)
+			t.Logf("account watcher DID NOT see file added at %v/%v...", i, 5*time.Second)
 		} else {
-			t.Logf("account watcher DID see changes at %v/%v...", i, 5*time.Second)
+			t.Logf("account watcher DID see file added at %v/%v...", i, 5*time.Second)
 			numSaw++
 		}
 	}
@@ -421,6 +421,8 @@ func TestAccountCache_CacheDB_SyncFS2DB(t *testing.T) {
 }
 
 func TestAccountCache_CacheDB_WatchRemove(t *testing.T) {
+	t.Parallel()
+
 	// setup temp dir
 	tmpDir, e := ioutil.TempDir("", "cachedb-remover-test")
 	if e != nil {
