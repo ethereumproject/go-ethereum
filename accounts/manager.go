@@ -32,6 +32,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
+	"path/filepath"
 )
 
 var (
@@ -110,7 +111,14 @@ func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager
 	// to am. addrCache doesn't keep a reference but unlocked keys do,
 	// so the finalizer will not trigger until all timed unlocks have expired.
 	runtime.SetFinalizer(am, func(m *Manager) {
-		m.ac.close()
+		// bug(whilei): I was getting panic: close of closed channel when running tests as package;
+		// individually each test would pass but not when run in a bunch.
+		// either manager reference was stuck somewhere or the tests were outpacing themselves
+		// checking for nil seems to fix the issue.
+		if am.ac != nil {
+			m.ac.close()
+		}
+
 	})
 
 	return am, nil
@@ -139,6 +147,12 @@ func (am *Manager) DeleteAccount(a Account, passphrase string) error {
 	if err != nil {
 		return err
 	}
+
+	if !filepath.IsAbs(a.File) {
+		p := filepath.Join(am.ac.getKeydir(), a.File)
+		a.File = p
+	}
+
 	// The order is crucial here. The key is dropped from the
 	// cache after the file is gone so that a reload happening in
 	// between won't insert it into the cache again.

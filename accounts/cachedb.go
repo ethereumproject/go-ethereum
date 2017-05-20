@@ -139,9 +139,12 @@ func (cdb *cacheDB) accounts() []Account {
 	}); e != nil {
 		panic(e)
 	}
+
 	sort.Sort(accountsByFile(as)) // this is important for getting AccountByIndex
+
 	cpy := make([]Account, len(as))
 	copy(cpy, as)
+
 	return cpy
 }
 
@@ -192,6 +195,7 @@ func (cdb *cacheDB) hasAddress(addr common.Address) bool {
 func (cdb *cacheDB) add(newAccount Account) {
 	defer cdb.setLastUpdated()
 	cdb.db.Update(func(tx *bolt.Tx) error {
+		newAccount.File = filepath.Base(newAccount.File)
 		if newAccount.File != "" {
 			bf := tx.Bucket(fileBucketName)
 			bf.Put([]byte(newAccount.File), accountToBytes(newAccount))
@@ -208,6 +212,8 @@ func (cdb *cacheDB) add(newAccount Account) {
 func (cdb *cacheDB) delete(removed Account) {
 	defer cdb.setLastUpdated()
 	if e := cdb.db.Update(func(tx *bolt.Tx) error {
+		removed.File = filepath.Base(removed.File)
+
 		b := tx.Bucket(fileBucketName)
 		if e := b.Delete([]byte(removed.File)); e != nil {
 			return e

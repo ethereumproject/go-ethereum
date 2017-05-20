@@ -267,7 +267,7 @@ func (ac *addrCache) scan() ([]Account, error) {
 		}
 	)
 	for _, fi := range files {
-		path := filepath.Join(ac.keydir, fi.Name())
+		path := filepath.Join(ac.getKeydir(), fi.Name())
 		if skipKeyFile(fi) {
 			glog.V(logger.Detail).Infof("ignoring file %s", path)
 			continue

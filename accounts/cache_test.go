@@ -99,7 +99,13 @@ func TestWatchNoDir(t *testing.T) {
 
 	// Create am but not the directory that it watches.
 	rand.Seed(time.Now().UnixNano())
-	dir := filepath.Join(os.TempDir(), fmt.Sprintf("eth-keystore-watch-test-%d-%d", os.Getpid(), rand.Int()))
+	rp := fmt.Sprintf("eth-keystore-watch-test-%d-%d", os.Getpid(), rand.Int())
+	dir, e := ioutil.TempDir("", rp)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer os.RemoveAll(dir)
+
 	am, err := NewManager(dir, LightScryptN, LightScryptP, false)
 	if err != nil {
 		t.Fatal(err)
@@ -135,31 +141,18 @@ func TestWatchNoDir(t *testing.T) {
 	ff.Close()
 
 	// am should see the account.
-	wantAccounts := []Account{cachetestAccounts[0]}
-	wantAccounts[0].File = file
-	var seen, gotAccounts = make(map[time.Duration]bool), make(map[time.Duration][]Account)
-	for d := 500 * time.Millisecond; d < 5*time.Second; d *= 2 {
-		list = am.Accounts()
-		seen[d] = false
-		if reflect.DeepEqual(list, wantAccounts) {
-			seen[d] = true
-		} else {
+	a := cachetestAccounts[0]
+	a.File = file
+	wantAccounts := []Account{a}
+	var gotAccounts []Account
+	for d := 500 * time.Millisecond; d <= 2*minReloadInterval; d *= 2 {
+		gotAccounts = am.Accounts()
+		if reflect.DeepEqual(gotAccounts, wantAccounts) {
+			return
 		}
-		gotAccounts[d] = list
 		time.Sleep(d)
 	}
-	numSaw := 0
-	for i, saw := range seen {
-		if !saw {
-			t.Logf("account watcher DID NOT see changes at %v/%v...", i, 5*time.Second)
-		} else {
-			t.Logf("account watcher DID see changes at %v/%v...", i, 5*time.Second)
-			numSaw++
-		}
-	}
-	if numSaw == 0 {
-		t.Errorf("account watcher never saw changes: want: %v, got %v", spew.Sdump(wantAccounts), spew.Sdump(gotAccounts))
-	}
+	t.Errorf("account watcher never saw changes: got: %v, want: %v", spew.Sdump(gotAccounts), spew.Sdump(wantAccounts))
 }
 
 func TestCacheInitialReload(t *testing.T) {
@@ -344,20 +337,24 @@ func TestAccountCache_WatchRemove(t *testing.T) {
 	t.Parallel()
 
 	// setup temp dir
-	tmpDir, e := ioutil.TempDir("", "cache-remover-test")
+	rp := fmt.Sprintf("eth-cacheremove-watch-test-%d-%d", os.Getpid(), rand.Int())
+	tmpDir, e := ioutil.TempDir("", rp)
 	if e != nil {
 		t.Fatalf("create temp dir: %v", e)
 	}
 	defer os.RemoveAll(tmpDir)
 
 	// copy 3 test account files into temp dir
-	wantAccounts := cachetestAccounts
-	for i, acc := range wantAccounts {
-		data, err := ioutil.ReadFile(acc.File)
+	wantAccounts := make([]Account, len(cachetestAccounts))
+	for i := range cachetestAccounts {
+		a := cachetestAccounts[i]
+		a.File = filepath.Join(tmpDir, filepath.Base(a.File))
+		wantAccounts[i] = a
+		data, err := ioutil.ReadFile(cachetestAccounts[i].File)
 		if err != nil {
 			t.Fatal(err)
 		}
-		ff, err := os.Create(filepath.Join(tmpDir, filepath.Base(acc.File)))
+		ff, err := os.Create(a.File)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -366,7 +363,6 @@ func TestAccountCache_WatchRemove(t *testing.T) {
 			t.Fatal(err)
 		}
 		ff.Close()
-		wantAccounts[i].File = filepath.Join(tmpDir, filepath.Base(acc.File))
 	}
 
 	// make manager in temp dir
@@ -380,7 +376,7 @@ func TestAccountCache_WatchRemove(t *testing.T) {
 	if !reflect.DeepEqual(initAccs, wantAccounts) {
 		t.Errorf("got %v, want: %v", spew.Sdump(initAccs), spew.Sdump(wantAccounts))
 	}
-	time.Sleep(2 * time.Second)
+	time.Sleep(minReloadInterval)
 
 	// test watcher is watching
 	if w := ma.ac.getWatcher(); !w.running {

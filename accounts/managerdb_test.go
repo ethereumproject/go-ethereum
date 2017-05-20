@@ -1,52 +1,37 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
-//
-// The go-ethereum library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The go-ethereum library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
-
 package accounts
 
 import (
-	"io/ioutil"
-	"os"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
+	"os"
+	"strings"
+	"fmt"
+	"runtime"
+	"io/ioutil"
+	"math/rand"
 	"reflect"
 	"github.com/davecgh/go-spew/spew"
-	"fmt"
-	"math/rand"
+	"path/filepath"
 )
 
-var testSigData = make([]byte, 32)
-
-func tmpManager(t *testing.T) (string, *Manager) {
+func tmpManager_CacheDB(t *testing.T) (string, *Manager) {
 	rand.Seed(time.Now().UnixNano())
-	dir, err := ioutil.TempDir("", fmt.Sprintf("eth-manager-mem-test-%d-%d", os.Getpid(), rand.Int()))
+	dir, err := ioutil.TempDir("", fmt.Sprintf("eth-manager-cachedb-test-%d-%d", os.Getpid(), rand.Int()))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP, false)
+	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP, true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(3*time.Second)
 	return dir, m
 }
 
-func TestManager_Mem(t *testing.T) {
-	dir, am := tmpManager(t)
+func TestManager_DB(t *testing.T) {
+
+	dir, am := tmpManager_CacheDB(t)
 	defer os.RemoveAll(dir)
 
 	a, err := am.NewAccount("foo")
@@ -80,19 +65,20 @@ func TestManager_Mem(t *testing.T) {
 	}
 }
 
-func TestManager_Accounts_Mem(t *testing.T) {
-	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, false)
+func TestManager_Accounts_CacheDB(t *testing.T) {
+	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	accounts := am.Accounts()
-	if !reflect.DeepEqual(accounts, cachetestAccounts) {
-		t.Fatalf("mem got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
+	if !reflect.DeepEqual(accounts, cachedbtestAccounts) {
+		t.Fatalf("cachedb got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
 	}
 }
 
-func TestSignWithPassphrase_Mem(t *testing.T) {
-	dir, am := tmpManager(t)
+func TestSignWithPassphrase_DB(t *testing.T) {
+	dir, am := tmpManager_CacheDB(t)
 	defer os.RemoveAll(dir)
 
 	pass := "passwd"
@@ -119,8 +105,8 @@ func TestSignWithPassphrase_Mem(t *testing.T) {
 	}
 }
 
-func TestTimedUnlock_Mem(t *testing.T) {
-	dir, am := tmpManager(t)
+func TestTimedUnlock_DB(t *testing.T) {
+	dir, am := tmpManager_CacheDB(t)
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
@@ -151,8 +137,8 @@ func TestTimedUnlock_Mem(t *testing.T) {
 	}
 }
 
-func TestOverrideUnlock_Mem(t *testing.T) {
-	dir, am := tmpManager(t)
+func TestOverrideUnlock_DB(t *testing.T) {
+	dir, am := tmpManager_CacheDB(t)
 	defer os.RemoveAll(dir)
 
 	pass := "foo"
@@ -189,8 +175,8 @@ func TestOverrideUnlock_Mem(t *testing.T) {
 }
 
 // This test should fail under -race if signing races the expiration goroutine.
-func TestSignRace_Mem(t *testing.T) {
-	dir, am := tmpManager(t)
+func TestSignRace_DB(t *testing.T) {
+	dir, am := tmpManager_CacheDB(t)
 	defer os.RemoveAll(dir)
 
 	// Create a test account.

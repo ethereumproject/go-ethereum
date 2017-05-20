@@ -41,19 +41,6 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func tmpManager_CacheDB(t *testing.T) (string, *Manager) {
-	dir, err := ioutil.TempDir("", "eth-manager-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dir, m
-}
-
 func TestWatchNewFile_CacheDB(t *testing.T) {
 	t.Parallel()
 
@@ -92,7 +79,7 @@ func TestWatchNewFile_CacheDB(t *testing.T) {
 
 	// am should see the accounts.
 	var list []Account
-	for d := 200 * time.Millisecond; d < 5*time.Second; d *= 2 {
+	for d := 200 * time.Millisecond; d <= 2 * minReloadInterval; d *= 2 {
 		list = am.Accounts()
 		if reflect.DeepEqual(list, wantAccounts) {
 			return
@@ -143,30 +130,15 @@ func TestWatchNoDir_CacheDB(t *testing.T) {
 
 	// am should see the account.
 	wantAccounts := []Account{cachedbtestAccounts[0]}
-	//wantAccounts[0].File = file
-	var seen, gotAccounts = make(map[time.Duration]bool), make(map[time.Duration][]Account)
-	for d := 500 * time.Millisecond; d < 5*time.Second; d *= 2 {
-		list = am.Accounts()
-		seen[d] = false
-		if reflect.DeepEqual(list, wantAccounts) {
-			seen[d] = true
-		} else {
+	var gotAccounts []Account
+	for d := 500 * time.Millisecond; d <= 2 * minReloadInterval; d *= 2 {
+		gotAccounts = am.Accounts()
+		if reflect.DeepEqual(gotAccounts, wantAccounts) {
+			return
 		}
-		gotAccounts[d] = list
 		time.Sleep(d)
 	}
-	numSaw := 0
-	for i, saw := range seen {
-		if !saw {
-			t.Logf("account watcher DID NOT see file added at %v/%v...", i, 5*time.Second)
-		} else {
-			t.Logf("account watcher DID see file added at %v/%v...", i, 5*time.Second)
-			numSaw++
-		}
-	}
-	if numSaw == 0 {
-		t.Errorf("account watcher never saw changes: want: %v, got %v", spew.Sdump(wantAccounts), spew.Sdump(gotAccounts))
-	}
+	t.Errorf("account watcher never saw changes: got: %v, want: %v", spew.Sdump(gotAccounts), spew.Sdump(wantAccounts))
 }
 
 func TestCacheInitialReload_CacheDB(t *testing.T) {
@@ -421,10 +393,11 @@ func TestAccountCache_CacheDB_SyncFS2DB(t *testing.T) {
 }
 
 func TestAccountCache_CacheDB_WatchRemove(t *testing.T) {
-	t.Parallel()
+	 t.Parallel()
 
 	// setup temp dir
-	tmpDir, e := ioutil.TempDir("", "cachedb-remover-test")
+	rp := fmt.Sprintf("eth-keystore-watch-cachedb-test-%d-%d", os.Getpid(), rand.Int())
+	tmpDir, e := ioutil.TempDir("", rp)
 	if e != nil {
 		t.Fatalf("create temp dir: %v", e)
 	}
@@ -482,7 +455,7 @@ func TestAccountCache_CacheDB_WatchRemove(t *testing.T) {
 	}
 
 	gotAccounts := []Account{}
-	for d := 500 * time.Millisecond; d < 5*time.Second; d *= 2 {
+	for d := 500 * time.Millisecond; d <= 2 * minReloadInterval; d *= 2 {
 		gotAccounts = ma.Accounts()
 		// If it's ever all the same, we're good. Exit with aplomb.
 		if reflect.DeepEqual(gotAccounts, wantAccounts) {
