@@ -347,12 +347,86 @@ func TestCacheFind_CacheFind(t *testing.T) {
 	}
 }
 
+func TestAccountCache_CacheDB_SyncFS2DB(t *testing.T) {
+	// setup temp dir
+	tmpDir, e := ioutil.TempDir("", "cachedb-remover-test")
+	if e != nil {
+		t.Fatalf("create temp dir: %v", e)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// make manager in temp dir
+	ma, e := NewManager(tmpDir, veryLightScryptN, veryLightScryptP, true)
+	if e != nil {
+		t.Errorf("create manager in temp dir: %v", e)
+	}
+	// test manager has no accounts
+	initAccs := ma.Accounts()
+	if !reflect.DeepEqual(initAccs, []Account{}) {
+		t.Errorf("got %v, want: %v", spew.Sdump(initAccs), spew.Sdump([]Account{}))
+	}
+	// close manager
+	ma.ac.close()
+	ma = nil
+
+	// copy 3 key files to temp dir
+	for _, acc := range cachedbtestAccounts {
+		data, err := ioutil.ReadFile(filepath.Join(cachetestDir, acc.File))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ff, err := os.Create(filepath.Join(tmpDir, acc.File))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = ff.Write(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ff.Close()
+	}
+
+	// restart manager in temp dir
+	ma, e = NewManager(tmpDir, veryLightScryptN, veryLightScryptP, true)
+	if e != nil {
+		t.Errorf("create manager in temp dir: %v", e)
+	}
+
+	// test manager has 3 accounts
+	initAccs = ma.Accounts()
+	if !reflect.DeepEqual(initAccs, cachedbtestAccounts) {
+		t.Errorf("got %v, want: %v", spew.Sdump(initAccs), spew.Sdump(cachedbtestAccounts))
+	}
+
+	// close manager
+	ma.ac.close()
+	ma = nil
+
+	// remove 1 key file from temp dir
+	rmPath := filepath.Join(tmpDir, cachedbtestAccounts[0].File)
+	if e := os.Remove(rmPath); e != nil {
+		t.Fatalf("removing key file: %v", e)
+	}
+
+	// restart manager in temp dir
+	ma, e = NewManager(tmpDir, veryLightScryptN, veryLightScryptP, true)
+	if e != nil {
+		t.Errorf("create manager in temp dir: %v", e)
+	}
+	// test manager has 3 accounts
+	initAccs = ma.Accounts()
+	if !reflect.DeepEqual(initAccs, cachedbtestAccounts[1:]) {
+		t.Errorf("got %v, want: %v", spew.Sdump(initAccs), spew.Sdump(cachedbtestAccounts[1:]))
+	}
+}
+
 func TestAccountCache_CacheDB_WatchRemove(t *testing.T) {
 	// setup temp dir
 	tmpDir, e := ioutil.TempDir("", "cachedb-remover-test")
 	if e != nil {
 		t.Fatalf("create temp dir: %v", e)
 	}
+	defer os.RemoveAll(tmpDir)
 
 	// copy 3 test account files into temp dir
 	for _, acc := range cachedbtestAccounts {

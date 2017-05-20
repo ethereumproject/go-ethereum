@@ -35,7 +35,6 @@ import (
 	"errors"
 	"gopkg.in/mgo.v2/bson"
 	"sync"
-	"github.com/davecgh/go-spew/spew"
 	"strings"
 )
 
@@ -532,10 +531,20 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 
-			fp := string(k) // Has address prefix.
-			if len(fp) >= common.AddressLength {
-				fp = fp[common.AddressLength:]
+			// Has address prefix.
+			fp := string(k)
+			if len(fp) >= 42 {
+				fp = fp[42:]
 				if fp == "" {
+					// FIXME: if no file available, this address will become stagnant
+					// if more than a week old, remove it?
+					tt, te := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", string(v))
+					if te != nil {
+						errs = append(errs, te)
+					}
+					if tt.Before(time.Now().Add(7 * 24 * 60 * time.Minute)) {
+						removedAccounts = append(removedAccounts, bytesToAccount(v))
+					}
 					continue
 				}
 			}
@@ -567,8 +576,10 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 
 		// Remove from both caches.
 		for _, ra := range removedAccounts {
-			if e := fb.Delete([]byte(ra.File)); e != nil {
-				errs = append(errs, e)
+			if ra.File != "" {
+				if e := fb.Delete([]byte(ra.File)); e != nil {
+					errs = append(errs, e)
+				}
 			}
 			if e := ab.Delete([]byte(ra.Address.Hex() + ra.File)); e != nil {
 				errs = append(errs, e)
