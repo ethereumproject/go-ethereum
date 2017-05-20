@@ -58,7 +58,7 @@ func newCacheDB(keydir string) *cacheDB {
 	dbpath := filepath.Join(keydir, "accounts.db")
 	bdb, e := bolt.Open(dbpath, 0600, nil) // TODO configure more?
 	if e != nil {
-		panic(e) // FIXME
+		panic(e)
 	}
 
 	cdb := &cacheDB{
@@ -98,6 +98,7 @@ func newCacheDB(keydir string) *cacheDB {
 	return cdb
 }
 
+// Getter functions to implement caching interface.
 func (cdb *cacheDB) muLock() {
 	cdb.mu.Lock()
 }
@@ -109,7 +110,6 @@ func (cdb *cacheDB) muUnlock() {
 func (cdb *cacheDB) getKeydir() string {
 	return cdb.keydir
 }
-
 
 func (cdb *cacheDB) getWatcher() *watcher {
 	return cdb.watcher
@@ -269,82 +269,6 @@ func (cdb *cacheDB) close() {
 	cdb.mu.Unlock()
 }
 
-// set is used by the fs watcher to update the cache from a given file path.
-// it has some logic;
-// -- it will _overwrite_ any existing cache entry by file and addr, making it useful for CREATE and UPDATE
-func (cdb *cacheDB) setViaFile(fileBaseName string) error {
-	// first sync fs -> cachedb, update all accounts in cache from fs
-	var (
-		buf     = new(bufio.Reader)
-		acc Account
-		keyJSON struct {
-			   Address common.Address `json:"address"`
-		   }
-		web3JSON []byte
-	)
-
-	path := filepath.Join(cdb.getKeydir(), fileBaseName)
-	fd, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	buf.Reset(fd)
-	// Parse the address.
-	keyJSON.Address = common.Address{}
-	err = json.NewDecoder(buf).Decode(&keyJSON)
-	fd.Close()
-
-	// Slurp file contents to store in the cachedb, saving an io read at
-	// keystore.Lookup.
-	web3JSON, e := ioutil.ReadFile(path)
-	if e != nil {
-		return e
-	}
-
-	switch {
-	case err != nil:
-		return fmt.Errorf("can't decode key %s: %v", path, err)
-	case (keyJSON.Address == common.Address{}):
-		return fmt.Errorf("can't decode key %s: missing or zero address", path)
-	default:
-		acc = Account{Address: keyJSON.Address, File: fileBaseName, EncryptedKey: string(web3JSON)}
-	}
-
-	ab := accountToBytes(acc)
-	return cdb.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(fileBucketName)
-		if e := b.Put([]byte(fileBaseName), ab); e != nil {
-			return e
-		}
-		b = tx.Bucket(addrBucketName)
-		return b.Put([]byte(keyJSON.Address.Hex()+fileBaseName), []byte(time.Now().String()))
-	})
-}
-
-// remove is used by the fs watcher to update the cache from a given path.
-func (cdb *cacheDB) removeViaFile(fileBaseName string) error {
-
-	var acc Account
-
-	if e := cdb.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(fileBucketName)
-		ab := b.Get([]byte(fileBaseName))
-		if ab == nil {
-			return ErrNoMatch
-		}
-		acc = bytesToAccount(ab)
-		if e := b.Delete([]byte(fileBaseName)); e != nil {
-			return e
-		}
-
-		return tx.Bucket(addrBucketName).Delete([]byte(acc.Address.Hex() + acc.File))
-
-	}); e != nil {
-		return e
-	}
-	return nil
-}
-
 func (cdb *cacheDB) maybeReload() {
 	cdb.mu.Lock()
 	defer cdb.mu.Unlock()
@@ -432,67 +356,7 @@ func (cdb *cacheDB) setBatchAccounts(accs []Account) (errs []error) {
 // Callers must hold ac.mu.
 func (cdb *cacheDB) reload() {
 	defer cdb.setLastUpdated()
-
 	cdb.syncfs2db(time.Now().Add(-minReloadInterval))
-	//if len(errs) > 0 {
-	//	panic(spew.Sdump(errs))
-	//}
-
-	// Decide kind of event.
-	//for _, ev := range events {
-	//
-	//	glog.V(logger.Debug).Infof("reloading event: %v", ev)
-	//
-	//	p := ev.Path() // provides a clean absolute path
-	//
-	//	// Nuance of Notify package Path():
-	//	// on /tmp will report events with paths rooted at /private/tmp etc.
-	//	if strings.HasPrefix(p, "/private") {
-	//		p = strings.Replace(p, "/private","",1) // only replace first occurance
-	//	}
-	//	fi, e := os.Stat(p)
-	//	if e != nil {
-	//		continue // TODO handle better
-	//	}
-	//	if fi.IsDir() { // don't expect many of these from Notify, but just in case
-	//		continue // only want files, no dirs
-	//	}
-	//
-	//	//p, re := filepath.Rel(cdb.getKeydir(), p)
-	//	//if re != nil {
-	//	//	continue
-	//	//}
-	//	p = filepath.Base(p)
-	//
-	//	// TODO: don't ignore the returned errors
-	//	switch ev.Event() {
-	//	case notify.Create:
-	//		glog.V(logger.Debug).Infof("reloading create event: %v", ev.Event())
-	//		if e := cdb.setViaFile(p); e != nil {
-	//			continue // FIXME
-	//		}
-	//	case notify.Rename:
-	//		glog.V(logger.Debug).Infof("reloading rename event (doing nothing): %v", ev.Event())
-	//		// TODO: do something... how to get old vs. new paths? or do nothing because is redundant to remove/+create?
-	//	case notify.Remove:
-	//		glog.V(logger.Debug).Infof("reloading remove event: %v", ev.Event())
-	//		// TODO: write test
-	//		if e := cdb.removeViaFile(p); e != nil {
-	//			continue // FIXME
-	//		}
-	//	case notify.Write:
-	//		glog.V(logger.Debug).Infof("reloading write event: %v", ev.Event())
-	//		if e := cdb.setViaFile(p); e != nil {
-	//			continue // FIXME
-	//		}
-	//	default:
-	//		// do nothing
-	//	}
-	//}
-	// I thought of peeling off successful events from the slice, and returning
-	// failed ones so it would try, try again. I don't think it's very safe.
-	// But I like danger and redlines.
-	//return []notify.EventInfo{}
 }
 
 // syncfs2db syncronises an existing cachedb with a corresponding fs.
@@ -583,8 +447,6 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 					}
 				}
 			}
-
-
 		}
 
 		// Remove from both caches.

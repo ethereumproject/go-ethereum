@@ -250,11 +250,7 @@ func (ac *addrCache) reload() {
 	for _, a := range accounts {
 		ac.byAddr[a.Address] = append(ac.byAddr[a.Address], a)
 	}
-	//for _, ev := range evs {
-	//	glog.V(logger.Debug).Infof("cache watch event: %v", ev)
-	//}
 	glog.V(logger.Debug).Infof("reloaded keys, cache has %d accounts", len(ac.all))
-	//return nil
 }
 
 func (ac *addrCache) scan() ([]Account, error) {
