@@ -119,7 +119,8 @@ func TestWatchNoDir(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	file := filepath.Join(dir, "aaa")
-	data, err := ioutil.ReadFile(cachetestAccounts[0].File)
+	// This filepath-ing is redundant but ensure parallel tests don't fuck each other up... I think.
+	data, err := ioutil.ReadFile(filepath.Join(cachetestDir, filepath.Base(cachetestAccounts[0].File)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,4 +338,79 @@ func TestCacheFind(t *testing.T) {
 			continue
 		}
 	}
+}
+
+func TestAccountCache_WatchRemove(t *testing.T) {
+	t.Parallel()
+
+	// setup temp dir
+	tmpDir, e := ioutil.TempDir("", "cache-remover-test")
+	if e != nil {
+		t.Fatalf("create temp dir: %v", e)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// copy 3 test account files into temp dir
+	wantAccounts := cachetestAccounts
+	for i, acc := range wantAccounts {
+		data, err := ioutil.ReadFile(acc.File)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ff, err := os.Create(filepath.Join(tmpDir, filepath.Base(acc.File)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = ff.Write(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ff.Close()
+		wantAccounts[i].File = filepath.Join(tmpDir, filepath.Base(acc.File))
+	}
+
+	// make manager in temp dir
+	ma, e := NewManager(tmpDir, veryLightScryptN, veryLightScryptP, false)
+	if e != nil {
+		t.Errorf("create manager in temp dir: %v", e)
+	}
+
+	// test manager has all accounts
+	initAccs := ma.Accounts()
+	if !reflect.DeepEqual(initAccs, wantAccounts) {
+		t.Errorf("got %v, want: %v", spew.Sdump(initAccs), spew.Sdump(wantAccounts))
+	}
+	time.Sleep(2 * time.Second)
+
+	// test watcher is watching
+	if w := ma.ac.getWatcher(); !w.running {
+		t.Errorf("watcher not running")
+	}
+
+	// remove file
+	rmPath := filepath.Join(tmpDir, filepath.Base(wantAccounts[0].File))
+	if e := os.Remove(rmPath); e != nil {
+		t.Fatalf("removing key file: %v", e)
+	}
+	// ensure it's gone
+	if _, e := os.Stat(rmPath); e == nil {
+		t.Fatalf("removed file not actually rm'd")
+	}
+
+	// test manager does not have account
+	wantAccounts = wantAccounts[1:]
+	if len(wantAccounts) != 2 {
+		t.Errorf("dummy")
+	}
+
+	gotAccounts := []Account{}
+	for d := 500 * time.Millisecond; d < 5*time.Second; d *= 2 {
+		gotAccounts = ma.Accounts()
+		// If it's ever all the same, we're good. Exit with aplomb.
+		if reflect.DeepEqual(gotAccounts, wantAccounts) {
+			return
+		}
+		time.Sleep(d)
+	}
+	t.Errorf("got: %v, want: %v", spew.Sdump(gotAccounts), spew.Sdump(wantAccounts))
 }
