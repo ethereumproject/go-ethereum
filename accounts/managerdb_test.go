@@ -66,6 +66,7 @@ func TestManager_DB(t *testing.T) {
 }
 
 func TestManager_Accounts_CacheDB(t *testing.T) {
+	// test initialize (no existing accounts.db index)
 	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
 	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, true)
 	if err != nil {
@@ -74,6 +75,38 @@ func TestManager_Accounts_CacheDB(t *testing.T) {
 	accounts := am.Accounts()
 	if !reflect.DeepEqual(accounts, cachedbtestAccounts) {
 		t.Fatalf("cachedb got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
+	}
+
+	// test restart (with existing accounts.db index)
+	am.ac.close()
+	am = nil
+
+	am, err = NewManager(cachetestDir, LightScryptN, LightScryptP, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounts = am.Accounts()
+	if !reflect.DeepEqual(accounts, cachedbtestAccounts) {
+		t.Fatalf("cachedb got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
+	}
+}
+
+func TestManager_AccountsByIndex_CacheDB(t *testing.T) {
+	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range cachedbtestAccounts {
+		wantAccount := cachedbtestAccounts[i]
+		gotAccount, e := am.AccountByIndex(i)
+		if e != nil {
+			t.Fatalf("manager cache mem #accountsbyindex: %v", e)
+		}
+		if !reflect.DeepEqual(wantAccount, gotAccount) {
+			t.Fatalf("got: %v, want: %v", spew.Sdump(gotAccount), spew.Sdump(wantAccount))
+		}
 	}
 }
 
@@ -173,6 +206,36 @@ func TestOverrideUnlock_DB(t *testing.T) {
 		t.Fatal("Signing should've failed with ErrLocked timeout expired, got ", err)
 	}
 }
+
+// unlocks account from manager created in existing testdata/keystore dir
+func TestTimedUnlock_DB2(t *testing.T) {
+	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+	am, err := NewManager(cachetestDir, veryLightScryptN, veryLightScryptP, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1 := cachetestAccounts[1]
+
+	// Signing with passphrase works
+	if err := am.TimedUnlock(a1, "foobar", 100*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+
+	// Signing without passphrase works because account is temp unlocked
+	_, err = am.Sign(a1.Address, testSigData)
+	if err != nil {
+		t.Fatal("Signing shouldn't return an error after unlocking, got ", err)
+	}
+
+	// Signing fails again after automatic locking
+	time.Sleep(250 * time.Millisecond)
+	_, err = am.Sign(a1.Address, testSigData)
+	if err != ErrLocked {
+		t.Fatal("Signing should've failed with ErrLocked timeout expired, got ", err)
+	}
+}
+
 
 // This test should fail under -race if signing races the expiration goroutine.
 func TestSignRace_DB(t *testing.T) {

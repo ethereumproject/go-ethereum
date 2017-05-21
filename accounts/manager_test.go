@@ -91,6 +91,24 @@ func TestManager_Accounts_Mem(t *testing.T) {
 	}
 }
 
+func TestManager_AccountsByIndex(t *testing.T) {
+	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range cachetestAccounts {
+		wantAccount := cachetestAccounts[i]
+		gotAccount, e := am.AccountByIndex(i)
+		if e != nil {
+			t.Fatalf("manager cache mem #accountsbyindex: %v", e)
+		}
+		if !reflect.DeepEqual(wantAccount, gotAccount) {
+			t.Fatalf("want: %v, got: %v", wantAccount, gotAccount)
+		}
+	}
+}
+
 func TestSignWithPassphrase_Mem(t *testing.T) {
 	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
@@ -119,6 +137,7 @@ func TestSignWithPassphrase_Mem(t *testing.T) {
 	}
 }
 
+// unlocks newly created account in temp dir
 func TestTimedUnlock_Mem(t *testing.T) {
 	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
@@ -134,6 +153,34 @@ func TestTimedUnlock_Mem(t *testing.T) {
 
 	// Signing with passphrase works
 	if err = am.TimedUnlock(a1, pass, 100*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+
+	// Signing without passphrase works because account is temp unlocked
+	_, err = am.Sign(a1.Address, testSigData)
+	if err != nil {
+		t.Fatal("Signing shouldn't return an error after unlocking, got ", err)
+	}
+
+	// Signing fails again after automatic locking
+	time.Sleep(250 * time.Millisecond)
+	_, err = am.Sign(a1.Address, testSigData)
+	if err != ErrLocked {
+		t.Fatal("Signing should've failed with ErrLocked timeout expired, got ", err)
+	}
+}
+
+// unlocks account from manager created in existing testdata/keystore dir
+func TestTimedUnlock_Mem2(t *testing.T) {
+	am, err := NewManager(cachetestDir, veryLightScryptN, veryLightScryptP, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1 := cachetestAccounts[1]
+
+	// Signing with passphrase works
+	if err := am.TimedUnlock(a1, "foobar", 100*time.Millisecond); err != nil {
 		t.Fatal(err)
 	}
 

@@ -86,15 +86,15 @@ type addrCache struct {
 	keydir   string
 	watcher  *watcher
 	mu       sync.Mutex
-	throttle *time.Timer
 	all      accountsByFile
 	byAddr   map[common.Address][]Account
+	throttle *time.Timer
 }
 
 func newAddrCache(keydir string) *addrCache {
 	ac := &addrCache{
-		byAddr: make(map[common.Address][]Account),
 		keydir: keydir,
+		byAddr: make(map[common.Address][]Account),
 	}
 	ac.watcher = newWatcher(ac)
 	return ac
@@ -267,7 +267,7 @@ func (ac *addrCache) scan() ([]Account, error) {
 		}
 	)
 	for _, fi := range files {
-		path := filepath.Join(ac.getKeydir(), fi.Name())
+		path := filepath.Join(ac.keydir, fi.Name())
 		if skipKeyFile(fi) {
 			glog.V(logger.Detail).Infof("ignoring file %s", path)
 			continue

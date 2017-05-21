@@ -242,7 +242,7 @@ func (am *Manager) TimedUnlock(a Account, passphrase string, timeout time.Durati
 }
 
 func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error) {
-	//am.cache.maybeReload()
+	am.ac.maybeReload()
 	am.ac.muLock()
 	a, err := am.ac.find(a)
 	am.ac.muUnlock()
