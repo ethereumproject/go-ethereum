@@ -71,6 +71,7 @@ type caching interface {
 
 	maybeReload()
 	reload()
+	Syncfs2db(time.Time) []error
 
 	hasAddress(address common.Address) bool
 	accounts() []Account
@@ -117,6 +118,10 @@ func (ac *addrCache) getWatcher() *watcher {
 
 func (ac *addrCache) getThrottle() *time.Timer {
 	return ac.throttle
+}
+
+func (ac *addrCache) Syncfs2db(t time.Time) []error {
+	panic("Invalid use; syncfs2db only available for db cache.")
 }
 
 func (ac *addrCache) accounts() []Account {

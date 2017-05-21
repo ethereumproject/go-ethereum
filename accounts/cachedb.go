@@ -84,7 +84,7 @@ func newCacheDB(keydir string) *cacheDB {
 	if e != nil && e != ErrCacheDBNoUpdateStamp {
 		glog.V(logger.Error).Infof("cachedb getupdated error: %v", e)
 	}
-	if errs := cdb.syncfs2db(lu); len(errs) != 0 {
+	if errs := cdb.Syncfs2db(lu); len(errs) != 0 {
 		for _, e := range errs {
 			if e != nil {
 				glog.V(logger.Error).Infof("error db sync: %v", e)
@@ -360,11 +360,11 @@ func (cdb *cacheDB) setBatchAccounts(accs []Account) (errs []error) {
 // Callers must hold ac.mu.
 func (cdb *cacheDB) reload() {
 	defer cdb.setLastUpdated()
-	cdb.syncfs2db(time.Now().Add(-minReloadInterval))
+	cdb.Syncfs2db(time.Now().Add(-minReloadInterval))
 }
 
-// syncfs2db syncronises an existing cachedb with a corresponding fs.
-func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
+// Syncfs2db syncronises an existing cachedb with a corresponding fs.
+func (cdb *cacheDB) Syncfs2db(lastUpdated time.Time) (errs []error) {
 	defer cdb.setLastUpdated()
 
 	files, err := ioutil.ReadDir(cdb.getKeydir())

@@ -124,6 +124,10 @@ func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager
 	return am, nil
 }
 
+func (am *Manager) CreateIndexDB() []error {
+	return am.ac.Syncfs2db(time.Now().Add(-60*24*7*30*120*time.Minute)) // arbitrarily long "last updated"
+}
+
 // HasAddress reports whether a key with the given address is present.
 func (am *Manager) HasAddress(addr common.Address) bool {
 	return am.ac.hasAddress(addr)
