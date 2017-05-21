@@ -209,7 +209,7 @@ func accountIndex(ctx *cli.Context) error {
 func accountList(ctx *cli.Context) error {
 	accman := MakeAccountManager(ctx)
 	for i, acct := range accman.Accounts() {
-		
+
 		fmt.Printf("Account #%d: {%x} %s\n", i, acct.Address, acct.File)
 	}
 	return nil
