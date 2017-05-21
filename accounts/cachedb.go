@@ -19,7 +19,6 @@ package accounts
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -517,9 +516,9 @@ func (cdb *cacheDB) syncfs2db(lastUpdated time.Time) (errs []error) {
 
 				switch {
 				case err != nil:
-					errs = append(errs, fmt.Errorf("can't decode key %s: %v", path, err))
+					glog.V(logger.Debug).Infof("can't decode key %s: %v", path, err)
 				case (keyJSON.Address == common.Address{}):
-					errs = append(errs, fmt.Errorf("can't decode key %s: missing or zero address", path))
+					glog.V(logger.Debug).Infof("can't decode key %s: missing or zero address", path)
 				default:
 					accounts = append(accounts, Account{Address: keyJSON.Address, File: fi.Name(), EncryptedKey: string(web3JSON)})
 				}
