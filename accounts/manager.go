@@ -22,7 +22,6 @@ package accounts
 
 import (
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -33,6 +32,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"path/filepath"
+	"encoding/json"
 )
 
 var (
@@ -54,6 +54,14 @@ type Account struct {
 	// select just by address or set to the basename or absolute path of a file in the key
 	// directory. Accounts returned by Manager will always contain an absolute path.
 	File string
+}
+
+// AccountJSON is an auxiliary between Account and EasyMarshal'd structs.
+//easyjson:json
+type AccountJSON struct {
+	Address string `json:"address"`
+	EncryptedKey string `json:"key"`
+	File string `json:"file"`
 }
 
 func (acc *Account) MarshalJSON() ([]byte, error) {
