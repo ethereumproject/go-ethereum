@@ -102,7 +102,7 @@ func TestManager_AccountsByIndex_CacheDB(t *testing.T) {
 		wantAccount := cachedbtestAccounts[i]
 		gotAccount, e := am.AccountByIndex(i)
 		if e != nil {
-			t.Fatalf("manager cache mem #accountsbyindex: %v", e)
+			t.Fatalf("manager cache db #accountsbyindex: %v", e)
 		}
 		if !reflect.DeepEqual(wantAccount, gotAccount) {
 			t.Fatalf("got: %v, want: %v", spew.Sdump(gotAccount), spew.Sdump(wantAccount))

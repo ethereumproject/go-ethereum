@@ -136,6 +136,7 @@ func testAccountFlow(am *Manager, dir string) error {
 	}
 	return nil
 }
+
 //
 //func createTestAccount(am *Manager, dir string) error {
 //	a, err := am.NewAccount("foo")
@@ -197,7 +198,7 @@ func testAccountFlow(am *Manager, dir string) error {
 //	return fN, acN
 //}
 //
-//func setupBenchmarkAccountFlowFast(dir string, n int, resetAll, resetCache bool, b *testing.B) *Manager {
+//func setupBenchmarkAccountFlowFast(dir string, n int, resetAll, resetCache bool, b *testing.B) {
 //	// Optionally: don't remove so we can compound accounts more quickly.
 //	if resetAll {
 //		b.Log("removing testdata keystore")
@@ -232,30 +233,30 @@ func testAccountFlow(am *Manager, dir string) error {
 //	}
 //	ks = nil
 //	files = nil
-//
-//	manStart := time.Now()
-//	am, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
-//	if err != nil {
-//		b.Fatal(err)
-//	}
-//
-//	am.cache.watcher.running = true // cache.watcher.running = true // prevent unexpected reloads
-//
-//	b.Logf("setup time for manager: %v", time.Since(manStart))
-//
-//	fsN, acN := getFSvsCacheAccountN(dir, am.cache, b)
-//
-//	if acN > fsN { // Can allow greater number of keyfiles, in the case that there are invalids or dupes.
-//		b.Errorf("accounts/files count mismatch: keyfiles: %v, accounts: %v", fsN, acN)
-//	} else {
-//		b.Logf("files: %v, accounts: %v", fsN, acN)
-//	}
-//
-//	b.Logf("setup time for manager: %v", time.Since(manStart))
-//
-//	b.ResetTimer() // _benchmark_ timer, not setup timer.
-//
-//	return am
+//	//
+//	//manStart := time.Now()
+//	//am, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
+//	//if err != nil {
+//	//	b.Fatal(err)
+//	//}
+//	//
+//	//am.get.watcher.running = true // cache.watcher.running = true // prevent unexpected reloads
+//	//
+//	//b.Logf("setup time for manager: %v", time.Since(manStart))
+//	//
+//	//fsN, acN := getFSvsCacheAccountN(dir, am.cache, b)
+//	//
+//	//if acN > fsN { // Can allow greater number of keyfiles, in the case that there are invalids or dupes.
+//	//	b.Errorf("accounts/files count mismatch: keyfiles: %v, accounts: %v", fsN, acN)
+//	//} else {
+//	//	b.Logf("files: %v, accounts: %v", fsN, acN)
+//	//}
+//	//
+//	//b.Logf("setup time for manager: %v", time.Since(manStart))
+//	//
+//	//b.ResetTimer() // _benchmark_ timer, not setup timer.
+//	//
+//	//return am
 //}
 //
 //// Test benchmark for CRUSD/account; create, update, sign, delete.
@@ -328,28 +329,73 @@ func benchmarkManager_SignWithPassphrase(n int, b *testing.B) {
 	am = nil
 }
 
-func BenchmarkManager_CRUSD100(b *testing.B) { benchmarkManager_CRUSD(100, b) }
-func BenchmarkManager_CRUSD500(b *testing.B) { benchmarkManager_CRUSD(500, b) }
+func BenchmarkManager_CRUSD100(b *testing.B) {
+	benchmarkManager_CRUSD(100, false, false, b)
+	benchmarkManager_CRUSD(100, true, true, b)
+}
+func BenchmarkManager_CRUSD500(b *testing.B) {
+	benchmarkManager_CRUSD(500, false, false, b)
+	benchmarkManager_CRUSD(500, true, true, b)
+}
 func BenchmarkManager_CRUSD1000(b *testing.B) {
-	benchmarkManager_CRUSD(1000, b)
+	benchmarkManager_CRUSD(1000, false, false, b)
+	benchmarkManager_CRUSD(1000, true, true, b)
 }
 func BenchmarkManager_CRUSD5000(b *testing.B) {
-	benchmarkManager_CRUSD(5000, b)
+	benchmarkManager_CRUSD(5000, false, false, b)
+	benchmarkManager_CRUSD(5000, true, true, b)
 }
 func BenchmarkManager_CRUSD10000(b *testing.B) {
-	benchmarkManager_CRUSD(10000, b)
+	benchmarkManager_CRUSD(10000, false, false, b)
+	benchmarkManager_CRUSD(10000, true, true, b)
 }
 func BenchmarkManager_CRUSD20000(b *testing.B) {
-	benchmarkManager_CRUSD(20000, b)
+	benchmarkManager_CRUSD(20000, false, false, b)
+	benchmarkManager_CRUSD(20000, true, true, b)
 }
 func BenchmarkManager_CRUSD100000(b *testing.B) {
-	benchmarkManager_CRUSD(100000, b)
+	benchmarkManager_CRUSD(100000, false, false, b)
+	benchmarkManager_CRUSD(100000, true, true, b)
 }
 func BenchmarkManager_CRUSD500000(b *testing.B) {
-	benchmarkManager_CRUSD(500000, b)
+	benchmarkManager_CRUSD(500000, false, false, b)
+	benchmarkManager_CRUSD(500000, true, true, b)
 }
 
-func benchmarkManager_CRUSD(n int, b *testing.B) {
+func BenchmarkManagerCRUSD(b *testing.B) {
+	var cases = []struct {
+		numKeyFiles               int
+		wantCacheDB, resetCacheDB bool
+	}{
+		// You can use resetCache: false to save some time if you've already run the benchmark.
+		// Note that if you make any changes to the structure of the cachedb you'll need to
+		// dump and reinitialize accounts.db.
+		{numKeyFiles: 100, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 100, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 500, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 500, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 1000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 1000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 5000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 5000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 10000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 10000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 20000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 20000, wantCacheDB: true, resetCacheDB: false},
+		//{numKeyFiles: 100000, wantCacheDB: false, resetCacheDB: false},
+		//{numKeyFiles: 100000, wantCacheDB: true, resetCacheDB: false},
+		//{numKeyFiles: 500000, wantCacheDB: false, resetCacheDB: false},
+		//{numKeyFiles: 500000, wantCacheDB: true, resetCacheDB: false},
+	}
+
+	for _, c := range cases {
+		b.Run(fmt.Sprintf("CRUSD:KeyFiles#:%v,DB:%v,reset:%v", c.numKeyFiles, c.wantCacheDB, c.resetCacheDB), func(b *testing.B) {
+			benchmarkManager_CRUSD(c.numKeyFiles, c.wantCacheDB, c.resetCacheDB, b)
+		})
+	}
+}
+
+func benchmarkManager_CRUSD(n int, wantcachedb bool, resetcachedb bool, b *testing.B) {
 
 	// 20000 -> 20k
 	staticKeyFilesResourcePath := strconv.Itoa(n)
@@ -360,9 +406,24 @@ func benchmarkManager_CRUSD(n int, b *testing.B) {
 
 	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
 
+	if !wantcachedb {
+		p, e := filepath.Abs(staticKeyFilesResourcePath)
+		if e != nil {
+			b.Fatal(e)
+		}
+		staticKeyFilesResourcePath = p
+	}
+
+	if resetcachedb {
+		os.Remove(filepath.Join(staticKeyFilesResourcePath, "accounts.db"))
+	}
+
 	start := time.Now()
-	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP, true)
-	am.ac.getWatcher().running = true
+	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP, wantcachedb)
+	if !wantcachedb {
+		am.ac.getWatcher().running = true
+	}
+
 	if me != nil {
 		b.Fatal(me)
 	}
@@ -373,8 +434,9 @@ func benchmarkManager_CRUSD(n int, b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		if e := testAccountFlow(am, staticKeyFilesResourcePath); e != nil {
-			b.Errorf("account flow (CRUSD): %v", e)
+			b.Errorf("account flow (CRUSD): %v (db: %v)", e, wantcachedb)
 		}
 	}
+	am.ac.close()
 	am = nil
 }
