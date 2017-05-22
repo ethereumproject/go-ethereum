@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"reflect"
 	"github.com/davecgh/go-spew/spew"
+	"path/filepath"
 )
 
 func tmpManager_CacheDB(t *testing.T) (string, *Manager) {
@@ -24,7 +25,6 @@ func tmpManager_CacheDB(t *testing.T) (string, *Manager) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m.ac.Syncfs2db(time.Now())
 	return dir, m
 }
 
@@ -62,27 +62,36 @@ func TestManager_DB(t *testing.T) {
 	if am.HasAddress(a.Address) {
 		t.Errorf("HasAddress(%x) should've returned true after DeleteAccount", a.Address)
 	}
+	am.ac.close()
+	am = nil
 }
 
 func TestManager_Accounts_CacheDB(t *testing.T) {
-
+	// bug(whilei): I don't know why you have to do rm.
+	// Running the file as a standalone test is no problem.
+	// Running the suite (ie go test -v ./accounts/), it hangs here.
+	// Again, I think it has to do with test concurrency.
+	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
 	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	am.ac.Syncfs2db(time.Now())
 	accounts := am.Accounts()
 	if !reflect.DeepEqual(accounts, cachedbtestAccounts) {
 		t.Fatalf("cachedb got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachedbtestAccounts))
 	}
 	am.ac.close()
+	am = nil
 }
 
 func TestManager_AccountsByIndex_CacheDB(t *testing.T) {
-
+	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
 	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, true)
 	if err != nil {
 		t.Fatal(err)
 	}
+	am.ac.Syncfs2db(time.Now())
 
 	for i := range cachedbtestAccounts {
 		wantAccount := cachedbtestAccounts[i]
@@ -95,6 +104,7 @@ func TestManager_AccountsByIndex_CacheDB(t *testing.T) {
 		}
 	}
 	am.ac.close()
+	am = nil
 }
 
 func TestSignWithPassphrase_DB(t *testing.T) {
@@ -123,6 +133,8 @@ func TestSignWithPassphrase_DB(t *testing.T) {
 	if _, err = am.SignWithPassphrase(acc.Address, "invalid passwd", testSigData); err == nil {
 		t.Fatal("expected SignHash to fail with invalid password")
 	}
+	am.ac.close()
+	am = nil
 }
 
 func TestTimedUnlock_DB(t *testing.T) {
@@ -155,6 +167,8 @@ func TestTimedUnlock_DB(t *testing.T) {
 	if err != ErrLocked {
 		t.Fatal("Signing should've failed with ErrLocked timeout expired, got ", err)
 	}
+	am.ac.close()
+	am = nil
 }
 
 func TestOverrideUnlock_DB(t *testing.T) {
@@ -192,6 +206,8 @@ func TestOverrideUnlock_DB(t *testing.T) {
 	if err != ErrLocked {
 		t.Fatal("Signing should've failed with ErrLocked timeout expired, got ", err)
 	}
+	am.ac.close()
+	am = nil
 }
 
 // unlocks account from manager created in existing testdata/keystore dir
@@ -222,6 +238,7 @@ func TestTimedUnlock_DB2(t *testing.T) {
 		t.Fatal("Signing should've failed with ErrLocked timeout expired, got ", err)
 	}
 	am.ac.close()
+	am = nil
 }
 
 
@@ -250,4 +267,6 @@ func TestSignRace_DB(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 	}
 	t.Error("Account did not lock within the timeout")
+	am.ac.close()
+	am = nil
 }

@@ -328,21 +328,22 @@ func (cdb *cacheDB) setBatchAccounts(accs []Account) (errs []error) {
 // Syncfs2db syncronises an existing cachedb with a corresponding fs.
 func (cdb *cacheDB) Syncfs2db(lastUpdated time.Time) (errs []error) {
 
-	di, de := os.Stat(cdb.keydir)
-	if de != nil {
-		return append(errs, de)
-	}
-
-	dbLastMod, lue := cdb.getLastUpdated()
-	if lue != nil {
-		errs = append(errs, lue)
-	} else {
-		directoryLastMod := di.ModTime()
-		if dbLastMod.After(directoryLastMod) {
-			glog.V(logger.Info).Info("Directory has not been modified since DB was updated. Not syncing.")
-			return errs
-		}
-	}
+	// Check if directory was modified. Makes function somewhat idempotent...
+	//di, de := os.Stat(cdb.keydir)
+	//if de != nil {
+	//	return append(errs, de)
+	//}
+	// ... but I don't trust/know when directory stamps get modified (ie for tests).
+	//dbLastMod, lue := cdb.getLastUpdated()
+	//if lue != nil {
+	//	errs = append(errs, lue)
+	//} else {
+	//	directoryLastMod := di.ModTime()
+	//	if dbLastMod.After(directoryLastMod) {
+	//		glog.V(logger.Info).Info("Directory has not been modified since DB was updated. Not syncing.")
+	//		return errs
+	//	}
+	//}
 
 	defer cdb.setLastUpdated()
 
@@ -446,7 +447,6 @@ func (cdb *cacheDB) Syncfs2db(lastUpdated time.Time) (errs []error) {
 		}
 	}
 
-	// Cleanup.
 	<-done
 
 	accounts = nil
