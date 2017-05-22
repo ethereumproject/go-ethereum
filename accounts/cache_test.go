@@ -17,16 +17,11 @@
 package accounts
 
 import (
-	"fmt"
-	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
-	"time"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereumproject/go-ethereum/common"
 )

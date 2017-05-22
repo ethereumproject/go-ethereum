@@ -195,7 +195,7 @@ func accountIndex(ctx *cli.Context) error {
 		log.Fatalf("Use: $ geth --%v account index\n (missing '%v' flag)", n, n)
 	}
 	am := MakeAccountManager(ctx)
-	errs := am.CreateIndexDB()
+	errs := am.BuildIndexDB()
 	if len(errs) > 0 {
 		for _, e := range errs {
 			if e != nil {

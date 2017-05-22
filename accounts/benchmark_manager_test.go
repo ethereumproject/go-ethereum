@@ -269,28 +269,42 @@ func testAccountFlow(am *Manager, dir string) error {
 //	}
 //}
 
-func BenchmarkManager_SignWithPassphrase100(b *testing.B) { benchmarkManager_SignWithPassphrase(100, b) }
-func BenchmarkManager_SignWithPassphrase500(b *testing.B) { benchmarkManager_SignWithPassphrase(500, b) }
-func BenchmarkManager_SignWithPassphrase1000(b *testing.B) {
-	benchmarkManager_SignWithPassphrase(1000, b)
-}
-func BenchmarkManager_SignWithPassphrase5000(b *testing.B) {
-	benchmarkManager_SignWithPassphrase(5000, b)
-}
-func BenchmarkManager_SignWithPassphrase10000(b *testing.B) {
-	benchmarkManager_SignWithPassphrase(10000, b)
-}
-func BenchmarkManager_SignWithPassphrase20000(b *testing.B) {
-	benchmarkManager_SignWithPassphrase(20000, b)
-}
-func BenchmarkManager_SignWithPassphrase100000(b *testing.B) {
-	benchmarkManager_SignWithPassphrase(100000, b)
-}
-func BenchmarkManager_SignWithPassphrase500000(b *testing.B) {
-	benchmarkManager_SignWithPassphrase(500000, b)
+func BenchmarkManager_SignWithPassphrase(b *testing.B) {
+	var cases = []struct {
+		numKeyFiles               int
+		wantCacheDB, resetCacheDB bool
+	}{
+		// You can use resetCache: false to save some time if you've already run the benchmark.
+		// Note that if you make any changes to the structure of the cachedb you'll need to
+		// dump and reinitialize accounts.db.
+		{numKeyFiles: 100, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 100, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 500, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 500, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 1000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 1000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 5000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 5000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 10000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 10000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 20000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 20000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 100000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 100000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 200000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 200000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 500000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 500000, wantCacheDB: true, resetCacheDB: false},
+	}
+
+	for _, c := range cases {
+		b.Run(fmt.Sprintf("CRUSD:KeyFiles#:%v,DB:%v,reset:%v", c.numKeyFiles, c.wantCacheDB, c.resetCacheDB), func(b *testing.B) {
+			benchmarkManager_SignWithPassphrase(c.numKeyFiles, c.wantCacheDB, c.resetCacheDB, b)
+		})
+	}
 }
 
-func benchmarkManager_SignWithPassphrase(n int, b *testing.B) {
+func benchmarkManager_SignWithPassphrase(n int, wantcachedb bool, resetcachedb bool, b *testing.B) {
 
 	// 20000 -> 20k
 	staticKeyFilesResourcePath := strconv.Itoa(n)
@@ -301,8 +315,17 @@ func benchmarkManager_SignWithPassphrase(n int, b *testing.B) {
 
 	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
 
+	if !wantcachedb {
+		p, e := filepath.Abs(staticKeyFilesResourcePath)
+		if e != nil {
+			b.Fatal(e)
+		}
+		staticKeyFilesResourcePath = p
+	}
+
+
 	start := time.Now()
-	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP, true)
+	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP, wantcachedb)
 	if me != nil {
 		b.Fatal(me)
 	}
@@ -310,11 +333,18 @@ func benchmarkManager_SignWithPassphrase(n int, b *testing.B) {
 	b.Logf("establishing manager for %v accs: %v", n, elapsed)
 
 	accs := am.Accounts()
+	if !wantcachedb {
+		am.ac.getWatcher().running = true
+	}
+	if len(accs) == 0 {
+		b.Fatal("no accounts")
+	}
 
 	// Set up 1 DNE and 3 existing accs.
 	// Using the last accs because they should take the longest to iterate to.
 	var signAccounts []Account
-	signAccounts = accs[(len(accs) - 4):]
+	//signAccounts = accs[(len(accs) - 4):]
+	signAccounts = accs[(len(accs) - 3):]
 	accs = nil
 
 	b.ResetTimer() // _benchmark_ timer, not setup timer.
@@ -326,40 +356,8 @@ func benchmarkManager_SignWithPassphrase(n int, b *testing.B) {
 			}
 		}
 	}
+	am.ac.close()
 	am = nil
-}
-
-func BenchmarkManager_CRUSD100(b *testing.B) {
-	benchmarkManager_CRUSD(100, false, false, b)
-	benchmarkManager_CRUSD(100, true, true, b)
-}
-func BenchmarkManager_CRUSD500(b *testing.B) {
-	benchmarkManager_CRUSD(500, false, false, b)
-	benchmarkManager_CRUSD(500, true, true, b)
-}
-func BenchmarkManager_CRUSD1000(b *testing.B) {
-	benchmarkManager_CRUSD(1000, false, false, b)
-	benchmarkManager_CRUSD(1000, true, true, b)
-}
-func BenchmarkManager_CRUSD5000(b *testing.B) {
-	benchmarkManager_CRUSD(5000, false, false, b)
-	benchmarkManager_CRUSD(5000, true, true, b)
-}
-func BenchmarkManager_CRUSD10000(b *testing.B) {
-	benchmarkManager_CRUSD(10000, false, false, b)
-	benchmarkManager_CRUSD(10000, true, true, b)
-}
-func BenchmarkManager_CRUSD20000(b *testing.B) {
-	benchmarkManager_CRUSD(20000, false, false, b)
-	benchmarkManager_CRUSD(20000, true, true, b)
-}
-func BenchmarkManager_CRUSD100000(b *testing.B) {
-	benchmarkManager_CRUSD(100000, false, false, b)
-	benchmarkManager_CRUSD(100000, true, true, b)
-}
-func BenchmarkManager_CRUSD500000(b *testing.B) {
-	benchmarkManager_CRUSD(500000, false, false, b)
-	benchmarkManager_CRUSD(500000, true, true, b)
 }
 
 func BenchmarkManagerCRUSD(b *testing.B) {
@@ -382,10 +380,12 @@ func BenchmarkManagerCRUSD(b *testing.B) {
 		{numKeyFiles: 10000, wantCacheDB: true, resetCacheDB: false},
 		{numKeyFiles: 20000, wantCacheDB: false, resetCacheDB: false},
 		{numKeyFiles: 20000, wantCacheDB: true, resetCacheDB: false},
-		//{numKeyFiles: 100000, wantCacheDB: false, resetCacheDB: false},
-		//{numKeyFiles: 100000, wantCacheDB: true, resetCacheDB: false},
-		//{numKeyFiles: 500000, wantCacheDB: false, resetCacheDB: false},
-		//{numKeyFiles: 500000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 100000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 100000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 200000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 200000, wantCacheDB: true, resetCacheDB: false},
+		{numKeyFiles: 500000, wantCacheDB: false, resetCacheDB: false},
+		{numKeyFiles: 500000, wantCacheDB: true, resetCacheDB: false},
 	}
 
 	for _, c := range cases {

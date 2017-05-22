@@ -155,7 +155,6 @@ func TestCacheInitialReload_CacheDB(t *testing.T) {
 func TestCacheAddDeleteOrder_CacheDB(t *testing.T) {
 	cache := newCacheDB("testdata/no-such-dir")
 	defer os.RemoveAll("testdata/no-such-dir")
-	cache.watcher.running = true // prevent unexpected reloads
 
 	accounts := []Account{
 		{

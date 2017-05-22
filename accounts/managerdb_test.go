@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"reflect"
 	"github.com/davecgh/go-spew/spew"
-	"path/filepath"
 )
 
 func tmpManager_CacheDB(t *testing.T) (string, *Manager) {
@@ -25,7 +24,7 @@ func tmpManager_CacheDB(t *testing.T) (string, *Manager) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(3*time.Second)
+	m.ac.Syncfs2db(time.Now())
 	return dir, m
 }
 
@@ -66,33 +65,20 @@ func TestManager_DB(t *testing.T) {
 }
 
 func TestManager_Accounts_CacheDB(t *testing.T) {
-	// test initialize (no existing accounts.db index)
-	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+
 	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	accounts := am.Accounts()
 	if !reflect.DeepEqual(accounts, cachedbtestAccounts) {
-		t.Fatalf("cachedb got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
+		t.Fatalf("cachedb got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachedbtestAccounts))
 	}
-
-	// test restart (with existing accounts.db index)
 	am.ac.close()
-	am = nil
-
-	am, err = NewManager(cachetestDir, LightScryptN, LightScryptP, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	accounts = am.Accounts()
-	if !reflect.DeepEqual(accounts, cachedbtestAccounts) {
-		t.Fatalf("cachedb got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
-	}
 }
 
 func TestManager_AccountsByIndex_CacheDB(t *testing.T) {
-	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+
 	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, true)
 	if err != nil {
 		t.Fatal(err)
@@ -108,6 +94,7 @@ func TestManager_AccountsByIndex_CacheDB(t *testing.T) {
 			t.Fatalf("got: %v, want: %v", spew.Sdump(gotAccount), spew.Sdump(wantAccount))
 		}
 	}
+	am.ac.close()
 }
 
 func TestSignWithPassphrase_DB(t *testing.T) {
@@ -209,7 +196,7 @@ func TestOverrideUnlock_DB(t *testing.T) {
 
 // unlocks account from manager created in existing testdata/keystore dir
 func TestTimedUnlock_DB2(t *testing.T) {
-	os.Remove(filepath.Join(cachetestDir, "accounts.db"))
+
 	am, err := NewManager(cachetestDir, veryLightScryptN, veryLightScryptP, true)
 	if err != nil {
 		t.Fatal(err)
@@ -234,6 +221,7 @@ func TestTimedUnlock_DB2(t *testing.T) {
 	if err != ErrLocked {
 		t.Fatal("Signing should've failed with ErrLocked timeout expired, got ", err)
 	}
+	am.ac.close()
 }
 
 
