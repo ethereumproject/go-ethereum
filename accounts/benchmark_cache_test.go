@@ -12,39 +12,41 @@ import (
 	"time"
 )
 
-func benchmarkCacheAccounts(n int, b *testing.B) {
-	// 20000 -> 20k
-	staticKeyFilesResourcePath := strconv.Itoa(n)
-	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
-		staticKeyFilesResourcePath = strings.TrimSuffix(staticKeyFilesResourcePath, "000")
-		staticKeyFilesResourcePath += "k"
-	}
-
-	staticKeyFilesResourcePath, _ = filepath.Abs(filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath))
-
-	start := time.Now()
-	cache := newAddrCache(staticKeyFilesResourcePath)
-	elapsed := time.Since(start)
-
-	b.Logf("establishing cache for %v accs: %v", n, elapsed)
-
-	b.ResetTimer() // _benchmark_ timer, not setup timer.
-
-	for i := 0; i < b.N; i++ {
-		cache.accounts()
-	}
-	cache.close()
-}
-
-func BenchmarkCacheAccounts100(b *testing.B)   { benchmarkCacheAccounts(100, b) }
-func BenchmarkCacheAccounts500(b *testing.B)   { benchmarkCacheAccounts(500, b) }
-func BenchmarkCacheAccounts1000(b *testing.B)  { benchmarkCacheAccounts(1000, b) }
-func BenchmarkCacheAccounts5000(b *testing.B)  { benchmarkCacheAccounts(5000, b) }
-func BenchmarkCacheAccounts10000(b *testing.B) { benchmarkCacheAccounts(10000, b) }
-func BenchmarkCacheAccounts20000(b *testing.B) { benchmarkCacheAccounts(20000, b) }
-func BenchmarkCacheAccounts100000(b *testing.B) { benchmarkCacheAccounts(100000, b) }
-func BenchmarkCacheAccounts200000(b *testing.B) { benchmarkCacheAccounts(200000, b) }
-func BenchmarkCacheAccounts500000(b *testing.B) { benchmarkCacheAccounts(500000, b) }
+// These are commented because they take a pretty long time and I'm not that patient.
+//
+//func benchmarkCacheAccounts(n int, b *testing.B) {
+//	// 20000 -> 20k
+//	staticKeyFilesResourcePath := strconv.Itoa(n)
+//	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
+//		staticKeyFilesResourcePath = strings.TrimSuffix(staticKeyFilesResourcePath, "000")
+//		staticKeyFilesResourcePath += "k"
+//	}
+//
+//	staticKeyFilesResourcePath, _ = filepath.Abs(filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath))
+//
+//	start := time.Now()
+//	cache := newAddrCache(staticKeyFilesResourcePath)
+//	cache.watcher.running = true
+//	elapsed := time.Since(start)
+//
+//	b.Logf("establishing cache for %v accs: %v", n, elapsed)
+//
+//	b.ResetTimer() // _benchmark_ timer, not setup timer.
+//
+//	for i := 0; i < b.N; i++ {
+//		cache.accounts()
+//	}
+//	cache.close()
+//}
+//func BenchmarkCacheAccounts100(b *testing.B)   { benchmarkCacheAccounts(100, b) }
+//func BenchmarkCacheAccounts500(b *testing.B)   { benchmarkCacheAccounts(500, b) }
+//func BenchmarkCacheAccounts1000(b *testing.B)  { benchmarkCacheAccounts(1000, b) }
+//func BenchmarkCacheAccounts5000(b *testing.B)  { benchmarkCacheAccounts(5000, b) }
+//func BenchmarkCacheAccounts10000(b *testing.B) { benchmarkCacheAccounts(10000, b) }
+//func BenchmarkCacheAccounts20000(b *testing.B) { benchmarkCacheAccounts(20000, b) }
+//func BenchmarkCacheAccounts100000(b *testing.B) { benchmarkCacheAccounts(100000, b) }
+//func BenchmarkCacheAccounts200000(b *testing.B) { benchmarkCacheAccounts(200000, b) }
+//func BenchmarkCacheAccounts500000(b *testing.B) { benchmarkCacheAccounts(500000, b) }
 
 // ac.add checks ac.all to see if given account already exists in cache,
 // iff it doesn't, it adds account to byAddr map.
@@ -67,6 +69,7 @@ func benchmarkCacheAdd(n int, b *testing.B) {
 
 	start := time.Now()
 	cache := newAddrCache(staticKeyFilesResourcePath)
+	cache.watcher.running = true
 	elapsed := time.Since(start)
 
 	b.Logf("establishing cache for %v accs: %v", n, elapsed)
@@ -110,12 +113,20 @@ func benchmarkCacheFind(n int, onlyExisting bool, b *testing.B) {
 
 	staticKeyFilesResourcePath, _ = filepath.Abs(filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath))
 
+	if _, err := os.Stat(staticKeyFilesResourcePath); err != nil {
+		b.Fatal(err)
+	}
+
 	start := time.Now()
 	cache := newAddrCache(staticKeyFilesResourcePath)
 	elapsed := time.Since(start)
 	b.Logf("establishing cache for %v accs: %v", n, elapsed)
 
 	accs := cache.accounts()
+	cache.watcher.running = true
+	if len(accs) == 0 {
+		b.Fatalf("no accounts: keystore: %v", staticKeyFilesResourcePath)
+	}
 
 	// Set up 1 DNE and 3 existing accs.
 	// Using the last accs because they should take the longest to iterate to.
