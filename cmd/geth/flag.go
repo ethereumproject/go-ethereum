@@ -95,7 +95,7 @@ var reservedChainIDS = map[string]bool{
 }
 
 var testnetChaidIDs = map[string]bool{
-	"morden": true,
+	"morden":  true,
 	"testnet": true,
 }
 
@@ -419,7 +419,6 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 		return nil
 	}
 
-
 	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
 	chainDB, err := ethdb.NewLDBDatabase(ethChainDBPath, 0, 0)
 	if err != nil {
@@ -430,7 +429,6 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	}
 
 	defer chainDB.Close()
-
 
 	// Only move if defaulty ETC (mainnet or testnet).
 	// Get head block if testnet, fork block if mainnet.
@@ -457,7 +455,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 		}
 
 		hf := conf.ForkByName("The DAO Hard Fork")
-		if hf == nil || hf.Block == nil || new(big.Int).Cmp(hf.Block) == 0 || hf.RequiredHash.IsEmpty(){
+		if hf == nil || hf.Block == nil || new(big.Int).Cmp(hf.Block) == 0 || hf.RequiredHash.IsEmpty() {
 			glog.V(logger.Debug).Info("DAO Hard Fork required hash not configured for database chain. Not migrating.")
 			return nil
 		}
@@ -482,7 +480,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 			} else {
 				glog.V(logger.Debug).Infof("Head block has sufficient height but not required hash: %v", b.String())
 			}
-		// head block < 1920000
+			// head block < 1920000
 		} else {
 			glog.V(logger.Debug).Infof("Existing head block in old data dir has INSUFFICIENT height to differentiate ETC/ETF: %v", b.String())
 		}
@@ -608,7 +606,6 @@ func chainIdIsCustom(ctx *cli.Context) bool {
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
-
 	name := makeNodeName(version, ctx)
 
 	// global settings
@@ -650,14 +647,13 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		}
 	}
 
-	// Makes sufficient configuration from JSON file or DB pending flags.
-	// Delegates flag usage.
-	config := mustMakeSufficientConfiguration(ctx)
-
 	// Avoid conflicting flags
 	if ctx.GlobalBool(DevModeFlag.Name) && isTestMode(ctx) {
 		glog.Fatalf("%v: flags --%v and --%v/--%v=morden are mutually exclusive", ErrInvalidFlag, DevModeFlag.Name, TestNetFlag.Name, ChainIDFlag.Name)
 	}
+
+	// Configure the Ethereum service
+	ethConf, config := mustMakeEthConf(ctx)
 
 	// Configure the node's service container
 	stackConf := &node.Config{
@@ -679,42 +675,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		WSPort:          ctx.GlobalInt(aliasableName(WSPortFlag.Name, ctx)),
 		WSOrigins:       ctx.GlobalString(aliasableName(WSAllowedOriginsFlag.Name, ctx)),
 		WSModules:       MakeRPCModules(ctx.GlobalString(aliasableName(WSApiFlag.Name, ctx))),
-	}
-
-	// Configure the Ethereum service
-	accman := MakeAccountManager(ctx)
-
-	ethConf := &eth.Config{
-		ChainConfig:             config.ChainConfig,
-		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
-		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
-		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
-		DatabaseHandles:         MakeDatabaseHandles(),
-		NetworkId:               ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)),
-		AccountManager:          accman,
-		Etherbase:               MakeEtherbase(accman, ctx),
-		MinerThreads:            ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)),
-		NatSpec:                 ctx.GlobalBool(aliasableName(NatspecEnabledFlag.Name, ctx)),
-		DocRoot:                 ctx.GlobalString(aliasableName(DocRootFlag.Name, ctx)),
-		GasPrice:                new(big.Int),
-		GpoMinGasPrice:          new(big.Int),
-		GpoMaxGasPrice:          new(big.Int),
-		GpoFullBlockRatio:       ctx.GlobalInt(aliasableName(GpoFullBlockRatioFlag.Name, ctx)),
-		GpobaseStepDown:         ctx.GlobalInt(aliasableName(GpobaseStepDownFlag.Name, ctx)),
-		GpobaseStepUp:           ctx.GlobalInt(aliasableName(GpobaseStepUpFlag.Name, ctx)),
-		GpobaseCorrectionFactor: ctx.GlobalInt(aliasableName(GpobaseCorrectionFactorFlag.Name, ctx)),
-		SolcPath:                ctx.GlobalString(aliasableName(SolcPathFlag.Name, ctx)),
-		AutoDAG:                 ctx.GlobalBool(aliasableName(AutoDAGFlag.Name, ctx)) || ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)),
-	}
-
-	if _, ok := ethConf.GasPrice.SetString(ctx.GlobalString(aliasableName(GasPriceFlag.Name, ctx)), 0); !ok {
-		log.Fatalf("malformed %s flag value %q", aliasableName(GasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GasPriceFlag.Name, ctx)))
-	}
-	if _, ok := ethConf.GpoMinGasPrice.SetString(ctx.GlobalString(aliasableName(GpoMinGasPriceFlag.Name, ctx)), 0); !ok {
-		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMinGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMinGasPriceFlag.Name, ctx)))
-	}
-	if _, ok := ethConf.GpoMaxGasPrice.SetString(ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)), 0); !ok {
-		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMaxGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)))
 	}
 
 	// Configure the Whisper service
@@ -775,6 +735,49 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	return stack
+}
+
+func mustMakeEthConf(ctx *cli.Context) (*eth.Config, *core.SufficientChainConfig) {
+	// Makes sufficient configuration from JSON file or DB pending flags.
+	// Delegates flag usage.
+	config := mustMakeSufficientConfiguration(ctx)
+
+	accman := MakeAccountManager(ctx)
+
+	ethConf := &eth.Config{
+		ChainConfig:             config.ChainConfig,
+		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
+		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
+		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
+		DatabaseHandles:         MakeDatabaseHandles(),
+		NetworkId:               ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)),
+		AccountManager:          accman,
+		Etherbase:               MakeEtherbase(accman, ctx),
+		MinerThreads:            ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)),
+		NatSpec:                 ctx.GlobalBool(aliasableName(NatspecEnabledFlag.Name, ctx)),
+		DocRoot:                 ctx.GlobalString(aliasableName(DocRootFlag.Name, ctx)),
+		GasPrice:                new(big.Int),
+		GpoMinGasPrice:          new(big.Int),
+		GpoMaxGasPrice:          new(big.Int),
+		GpoFullBlockRatio:       ctx.GlobalInt(aliasableName(GpoFullBlockRatioFlag.Name, ctx)),
+		GpobaseStepDown:         ctx.GlobalInt(aliasableName(GpobaseStepDownFlag.Name, ctx)),
+		GpobaseStepUp:           ctx.GlobalInt(aliasableName(GpobaseStepUpFlag.Name, ctx)),
+		GpobaseCorrectionFactor: ctx.GlobalInt(aliasableName(GpobaseCorrectionFactorFlag.Name, ctx)),
+		SolcPath:                ctx.GlobalString(aliasableName(SolcPathFlag.Name, ctx)),
+		AutoDAG:                 ctx.GlobalBool(aliasableName(AutoDAGFlag.Name, ctx)) || ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)),
+	}
+
+	if _, ok := ethConf.GasPrice.SetString(ctx.GlobalString(aliasableName(GasPriceFlag.Name, ctx)), 0); !ok {
+		log.Fatalf("malformed %s flag value %q", aliasableName(GasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GasPriceFlag.Name, ctx)))
+	}
+	if _, ok := ethConf.GpoMinGasPrice.SetString(ctx.GlobalString(aliasableName(GpoMinGasPriceFlag.Name, ctx)), 0); !ok {
+		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMinGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMinGasPriceFlag.Name, ctx)))
+	}
+	if _, ok := ethConf.GpoMaxGasPrice.SetString(ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)), 0); !ok {
+		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMaxGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)))
+	}
+
+	return ethConf, config
 }
 
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.

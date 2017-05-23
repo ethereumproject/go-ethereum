@@ -82,14 +82,22 @@ Use "ethereum dump 0" to dump the genesis block.
 		`,
 	}
 	rollbackCommand = cli.Command{
-		Action: rollback,
-		Name: "rollback",
+		Action:  rollback,
+		Name:    "rollback",
 		Aliases: []string{"roll-back", "set-head", "sethead"},
-		Usage: "rollback [block index number] - set current head for blockchain",
+		Usage:   "rollback [block index number] - set current head for blockchain",
 		Description: `
 		Rollback set the current head block for block chain already in the database.
 		This is a destructive action, purging any block more recent than the index specified.
 		Syncing will require downloading contemporary block information from the index onwards.
+		`,
+	}
+	statusCommand = cli.Command{
+		Action: status,
+		Name:   "status",
+		Usage:  "status - get the status of the current node",
+		Description: `
+		Returns the status of the current node without having to start and exit.
 		`,
 	}
 )
