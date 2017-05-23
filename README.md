@@ -10,8 +10,6 @@
 Official Go language implementation of the Ethereum protocol supporting the
 _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and powerful application platform for developers in parallel to Ethereum (ETHF), while differentially rejecting the DAO bailout.
 
-> Please Note: Geth 3.4.0 has been merged to the master branch, and is currently in internal testing. Please be advised that all references and instructions in the README in regard to 3.4.0 are forward-looking; we're aiming to release 3.4 this week (of 8 May 2017). Thanks for your patience.
-
 ## Install
 
 ### :rocket: From a release binary
@@ -19,7 +17,7 @@ The simplest way to get started running a node is to visit our [Releases page](h
 
 CLI one-liner for Darwin:
 ```bash
-$ curl -L -o ~/Downloads/geth-classic-3.4.zip https://github.com/ethereumproject/go-ethereum/releases/download/v3.4.0/geth-classic-darwin-v3.4.0-1-TODO.zip && unzip ~/Downloads/geth-classic-3.4.zip -d $HOME/bin/
+$ curl -L -o ~/Downloads/geth-classic-3.4.zip https://github.com/ethereumproject/go-ethereum/releases/download/v3.4.0/geth-classic-osx-v3.4.0.zip && unzip ~/Downloads/geth-classic-3.4.zip -d $HOME/bin/
 
 $ geth help
 ```
@@ -30,7 +28,7 @@ $ geth help
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
 #### Dependencies
-Building geth requires both a Go and a C compiler. Visit our [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum) for instructions.
+Building geth requires both a Go and a C compiler.
 
 #### Installing command executables
 
@@ -88,6 +86,9 @@ This command will:
  * Bump the memory allowance of the database to 512MB (`--cache=512`), which can help significantly in sync times especially for HDD users. This flag is optional and you can set it as high or as low as you'd like, though we'd recommend the 512MB - 2GB range.
 
 ### Create or manage account(s)
+
+Geth is able to create, import, update, unlock, and otherwise manage your private (encrypted) key files. Key files are in JSON format and, by default, stored in the respective chain folder's `/keystore` directory; you can specify a custom location with the `--keystore` flag.
+
 ```
 $ geth account new
 ```
@@ -105,7 +106,7 @@ SUBCOMMANDS:
 
 ```
 
-Learn more at the [Accounts Wiki Page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-your-accounts).
+Learn more at the [Accounts Wiki Page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-your-accounts). If you're interested in using geth to manage a lot (~100 thousand) accounts, please visit the [Indexing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Indexing-Accounts).
 
 
 ### Interact with the Javascript console
@@ -238,7 +239,10 @@ In a private network setting however, a single CPU miner instance is more than e
 $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x0000000000000000000000000000000000000000
 ```
 
-Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to the account specified by `--etherbase`. You can further tune the mining by changing the default gas limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
+Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to the account specified by `--etherbase`. You can further tune the mining by changing the default gas limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`). 
+
+For more information about managing accounts, please see the [Managing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-your-accounts).
+
 
 ## Contribution
 
