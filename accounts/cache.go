@@ -180,6 +180,9 @@ func removeAccount(slice []Account, elem Account) []Account {
 // The exact matching rules are explained by the documentation of Account.
 // Callers must hold ac.mu.
 func (ac *addrCache) find(a Account) (Account, error) {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+
 	// Limit search to address candidates if possible.
 	matches := ac.all
 	if (a.Address != common.Address{}) {
