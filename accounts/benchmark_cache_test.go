@@ -21,6 +21,7 @@ import (
 //		staticKeyFilesResourcePath = strings.TrimSuffix(staticKeyFilesResourcePath, "000")
 //		staticKeyFilesResourcePath += "k"
 //	}
+
 //
 //	staticKeyFilesResourcePath, _ = filepath.Abs(filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath))
 //
@@ -146,7 +147,9 @@ func benchmarkCacheFind(n int, onlyExisting bool, b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		for _, a := range findAccounts {
+			cache.muLock()
 			cache.find(a)
+			cache.muUnlock()
 		}
 	}
 	cache.close()
