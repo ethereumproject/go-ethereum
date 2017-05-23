@@ -8,39 +8,40 @@ import (
 	"time"
 )
 
-func benchmarkCacheDBAccounts(n int, b *testing.B) {
-	// 20000 -> 20k
-	staticKeyFilesResourcePath := strconv.Itoa(n)
-	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
-		staticKeyFilesResourcePath = strings.TrimSuffix(staticKeyFilesResourcePath, "000")
-		staticKeyFilesResourcePath += "k"
-	}
-
-	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
-
-	start := time.Now()
-	cache := newCacheDB(staticKeyFilesResourcePath)
-	elapsed := time.Since(start)
-
-	b.Logf("establishing cache for %v accs: %v", n, elapsed)
-
-	b.ResetTimer() // _benchmark_ timer, not setup timer.
-
-	for i := 0; i < b.N; i++ {
-		cache.accounts()
-	}
-	cache.close()
-}
-
-func BenchmarkCacheDBAccounts100(b *testing.B)    { benchmarkCacheDBAccounts(100, b) }
-func BenchmarkCacheDBAccounts500(b *testing.B)    { benchmarkCacheDBAccounts(500, b) }
-func BenchmarkCacheDBAccounts1000(b *testing.B)   { benchmarkCacheDBAccounts(1000, b) }
-func BenchmarkCacheDBAccounts5000(b *testing.B)   { benchmarkCacheDBAccounts(5000, b) }
-func BenchmarkCacheDBAccounts10000(b *testing.B)  { benchmarkCacheDBAccounts(10000, b) }
-func BenchmarkCacheDBAccounts20000(b *testing.B)  { benchmarkCacheDBAccounts(20000, b) }
-func BenchmarkCacheDBAccounts100000(b *testing.B) { benchmarkCacheDBAccounts(100000, b) }
-func BenchmarkCacheDBAccounts200000(b *testing.B) { benchmarkCacheDBAccounts(200000, b) }
-func BenchmarkCacheDBAccounts500000(b *testing.B) { benchmarkCacheDBAccounts(500000, b) }
+// These are commented because they take a pretty long time and I'm not that patient.
+//
+//func benchmarkCacheDBAccounts(n int, b *testing.B) {
+//	// 20000 -> 20k
+//	staticKeyFilesResourcePath := strconv.Itoa(n)
+//	if strings.HasSuffix(staticKeyFilesResourcePath, "000") {
+//		staticKeyFilesResourcePath = strings.TrimSuffix(staticKeyFilesResourcePath, "000")
+//		staticKeyFilesResourcePath += "k"
+//	}
+//
+//	staticKeyFilesResourcePath = filepath.Join("testdata", "benchmark_keystore"+staticKeyFilesResourcePath)
+//
+//	start := time.Now()
+//	cache := newCacheDB(staticKeyFilesResourcePath)
+//	elapsed := time.Since(start)
+//
+//	b.Logf("establishing cache for %v accs: %v", n, elapsed)
+//
+//	b.ResetTimer() // _benchmark_ timer, not setup timer.
+//
+//	for i := 0; i < b.N; i++ {
+//		cache.accounts()
+//	}
+//	cache.close()
+//}
+//func BenchmarkCacheDBAccounts100(b *testing.B)    { benchmarkCacheDBAccounts(100, b) }
+//func BenchmarkCacheDBAccounts500(b *testing.B)    { benchmarkCacheDBAccounts(500, b) }
+//func BenchmarkCacheDBAccounts1000(b *testing.B)   { benchmarkCacheDBAccounts(1000, b) }
+//func BenchmarkCacheDBAccounts5000(b *testing.B)   { benchmarkCacheDBAccounts(5000, b) }
+//func BenchmarkCacheDBAccounts10000(b *testing.B)  { benchmarkCacheDBAccounts(10000, b) }
+//func BenchmarkCacheDBAccounts20000(b *testing.B)  { benchmarkCacheDBAccounts(20000, b) }
+//func BenchmarkCacheDBAccounts100000(b *testing.B) { benchmarkCacheDBAccounts(100000, b) }
+//func BenchmarkCacheDBAccounts200000(b *testing.B) { benchmarkCacheDBAccounts(200000, b) }
+//func BenchmarkCacheDBAccounts500000(b *testing.B) { benchmarkCacheDBAccounts(500000, b) }
 
 // ac.add checks ac.all to see if given account already exists in cache,
 // iff it doesn't, it adds account to byAddr map.
