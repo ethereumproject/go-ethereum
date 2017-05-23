@@ -62,6 +62,26 @@ func (err *AmbiguousAddrError) Error() string {
 	return fmt.Sprintf("multiple keys match address (%s)", files)
 }
 
+type caching interface {
+	muLock()
+	muUnlock()
+	getKeydir() string
+	getWatcher() *watcher
+	getThrottle() *time.Timer
+
+	maybeReload()
+	reload()
+	Syncfs2db(time.Time) []error
+
+	hasAddress(address common.Address) bool
+	accounts() []Account
+	add(Account)
+	delete(Account)
+	find(Account) (Account, error)
+
+	close()
+}
+
 // addrCache is a live index of all accounts in the keystore.
 type addrCache struct {
 	keydir   string
@@ -79,6 +99,29 @@ func newAddrCache(keydir string) *addrCache {
 	}
 	ac.watcher = newWatcher(ac)
 	return ac
+}
+
+func (ac *addrCache) muLock() {
+	ac.mu.Lock()
+}
+func (ac *addrCache) muUnlock() {
+	ac.mu.Unlock()
+}
+
+func (ac *addrCache) getKeydir() string {
+	return ac.keydir
+}
+
+func (ac *addrCache) getWatcher() *watcher {
+	return ac.watcher
+}
+
+func (ac *addrCache) getThrottle() *time.Timer {
+	return ac.throttle
+}
+
+func (ac *addrCache) Syncfs2db(t time.Time) []error {
+	panic("Invalid use; syncfs2db only available for db cache.")
 }
 
 func (ac *addrCache) accounts() []Account {
@@ -259,6 +302,9 @@ func (ac *addrCache) scan() ([]Account, error) {
 func skipKeyFile(fi os.FileInfo) bool {
 	// Skip editor backups and UNIX-style hidden files.
 	if strings.HasSuffix(fi.Name(), "~") || strings.HasPrefix(fi.Name(), ".") {
+		return true
+	}
+	if strings.HasSuffix(fi.Name(), "accounts.db") {
 		return true
 	}
 	// Skip misc special files, directories (yes, symlinks too).

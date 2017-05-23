@@ -111,6 +111,7 @@ The output of this command is supposed to be machine-readable.
 		IdentityFlag,
 		UnlockedAccountFlag,
 		PasswordFileFlag,
+		AccountsIndexFlag,
 		BootnodesFlag,
 		DataDirFlag,
 		DocRootFlag,
