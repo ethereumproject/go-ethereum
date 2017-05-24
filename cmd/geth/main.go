@@ -264,8 +264,21 @@ func geth(ctx *cli.Context) error {
 }
 
 func status(ctx *cli.Context) error {
-	node := MakeSystemNode(Version, ctx)
-	glog.V(logger.Info).Info(spew.Sdump(node))
+	// Makes sufficient configuration from JSON file or DB pending flags.
+	// Delegates flag usage.
+	config := mustMakeSufficientChainConfig(ctx)
+
+	// Configure the Ethereum service
+	ethConf := mustMakeEthConf(ctx, config)
+
+	// Configure node's service container.
+	name := makeNodeName(Version, ctx)
+	stackConf, _ := mustMakeStackConf(ctx, name, config, ethConf)
+
+
+	glog.V(logger.Info).Info(spew.Sdump(config))
+	glog.V(logger.Info).Info(spew.Sdump(ethConf))
+	glog.V(logger.Info).Info(spew.Sdump(stackConf))
 	return nil
 }
 

@@ -606,7 +606,7 @@ func chainIdIsCustom(ctx *cli.Context) bool {
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
-	name := makeNodeName(version, ctx)
+
 
 	// global settings
 
@@ -652,11 +652,44 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		glog.Fatalf("%v: flags --%v and --%v/--%v=morden are mutually exclusive", ErrInvalidFlag, DevModeFlag.Name, TestNetFlag.Name, ChainIDFlag.Name)
 	}
 
-	// Configure the Ethereum service
-	ethConf, config := mustMakeEthConf(ctx)
+	// Makes sufficient configuration from JSON file or DB pending flags.
+	// Delegates flag usage.
+	config := mustMakeSufficientChainConfig(ctx)
+	logChainConfiguration(ctx, config)
 
+	// Configure the Ethereum service
+	ethConf := mustMakeEthConf(ctx, config)
+
+	// Configure node's service container.
+	name := makeNodeName(version, ctx)
+	stackConf, shhEnable := mustMakeStackConf(ctx, name, config, ethConf)
+
+	// Assemble and return the protocol stack
+	stack, err := node.New(stackConf)
+	if err != nil {
+		glog.Fatalf("%v: failed to create the protocol stack: ", ErrStackFail, err)
+	}
+	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
+		return eth.New(ctx, ethConf)
+	}); err != nil {
+		glog.Fatalf("%v: failed to register the Ethereum service: ", ErrStackFail, err)
+	}
+	if shhEnable {
+		if err := stack.Register(func(*node.ServiceContext) (node.Service, error) { return whisper.New(), nil }); err != nil {
+			glog.Fatalf("%v: failed to register the Whisper service: ", ErrStackFail, err)
+		}
+	}
+
+	if ctx.GlobalBool(Unused1.Name) {
+		glog.V(logger.Info).Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
+	}
+
+	return stack
+}
+
+func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientChainConfig, ethConf *eth.Config) (stackConf *node.Config, shhEnable bool) {
 	// Configure the node's service container
-	stackConf := &node.Config{
+	stackConf = &node.Config{
 		DataDir:         MustMakeChainDataDir(ctx),
 		PrivateKey:      MakeNodeKey(ctx),
 		Name:            name,
@@ -678,7 +711,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	// Configure the Whisper service
-	shhEnable := ctx.GlobalBool(aliasableName(WhisperEnabledFlag.Name, ctx))
+	shhEnable = ctx.GlobalBool(aliasableName(WhisperEnabledFlag.Name, ctx))
 
 	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
 		ethConf.Genesis = config.Genesis // from parsed JSON file
@@ -714,38 +747,16 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		}
 		ethConf.PowTest = true
 	}
-	// Assemble and return the protocol stack
-	stack, err := node.New(stackConf)
-	if err != nil {
-		glog.Fatalf("%v: failed to create the protocol stack: ", ErrStackFail, err)
-	}
-	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		return eth.New(ctx, ethConf)
-	}); err != nil {
-		glog.Fatalf("%v: failed to register the Ethereum service: ", ErrStackFail, err)
-	}
-	if shhEnable {
-		if err := stack.Register(func(*node.ServiceContext) (node.Service, error) { return whisper.New(), nil }); err != nil {
-			glog.Fatalf("%v: failed to register the Whisper service: ", ErrStackFail, err)
-		}
-	}
 
-	if ctx.GlobalBool(Unused1.Name) {
-		glog.V(logger.Info).Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
-	}
-
-	return stack
+	return stackConf, shhEnable
 }
 
-func mustMakeEthConf(ctx *cli.Context) (*eth.Config, *core.SufficientChainConfig) {
-	// Makes sufficient configuration from JSON file or DB pending flags.
-	// Delegates flag usage.
-	config := mustMakeSufficientConfiguration(ctx)
+func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) (*eth.Config) {
 
 	accman := MakeAccountManager(ctx)
 
 	ethConf := &eth.Config{
-		ChainConfig:             config.ChainConfig,
+		ChainConfig:             sconf.ChainConfig,
 		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
 		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
@@ -777,7 +788,7 @@ func mustMakeEthConf(ctx *cli.Context) (*eth.Config, *core.SufficientChainConfig
 		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMaxGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)))
 	}
 
-	return ethConf, config
+	return ethConf
 }
 
 // MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
@@ -790,11 +801,11 @@ func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
 	return MustMakeChainConfigFromDb(ctx, db)
 }
 
-// mustMakeSufficientConfiguration makes a sufficent chain configuration (id, chainconfig, nodes,...) from
+// mustMakeSufficientChainConfig makes a sufficent chain configuration (id, chainconfig, nodes,...) from
 // either JSON file path, DB, or fails hard.
 // Forces users to provide a full and complete config file if any is specified.
 // Delegates flags to determine which source to use for configuration setup.
-func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConfig {
+func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig {
 
 	config := &core.SufficientChainConfig{}
 
@@ -815,7 +826,6 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 		}
 
 		currentChainID = config.ID // Set global var.
-		logChainConfiguration(ctx, config)
 
 		return config
 	}
@@ -825,7 +835,6 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 	config.Name = getChainConfigNameFromContext(ctx)
 	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
 	config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
-	logChainConfiguration(ctx, config)
 
 	return config
 }

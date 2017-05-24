@@ -191,3 +191,4 @@ func ExportAppendChain(blockchain *core.BlockChain, fn string, first uint64, las
 	glog.Infoln("Exported blockchain to ", fn)
 	return nil
 }
+
