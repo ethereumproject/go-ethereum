@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	"encoding/json"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -31,6 +32,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
+	"strings"
 )
 
 var (
@@ -82,10 +84,10 @@ Use "ethereum dump 0" to dump the genesis block.
 		`,
 	}
 	rollbackCommand = cli.Command{
-		Action: rollback,
-		Name: "rollback",
+		Action:  rollback,
+		Name:    "rollback",
 		Aliases: []string{"roll-back", "set-head", "sethead"},
-		Usage: "rollback [block index number] - set current head for blockchain",
+		Usage:   "rollback [block index number] - set current head for blockchain",
 		Description: `
 		Rollback set the current head block for block chain already in the database.
 		This is a destructive action, purging any block more recent than the index specified.
@@ -191,14 +193,44 @@ func upgradeDB(ctx *cli.Context) error {
 	return nil
 }
 
+// Original use allows n hashes|ints as space-separated arguments, dumping entire state for each block n[x].
+// $ geth dump [hash|num] [hash|num] ... [hash|num]
+// $ geth dump 0x234234234234233 42 43 0xlksdf234r23r234223
+//
+// Revised use allows n hashes|ints as comma-separated first argument and n addresses as comma-separated second argument,
+// dumping only state information for given addresses if they're present.
+// revised use: $ geth dump [hash|num],[hash|num],...,[hash|num] [address],[address],...,[address]
 func dump(ctx *cli.Context) error {
+
+	if ctx.NArg() == 0 {
+		return fmt.Errorf("%v: use: $ geth dump [blockHash|blockNum],[blockHash|blockNum] [[addressHex|addressPrefixedHex],[addressHex|addressPrefixedHex]]", ErrInvalidFlag)
+	}
+
+	blocks := strings.Split(ctx.Args()[0], ",")
+	addresses := []common.Address{}
+	argaddress := ""
+	if ctx.NArg() > 1 {
+		argaddress = ctx.Args()[1]
+	}
+
+	if argaddress != "" {
+		argaddresses := strings.Split(argaddress, ",")
+		for _, a := range argaddresses {
+			addresses = append(addresses, common.HexToAddress(strings.TrimSpace(a)))
+		}
+	}
+
 	chain, chainDb := MakeChain(ctx)
-	for _, arg := range ctx.Args() {
+	defer chainDb.Close()
+
+	dumps := state.Dumps{}
+	for _, b := range blocks {
+		b = strings.TrimSpace(b)
 		var block *types.Block
-		if hashish(arg) {
-			block = chain.GetBlock(common.HexToHash(arg))
+		if hashish(b) {
+			block = chain.GetBlock(common.HexToHash(b))
 		} else {
-			num, _ := strconv.Atoi(arg)
+			num, _ := strconv.Atoi(b)
 			block = chain.GetBlockByNumber(uint64(num))
 		}
 		if block == nil {
@@ -207,12 +239,23 @@ func dump(ctx *cli.Context) error {
 		} else {
 			state, err := state.New(block.Root(), chainDb)
 			if err != nil {
-				log.Fatal("could not create new state: ", err)
+				return fmt.Errorf("could not create new state: %v", err)
 			}
-			fmt.Printf("%s\n", state.Dump())
+
+			if len(blocks) > 1 {
+				dumps = append(dumps, state.RawDump(addresses))
+			} else {
+				fmt.Printf("%s\n", state.Dump(addresses))
+				return nil
+			}
 		}
 	}
-	chainDb.Close()
+	json, err := json.MarshalIndent(dumps, "", "    ")
+	if err != nil {
+		return fmt.Errorf("dump err: %v", err)
+	}
+	fmt.Printf("%s\n", json)
+
 	return nil
 }
 
