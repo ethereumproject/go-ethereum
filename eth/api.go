@@ -1592,6 +1592,7 @@ func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
 }
 
 // DumpBlock retrieves the entire state of the database at a given block.
+// TODO: update to be able to dump for specific addresses?
 func (api *PublicDebugAPI) DumpBlock(number uint64) (state.Dump, error) {
 	block := api.eth.BlockChain().GetBlockByNumber(number)
 	if block == nil {
@@ -1601,7 +1602,7 @@ func (api *PublicDebugAPI) DumpBlock(number uint64) (state.Dump, error) {
 	if err != nil {
 		return state.Dump{}, err
 	}
-	return stateDb.RawDump(), nil
+	return stateDb.RawDump([]common.Address{}), nil
 }
 
 // GetBlockRlp retrieves the RLP encoded for of a single block.
