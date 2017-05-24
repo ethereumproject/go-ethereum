@@ -23,11 +23,29 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"reflect"
+	"github.com/davecgh/go-spew/spew"
+	"fmt"
+	"math/rand"
 )
 
 var testSigData = make([]byte, 32)
 
-func TestManager(t *testing.T) {
+func tmpManager(t *testing.T) (string, *Manager) {
+	rand.Seed(time.Now().UnixNano())
+	dir, err := ioutil.TempDir("", fmt.Sprintf("eth-manager-mem-test-%d-%d", os.Getpid(), rand.Int()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir, m
+}
+
+func TestManager_Mem(t *testing.T) {
 	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
@@ -62,7 +80,36 @@ func TestManager(t *testing.T) {
 	}
 }
 
-func TestSignWithPassphrase(t *testing.T) {
+func TestManager_Accounts_Mem(t *testing.T) {
+	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounts := am.Accounts()
+	if !reflect.DeepEqual(accounts, cachetestAccounts) {
+		t.Fatalf("mem got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachetestAccounts))
+	}
+}
+
+func TestManager_AccountsByIndex(t *testing.T) {
+	am, err := NewManager(cachetestDir, LightScryptN, LightScryptP, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range cachetestAccounts {
+		wantAccount := cachetestAccounts[i]
+		gotAccount, e := am.AccountByIndex(i)
+		if e != nil {
+			t.Fatalf("manager cache mem #accountsbyindex: %v", e)
+		}
+		if !reflect.DeepEqual(wantAccount, gotAccount) {
+			t.Fatalf("want: %v, got: %v", wantAccount, gotAccount)
+		}
+	}
+}
+
+func TestSignWithPassphrase_Mem(t *testing.T) {
 	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
@@ -90,7 +137,8 @@ func TestSignWithPassphrase(t *testing.T) {
 	}
 }
 
-func TestTimedUnlock(t *testing.T) {
+// unlocks newly created account in temp dir
+func TestTimedUnlock_Mem(t *testing.T) {
 	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
@@ -122,7 +170,35 @@ func TestTimedUnlock(t *testing.T) {
 	}
 }
 
-func TestOverrideUnlock(t *testing.T) {
+// unlocks account from manager created in existing testdata/keystore dir
+func TestTimedUnlock_Mem2(t *testing.T) {
+	am, err := NewManager(cachetestDir, veryLightScryptN, veryLightScryptP, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a1 := cachetestAccounts[1]
+
+	// Signing with passphrase works
+	if err := am.TimedUnlock(a1, "foobar", 100*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+
+	// Signing without passphrase works because account is temp unlocked
+	_, err = am.Sign(a1.Address, testSigData)
+	if err != nil {
+		t.Fatal("Signing shouldn't return an error after unlocking, got ", err)
+	}
+
+	// Signing fails again after automatic locking
+	time.Sleep(250 * time.Millisecond)
+	_, err = am.Sign(a1.Address, testSigData)
+	if err != ErrLocked {
+		t.Fatal("Signing should've failed with ErrLocked timeout expired, got ", err)
+	}
+}
+
+func TestOverrideUnlock_Mem(t *testing.T) {
 	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
@@ -160,7 +236,7 @@ func TestOverrideUnlock(t *testing.T) {
 }
 
 // This test should fail under -race if signing races the expiration goroutine.
-func TestSignRace(t *testing.T) {
+func TestSignRace_Mem(t *testing.T) {
 	dir, am := tmpManager(t)
 	defer os.RemoveAll(dir)
 
@@ -183,18 +259,5 @@ func TestSignRace(t *testing.T) {
 		}
 		time.Sleep(1 * time.Millisecond)
 	}
-	t.Errorf("Account did not lock within the timeout")
-}
-
-func tmpManager(t *testing.T) (string, *Manager) {
-	dir, err := ioutil.TempDir("", "eth-keystore-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dir, m
+	t.Error("Account did not lock within the timeout")
 }

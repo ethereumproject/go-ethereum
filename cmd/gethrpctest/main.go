@@ -118,7 +118,7 @@ func MakeSystemNode(keydir string, privkey string, test *tests.BlockTest) (*node
 		return nil, err
 	}
 	// Create the keystore and inject an unlocked account if requested
-	accman, err := accounts.NewManager(keydir, accounts.LightScryptN, accounts.LightScryptP)
+	accman, err := accounts.NewManager(keydir, accounts.LightScryptN, accounts.LightScryptP, false)
 	if err != nil {
 		return nil, err
 	}

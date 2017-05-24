@@ -9,6 +9,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"gopkg.in/urfave/cli.v1"
+	"github.com/ethereumproject/go-ethereum/accounts"
+	"reflect"
 )
 
 var ogHome string  // placeholder
@@ -227,3 +229,22 @@ func TestMakeBootstrapNodesFromContext4(t *testing.T) {
 	rmTmpDataDir(t)
 }
 
+func TestMakeAddress(t *testing.T) {
+	accAddr := "f466859ead1932d743d622cb74fc058882e8648a" // account[0] address
+	cachetestdir := filepath.Join("accounts", "testdata", "keystore")
+	am, err := accounts.NewManager(cachetestdir, accounts.LightScryptN, accounts.LightScryptP, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotAccount, e := MakeAddress(am, accAddr)
+	if e != nil {
+		t.Fatalf("makeaddress: %v", e)
+	}
+	wantAccount := accounts.Account{
+		Address: common.HexToAddress(accAddr),
+	}
+	// compare all
+	if !reflect.DeepEqual(wantAccount, gotAccount) {
+		t.Fatalf("want: %v, got: %v", wantAccount, gotAccount)
+	}
+}
