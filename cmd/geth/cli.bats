@@ -67,6 +67,27 @@ teardown() {
 	[[ "$output" == *"USAGE"* ]]
 }
 
+@test "exactly overlapping flags allowed: --chain=morden --testnet" {
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
+	echo "$output"
+	[ "$status" -eq 0 ]
+}
+
+@test "overlapping flags not allowed: --chain=morden --dev" {
+	run $GETH_CMD --data-dir $DATA_DIR --dev --chain=morden --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
+	echo "$output"
+	[ "$status" -gt 0 ]
+	[[ "$output" == *"invalid flag "* ]]
+}
+
+@test "custom testnet subdir --testnet --chain=morden2 | exit 0" {
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden2 --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
+	echo "$output"
+	[ "$status" -eq 0 ]	
+
+	[ -d $DATA_DIR/morden2 ]
+}
+
 # TODO
 # This doesn't pass, and that's an issue.
 # @test "displays help with valid command and invalid subcommand" {
@@ -144,7 +165,6 @@ teardown() {
 	[[ "$output" == *"Alloted 17MB cache"* ]]
 }
 
-
 # Test `dump` command.
 # All tests copy testdata/testdatadir to $DATA_DIR to ensure we're consistently testing against a not-only-init'ed chaindb.
 @test "dump [noargs] | exit >0" {
@@ -194,6 +214,7 @@ teardown() {
 	[[ "$output" == *"ffe8cbc1681e5e9db74a0f93f8ed25897519120f"* ]] # hex address
 	[[ "$output" == *"1507000000000000000000"* ]] # address balance
 }
+
 @test "dump 0,1 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f | exit 0" {
 	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
 	run $GETH_CMD --data-dir $DATA_DIR dump 0,1 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f
@@ -230,13 +251,38 @@ teardown() {
 	[[ "$output" == *"1507000000000000000000"* ]] # address balance
 }
 
+# Ensure --testnet and --chain=morden/testnet set up respective subdirs with default 'morden'
+@test "--chain=testnet creates /morden subdir, activating testnet genesis" { # This is kind of weird, but it is expected.
+	run $GETH_CMD --data-dir $DATA_DIR --chain=testnet --exec 'eth.getBlock(0).hash' console
+	[ "$status" -eq 0 ]
 
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
+	[ -d $DATA_DIR/morden ]
+}
 
+@test "--testnet creates /morden subdir, activating testnet genesis" {
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --exec 'eth.getBlock(0).hash' console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
+	[ -d $DATA_DIR/morden ]
+}
 
+@test "--testnet --chain=faketestnet creates /faketestnet subdir, activating testnet genesis" {
+	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=faketestnet --exec 'eth.getBlock(0).hash' console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
+	[ -d $DATA_DIR/faketestnet ]
+}
 
+@test "--chain=morden creates /morden subdir, activating testnet genesis" {
+	run $GETH_CMD --data-dir $DATA_DIR --chain=morden --exec 'eth.getBlock(0).hash' console
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
+	[ -d $DATA_DIR/morden ]
+}
 
 

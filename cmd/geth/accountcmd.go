@@ -30,6 +30,10 @@ import (
 )
 
 var (
+	AccountsIndexFlag = cli.BoolFlag{
+		Name: "index-accounts,indexaccounts",
+		Usage: "enable key-value db store for indexing large amounts of key files",
+	}
 	walletCommand = cli.Command{
 		Name:  "wallet",
 		Usage: "ethereum presale wallet",
@@ -163,13 +167,49 @@ this import mechanism is not needed when you transfer an account between
 nodes.
 					`,
 			},
+			{
+				Action: accountIndex,
+				Name:   "index",
+				Usage:  "build account index cache database",
+				Description: `
+
+    ethereum --index-accounts account index
+
+Create keystore directory index cache database (keystore/accounts.db). Relevant for use with large amounts of key files (>10,000).
+
+While idempotent, this command is only designed to segregate work and setup time for initial index creation.
+
+It is only useful to run once when it's your first time using '--index-accounts' flag option.
+
+It indexes all key files from keystore/* (non-recursively).
+
+					`,
+			},
 		},
 	}
 )
 
+func accountIndex(ctx *cli.Context) error {
+	n := aliasableName(AccountsIndexFlag.Name, ctx)
+	if !ctx.GlobalBool(n) {
+		log.Fatalf("Use: $ geth --%v account index\n (missing '%v' flag)", n, n)
+	}
+	am := MakeAccountManager(ctx)
+	errs := am.BuildIndexDB()
+	if len(errs) > 0 {
+		for _, e := range errs {
+			if e != nil {
+				glog.V(logger.Error).Infof("init cache db err: %v", e)
+			}
+		}
+	}
+	return nil
+}
+
 func accountList(ctx *cli.Context) error {
 	accman := MakeAccountManager(ctx)
 	for i, acct := range accman.Accounts() {
+
 		fmt.Printf("Account #%d: {%x} %s\n", i, acct.Address, acct.File)
 	}
 	return nil

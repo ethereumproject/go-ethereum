@@ -88,7 +88,7 @@ func newTester(t *testing.T, confOverride func(*eth.Config)) *tester {
 	if err != nil {
 		t.Fatalf("failed to create temporary keystore: %v", err)
 	}
-	accman, err := accounts.NewManager(filepath.Join(workspace, "keystore"), accounts.LightScryptN, accounts.LightScryptP)
+	accman, err := accounts.NewManager(filepath.Join(workspace, "keystore"), accounts.LightScryptN, accounts.LightScryptP, false)
 	if err != nil {
 		t.Fatalf("failed to create account manager: %s", err)
 	}
