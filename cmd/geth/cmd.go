@@ -29,6 +29,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/ethereumproject/go-ethereum/eth"
+	"strconv"
 )
 
 const (
@@ -192,3 +194,78 @@ func ExportAppendChain(blockchain *core.BlockChain, fn string, first uint64, las
 	return nil
 }
 
+func withLineBreak(s string) string {
+	return s + "\n"
+}
+
+func colorGreen(s string) string {
+	return "\x1b[32m" + s + "\x1b[39m"
+}
+
+func colorBlue(s string) string {
+	return "\x1b[36m" + s + "\x1b[39m"
+}
+
+// For use by 'status' command.
+// These are one of doing it, with each key/val per line and some appropriate indentations to signal grouping/parentage.
+// ... But there might be a more elegant way using columns and stuff. VeryPretty?
+func logSufficientChainConfigPretty(config *core.SufficientChainConfig) (s string) {
+	// ID(not ChainID, but ChainID')
+	// Name
+	// Genesis (dump)
+	// ChainConfig
+	// 	Forks
+	// 		Features
+	//			Options
+	//		RequiredHash
+	//	BadHashes
+	s += withLineBreak("Name: " + colorGreen(config.Name))
+	return s
+}
+
+func logEthConfigPretty(ethConfig *eth.Config) (s string) {
+	// NetworkID
+	// FastSync?
+	// BlockChainVersion
+	// DatabaseCache
+	// DatabaseHandles
+	// NatSpec?
+	// AutoDAG?
+	// PowTest?
+	// PowShared?
+	// Account Manager
+	//	Number of accounts
+	//	Keystore
+	//		Dir
+	//		ScryptN
+	//		ScryptP
+	// Etherbase (if set)
+	// GasPrice
+	// MinerThreads
+	s += withLineBreak("Network ID: " + colorGreen(strconv.Itoa(ethConfig.NetworkId)))
+	return s
+}
+
+func logStackConfigPretty(stackConfig *node.Config) (s string) {
+	// Name
+	// Datadir
+	// IPCPath
+	// PrivateKey?
+	// Discovery?
+	// BoostrapNodes
+	//	Enode
+	// ListenAddr
+	// NAT
+	// MaxPeers
+	// MaxPendingPeers
+	// HTTPHost
+	// HTTPPort
+	// HTTPCors
+	// HTTPModules[]
+	// WSHost
+	// WSPort
+	// WSOrigins
+	// WSModules[]
+	s += withLineBreak("Name: " + colorGreen(stackConfig.Name))
+	return s
+}
