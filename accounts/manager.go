@@ -22,7 +22,6 @@ package accounts
 
 import (
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -32,6 +31,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
+	"path/filepath"
+	"encoding/json"
 )
 
 var (
@@ -46,12 +47,21 @@ var (
 // When used as an argument, it selects a unique key file to act on.
 type Account struct {
 	Address common.Address // Ethereum account address derived from the key
+	EncryptedKey string // web3JSON format
 
 	// File contains the key file name.
 	// When Acccount is used as an argument to select a key, File can be left blank to
 	// select just by address or set to the basename or absolute path of a file in the key
 	// directory. Accounts returned by Manager will always contain an absolute path.
 	File string
+}
+
+// AccountJSON is an auxiliary between Account and EasyMarshal'd structs.
+//easyjson:json
+type AccountJSON struct {
+	Address string `json:"address"`
+	EncryptedKey string `json:"key"`
+	File string `json:"file"`
 }
 
 func (acc *Account) MarshalJSON() ([]byte, error) {
@@ -64,7 +74,7 @@ func (acc *Account) UnmarshalJSON(raw []byte) error {
 
 // Manager manages a key storage directory on disk.
 type Manager struct {
-	cache    *addrCache
+	ac       caching
 	keyStore keyStore
 	mu       sync.RWMutex
 	unlocked map[common.Address]*unlocked
@@ -89,7 +99,7 @@ const (
 )
 
 // NewManager creates a manager for the given directory.
-func NewManager(keydir string, scryptN, scryptP int) (*Manager, error) {
+func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager, error) {
 	store, err := newKeyStore(keydir, scryptN, scryptP)
 	if err != nil {
 		return nil, err
@@ -98,27 +108,42 @@ func NewManager(keydir string, scryptN, scryptP int) (*Manager, error) {
 	am := &Manager{
 		keyStore: *store,
 		unlocked: make(map[common.Address]*unlocked),
-		cache:    newAddrCache(keydir),
+	}
+	if wantCacheDB {
+		am.ac = newCacheDB(keydir)
+	} else {
+		am.ac = newAddrCache(keydir)
 	}
 
 	// TODO: In order for this finalizer to work, there must be no references
 	// to am. addrCache doesn't keep a reference but unlocked keys do,
 	// so the finalizer will not trigger until all timed unlocks have expired.
 	runtime.SetFinalizer(am, func(m *Manager) {
-		m.cache.close()
+		// bug(whilei): I was getting panic: close of closed channel when running tests as package;
+		// individually each test would pass but not when run in a bunch.
+		// either manager reference was stuck somewhere or the tests were outpacing themselves
+		// checking for nil seems to fix the issue.
+		if am.ac != nil {
+			m.ac.close()
+		}
+
 	})
 
 	return am, nil
 }
 
+func (am *Manager) BuildIndexDB() []error {
+	return am.ac.Syncfs2db(time.Now().Add(-60*24*7*30*120*time.Minute)) // arbitrarily long "last updated"
+}
+
 // HasAddress reports whether a key with the given address is present.
 func (am *Manager) HasAddress(addr common.Address) bool {
-	return am.cache.hasAddress(addr)
+	return am.ac.hasAddress(addr)
 }
 
 // Accounts returns all key files present in the directory.
 func (am *Manager) Accounts() []Account {
-	return am.cache.accounts()
+	return am.ac.accounts()
 }
 
 // DeleteAccount deletes the key matched by account if the passphrase is correct.
@@ -134,12 +159,18 @@ func (am *Manager) DeleteAccount(a Account, passphrase string) error {
 	if err != nil {
 		return err
 	}
+
+	if !filepath.IsAbs(a.File) {
+		p := filepath.Join(am.ac.getKeydir(), a.File)
+		a.File = p
+	}
+
 	// The order is crucial here. The key is dropped from the
 	// cache after the file is gone so that a reload happening in
 	// between won't insert it into the cache again.
 	err = os.Remove(a.File)
 	if err == nil {
-		am.cache.delete(a)
+		am.ac.delete(a)
 	}
 	return err
 }
@@ -148,6 +179,7 @@ func (am *Manager) DeleteAccount(a Account, passphrase string) error {
 func (am *Manager) Sign(addr common.Address, hash []byte) (signature []byte, err error) {
 	am.mu.RLock()
 	defer am.mu.RUnlock()
+
 	unlockedKey, found := am.unlocked[addr]
 	if !found {
 		return nil, ErrLocked
@@ -222,15 +254,21 @@ func (am *Manager) TimedUnlock(a Account, passphrase string, timeout time.Durati
 }
 
 func (am *Manager) getDecryptedKey(a Account, auth string) (Account, *key, error) {
-	am.cache.maybeReload()
-	am.cache.mu.Lock()
-	a, err := am.cache.find(a)
-	am.cache.mu.Unlock()
+	am.ac.maybeReload()
+	am.ac.muLock()
+	a, err := am.ac.find(a)
+	am.ac.muUnlock()
 	if err != nil {
 		return Account{}, nil, err
 	}
 
-	key, err := am.keyStore.Lookup(a.File, auth)
+	key := &key{}
+	if a.EncryptedKey != "" {
+		key, err = am.keyStore.DecryptKey([]byte(a.EncryptedKey), auth)
+	} else {
+		key, err = am.keyStore.Lookup(a.File, auth)
+	}
+
 	if err != nil {
 		return Account{}, nil, err
 	}
@@ -270,7 +308,7 @@ func (am *Manager) NewAccount(passphrase string) (Account, error) {
 	}
 	// Add the account to the cache immediately rather
 	// than waiting for file system notifications to pick it up.
-	am.cache.add(account)
+	am.ac.add(account)
 	return account, nil
 }
 
@@ -311,7 +349,7 @@ func (am *Manager) ImportECDSA(priv *ecdsa.PrivateKey, passphrase string) (Accou
 		return Account{}, err
 	}
 
-	if am.cache.hasAddress(key.Address) {
+	if am.ac.hasAddress(key.Address) {
 		return Account{}, fmt.Errorf("account already exists")
 	}
 
@@ -325,7 +363,7 @@ func (am *Manager) importKey(key *key, passphrase string) (Account, error) {
 	}
 
 	a := Account{File: file, Address: key.Address}
-	am.cache.add(a)
+	am.ac.add(a)
 	return a, nil
 }
 
@@ -345,7 +383,7 @@ func (am *Manager) ImportPreSaleKey(keyJSON []byte, passphrase string) (Account,
 	if err != nil {
 		return a, err
 	}
-	am.cache.add(a)
+	am.ac.add(a)
 	return a, nil
 }
 

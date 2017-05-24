@@ -305,7 +305,7 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 		keydir = path
 	}
 
-	m, err := accounts.NewManager(keydir, scryptN, scryptP)
+	m, err := accounts.NewManager(keydir, scryptN, scryptP, ctx.GlobalBool(aliasableName(AccountsIndexFlag.Name, ctx)))
 	if err != nil {
 		glog.Fatalf("init account manager at %q: %s", keydir, err)
 	}

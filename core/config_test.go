@@ -111,11 +111,16 @@ func TestChainConfig_IsExplosion(t *testing.T) {
 
 func sameGenesisDumpAllocationsBalances(gd1, gd2 *GenesisDump) bool {
 	for address, alloc := range gd2.Alloc {
-		bal1, _ := new(big.Int).SetString(gd1.Alloc[address].Balance, 0)
-		bal2, _ := new(big.Int).SetString(alloc.Balance, 0)
-		if bal1.Cmp(bal2) != 0 {
+		if gd1.Alloc[address] != nil {
+			bal1, _ := new(big.Int).SetString(gd1.Alloc[address].Balance, 0)
+			bal2, _ := new(big.Int).SetString(alloc.Balance, 0)
+			if bal1.Cmp(bal2) != 0 {
+				return false
+			}
+		} else if alloc.Balance != "" {
 			return false
 		}
+
 	}
 	return true
 }
