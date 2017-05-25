@@ -291,9 +291,9 @@ func BenchmarkManager_SignWithPassphrase(b *testing.B) {
 		{numKeyFiles: 20000, wantCacheDB: true, resetCacheDB: false},
 		{numKeyFiles: 100000, wantCacheDB: false, resetCacheDB: false},
 		{numKeyFiles: 100000, wantCacheDB: true, resetCacheDB: false},
-		{numKeyFiles: 200000, wantCacheDB: false, resetCacheDB: false},
+		//{numKeyFiles: 200000, wantCacheDB: false, resetCacheDB: false},
 		{numKeyFiles: 200000, wantCacheDB: true, resetCacheDB: false},
-		{numKeyFiles: 500000, wantCacheDB: false, resetCacheDB: false},
+		//{numKeyFiles: 500000, wantCacheDB: false, resetCacheDB: false},
 		{numKeyFiles: 500000, wantCacheDB: true, resetCacheDB: false},
 	}
 
@@ -343,8 +343,7 @@ func benchmarkManager_SignWithPassphrase(n int, wantcachedb bool, resetcachedb b
 	// Set up 1 DNE and 3 existing accs.
 	// Using the last accs because they should take the longest to iterate to.
 	var signAccounts []Account
-	//signAccounts = accs[(len(accs) - 4):]
-	signAccounts = accs[(len(accs) - 3):]
+	signAccounts = accs[(len(accs) - 4):]
 	accs = nil
 
 	b.ResetTimer() // _benchmark_ timer, not setup timer.
