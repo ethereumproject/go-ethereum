@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-__Legend__: 
+__Legend__:
 ```md
 <Added> for new features.
 <Changed> for changes in existing functionality.
@@ -29,8 +29,8 @@ Reflects changes to __master__ branch, but not yet packaged in a stable release.
 #### Fixed
 - SIGSEGV crash on malformed ChainID signer for replay-protected blocks.
 
-## [3.4.0] - 2017-05-15 
-Tagged commit: c18792d 
+## [3.4.0] - 2017-05-15
+Tagged commit: c18792d
 
 Wiki: https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes
 
@@ -57,8 +57,8 @@ __Contributors:__
 - @tranvictor
 
 
-## [3.3.0] - 2017-03-08 
-Tagged commit: 1f9eaca 
+## [3.3.0] - 2017-03-08
+Tagged commit: 1f9eaca
 #### Added
 - New bootnodes
 - Improved peer discovery
@@ -72,9 +72,11 @@ __Contributors:__
 - @splix
 - @outragedhuman
 
-## [3.2.3] - 2016-12-26 
-Tagged commit: 2b51918 
+## [3.2.3] - 2016-12-26
+Tagged commit: 2b51918
 #### Added
 - Difficulty Bomb delay (ECIP-1010)
 - EXP reprice (EIP-160)
 - Replay Protection (EIP-155)
+
+
