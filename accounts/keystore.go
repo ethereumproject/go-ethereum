@@ -134,7 +134,7 @@ func storeNewKey(store *keyStore, secret string) (*key, Account, error) {
 }
 
 type keyStore struct {
-	baseDir string
+	baseDir string // absolute filepath to default/flagged value for eg datadir/mainnet/keystore
 	scryptN int
 	scryptP int
 }
