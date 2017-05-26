@@ -175,7 +175,15 @@ func mustMakeDataDir(ctx *cli.Context) string {
 // A subdir of the datadir is used for each chain configuration ("/mainnet", "/testnet", "/my-custom-net").
 // --> <home>/<EthereumClassic>/<mainnet|testnet|custom-net>, per --chain
 func MustMakeChainDataDir(ctx *cli.Context) string {
-	return common.EnsureAbsolutePath(mustMakeDataDir(ctx), getChainConfigIDFromContext(ctx))
+	rp := common.EnsurePathAbsoluteOrRelativeTo(mustMakeDataDir(ctx), getChainConfigIDFromContext(ctx))
+	if !filepath.IsAbs(rp) {
+		af, e := filepath.Abs(rp)
+		if e != nil {
+			glog.Fatalf("cannot make absolute path for chain data dir: %v: %v", rp, e)
+		}
+		rp = af
+	}
+	return rp
 }
 
 // MakeIPCPath creates an IPC path configuration from the set command line flags,
@@ -301,8 +309,14 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 	datadir := MustMakeChainDataDir(ctx)
 
 	keydir := filepath.Join(datadir, "keystore")
+
 	if path := ctx.GlobalString(aliasableName(KeyStoreDirFlag.Name, ctx)); path != "" {
-		keydir = path
+		af, e := filepath.Abs(path)
+		if e != nil {
+			glog.V(logger.Error).Infof("keydir path could not be made absolute: %v: %v", path, e)
+		} else {
+			keydir = af
+		}
 	}
 
 	m, err := accounts.NewManager(keydir, scryptN, scryptP, ctx.GlobalBool(aliasableName(AccountsIndexFlag.Name, ctx)))
@@ -912,7 +926,7 @@ func MakeConsolePreloads(ctx *cli.Context) []string {
 
 	assets := ctx.GlobalString(aliasableName(JSpathFlag.Name, ctx))
 	for _, file := range strings.Split(ctx.GlobalString(aliasableName(PreloadJSFlag.Name, ctx)), ",") {
-		preloads = append(preloads, common.EnsureAbsolutePath(assets, strings.TrimSpace(file)))
+		preloads = append(preloads, common.EnsurePathAbsoluteOrRelativeTo(assets, strings.TrimSpace(file)))
 	}
 	return preloads
 }

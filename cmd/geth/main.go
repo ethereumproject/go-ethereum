@@ -303,7 +303,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 
 	// pretty printy
 	cwd, _ := os.Getwd()
-	glog.V(logger.Info).Info(fmt.Sprintf("Dumping chain configuration JSON to \x1b[32m%s\x1b[39m, it may take a moment to tally genesis allocations...", common.EnsureAbsolutePath(cwd, chainConfigFilePath)))
+	glog.V(logger.Info).Info(fmt.Sprintf("Dumping chain configuration JSON to \x1b[32m%s\x1b[39m, it may take a moment to tally genesis allocations...", common.EnsurePathAbsoluteOrRelativeTo(cwd, chainConfigFilePath)))
 
 	db := MakeChainDatabase(ctx)
 
