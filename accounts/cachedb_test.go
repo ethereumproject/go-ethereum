@@ -148,6 +148,7 @@ func TestCacheInitialReload_CacheDB(t *testing.T) {
 	if !reflect.DeepEqual(accounts, cachedbtestAccounts) {
 		t.Errorf("got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachedbtestAccounts))
 	}
+	cache.close()
 }
 
 func TestCacheAddDeleteOrder_CacheDB(t *testing.T) {
@@ -232,6 +233,7 @@ func TestCacheAddDeleteOrder_CacheDB(t *testing.T) {
 	if cache.hasAddress(wantAccounts[0].Address) {
 		t.Errorf("expected hasAccount(%x) to return false", wantAccounts[0].Address)
 	}
+	cache.close()
 }
 
 func TestCacheFind_CacheFind(t *testing.T) {
@@ -313,6 +315,7 @@ func TestCacheFind_CacheFind(t *testing.T) {
 			continue
 		}
 	}
+	cache.close()
 }
 
 func TestAccountCache_CacheDB_SyncFS2DB(t *testing.T) {
@@ -392,6 +395,23 @@ func TestAccountCache_CacheDB_SyncFS2DB(t *testing.T) {
 	}
 	ma.ac.close()
 	ma = nil
+}
+
+func TestCacheDBFilePath (t *testing.T) {
+	dir := filepath.Join("testdata", "keystore")
+	dir, _ = filepath.Abs(dir)
+	cache := newCacheDB(dir)
+
+	accs := cache.accounts()
+
+	for _, a := range accs {
+		if filepath.IsAbs(a.File) {
+			t.Errorf("wanted relative filepath (wanted basename), got: %v", a.File)
+		}
+	}
+
+	cache.close()
+	cache = nil
 }
 
 //func TestAccountCache_CacheDB_WatchRemove(t *testing.T) {
