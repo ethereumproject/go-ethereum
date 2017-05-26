@@ -367,15 +367,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	if err := stack.Service(&ethereum); err != nil {
 		log.Fatal("ethereum service not running: ", err)
 	}
-	accman := ethereum.AccountManager()
-	passwords := MakePasswordList(ctx)
 
-	accounts := strings.Split(ctx.GlobalString(aliasableName(UnlockedAccountFlag.Name, ctx)), ",")
-	for i, account := range accounts {
-		if trimmed := strings.TrimSpace(account); trimmed != "" {
-			unlockAccount(ctx, accman, trimmed, i, passwords)
-		}
-	}
 	// Start auxiliary services if enabled
 	if ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)) {
 		if err := ethereum.StartMining(ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)), ctx.GlobalString(aliasableName(MiningGPUFlag.Name, ctx))); err != nil {

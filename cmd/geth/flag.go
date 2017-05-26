@@ -695,8 +695,15 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		WSModules:       MakeRPCModules(ctx.GlobalString(aliasableName(WSApiFlag.Name, ctx))),
 	}
 
-	// Configure the Ethereum service
 	accman := MakeAccountManager(ctx)
+	passwords := MakePasswordList(ctx)
+
+	accounts := strings.Split(ctx.GlobalString(aliasableName(UnlockedAccountFlag.Name, ctx)), ",")
+	for i, account := range accounts {
+		if trimmed := strings.TrimSpace(account); trimmed != "" {
+			unlockAccount(ctx, accman, trimmed, i, passwords)
+		}
+	}
 
 	ethConf := &eth.Config{
 		ChainConfig:             config.ChainConfig,
