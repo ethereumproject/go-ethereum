@@ -33,12 +33,24 @@ type DumpAccount struct {
 	Storage  map[string]string `json:"storage"`
 }
 
+type Dumps []Dump
+
 type Dump struct {
 	Root     string                 `json:"root"`
 	Accounts map[string]DumpAccount `json:"accounts"`
 }
 
-func (self *StateDB) RawDump() Dump {
+func lookupAddress(addr common.Address, addresses []common.Address) bool {
+	for _, add := range addresses {
+		if add.Hex() == addr.Hex() {
+			return true
+		}
+	}
+	return false
+}
+
+func (self *StateDB) RawDump(addresses []common.Address) Dump {
+
 	dump := Dump{
 		Root:     common.Bytes2Hex(self.trie.Root()),
 		Accounts: make(map[string]DumpAccount),
@@ -47,12 +59,22 @@ func (self *StateDB) RawDump() Dump {
 	it := self.trie.Iterator()
 	for it.Next() {
 		addr := self.trie.GetKey(it.Key)
+		addrA := common.BytesToAddress(addr)
+
+		if addresses != nil && len(addresses) > 0 {
+			// check if address existing in argued addresses (lookup)
+			// if it's not one we're looking for, continue
+			if !lookupAddress(addrA, addresses) {
+				continue
+			}
+		}
+
 		var data Account
 		if err := rlp.DecodeBytes(it.Value, &data); err != nil {
 			panic(err)
 		}
 
-		obj := newObject(nil, common.BytesToAddress(addr), data, nil)
+		obj := newObject(nil, addrA, data, nil)
 		account := DumpAccount{
 			Balance:  data.Balance.String(),
 			Nonce:    data.Nonce,
@@ -70,8 +92,8 @@ func (self *StateDB) RawDump() Dump {
 	return dump
 }
 
-func (self *StateDB) Dump() []byte {
-	json, err := json.MarshalIndent(self.RawDump(), "", "    ")
+func (self *StateDB) Dump(addresses []common.Address) []byte {
+	json, err := json.MarshalIndent(self.RawDump(addresses), "", "    ")
 	if err != nil {
 		fmt.Println("dump err", err)
 	}

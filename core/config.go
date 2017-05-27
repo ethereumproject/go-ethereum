@@ -668,7 +668,7 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	if err != nil {
 		return nil, err
 	}
-	stateDump := genState.RawDump()
+	stateDump := genState.RawDump([]common.Address{})
 
 	stateAccounts := stateDump.Accounts
 	dump.Alloc = make(map[hex]*GenesisDumpAlloc, len(stateAccounts))

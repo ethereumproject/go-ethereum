@@ -164,7 +164,7 @@ func run(ctx *cli.Context) error {
 
 	if ctx.GlobalBool(DumpFlag.Name) {
 		statedb.Commit()
-		fmt.Println(string(statedb.Dump()))
+		fmt.Println(string(statedb.Dump([]common.Address{})))
 	}
 
 	if ctx.GlobalBool(SysStatFlag.Name) {
