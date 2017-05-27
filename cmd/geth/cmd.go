@@ -23,14 +23,16 @@ import (
 	"os/signal"
 	"runtime"
 
+	"strconv"
+
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"strconv"
+	"strings"
 )
 
 const (
@@ -198,18 +200,45 @@ func withLineBreak(s string) string {
 	return s + "\n"
 }
 
-func colorGreen(s string) string {
-	return "\x1b[32m" + s + "\x1b[39m"
+func colorGreen(s interface{}) string {
+	return fmt.Sprintf("\x1b[32m%v\x1b[39m", s)
 }
 
-func colorBlue(s string) string {
-	return "\x1b[36m" + s + "\x1b[39m"
+func colorBlue(s interface{}) string {
+	return fmt.Sprintf("\x1b[36m%v\x1b[39m", s)
 }
+
+func formatStatusKeyValue(prefix string, ss ...interface{}) (s string) {
+
+	s = ""
+	// Single arg; category? ie Forks?
+	if len(ss) == 1 {
+		s += colorBlue(ss[0])
+	}
+	if len(ss) == 2 {
+		s += fmt.Sprintf("%v: %v", ss[0], colorGreen(ss[1]))
+	}
+	if len(ss) > 2 {
+		s += fmt.Sprintf("%v:", ss[0])
+		for i := 2; i < len(ss); i++ {
+			s += withLineBreak(fmt.Sprintf("    %v", colorGreen(ss[i])))
+		}
+	}
+
+	return withLineBreak(prefix + s)
+}
+
+type printable struct {
+	indent int
+	key string
+	val interface{}
+}
+var indent string = "    "
 
 // For use by 'status' command.
 // These are one of doing it, with each key/val per line and some appropriate indentations to signal grouping/parentage.
 // ... But there might be a more elegant way using columns and stuff. VeryPretty?
-func logSufficientChainConfigPretty(config *core.SufficientChainConfig) (s string) {
+func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []string) {
 	// ID(not ChainID, but ChainID')
 	// Name
 	// Genesis (dump)
@@ -219,7 +248,54 @@ func logSufficientChainConfigPretty(config *core.SufficientChainConfig) (s strin
 	//			Options
 	//		RequiredHash
 	//	BadHashes
-	s += withLineBreak("Name: " + colorGreen(config.Name))
+	ss := []printable{}
+
+	lenAlloc := 0
+	for range config.Genesis.Alloc {
+		lenAlloc++
+	}
+
+	ss = append(ss, printable{0, "Chain Identifier (Subdir)", config.ID})
+	ss = append(ss, printable{0, "Chain Name", config.Name})
+
+	ss = append(ss, printable{0, "Genesis", nil})
+	ss = append(ss, printable{1, "Nonce", config.Genesis.Nonce})
+	ss = append(ss, printable{1, "Coinbase", config.Genesis.Coinbase})
+	ss = append(ss, printable{1, "Extra data", config.Genesis.ExtraData})
+	ss = append(ss, printable{1, "Gas limit", config.Genesis.GasLimit})
+	ss = append(ss, printable{1, "Difficulty", config.Genesis.Difficulty})
+	ss = append(ss, printable{1, "Time", config.Genesis.Timestamp})
+	ss = append(ss, printable{1, "Number of allocations", lenAlloc})
+
+	ss = append(ss, printable{0, "Chain Configuration", nil})
+	ss = append(ss, printable{1, "Forks", nil})
+	for _, v := range config.ChainConfig.Forks {
+		ss = append(ss, printable{2, "Name", v.Name})
+		ss = append(ss, printable{2, "Block", v.Block})
+		if !v.RequiredHash.IsEmpty() {
+			ss = append(ss, printable{2, "Required hash", v.RequiredHash.Hex()})
+		}
+		for _, fv := range v.Features {
+			ss = append(ss, printable{3,  fv.ID, nil})
+			for k, ffv := range fv.Options {
+				ss = append(ss, printable{4,  k, ffv})
+			}
+		}
+	}
+	ss = append(ss, printable{1, "Bad hashes", nil})
+	for _, v := range config.ChainConfig.BadHashes {
+		ss = append(ss, printable{2, "Block", v.Block})
+		ss = append(ss, printable{2, "Hash", v.Hash.Hex()})
+	}
+
+	for _, v := range ss {
+		if v.val != nil {
+			s = append(s, formatStatusKeyValue(strings.Repeat(indent, v.indent), v.key, v.val))
+		} else {
+			s = append(s, formatStatusKeyValue(strings.Repeat(indent, v.indent), v.key))
+		}
+	}
+
 	return s
 }
 

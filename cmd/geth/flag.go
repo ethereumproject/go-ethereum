@@ -822,7 +822,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 		// Check for flagged bootnodes.
 		if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
-			panic("Conflicting --chain-config and --bootnodes flags. Please use either but not both.")
+			glog.Fatal("Conflicting --chain-config and --bootnodes flags. Please use either but not both.")
 		}
 
 		currentChainID = config.ID // Set global var.
@@ -835,6 +835,12 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 	config.Name = getChainConfigNameFromContext(ctx)
 	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
 	config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
+
+	if isTestMode(ctx) {
+		config.Genesis = core.TestNetGenesis
+	} else {
+		config.Genesis = core.DefaultGenesis
+	}
 
 	return config
 }

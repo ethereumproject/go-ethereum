@@ -274,9 +274,22 @@ func status(ctx *cli.Context) error {
 	name := makeNodeName(Version, ctx)
 	stackConf, _ := mustMakeStackConf(ctx, name, config, ethConf)
 
-	glog.V(logger.Info).Info(glog.Separator("-"))
-	glog.V(logger.Info).Info(colorBlue("* Chain Configuration"))
-	glog.V(logger.Info).Info(logSufficientChainConfigPretty(config))
+	sep := glog.Separator("-")
+	printme := []struct{
+		title string
+		keyVals []string
+	}{
+		{title: "Chain Configuration", keyVals: formatSufficientChainConfigPretty(config)},
+	}
+
+	for _, p := range printme {
+		glog.V(logger.Info).Info(sep)
+		// right align category title
+		glog.V(logger.Info).Info(strings.Repeat(" ", len(sep) - len(p.title)) + colorBlue(p.title))
+		for _, s := range p.keyVals {
+			glog.V(logger.Info).Info(s)
+		}
+	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
 	glog.V(logger.Info).Info(colorBlue("* Ethereum Configuration"))
