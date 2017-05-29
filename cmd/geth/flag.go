@@ -650,7 +650,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 					glog.Fatalf("%v: failed to migrate existing Classic database: %v", ErrDirectoryStructure, migrationError)
 				}
 			}
-
 		}
 	}
 	// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
