@@ -302,11 +302,15 @@ var unavailableConfigKeys = []string{
 	"monkey",
 }
 
+// veryHighBlock is a block in the far distant future (so far, in fact, that it will never actually exist)
+// Used to test cumulative aggregation functions, ie "eventually".
+var veryHighBlock *big.Int = big.NewInt(250000000)
+
 // TestChainConfig_EventuallyGetAllPossibleFeatures should aggregate all available features from previous branches
 func TestChainConfig_GetFeature2_EventuallyGetAllPossibleFeatures(t *testing.T) {
 	c := getDefaultChainConfigSorted()
 	for _, id := range allAvailableDefaultConfigKeys {
-		if _, _, ok := c.GetFeature(big.NewInt(50000000), id); !ok {
+		if _, _, ok := c.GetFeature(veryHighBlock, id); !ok {
 			t.Errorf("could not get feature with id: %v, at block: %v", id, big.NewInt(5000000))
 		}
 	}
@@ -316,7 +320,7 @@ func TestChainConfig_GetFeature2_EventuallyGetAllPossibleFeatures(t *testing.T) 
 func TestChainConfig_GetFeature3_NeverGetNonexistantFeatures(t *testing.T) {
 	c := getDefaultChainConfigSorted()
 	for _, id := range unavailableConfigKeys {
-		if feat, _, ok := c.GetFeature(big.NewInt(50000000), id); ok {
+		if feat, _, ok := c.GetFeature(veryHighBlock, id); ok {
 			t.Errorf("found unexpected feature: %v, for name: %v, at block: %v", feat, id, big.NewInt(5000000))
 		}
 	}
@@ -324,9 +328,9 @@ func TestChainConfig_GetFeature3_NeverGetNonexistantFeatures(t *testing.T) {
 
 func TestChainConfig_GetFeature4_WorkForHighNumbers(t *testing.T) {
 	c := getDefaultChainConfigSorted()
-	highBlock := big.NewInt(99999999999999999)
-	if _, _, ok := c.GetFeature(highBlock, "difficulty"); !ok {
-		t.Errorf("unexpected unfound difficulty feature for far-future block: %v", highBlock)
+	ultraHighBlock := big.NewInt(99999999999999999)
+	if _, _, ok := c.GetFeature(ultraHighBlock, "difficulty"); !ok {
+		t.Errorf("unexpected unfound difficulty feature for far-future block: %v", ultraHighBlock)
 	}
 }
 
