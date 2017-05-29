@@ -290,7 +290,7 @@ func TestAccountCache_CacheDB_SyncFS2DB(t *testing.T) {
 	ma.ac.close()
 }
 
-func TestCacheDBFilePath (t *testing.T) {
+func TestCacheDBFilePath(t *testing.T) {
 	dir := filepath.Join("testdata", "keystore")
 	dir, _ = filepath.Abs(dir)
 	cache := newCacheDB(dir)

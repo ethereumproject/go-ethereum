@@ -323,7 +323,6 @@ func benchmarkManager_SignWithPassphrase(n int, wantcachedb bool, resetcachedb b
 		staticKeyFilesResourcePath = p
 	}
 
-
 	start := time.Now()
 	am, me := NewManager(staticKeyFilesResourcePath, veryLightScryptN, veryLightScryptP, wantcachedb)
 	if me != nil {

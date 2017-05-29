@@ -24,17 +24,17 @@ import (
 	"path/filepath"
 	"time"
 
+	"bytes"
+	"errors"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"sort"
-	"bytes"
-	"errors"
-	"sync"
 	"github.com/mailru/easyjson"
-	"fmt"
 	"runtime"
+	"sort"
+	"sync"
 )
 
 var addrBucketName = []byte("byAddr")
@@ -63,7 +63,7 @@ func newCacheDB(keydir string) *cacheDB {
 	}
 
 	cdb := &cacheDB{
-		db:     bdb,
+		db: bdb,
 	}
 	cdb.keydir = keydir
 
@@ -263,14 +263,14 @@ func (cdb *cacheDB) close() {
 }
 
 func (cdb *cacheDB) setLastUpdated() error {
-	return cdb.db.Update(func (tx *bolt.Tx) error {
+	return cdb.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(statsBucketName)
 		return b.Put([]byte("lastUpdated"), []byte(time.Now().Add(minReloadInterval).String())) // ensure no close calls with directory mod time
 	})
 }
 
 func (cdb *cacheDB) getLastUpdated() (t time.Time, err error) {
-	e := cdb.db.View(func (tx *bolt.Tx) error {
+	e := cdb.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(statsBucketName)
 		v := b.Get([]byte("lastUpdated"))
 		if v == nil {
@@ -305,7 +305,7 @@ func (cdb *cacheDB) setBatchAccounts(accs []Account) (errs []error) {
 
 	for _, a := range accs {
 		// Put in byAddr bucket.
-		if e := ba.Put([]byte(a.Address.Hex() + a.File), []byte(time.Now().String())); e != nil {
+		if e := ba.Put([]byte(a.Address.Hex()+a.File), []byte(time.Now().String())); e != nil {
 			errs = append(errs, e)
 		}
 		// Put in byFile bucket.
@@ -354,7 +354,7 @@ func (cdb *cacheDB) Syncfs2db(lastUpdated time.Time) (errs []error) {
 	// SYNC: DB --> FS.
 
 	// Remove all cache entries.
-	e := cdb.db.Update(func (tx *bolt.Tx) error {
+	e := cdb.db.Update(func(tx *bolt.Tx) error {
 
 		tx.DeleteBucket(addrBucketName)
 		tx.DeleteBucket(fileBucketName)
@@ -424,7 +424,6 @@ func (cdb *cacheDB) Syncfs2db(lastUpdated time.Time) (errs []error) {
 
 		done <- true
 	}(waitUp, achan, echan)
-
 
 	// Iterate files.
 	for i, fi := range files {
@@ -514,17 +513,17 @@ func bytesToAccount(bs []byte) Account {
 		//return Account{}
 	}
 	return Account{
-		Address: common.HexToAddress(aux.Address),
+		Address:      common.HexToAddress(aux.Address),
 		EncryptedKey: aux.EncryptedKey,
-		File: aux.File,
+		File:         aux.File,
 	}
 }
 
 func accountToBytes(account Account) []byte {
 	aux := &AccountJSON{
-		Address: account.Address.Hex(),
+		Address:      account.Address.Hex(),
 		EncryptedKey: account.EncryptedKey,
-		File: account.File,
+		File:         account.File,
 	}
 	b, e := easyjson.Marshal(aux)
 	if e != nil {

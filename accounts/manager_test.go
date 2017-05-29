@@ -17,16 +17,16 @@
 package accounts
 
 import (
+	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"io/ioutil"
+	"math/rand"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
-	"reflect"
-	"github.com/davecgh/go-spew/spew"
-	"fmt"
-	"math/rand"
 )
 
 var testSigData = make([]byte, 32)

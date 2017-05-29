@@ -407,7 +407,7 @@ func TestAccountCache_WatchRemove(t *testing.T) {
 	t.Errorf("got: %v, want: %v", spew.Sdump(gotAccounts), spew.Sdump(wantAccounts))
 }
 
-func TestCacheFilePath (t *testing.T) {
+func TestCacheFilePath(t *testing.T) {
 	dir := filepath.Join("testdata", "keystore")
 	dir, _ = filepath.Abs(dir)
 	cache := newAddrCache(dir)

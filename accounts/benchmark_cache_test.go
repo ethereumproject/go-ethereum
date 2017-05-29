@@ -43,12 +43,12 @@ func benchmarkCacheAccounts(n int, b *testing.B) {
 	cache.close()
 }
 
-func BenchmarkCacheAccounts100(b *testing.B)   { benchmarkCacheAccounts(100, b) }
-func BenchmarkCacheAccounts500(b *testing.B)   { benchmarkCacheAccounts(500, b) }
-func BenchmarkCacheAccounts1000(b *testing.B)  { benchmarkCacheAccounts(1000, b) }
-func BenchmarkCacheAccounts5000(b *testing.B)  { benchmarkCacheAccounts(5000, b) }
-func BenchmarkCacheAccounts10000(b *testing.B) { benchmarkCacheAccounts(10000, b) }
-func BenchmarkCacheAccounts20000(b *testing.B) { benchmarkCacheAccounts(20000, b) }
+func BenchmarkCacheAccounts100(b *testing.B)    { benchmarkCacheAccounts(100, b) }
+func BenchmarkCacheAccounts500(b *testing.B)    { benchmarkCacheAccounts(500, b) }
+func BenchmarkCacheAccounts1000(b *testing.B)   { benchmarkCacheAccounts(1000, b) }
+func BenchmarkCacheAccounts5000(b *testing.B)   { benchmarkCacheAccounts(5000, b) }
+func BenchmarkCacheAccounts10000(b *testing.B)  { benchmarkCacheAccounts(10000, b) }
+func BenchmarkCacheAccounts20000(b *testing.B)  { benchmarkCacheAccounts(20000, b) }
 func BenchmarkCacheAccounts100000(b *testing.B) { benchmarkCacheAccounts(100000, b) }
 func BenchmarkCacheAccounts500000(b *testing.B) { benchmarkCacheAccounts(500000, b) }
 
@@ -88,12 +88,12 @@ func benchmarkCacheAdd(n int, b *testing.B) {
 	cache.close()
 }
 
-func BenchmarkCacheAdd100(b *testing.B)   { benchmarkCacheAdd(100, b) }
-func BenchmarkCacheAdd500(b *testing.B)   { benchmarkCacheAdd(500, b) }
-func BenchmarkCacheAdd1000(b *testing.B)  { benchmarkCacheAdd(1000, b) }
-func BenchmarkCacheAdd5000(b *testing.B)  { benchmarkCacheAdd(5000, b) }
-func BenchmarkCacheAdd10000(b *testing.B) { benchmarkCacheAdd(10000, b) }
-func BenchmarkCacheAdd20000(b *testing.B) { benchmarkCacheAdd(20000, b) }
+func BenchmarkCacheAdd100(b *testing.B)    { benchmarkCacheAdd(100, b) }
+func BenchmarkCacheAdd500(b *testing.B)    { benchmarkCacheAdd(500, b) }
+func BenchmarkCacheAdd1000(b *testing.B)   { benchmarkCacheAdd(1000, b) }
+func BenchmarkCacheAdd5000(b *testing.B)   { benchmarkCacheAdd(5000, b) }
+func BenchmarkCacheAdd10000(b *testing.B)  { benchmarkCacheAdd(10000, b) }
+func BenchmarkCacheAdd20000(b *testing.B)  { benchmarkCacheAdd(20000, b) }
 func BenchmarkCacheAdd100000(b *testing.B) { benchmarkCacheAdd(100000, b) }
 func BenchmarkCacheAdd500000(b *testing.B) { benchmarkCacheAdd(500000, b) }
 
