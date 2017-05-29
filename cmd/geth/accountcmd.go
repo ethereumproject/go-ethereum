@@ -337,7 +337,6 @@ func importWallet(ctx *cli.Context) error {
 	if err != nil {
 		log.Fatal("Could not read wallet file: ", err)
 	}
-
 	accman := MakeAccountManager(ctx)
 	passphrase := getPassPhrase("", false, 0, MakePasswordList(ctx))
 

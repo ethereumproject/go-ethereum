@@ -306,6 +306,8 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 		scryptN = accounts.LightScryptN
 		scryptP = accounts.LightScryptP
 	}
+
+	mustMakeSufficientConfiguration(ctx) // parses flags and set global chain ID
 	datadir := MustMakeChainDataDir(ctx)
 
 	keydir := filepath.Join(datadir, "keystore")
@@ -667,6 +669,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Makes sufficient configuration from JSON file or DB pending flags.
 	// Delegates flag usage.
 	config := mustMakeSufficientConfiguration(ctx)
+	logChainConfiguration(ctx, config)
 
 	// Avoid conflicting flags
 	if ctx.GlobalBool(DevModeFlag.Name) && isTestMode(ctx) {
@@ -818,8 +821,6 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 
 	// If external JSON --chainconfig specified.
 	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
-		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
-			filepath.Clean(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx)))))
 
 		// Returns surely valid suff chain config.
 		config, err := core.ReadExternalChainConfig(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx)))
@@ -833,7 +834,6 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 		}
 
 		currentChainID = config.ID // Set global var.
-		logChainConfiguration(ctx, config)
 
 		return config
 	}
@@ -843,17 +843,22 @@ func mustMakeSufficientConfiguration(ctx *cli.Context) *core.SufficientChainConf
 	config.Name = getChainConfigNameFromContext(ctx)
 	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
 	config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
-	logChainConfiguration(ctx, config)
 
 	return config
 }
 
 func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
 
+	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
+		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
+			filepath.Clean(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx)))))
+	}
+
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
 	glog.V(logger.Info).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
 	glog.V(logger.Info).Infof("Geth is configured to use blockchain: \x1b[32m%v (ETC)\x1b[39m", config.Name)
+	glog.V(logger.Info).Infof("Chain subdir: \x1b[32m%v\x1b[39m", config.ID)
 
 	glog.V(logger.Info).Info(fmt.Sprintf("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks)))
 
