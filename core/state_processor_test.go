@@ -2,9 +2,8 @@ package core
 
 import (
 	"math/big"
-	"testing"
-
 	"math/rand"
+	"testing"
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
