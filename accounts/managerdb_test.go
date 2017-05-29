@@ -1,17 +1,17 @@
 package accounts
 
 import (
-	"testing"
-	"time"
-	"os"
-	"strings"
 	"fmt"
-	"runtime"
+	"github.com/davecgh/go-spew/spew"
 	"io/ioutil"
 	"math/rand"
-	"reflect"
-	"github.com/davecgh/go-spew/spew"
+	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
 )
 
 func tmpManager_CacheDB(t *testing.T) (string, *Manager) {
@@ -240,7 +240,6 @@ func TestTimedUnlock_DB2(t *testing.T) {
 	am.ac.close()
 	am = nil
 }
-
 
 // This test should fail under -race if signing races the expiration goroutine.
 func TestSignRace_DB(t *testing.T) {

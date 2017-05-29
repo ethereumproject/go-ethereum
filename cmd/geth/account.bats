@@ -87,6 +87,17 @@ teardown() {
 	[[ "$output" == *"Unlocked account f466859ead1932d743d622cb74fc058882e8648a"* ]]
 }
 
+@test "account unlock by index" {
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
+	touch $DATA_DIR/empty.js
+
+	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --unlock 0 js $DATA_DIR/empty.js <<< $'foobar\n'
+	echo "$output"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Unlocked account 7ef5a6135f1fd6a02593eedc869c6d41d934aef8"* ]]
+}
+
 @test "account unlock pass mismatch" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
 	touch $DATA_DIR/empty.js

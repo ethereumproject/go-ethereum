@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 )
 
-func EnsureAbsolutePath(Datadir string, filename string) string {
+func EnsurePathAbsoluteOrRelativeTo(Datadir string, filename string) string {
 	if filepath.IsAbs(filename) {
 		return filename
 	}

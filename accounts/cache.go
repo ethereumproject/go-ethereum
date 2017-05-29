@@ -19,7 +19,6 @@ package accounts
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -32,55 +31,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
-
-// Minimum amount of time between cache reloads. This limit applies if the platform does
-// not support change notifications. It also applies if the keystore directory does not
-// exist yet, the code will attempt to create a watcher at most this often.
-const minReloadInterval = 2 * time.Second
-
-type accountsByFile []Account
-
-func (s accountsByFile) Len() int           { return len(s) }
-func (s accountsByFile) Less(i, j int) bool { return s[i].File < s[j].File }
-func (s accountsByFile) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
-// AmbiguousAddrError is returned when attempting to unlock
-// an address for which more than one file exists.
-type AmbiguousAddrError struct {
-	Addr    common.Address
-	Matches []Account
-}
-
-func (err *AmbiguousAddrError) Error() string {
-	files := ""
-	for i, a := range err.Matches {
-		files += a.File
-		if i < len(err.Matches)-1 {
-			files += ", "
-		}
-	}
-	return fmt.Sprintf("multiple keys match address (%s)", files)
-}
-
-type caching interface {
-	muLock()
-	muUnlock()
-	getKeydir() string
-	getWatcher() *watcher
-	getThrottle() *time.Timer
-
-	maybeReload()
-	reload()
-	Syncfs2db(time.Time) []error
-
-	hasAddress(address common.Address) bool
-	accounts() []Account
-	add(Account)
-	delete(Account)
-	find(Account) (Account, error)
-
-	close()
-}
 
 // addrCache is a live index of all accounts in the keystore.
 type addrCache struct {
@@ -297,19 +247,4 @@ func (ac *addrCache) scan() ([]Account, error) {
 		fd.Close()
 	}
 	return addrs, err
-}
-
-func skipKeyFile(fi os.FileInfo) bool {
-	// Skip editor backups and UNIX-style hidden files.
-	if strings.HasSuffix(fi.Name(), "~") || strings.HasPrefix(fi.Name(), ".") {
-		return true
-	}
-	if strings.HasSuffix(fi.Name(), "accounts.db") {
-		return true
-	}
-	// Skip misc special files, directories (yes, symlinks too).
-	if fi.IsDir() || fi.Mode()&os.ModeType != 0 {
-		return true
-	}
-	return false
 }
