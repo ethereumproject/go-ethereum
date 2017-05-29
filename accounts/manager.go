@@ -29,10 +29,10 @@ import (
 	"sync"
 	"time"
 
+	"encoding/json"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"path/filepath"
-	"encoding/json"
 )
 
 var (
@@ -46,8 +46,8 @@ var (
 // Account represents a stored key.
 // When used as an argument, it selects a unique key file to act on.
 type Account struct {
-	Address common.Address // Ethereum account address derived from the key
-	EncryptedKey string // web3JSON format
+	Address      common.Address // Ethereum account address derived from the key
+	EncryptedKey string         // web3JSON format
 
 	// File contains the key file name.
 	// When Acccount is used as an argument to select a key, File can be left blank to
@@ -59,9 +59,9 @@ type Account struct {
 // AccountJSON is an auxiliary between Account and EasyMarshal'd structs.
 //easyjson:json
 type AccountJSON struct {
-	Address string `json:"address"`
+	Address      string `json:"address"`
 	EncryptedKey string `json:"key"`
-	File string `json:"file"`
+	File         string `json:"file"`
 }
 
 func (acc *Account) MarshalJSON() ([]byte, error) {
@@ -99,6 +99,7 @@ const (
 )
 
 // NewManager creates a manager for the given directory.
+// keydir is by default /Users/ia/Library/EthereumClassic/mainnet/keystore
 func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager, error) {
 	store, err := newKeyStore(keydir, scryptN, scryptP)
 	if err != nil {
@@ -133,7 +134,7 @@ func NewManager(keydir string, scryptN, scryptP int, wantCacheDB bool) (*Manager
 }
 
 func (am *Manager) BuildIndexDB() []error {
-	return am.ac.Syncfs2db(time.Now().Add(-60*24*7*30*120*time.Minute)) // arbitrarily long "last updated"
+	return am.ac.Syncfs2db(time.Now().Add(-60 * 24 * 7 * 30 * 120 * time.Minute)) // arbitrarily long "last updated"
 }
 
 // HasAddress reports whether a key with the given address is present.

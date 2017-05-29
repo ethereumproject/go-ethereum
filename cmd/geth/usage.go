@@ -74,6 +74,7 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			UnlockedAccountFlag,
 			PasswordFileFlag,
+			AccountsIndexFlag,
 		},
 	},
 	{
