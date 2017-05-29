@@ -307,7 +307,9 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 		scryptP = accounts.LightScryptP
 	}
 
-	mustMakeSufficientConfiguration(ctx) // parses flags and set global chain ID
+	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
+		mustMakeSufficientConfiguration(ctx) // parses flags and set global chain ID
+	}
 	datadir := MustMakeChainDataDir(ctx)
 
 	keydir := filepath.Join(datadir, "keystore")
