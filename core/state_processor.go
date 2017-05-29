@@ -36,7 +36,6 @@ var (
 	big32                    = big.NewInt(32)
 	DisinflationRateQuotient = big.NewInt(4)
 	DisinflationRateDivisor  = big.NewInt(5)
-	DefaultEraLength         = big.NewInt(5000000) // Convenient for testing.
 
 	ErrConfiguration = errors.New("invalid configuration")
 )
@@ -247,7 +246,7 @@ func GetBlockWinnerRewardByEra(era *big.Int) *big.Int {
 	return r
 }
 
-// getBlockEra gets which "Era" a given block is within, given an era length (ecip-1017 has era=5,000,000 blocks)
+// GetBlockEra gets which "Era" a given block is within, given an era length (ecip-1017 has era=5,000,000 blocks)
 // Returns a zero-index era number, so "Era 1": 0, "Era 2": 1, "Era 3": 2 ...
 func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
 	if blockNum.Cmp(big.NewInt(0)) <= 0 {

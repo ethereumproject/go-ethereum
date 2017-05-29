@@ -13,6 +13,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 )
 
+var defaultEraLength *big.Int = big.NewInt(5000000)
+
 // Use default era length 5,000,000
 func TestGetBlockEra1(t *testing.T) {
 	cases := map[*big.Int]*big.Int{
@@ -35,7 +37,7 @@ func TestGetBlockEra1(t *testing.T) {
 	}
 
 	for bn, expectedEra := range cases {
-		gotEra := GetBlockEra(bn, DefaultEraLength)
+		gotEra := GetBlockEra(bn, defaultEraLength)
 		if gotEra.Cmp(expectedEra) != 0 {
 			t.Errorf("got: %v, want: %v", gotEra, expectedEra)
 		}
@@ -85,7 +87,7 @@ func TestGetBlockWinnerRewardByEra(t *testing.T) {
 	}
 
 	for bn, expectedReward := range cases {
-		gotReward := GetBlockWinnerRewardByEra(GetBlockEra(bn, DefaultEraLength))
+		gotReward := GetBlockWinnerRewardByEra(GetBlockEra(bn, defaultEraLength))
 		if gotReward.Cmp(expectedReward) != 0 {
 			t.Errorf("@ %v, got: %v, want: %v", bn, gotReward, expectedReward)
 		}
@@ -104,9 +106,9 @@ func TestGetBlockUncleRewardByEra(t *testing.T) {
 	var we1, we2, we3, we4 *big.Int = new(big.Int), new(big.Int), new(big.Int), new(big.Int)
 
 	// manually divide maxblockreward/32 to compare to got
-	we2.Div(GetBlockWinnerRewardByEra(GetBlockEra(big.NewInt(5000001), DefaultEraLength)), big.NewInt(32))
-	we3.Div(GetBlockWinnerRewardByEra(GetBlockEra(big.NewInt(10000001), DefaultEraLength)), big.NewInt(32))
-	we4.Div(GetBlockWinnerRewardByEra(GetBlockEra(big.NewInt(15000001), DefaultEraLength)), big.NewInt(32))
+	we2.Div(GetBlockWinnerRewardByEra(GetBlockEra(big.NewInt(5000001), defaultEraLength)), big.NewInt(32))
+	we3.Div(GetBlockWinnerRewardByEra(GetBlockEra(big.NewInt(10000001), defaultEraLength)), big.NewInt(32))
+	we4.Div(GetBlockWinnerRewardByEra(GetBlockEra(big.NewInt(15000001), defaultEraLength)), big.NewInt(32))
 
 	cases := map[*big.Int]*big.Int{
 		big.NewInt(0):        nil,
@@ -124,7 +126,7 @@ func TestGetBlockUncleRewardByEra(t *testing.T) {
 
 	for bn, want := range cases {
 
-		era := GetBlockEra(bn, DefaultEraLength)
+		era := GetBlockEra(bn, defaultEraLength)
 
 		var header, uncle *types.Header = &types.Header{}, &types.Header{}
 		header.Number = bn
@@ -179,13 +181,13 @@ func TestGetBlockWinnerRewardForUnclesByEra(t *testing.T) {
 
 	for bn, want := range cases {
 		// test single uncle
-		got := GetBlockWinnerRewardForUnclesByEra(GetBlockEra(bn, DefaultEraLength), uncleSingle)
+		got := GetBlockWinnerRewardForUnclesByEra(GetBlockEra(bn, defaultEraLength), uncleSingle)
 		if got.Cmp(want) != 0 {
 			t.Errorf("@ %v: want: %v, got: %v", bn, want, got)
 		}
 
 		// test double uncle
-		got = GetBlockWinnerRewardForUnclesByEra(GetBlockEra(bn, DefaultEraLength), uncleDouble)
+		got = GetBlockWinnerRewardForUnclesByEra(GetBlockEra(bn, defaultEraLength), uncleDouble)
 		dub := new(big.Int)
 		if got.Cmp(dub.Mul(want, big.NewInt(2))) != 0 {
 			t.Errorf("@ %v: want: %v, got: %v", bn, want, got)
@@ -249,7 +251,7 @@ func TestAccumulateRewards1(t *testing.T) {
 		}
 
 		for _, bn := range cases {
-			era := GetBlockEra(bn, DefaultEraLength)
+			era := GetBlockEra(bn, defaultEraLength)
 
 			header.Number = bn
 
@@ -474,7 +476,7 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 			eraLen := new(big.Int)
 			feat, _, configured := config.HasFeature("reward")
 			if !configured {
-				eraLen = DefaultEraLength
+				eraLen = defaultEraLength
 			} else {
 				elen, ok := feat.GetBigInt("era")
 				if !ok {
@@ -653,7 +655,7 @@ func TestAccumulateRewards3_1Uncle(t *testing.T) {
 			eraLen := new(big.Int)
 			feat, _, configured := config.HasFeature("reward")
 			if !configured {
-				eraLen = DefaultEraLength
+				eraLen = defaultEraLength
 			} else {
 				elen, ok := feat.GetBigInt("era")
 				if !ok {
@@ -806,7 +808,7 @@ func TestAccumulateRewards4_0Uncles(t *testing.T) {
 			eraLen := new(big.Int)
 			feat, _, configured := config.HasFeature("reward")
 			if !configured {
-				eraLen = DefaultEraLength
+				eraLen = defaultEraLength
 			} else {
 				elen, ok := feat.GetBigInt("era")
 				if !ok {
