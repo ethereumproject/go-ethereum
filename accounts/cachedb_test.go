@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	//cachedbtestDir, _   = filepath.Abs(filepath.Join("testdata", "keystore"))
 	cachedbtestAccounts = []Account{
 		{
 			Address:      common.HexToAddress("7ef5a6135f1fd6a02593eedc869c6d41d934aef8"),
@@ -34,125 +33,21 @@ var (
 	}
 )
 
-// Setup/teardown.
-func TestMain(m *testing.M) {
-	m.Run()
-}
-//
-//func TestWatchNewFile_CacheDB(t *testing.T) {
-//	t.Parallel()
-//
-//	dir, am := tmpManager_CacheDB(t)
-//	defer os.RemoveAll(dir)
-//
-//	// Ensure the watcher is started before adding any files.
-//	am.Accounts()
-//	time.Sleep(5 * time.Second)
-//	if w := am.ac.getWatcher(); !w.running {
-//		t.Fatalf("watcher not running after %v: %v", 5*time.Second, spew.Sdump(w))
-//	}
-//
-//	initAccs := am.Accounts()
-//	if len(initAccs) != 0 {
-//		t.Fatalf("initial accounts not empty: %v", len(initAccs))
-//	}
-//	initAccs = nil
-//
-//	// Move in the files.
-//	wantAccounts := make([]Account, len(cachedbtestAccounts))
-//	for i := range cachedbtestAccounts {
-//		a := cachedbtestAccounts[i]
-//		//a.File = filepath.Join(dir, filepath.Base(a.File)) // rename test file to base from temp dir
-//		wantAccounts[i] = a
-//		data, err := ioutil.ReadFile(filepath.Join(cachetestDir, cachedbtestAccounts[i].File)) // but we still have to read from original file path
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//		// write to temp dir
-//		if err := ioutil.WriteFile(filepath.Join(dir, a.File), data, 0666); err != nil {
-//			t.Fatal(err)
-//		}
-//	}
-//	sort.Sort(accountsByFile(wantAccounts))
-//
-//	// am should see the accounts.
-//	var list []Account
-//	for d := 200 * time.Millisecond; d <= 2 * minReloadInterval; d *= 2 {
-//		list = am.Accounts()
-//		if reflect.DeepEqual(list, wantAccounts) {
-//			return
-//		}
-//		time.Sleep(d)
-//	}
-//	t.Errorf("got %s, want %s", spew.Sdump(list), spew.Sdump(wantAccounts))
-//}
-
-//func TestWatchNoDir_CacheDB(t *testing.T) {
-//	t.Parallel()
-//
-//	// Create am but not the directory that it watches.
-//	rand.Seed(time.Now().UnixNano())
-//	dir := filepath.Join(os.TempDir(), fmt.Sprintf("eth-keystore-watch-test-%d-%d", os.Getpid(), rand.Int()))
-//	am, err := NewManager(dir, LightScryptN, LightScryptP, true)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	list := am.Accounts()
-//	if len(list) > 0 {
-//		t.Error("initial account list not empty:", list)
-//	}
-//	time.Sleep(5 * time.Second)
-//	if w := am.ac.getWatcher(); !w.running {
-//		t.Fatalf("watcher not running after %v: %v", 5*time.Second, spew.Sdump(w))
-//	}
-//
-//	// Create the directory and copy a key file into it.
-//	os.MkdirAll(dir, 0700)
-//	defer os.RemoveAll(dir)
-//
-//	file := filepath.Join(dir, cachedbtestAccounts[0].File)
-//	data, err := ioutil.ReadFile(filepath.Join(cachetestDir, cachedbtestAccounts[0].File))
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	ff, err := os.Create(file)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	_, err = ff.Write(data)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	ff.Close()
-//
-//	// am should see the account.
-//	wantAccounts := []Account{cachedbtestAccounts[0]}
-//	var gotAccounts []Account
-//	for d := 500 * time.Millisecond; d <= 2 * minReloadInterval; d *= 2 {
-//		gotAccounts = am.Accounts()
-//		if reflect.DeepEqual(gotAccounts, wantAccounts) {
-//			return
-//		}
-//		time.Sleep(d)
-//	}
-//	t.Errorf("account watcher never saw changes: got: %v, want: %v", spew.Sdump(gotAccounts), spew.Sdump(wantAccounts))
-//}
-
 func TestCacheInitialReload_CacheDB(t *testing.T) {
-
 	cache := newCacheDB(cachetestDir)
+	cache.Syncfs2db(time.Now())
+	defer cache.close()
 
 	accounts := cache.accounts()
 
 	if !reflect.DeepEqual(accounts, cachedbtestAccounts) {
-		t.Errorf("got initial accounts: %swant %s", spew.Sdump(accounts), spew.Sdump(cachedbtestAccounts))
+		t.Errorf("got: %v, want %v", spew.Sdump(accounts), spew.Sdump(cachedbtestAccounts))
 	}
-	cache.close()
 }
 
 func TestCacheAddDeleteOrder_CacheDB(t *testing.T) {
 	cache := newCacheDB("testdata/no-such-dir")
+	defer cache.close()
 	defer os.RemoveAll("testdata/no-such-dir")
 
 	accounts := []Account{
@@ -233,13 +128,13 @@ func TestCacheAddDeleteOrder_CacheDB(t *testing.T) {
 	if cache.hasAddress(wantAccounts[0].Address) {
 		t.Errorf("expected hasAccount(%x) to return false", wantAccounts[0].Address)
 	}
-	cache.close()
 }
 
 func TestCacheFind_CacheFind(t *testing.T) {
 	dir := filepath.Join("testdata", "dir")
-	defer os.RemoveAll(dir)
 	cache := newCacheDB(dir)
+	defer cache.close()
+	defer os.RemoveAll(dir)
 
 	accounts := []Account{
 		{
@@ -315,7 +210,6 @@ func TestCacheFind_CacheFind(t *testing.T) {
 			continue
 		}
 	}
-	cache.close()
 }
 
 func TestAccountCache_CacheDB_SyncFS2DB(t *testing.T) {
@@ -394,13 +288,13 @@ func TestAccountCache_CacheDB_SyncFS2DB(t *testing.T) {
 		t.Errorf("got %v, want: %v", spew.Sdump(initAccs), spew.Sdump(cachedbtestAccounts[1:]))
 	}
 	ma.ac.close()
-	ma = nil
 }
 
 func TestCacheDBFilePath (t *testing.T) {
 	dir := filepath.Join("testdata", "keystore")
 	dir, _ = filepath.Abs(dir)
 	cache := newCacheDB(dir)
+	defer cache.close()
 
 	accs := cache.accounts()
 
@@ -409,81 +303,4 @@ func TestCacheDBFilePath (t *testing.T) {
 			t.Errorf("wanted relative filepath (wanted basename), got: %v", a.File)
 		}
 	}
-
-	cache.close()
-	cache = nil
 }
-
-//func TestAccountCache_CacheDB_WatchRemove(t *testing.T) {
-//	 t.Parallel()
-//
-//	// setup temp dir
-//	rp := fmt.Sprintf("eth-keystore-watch-cachedb-test-%d-%d", os.Getpid(), rand.Int())
-//	tmpDir, e := ioutil.TempDir("", rp)
-//	if e != nil {
-//		t.Fatalf("create temp dir: %v", e)
-//	}
-//	defer os.RemoveAll(tmpDir)
-//
-//	// copy 3 test account files into temp dir
-//	for _, acc := range cachedbtestAccounts {
-//		data, err := ioutil.ReadFile(filepath.Join(cachetestDir, acc.File))
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//		ff, err := os.Create(filepath.Join(tmpDir, acc.File))
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//		_, err = ff.Write(data)
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//		ff.Close()
-//	}
-//
-//	// make manager in temp dir
-//	ma, e := NewManager(tmpDir, veryLightScryptN, veryLightScryptP, true)
-//	if e != nil {
-//		t.Errorf("create manager in temp dir: %v", e)
-//	}
-//
-//	// test manager has all accounts
-//	initAccs := ma.Accounts()
-//	if !reflect.DeepEqual(initAccs, cachedbtestAccounts) {
-//		t.Errorf("got %v, want: %v", spew.Sdump(initAccs), spew.Sdump(cachedbtestAccounts))
-//	}
-//	time.Sleep(2 * time.Second)
-//
-//	// test watcher is watching
-//	if w := ma.ac.getWatcher(); !w.running {
-//		t.Errorf("watcher not running")
-//	}
-//
-//	// remove file
-//	rmPath := filepath.Join(tmpDir, cachedbtestAccounts[0].File)
-//	if e := os.Remove(rmPath); e != nil {
-//		t.Fatalf("removing key file: %v", e)
-//	}
-//	// ensure it's gone
-//	if _, e := os.Stat(filepath.Join(tmpDir, cachedbtestAccounts[0].File)); e == nil {
-//		t.Fatalf("removed file not actually rm'd")
-//	}
-//
-//	// test manager does not have account
-//	wantAccounts := cachedbtestAccounts[1:]
-//	if len(wantAccounts) != 2 {
-//		t.Errorf("dummy")
-//	}
-//
-//	gotAccounts := []Account{}
-//	for d := 500 * time.Millisecond; d <= 2 * minReloadInterval; d *= 2 {
-//		gotAccounts = ma.Accounts()
-//		// If it's ever all the same, we're good. Exit with aplomb.
-//		if reflect.DeepEqual(gotAccounts, wantAccounts) {
-//			return
-//		}
-//		time.Sleep(d)
-//	}
-//	t.Errorf("got: %v, want: %v", spew.Sdump(gotAccounts), spew.Sdump(wantAccounts))
-//}
