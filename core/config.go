@@ -321,7 +321,7 @@ func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, 
 	return okForkFeature, okFork, found
 }
 
-// HasFeature looks up if fork feature exists _on any fork at any block_ in the configuration.
+// HasFeature looks up if fork feature exists on any fork at any block in the configuration.
 // In case of multiple same-'id'd features, returns latest (assuming forks are sorted).
 func (c *ChainConfig) HasFeature(id string) (*ForkFeature, *Fork, bool) {
 	var okForkFeature = &ForkFeature{}
