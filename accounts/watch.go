@@ -32,7 +32,7 @@ type watcher struct {
 	running  bool
 	ev       chan notify.EventInfo
 	//evs      []notify.EventInfo
-	quit     chan struct{}
+	quit chan struct{}
 }
 
 func newWatcher(ac caching) *watcher {

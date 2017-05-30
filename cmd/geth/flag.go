@@ -175,7 +175,15 @@ func mustMakeDataDir(ctx *cli.Context) string {
 // A subdir of the datadir is used for each chain configuration ("/mainnet", "/testnet", "/my-custom-net").
 // --> <home>/<EthereumClassic>/<mainnet|testnet|custom-net>, per --chain
 func MustMakeChainDataDir(ctx *cli.Context) string {
-	return common.EnsureAbsolutePath(mustMakeDataDir(ctx), getChainConfigIDFromContext(ctx))
+	rp := common.EnsurePathAbsoluteOrRelativeTo(mustMakeDataDir(ctx), getChainConfigIDFromContext(ctx))
+	if !filepath.IsAbs(rp) {
+		af, e := filepath.Abs(rp)
+		if e != nil {
+			glog.Fatalf("cannot make absolute path for chain data dir: %v: %v", rp, e)
+		}
+		rp = af
+	}
+	return rp
 }
 
 // MakeIPCPath creates an IPC path configuration from the set command line flags,
@@ -298,11 +306,21 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 		scryptN = accounts.LightScryptN
 		scryptP = accounts.LightScryptP
 	}
+
+	// in case --chain-config is set, we need to read file to store chain subdir as global
+	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
+		mustMakeSufficientChainConfig(ctx)
+	}
 	datadir := MustMakeChainDataDir(ctx)
 
 	keydir := filepath.Join(datadir, "keystore")
 	if path := ctx.GlobalString(aliasableName(KeyStoreDirFlag.Name, ctx)); path != "" {
-		keydir = path
+		af, e := filepath.Abs(path)
+		if e != nil {
+			glog.V(logger.Error).Infof("keydir path could not be made absolute: %v: %v", path, e)
+		} else {
+			keydir = af
+		}
 	}
 
 	m, err := accounts.NewManager(keydir, scryptN, scryptP, ctx.GlobalBool(aliasableName(AccountsIndexFlag.Name, ctx)))
@@ -607,7 +625,6 @@ func chainIdIsCustom(ctx *cli.Context) bool {
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
-
 	// global settings
 
 	if ctx.GlobalIsSet(aliasableName(ExtraDataFlag.Name, ctx)) {
@@ -751,9 +768,17 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 	return stackConf, shhEnable
 }
 
-func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) (*eth.Config) {
+func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.Config {
 
 	accman := MakeAccountManager(ctx)
+	passwords := MakePasswordList(ctx)
+
+	accounts := strings.Split(ctx.GlobalString(aliasableName(UnlockedAccountFlag.Name, ctx)), ",")
+	for i, account := range accounts {
+		if trimmed := strings.TrimSpace(account); trimmed != "" {
+			unlockAccount(ctx, accman, trimmed, i, passwords)
+		}
+	}
 
 	ethConf := &eth.Config{
 		ChainConfig:             sconf.ChainConfig,
@@ -847,10 +872,16 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
 
+	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
+		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
+			filepath.Clean(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx)))))
+	}
+
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
 	glog.V(logger.Info).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
 	glog.V(logger.Info).Infof("Geth is configured to use blockchain: \x1b[32m%v (ETC)\x1b[39m", config.Name)
+	glog.V(logger.Info).Infof("Chain subdir: \x1b[32m%v\x1b[39m", config.ID)
 
 	glog.V(logger.Info).Info(fmt.Sprintf("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks)))
 
@@ -930,7 +961,7 @@ func MakeConsolePreloads(ctx *cli.Context) []string {
 
 	assets := ctx.GlobalString(aliasableName(JSpathFlag.Name, ctx))
 	for _, file := range strings.Split(ctx.GlobalString(aliasableName(PreloadJSFlag.Name, ctx)), ",") {
-		preloads = append(preloads, common.EnsureAbsolutePath(assets, strings.TrimSpace(file)))
+		preloads = append(preloads, common.EnsurePathAbsoluteOrRelativeTo(assets, strings.TrimSpace(file)))
 	}
 	return preloads
 }
