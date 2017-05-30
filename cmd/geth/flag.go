@@ -816,16 +816,6 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 	return ethConf
 }
 
-// MustMakeChainConfig reads the chain configuration from the database in ctx.Datadir.
-func MustMakeChainConfig(ctx *cli.Context) *core.ChainConfig {
-
-	db := MakeChainDatabase(ctx)
-	defer db.Close()
-	glog.V(logger.Info).Info(fmt.Sprintf("Did read chain configuration from database: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata"))
-
-	return MustMakeChainConfigFromDb(ctx, db)
-}
-
 // mustMakeSufficientChainConfig makes a sufficent chain configuration (id, chainconfig, nodes,...) from
 // either JSON file path, DB, or fails hard.
 // Forces users to provide a full and complete config file if any is specified.
@@ -836,8 +826,6 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	// If external JSON --chainconfig specified.
 	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
-		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
-			filepath.Clean(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx)))))
 
 		// Returns surely valid suff chain config.
 		config, err := core.ReadExternalChainConfig(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx)))
@@ -858,7 +846,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 	// Initialise chain configuration before handling migrations or setting up node.
 	config.ID = getChainConfigIDFromContext(ctx)
 	config.Name = getChainConfigNameFromContext(ctx)
-	config.ChainConfig = MustMakeChainConfig(ctx).SortForks()
+	config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 	config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
 
 	if isTestMode(ctx) {
@@ -873,22 +861,22 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
 
 	if ctx.GlobalIsSet(aliasableName(UseChainConfigFlag.Name, ctx)) {
-		glog.V(logger.Info).Info(fmt.Sprintf("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
-			filepath.Clean(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx)))))
+		glog.V(logger.Info).Infof("Using custom chain configuration file: \x1b[32m%s\x1b[39m",
+			filepath.Clean(ctx.GlobalString(aliasableName(UseChainConfigFlag.Name, ctx))))
 	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
-	glog.V(logger.Info).Info(fmt.Sprintf("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version))
+	glog.V(logger.Info).Infof("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version)
 	glog.V(logger.Info).Infof("Geth is configured to use blockchain: \x1b[32m%v (ETC)\x1b[39m", config.Name)
-	glog.V(logger.Info).Infof("Chain subdir: \x1b[32m%v\x1b[39m", config.ID)
+	glog.V(logger.Info).Infof("Using chain database at: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata")
 
-	glog.V(logger.Info).Info(fmt.Sprintf("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks)))
+	glog.V(logger.Info).Infof("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks))
 
 	for i := range config.ChainConfig.Forks {
-		glog.V(logger.Info).Info(fmt.Sprintf(" %7v %v", config.ChainConfig.Forks[i].Block, config.ChainConfig.Forks[i].Name))
+		glog.V(logger.Info).Infof(" %7v %v", config.ChainConfig.Forks[i].Block, config.ChainConfig.Forks[i].Name)
 		if !config.ChainConfig.Forks[i].RequiredHash.IsEmpty() {
-			glog.V(logger.Info).Info(fmt.Sprintf("         with block %v", config.ChainConfig.Forks[i].RequiredHash.Hex()))
+			glog.V(logger.Info).Infof("         with block %v", config.ChainConfig.Forks[i].RequiredHash.Hex())
 		}
 		for _, feat := range config.ChainConfig.Forks[i].Features {
 			glog.V(logger.Debug).Infof("    id: %v", feat.ID)
@@ -901,18 +889,12 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	glog.V(logger.Info).Info(glog.Separator("-"))
 }
 
-// MustMakeChainConfigFromDb reads the chain configuration from the given database.
-func MustMakeChainConfigFromDb(ctx *cli.Context, db ethdb.Database) *core.ChainConfig {
-
+// MustMakeChainConfigFromDefaults reads the chain configuration from hardcode.
+func MustMakeChainConfigFromDefaults(ctx *cli.Context) *core.ChainConfig {
 	c := core.DefaultConfig
-	configName := "mainnet"
 	if isTestMode(ctx) {
 		c = core.TestConfig
-		configName = "morden testnet"
 	}
-
-	glog.V(logger.Info).Info(fmt.Sprintf("Loading \x1b[36m%v\x1b[39m configuration from database...", configName))
-
 	return c
 }
 
@@ -934,9 +916,10 @@ func MakeChainDatabase(ctx *cli.Context) ethdb.Database {
 // MakeChain creates a chain manager from set command line flags.
 func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database) {
 	var err error
+	mustMakeSufficientChainConfig(ctx)
 	chainDb = MakeChainDatabase(ctx)
 
-	chainConfig := MustMakeChainConfigFromDb(ctx, chainDb)
+	chainConfig := MustMakeChainConfigFromDefaults(ctx)
 
 	pow := pow.PoW(core.FakePow{})
 	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {

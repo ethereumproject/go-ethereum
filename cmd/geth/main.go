@@ -39,7 +39,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
-
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -274,14 +273,19 @@ func status(ctx *cli.Context) error {
 	name := makeNodeName(Version, ctx)
 	stackConf, _ := mustMakeStackConf(ctx, name, config, ethConf)
 
+	chaindata, cdb := MakeChain(ctx)
+	defer cdb.Close()
+	datadir := MustMakeChainDataDir(ctx)
+
 	sep := glog.Separator("-")
-	printme := []struct{
-		title string
+	printme := []struct {
+		title   string
 		keyVals []string
 	}{
 		{"Chain Configuration", formatSufficientChainConfigPretty(config)},
 		{"Ethereum Configuration", formatEthConfigPretty(ethConf)},
 		{"Node Configuration", formatStackConfigPretty(stackConf)},
+		{"Chain database status", formatChainDataPretty(datadir, chaindata)},
 	}
 
 	s := "\n"
@@ -289,7 +293,7 @@ func status(ctx *cli.Context) error {
 	for _, p := range printme {
 		s += withLineBreak(sep)
 		// right align category title
-		s += withLineBreak(strings.Repeat(" ", len(sep) - len(p.title)) + colorBlue(p.title))
+		s += withLineBreak(strings.Repeat(" ", len(sep)-len(p.title)) + colorBlue(p.title))
 		for _, v := range p.keyVals {
 			s += v
 		}
@@ -329,7 +333,9 @@ func rollback(ctx *cli.Context) error {
 	return nil
 }
 
-// dumpExternailChainConfig exports chain configuration based on database to JSON file
+// dumpChainConfig exports chain configuration based on context to JSON file.
+// It is not compatible with --chain-config flag; it is intended to move from flags -> file,
+// and not the other way around.
 func dumpChainConfig(ctx *cli.Context) error {
 
 	chainConfigFilePath := ctx.Args().First()
@@ -371,7 +377,8 @@ func dumpChainConfig(ctx *cli.Context) error {
 		glog.V(logger.Info).Info("Finished building genesis state dump. Whew!")
 	}
 
-	chainConfig := MustMakeChainConfig(ctx)
+	// Note that we use default configs (not externalizable).
+	chainConfig := MustMakeChainConfigFromDefaults(ctx)
 	var nodes []string
 	for _, node := range MakeBootstrapNodesFromContext(ctx) {
 		nodes = append(nodes, node.String())

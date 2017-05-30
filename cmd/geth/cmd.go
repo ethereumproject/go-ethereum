@@ -23,6 +23,8 @@ import (
 	"os/signal"
 	"runtime"
 
+	"strings"
+
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -30,7 +32,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"strings"
+	"time"
 )
 
 const (
@@ -232,9 +234,10 @@ func formatStatusKeyValue(prefix string, ss ...interface{}) (s string) {
 
 type printable struct {
 	indent int
-	key string
-	val interface{}
+	key    string
+	val    interface{}
 }
+
 var indent string = "    "
 
 // For use by 'status' command.
@@ -269,9 +272,9 @@ func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []
 			ss = append(ss, printable{2, "Required hash", v.RequiredHash.Hex()})
 		}
 		for _, fv := range v.Features {
-			ss = append(ss, printable{3,  fv.ID, nil})
+			ss = append(ss, printable{3, fv.ID, nil})
 			for k, ffv := range fv.Options {
-				ss = append(ss, printable{4,  k, ffv})
+				ss = append(ss, printable{4, k, ffv})
 			}
 		}
 	}
@@ -400,6 +403,49 @@ func formatStackConfigPretty(stackConfig *node.Config) (s []string) {
 	ss = append(ss, printable{1, "modules", stackConfig.WSModules})
 	// Endpoint()
 	ss = append(ss, printable{1, "endpoint", stackConfig.WSEndpoint()})
+
+	for _, v := range ss {
+		if v.val != nil {
+			s = append(s, formatStatusKeyValue(strings.Repeat(indent, v.indent), v.key, v.val))
+		} else {
+			s = append(s, formatStatusKeyValue(strings.Repeat(indent, v.indent), v.key))
+		}
+	}
+	return s
+}
+
+func formatBlockPretty(b *types.Block) (ss []printable) {
+	bh := b.Header()
+	ss = append(ss, printable{1, "Number", bh.Number})
+	ss = append(ss, printable{1, "Hash (hex)", bh.Hash().Hex()})
+	ss = append(ss, printable{1, "Parent hash (hex)", bh.ParentHash.Hex()})
+	ss = append(ss, printable{1, "Nonce (uint64)", bh.Nonce.Uint64()})
+	ss = append(ss, printable{1, "Time", fmt.Sprintf("%v (%v)", bh.Time, time.Unix(int64(bh.Time.Uint64()), 0))})
+	ss = append(ss, printable{1, "Difficulty", bh.Difficulty})
+	ss = append(ss, printable{1, "Coinbase", bh.Coinbase.Hex()})
+	ss = append(ss, printable{1, "Tx hash (hex)", bh.TxHash.Hex()})
+	ss = append(ss, printable{1, "Bloom (string)", string(bh.Bloom.Bytes())})
+	ss = append(ss, printable{1, "Gas limit", bh.GasLimit})
+	ss = append(ss, printable{1, "Gas used", bh.GasUsed})
+	ss = append(ss, printable{1, "Extra data (bytes)", bh.Extra})
+	return ss
+}
+
+func formatChainDataPretty(datadir string, chain *core.BlockChain) (s []string) {
+	ss := []printable{}
+
+	ss = append(ss, printable{0, "Datadir", datadir})
+
+	ss = append(ss, printable{0, "Genesis", nil})
+	ss = append(ss, formatBlockPretty(chain.Genesis())...)
+
+	currentBlock := chain.CurrentBlock()
+	ss = append(ss, printable{0, "Current block", nil})
+	ss = append(ss, formatBlockPretty(currentBlock)...)
+
+	currentFastBlock := chain.CurrentFastBlock()
+	ss = append(ss, printable{0, "Current fast block", nil})
+	ss = append(ss, formatBlockPretty(currentFastBlock)...)
 
 	for _, v := range ss {
 		if v.val != nil {
