@@ -406,3 +406,19 @@ func TestAccountCache_WatchRemove(t *testing.T) {
 	}
 	t.Errorf("got: %v, want: %v", spew.Sdump(gotAccounts), spew.Sdump(wantAccounts))
 }
+
+func TestCacheFilePath(t *testing.T) {
+	dir := filepath.Join("testdata", "keystore")
+	dir, _ = filepath.Abs(dir)
+	cache := newAddrCache(dir)
+
+	accs := cache.accounts()
+
+	for _, a := range accs {
+		if !filepath.IsAbs(a.File) {
+			t.Errorf("wanted absolute filepath, got: %v", a.File)
+		}
+	}
+
+	cache.close()
+}

@@ -32,7 +32,7 @@ import (
 var (
 	AccountsIndexFlag = cli.BoolFlag{
 		Name: "index-accounts,indexaccounts",
-		Usage: "enable key-value db store for indexing large amounts of key files",
+		Usage: "Enable key-value db store for indexing large amounts of key files",
 	}
 	walletCommand = cli.Command{
 		Name:  "wallet",
@@ -100,7 +100,7 @@ And finally. DO NOT FORGET YOUR PASSWORD.
 				Usage:  "create a new account",
 				Description: `
 
-    ethereum account new
+    geth account new
 
 Creates a new account. Prints the address.
 
@@ -122,7 +122,7 @@ password to file or expose in any other way.
 				Usage:  "update an existing account",
 				Description: `
 
-    ethereum account update <address>
+    geth account update <address>
 
 Update an existing account.
 
@@ -134,7 +134,7 @@ format to the newest format or change the password for an account.
 
 For non-interactive use the passphrase can be specified with the --password flag:
 
-    ethereum --password <passwordfile> account update <address>
+    geth --password <passwordfile> account update <address>
 
 Since only one password can be given, only format update can be performed,
 changing your password is only possible interactively.
@@ -146,7 +146,7 @@ changing your password is only possible interactively.
 				Usage:  "import a private key into a new account",
 				Description: `
 
-    ethereum account import <keyfile>
+    geth account import <keyfile>
 
 Imports an unencrypted private key from <keyfile> and creates a new account.
 Prints the address.
@@ -159,7 +159,7 @@ You must remember this passphrase to unlock your account in the future.
 
 For non-interactive use the passphrase can be specified with the -password flag:
 
-    ethereum --password <passwordfile> account import <keyfile>
+    geth --password <passwordfile> account import <keyfile>
 
 Note:
 As you can directly copy your encrypted accounts to another ethereum instance,
@@ -173,16 +173,16 @@ nodes.
 				Usage:  "build account index cache database",
 				Description: `
 
-    ethereum --index-accounts account index
+    geth --index-accounts account index
 
 Create keystore directory index cache database (keystore/accounts.db). Relevant for use with large amounts of key files (>10,000).
 
 While idempotent, this command is only designed to segregate work and setup time for initial index creation.
 
-It is only useful to run once when it's your first time using '--index-accounts' flag option.
+It is only useful to run once when it's your first time using '--index-accounts' flag option, and MUST be run in conjunction
+with that option.
 
 It indexes all key files from keystore/* (non-recursively).
-
 					`,
 			},
 		},
@@ -337,7 +337,6 @@ func importWallet(ctx *cli.Context) error {
 	if err != nil {
 		log.Fatal("Could not read wallet file: ", err)
 	}
-
 	accman := MakeAccountManager(ctx)
 	passphrase := getPassPhrase("", false, 0, MakePasswordList(ctx))
 
