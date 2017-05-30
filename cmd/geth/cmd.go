@@ -23,8 +23,6 @@ import (
 	"os/signal"
 	"runtime"
 
-	"strconv"
-
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -216,7 +214,11 @@ func formatStatusKeyValue(prefix string, ss ...interface{}) (s string) {
 		s += colorBlue(ss[0])
 	}
 	if len(ss) == 2 {
-		s += fmt.Sprintf("%v: %v", ss[0], colorGreen(ss[1]))
+		if ss[0] == "" {
+			s += fmt.Sprintf("%v", colorGreen(ss[1]))
+		} else {
+			s += fmt.Sprintf("%v: %v", ss[0], colorGreen(ss[1]))
+		}
 	}
 	if len(ss) > 2 {
 		s += fmt.Sprintf("%v:", ss[0])
@@ -239,25 +241,13 @@ var indent string = "    "
 // These are one of doing it, with each key/val per line and some appropriate indentations to signal grouping/parentage.
 // ... But there might be a more elegant way using columns and stuff. VeryPretty?
 func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []string) {
-	// ID(not ChainID, but ChainID')
-	// Name
-	// Genesis (dump)
-	// ChainConfig
-	// 	Forks
-	// 		Features
-	//			Options
-	//		RequiredHash
-	//	BadHashes
 	ss := []printable{}
 
-	lenAlloc := 0
-	for range config.Genesis.Alloc {
-		lenAlloc++
-	}
+	// Chain identifiers.
+	ss = append(ss, printable{0, "Chain identifier (subdir)", config.ID})
+	ss = append(ss, printable{0, "Chain name", config.Name})
 
-	ss = append(ss, printable{0, "Chain Identifier (Subdir)", config.ID})
-	ss = append(ss, printable{0, "Chain Name", config.Name})
-
+	// Genesis.
 	ss = append(ss, printable{0, "Genesis", nil})
 	ss = append(ss, printable{1, "Nonce", config.Genesis.Nonce})
 	ss = append(ss, printable{1, "Coinbase", config.Genesis.Coinbase})
@@ -265,8 +255,11 @@ func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []
 	ss = append(ss, printable{1, "Gas limit", config.Genesis.GasLimit})
 	ss = append(ss, printable{1, "Difficulty", config.Genesis.Difficulty})
 	ss = append(ss, printable{1, "Time", config.Genesis.Timestamp})
+
+	lenAlloc := len(config.Genesis.Alloc)
 	ss = append(ss, printable{1, "Number of allocations", lenAlloc})
 
+	// Chain configuration.
 	ss = append(ss, printable{0, "Chain Configuration", nil})
 	ss = append(ss, printable{1, "Forks", nil})
 	for _, v := range config.ChainConfig.Forks {
@@ -299,49 +292,121 @@ func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []
 	return s
 }
 
-func logEthConfigPretty(ethConfig *eth.Config) (s string) {
+func formatEthConfigPretty(ethConfig *eth.Config) (s []string) {
+	ss := []printable{}
+
 	// NetworkID
+	ss = append(ss, printable{0, "Network ID", ethConfig.NetworkId})
 	// FastSync?
+	ss = append(ss, printable{0, "Fast sync", ethConfig.FastSync})
 	// BlockChainVersion
+	ss = append(ss, printable{0, "Blockchain version", ethConfig.BlockChainVersion})
 	// DatabaseCache
+	ss = append(ss, printable{0, "Database cache (MB)", ethConfig.DatabaseCache})
 	// DatabaseHandles
+	ss = append(ss, printable{0, "Database file handles", ethConfig.DatabaseHandles})
 	// NatSpec?
+	ss = append(ss, printable{0, "NAT spec", ethConfig.NatSpec})
 	// AutoDAG?
+	ss = append(ss, printable{0, "Auto DAG", ethConfig.AutoDAG})
 	// PowTest?
+	ss = append(ss, printable{0, "Pow test", ethConfig.PowTest})
 	// PowShared?
+	ss = append(ss, printable{0, "Pow shared", ethConfig.PowShared})
+	// SolcPath
+	ss = append(ss, printable{0, "Solc path", ethConfig.SolcPath})
+
 	// Account Manager
-	//	Number of accounts
-	//	Keystore
+	lenAccts := len(ethConfig.AccountManager.Accounts())
+	ss = append(ss, printable{0, "Account Manager", nil})
+	//Number of accounts
+	ss = append(ss, printable{1, "Number of accounts", lenAccts})
+	// keystore not exported
+	// Keystore
 	//		Dir
 	//		ScryptN
 	//		ScryptP
 	// Etherbase (if set)
+	ss = append(ss, printable{0, "Etherbase", ethConfig.Etherbase.Hex()})
 	// GasPrice
+	ss = append(ss, printable{0, "Gas price", ethConfig.GasPrice})
+	ss = append(ss, printable{0, "GPO min gas price", ethConfig.GpoMinGasPrice})
+	ss = append(ss, printable{0, "GPO max gas price", ethConfig.GpoMaxGasPrice})
 	// MinerThreads
-	s += withLineBreak("Network ID: " + colorGreen(strconv.Itoa(ethConfig.NetworkId)))
+	ss = append(ss, printable{0, "Miner threads", ethConfig.MinerThreads})
+
+	for _, v := range ss {
+		if v.val != nil {
+			s = append(s, formatStatusKeyValue(strings.Repeat(indent, v.indent), v.key, v.val))
+		} else {
+			s = append(s, formatStatusKeyValue(strings.Repeat(indent, v.indent), v.key))
+		}
+	}
 	return s
 }
 
-func logStackConfigPretty(stackConfig *node.Config) (s string) {
+func formatStackConfigPretty(stackConfig *node.Config) (s []string) {
+
+	ss := []printable{}
 	// Name
+	ss = append(ss, printable{0, "Name", stackConfig.Name})
 	// Datadir
+	ss = append(ss, printable{0, "Datadir", stackConfig.DataDir})
 	// IPCPath
+	ss = append(ss, printable{0, "IPC path", stackConfig.IPCPath})
 	// PrivateKey?
+	if stackConfig.PrivateKey != nil {
+		ss = append(ss, printable{1, "Private key", nil})
+		ss = append(ss, printable{2, "Private key", nil})
+		ss = append(ss, printable{2, "X", stackConfig.PrivateKey.PublicKey.X})
+		ss = append(ss, printable{2, "Y", stackConfig.PrivateKey.PublicKey.Y})
+	}
 	// Discovery?
+	ss = append(ss, printable{0, "Discovery", !stackConfig.NoDiscovery})
 	// BoostrapNodes
-	//	Enode
-	// ListenAddr
+	ss = append(ss, printable{0, "Bootstrap nodes", nil})
+	for _, n := range stackConfig.BootstrapNodes {
+		ss = append(ss, printable{1, "", n.String()})
+	}
+	// ListenAddrg
+	ss = append(ss, printable{0, "Listen address", stackConfig.ListenAddr})
 	// NAT
+	ss = append(ss, printable{0, "NAT", stackConfig.NAT.String()})
 	// MaxPeers
+	ss = append(ss, printable{0, "Max peers", stackConfig.MaxPeers})
 	// MaxPendingPeers
+	ss = append(ss, printable{0, "Max pending peers", stackConfig.MaxPendingPeers})
+	// HTTP
+	ss = append(ss, printable{0, "HTTP", nil})
 	// HTTPHost
+	ss = append(ss, printable{1, "host", stackConfig.HTTPHost})
 	// HTTPPort
+	ss = append(ss, printable{1, "port", stackConfig.HTTPPort})
 	// HTTPCors
+	ss = append(ss, printable{1, "CORS", stackConfig.HTTPCors})
 	// HTTPModules[]
+	ss = append(ss, printable{1, "modules", stackConfig.HTTPModules})
+	// Endpoint()
+	ss = append(ss, printable{1, "endpoint", stackConfig.HTTPEndpoint()})
+	// WS
+	ss = append(ss, printable{0, "WS", nil})
 	// WSHost
+	ss = append(ss, printable{1, "host", stackConfig.WSHost})
 	// WSPort
+	ss = append(ss, printable{1, "port", stackConfig.WSPort})
 	// WSOrigins
+	ss = append(ss, printable{1, "origins", stackConfig.WSOrigins})
 	// WSModules[]
-	s += withLineBreak("Name: " + colorGreen(stackConfig.Name))
+	ss = append(ss, printable{1, "modules", stackConfig.WSModules})
+	// Endpoint()
+	ss = append(ss, printable{1, "endpoint", stackConfig.WSEndpoint()})
+
+	for _, v := range ss {
+		if v.val != nil {
+			s = append(s, formatStatusKeyValue(strings.Repeat(indent, v.indent), v.key, v.val))
+		} else {
+			s = append(s, formatStatusKeyValue(strings.Repeat(indent, v.indent), v.key))
+		}
+	}
 	return s
 }

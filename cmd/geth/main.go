@@ -279,25 +279,22 @@ func status(ctx *cli.Context) error {
 		title string
 		keyVals []string
 	}{
-		{title: "Chain Configuration", keyVals: formatSufficientChainConfigPretty(config)},
+		{"Chain Configuration", formatSufficientChainConfigPretty(config)},
+		{"Ethereum Configuration", formatEthConfigPretty(ethConf)},
+		{"Node Configuration", formatStackConfigPretty(stackConf)},
 	}
+
+	s := "\n"
 
 	for _, p := range printme {
-		glog.V(logger.Info).Info(sep)
+		s += withLineBreak(sep)
 		// right align category title
-		glog.V(logger.Info).Info(strings.Repeat(" ", len(sep) - len(p.title)) + colorBlue(p.title))
-		for _, s := range p.keyVals {
-			glog.V(logger.Info).Info(s)
+		s += withLineBreak(strings.Repeat(" ", len(sep) - len(p.title)) + colorBlue(p.title))
+		for _, v := range p.keyVals {
+			s += v
 		}
 	}
-
-	glog.V(logger.Info).Info(glog.Separator("-"))
-	glog.V(logger.Info).Info(colorBlue("* Ethereum Configuration"))
-	glog.V(logger.Info).Info(logEthConfigPretty(ethConf))
-
-	glog.V(logger.Info).Info(glog.Separator("-"))
-	glog.V(logger.Info).Info(colorBlue("* Node Configuration"))
-	glog.V(logger.Info).Info(logStackConfigPretty(stackConf))
+	glog.V(logger.Info).Info(s)
 
 	return nil
 }
