@@ -162,7 +162,7 @@ teardown() {
 @test "--cache 16 | exit 0" {
 	run $GETH_CMD --data-dir $DATA_DIR --cache 17 console
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Alloted 17MB cache"* ]]
+	[[ "$output" == *"Allotted 17MB cache"* ]]
 }
 
 # Test `dump` command.
