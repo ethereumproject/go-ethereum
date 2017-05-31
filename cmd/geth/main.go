@@ -265,7 +265,8 @@ func status(ctx *cli.Context) error {
 
 	shouldUseExisting := false
 	datadir := MustMakeChainDataDir(ctx)
-	if di, e := os.Stat(datadir); e == nil && di.IsDir() {
+	chaindatadir := filepath.Join(datadir, "chaindata")
+	if di, e := os.Stat(chaindatadir); e == nil && di.IsDir() {
 		shouldUseExisting = true
 	}
 	// Makes sufficient configuration from JSON file or DB pending flags.

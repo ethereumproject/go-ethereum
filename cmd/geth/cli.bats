@@ -303,6 +303,8 @@ teardown() {
 	[[ "$output" == *"8893"* ]]
 
 	# Run twice, because the second time will have set up database.
+	run $GETH_CMD --data-dir $DATA_DIR --exec 'exit' console
+	[ "$status" -eq 0 ]
 	run $GETH_CMD --data-dir $DATA_DIR status
 	[ "$status" -eq 0 ]
 
@@ -336,6 +338,8 @@ teardown() {
 	[[ "$output" == *"5"* ]]
 
 	# Run twice, because the second time will have set up database.
+	run $GETH_CMD --data-dir $DATA_DIR --chain morden --exec 'exit' console
+	[ "$status" -eq 0 ]
 	run $GETH_CMD --data-dir $DATA_DIR --chain morden status
 	[ "$status" -eq 0 ]
 
