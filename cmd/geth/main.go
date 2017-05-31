@@ -262,6 +262,12 @@ func geth(ctx *cli.Context) error {
 }
 
 func status(ctx *cli.Context) error {
+
+	shouldUseExisting := false
+	datadir := MustMakeChainDataDir(ctx)
+	if di, e := os.Stat(datadir); e == nil && di.IsDir() {
+		shouldUseExisting = true
+	}
 	// Makes sufficient configuration from JSON file or DB pending flags.
 	// Delegates flag usage.
 	config := mustMakeSufficientChainConfig(ctx)
@@ -273,19 +279,15 @@ func status(ctx *cli.Context) error {
 	name := makeNodeName(Version, ctx)
 	stackConf, _ := mustMakeStackConf(ctx, name, config, ethConf)
 
-	chaindata, cdb := MakeChain(ctx)
-	defer cdb.Close()
-	datadir := MustMakeChainDataDir(ctx)
-
 	sep := glog.Separator("-")
 	printme := []struct {
 		title   string
 		keyVals []string
 	}{
-		{"Chain Configuration", formatSufficientChainConfigPretty(config)},
-		{"Ethereum Configuration", formatEthConfigPretty(ethConf)},
-		{"Node Configuration", formatStackConfigPretty(stackConf)},
-		{"Chain database status", formatChainDataPretty(datadir, chaindata)},
+		{"Chain configuration", formatSufficientChainConfigPretty(config)},
+		{"Ethereum configuration", formatEthConfigPretty(ethConf)},
+		{"Node configuration", formatStackConfigPretty(stackConf)},
+		//{"Chain database status", formatChainDataPretty(datadir, chaindata)},
 	}
 
 	s := "\n"
@@ -297,6 +299,23 @@ func status(ctx *cli.Context) error {
 		for _, v := range p.keyVals {
 			s += v
 		}
+	}
+	glog.V(logger.Info).Info(s)
+
+	// Return here if database has not been initialized.
+	if !shouldUseExisting {
+		glog.V(logger.Info).Info("Geth has not been initialized; no database information available yet.")
+		return nil
+	}
+
+	chaindata, cdb := MakeChain(ctx)
+	defer cdb.Close()
+	s = "\n"
+	s += withLineBreak(sep)
+	title := "Chain database status"
+	s += withLineBreak(strings.Repeat(" ", len(sep)-len(title)) + colorBlue(title))
+	for _, v := range formatChainDataPretty(datadir, chaindata) {
+		s += v
 	}
 	glog.V(logger.Info).Info(s)
 
