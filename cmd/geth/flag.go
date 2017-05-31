@@ -916,16 +916,14 @@ func MakeChainDatabase(ctx *cli.Context) ethdb.Database {
 // MakeChain creates a chain manager from set command line flags.
 func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database) {
 	var err error
-	mustMakeSufficientChainConfig(ctx)
+	sconf := mustMakeSufficientChainConfig(ctx)
 	chainDb = MakeChainDatabase(ctx)
-
-	chainConfig := MustMakeChainConfigFromDefaults(ctx)
 
 	pow := pow.PoW(core.FakePow{})
 	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
 		pow = ethash.New()
 	}
-	chain, err = core.NewBlockChain(chainDb, chainConfig, pow, new(event.TypeMux))
+	chain, err = core.NewBlockChain(chainDb, sconf.ChainConfig, pow, new(event.TypeMux))
 	if err != nil {
 		glog.Fatal("Could not start chainmanager: ", err)
 	}
