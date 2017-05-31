@@ -247,7 +247,7 @@ func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []
 	ss := []printable{}
 
 	// Chain identifiers.
-	ss = append(ss, printable{0, "Chain identifier (subdir)", config.ID})
+	ss = append(ss, printable{0, "Chain identity", config.ID})
 	ss = append(ss, printable{0, "Chain name", config.Name})
 
 	// Genesis.
@@ -354,7 +354,7 @@ func formatStackConfigPretty(stackConfig *node.Config) (s []string) {
 	// Name
 	ss = append(ss, printable{0, "Name", stackConfig.Name})
 	// Datadir
-	ss = append(ss, printable{0, "Datadir", stackConfig.DataDir})
+	ss = append(ss, printable{0, "Node dir", stackConfig.DataDir})
 	// IPCPath
 	ss = append(ss, printable{0, "IPC path", stackConfig.IPCPath})
 	// PrivateKey?
@@ -434,7 +434,7 @@ func formatBlockPretty(b *types.Block) (ss []printable) {
 func formatChainDataPretty(datadir string, chain *core.BlockChain) (s []string) {
 	ss := []printable{}
 
-	ss = append(ss, printable{0, "Datadir", datadir})
+	ss = append(ss, printable{0, "Chain dir", datadir})
 
 	ss = append(ss, printable{0, "Genesis", nil})
 	ss = append(ss, formatBlockPretty(chain.Genesis())...)
