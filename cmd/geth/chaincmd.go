@@ -94,6 +94,14 @@ Use "ethereum dump 0" to dump the genesis block.
 		Syncing will require downloading contemporary block information from the index onwards.
 		`,
 	}
+	statusCommand = cli.Command{
+		Action: status,
+		Name:   "status",
+		Usage:  "status - get the status of the current node",
+		Description: `
+		Returns the status of the current node without having to start and exit.
+		`,
+	}
 )
 
 func importChain(ctx *cli.Context) error {
