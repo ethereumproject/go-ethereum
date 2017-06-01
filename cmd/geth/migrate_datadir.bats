@@ -5,10 +5,17 @@
 
 setup() {
 
-	TMP_DIR=`mktemp -d`
-	CMD_DIR=`mktemp -d`
+	# A temporary place to hold current test datadir.
 	DATA_DIR=`mktemp -d`
-	# Fake it.
+
+	# Create a static place to put different downloaded geth executable versions.
+	# We will remove this after the last test.
+	CMD_DIR="$HOME"/bats-tests-cmd
+	if ! [ -d "$CMD_DIR" ]; then
+		mkdir -p "$HOME"/bats-tests-cmd
+	fi
+
+	# Fake tempdir as home so geth defaults install in temporary place.
 	HOME_DEF="$HOME"
 	HOME="$DATA_DIR"
 
@@ -46,28 +53,43 @@ setup() {
 	    DATA_DIR_NAME="EthereumClassic"
 	fi
 
-	# Install 1.6 and 1.5 of Ethereum Geth
-	# Travis Linux+Mac, AppVeyor Windows all use amd64.
-	curl -o "$TMP_DIR/gethf1.6.tar.gz" https://gethstore.blob.core.windows.net/builds/geth-"$TEST_OS_HF"-amd64-1.6.0-facc47cb.tar.gz
-	curl -o "$TMP_DIR/gethf1.5.tar.gz" https://gethstore.blob.core.windows.net/builds/geth-"$TEST_OS_HF"-amd64-1.5.0-c3c58eb6.tar.gz
-	tar xf "$TMP_DIR/gethf1.6.tar.gz" -C "$TMP_DIR"
-	tar xf "$TMP_DIR/gethf1.5.tar.gz" -C "$TMP_DIR"
-	mv "$TMP_DIR/geth-$TEST_OS_HF-amd64-1.6.0-facc47cb/geth" "$CMD_DIR/gethf1.6"
-	mv "$TMP_DIR/geth-$TEST_OS_HF-amd64-1.5.0-c3c58eb6/geth" "$CMD_DIR/gethf1.5"
+	# Only install everything once.
+	# BATS_TEST_NUMBER is 1-indexed.
+	if [ "$BATS_TEST_NUMBER" -eq 1 ]; then
 
-	# Install 3.3 of EthereumClassic Geth
-	curl -L -o "$TMP_DIR/gethc3.3.zip" https://github.com/ethereumproject/go-ethereum/releases/download/v3.3.0/geth-classic-"$TEST_OS_C"-v3.3.0-1-gdd95f05.zip
-	unzip "$TMP_DIR/gethc3.3.zip" -d "$TMP_DIR"
-	mv "$TMP_DIR/geth" "$CMD_DIR/gethc3.3"
+		TMP_DIR="$BATS_TMPDIR"
+		# Install 1.6 and 1.5 of Ethereum Geth
+		# Travis Linux+Mac, AppVeyor Windows all use amd64.
+		curl -o "$TMP_DIR/gethf1.6.tar.gz" https://gethstore.blob.core.windows.net/builds/geth-"$TEST_OS_HF"-amd64-1.6.0-facc47cb.tar.gz
+		curl -o "$TMP_DIR/gethf1.5.tar.gz" https://gethstore.blob.core.windows.net/builds/geth-"$TEST_OS_HF"-amd64-1.5.0-c3c58eb6.tar.gz
+		tar xf "$TMP_DIR/gethf1.6.tar.gz" -C "$TMP_DIR"
+		tar xf "$TMP_DIR/gethf1.5.tar.gz" -C "$TMP_DIR"
+		mv "$TMP_DIR/geth-$TEST_OS_HF-amd64-1.6.0-facc47cb/geth" "$CMD_DIR/gethf1.6"
+		mv "$TMP_DIR/geth-$TEST_OS_HF-amd64-1.5.0-c3c58eb6/geth" "$CMD_DIR/gethf1.5"
+
+		# Install 3.3 of EthereumClassic Geth
+		curl -L -o "$TMP_DIR/gethc3.3.zip" https://github.com/ethereumproject/go-ethereum/releases/download/v3.3.0/geth-classic-"$TEST_OS_C"-v3.3.0-1-gdd95f05.zip
+		unzip "$TMP_DIR/gethc3.3.zip" -d "$TMP_DIR"
+		mv "$TMP_DIR/geth" "$CMD_DIR/gethc3.3"
+
+	fi
 }
 
 teardown() {
-	rm -rf $TMP_DIR
-	rm -rf $CMD_DIR
 	rm -rf $DATA_DIR
 
 	# Put back original.
 	HOME="$HOME_DEF"
+
+	# 13 is last test.
+	# Important: You must update this number if the number of tests change.
+	if [ "$BATS_TEST_NUMBER" -eq 13 ]; then
+		# Remove downloaded executables.
+		rm -rf "$CMD_DIR"
+
+		unset TMP_DIR
+		unset CMD_DIR
+	fi
 }
 
 # Migrate ETC.
