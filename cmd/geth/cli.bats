@@ -12,7 +12,6 @@ teardown() {
 
 # Invalid flags exit with exit code 1.
 # Invalid commands and subcommands exit with exit code 3.
-
 @test "runs with valid command" {
 	run $GETH_CMD version
 	[ "$status" -eq 0 ]
@@ -162,7 +161,7 @@ teardown() {
 @test "--cache 16 | exit 0" {
 	run $GETH_CMD --data-dir $DATA_DIR --cache 17 console
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Alloted 17MB cache"* ]]
+	[[ "$output" == *"Allotted 17MB cache"* ]]
 }
 
 # Test `dump` command.
@@ -285,4 +284,73 @@ teardown() {
 	[ -d $DATA_DIR/morden ]
 }
 
+# Command: status
+@test "status command present and true for mainnet" {
+	run $GETH_CMD --data-dir $DATA_DIR status
+	[ "$status" -eq 0 ]
 
+	# bug(whilei): warning: command substitution: ignored null byte in input
+	# When I tried using heredoc and other more elegant solutions than line-by-line checking.
+
+	# Chain Configuration Genesis
+	[[ "$output" == *"mainnet"* ]]
+	[[ "$output" == *"Ethereum Classic Mainnet"* ]]
+	[[ "$output" == *"Genesis"* ]]
+	[[ "$output" == *"0x0000000000000042"* ]]
+	[[ "$output" == *"0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa"* ]]
+	[[ "$output" == *"0x1388"* ]]
+	[[ "$output" == *"0x0400000000"* ]]
+	[[ "$output" == *"8893"* ]]
+
+	# Run twice, because the second time will have set up database.
+	run $GETH_CMD --data-dir $DATA_DIR --exec 'exit' console
+	[ "$status" -eq 0 ]
+	run $GETH_CMD --data-dir $DATA_DIR status
+	[ "$status" -eq 0 ]
+
+	# Chain database Genesis
+	[[ "$output" == *"Genesis"* ]]
+	[[ "$output" == *"0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"* ]]
+	[[ "$output" == *"0x0000000000000000000000000000000000000000000000000000000000000000"* ]]
+	[[ "$output" == *"66"* ]]
+	[[ "$output" == *"17179869184"* ]]
+	[[ "$output" == *"0x0000000000000000000000000000000000000000"* ]]
+	[[ "$output" == *"0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"* ]]
+	[[ "$output" == *"5000"* ]]
+	[[ "$output" == *"0"* ]]
+	[[ "$output" == *"[17 187 232 219 78 52 123 78 140 147 124 28 131 112 228 181 237 51 173 179 219 105 203 219 122 56 225 229 11 27 130 250]"* ]]
+}
+
+@test "status command present and true for morden" {
+	run $GETH_CMD --data-dir $DATA_DIR --chain morden status
+	[ "$status" -eq 0 ]
+
+	# bug(whilei): warning: command substitution: ignored null byte in input
+	# When I tried using heredoc and other more elegant solutions than line-by-line checking.
+
+	# Chain Configuration Genesis
+	[[ "$output" == *"Genesis"* ]]
+	[[ "$output" == *"morden"* ]]
+	[[ "$output" == *"Morden Testnet"* ]]
+	[[ "$output" == *"0x2FEFD8"* ]]
+	[[ "$output" == *"0x020000"* ]]
+	[[ "$output" == *"5"* ]]
+
+	# Run twice, because the second time will have set up database.
+	run $GETH_CMD --data-dir $DATA_DIR --chain morden --exec 'exit' console
+	[ "$status" -eq 0 ]
+	run $GETH_CMD --data-dir $DATA_DIR --chain morden status
+	[ "$status" -eq 0 ]
+
+	# Chain database Genesis
+	[[ "$output" == *"Genesis"* ]]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
+	[[ "$output" == *"0x0000000000000000000000000000000000000000000000000000000000000000"* ]]
+	[[ "$output" == *"120325427979630"* ]]
+	[[ "$output" == *"131072"* ]]
+	[[ "$output" == *"0x0000000000000000000000000000000000000000"* ]]
+	[[ "$output" == *"0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"* ]]
+	[[ "$output" == *"3141592"* ]]
+	[[ "$output" == *"0"* ]]
+	[[ "$output" == *"[]"* ]]
+}
