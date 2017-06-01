@@ -67,6 +67,7 @@ func makeCLIApp() (app *cli.App) {
 		consoleCommand,
 		attachCommand,
 		javascriptCommand,
+		statusCommand,
 		{
 			Action:  makedag,
 			Name:    "make-dag",
@@ -260,6 +261,68 @@ func geth(ctx *cli.Context) error {
 	return nil
 }
 
+func status(ctx *cli.Context) error {
+
+	shouldUseExisting := false
+	datadir := MustMakeChainDataDir(ctx)
+	chaindatadir := filepath.Join(datadir, "chaindata")
+	if di, e := os.Stat(chaindatadir); e == nil && di.IsDir() {
+		shouldUseExisting = true
+	}
+	// Makes sufficient configuration from JSON file or DB pending flags.
+	// Delegates flag usage.
+	config := mustMakeSufficientChainConfig(ctx)
+
+	// Configure the Ethereum service
+	ethConf := mustMakeEthConf(ctx, config)
+
+	// Configure node's service container.
+	name := makeNodeName(Version, ctx)
+	stackConf, _ := mustMakeStackConf(ctx, name, config, ethConf)
+
+	sep := glog.Separator("-")
+	printme := []struct {
+		title   string
+		keyVals []string
+	}{
+		{"Chain configuration", formatSufficientChainConfigPretty(config)},
+		{"Ethereum configuration", formatEthConfigPretty(ethConf)},
+		{"Node configuration", formatStackConfigPretty(stackConf)},
+		//{"Chain database status", formatChainDataPretty(datadir, chaindata)},
+	}
+
+	s := "\n"
+
+	for _, p := range printme {
+		s += withLineBreak(sep)
+		// right align category title
+		s += withLineBreak(strings.Repeat(" ", len(sep)-len(p.title)) + colorBlue(p.title))
+		for _, v := range p.keyVals {
+			s += v
+		}
+	}
+	glog.V(logger.Info).Info(s)
+
+	// Return here if database has not been initialized.
+	if !shouldUseExisting {
+		glog.V(logger.Info).Info("Geth has not been initialized; no database information available yet.")
+		return nil
+	}
+
+	chaindata, cdb := MakeChain(ctx)
+	defer cdb.Close()
+	s = "\n"
+	s += withLineBreak(sep)
+	title := "Chain database status"
+	s += withLineBreak(strings.Repeat(" ", len(sep)-len(title)) + colorBlue(title))
+	for _, v := range formatChainDataPretty(datadir, chaindata) {
+		s += v
+	}
+	glog.V(logger.Info).Info(s)
+
+	return nil
+}
+
 func rollback(ctx *cli.Context) error {
 	index := ctx.Args().First()
 	if len(index) == 0 {
@@ -290,7 +353,9 @@ func rollback(ctx *cli.Context) error {
 	return nil
 }
 
-// dumpExternailChainConfig exports chain configuration based on database to JSON file
+// dumpChainConfig exports chain configuration based on context to JSON file.
+// It is not compatible with --chain-config flag; it is intended to move from flags -> file,
+// and not the other way around.
 func dumpChainConfig(ctx *cli.Context) error {
 
 	chainConfigFilePath := ctx.Args().First()
@@ -332,7 +397,8 @@ func dumpChainConfig(ctx *cli.Context) error {
 		glog.V(logger.Info).Info("Finished building genesis state dump. Whew!")
 	}
 
-	chainConfig := MustMakeChainConfig(ctx)
+	// Note that we use default configs (not externalizable).
+	chainConfig := MustMakeChainConfigFromDefaults(ctx)
 	var nodes []string
 	for _, node := range MakeBootstrapNodesFromContext(ctx) {
 		nodes = append(nodes, node.String())

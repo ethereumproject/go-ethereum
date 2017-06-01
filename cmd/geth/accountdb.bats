@@ -22,6 +22,10 @@ teardown() {
 @test "account list testdata keystore (db)" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
 
+	# Create index.
+	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
+	[ "$status" -eq 0 ]
+
 	run $GETH_CMD --datadir $DATA_DIR --index-accounts account
 	echo "$output"
 
@@ -52,6 +56,12 @@ teardown() {
 
 @test "account update pass (db)" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
+	run $GETH_CMD --keystore $DATA_DIR/mainnet/keystore --index-accounts account index
+	[ "$status" -eq 0 ]
+
+	# Create index.
+	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
+	[ "$status" -eq 0 ]
 
 	run $GETH_CMD --datadir $DATA_DIR --lightkdf --index-accounts account update f466859ead1932d743d622cb74fc058882e8648a <<< $'foobar\nother\nother\n'
 	echo "$output"
@@ -81,7 +91,13 @@ teardown() {
 
 @test "account unlock (db)" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
+	run $GETH_CMD --keystore $DATA_DIR/mainnet/keystore --index-accounts account index
+	[ "$status" -eq 0 ]
 	touch $DATA_DIR/empty.js
+
+	# Create index.
+	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
+	[ "$status" -eq 0 ]
 
 	run $GETH_CMD --datadir $DATA_DIR --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'
 	echo "$output"
@@ -92,7 +108,13 @@ teardown() {
 
 @test "account unlock pass mismatch (db)" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
+	run $GETH_CMD --keystore $DATA_DIR/mainnet/keystore --index-accounts account index
+	[ "$status" -eq 0 ]
 	touch $DATA_DIR/empty.js
+
+	# Create index.
+	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
+	[ "$status" -eq 0 ]
 
 	run $GETH_CMD --datadir $DATA_DIR --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong1\nwrong2\nwrong3\n'
 	echo "$output"
@@ -103,7 +125,13 @@ teardown() {
 
 @test "account unlock multiple (db)" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
+	run $GETH_CMD --keystore $DATA_DIR/mainnet/keystore --index-accounts account index
+	[ "$status" -eq 0 ]
 	touch $DATA_DIR/empty.js
+
+	# Create index.
+	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
+	[ "$status" -eq 0 ]
 
 	run $GETH_CMD --datadir $DATA_DIR --index-accounts --nat none --nodiscover --dev --unlock 0,2 js $DATA_DIR/empty.js <<< $'foobar\nfoobar\n'
 	echo "$output"
@@ -115,7 +143,14 @@ teardown() {
 
 @test "account unlock multiple with pass file (db)" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
+	run $GETH_CMD --keystore $DATA_DIR/mainnet/keystore --index-accounts account index
+	[ "$status" -eq 0 ]
 	touch $DATA_DIR/empty.js
+
+	# Create index.
+	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
+	[ "$status" -eq 0 ]
+
 	echo $'foobar\nfoobar\nfoobar\n' > $DATA_DIR/pass.txt
 
 	run $GETH_CMD --datadir $DATA_DIR --index-accounts --nat none --nodiscover --dev --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
@@ -128,7 +163,14 @@ teardown() {
 
 @test "account unlock multiple with wrong pass file (db)" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
+	run $GETH_CMD --keystore $DATA_DIR/mainnet/keystore --index-accounts account index
+	[ "$status" -eq 0 ]
 	touch $DATA_DIR/empty.js
+
+	# Create index.
+	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
+	[ "$status" -eq 0 ]
+
 	echo $'wrong\nwrong\nwrong\n' > $DATA_DIR/pass.txt
 
 	run $GETH_CMD --datadir $DATA_DIR --nat none --index-accounts --nodiscover --dev --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
@@ -142,6 +184,9 @@ teardown() {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/dupes $DATA_DIR/mainnet/store
 	touch $DATA_DIR/empty.js
 
+	run $GETH_CMD --keystore $DATA_DIR/mainnet/store --index-accounts account index
+	[ "$status" -eq 0 ]
+
 	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/mainnet/store --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'$DATA_DIR/store/1
 	echo "$output"
 
@@ -152,10 +197,13 @@ teardown() {
 }
 
 @test "account unlock ambiguous pass mismatch (db)" {
-	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/dupes $DATA_DIR/store
+	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/dupes $DATA_DIR/mainnet/store
 	touch $DATA_DIR/empty.js
 
-	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/store --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong\n'$DATA_DIR/store/1
+	run $GETH_CMD --keystore $DATA_DIR/mainnet/store --index-accounts account index
+	[ "$status" -eq 0 ]
+
+	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/mainnet/store --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong\n'$DATA_DIR/store/1
 	echo "$output"
 
 	[ "$status" -ne 0 ]

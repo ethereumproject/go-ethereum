@@ -155,7 +155,7 @@ var (
 		Value: glog.GetVModule(),
 	}
 	LogDirFlag = DirectoryFlag{
-		Name: "log-dir,logdir",
+		Name:  "log-dir,logdir",
 		Usage: "Directory in which to write log files",
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
 	}
