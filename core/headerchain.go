@@ -85,23 +85,13 @@ func NewHeaderChain(chainDb ethdb.Database, config *ChainConfig, getValidator ge
 		getValidator:  getValidator,
 	}
 
-	gen := DefaultGenesis
-	genname := "mainnet"
-	// Check if ChainConfig is mainnet or testnet and write genesis accordingly.
-	// If it's neither (custom), write default (this will be overwritten or avoided,
-	// but maintains consistent implementation.
-	if config == TestConfig {
-		gen = TestNetGenesis
-		genname = "morden testnet"
-	}
-
 	hc.genesisHeader = hc.GetHeaderByNumber(0)
 	if hc.genesisHeader == nil {
-		genesisBlock, err := WriteGenesisBlock(chainDb, gen)
+		genesisBlock, err := WriteGenesisBlock(chainDb, DefaultGenesis)
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infof("WARNING: Wrote default ethereum %v genesis block", genname)
+		glog.V(logger.Info).Infoln("WARNING: Wrote default ethereum genesis block")
 		hc.genesisHeader = genesisBlock.Header()
 	}
 
