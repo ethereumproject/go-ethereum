@@ -415,7 +415,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	// Start auxiliary services if enabled
 	if ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)) {
 		if err := ethereum.StartMining(ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)), ctx.GlobalString(aliasableName(MiningGPUFlag.Name, ctx))); err != nil {
-			log.Fatalf("Failed to start mining: ", err)
+			log.Fatalf("Failed to start mining: %v", err)
 		}
 	}
 }
