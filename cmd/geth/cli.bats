@@ -66,10 +66,10 @@ teardown() {
 	[[ "$output" == *"USAGE"* ]]
 }
 
-@test "exactly overlapping flags allowed: --chain=morden --testnet" {
+@test "exactly overlapping flags not allowed: --chain=morden --testnet" {
 	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
 	echo "$output"
-	[ "$status" -eq 0 ]
+	[ "$status" -ne 0 ]
 }
 
 @test "overlapping flags not allowed: --chain=morden --dev" {
@@ -79,12 +79,11 @@ teardown() {
 	[[ "$output" == *"invalid flag "* ]]
 }
 
-@test "custom testnet subdir --testnet --chain=morden2 | exit 0" {
+@test "custom testnet subdir --testnet --chain=morden2 | exit !=0" {
 	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden2 --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
 	echo "$output"
-	[ "$status" -eq 0 ]	
-
-	[ -d $DATA_DIR/morden2 ]
+	[ "$status" -ne 0 ]	
+	[[ "$output" == *"invalid flag "* ]]
 }
 
 # TODO
@@ -266,14 +265,6 @@ teardown() {
 	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
 
 	[ -d $DATA_DIR/morden ]
-}
-
-@test "--testnet --chain=faketestnet creates /faketestnet subdir, activating testnet genesis" {
-	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=faketestnet --exec 'eth.getBlock(0).hash' console
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
-
-	[ -d $DATA_DIR/faketestnet ]
 }
 
 @test "--chain=morden creates /morden subdir, activating testnet genesis" {

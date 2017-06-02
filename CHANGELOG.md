@@ -17,17 +17,17 @@ __Legend__:
 
 Releases considered stable may be found on our [Releases Page](https://github.com/ethereumproject/go-ethereum/releases).
 
-## [Unreleased]
-Reflects changes to __master__ branch, but not yet packaged in a stable release.
-
+## [3.5.0]
 #### Added
 - _Option_: `--index-accounts` - use persistent keystore key file indexing (recommended for use with greater than ~10k-100k+ key files)
 - _Command_: `--index-accounts account index` - build or rebuild persisent key file index
 - _Option_: `--log-dir` - specify directory in which to redirect logs to files
 #### Changed
 - _Command_: `dump <blockHash|blockNum>,<|blockHash|blockNum> <|address>,<|address>` - specify dump for _n_ block(s) for optionally _a_ address(es)
+- _Option__: `--chain` replaces `--chain-config` and expects consistent custom external chain config JSON path
 #### Fixed
 - SIGSEGV crash on malformed ChainID signer for replay-protected blocks.
+- Hash map exploit opportunity (thanks @karalabe)
 
 ## [3.4.0] - 2017-05-15
 Tagged commit: c18792d

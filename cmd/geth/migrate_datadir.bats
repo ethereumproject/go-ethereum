@@ -194,7 +194,8 @@ teardown() {
 }
 
 # customnet
-@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chain customnet" {
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chain kitty" {
+
 	# Should create $HOME/Ethereum/chaindata,keystore,nodes,...
 	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
 	echo "$output"
@@ -203,7 +204,12 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ] # 3.3 schema
 
-	run $GETH_CMD --fast --verbosity 5 --chain customnet --ipc-disable --exec='exit' console
+	# Set up custom net config.
+	mkdir -p $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
+
+	run $GETH_CMD --fast --verbosity 5 --chain kitty --ipc-disable --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 
@@ -212,32 +218,9 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/customnet ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/customnet/chaindata ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/kitty ]
+	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/kitty/chaindata ]
 	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/chaindata ]
-}
-
-# chainconfig VALID default -- --chain-config use causes skip across the board
-@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig config/mainnet.json (mainnet)" {
-	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
-	echo "$output"
-	[ "$status" -eq 0 ]
-
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
-
-	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/config/mainnet.json" --exec='exit' console
-	echo "$output"
-	[ "$status" -eq 0 ]
-
-	# Ensure old exists
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
-
-	# as well as new.
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
 }
 
 # datadir
@@ -261,29 +244,8 @@ teardown() {
 	[ -d "$DATA_DIR"/data/mainnet/chaindata ]
 }
 
-# chainconfig VALID custom
-@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig testdata/chain_config_dump-ok-custom.json (customnet)" {
-	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
-	echo "$output"
-	[ "$status" -eq 0 ]
-
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
-
-	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-ok-custom.json" --ipcdisable  --exec='exit' console
-	echo "$output"
-	[ "$status" -eq 0 ]
-
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
-
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/customnet ]
-	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/customnet/chaindata ]
-}
-
 # chainconfig INVALID
-@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chainconfig testdata/chain_config_dump-invalid-coinbase.json" {
+@test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema | --chain kitty (invalid config)" {
 	run "$CMD_DIR/gethc3.3" --fast --exec='exit' console
 	echo "$output"
 	[ "$status" -eq 0 ]
@@ -291,7 +253,12 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
-	run $GETH_CMD --fast --verbosity 5 --chainconfig "$BATS_TEST_DIRNAME/testdata/chain_config_dump-invalid-coinbase.json" --exec='exit' console
+		# Set up custom net config.
+	mkdir -p $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty
+	cp "$BATS_TEST_DIRNAME/testdata/chain_config_dump-invalid-coinbase.json" $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
+
+	run $GETH_CMD --fast --verbosity 5 --chain kitty --exec='exit' console
 	echo "$output"
 	[ "$status" -gt 0 ]
 

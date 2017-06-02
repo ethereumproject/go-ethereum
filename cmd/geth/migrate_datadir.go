@@ -49,7 +49,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	}
 
 	ethChainDBPath := filepath.Join(ethDataDirPath, "chaindata")
-	if isTestMode(ctx) {
+	if chainIsMorden(ctx) {
 		ethChainDBPath = filepath.Join(ethDataDirPath, "testnet", "chaindata")
 	}
 
@@ -114,7 +114,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 		// I think it's safe to assume that the chaindata directory is just too 'young', where it hasn't
 		// synced until block 1920000, and therefore can be migrated.
 		conf := core.DefaultConfig
-		if isTestMode(ctx) {
+		if chainIsMorden(ctx) {
 			conf = core.TestConfig
 		}
 
@@ -168,7 +168,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 // migrateToChainSubdirIfNecessary migrates ".../EthereumClassic/nodes|chaindata|...|nodekey" --> ".../EthereumClassic/mainnet/nodes|chaindata|...|nodekey"
 func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
-	name := getChainConfigIDFromContext(ctx) // "mainnet", "morden", "custom"
+	chainIdentity := mustMakeChainIdentity(ctx) // "mainnet", "morden", "custom"
 
 	datapath := mustMakeDataDir(ctx) // ".../EthereumClassic/ | --datadir"
 
@@ -183,11 +183,11 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	}
 	if subdirPathInfo != nil && !subdirPathInfo.IsDir() {
 		return fmt.Errorf(`%v: found file named '%v' in EthereumClassic datadir,
-			which conflicts with default chain directory naming convention: %v`, ErrDirectoryStructure, name, subdirPath)
+			which conflicts with default chain directory naming convention: %v`, ErrDirectoryStructure, chainIdentity, subdirPath)
 	}
 
 	// 3.3 testnet uses subdir '/testnet'
-	if testnetChaidIDs[name] {
+	if chainIdentitiesMorden[chainIdentity] {
 		exTestDir := filepath.Join(subdirPath, "../testnet")
 		exTestDirInfo, e := os.Stat(exTestDir)
 		if e != nil && os.IsNotExist(e) {

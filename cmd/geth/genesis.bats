@@ -24,14 +24,6 @@ teardown() {
 	[[ "$output" == *'"0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"'* ]]
 }
 
-@test "defaults: genesis block hash mainnet constant @ --chain kittyCoin" {
-	run $GETH_CMD --data-dir $DATA_DIR --chain kittyCoin --exec 'eth.getBlock(0).hash' console
-	echo "$output"
-
-	[ "$status" -eq 0 ]
-	[[ "$output" == *'"0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"'* ]]
-}
-
 # Testnet.
 @test "defaults: genesis block hash constant @ --chain=morden" {
 	run $GETH_CMD --chain=morden --data-dir $DATA_DIR --exec 'eth.getBlock(0).hash' console

@@ -26,7 +26,6 @@ teardown() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
 	[ -f $DATA_DIR/dump.json ]
-	[ -d $DATA_DIR/mainnet ]
 
 	run grep -R "mainnet" $DATA_DIR/dump.json
 	[ "$status" -eq 0 ]
@@ -40,9 +39,9 @@ teardown() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
 	[ -f $DATA_DIR/dump.json ]
-	[ -d $DATA_DIR/morden ]
 
 	run grep -R "morden" $DATA_DIR/dump.json
+	echo "$output"
 	[[ "$output" == *"\"id\": \"morden\"," ]]
 }
 
@@ -53,64 +52,41 @@ teardown() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
 	[ -f $DATA_DIR/dump.json ]
-	[ -d $DATA_DIR/morden ]
 
 	run grep -R "morden" $DATA_DIR/dump.json
 	[[ "$output" == *"\"id\": \"morden\"," ]]
 }
 
-@test "--chain kittyCoin dump-chain-config | exit 0" {
+@test "--chain kittyCoin dump-chain-config | exit !=0" {
 	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dump-chain-config $DATA_DIR/dump.json
 	echo "$output"
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Wrote chain config file"* ]]
-	
-	# Ensure JSON dump file and named subdirectory (conainting chaindata) exists.
-	[ -f $DATA_DIR/dump.json ]
-	[ -d $DATA_DIR/kittyCoin ]
-	[ -d $DATA_DIR/kittyCoin/chaindata ]
-	[ -f $DATA_DIR/kittyCoin/chaindata/CURRENT ]
-	[ -f $DATA_DIR/kittyCoin/chaindata/LOCK ]
-	[ -f $DATA_DIR/kittyCoin/chaindata/LOG ]
-
-	# Ensure we're using the --chain named subdirectory under main $DATA_DIR
-	run grep -R "kittyCoin" $DATA_DIR/dump.json
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"\"name\": \"kittyCoin\"," ]]
+	[ "$status" -ne 0 ]
 }
 
-@test "dump-chain-config | --chain-config | exit 0" {
-# Same as 'chainconfig customnet dump'... higher complexity::more confidence
-	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin dump-chain-config $DATA_DIR/dump.json
+@test "dump-chain-config | --chain | exit 0" {
+	
+	# Same as 'chainconfig customnet dump'... higher complexity::more confidence
+	customnet="$DATA_DIR"/kitty
+	mkdir -p "$customnet"
+
+	run $GETH_CMD --datadir $DATA_DIR dump-chain-config "$customnet"/chain.json
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
 	
-	# Ensure JSON dump file and named subdirectory (conainting chaindata) exists.
-	[ -f $DATA_DIR/dump.json ]
-	[ -d $DATA_DIR/kittyCoin ]
-	[ -d $DATA_DIR/kittyCoin/chaindata ]
-	[ -f $DATA_DIR/kittyCoin/chaindata/CURRENT ]
-	[ -f $DATA_DIR/kittyCoin/chaindata/LOCK ]
-	[ -f $DATA_DIR/kittyCoin/chaindata/LOG ]
-
-	# Ensure we're using the --chain named subdirectory under main $DATA_DIR
-	run grep -R "kittyCoin" $DATA_DIR/dump.json
+	[ -f "$customnet"/chain.json ]
+	
+	run grep -R "mainnet" "$customnet"/chain.json
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"\"name\": \"kittyCoin\"," ]]
+	echo "$output"
+	[[ "$output" == *"\"id\": \"mainnet\"," ]]
 
 	# Ensure JSON file dump is loadable as external config
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $DATA_DIR/dump.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
-	echo "$output"
+	sed -i.bak s/mainnet/kitty/ "$customnet"/chain.json
+	run $GETH_CMD --datadir $DATA_DIR --chain kitty --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	[ "$status" -eq 0 ]
+	echo "$output"
 	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]
-
-	# Ensure we can specify this chaindata subdir with --chain comand.
-	run $GETH_CMD --datadir $DATA_DIR --chain kittyCoin --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
-	echo "$output"
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]	
-
 }
 
 ## load /data
@@ -120,8 +96,8 @@ teardown() {
 # - can load default external JSON config
 # - use datadir/subdir schema (/mainnet)
 # - configured nonce matches external nonce (soft check since 42 is default, too)
-@test "--chain-config config/mainnet.json | exit 0" {
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
+@test "--chain=main | exit 0" {
+	run $GETH_CMD --datadir $DATA_DIR --chain=main --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]
@@ -139,8 +115,8 @@ teardown() {
 # Test ensures
 # - external chain config can determine chain configuration
 # - use datadir/subdir schema (/morden)
-@test "--chain-config config/testnet.json | exit 0" {
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
+@test "--chain morden | exit 0" {
+	run $GETH_CMD --datadir $DATA_DIR --chain=morden --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
@@ -160,10 +136,13 @@ teardown() {
 # Test loading customnet chain configuration from testdata/ JSON file.
 # Test ensures
 # - chain is loaded from custom external file and determines datadir/subdir scheme
-@test "--chain-config testdata/chain_config_dump-ok-custom.json | exit 0" {
+@test "--chain customnet @ chain_config_dump-ok-custom.json | exit 0" {
 	# Ensure non-default nonce 43 (42 is default).
 	# Ensure chain subdir is determined by config `id`
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok-custom.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
+	mkdir -p "$DATA_DIR"/customnet
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok-custom.json $DATA_DIR/customnet/chain.json
+	sed -i.bak s/mainnet/customnet/ $DATA_DIR/customnet/chain.json
+	run $GETH_CMD --datadir $DATA_DIR --chain=customnet  --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"$customnet_genesis_hash"* ]]
@@ -177,73 +156,75 @@ teardown() {
 	[ -d $DATA_DIR/customnet/keystore ]
 }
 
-@test "--chain-config config/testnet.json --testnet | exit >0" {
-	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/testnet.json --testnet console
+@test "--chain kitty --testnet | exit !=0" {
+	mkdir -p $DATA_DIR/kitty
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
+	run $GETH_CMD --data-dir $DATA_DIR --chain kitty  --testnet console
 	echo "$output"
-	[ "$status" -gt 0 ]
-	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"invalid flag or context value: used redundant/conflicting flags"* ]]
 }
 
-@test "--chain-config config/mainnet.json --chain mainnet | exit >0" {
-	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --chain mainnet console
+@test "--chain kitty --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 | exit !=0" {
+	mkdir -p $DATA_DIR/kitty
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
+	run $GETH_CMD --data-dir $DATA_DIR --chain kitty --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 console
 	echo "$output"
-	[ "$status" -gt 0 ]
-	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
-}
-
-@test "--chain-config config/mainnet.json --chain kittyCoin | exit >0" {
-	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --chain kittyCoin console
-	echo "$output"
-	[ "$status" -gt 0 ]
-	[[ "$output" == *"invalid flag or context value: invalid chainID: external and flag configurations are conflicting, please use only one"* ]]
-}
-
-@test "--chain-config config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 | exit >0" {
-	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 console
-	echo "$output"
-	[ "$status" -gt 0 ]
-	[[ "$output" == *"Conflicting --chain-config and --bootnodes flags."* ]]
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Conflicting custom chain config and --bootnodes flags. Please use either but not both."* ]]
 }
 
 # Test fails to load invalid chain configuration from testdata/ JSON file.
 # Test ensures
 # - external chain configuration should require JSON to parse
-@test "--chain-config testdata/chain_config_dump-invalid-comment.json | exit >0" {
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-comment.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+@test "--chain kitty @ chain_config_dump-invalid-comment.json | exit !=0" {
+	mkdir -p $DATA_DIR/kitty
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-comment.json $DATA_DIR/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
+	run $GETH_CMD --datadir $DATA_DIR --chain=kitty --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
-	[ "$status" -gt 0 ]
+	[ "$status" -ne 0 ]
 }
 
 # Test fails to load invalid chain configuration from testdata/ JSON file.
 # Test ensures
 # - external chain configuration should require JSON to parse
-@test "--chain-config testdata/chain_config_dump-invalid-coinbase.json | exit >0" {
-	run $GETH_CMD --datadir $DATA_DIR --chainconfig $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-coinbase.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
+@test "--chain kitty testdata/chain_config_dump-invalid-coinbase.json | exit !=0" {
+	mkdir -p $DATA_DIR/kitty
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-coinbase.json $DATA_DIR/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
+	run $GETH_CMD --datadir $DATA_DIR --chain kitty  --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
-	[ "$status" -gt 0 ]
+	[ "$status" -ne 0 ]
 }
 
 freshconfig() {
 	rm -fr $DATA_DIR
 	DATA_DIR=`mktemp -d`
-	cp "$BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json" "$DATA_DIR/"
+	mkdir -p $DATA_DIR/kitty
+	cp "$BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json" "$DATA_DIR/kitty/chain.json"
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 }
 
-@test "--chain-config @ sed -i s/key/badkey/ config/mainnet.json | exit >0" {
+@test "--chain kitty @ sed -i s/key/badkey/ kitty/chain.json | exit !=0" {
 	declare -a OK_VARS=(id genesis chainConfig bootstrap) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(did genes chainconfig bootsrap)
 	
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/
+	mkdir -p $DATA_DIR/kitty
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 	
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
+		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/kitty/chain.json"
 		
-		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
+		run $GETH_CMD --datadir $DATA_DIR --chain kitty console
 		echo "$output"
-		[ "$status" -gt 0 ]
-		if [ ! "$status" -gt 0 ]; then
+		[ "$status" -ne 0 ]
+		if [ ! "$status" -ne 0 ]; then
 			echo "allowed invalid attribute: ${var}"
 		fi		
 
@@ -252,21 +233,23 @@ freshconfig() {
 	done
 }
 
-@test "--chain-config @ sed -i s/subkey/badsubkey/ config/mainnet.json | exit >0" {
+@test "--chain kitty @ sed -i s/subkey/badsubkey/ kitty/chain.json | exit !=0" {
 	declare -a OK_VARS=(nonce gasLimit difficulty forks alloc balance Block Hash) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(noneonce gasLim dificile knives allok bills Clock Cash)
 	
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/
+	mkdir -p $DATA_DIR/kitty
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 	
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
+		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/kitty/chain.json"
 		
-		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
+		run $GETH_CMD --datadir $DATA_DIR --chain kitty console
 		echo "$output"
-		[ "$status" -gt 0 ]
-		if [ ! "$status" -gt 0 ]; then
+		[ "$status" -ne 0 ]
+		if [ ! "$status" -ne 0 ]; then
 			echo "allowed invalid attribute: ${var}"
 		fi		
 
@@ -275,44 +258,29 @@ freshconfig() {
 	done
 }
 
-@test "--chain-config @ sed -i s/value/badvalue/ config/mainnet.json | exit >0" {
+@test "--chain kitty @ sed -i s/value/badvalue/ kitty/chain.json | exit !=0" {
 	declare -a    OK_VARS=(0x0000000000000042 0x0000000000000000000000000000000000000000000000000000000000001388 0x0000000000000000000000000000000000000000 enode homestead) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(Ox0000000000000042 Ox0000000000000000000000000000000000000000000000000000000000001388 0x000000000000000000000000000000000000000  ewok  homeinbed)
 	
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/
+	mkdir -p $DATA_DIR/kitty
+	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 	
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
-		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/mainnet.json"
+		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/kitty/chain.json"
 		
-		run $GETH_CMD --datadir $DATA_DIR --chainconfig "$DATA_DIR/mainnet.json" console
+		run $GETH_CMD --datadir $DATA_DIR --chain kitty console
 		echo "$output"
-		[ "$status" -gt 0 ]
-		if [ ! "$status" -gt 0 ]; then
+		[ "$status" -ne 0 ]
+		if [ ! "$status" -ne 0 ]; then
 			echo "allowed invalid attribute: ${var}"
 		fi		
 
 		freshconfig()
 		((counter=counter+1))
 	done
-}
-
-@test "--chain-config config/mainnet.json && --chain-config testdata/chain_config_dump-ok-custom.json | does overwrite genesis" {
-
-	# establish default mainnet chaindata
-	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json --exec="eth.getBlock(0).hash" console
-	echo "$output"
-	[ "$status" -eq 0 ]
-	# ensure genesis block is mainnet default (by hash)
-	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]
-
-	# start with --chain-config customnet data
-	run $GETH_CMD --data-dir $DATA_DIR --chain-config $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok-custom.json --exec="eth.getBlock(0).hash" console
-	echo "$output"
-	[ "$status" -eq 0 ]
-	# ensure genesis block is different	(by hash)
-	[[ "$output" == *"$customnet_genesis_hash"* ]]
 }
 
 
