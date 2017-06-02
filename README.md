@@ -201,7 +201,7 @@ The external chain configuration file specifies valid settings for the following
 | `bootstrap` | Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
 
 
-*Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain-config` __incompatible__ with `--chain`, `--bootnodes`, and `--testnet`. It remains __compatible__ with `--data-dir`.*
+*Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain` __incompatible__ with `--bootnodes`, and `--testnet`. It remains __compatible__ with `--data-dir`.*
 
 To learn more about external chain configuration, please visit the [External Command Line Options Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options.md).
 

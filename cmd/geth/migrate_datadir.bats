@@ -83,7 +83,7 @@ teardown() {
 
 	# 13 is last test.
 	# Important: You must update this number if the number of tests change.
-	if [ "$BATS_TEST_NUMBER" -eq 13 ]; then
+	if [ "$BATS_TEST_NUMBER" -eq 11 ]; then
 		# Remove downloaded executables.
 		rm -rf "$CMD_DIR"
 
