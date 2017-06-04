@@ -600,7 +600,7 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	block := types.NewBlock(header, nil, nil, nil)
 
 	if block := GetBlock(chainDb, block.Hash()); block != nil {
-		glog.V(logger.Info).Infof("Genesis block %s already exists in chain -- writing canonical number", block.Hash().Hex())
+		glog.V(logger.Debug).Infof("Genesis block %s already exists in chain -- writing canonical number", block.Hash().Hex())
 		err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64())
 		if err != nil {
 			return nil, err

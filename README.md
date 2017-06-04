@@ -13,15 +13,14 @@ _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and power
 ## Install
 
 ### :rocket: From a release binary
-The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum). 
+The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Building-Ethereum).
 
 CLI one-liner for Darwin:
 ```bash
-$ curl -L -o ~/Downloads/geth-classic-3.4.zip https://github.com/ethereumproject/go-ethereum/releases/download/v3.4.0/geth-classic-osx-v3.4.0.zip && unzip ~/Downloads/geth-classic-3.4.zip -d $HOME/bin/
+$ curl -L -o ~/Downloads/geth-classic-3.5.zip https://github.com/ethereumproject/go-ethereum/releases/download/v3.5.0/geth-classic-osx-v3.5.0.zip && unzip ~/Downloads/geth-classic-3.5.zip -d $HOME/bin/
 
 $ geth help
 ```
-> Linux, Windows: just replace `darwin` with your matching os/arch.
 
 ### :hammer: Building the source
 
@@ -55,7 +54,7 @@ This repository includes several wrappers/executables found in the `cmd` directo
 ## :green_book: Geth: the basics
 
 ### Data directory
-By default, geth will store all node and blockchain data in a __parent directory__ depending on your OS: 
+By default, geth will store all node and blockchain data in a __parent directory__ depending on your OS:
 - Linux: `$HOME/.ethereum-classic/`
 - Mac: `$HOME/Library/EthereumClassic/`
 - Windows: `$HOME/AppData/Roaming/EthereumClassic/`
@@ -73,7 +72,7 @@ __You can specify this subdirectory__ with `--chain=mycustomnet`.
 ### Full node on the main Ethereum network
 
 ```
-$ geth 
+$ geth
 ```
 It's that easy! This will establish an ETC blockchain node and download ("sync") the entirety of the ETC blockchain. However, the most common scenario is people wanting to simply interact with the Ethereum Classic network: create accounts; transfer funds; deploy and interact with contracts. For this particular use-case the user doesn't care about years-old historical data, so we can _fast-sync_ to the current state of the network. To do so:
 ```
@@ -93,7 +92,7 @@ Geth is able to create, import, update, unlock, and otherwise manage your privat
 $ geth account new
 ```
 
-This command will create a new account and prompt you to enter a passphrase to protect your account. 
+This command will create a new account and prompt you to enter a passphrase to protect your account.
 
 Other `account` subcommands include:
 ```
@@ -174,30 +173,35 @@ You'll need to use your own programming environments' capabilities (libraries, t
 
 ### Operating a private/custom network
 
-As of [Geth 3.4]() you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID. 
+As of [Geth 3.4]() you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID.
 
 Please find full [example  external configuration files representing the Mainnet and Morden Testnet specs in the /config subdirectory of this repo](). You can use either of these files as a starting point for your own customizations.
 
 
 #### Define external chain configuration
 
-Specifying an external chain configuration file will allow fine-grained control over a custom blockchain/network configuration, including the genesis state and extending through bootnodes and fork-based protocol upgrades. 
+Specifying an external chain configuration file will allow fine-grained control over a custom blockchain/network configuration, including the genesis state and extending through bootnodes and fork-based protocol upgrades.
 
-```
-$ geth --chain-config=/path/to/customnet.json [--flags] [command]
+```shell
+$ mkdir -p <datadir>/customnet
+$ geth --chain=morden dump-chain-config <datadir>/customnet/chain.json
+$ sed s/mainnet/customnet/ <datadir>/customnet/chain.json
+$ vi <datadir>/customnet/chain.json # make your custom edits
+$ geth --chain=customnet [--flags] [command]
 ```
 
 The external chain configuration file specifies valid settings for the following top-level fields:
 
 | JSON Key | Notes |
---- | --- | ---
-| `chainID` |  Determines local __/subdir__ for chain data. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in _EIP-155_; that is configured as a protocal upgrade within `forks.features`. |
+| --- | --- |
+| `chainID` |  Chain identity. Determines local __/subdir__ for chain data, with required `chain.json` located in it. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in _EIP-155_; that is configured as a protocal upgrade within `forks.features`. |
 | `name` | Human readable name, ie _Ethereum Classic Mainnet_, _Morden Testnet._ |
 | `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block. If configuring an existing chain database with a different genesis block, it will overwrite it. |
 | `forks` | Determines configuration for fork-based __protocol upgrades__, ie _EIP-150_, _EIP-155_, _EIP-160_, _ECIP-1010_, etc ;-). |
 | `bootstrap` | Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
 
-*Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain-config` __incompatible__ with `--chain`, `--bootnodes`, and `--testnet`. It remains __compatible__ with `--data-dir`.* 
+
+*Only the `name` field is optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain` __incompatible__ with `--bootnodes`, and `--testnet`. It remains __compatible__ with `--data-dir`.*
 
 To learn more about external chain configuration, please visit the [External Command Line Options Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options.md).
 
@@ -239,7 +243,7 @@ In a private network setting however, a single CPU miner instance is more than e
 $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x0000000000000000000000000000000000000000
 ```
 
-Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to the account specified by `--etherbase`. You can further tune the mining by changing the default gas limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`). 
+Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to the account specified by `--etherbase`. You can further tune the mining by changing the default gas limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
 
 For more information about managing accounts, please see the [Managing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-your-accounts).
 
