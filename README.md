@@ -197,7 +197,7 @@ The external chain configuration file specifies valid settings for the following
 | `chainID` |  Chain identity. Determines local __/subdir__ for chain data, with required `chain.json` located in it. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in _EIP-155_; that is configured as a protocal upgrade within `forks.features`. |
 | `name` | Human readable name, ie _Ethereum Classic Mainnet_, _Morden Testnet._ |
 | `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block. If configuring an existing chain database with a different genesis block, it will overwrite it. |
-| `forks` | Determines configuration for fork-based __protocol upgrades__, ie _EIP-150_, _EIP-155_, _EIP-160_, _ECIP-1010_, etc ;-). |
+| `chainConfig` | Determines configuration for fork-based __protocol upgrades__, ie _EIP-150_, _EIP-155_, _EIP-160_, _ECIP-1010_, etc ;-). Subkeys are `forks` and `badHashes`. |
 | `bootstrap` | Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
 
 
