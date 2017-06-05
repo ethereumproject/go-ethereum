@@ -34,7 +34,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -505,7 +504,7 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 		if !ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
 			ethConf.NetworkId = 2
 		}
-		state.StartingNonce = 1048576 // (2**20)
+		//state.StartingNonce = 1048576 // (2**20)
 
 	case ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)):
 		// Override the base network stack configs

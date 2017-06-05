@@ -370,6 +370,20 @@ func dumpChainConfig(ctx *cli.Context) error {
 		return errors.New("invalid required filepath argument")
 	}
 
+	fb := filepath.Dir(chainConfigFilePath)
+	di, de := os.Stat(fb)
+	if de != nil {
+		if os.IsNotExist(de) {
+			glog.V(logger.Warn).Infof("Directory path '%v' does not yet exists; will create it", fb)
+			os.MkdirAll(fb, os.ModePerm)
+		} else {
+			glog.V(logger.Error).Infof("err: %v (at '%v')", de, fb)
+		}
+	}
+	if !di.IsDir() {
+		glog.Fatalf("'%v' must be a directory", fb)
+	}
+
 	genesisDump := core.TestNetGenesis
 	if !chainIsMorden(ctx) {
 		genesisDump = core.DefaultGenesis
