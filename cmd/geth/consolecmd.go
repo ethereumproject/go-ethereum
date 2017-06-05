@@ -101,7 +101,8 @@ func localConsole(ctx *cli.Context) error {
 // console to it.
 func remoteConsole(ctx *cli.Context) error {
 	// Attach to a remotely running geth instance and start the JavaScript console
-	var uri = "ipc:" + node.DefaultIPCEndpoint()
+	chainDir := MustMakeChainDataDir(ctx)
+	var uri = "ipc:" + node.DefaultIPCEndpoint(chainDir)
 	if ctx.Args().Present() {
 		uri = ctx.Args().First()
 	}
@@ -111,7 +112,7 @@ func remoteConsole(ctx *cli.Context) error {
 	}
 
 	config := console.Config{
-		DataDir: MustMakeChainDataDir(ctx),
+		DataDir: chainDir,
 		DocRoot: ctx.GlobalString(JSpathFlag.Name),
 		Client:  client,
 		Preload: MakeConsolePreloads(ctx),

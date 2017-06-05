@@ -31,12 +31,14 @@ import (
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/gizak/termui"
 	"gopkg.in/urfave/cli.v1"
+	"github.com/ethereumproject/go-ethereum/common"
+	"path/filepath"
 )
 
 var (
 	monitorCommandAttachFlag = cli.StringFlag{
 		Name:  "attach",
-		Value: "ipc:" + node.DefaultIPCEndpoint(),
+		Value: "ipc:" + node.DefaultIPCEndpoint(filepath.Join(common.DefaultDataDir(), "mainnet")),
 		Usage: "API endpoint to attach to",
 	}
 	monitorCommandRowsFlag = cli.IntFlag{
@@ -69,7 +71,12 @@ to display multiple metrics simultaneously.
 // monitor starts a terminal UI based monitoring tool for the requested metrics.
 func monitor(ctx *cli.Context) error {
 	// Attach to an Ethereum node over IPC or RPC
-	client, err := rpc.NewClient(ctx.String(monitorCommandAttachFlag.Name))
+	endpoint := ctx.String(monitorCommandAttachFlag.Name)
+	// Set defaults (no arg value) to chain contextual path (via --chain or --testnet, since default val is mainnet)
+	if ctx.GlobalString(monitorCommandAttachFlag.Name) == "" {
+		endpoint = "ipc:" + node.DefaultIPCEndpoint(MustMakeChainDataDir(ctx))
+	}
+	client, err := rpc.NewClient(endpoint)
 	if err != nil {
 		log.Fatal("attach to remote geth: ", err)
 	}

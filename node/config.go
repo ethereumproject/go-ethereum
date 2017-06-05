@@ -54,7 +54,7 @@ type Config struct {
 	DataDir string
 
 	// IPCPath is the requested location to place the IPC endpoint. If the path is
-	// a simple file name, it is placed inside the data directory (or on the root
+	// a simple file name, it is placed inside the chaindata directory (or on the root
 	// pipe path on Windows), whereas if it's a resolvable path name (absolute or
 	// relative), then that specific path is enforced. An empty path disables IPC.
 	IPCPath string
@@ -163,8 +163,8 @@ func (c *Config) IPCEndpoint() string {
 }
 
 // DefaultIPCEndpoint returns the IPC path used by default.
-func DefaultIPCEndpoint() string {
-	config := &Config{DataDir: common.DefaultDataDir(), IPCPath: common.DefaultIPCSocket}
+func DefaultIPCEndpoint(chainDir string) string {
+	config := &Config{DataDir: chainDir, IPCPath: common.DefaultIPCSocket}
 	return config.IPCEndpoint()
 }
 
