@@ -51,11 +51,17 @@ var (
 // SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
 type SufficientChainConfig struct {
 	ID          string       `json:"id"`
-	Name        string       `json:"name"`
+	Name        string       `json:"name,omitempty"`
+	State       *StateConfig `json:"state"`
 	Genesis     *GenesisDump `json:"genesis"`
 	ChainConfig *ChainConfig `json:"chainConfig"`
 	Bootstrap   []string     `json:"bootstrap"`
 	ParsedBootstrap []*discover.Node `json:"-"`
+}
+
+// StateConfig hold variable data for statedb.
+type StateConfig struct {
+	StartingNonce uint64 `json:"startingNonce,omitempty"`
 }
 
 // GenesisDump is the geth JSON format.

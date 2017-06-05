@@ -38,6 +38,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -402,6 +403,10 @@ func dumpChainConfig(ctx *cli.Context) error {
 		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
 		Genesis:     genesisDump,
 		Bootstrap:   nodes,
+	}
+
+	if chainIsMorden(ctx) {
+		currentConfig.State = &core.StateConfig{StartingNonce: state.DefaultTestnetStartingNonce}
 	}
 
 	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {

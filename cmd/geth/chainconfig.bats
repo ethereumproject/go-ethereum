@@ -6,6 +6,7 @@ setup() {
 	DATA_DIR=`mktemp -d`
 	default_mainnet_genesis_hash='"0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"'
 	customnet_genesis_hash='"0x76bc07fbdfe084b9aff37425c24453f774d1945b28412a3b4b8c25d8d3c81df2"'
+	testnet_genesis_hash='"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"'
 	GENESIS_TESTNET=0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303
 }
 
@@ -87,6 +88,63 @@ teardown() {
 	[ "$status" -eq 0 ]
 	echo "$output"
 	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]
+}
+
+@test "--chain morden dump-chain-config | --chain == morden | exit 0" {
+	
+	# Same as 'chainconfig customnet dump'... higher complexity::more confidence
+	customnet="$DATA_DIR"/kitty
+	mkdir -p "$customnet"
+
+	run $GETH_CMD --datadir $DATA_DIR --chain=morden dump-chain-config "$customnet"/chain.json
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Wrote chain config file"* ]]
+	
+	[ -f "$customnet"/chain.json ]
+	
+	run grep -R "morden" "$customnet"/chain.json
+	[ "$status" -eq 0 ]
+	echo "$output"
+	[[ "$output" == *"\"id\": \"morden\"," ]]
+
+	# Ensure JSON file dump is loadable as external config
+	sed -i.bak s/morden/kitty/ "$customnet"/chain.json
+	run $GETH_CMD --datadir $DATA_DIR --chain kitty --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
+	[ "$status" -eq 0 ]
+	echo "$output"
+	[[ "$output" == *"$testnet_genesis_hash"* ]]
+}
+
+@test "--chain morden dump-chain-config | --chain -> kitty | exit 0" {
+	
+	# Same as 'chainconfig customnet dump'... higher complexity::more confidence
+	customnet="$DATA_DIR"/kitty
+	mkdir -p "$customnet"
+
+	run $GETH_CMD --datadir $DATA_DIR --chain=morden dump-chain-config "$customnet"/chain.json
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Wrote chain config file"* ]]
+	
+	[ -f "$customnet"/chain.json ]
+	
+	run grep -R "morden" "$customnet"/chain.json
+	[ "$status" -eq 0 ]
+	echo "$output"
+	[[ "$output" == *"\"id\": \"morden\"," ]]
+
+	# Ensure JSON file dump is loadable as external config
+	sed -i.bak s/morden/kitty/ "$customnet"/chain.json
+	# remove starting nonce from external config
+	# config file should still be valid, but genesis should have different hash than default morden genesis
+	grep -v 'startingNonce' "$customnet"/chain.json > "$DATA_DIR"/stripped.json 
+	[ "$status" -eq 0 ]
+	mv "$DATA_DIR"/stripped.json "$customnet"/chain.json
+	run $GETH_CMD --datadir $DATA_DIR --chain kitty --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
+	[ "$status" -eq 0 ]
+	echo "$output"
+	[[ "$output" != *"$testnet_genesis_hash"* ]] # different genesis (stateRoot is diff)
 }
 
 ## load /data

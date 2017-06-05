@@ -48,6 +48,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
+	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
 func init() {
@@ -504,7 +505,7 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 		if !ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
 			ethConf.NetworkId = 2
 		}
-		//state.StartingNonce = 1048576 // (2**20)
+		state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
 
 	case ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)):
 		// Override the base network stack configs
@@ -526,6 +527,13 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 			shhEnable = true
 		}
 		ethConf.PowTest = true
+	}
+
+	// Set statedb StartingNonce from external config.
+	if config.State != nil {
+		if sn := config.State.StartingNonce; sn != 0 {
+			state.StartingNonce = sn
+		}
 	}
 
 	return stackConf, shhEnable
@@ -663,6 +671,13 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 			for k, v := range feat.Options {
 				glog.V(logger.Debug).Infof("        %v: %v", k, v)
 			}
+		}
+	}
+	if sn := state.StartingNonce; sn != 0 {
+		if chainIsMorden(ctx) {
+			glog.V(logger.Info).Infof("Starting nonce (morden): %v", colorGreen(sn))
+		} else {
+			glog.V(logger.Info).Infof("Starting nonce: %v", colorGreen(sn))
 		}
 	}
 
