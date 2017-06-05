@@ -19,6 +19,11 @@ Releases considered stable may be found on our [Releases Page](https://github.co
 
 ## [Unreleased]
 
+#### Added
+- `state.startingNonce` configurable in external `chain.json`
+
+#### Fixed
+- `attach` command uses directory schema per-chain defaults
 
 ## [3.5.0] - 2017-06-02
 
