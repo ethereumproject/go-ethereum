@@ -1,6 +1,7 @@
 {
   "id": "mainnet",
   "name": "Ethereum Classic Mainnet",
+  "network": 1,
   "genesis": {
     "nonce": "0x0000000000000042",
     "timestamp": "0x0000000000000000000000000000000000000000000000000000000000000000",
