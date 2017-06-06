@@ -515,6 +515,7 @@ func makeOKSufficientChainConfig(dump *GenesisDump, config *ChainConfig) *Suffic
 	// Setup.
 	whole := &SufficientChainConfig{}
 	whole.Identity = "testID"
+	whole.Network = 3
 	whole.Name = "testable"
 	whole.Genesis = dump
 	whole.ChainConfig = config
@@ -539,10 +540,26 @@ func TestSufficientChainConfig_IsValid(t *testing.T) {
 
 	for i, dump := range dumps {
 		for j, config := range configs {
+			// Make sure initial ok config is ok.
 			scc := makeOKSufficientChainConfig(dump, config)
 			if s, ok := scc.IsValid(); !ok {
 				t.Errorf("unexpected notok: %v @ %v/%v", s, i, j)
 			}
+
+			// Remove each required field and ensure is NOT ok.
+			o1 := scc.Identity
+			scc.Identity = ""
+			if s, ok := scc.IsValid(); ok {
+				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
+			}
+			scc.Identity = o1
+
+			o2 := scc.Network
+			scc.Network = 0
+			if s, ok := scc.IsValid(); ok {
+				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
+			}
+			scc.Network = o2
 
 			o := scc.Genesis
 			scc.Genesis = nil

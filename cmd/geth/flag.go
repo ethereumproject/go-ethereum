@@ -500,14 +500,7 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 	ethConf.Genesis = config.Genesis // from parsed JSON file
 
 	// Override any default configs in dev mode or the test net
-	switch {
-	case chainIsMorden(ctx):
-		if !ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
-			ethConf.NetworkId = 2
-		}
-		state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
-
-	case ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)):
+	if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 		// Override the base network stack configs
 		if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
 			stackConf.DataDir = filepath.Join(os.TempDir(), "/ethereum_dev_mode")
@@ -527,13 +520,6 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 			shhEnable = true
 		}
 		ethConf.PowTest = true
-	}
-
-	// Set statedb StartingNonce from external config.
-	if config.State != nil {
-		if sn := config.State.StartingNonce; sn != 0 {
-			state.StartingNonce = sn
-		}
 	}
 
 	return stackConf, shhEnable
@@ -557,7 +543,7 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
 		DatabaseHandles:         MakeDatabaseHandles(),
-		NetworkId:               ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)),
+		NetworkId:               sconf.Network,
 		AccountManager:          accman,
 		Etherbase:               MakeEtherbase(accman, ctx),
 		MinerThreads:            ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)),
@@ -602,13 +588,14 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		// Initialise chain configuration before handling migrations or setting up node.
 		config.Identity = chainIdentity
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
+		config.Network = eth.NetworkId // 1, default mainnet
+		config.Genesis = core.DefaultGenesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
-
 		if chainIsMorden(ctx) {
+			config.Network = 2
 			config.Genesis = core.TestNetGenesis
-		} else {
-			config.Genesis = core.DefaultGenesis
+			state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
 		}
 		return config
 	}
@@ -642,6 +629,13 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 	// Check for flagged bootnodes.
 	if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
 		glog.Fatalf("Conflicting custom chain config and --%s flags. Please use either but not both.", aliasableName(BootnodesFlag.Name, ctx))
+	}
+
+	// Set statedb StartingNonce from external config, if specified (is optional)
+	if config.State != nil {
+		if sn := config.State.StartingNonce; sn != 0 {
+			state.StartingNonce = sn
+		}
 	}
 
 	return config

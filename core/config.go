@@ -53,8 +53,8 @@ type SufficientChainConfig struct {
 	ID              string           `json:"id,omitempty"` // deprecated in favor of 'Identity', method decoding should id -> identity
 	Identity        string           `json:"identity"`
 	Name            string           `json:"name,omitempty"`
-	State           *StateConfig     `json:"state,omitempty"`
-	NetworkID       int              `json:"networkId"`
+	State           *StateConfig     `json:"state"` // don't omitempty for clarity of potential custom options
+	Network         int              `json:"network"` // eth.NetworkId (mainnet=1, morden=2)
 	Genesis         *GenesisDump     `json:"genesis"`
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
@@ -160,9 +160,9 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "identity/id", false
 	}
 
-	//if c.NetworkID == 0 {
-	//	return "networkId", false
-	//}
+	if c.Network == 0 {
+		return "networkId", false
+	}
 
 	if c.Genesis == nil {
 		return "genesis", false

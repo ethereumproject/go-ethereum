@@ -393,7 +393,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 	if !chainIsMorden(ctx) {
 		genesisDump = core.DefaultGenesis
 		netId = eth.NetworkId
-		stateConf = nil // will omitempty
+		stateConf = nil
 	}
 
 	// Note that we use default configs (not externalizable).
@@ -406,8 +406,8 @@ func dumpChainConfig(ctx *cli.Context) error {
 	var currentConfig = &core.SufficientChainConfig{
 		Identity:    chainIdentity,
 		Name:        mustMakeChainConfigNameDefaulty(ctx),
-		NetworkID:   netId,
-		State: stateConf,
+		Network:     netId,
+		State:       stateConf,
 		Genesis:     genesisDump,
 		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
 		Bootstrap:   nodes,
