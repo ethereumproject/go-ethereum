@@ -99,7 +99,8 @@ teardown() {
 	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
 	[ "$status" -eq 0 ]
 
-	run $GETH_CMD --datadir $DATA_DIR --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'
+	run $GETH_CMD --datadir $DATA_DIR --index-accounts --keystore="$DATA_DIR"/mainnet/keystore\
+	 --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -116,7 +117,8 @@ teardown() {
 	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
 	[ "$status" -eq 0 ]
 
-	run $GETH_CMD --datadir $DATA_DIR --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong1\nwrong2\nwrong3\n'
+	run $GETH_CMD --datadir $DATA_DIR --index-accounts --keystore="$DATA_DIR"/mainnet/keystore\
+	 --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong1\nwrong2\nwrong3\n'
 	echo "$output"
 
 	[ "$status" -ne 0 ]
@@ -133,7 +135,8 @@ teardown() {
 	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
 	[ "$status" -eq 0 ]
 
-	run $GETH_CMD --datadir $DATA_DIR --index-accounts --nat none --nodiscover --dev --unlock 0,2 js $DATA_DIR/empty.js <<< $'foobar\nfoobar\n'
+	run $GETH_CMD --datadir $DATA_DIR --index-accounts --keystore="$DATA_DIR"/mainnet/keystore\
+	 --nat none --nodiscover --dev --unlock 0,2 js $DATA_DIR/empty.js <<< $'foobar\nfoobar\n'
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -153,7 +156,8 @@ teardown() {
 
 	echo $'foobar\nfoobar\nfoobar\n' > $DATA_DIR/pass.txt
 
-	run $GETH_CMD --datadir $DATA_DIR --index-accounts --nat none --nodiscover --dev --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
+	run $GETH_CMD --datadir $DATA_DIR --index-accounts --keystore="$DATA_DIR"/mainnet/keystore\
+	 --nat none --nodiscover --dev --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -173,7 +177,8 @@ teardown() {
 
 	echo $'wrong\nwrong\nwrong\n' > $DATA_DIR/pass.txt
 
-	run $GETH_CMD --datadir $DATA_DIR --nat none --index-accounts --nodiscover --dev --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
+	run $GETH_CMD --datadir $DATA_DIR --nat none --index-accounts --keystore="$DATA_DIR"/mainnet/keystore\
+	 --nat none --nodiscover --dev --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
 	echo "$output"
 
 	[ "$status" -ne 0 ]
@@ -187,7 +192,8 @@ teardown() {
 	run $GETH_CMD --keystore $DATA_DIR/mainnet/store --index-accounts account index
 	[ "$status" -eq 0 ]
 
-	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/mainnet/store --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'$DATA_DIR/store/1
+	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/mainnet/store --index-accounts --keystore="$DATA_DIR"/mainnet/store\
+	 --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'$DATA_DIR/store/1
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -203,7 +209,8 @@ teardown() {
 	run $GETH_CMD --keystore $DATA_DIR/mainnet/store --index-accounts account index
 	[ "$status" -eq 0 ]
 
-	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/mainnet/store --index-accounts --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong\n'$DATA_DIR/store/1
+	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/mainnet/store --index-accounts --keystore="$DATA_DIR"/mainnet/store\
+	 --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong\n'$DATA_DIR/store/1
 	echo "$output"
 
 	[ "$status" -ne 0 ]

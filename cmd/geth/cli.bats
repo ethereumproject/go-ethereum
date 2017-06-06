@@ -72,13 +72,6 @@ teardown() {
 	[ "$status" -ne 0 ]
 }
 
-@test "overlapping flags not allowed: --chain=morden --dev" {
-	run $GETH_CMD --data-dir $DATA_DIR --dev --chain=morden --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
-	echo "$output"
-	[ "$status" -gt 0 ]
-	[[ "$output" == *"invalid flag "* ]]
-}
-
 @test "custom testnet subdir --testnet --chain=morden2 | exit !=0" {
 	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden2 --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
 	echo "$output"
