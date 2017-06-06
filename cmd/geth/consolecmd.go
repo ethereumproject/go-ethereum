@@ -52,7 +52,7 @@ This command allows to open a console on a running geth node.
 	javascriptCommand = cli.Command{
 		Action: ephemeralConsole,
 		Name:   "js",
-		Usage:  `executes the given JavaScript files in the Geth JavaScript VM`,
+		Usage:  `Executes the given JavaScript files in the Geth JavaScript VM`,
 		Description: `
 The JavaScript VM exposes a node admin interface as well as the Ðapp
 JavaScript API. See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console

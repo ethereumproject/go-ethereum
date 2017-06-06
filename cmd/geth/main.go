@@ -72,7 +72,7 @@ func makeCLIApp() (app *cli.App) {
 			Action:  makedag,
 			Name:    "make-dag",
 			Aliases: []string{"makedag"},
-			Usage:   "generate ethash dag (for testing)",
+			Usage:   "Generate ethash dag (for testing)",
 			Description: `
 The makedag command generates an ethash DAG in /tmp/dag.
 
@@ -84,7 +84,7 @@ Regular users do not need to execute it.
 			Action:  gpuinfo,
 			Name:    "gpu-info",
 			Aliases: []string{"gpuinfo"},
-			Usage:   "gpuinfo",
+			Usage:   "GPU info",
 			Description: `
 Prints OpenCL device info for all found GPUs.
 `,
@@ -93,7 +93,7 @@ Prints OpenCL device info for all found GPUs.
 			Action:  gpubench,
 			Name:    "gpu-bench",
 			Aliases: []string{"gpubench"},
-			Usage:   "benchmark GPU",
+			Usage:   "Benchmark GPU",
 			Description: `
 Runs quick benchmark on first GPU found.
 `,
@@ -101,7 +101,7 @@ Runs quick benchmark on first GPU found.
 		{
 			Action: version,
 			Name:   "version",
-			Usage:  "print ethereum version numbers",
+			Usage:  "Print ethereum version numbers",
 			Description: `
 The output of this command is supposed to be machine-readable.
 `,

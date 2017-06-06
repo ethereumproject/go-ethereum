@@ -52,7 +52,7 @@ var (
 type SufficientChainConfig struct {
 	ID          string       `json:"id"`
 	Name        string       `json:"name,omitempty"`
-	State       *StateConfig `json:"state"`
+	State       *StateConfig `json:"state,omitempty"`
 	Genesis     *GenesisDump `json:"genesis"`
 	ChainConfig *ChainConfig `json:"chainConfig"`
 	Bootstrap   []string     `json:"bootstrap"`
