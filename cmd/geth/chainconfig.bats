@@ -30,7 +30,7 @@ teardown() {
 
 	run grep -R "mainnet" $DATA_DIR/dump.json
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"\"id\": \"mainnet\","* ]]
+	[[ "$output" == *"\"identity\": \"mainnet\","* ]]
 }
 
 @test "--testnet dump-chain-config | exit 0" {
@@ -43,7 +43,7 @@ teardown() {
 
 	run grep -R "morden" $DATA_DIR/dump.json
 	echo "$output"
-	[[ "$output" == *"\"id\": \"morden\"," ]]
+	[[ "$output" == *"\"identity\": \"morden\"," ]]
 }
 
 @test "--chain morden dump-chain-config | exit 0" {
@@ -55,7 +55,7 @@ teardown() {
 	[ -f $DATA_DIR/dump.json ]
 
 	run grep -R "morden" $DATA_DIR/dump.json
-	[[ "$output" == *"\"id\": \"morden\"," ]]
+	[[ "$output" == *"\"identity\": \"morden\"," ]]
 }
 
 @test "--chain kittyCoin dump-chain-config | exit !=0" {
@@ -80,7 +80,7 @@ teardown() {
 	run grep -R "mainnet" "$customnet"/chain.json
 	[ "$status" -eq 0 ]
 	echo "$output"
-	[[ "$output" == *"\"id\": \"mainnet\"," ]]
+	[[ "$output" == *"\"identity\": \"mainnet\"," ]]
 
 	# Ensure JSON file dump is loadable as external config
 	sed -i.bak s/mainnet/kitty/ "$customnet"/chain.json
@@ -106,7 +106,7 @@ teardown() {
 	run grep -R "morden" "$customnet"/chain.json
 	[ "$status" -eq 0 ]
 	echo "$output"
-	[[ "$output" == *"\"id\": \"morden\"," ]]
+	[[ "$output" == *"\"identity\": \"morden\"," ]]
 
 	# Ensure JSON file dump is loadable as external config
 	sed -i.bak s/morden/kitty/ "$customnet"/chain.json
@@ -116,6 +116,7 @@ teardown() {
 	[[ "$output" == *"$testnet_genesis_hash"* ]]
 }
 
+# Dump morden and make customization and test that customizations are installed.
 @test "--chain morden dump-chain-config | --chain -> kitty | exit 0" {
 	
 	# Same as 'chainconfig customnet dump'... higher complexity::more confidence
@@ -132,19 +133,29 @@ teardown() {
 	run grep -R "morden" "$customnet"/chain.json
 	[ "$status" -eq 0 ]
 	echo "$output"
-	[[ "$output" == *"\"id\": \"morden\"," ]]
+	[[ "$output" == *"\"identity\": \"morden\"," ]]
 
 	# Ensure JSON file dump is loadable as external config
 	sed -i.bak s/morden/kitty/ "$customnet"/chain.json
+	sed -i.bak s/identity/id/ "$customnet"/chain.json	# ensure identity is aliases to identity
 	# remove starting nonce from external config
 	# config file should still be valid, but genesis should have different hash than default morden genesis
 	grep -v 'startingNonce' "$customnet"/chain.json > "$DATA_DIR"/stripped.json 
 	[ "$status" -eq 0 ]
 	mv "$DATA_DIR"/stripped.json "$customnet"/chain.json
+
+	sed -e '0,/2/ s/2/666/' "$customnet"/chain.json > "$DATA_DIR"/net_id.json
+	mv "$DATA_DIR"/net_id.json "$customnet"/chain.json
+
 	run $GETH_CMD --datadir $DATA_DIR --chain kitty --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	[ "$status" -eq 0 ]
 	echo "$output"
 	[[ "$output" != *"$testnet_genesis_hash"* ]] # different genesis (stateRoot is diff)
+
+	run $GETH_CMD --datadir $DATA_DIR --chain kitty status
+	[ "$status" -eq 0 ]
+	echo "$output"
+	[[ "$output" != *"Network: 666"* ]] # new network id
 }
 
 ## load /data
