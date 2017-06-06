@@ -1,9 +1,10 @@
 {
-    "id": "morden",
+    "identity": "morden",
     "name": "Morden Testnet",
     "state": {
         "startingNonce": 1048576
     },
+    "network": 2,
     "genesis": {
         "nonce": "0x00006d6f7264656e",
         "timestamp": "",
