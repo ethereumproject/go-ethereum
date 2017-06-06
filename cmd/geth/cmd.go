@@ -247,7 +247,7 @@ func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []
 	ss := []printable{}
 
 	// Chain identifiers.
-	ss = append(ss, printable{0, "Chain identity", config.ID})
+	ss = append(ss, printable{0, "Chain identity", config.Identity})
 	ss = append(ss, printable{0, "Chain name", config.Name})
 
 	// Genesis.
@@ -299,7 +299,7 @@ func formatEthConfigPretty(ethConfig *eth.Config) (s []string) {
 	ss := []printable{}
 
 	// NetworkID
-	ss = append(ss, printable{0, "Network ID", ethConfig.NetworkId})
+	ss = append(ss, printable{0, "Network Identity", ethConfig.NetworkId})
 	// FastSync?
 	ss = append(ss, printable{0, "Fast sync", ethConfig.FastSync})
 	// BlockChainVersion

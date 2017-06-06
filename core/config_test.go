@@ -321,11 +321,11 @@ func TestChainConfig_GetChainID(t *testing.T) {
 	for extConfigPath, wantInt := range cases {
 		p, e := filepath.Abs(extConfigPath)
 		if e != nil {
-			t.Errorf("filepath err: %v", e)
+			t.Fatalf("filepath err: %v", e)
 		}
 		extConfig, err := ReadExternalChainConfig(p)
 		if err != nil {
-			t.Errorf("could not find file: %v", err)
+			t.Fatalf("could not decode file: %v", err)
 		}
 		if extConfig.ChainConfig.GetChainID().Cmp(wantInt) != 0 {
 			t.Error("got: %v, want: %v", extConfig.ChainConfig.GetChainID(), wantInt)
@@ -514,7 +514,7 @@ func TestChainConfig_GetSigner(t *testing.T) {
 func makeOKSufficientChainConfig(dump *GenesisDump, config *ChainConfig) *SufficientChainConfig {
 	// Setup.
 	whole := &SufficientChainConfig{}
-	whole.ID = "testID"
+	whole.Identity = "testID"
 	whole.Name = "testable"
 	whole.Genesis = dump
 	whole.ChainConfig = config

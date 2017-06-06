@@ -60,7 +60,7 @@ var AppHelpFlagGroups = []flagGroup{
 			KeyStoreDirFlag,
 			NetworkIdFlag,
 			DevModeFlag,
-			IdentityFlag,
+			NodeNameFlag,
 			FastSyncFlag,
 			LightKDFFlag,
 			CacheFlag,

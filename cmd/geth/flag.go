@@ -379,10 +379,10 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
-// makeName makes the node name, which can be (in part) customized by the IdentityFlag
+// makeName makes the node name, which can be (in part) customized by the NodeNameFlag
 func makeNodeName(version string, ctx *cli.Context) string {
 	name := fmt.Sprintf("Geth/%s/%s/%s", version, runtime.GOOS, runtime.Version())
-	if identity := ctx.GlobalString(aliasableName(IdentityFlag.Name, ctx)); len(identity) > 0 {
+	if identity := ctx.GlobalString(aliasableName(NodeNameFlag.Name, ctx)); len(identity) > 0 {
 		name += "/" + identity
 	}
 	return name
@@ -600,7 +600,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	if chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity] {
 		// Initialise chain configuration before handling migrations or setting up node.
-		config.ID = chainIdentity
+		config.Identity = chainIdentity
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
@@ -633,9 +633,10 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		glog.Fatalf(`invalid external configuration JSON: '%v': %v
 		Valid custom configuration JSON file must be named 'chain.json' and be located in respective chain subdir.`, configPath, err)
 	}
+
 	// Ensure JSON 'id' value matches name of parent chain subdir.
-	if config.ID != chainIdentity {
-		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, ErrInvalidChainID, config.ID, chainIdentity)
+	if config.Identity != chainIdentity {
+		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, ErrInvalidChainID, config.Identity, chainIdentity)
 	}
 
 	// Check for flagged bootnodes.

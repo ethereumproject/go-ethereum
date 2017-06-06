@@ -33,12 +33,12 @@ import (
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -109,7 +109,7 @@ The output of this command is supposed to be machine-readable.
 	}
 
 	app.Flags = []cli.Flag{
-		IdentityFlag,
+		NodeNameFlag,
 		UnlockedAccountFlag,
 		PasswordFileFlag,
 		AccountsIndexFlag,
@@ -385,9 +385,15 @@ func dumpChainConfig(ctx *cli.Context) error {
 		glog.Fatalf("'%v' must be a directory", fb)
 	}
 
+	// Implicitly favor Morden because it is a smaller, simpler configuration,
+	// so I expect it to be used more frequently than mainnet.
 	genesisDump := core.TestNetGenesis
+	netId := 2
+	stateConf := &core.StateConfig{StartingNonce: state.DefaultTestnetStartingNonce}
 	if !chainIsMorden(ctx) {
 		genesisDump = core.DefaultGenesis
+		netId = eth.NetworkId
+		stateConf = nil // will omitempty
 	}
 
 	// Note that we use default configs (not externalizable).
@@ -398,15 +404,13 @@ func dumpChainConfig(ctx *cli.Context) error {
 	}
 
 	var currentConfig = &core.SufficientChainConfig{
-		ID:          chainIdentity,
+		Identity:    chainIdentity,
 		Name:        mustMakeChainConfigNameDefaulty(ctx),
-		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
+		NetworkID:   netId,
+		State: stateConf,
 		Genesis:     genesisDump,
+		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
 		Bootstrap:   nodes,
-	}
-
-	if chainIsMorden(ctx) {
-		currentConfig.State = &core.StateConfig{StartingNonce: state.DefaultTestnetStartingNonce}
 	}
 
 	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {

@@ -50,12 +50,14 @@ var (
 
 // SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
 type SufficientChainConfig struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name,omitempty"`
-	State       *StateConfig `json:"state,omitempty"`
-	Genesis     *GenesisDump `json:"genesis"`
-	ChainConfig *ChainConfig `json:"chainConfig"`
-	Bootstrap   []string     `json:"bootstrap"`
+	ID              string           `json:"id,omitempty"` // deprecated in favor of 'Identity', method decoding should id -> identity
+	Identity        string           `json:"identity"`
+	Name            string           `json:"name,omitempty"`
+	State           *StateConfig     `json:"state,omitempty"`
+	NetworkID       int              `json:"networkId"`
+	Genesis         *GenesisDump     `json:"genesis"`
+	ChainConfig     *ChainConfig     `json:"chainConfig"`
+	Bootstrap       []string         `json:"bootstrap"`
 	ParsedBootstrap []*discover.Node `json:"-"`
 }
 
@@ -154,11 +156,13 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "all empty", false
 	}
 
-	if c.ID == "" {
-		return "id", false
+	if c.Identity == "" {
+		return "identity/id", false
 	}
 
-	// note: no check for name, the only optional field
+	//if c.NetworkID == 0 {
+	//	return "networkId", false
+	//}
 
 	if c.Genesis == nil {
 		return "genesis", false
@@ -423,18 +427,21 @@ func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error
 		return nil, fmt.Errorf("%s: %s", flaggedExternalChainConfigPath, err)
 	}
 
-	if err == nil {
-		config.ParsedBootstrap = ParseBootstrapNodeStrings(config.Bootstrap)
-
-		if invalid, ok := config.IsValid(); !ok {
-			return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
-		}
-
-		config.ChainConfig = config.ChainConfig.SortForks()
-
-		return config, nil
+	// Make JSON 'id' -> 'identity' (for backwards compatibility)
+	if config.ID != "" && config.Identity == "" {
+		config.Identity = config.ID
 	}
-	return nil, fmt.Errorf("ERROR: Error reading configuration file (%s): %v", flaggedExternalChainConfigPath, err)
+
+	// Parse bootstrap nodes
+	config.ParsedBootstrap = ParseBootstrapNodeStrings(config.Bootstrap)
+
+	if invalid, ok := config.IsValid(); !ok {
+		return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
+	}
+
+	config.ChainConfig = config.ChainConfig.SortForks()
+
+	return config, nil
 }
 
 // ParseBootstrapNodeStrings is a helper function to parse stringified bs nodes, ie []"enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303",...

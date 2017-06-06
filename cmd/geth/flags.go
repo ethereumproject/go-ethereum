@@ -54,8 +54,8 @@ var (
 		Name:  "dev",
 		Usage: "Developer mode: pre-configured private network with several debugging flags",
 	}
-	IdentityFlag = cli.StringFlag{
-		Name:  "identity",
+	NodeNameFlag = cli.StringFlag{
+		Name:  "identity,name",
 		Usage: "Custom node name",
 	}
 	NatspecEnabledFlag = cli.BoolFlag{
