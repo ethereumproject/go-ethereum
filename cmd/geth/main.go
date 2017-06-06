@@ -197,9 +197,7 @@ The output of this command is supposed to be machine-readable.
 		glog.CopyStandardLogTo("INFO")
 
 		if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
-
 			if p := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx)); p != "" {
-				// mkdir -p /path/to/log_dir
 				if e := os.MkdirAll(p, os.ModePerm); e != nil {
 					return e
 				}
@@ -210,6 +208,7 @@ The output of this command is supposed to be machine-readable.
 		}
 
 		if s := ctx.String("metrics"); s != "" {
+			log.Println("Collecting metrics: ON")
 			go metrics.Collect(s)
 		}
 
@@ -219,9 +218,23 @@ The output of this command is supposed to be machine-readable.
 		// for chains with the main network genesis block and network id 1.
 		eth.EnableBadBlockReporting = true
 
+		// (whilei): I use `log` instead of `glog` because git diff tells me:
+		// > The output of this command is supposed to be machine-readable.
 		gasLimit := ctx.GlobalString(aliasableName(TargetGasLimitFlag.Name, ctx))
 		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
 			log.Fatalf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
+		}
+
+		// Set morden chain by default for dev mode.
+		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+			if !ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
+				if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), "morden"); e == nil {
+					log.Printf(`Using chain configuration: Morden. To change this behavior, use option: --%v=<mainnet|CUSTOM>`,
+						aliasableName(ChainIdentityFlag.Name, ctx))
+				} else {
+					log.Fatalf("err setting chain for dev mode: %v", e)
+				}
+			}
 		}
 
 		return nil
@@ -375,8 +388,11 @@ func dumpChainConfig(ctx *cli.Context) error {
 	di, de := os.Stat(fb)
 	if de != nil {
 		if os.IsNotExist(de) {
-			glog.V(logger.Warn).Infof("Directory path '%v' does not yet exists; will create it", fb)
-			os.MkdirAll(fb, os.ModePerm)
+			glog.V(logger.Warn).Infof("Directory path '%v' does not yet exist. Will create.", fb)
+			if e := os.MkdirAll(fb, os.ModePerm); e != nil {
+				glog.Fatalf("Could not create necessary directories: %v", e)
+			}
+			di, _ = os.Stat(fb) // update var with new dir info
 		} else {
 			glog.V(logger.Error).Infof("err: %v (at '%v')", de, fb)
 		}

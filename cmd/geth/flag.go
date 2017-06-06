@@ -100,6 +100,8 @@ var (
 		"morden":  true,
 		"testnet": true,
 	}
+
+	devModeDataDirPath = filepath.Join(os.TempDir(), "/ethereum_dev_mode")
 )
 
 // chainIsMorden allows either
@@ -163,6 +165,11 @@ func mustMakeChainConfigNameDefaulty(ctx *cli.Context) string {
 // if none (or the empty string) is specified.
 // --> <home>/<EthereumClassic>(defaulty) or --datadir
 func mustMakeDataDir(ctx *cli.Context) string {
+	if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
+		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+			return devModeDataDirPath
+		}
+	}
 	if path := ctx.GlobalString(aliasableName(DataDirFlag.Name, ctx)); path != "" {
 		return path
 	}
@@ -420,11 +427,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		}
 	}
 
-	// Avoid conflicting flags
-	if ctx.GlobalBool(DevModeFlag.Name) && chainIsMorden(ctx) {
-		glog.Fatalf("%v: flags --%v and --%v/--%v=morden are mutually exclusive", ErrInvalidFlag, DevModeFlag.Name, TestNetFlag.Name, ChainIdentityFlag.Name)
-	}
-
 	// Makes sufficient configuration from JSON file or DB pending flags.
 	// Delegates flag usage.
 	config := mustMakeSufficientChainConfig(ctx)
@@ -497,22 +499,19 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 	// Configure the Whisper service
 	shhEnable = ctx.GlobalBool(aliasableName(WhisperEnabledFlag.Name, ctx))
 
-	ethConf.Genesis = config.Genesis // from parsed JSON file
-
 	// Override any default configs in dev mode or the test net
 	if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
-		// Override the base network stack configs
-		if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
-			stackConf.DataDir = filepath.Join(os.TempDir(), "/ethereum_dev_mode")
-		}
 		if !ctx.GlobalIsSet(aliasableName(MaxPeersFlag.Name, ctx)) {
 			stackConf.MaxPeers = 0
 		}
+		// From p2p/server.go:
+		// If the port is zero, the operating system will pick a port. The
+		// ListenAddr field will be updated with the actual address when
+		// the server is started.
 		if !ctx.GlobalIsSet(aliasableName(ListenPortFlag.Name, ctx)) {
 			stackConf.ListenAddr = ":0"
 		}
 		// Override the Ethereum protocol configs
-		ethConf.Genesis = core.TestNetGenesis
 		if !ctx.GlobalIsSet(aliasableName(GasPriceFlag.Name, ctx)) {
 			ethConf.GasPrice = new(big.Int)
 		}
@@ -539,6 +538,7 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 
 	ethConf := &eth.Config{
 		ChainConfig:             sconf.ChainConfig,
+		Genesis: sconf.Genesis,
 		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
 		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
@@ -608,12 +608,11 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		It looks like you haven't set up your custom chain yet...
 		Here's a possible workflow for that:
 
-		$ mkdir -p %v
 		$ geth --chain morden dump-chain-config %v/chain.json
 		$ sed -i.bak s/morden/%v/ %v/chain.json
 		$ vi %v/chain.json # <- make your customizations
-		`, ErrInvalidChainID, configPath,
-			chainDir, chainDir, chainIdentity, chainDir, chainDir)
+		`, core.ErrChainConfigNotFound, configPath,
+			chainDir, chainIdentity, chainDir, chainDir)
 	}
 	config, err := core.ReadExternalChainConfig(configPath)
 	if err != nil {
@@ -670,9 +669,9 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	}
 	if sn := state.StartingNonce; sn != 0 {
 		if chainIsMorden(ctx) {
-			glog.V(logger.Info).Infof("Starting nonce (morden): %v", colorGreen(sn))
+			glog.V(logger.Info).Infof("State starting nonce (morden): %v", colorGreen(sn))
 		} else {
-			glog.V(logger.Info).Infof("Starting nonce: %v", colorGreen(sn))
+			glog.V(logger.Info).Infof("State starting nonce: %v", colorGreen(sn))
 		}
 	}
 
