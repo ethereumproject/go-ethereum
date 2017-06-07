@@ -565,7 +565,6 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMaxGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)))
 	}
 
-	// Allow test PoW configured from custom chain config
 	switch sconf.PoW {
 	case "ethash-test":
 		ethConf.PowTest = true
@@ -577,7 +576,6 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 		if !ctx.GlobalIsSet(aliasableName(GasPriceFlag.Name, ctx)) {
 			ethConf.GasPrice = new(big.Int)
 		}
-		ethConf.PowTest = true
 	}
 
 	return ethConf
@@ -591,6 +589,11 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig {
 
 	config := &core.SufficientChainConfig{}
+	defer func() {
+		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+			config.PoW = "ethash-test"
+		}
+	}()
 
 	chainIdentity := mustMakeChainIdentity(ctx)
 
@@ -680,7 +683,6 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 		}
 	}
 
-	glog.V(logger.Info).Infof("PoW: %v", colorGreen(config.PoW))
 	if chainIsCustom {
 		glog.V(logger.Info).Infof("State starting nonce: %v", colorGreen(state.StartingNonce))
 	}
@@ -721,7 +723,10 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	pow := pow.PoW(core.FakePow{})
 	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
 		pow = ethash.New()
+	} else {
+		glog.V(logger.Info).Info("PoW: fake")
 	}
+
 	chain, err = core.NewBlockChain(chainDb, sconf.ChainConfig, pow, new(event.TypeMux))
 	if err != nil {
 		glog.Fatal("Could not start chainmanager: ", err)

@@ -205,13 +205,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 	switch {
 	case config.PowTest:
-		glog.V(logger.Info).Infof("ethash used in test mode")
+		glog.V(logger.Info).Infof("PoW: ethash used in test mode")
 		eth.pow, err = ethash.NewForTesting()
 		if err != nil {
 			return nil, err
 		}
 	case config.PowShared:
-		glog.V(logger.Info).Infof("ethash used in shared mode")
+		glog.V(logger.Info).Infof("PoW: ethash used in shared mode")
 		eth.pow = ethash.NewShared()
 
 	default:

@@ -229,7 +229,7 @@ The output of this command is supposed to be machine-readable.
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 			if !ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 				if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), "morden"); e == nil {
-					log.Printf(`Using chain configuration: Morden. To change this behavior, use option: --%v=<mainnet|CUSTOM>`,
+					log.Printf(`Dev mode: Using chain configuration: Morden. To change this behavior, use option: --%v=<mainnet|CUSTOM>`,
 						aliasableName(ChainIdentityFlag.Name, ctx))
 				} else {
 					log.Fatalf("err setting chain for dev mode: %v", e)
