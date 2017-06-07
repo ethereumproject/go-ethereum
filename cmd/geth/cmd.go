@@ -247,7 +247,7 @@ func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []
 	ss := []printable{}
 
 	// Chain identifiers.
-	ss = append(ss, printable{0, "Chain identity", config.ID})
+	ss = append(ss, printable{0, "Chain identity", config.Identity})
 	ss = append(ss, printable{0, "Chain name", config.Name})
 
 	// Genesis.
@@ -299,7 +299,7 @@ func formatEthConfigPretty(ethConfig *eth.Config) (s []string) {
 	ss := []printable{}
 
 	// NetworkID
-	ss = append(ss, printable{0, "Network ID", ethConfig.NetworkId})
+	ss = append(ss, printable{0, "Network", ethConfig.NetworkId})
 	// FastSync?
 	ss = append(ss, printable{0, "Fast sync", ethConfig.FastSync})
 	// BlockChainVersion
@@ -354,7 +354,7 @@ func formatStackConfigPretty(stackConfig *node.Config) (s []string) {
 	// Name
 	ss = append(ss, printable{0, "Name", stackConfig.Name})
 	// Datadir
-	ss = append(ss, printable{0, "Node dir", stackConfig.DataDir})
+	ss = append(ss, printable{0, "Node data dir", stackConfig.DataDir})
 	// IPCPath
 	ss = append(ss, printable{0, "IPC path", stackConfig.IPCPath})
 	// PrivateKey?
@@ -372,7 +372,11 @@ func formatStackConfigPretty(stackConfig *node.Config) (s []string) {
 		ss = append(ss, printable{1, "", n.String()})
 	}
 	// ListenAddrg
-	ss = append(ss, printable{0, "Listen address", stackConfig.ListenAddr})
+	sla := stackConfig.ListenAddr
+	if sla == ":0" {
+		sla += " (OS will pick)"
+	}
+	ss = append(ss, printable{0, "Listen address", sla})
 	// NAT
 	ss = append(ss, printable{0, "NAT", stackConfig.NAT.String()})
 	// MaxPeers
@@ -434,7 +438,7 @@ func formatBlockPretty(b *types.Block) (ss []printable) {
 func formatChainDataPretty(datadir string, chain *core.BlockChain) (s []string) {
 	ss := []printable{}
 
-	ss = append(ss, printable{0, "Chain dir", datadir})
+	ss = append(ss, printable{0, "Chain data dir", datadir})
 
 	ss = append(ss, printable{0, "Genesis", nil})
 	ss = append(ss, formatBlockPretty(chain.Genesis())...)

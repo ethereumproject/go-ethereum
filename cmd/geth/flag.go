@@ -34,7 +34,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -49,6 +48,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
+	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
 func init() {
@@ -100,6 +100,8 @@ var (
 		"morden":  true,
 		"testnet": true,
 	}
+
+	devModeDataDirPath = filepath.Join(os.TempDir(), "/ethereum_dev_mode")
 )
 
 // chainIsMorden allows either
@@ -163,6 +165,11 @@ func mustMakeChainConfigNameDefaulty(ctx *cli.Context) string {
 // if none (or the empty string) is specified.
 // --> <home>/<EthereumClassic>(defaulty) or --datadir
 func mustMakeDataDir(ctx *cli.Context) string {
+	if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
+		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+			return devModeDataDirPath
+		}
+	}
 	if path := ctx.GlobalString(aliasableName(DataDirFlag.Name, ctx)); path != "" {
 		return path
 	}
@@ -379,10 +386,10 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
-// makeName makes the node name, which can be (in part) customized by the IdentityFlag
+// makeName makes the node name, which can be (in part) customized by the NodeNameFlag
 func makeNodeName(version string, ctx *cli.Context) string {
 	name := fmt.Sprintf("Geth/%s/%s/%s", version, runtime.GOOS, runtime.Version())
-	if identity := ctx.GlobalString(aliasableName(IdentityFlag.Name, ctx)); len(identity) > 0 {
+	if identity := ctx.GlobalString(aliasableName(NodeNameFlag.Name, ctx)); len(identity) > 0 {
 		name += "/" + identity
 	}
 	return name
@@ -418,11 +425,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
 			glog.Fatalf("%v: failed to migrate existing data to chain-specific subdir: %v", ErrDirectoryStructure, subdirMigrateErr)
 		}
-	}
-
-	// Avoid conflicting flags
-	if ctx.GlobalBool(DevModeFlag.Name) && chainIsMorden(ctx) {
-		glog.Fatalf("%v: flags --%v and --%v/--%v=morden are mutually exclusive", ErrInvalidFlag, DevModeFlag.Name, TestNetFlag.Name, ChainIdentityFlag.Name)
 	}
 
 	// Makes sufficient configuration from JSON file or DB pending flags.
@@ -497,36 +499,21 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 	// Configure the Whisper service
 	shhEnable = ctx.GlobalBool(aliasableName(WhisperEnabledFlag.Name, ctx))
 
-	ethConf.Genesis = config.Genesis // from parsed JSON file
-
-	// Override any default configs in dev mode or the test net
-	switch {
-	case chainIsMorden(ctx):
-		if !ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
-			ethConf.NetworkId = 2
-		}
-		state.StartingNonce = 1048576 // (2**20)
-
-	case ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)):
-		// Override the base network stack configs
-		if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
-			stackConf.DataDir = filepath.Join(os.TempDir(), "/ethereum_dev_mode")
-		}
+	// Override any default configs in dev mode
+	if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 		if !ctx.GlobalIsSet(aliasableName(MaxPeersFlag.Name, ctx)) {
 			stackConf.MaxPeers = 0
 		}
+		// From p2p/server.go:
+		// If the port is zero, the operating system will pick a port. The
+		// ListenAddr field will be updated with the actual address when
+		// the server is started.
 		if !ctx.GlobalIsSet(aliasableName(ListenPortFlag.Name, ctx)) {
 			stackConf.ListenAddr = ":0"
-		}
-		// Override the Ethereum protocol configs
-		ethConf.Genesis = core.TestNetGenesis
-		if !ctx.GlobalIsSet(aliasableName(GasPriceFlag.Name, ctx)) {
-			ethConf.GasPrice = new(big.Int)
 		}
 		if !ctx.GlobalIsSet(aliasableName(WhisperEnabledFlag.Name, ctx)) {
 			shhEnable = true
 		}
-		ethConf.PowTest = true
 	}
 
 	return stackConf, shhEnable
@@ -546,11 +533,12 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 
 	ethConf := &eth.Config{
 		ChainConfig:             sconf.ChainConfig,
+		Genesis: sconf.Genesis,
 		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
 		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
 		DatabaseHandles:         MakeDatabaseHandles(),
-		NetworkId:               ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)),
+		NetworkId:               sconf.Network,
 		AccountManager:          accman,
 		Etherbase:               MakeEtherbase(accman, ctx),
 		MinerThreads:            ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)),
@@ -577,6 +565,19 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMaxGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)))
 	}
 
+	switch sconf.Consensus {
+	case "ethash-test":
+		ethConf.PowTest = true
+	}
+
+	// Override any default configs in dev mode
+	if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+		// Override the Ethereum protocol configs
+		if !ctx.GlobalIsSet(aliasableName(GasPriceFlag.Name, ctx)) {
+			ethConf.GasPrice = new(big.Int)
+		}
+	}
+
 	return ethConf
 }
 
@@ -588,20 +589,27 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig {
 
 	config := &core.SufficientChainConfig{}
+	defer func() {
+		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+			config.Consensus = "ethash-test"
+		}
+	}()
 
 	chainIdentity := mustMakeChainIdentity(ctx)
 
 	if chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity] {
 		// Initialise chain configuration before handling migrations or setting up node.
-		config.ID = chainIdentity
+		config.Identity = chainIdentity
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
+		config.Network = eth.NetworkId // 1, default mainnet
+		config.Consensus = "ethash"
+		config.Genesis = core.DefaultGenesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
-
 		if chainIsMorden(ctx) {
+			config.Network = 2
 			config.Genesis = core.TestNetGenesis
-		} else {
-			config.Genesis = core.DefaultGenesis
+			state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
 		}
 		return config
 	}
@@ -614,26 +622,33 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		It looks like you haven't set up your custom chain yet...
 		Here's a possible workflow for that:
 
-		$ mkdir -p %v
 		$ geth --chain morden dump-chain-config %v/chain.json
 		$ sed -i.bak s/morden/%v/ %v/chain.json
 		$ vi %v/chain.json # <- make your customizations
-		`, ErrInvalidChainID, configPath,
-			chainDir, chainDir, chainIdentity, chainDir, chainDir)
+		`, core.ErrChainConfigNotFound, configPath,
+			chainDir, chainIdentity, chainDir, chainDir)
 	}
 	config, err := core.ReadExternalChainConfig(configPath)
 	if err != nil {
 		glog.Fatalf(`invalid external configuration JSON: '%v': %v
 		Valid custom configuration JSON file must be named 'chain.json' and be located in respective chain subdir.`, configPath, err)
 	}
+
 	// Ensure JSON 'id' value matches name of parent chain subdir.
-	if config.ID != chainIdentity {
-		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, ErrInvalidChainID, config.ID, chainIdentity)
+	if config.Identity != chainIdentity {
+		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, ErrInvalidChainID, config.Identity, chainIdentity)
 	}
 
 	// Check for flagged bootnodes.
 	if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
 		glog.Fatalf("Conflicting custom chain config and --%s flags. Please use either but not both.", aliasableName(BootnodesFlag.Name, ctx))
+	}
+
+	// Set statedb StartingNonce from external config, if specified (is optional)
+	if config.State != nil {
+		if sn := config.State.StartingNonce; sn != 0 {
+			state.StartingNonce = sn
+		}
 	}
 
 	return config
@@ -642,7 +657,8 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
 
 	chainIdentity := mustMakeChainIdentity(ctx)
-	if !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity]) {
+	chainIsCustom := !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity])
+	if chainIsCustom {
 		glog.V(logger.Info).Infof("Using custom chain configuration file: \x1b[32m%s\x1b[39m", filepath.Clean(filepath.Join(MustMakeChainDataDir(ctx), "chain.json")))
 	}
 
@@ -665,6 +681,10 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 				glog.V(logger.Debug).Infof("        %v: %v", k, v)
 			}
 		}
+	}
+
+	if chainIsCustom {
+		glog.V(logger.Info).Infof("State starting nonce: %v", colorGreen(state.StartingNonce))
 	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
@@ -703,7 +723,10 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	pow := pow.PoW(core.FakePow{})
 	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
 		pow = ethash.New()
+	} else {
+		glog.V(logger.Info).Info("Consensus: fake")
 	}
+
 	chain, err = core.NewBlockChain(chainDb, sconf.ChainConfig, pow, new(event.TypeMux))
 	if err != nil {
 		glog.Fatal("Could not start chainmanager: ", err)
