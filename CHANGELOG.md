@@ -20,10 +20,16 @@ Releases considered stable may be found on our [Releases Page](https://github.co
 ## [Unreleased]
 
 #### Added
-- `state.startingNonce` configurable in external `chain.json`
+- Newly configurable in external `chain.json`:
+    - `"state": { "startingNonce": NUMBER }` - _optional_ (mainnet: 0, morden: 1048576) - "dirty" starting world state
+    - `"network": NUMBER` - _required_ (mainnet: 1, morden: 2) - network id used to identify valid peers
+    - `"pow": STRING` - _optional_ (default: "ethash", optional: "ethash-test") - specify smaller and faster pow algorithm, e.g. `--dev` mode sets "ethash-test"
+    > See cmd/geth/config/*.json for updated examples.
+
+- Dev mode (`--dev`) made compatible with `--chain` 
 
 #### Fixed
-- `attach` command uses directory schema per-chain defaults
+- `geth attach` command uses chain subdirectory schema by default, e.g. `datadir/mainnet/geth.ipc` instead of `datadir/geth.ipc`
 
 ## [3.5.0] - 2017-06-02
 
