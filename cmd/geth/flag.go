@@ -499,7 +499,7 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 	// Configure the Whisper service
 	shhEnable = ctx.GlobalBool(aliasableName(WhisperEnabledFlag.Name, ctx))
 
-	// Override any default configs in dev mode or the test net
+	// Override any default configs in dev mode
 	if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 		if !ctx.GlobalIsSet(aliasableName(MaxPeersFlag.Name, ctx)) {
 			stackConf.MaxPeers = 0
@@ -511,14 +511,9 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 		if !ctx.GlobalIsSet(aliasableName(ListenPortFlag.Name, ctx)) {
 			stackConf.ListenAddr = ":0"
 		}
-		// Override the Ethereum protocol configs
-		if !ctx.GlobalIsSet(aliasableName(GasPriceFlag.Name, ctx)) {
-			ethConf.GasPrice = new(big.Int)
-		}
 		if !ctx.GlobalIsSet(aliasableName(WhisperEnabledFlag.Name, ctx)) {
 			shhEnable = true
 		}
-		ethConf.PowTest = true
 	}
 
 	return stackConf, shhEnable
@@ -570,6 +565,21 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMaxGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)))
 	}
 
+	// Allow test PoW configured from custom chain config
+	switch sconf.PoW {
+	case "ethash-test":
+		ethConf.PowTest = true
+	}
+
+	// Override any default configs in dev mode
+	if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+		// Override the Ethereum protocol configs
+		if !ctx.GlobalIsSet(aliasableName(GasPriceFlag.Name, ctx)) {
+			ethConf.GasPrice = new(big.Int)
+		}
+		ethConf.PowTest = true
+	}
+
 	return ethConf
 }
 
@@ -589,6 +599,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		config.Identity = chainIdentity
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
 		config.Network = eth.NetworkId // 1, default mainnet
+		config.PoW = "ethash"
 		config.Genesis = core.DefaultGenesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
@@ -643,7 +654,8 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
 
 	chainIdentity := mustMakeChainIdentity(ctx)
-	if !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity]) {
+	chainIsCustom := !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity])
+	if chainIsCustom {
 		glog.V(logger.Info).Infof("Using custom chain configuration file: \x1b[32m%s\x1b[39m", filepath.Clean(filepath.Join(MustMakeChainDataDir(ctx), "chain.json")))
 	}
 
@@ -667,12 +679,10 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 			}
 		}
 	}
-	if sn := state.StartingNonce; sn != 0 {
-		if chainIsMorden(ctx) {
-			glog.V(logger.Info).Infof("State starting nonce (morden): %v", colorGreen(sn))
-		} else {
-			glog.V(logger.Info).Infof("State starting nonce: %v", colorGreen(sn))
-		}
+
+	glog.V(logger.Info).Infof("PoW: %v", colorGreen(config.PoW))
+	if chainIsCustom {
+		glog.V(logger.Info).Infof("State starting nonce: %v", colorGreen(state.StartingNonce))
 	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))

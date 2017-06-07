@@ -3,6 +3,7 @@
     "name": "Ethereum Classic Mainnet",
     "state": null,
     "network": 1,
+    "pow": "ethash",
     "genesis": {
         "nonce": "0x0000000000000042",
         "timestamp": "",

@@ -53,8 +53,9 @@ type SufficientChainConfig struct {
 	ID              string           `json:"id,omitempty"` // deprecated in favor of 'Identity', method decoding should id -> identity
 	Identity        string           `json:"identity"`
 	Name            string           `json:"name,omitempty"`
-	State           *StateConfig     `json:"state"` // don't omitempty for clarity of potential custom options
+	State           *StateConfig     `json:"state"`   // don't omitempty for clarity of potential custom options
 	Network         int              `json:"network"` // eth.NetworkId (mainnet=1, morden=2)
+	PoW             string           `json:"pow"`     // pow type (ethash OR ethash-test)
 	Genesis         *GenesisDump     `json:"genesis"`
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
@@ -162,6 +163,10 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 
 	if c.Network == 0 {
 		return "networkId", false
+	}
+
+	if pow := c.PoW; pow == "" || (pow != "ethash" && pow != "ethash-test") {
+		return "pow", false
 	}
 
 	if c.Genesis == nil {
@@ -430,6 +435,11 @@ func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error
 	// Make JSON 'id' -> 'identity' (for backwards compatibility)
 	if config.ID != "" && config.Identity == "" {
 		config.Identity = config.ID
+	}
+
+	// Make 'ethash' default (backwards compatibility)
+	if config.PoW == "" {
+		config.PoW = "ethash"
 	}
 
 	// Parse bootstrap nodes
