@@ -31,6 +31,7 @@ var HomesteadBootNodes = []*discover.Node{
 	discover.MustParseNode("enode://5cd218959f8263bc3721d7789070806b0adff1a0ed3f95ec886fb469f9362c7507e3b32b256550b9a7964a23a938e8d42d45a0c34b332bfebc54b29081e83b93@35.187.57.94:30303"),    //boot3.etcdevteam.com
 	discover.MustParseNode("enode://39abab9d2a41f53298c0c9dc6bbca57b0840c3ba9dccf42aa27316addc1b7e56ade32a0a9f7f52d6c5db4fe74d8824bcedfeaecf1a4e533cacb71cf8100a9442@144.76.238.49:30303"),   //whysoserious-1
 	discover.MustParseNode("enode://f50e675a34f471af2438b921914b5f06499c7438f3146f6b8936f1faeb50b8a91d0d0c24fb05a66f05865cd58c24da3e664d0def806172ddd0d4c5bdbf37747e@144.76.238.49:30306"),   //whysoserious-2
+	discover.MustParseNode("enode://6dd3ac8147fa82e46837ec8c3223d69ac24bcdbab04b036a3705c14f3a02e968f7f1adfcdb002aacec2db46e625c04bf8b5a1f85bb2d40a479b3cc9d45a444af@104.237.131.102:30303"),
 }
 
 // TestNetBootNodes are the enode URLs of the P2P bootstrap nodes running on the
@@ -40,4 +41,7 @@ var TestNetBootNodes = []*discover.Node{
 	discover.MustParseNode("enode://afdc6076b9bf3e7d3d01442d6841071e84c76c73a7016cb4f35c0437df219db38565766234448f1592a07ba5295a867f0ce87b359bf50311ed0b830a2361392d@104.154.136.117:30403"), //boot1.etcdevteam.com
 	discover.MustParseNode("enode://21101a9597b79e933e17bc94ef3506fe99a137808907aa8fefa67eea4b789792ad11fb391f38b00087f8800a2d3dff011572b62a31232133dd1591ac2d1502c8@104.198.71.200:30403"),  //boot2.etcdevteam.com
 	discover.MustParseNode("enode://fd008499e9c4662f384b3cff23438879d31ced24e2d19504c6389bc6da6c882f9c2f8dbed972f7058d7650337f54e4ba17bb49c7d11882dd1731d26a6e62e3cb@35.187.57.94:30304"),    //boot3.etcdevteam.com
+	discover.MustParseNode("enode://30a1fd71f28aa6f66fe662af9ecc75f0a6980f06b71598f2b19d3dda04223fc0e53b47e40c9171d5014e9f5b59d9954de125782da592f5d95ea39066e2591d5d@104.237.131.102:30304"),
+	discover.MustParseNode("enode://7909d51011d8a153351169f21d3a7bbedb3be1e17d38c1f2fad06504dd5aa07a00f00845835d535fe702bf379c4d7209a51f4d1b723e0ca8b8732bd21fba3b30@139.162.133.42:30303"),
+	discover.MustParseNode("enode://a088dfb2f5305be9232e8071c5535f13718a4017e247a0b35074b807d43d99e022880c27302cdb5b1e98ad34c083dbbb483f2b17bdc66149bad037154d6ace96@139.162.127.72:30303"),
 }
