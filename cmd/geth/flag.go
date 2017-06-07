@@ -565,7 +565,7 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 		log.Fatalf("malformed %s flag value %q", aliasableName(GpoMaxGasPriceFlag.Name, ctx), ctx.GlobalString(aliasableName(GpoMaxGasPriceFlag.Name, ctx)))
 	}
 
-	switch sconf.PoW {
+	switch sconf.Consensus {
 	case "ethash-test":
 		ethConf.PowTest = true
 	}
@@ -591,7 +591,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 	config := &core.SufficientChainConfig{}
 	defer func() {
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
-			config.PoW = "ethash-test"
+			config.Consensus = "ethash-test"
 		}
 	}()
 
@@ -602,7 +602,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		config.Identity = chainIdentity
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
 		config.Network = eth.NetworkId // 1, default mainnet
-		config.PoW = "ethash"
+		config.Consensus = "ethash"
 		config.Genesis = core.DefaultGenesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
@@ -724,7 +724,7 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
 		pow = ethash.New()
 	} else {
-		glog.V(logger.Info).Info("PoW: fake")
+		glog.V(logger.Info).Info("Consensus: fake")
 	}
 
 	chain, err = core.NewBlockChain(chainDb, sconf.ChainConfig, pow, new(event.TypeMux))

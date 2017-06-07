@@ -561,19 +561,19 @@ func TestSufficientChainConfig_IsValid(t *testing.T) {
 			}
 			scc.Network = o2
 
-			o3 := scc.PoW
-			scc.PoW = "asdf"
+			o3 := scc.Consensus
+			scc.Consensus = "asdf"
 			if s, ok := scc.IsValid(); ok {
 				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
 			}
-			scc.PoW = o3
+			scc.Consensus = o3
 
-			o4 := scc.PoW
-			scc.PoW = ""
+			o4 := scc.Consensus
+			scc.Consensus = ""
 			if s, ok := scc.IsValid(); ok {
 				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
 			}
-			scc.PoW = o4
+			scc.Consensus = o4
 
 			o := scc.Genesis
 			scc.Genesis = nil

@@ -5,7 +5,7 @@
         "startingNonce": 1048576
     },
     "network": 2,
-    "pow": "ethash",
+    "consensus": "ethash",
     "genesis": {
         "nonce": "0x00006d6f7264656e",
         "timestamp": "",

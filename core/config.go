@@ -55,7 +55,7 @@ type SufficientChainConfig struct {
 	Name            string           `json:"name,omitempty"`
 	State           *StateConfig     `json:"state"`   // don't omitempty for clarity of potential custom options
 	Network         int              `json:"network"` // eth.NetworkId (mainnet=1, morden=2)
-	PoW             string           `json:"pow"`     // pow type (ethash OR ethash-test)
+	Consensus       string           `json:"consensus"`     // pow type (ethash OR ethash-test)
 	Genesis         *GenesisDump     `json:"genesis"`
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
@@ -165,8 +165,8 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "networkId", false
 	}
 
-	if pow := c.PoW; pow == "" || (pow != "ethash" && pow != "ethash-test") {
-		return "pow", false
+	if c := c.Consensus; c == "" || (c != "ethash" && c != "ethash-test") {
+		return "consensus", false
 	}
 
 	if c.Genesis == nil {
@@ -438,8 +438,8 @@ func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error
 	}
 
 	// Make 'ethash' default (backwards compatibility)
-	if config.PoW == "" {
-		config.PoW = "ethash"
+	if config.Consensus == "" {
+		config.Consensus = "ethash"
 	}
 
 	// Parse bootstrap nodes

@@ -424,7 +424,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 		Name:        mustMakeChainConfigNameDefaulty(ctx),
 		Network:     netId,
 		State:       stateConf,
-		PoW:         "ethash",
+		Consensus:   "ethash",
 		Genesis:     genesisDump,
 		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
 		Bootstrap:   nodes,
