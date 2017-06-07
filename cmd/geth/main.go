@@ -31,9 +31,9 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/ethash"
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
@@ -67,11 +67,12 @@ func makeCLIApp() (app *cli.App) {
 		consoleCommand,
 		attachCommand,
 		javascriptCommand,
+		statusCommand,
 		{
 			Action:  makedag,
 			Name:    "make-dag",
 			Aliases: []string{"makedag"},
-			Usage:   "generate ethash dag (for testing)",
+			Usage:   "Generate ethash dag (for testing)",
 			Description: `
 The makedag command generates an ethash DAG in /tmp/dag.
 
@@ -83,7 +84,7 @@ Regular users do not need to execute it.
 			Action:  gpuinfo,
 			Name:    "gpu-info",
 			Aliases: []string{"gpuinfo"},
-			Usage:   "gpuinfo",
+			Usage:   "GPU info",
 			Description: `
 Prints OpenCL device info for all found GPUs.
 `,
@@ -92,7 +93,7 @@ Prints OpenCL device info for all found GPUs.
 			Action:  gpubench,
 			Name:    "gpu-bench",
 			Aliases: []string{"gpubench"},
-			Usage:   "benchmark GPU",
+			Usage:   "Benchmark GPU",
 			Description: `
 Runs quick benchmark on first GPU found.
 `,
@@ -100,7 +101,7 @@ Runs quick benchmark on first GPU found.
 		{
 			Action: version,
 			Name:   "version",
-			Usage:  "print ethereum version numbers",
+			Usage:  "Print ethereum version numbers",
 			Description: `
 The output of this command is supposed to be machine-readable.
 `,
@@ -108,16 +109,15 @@ The output of this command is supposed to be machine-readable.
 	}
 
 	app.Flags = []cli.Flag{
-		IdentityFlag,
+		NodeNameFlag,
 		UnlockedAccountFlag,
 		PasswordFileFlag,
 		AccountsIndexFlag,
 		BootnodesFlag,
 		DataDirFlag,
 		DocRootFlag,
-		UseChainConfigFlag,
 		KeyStoreDirFlag,
-		ChainIDFlag,
+		ChainIdentityFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,
 		CacheFlag,
@@ -197,9 +197,7 @@ The output of this command is supposed to be machine-readable.
 		glog.CopyStandardLogTo("INFO")
 
 		if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
-
 			if p := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx)); p != "" {
-				// mkdir -p /path/to/log_dir
 				if e := os.MkdirAll(p, os.ModePerm); e != nil {
 					return e
 				}
@@ -210,6 +208,7 @@ The output of this command is supposed to be machine-readable.
 		}
 
 		if s := ctx.String("metrics"); s != "" {
+			log.Println("Collecting metrics: ON")
 			go metrics.Collect(s)
 		}
 
@@ -219,9 +218,23 @@ The output of this command is supposed to be machine-readable.
 		// for chains with the main network genesis block and network id 1.
 		eth.EnableBadBlockReporting = true
 
+		// (whilei): I use `log` instead of `glog` because git diff tells me:
+		// > The output of this command is supposed to be machine-readable.
 		gasLimit := ctx.GlobalString(aliasableName(TargetGasLimitFlag.Name, ctx))
 		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
 			log.Fatalf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
+		}
+
+		// Set morden chain by default for dev mode.
+		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+			if !ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
+				if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), "morden"); e == nil {
+					log.Printf(`Dev mode: Using chain configuration: Morden. To change this behavior, use option: --%v=<mainnet|CUSTOM>`,
+						aliasableName(ChainIdentityFlag.Name, ctx))
+				} else {
+					log.Fatalf("err setting chain for dev mode: %v", e)
+				}
+			}
 		}
 
 		return nil
@@ -260,6 +273,67 @@ func geth(ctx *cli.Context) error {
 	return nil
 }
 
+func status(ctx *cli.Context) error {
+
+	shouldUseExisting := false
+	datadir := MustMakeChainDataDir(ctx)
+	chaindatadir := filepath.Join(datadir, "chaindata")
+	if di, e := os.Stat(chaindatadir); e == nil && di.IsDir() {
+		shouldUseExisting = true
+	}
+	// Makes sufficient configuration from JSON file or DB pending flags.
+	// Delegates flag usage.
+	config := mustMakeSufficientChainConfig(ctx)
+
+	// Configure the Ethereum service
+	ethConf := mustMakeEthConf(ctx, config)
+
+	// Configure node's service container.
+	name := makeNodeName(Version, ctx)
+	stackConf, _ := mustMakeStackConf(ctx, name, config, ethConf)
+
+	sep := glog.Separator("-")
+	printme := []struct {
+		title   string
+		keyVals []string
+	}{
+		{"Chain configuration", formatSufficientChainConfigPretty(config)},
+		{"Ethereum configuration", formatEthConfigPretty(ethConf)},
+		{"Node configuration", formatStackConfigPretty(stackConf)},
+	}
+
+	s := "\n"
+
+	for _, p := range printme {
+		s += withLineBreak(sep)
+		// right align category title
+		s += withLineBreak(strings.Repeat(" ", len(sep)-len(p.title)) + colorBlue(p.title))
+		for _, v := range p.keyVals {
+			s += v
+		}
+	}
+	glog.V(logger.Info).Info(s)
+
+	// Return here if database has not been initialized.
+	if !shouldUseExisting {
+		glog.V(logger.Info).Info("Geth has not been initialized; no database information available yet.")
+		return nil
+	}
+
+	chaindata, cdb := MakeChain(ctx)
+	defer cdb.Close()
+	s = "\n"
+	s += withLineBreak(sep)
+	title := "Chain database status"
+	s += withLineBreak(strings.Repeat(" ", len(sep)-len(title)) + colorBlue(title))
+	for _, v := range formatChainDataPretty(datadir, chaindata) {
+		s += v
+	}
+	glog.V(logger.Info).Info(s)
+
+	return nil
+}
+
 func rollback(ctx *cli.Context) error {
 	index := ctx.Args().First()
 	if len(index) == 0 {
@@ -290,64 +364,74 @@ func rollback(ctx *cli.Context) error {
 	return nil
 }
 
-// dumpExternailChainConfig exports chain configuration based on database to JSON file
+// dumpChainConfig exports chain configuration based on context to JSON file.
+// It is not compatible with --chain-config flag; it is intended to move from flags -> file,
+// and not the other way around.
 func dumpChainConfig(ctx *cli.Context) error {
+
+	chainIdentity := mustMakeChainIdentity(ctx)
+	if !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity]) {
+		glog.Fatal("Dump config should only be used with default chain configurations (mainnet or morden).")
+	}
+
+	glog.V(logger.Info).Infof("Dumping configuration for: %v", chainIdentity)
 
 	chainConfigFilePath := ctx.Args().First()
 	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
 
 	if chainConfigFilePath == "" || chainConfigFilePath == "/" || chainConfigFilePath == "." {
-		log.Fatalf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank. You typed: %v ", chainConfigFilePath, ctx.Args().First())
+		glog.Fatalf("Given filepath to export chain configuration was blank or invalid; it was: '%v'. It cannot be blank. You typed: %v ", chainConfigFilePath, ctx.Args().First())
 		return errors.New("invalid required filepath argument")
 	}
 
-	// pretty printy
-	cwd, _ := os.Getwd()
-	glog.V(logger.Info).Info(fmt.Sprintf("Dumping chain configuration JSON to \x1b[32m%s\x1b[39m, it may take a moment to tally genesis allocations...", common.EnsurePathAbsoluteOrRelativeTo(cwd, chainConfigFilePath)))
-
-	db := MakeChainDatabase(ctx)
-
-	genesisDump, err := core.MakeGenesisDump(db)
-	if err != nil {
-		log.Fatalf("An error occurred dumping the genesis block state: %v", err)
-		return err
-	}
-	db.Close() // required to free for MustMakeChainConfig below
-
-	// Case: No genesis block exists in the given db.
-	// This case is probably that a user is running `dumpChainConfig` without
-	// having initialized any chaindata yet. If so, we should just dump defaulty values.
-	//
-	// FYI: here would be an inflection point for if we used a --genesis flag.
-	if genesisDump == nil {
-		if isTestMode(ctx) {
-			glog.V(logger.Info).Info("WARNING: No genesis block found in database. Dumping the testnet default genesis.")
-			genesisDump = core.TestNetGenesis
+	fb := filepath.Dir(chainConfigFilePath)
+	di, de := os.Stat(fb)
+	if de != nil {
+		if os.IsNotExist(de) {
+			glog.V(logger.Warn).Infof("Directory path '%v' does not yet exist. Will create.", fb)
+			if e := os.MkdirAll(fb, os.ModePerm); e != nil {
+				glog.Fatalf("Could not create necessary directories: %v", e)
+			}
+			di, _ = os.Stat(fb) // update var with new dir info
 		} else {
-			glog.V(logger.Info).Info("WARNING: No genesis block found in database. Dumping the mainnet default genesis.")
-			genesisDump = core.DefaultGenesis
+			glog.V(logger.Error).Infof("err: %v (at '%v')", de, fb)
 		}
-	} else {
-		// it'll only take a while if nondefaulty
-		glog.V(logger.Info).Info("Finished building genesis state dump. Whew!")
+	}
+	if !di.IsDir() {
+		glog.Fatalf("'%v' must be a directory", fb)
 	}
 
-	chainConfig := MustMakeChainConfig(ctx)
+	// Implicitly favor Morden because it is a smaller, simpler configuration,
+	// so I expect it to be used more frequently than mainnet.
+	genesisDump := core.TestNetGenesis
+	netId := 2
+	stateConf := &core.StateConfig{StartingNonce: state.DefaultTestnetStartingNonce}
+	if !chainIsMorden(ctx) {
+		genesisDump = core.DefaultGenesis
+		netId = eth.NetworkId
+		stateConf = nil
+	}
+
+	// Note that we use default configs (not externalizable).
+	chainConfig := MustMakeChainConfigFromDefaults(ctx)
 	var nodes []string
 	for _, node := range MakeBootstrapNodesFromContext(ctx) {
 		nodes = append(nodes, node.String())
 	}
 
 	var currentConfig = &core.SufficientChainConfig{
-		ID:          getChainConfigIDFromContext(ctx),
-		Name:        getChainConfigNameFromContext(ctx),
-		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
+		Identity:    chainIdentity,
+		Name:        mustMakeChainConfigNameDefaulty(ctx),
+		Network:     netId,
+		State:       stateConf,
+		Consensus:   "ethash",
 		Genesis:     genesisDump,
+		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
 		Bootstrap:   nodes,
 	}
 
 	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {
-		log.Fatalf("An error occurred while writing chain configuration: %v", writeError)
+		glog.Fatalf("An error occurred while writing chain configuration: %v", writeError)
 		return writeError
 	}
 
@@ -371,7 +455,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	// Start auxiliary services if enabled
 	if ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)) {
 		if err := ethereum.StartMining(ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)), ctx.GlobalString(aliasableName(MiningGPUFlag.Name, ctx))); err != nil {
-			log.Fatalf("Failed to start mining: ", err)
+			log.Fatalf("Failed to start mining: %v", err)
 		}
 	}
 }

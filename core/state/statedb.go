@@ -48,6 +48,9 @@ const (
 
 	// Number of codehash->size associations to keep.
 	codeSizeCacheSize = 100000
+
+	// Default StartingNonce for Morden Testnet
+	DefaultTestnetStartingNonce = uint64(1048576)
 )
 
 type revision struct {

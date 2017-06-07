@@ -1,6 +1,7 @@
 {
   "id": "customnet",
   "name": "My Custom Ethnet",
+  "network": 4,
   "genesis": {
     "nonce": "0x0000000000000043",
     "timestamp": "0x0000000000000000000000000000000000000000000000000000000000000000",

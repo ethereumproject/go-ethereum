@@ -29,36 +29,33 @@ var (
 		Usage: "Data directory for the databases and keystore",
 		Value: DirectoryString{common.DefaultDataDir()},
 	}
-	UseChainConfigFlag = cli.StringFlag{
-		Name:  "chain-config,chainconfig",
-		Usage: "Specify a JSON format chain configuration file to use.",
-	}
 	KeyStoreDirFlag = DirectoryFlag{
 		Name:  "keystore",
-		Usage: "Directory for the keystore (default = inside the datadir)",
+		Usage: "Directory path for the keystore",
 	}
-	ChainIDFlag = cli.StringFlag{
+	ChainIdentityFlag = cli.StringFlag{
 		Name: "chain",
 		Usage: `Identifier of blockchain network to use (default='mainnet', test='morden').
-				Relevant data for this blockchain will correlate to subdirectories under your base data directory (--datadir), by ie $HOME/Library/EthereumClassic/mainnet/.
-				This variable can also be configured from an external JSON chain configuration file by setting the 'id' key.`,
+	If using a custom identity (i.e. --chain=custom),
+	there must be a valid JSON chain configuration
+	file at <datadir>/custom/chain.json`,
 		Value: core.DefaultChainConfigID,
 	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "network-id, networkid",
-		Usage: "Network identifier (integer, 0=Olympic, 1=Homestead, 2=Morden)",
+		Usage: "Network identifier (integer: 1=Homestead, 2=Morden)",
 		Value: eth.NetworkId,
 	}
 	TestNetFlag = cli.BoolFlag{
 		Name:  "testnet",
-		Usage: "Morden network: pre-configured test network with modified starting nonces (replay protection)",
+		Usage: "[Use: --chain=morden] Morden network: pre-configured test network with modified starting nonces (replay protection)",
 	}
 	DevModeFlag = cli.BoolFlag{
 		Name:  "dev",
 		Usage: "Developer mode: pre-configured private network with several debugging flags",
 	}
-	IdentityFlag = cli.StringFlag{
-		Name:  "identity",
+	NodeNameFlag = cli.StringFlag{
+		Name:  "identity,name",
 		Usage: "Custom node name",
 	}
 	NatspecEnabledFlag = cli.BoolFlag{
@@ -155,8 +152,8 @@ var (
 		Value: glog.GetVModule(),
 	}
 	LogDirFlag = DirectoryFlag{
-		Name: "log-dir,logdir",
-		Usage: "Directory in which to write log files",
+		Name:  "log-dir,logdir",
+		Usage: "Directory in which to write log files, redirecting terminal out (stderr)",
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
 	}
 	BacktraceAtFlag = cli.GenericFlag{

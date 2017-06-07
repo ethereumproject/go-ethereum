@@ -36,7 +36,7 @@ var (
 	}
 	walletCommand = cli.Command{
 		Name:  "wallet",
-		Usage: "ethereum presale wallet",
+		Usage: "Ethereum presale wallet",
 		Subcommands: []cli.Command{
 			{
 				Action: importWallet,
@@ -56,7 +56,7 @@ passwordfile as argument containing the wallet password in plaintext.
 	accountCommand = cli.Command{
 		Action: accountList,
 		Name:   "account",
-		Usage:  "manage accounts",
+		Usage:  "Manage accounts",
 		Description: `
 
 Manage accounts lets you create new accounts, list all existing accounts,
@@ -92,12 +92,12 @@ And finally. DO NOT FORGET YOUR PASSWORD.
 			{
 				Action: accountList,
 				Name:   "list",
-				Usage:  "print account addresses",
+				Usage:  "Print account addresses",
 			},
 			{
 				Action: accountCreate,
 				Name:   "new",
-				Usage:  "create a new account",
+				Usage:  "Create a new account",
 				Description: `
 
     geth account new
@@ -119,7 +119,7 @@ password to file or expose in any other way.
 			{
 				Action: accountUpdate,
 				Name:   "update",
-				Usage:  "update an existing account",
+				Usage:  "Update an existing account",
 				Description: `
 
     geth account update <address>
@@ -143,7 +143,7 @@ changing your password is only possible interactively.
 			{
 				Action: accountImport,
 				Name:   "import",
-				Usage:  "import a private key into a new account",
+				Usage:  "Import a private key into a new account",
 				Description: `
 
     geth account import <keyfile>
@@ -170,7 +170,7 @@ nodes.
 			{
 				Action: accountIndex,
 				Name:   "index",
-				Usage:  "build account index cache database",
+				Usage:  "Build persistent account index",
 				Description: `
 
     geth --index-accounts account index

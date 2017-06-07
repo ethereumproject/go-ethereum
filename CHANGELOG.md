@@ -18,19 +18,38 @@ __Legend__:
 Releases considered stable may be found on our [Releases Page](https://github.com/ethereumproject/go-ethereum/releases).
 
 ## [Unreleased]
-Reflects changes to __master__ branch, but not yet packaged in a stable release.
+
+#### Added
+- Newly configurable in external `chain.json`:
+    - `"state": { "startingNonce": NUMBER }` - _optional_ (mainnet: 0, morden: 1048576) - "dirty" starting world state
+    - `"network": NUMBER` - _required_ (mainnet: 1, morden: 2) - network id used to identify valid peers
+    - `"consensus": STRING` - _optional_ (default: "ethash", optional: "ethash-test") - specify smaller and faster pow algorithm, e.g. `--dev` mode sets "ethash-test"
+    > See cmd/geth/config/*.json for updated examples.
+
+- Dev mode (`--dev`) made compatible with `--chain` 
+
+#### Fixed
+- `geth attach` command uses chain subdirectory schema by default, e.g. `datadir/mainnet/geth.ipc` instead of `datadir/geth.ipc`
+
+## [3.5.0] - 2017-06-02
+
+Wiki: https://github.com/ethereumproject/go-ethereum/wiki/Release-3.5.0-Notes
 
 #### Added
 - _Option_: `--index-accounts` - use persistent keystore key file indexing (recommended for use with greater than ~10k-100k+ key files)
 - _Command_: `--index-accounts account index` - build or rebuild persisent key file index
 - _Option_: `--log-dir` - specify directory in which to redirect logs to files
+- _Command: `status` - retrieve contextual status for node, ethereum, and chain configuration
 #### Changed
 - _Command_: `dump <blockHash|blockNum>,<|blockHash|blockNum> <|address>,<|address>` - specify dump for _n_ block(s) for optionally _a_ address(es)
+- _Option__: `--chain` replaces `--chain-config` and expects consistent custom external chain config JSON path
 #### Fixed
 - SIGSEGV crash on malformed ChainID signer for replay-protected blocks.
+- Hash map exploit opportunity (thanks @karalabe)
+#### Removed
+- _Option_: `--chain-config`, replaced by `--chain`
 
-## [3.4.0] - 2017-05-15
-Tagged commit: c18792d
+## [3.4.0] - 2017-05-15 - c18792d
 
 Wiki: https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes
 

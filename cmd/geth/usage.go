@@ -56,13 +56,11 @@ var AppHelpFlagGroups = []flagGroup{
 		Name: "ETHEREUM",
 		Flags: []cli.Flag{
 			DataDirFlag,
-			ChainIDFlag,
-			UseChainConfigFlag,
+			ChainIdentityFlag,
 			KeyStoreDirFlag,
 			NetworkIdFlag,
-			TestNetFlag,
 			DevModeFlag,
-			IdentityFlag,
+			NodeNameFlag,
 			FastSyncFlag,
 			LightKDFFlag,
 			CacheFlag,
@@ -139,6 +137,7 @@ var AppHelpFlagGroups = []flagGroup{
 		Name: "LOGGING AND DEBUGGING",
 		Flags: []cli.Flag{
 			VerbosityFlag,
+			LogDirFlag,
 			VModuleFlag,
 			BacktraceAtFlag,
 			MetricsFlag,
@@ -150,6 +149,13 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			WhisperEnabledFlag,
 			NatspecEnabledFlag,
+		},
+	},
+	{
+		Name: "LEGACY",
+		Flags: []cli.Flag{
+			TestNetFlag,
+			Unused1,
 		},
 	},
 	{

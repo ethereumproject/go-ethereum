@@ -80,7 +80,7 @@ teardown() {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
 	touch $DATA_DIR/empty.js
 
-	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'
+	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --keystore="$DATA_DIR"/mainnet/keystore --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'foobar\n'
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -91,7 +91,7 @@ teardown() {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
 	touch $DATA_DIR/empty.js
 
-	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --unlock 0 js $DATA_DIR/empty.js <<< $'foobar\n'
+	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --keystore="$DATA_DIR"/mainnet/keystore --unlock 0 js $DATA_DIR/empty.js <<< $'foobar\n'
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -102,7 +102,7 @@ teardown() {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
 	touch $DATA_DIR/empty.js
 
-	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong1\nwrong2\nwrong3\n'
+	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --keystore="$DATA_DIR"/mainnet/keystore --unlock f466859ead1932d743d622cb74fc058882e8648a js $DATA_DIR/empty.js <<< $'wrong1\nwrong2\nwrong3\n'
 	echo "$output"
 
 	[ "$status" -ne 0 ]
@@ -113,7 +113,7 @@ teardown() {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
 	touch $DATA_DIR/empty.js
 
-	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --unlock 0,2 js $DATA_DIR/empty.js <<< $'foobar\nfoobar\n'
+	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --keystore="$DATA_DIR"/mainnet/keystore --unlock 0,2 js $DATA_DIR/empty.js <<< $'foobar\nfoobar\n'
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -126,7 +126,7 @@ teardown() {
 	touch $DATA_DIR/empty.js
 	echo $'foobar\nfoobar\nfoobar\n' > $DATA_DIR/pass.txt
 
-	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
+	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --keystore="$DATA_DIR"/mainnet/keystore --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -139,7 +139,7 @@ teardown() {
 	touch $DATA_DIR/empty.js
 	echo $'wrong\nwrong\nwrong\n' > $DATA_DIR/pass.txt
 
-	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
+	run $GETH_CMD --datadir $DATA_DIR --nat none --nodiscover --dev --keystore="$DATA_DIR"/mainnet/keystore --password $DATA_DIR/pass.txt --unlock 0,2 js $DATA_DIR/empty.js
 	echo "$output"
 
 	[ "$status" -ne 0 ]

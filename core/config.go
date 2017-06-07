@@ -50,12 +50,21 @@ var (
 
 // SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
 type SufficientChainConfig struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name"`
-	Genesis     *GenesisDump `json:"genesis"`
-	ChainConfig *ChainConfig `json:"chainConfig"`
-	Bootstrap   []string     `json:"bootstrap"`
+	ID              string           `json:"id,omitempty"` // deprecated in favor of 'Identity', method decoding should id -> identity
+	Identity        string           `json:"identity"`
+	Name            string           `json:"name,omitempty"`
+	State           *StateConfig     `json:"state"`   // don't omitempty for clarity of potential custom options
+	Network         int              `json:"network"` // eth.NetworkId (mainnet=1, morden=2)
+	Consensus       string           `json:"consensus"`     // pow type (ethash OR ethash-test)
+	Genesis         *GenesisDump     `json:"genesis"`
+	ChainConfig     *ChainConfig     `json:"chainConfig"`
+	Bootstrap       []string         `json:"bootstrap"`
 	ParsedBootstrap []*discover.Node `json:"-"`
+}
+
+// StateConfig hold variable data for statedb.
+type StateConfig struct {
+	StartingNonce uint64 `json:"startingNonce,omitempty"`
 }
 
 // GenesisDump is the geth JSON format.
@@ -148,11 +157,17 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "all empty", false
 	}
 
-	if c.ID == "" {
-		return "id", false
+	if c.Identity == "" {
+		return "identity/id", false
 	}
 
-	// note: no check for name, the only optional field
+	if c.Network == 0 {
+		return "networkId", false
+	}
+
+	if c := c.Consensus; c == "" || (c != "ethash" && c != "ethash-test") {
+		return "consensus", false
+	}
 
 	if c.Genesis == nil {
 		return "genesis", false
@@ -417,18 +432,26 @@ func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error
 		return nil, fmt.Errorf("%s: %s", flaggedExternalChainConfigPath, err)
 	}
 
-	if err == nil {
-		config.ParsedBootstrap = ParseBootstrapNodeStrings(config.Bootstrap)
-
-		if invalid, ok := config.IsValid(); !ok {
-			return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
-		}
-
-		config.ChainConfig = config.ChainConfig.SortForks()
-
-		return config, nil
+	// Make JSON 'id' -> 'identity' (for backwards compatibility)
+	if config.ID != "" && config.Identity == "" {
+		config.Identity = config.ID
 	}
-	return nil, fmt.Errorf("ERROR: Error reading configuration file (%s): %v", flaggedExternalChainConfigPath, err)
+
+	// Make 'ethash' default (backwards compatibility)
+	if config.Consensus == "" {
+		config.Consensus = "ethash"
+	}
+
+	// Parse bootstrap nodes
+	config.ParsedBootstrap = ParseBootstrapNodeStrings(config.Bootstrap)
+
+	if invalid, ok := config.IsValid(); !ok {
+		return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
+	}
+
+	config.ChainConfig = config.ChainConfig.SortForks()
+
+	return config, nil
 }
 
 // ParseBootstrapNodeStrings is a helper function to parse stringified bs nodes, ie []"enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303",...
@@ -580,7 +603,7 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	block := types.NewBlock(header, nil, nil, nil)
 
 	if block := GetBlock(chainDb, block.Hash()); block != nil {
-		glog.V(logger.Info).Infof("Genesis block %s already exists in chain -- writing canonical number", block.Hash().Hex())
+		glog.V(logger.Debug).Infof("Genesis block %s already exists in chain -- writing canonical number", block.Hash().Hex())
 		err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64())
 		if err != nil {
 			return nil, err
