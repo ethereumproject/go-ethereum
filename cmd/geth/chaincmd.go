@@ -39,12 +39,12 @@ var (
 	importCommand = cli.Command{
 		Action: importChain,
 		Name:   "import",
-		Usage:  `import a blockchain file`,
+		Usage:  `Import a blockchain file`,
 	}
 	exportCommand = cli.Command{
 		Action: exportChain,
 		Name:   "export",
-		Usage:  `export blockchain into file`,
+		Usage:  `Export blockchain into file`,
 		Description: `
 Requires a first argument of the file to write to.
 Optional second and third arguments control the first and
@@ -56,7 +56,7 @@ if already existing.
 		Action:  upgradeDB,
 		Name:    "upgrade-db",
 		Aliases: []string{"upgradedb"},
-		Usage:   "upgrade chainblock database",
+		Usage:   "Upgrade chainblock database",
 	}
 	removedbCommand = cli.Command{
 		Action:  removeDB,
@@ -67,7 +67,7 @@ if already existing.
 	dumpCommand = cli.Command{
 		Action: dump,
 		Name:   "dump",
-		Usage:  `dump a specific block from storage`,
+		Usage:  `Dump a specific block from storage`,
 		Description: `
 The arguments are interpreted as block numbers or hashes.
 Use "ethereum dump 0" to dump the genesis block.
@@ -77,7 +77,7 @@ Use "ethereum dump 0" to dump the genesis block.
 		Action:  dumpChainConfig,
 		Name:    "dump-chain-config",
 		Aliases: []string{"dumpchainconfig"},
-		Usage:   "dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
+		Usage:   "Dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
 		Description: `
 		The dump external configuration command writes a JSON file containing pertinent configuration data for
 		the configuration of a chain database. It includes genesis block data as well as chain fork settings.
@@ -87,7 +87,7 @@ Use "ethereum dump 0" to dump the genesis block.
 		Action:  rollback,
 		Name:    "rollback",
 		Aliases: []string{"roll-back", "set-head", "sethead"},
-		Usage:   "rollback [block index number] - set current head for blockchain",
+		Usage:   "Set current head for blockchain, purging antecedent blocks",
 		Description: `
 		Rollback set the current head block for block chain already in the database.
 		This is a destructive action, purging any block more recent than the index specified.
@@ -97,9 +97,9 @@ Use "ethereum dump 0" to dump the genesis block.
 	statusCommand = cli.Command{
 		Action: status,
 		Name:   "status",
-		Usage:  "status - get the status of the current node",
+		Usage:  "Display the status of the current node",
 		Description: `
-		Returns the status of the current node without having to start and exit.
+		Show the status of the current configuration.
 		`,
 	}
 )

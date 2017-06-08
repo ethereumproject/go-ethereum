@@ -35,6 +35,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/tests"
 	"github.com/ethereumproject/go-ethereum/whisper"
+	"path/filepath"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -105,7 +106,7 @@ func main() {
 func MakeSystemNode(keydir string, privkey string, test *tests.BlockTest) (*node.Node, error) {
 	// Create a networkless protocol stack
 	stack, err := node.New(&node.Config{
-		IPCPath:     node.DefaultIPCEndpoint(),
+		IPCPath:     node.DefaultIPCEndpoint(filepath.Join(common.DefaultDataDir(), "mainnet")),
 		HTTPHost:    common.DefaultHTTPHost,
 		HTTPPort:    common.DefaultHTTPPort,
 		HTTPModules: []string{"admin", "db", "eth", "debug", "miner", "net", "shh", "txpool", "personal", "web3"},

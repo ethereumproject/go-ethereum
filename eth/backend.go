@@ -205,13 +205,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 	switch {
 	case config.PowTest:
-		glog.V(logger.Info).Infof("ethash used in test mode")
+		glog.V(logger.Info).Infof("Consensus: ethash used in test mode")
 		eth.pow, err = ethash.NewForTesting()
 		if err != nil {
 			return nil, err
 		}
 	case config.PowShared:
-		glog.V(logger.Info).Infof("ethash used in shared mode")
+		glog.V(logger.Info).Infof("Consensus: ethash used in shared mode")
 		eth.pow = ethash.NewShared()
 
 	default:
@@ -480,7 +480,7 @@ func (self *Ethereum) StopAutoDAG() {
 		close(self.autodagquit)
 		self.autodagquit = nil
 	}
-	glog.V(logger.Info).Infof("Automatic pregeneration of ethash DAG OFF (ethash dir: %s)", ethash.DefaultDir)
+	glog.V(logger.Info).Infof("Automatic pregeneration of ethash DAG: OFF (ethash dir: %s)", ethash.DefaultDir)
 }
 
 // HTTPClient returns the light http client used for fetching offchain docs

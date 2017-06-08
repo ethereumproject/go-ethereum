@@ -24,7 +24,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 )
 
-// Chain ID.
+// Chain Identity.
 // Used for `--chain custom` flag and determines EthereumDataDir/custom directory.
 var DefaultChainConfigID = "mainnet"
 var DefaultChainConfigName = "Ethereum Classic Mainnet"

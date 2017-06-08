@@ -292,7 +292,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 			}
 			// Start a timer to disconnect if the peer doesn't reply in time
 			p.timeout = time.AfterFunc((5 * time.Second), func() {
-				glog.V(logger.Warn).Infof("%v: timed out fork-check, dropping", p)
+				glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
 				pm.removePeer(p.id)
 			})
 			// Make sure it's cleaned up if the peer dies off
@@ -736,7 +736,7 @@ func (self *ProtocolManager) txBroadcastLoop() {
 // EthNodeInfo represents a short summary of the Ethereum sub-protocol metadata known
 // about the host peer.
 type EthNodeInfo struct {
-	Network    int         `json:"network"`    // Ethereum network ID (0=Olympic, 1=Frontier, 2=Morden)
+	Network    int         `json:"network"`    // Ethereum network ID (1=Mainnet, 2=Morden)
 	Difficulty *big.Int    `json:"difficulty"` // Total difficulty of the host's blockchain
 	Genesis    common.Hash `json:"genesis"`    // SHA3 hash of the host's genesis block
 	Head       common.Hash `json:"head"`       // SHA3 hash of the host's best owned block

@@ -52,7 +52,7 @@ This command allows to open a console on a running geth node.
 	javascriptCommand = cli.Command{
 		Action: ephemeralConsole,
 		Name:   "js",
-		Usage:  `executes the given JavaScript files in the Geth JavaScript VM`,
+		Usage:  `Executes the given JavaScript files in the Geth JavaScript VM`,
 		Description: `
 The JavaScript VM exposes a node admin interface as well as the Ðapp
 JavaScript API. See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console
@@ -101,7 +101,8 @@ func localConsole(ctx *cli.Context) error {
 // console to it.
 func remoteConsole(ctx *cli.Context) error {
 	// Attach to a remotely running geth instance and start the JavaScript console
-	var uri = "ipc:" + node.DefaultIPCEndpoint()
+	chainDir := MustMakeChainDataDir(ctx)
+	var uri = "ipc:" + node.DefaultIPCEndpoint(chainDir)
 	if ctx.Args().Present() {
 		uri = ctx.Args().First()
 	}
@@ -111,7 +112,7 @@ func remoteConsole(ctx *cli.Context) error {
 	}
 
 	config := console.Config{
-		DataDir: MustMakeChainDataDir(ctx),
+		DataDir: chainDir,
 		DocRoot: ctx.GlobalString(JSpathFlag.Name),
 		Client:  client,
 		Preload: MakeConsolePreloads(ctx),

@@ -72,13 +72,6 @@ teardown() {
 	[ "$status" -ne 0 ]
 }
 
-@test "overlapping flags not allowed: --chain=morden --dev" {
-	run $GETH_CMD --data-dir $DATA_DIR --dev --chain=morden --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
-	echo "$output"
-	[ "$status" -gt 0 ]
-	[[ "$output" == *"invalid flag "* ]]
-}
-
 @test "custom testnet subdir --testnet --chain=morden2 | exit !=0" {
 	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden2 --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
 	echo "$output"
@@ -294,7 +287,7 @@ teardown() {
 	[[ "$output" == *"8893"* ]]
 
 	# Run twice, because the second time will have set up database.
-	run $GETH_CMD --data-dir $DATA_DIR --exec 'exit' console
+	run $GETH_CMD --data-dir $DATA_DIR --exec 'exit' console # set up db
 	[ "$status" -eq 0 ]
 	run $GETH_CMD --data-dir $DATA_DIR status
 	[ "$status" -eq 0 ]
@@ -328,7 +321,7 @@ teardown() {
 	[[ "$output" == *"5"* ]]
 
 	# Run twice, because the second time will have set up database.
-	run $GETH_CMD --data-dir $DATA_DIR --chain morden --exec 'exit' console
+	run $GETH_CMD --data-dir $DATA_DIR --chain morden --exec 'exit' console # set up db
 	[ "$status" -eq 0 ]
 	run $GETH_CMD --data-dir $DATA_DIR --chain morden status
 	[ "$status" -eq 0 ]

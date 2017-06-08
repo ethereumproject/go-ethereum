@@ -359,11 +359,11 @@ func TestChainConfig_GetChainID(t *testing.T) {
 	for extConfigPath, wantInt := range cases {
 		p, e := filepath.Abs(extConfigPath)
 		if e != nil {
-			t.Errorf("filepath err: %v", e)
+			t.Fatalf("filepath err: %v", e)
 		}
 		extConfig, err := ReadExternalChainConfig(p)
 		if err != nil {
-			t.Errorf("could not find file: %v", err)
+			t.Fatalf("could not decode file: %v", err)
 		}
 		if extConfig.ChainConfig.GetChainID().Cmp(wantInt) != 0 {
 			t.Error("got: %v, want: %v", extConfig.ChainConfig.GetChainID(), wantInt)
@@ -552,8 +552,10 @@ func TestChainConfig_GetSigner(t *testing.T) {
 func makeOKSufficientChainConfig(dump *GenesisDump, config *ChainConfig) *SufficientChainConfig {
 	// Setup.
 	whole := &SufficientChainConfig{}
-	whole.ID = "testID"
+	whole.Identity = "testID"
+	whole.Network = 3
 	whole.Name = "testable"
+	whole.Consensus = "ethash"
 	whole.Genesis = dump
 	whole.ChainConfig = config
 	whole.Bootstrap = []string{
@@ -577,10 +579,40 @@ func TestSufficientChainConfig_IsValid(t *testing.T) {
 
 	for i, dump := range dumps {
 		for j, config := range configs {
+			// Make sure initial ok config is ok.
 			scc := makeOKSufficientChainConfig(dump, config)
 			if s, ok := scc.IsValid(); !ok {
 				t.Errorf("unexpected notok: %v @ %v/%v", s, i, j)
 			}
+
+			// Remove each required field and ensure is NOT ok.
+			o1 := scc.Identity
+			scc.Identity = ""
+			if s, ok := scc.IsValid(); ok {
+				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
+			}
+			scc.Identity = o1
+
+			o2 := scc.Network
+			scc.Network = 0
+			if s, ok := scc.IsValid(); ok {
+				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
+			}
+			scc.Network = o2
+
+			o3 := scc.Consensus
+			scc.Consensus = "asdf"
+			if s, ok := scc.IsValid(); ok {
+				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
+			}
+			scc.Consensus = o3
+
+			o4 := scc.Consensus
+			scc.Consensus = ""
+			if s, ok := scc.IsValid(); ok {
+				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
+			}
+			scc.Consensus = o4
 
 			o := scc.Genesis
 			scc.Genesis = nil

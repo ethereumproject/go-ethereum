@@ -33,6 +33,7 @@ import (
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
@@ -71,7 +72,7 @@ func makeCLIApp() (app *cli.App) {
 			Action:  makedag,
 			Name:    "make-dag",
 			Aliases: []string{"makedag"},
-			Usage:   "generate ethash dag (for testing)",
+			Usage:   "Generate ethash dag (for testing)",
 			Description: `
 The makedag command generates an ethash DAG in /tmp/dag.
 
@@ -83,7 +84,7 @@ Regular users do not need to execute it.
 			Action:  gpuinfo,
 			Name:    "gpu-info",
 			Aliases: []string{"gpuinfo"},
-			Usage:   "gpuinfo",
+			Usage:   "GPU info",
 			Description: `
 Prints OpenCL device info for all found GPUs.
 `,
@@ -92,7 +93,7 @@ Prints OpenCL device info for all found GPUs.
 			Action:  gpubench,
 			Name:    "gpu-bench",
 			Aliases: []string{"gpubench"},
-			Usage:   "benchmark GPU",
+			Usage:   "Benchmark GPU",
 			Description: `
 Runs quick benchmark on first GPU found.
 `,
@@ -100,7 +101,7 @@ Runs quick benchmark on first GPU found.
 		{
 			Action: version,
 			Name:   "version",
-			Usage:  "print ethereum version numbers",
+			Usage:  "Print ethereum version numbers",
 			Description: `
 The output of this command is supposed to be machine-readable.
 `,
@@ -108,7 +109,7 @@ The output of this command is supposed to be machine-readable.
 	}
 
 	app.Flags = []cli.Flag{
-		IdentityFlag,
+		NodeNameFlag,
 		UnlockedAccountFlag,
 		PasswordFileFlag,
 		AccountsIndexFlag,
@@ -196,9 +197,7 @@ The output of this command is supposed to be machine-readable.
 		glog.CopyStandardLogTo("INFO")
 
 		if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
-
 			if p := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx)); p != "" {
-				// mkdir -p /path/to/log_dir
 				if e := os.MkdirAll(p, os.ModePerm); e != nil {
 					return e
 				}
@@ -209,6 +208,7 @@ The output of this command is supposed to be machine-readable.
 		}
 
 		if s := ctx.String("metrics"); s != "" {
+			log.Println("Collecting metrics: ON")
 			go metrics.Collect(s)
 		}
 
@@ -218,9 +218,23 @@ The output of this command is supposed to be machine-readable.
 		// for chains with the main network genesis block and network id 1.
 		eth.EnableBadBlockReporting = true
 
+		// (whilei): I use `log` instead of `glog` because git diff tells me:
+		// > The output of this command is supposed to be machine-readable.
 		gasLimit := ctx.GlobalString(aliasableName(TargetGasLimitFlag.Name, ctx))
 		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
 			log.Fatalf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
+		}
+
+		// Set morden chain by default for dev mode.
+		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
+			if !ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
+				if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), "morden"); e == nil {
+					log.Printf(`Dev mode: Using chain configuration: Morden. To change this behavior, use option: --%v=<mainnet|CUSTOM>`,
+						aliasableName(ChainIdentityFlag.Name, ctx))
+				} else {
+					log.Fatalf("err setting chain for dev mode: %v", e)
+				}
+			}
 		}
 
 		return nil
@@ -370,9 +384,32 @@ func dumpChainConfig(ctx *cli.Context) error {
 		return errors.New("invalid required filepath argument")
 	}
 
+	fb := filepath.Dir(chainConfigFilePath)
+	di, de := os.Stat(fb)
+	if de != nil {
+		if os.IsNotExist(de) {
+			glog.V(logger.Warn).Infof("Directory path '%v' does not yet exist. Will create.", fb)
+			if e := os.MkdirAll(fb, os.ModePerm); e != nil {
+				glog.Fatalf("Could not create necessary directories: %v", e)
+			}
+			di, _ = os.Stat(fb) // update var with new dir info
+		} else {
+			glog.V(logger.Error).Infof("err: %v (at '%v')", de, fb)
+		}
+	}
+	if !di.IsDir() {
+		glog.Fatalf("'%v' must be a directory", fb)
+	}
+
+	// Implicitly favor Morden because it is a smaller, simpler configuration,
+	// so I expect it to be used more frequently than mainnet.
 	genesisDump := core.TestNetGenesis
+	netId := 2
+	stateConf := &core.StateConfig{StartingNonce: state.DefaultTestnetStartingNonce}
 	if !chainIsMorden(ctx) {
 		genesisDump = core.DefaultGenesis
+		netId = eth.NetworkId
+		stateConf = nil
 	}
 
 	// Note that we use default configs (not externalizable).
@@ -383,10 +420,13 @@ func dumpChainConfig(ctx *cli.Context) error {
 	}
 
 	var currentConfig = &core.SufficientChainConfig{
-		ID:          chainIdentity,
+		Identity:    chainIdentity,
 		Name:        mustMakeChainConfigNameDefaulty(ctx),
-		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
+		Network:     netId,
+		State:       stateConf,
+		Consensus:   "ethash",
 		Genesis:     genesisDump,
+		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
 		Bootstrap:   nodes,
 	}
 
