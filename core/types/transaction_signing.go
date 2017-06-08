@@ -158,7 +158,8 @@ func (s ChainIdSigner) PublicKey(tx *Transaction) ([]byte, error) {
 	if !tx.Protected() {
 		return (BasicSigner{}).PublicKey(tx)
 	}
-	if tx.ChainId().Cmp(s.chainId) != 0 {
+
+	if tx.ChainId() == nil || s.chainId == nil || tx.ChainId().Cmp(s.chainId) != 0 {
 		return nil, ErrInvalidChainId
 	}
 
