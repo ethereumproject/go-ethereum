@@ -193,12 +193,8 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "forks", false
 	}
 
-	if dhfork := c.ChainConfig.ForkByName("Diehard"); dhfork != nil {
-		if feat, _, ok := c.ChainConfig.GetFeature(dhfork.Block, "eip155"); ok {
-			if _, ok := feat.GetBigInt("chainID"); !ok {
-				return "diehard chainid", false
-			}
-		}
+	if cid := c.ChainConfig.GetChainID(); cid.Cmp(new(big.Int)) == 0 {
+		return "diehard chainid", false
 	}
 
 	if c.Bootstrap == nil || len(c.Bootstrap) == 0 {
