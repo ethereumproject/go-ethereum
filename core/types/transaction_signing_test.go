@@ -127,7 +127,7 @@ func TestCompatibleSign(t *testing.T) {
 		t.Errorf("Incorrect pubkey for ChainId Signer:\n%v\n%v", common.ToHex(pub), common.ToHex(pub_tx))
 	}
 
-	pub_tx2, err := tx.signer.PublicKey(tx)
+	pub_tx2, err := tx2.signer.PublicKey(tx2)
 	if err != nil {
 		t.Fatal(err)
 	}
