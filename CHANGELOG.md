@@ -26,10 +26,11 @@ Releases considered stable may be found on our [Releases Page](https://github.co
     - `"consensus": STRING` - _optional_ (default: "ethash", optional: "ethash-test") - specify smaller and faster pow algorithm, e.g. `--dev` mode sets "ethash-test"
     > See cmd/geth/config/*.json for updated examples.
 
-- Dev mode (`--dev`) made compatible with `--chain` 
+- Dev mode (`--dev`) made compatible with `--chain`
 
 #### Fixed
 - `geth attach` command uses chain subdirectory schema by default, e.g. `datadir/mainnet/geth.ipc` instead of `datadir/geth.ipc`
+- Sometimes ungraceful stopping on SIGTERM causing corrupted chaindata
 
 ## [3.5.0] - 2017-06-02
 
