@@ -66,11 +66,11 @@ func StartNode(stack *node.Node) {
 		Fatalf("Error starting protocol stack: %v", err)
 	}
 	go func() {
-		sigc := make(chan os.Signal, 2)
+		sigc := make(chan os.Signal, 1)
 		signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 		defer signal.Stop(sigc)
-		<-sigc
-		glog.Infoln("Got interrupt, shutting down...")
+		sig := <-sigc
+		glog.Infof("Got %v, shutting down...", sig)
 
 		fails := make(chan error, 1)
 		go func (fs chan error) {
