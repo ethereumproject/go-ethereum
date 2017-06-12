@@ -71,7 +71,22 @@ func StartNode(stack *node.Node) {
 		defer signal.Stop(sigc)
 		<-sigc
 		glog.Infoln("Got interrupt, shutting down...")
-		go stack.Stop()
+
+		fails := make(chan error, 1)
+		go func (fs chan error) {
+			for {
+				select {
+				case e := <-fs:
+					if e != nil {
+						glog.V(logger.Error).Infof("node stop failure: %v", e)
+					}
+				}
+			}
+		}(fails)
+		go func(stack *node.Node) {
+			defer close(fails)
+			fails <- stack.Stop()
+		}(stack)
 
 		// WTF?
 		for i := 10; i > 0; i-- {
