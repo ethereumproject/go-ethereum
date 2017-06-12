@@ -437,7 +437,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	// Configure node's service container.
 	name := makeNodeName(version, ctx)
-	stackConf, shhEnable := mustMakeStackConf(ctx, name, config, ethConf)
+	stackConf, shhEnable := mustMakeStackConf(ctx, name, config)
 
 	// Assemble and return the protocol stack
 	stack, err := node.New(stackConf)
@@ -473,7 +473,7 @@ func shouldAttemptDirMigration(ctx *cli.Context) bool {
 	return false
 }
 
-func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientChainConfig, ethConf *eth.Config) (stackConf *node.Config, shhEnable bool) {
+func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientChainConfig) (stackConf *node.Config, shhEnable bool) {
 	// Configure the node's service container
 	stackConf = &node.Config{
 		DataDir:         MustMakeChainDataDir(ctx),

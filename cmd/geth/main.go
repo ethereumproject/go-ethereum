@@ -290,7 +290,7 @@ func status(ctx *cli.Context) error {
 
 	// Configure node's service container.
 	name := makeNodeName(Version, ctx)
-	stackConf, _ := mustMakeStackConf(ctx, name, config, ethConf)
+	stackConf, _ := mustMakeStackConf(ctx, name, config)
 
 	sep := glog.Separator("-")
 	printme := []struct {
