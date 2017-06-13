@@ -31,22 +31,24 @@ Releases considered stable may be found on our [Releases Page](https://github.co
 #### Fixed
 - `geth attach` command uses chain subdirectory schema by default, e.g. `datadir/mainnet/geth.ipc` instead of `datadir/geth.ipc`
 - Sometimes ungraceful stopping on SIGTERM causing corrupted chaindata
+- PublicKey method for protected transactions with malformed chain id causing SIGSEGV
 
-## [3.5.0] - 2017-06-02
+## [3.5.0] - 2017-06-02 - 402c170
 
 Wiki: https://github.com/ethereumproject/go-ethereum/wiki/Release-3.5.0-Notes
 
+#### Security
+- Hash map exploit opportunity (thanks @karalabe)
 #### Added
 - _Option_: `--index-accounts` - use persistent keystore key file indexing (recommended for use with greater than ~10k-100k+ key files)
 - _Command_: `--index-accounts account index` - build or rebuild persisent key file index
 - _Option_: `--log-dir` - specify directory in which to redirect logs to files
-- _Command: `status` - retrieve contextual status for node, ethereum, and chain configuration
+- _Command_: `status` - retrieve contextual status for node, ethereum, and chain configuration
 #### Changed
 - _Command_: `dump <blockHash|blockNum>,<|blockHash|blockNum> <|address>,<|address>` - specify dump for _n_ block(s) for optionally _a_ address(es)
 - _Option__: `--chain` replaces `--chain-config` and expects consistent custom external chain config JSON path
 #### Fixed
 - SIGSEGV crash on malformed ChainID signer for replay-protected blocks.
-- Hash map exploit opportunity (thanks @karalabe)
 #### Removed
 - _Option_: `--chain-config`, replaced by `--chain`
 
