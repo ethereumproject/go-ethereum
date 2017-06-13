@@ -162,20 +162,32 @@ func (self *BlockChain) getProcInterrupt() bool {
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
 func (self *BlockChain) loadLastState() error {
+	// EPROJECT
 	// Restore the last known head block
 	head := GetHeadBlockHash(self.chainDb)
 	if head == (common.Hash{}) {
 		// Corrupt or empty database, init from scratch
-		self.Reset()
-	} else {
-		if block := self.GetBlock(head); block != nil {
-			// Block found, set as the current head
-			self.currentBlock = block
-		} else {
-			// Corrupt or empty database, init from scratch
-			self.Reset()
-		}
+		glog.V(logger.Warn).Infoln("WARNING: Empty database, resetting chain.")
+		return self.Reset()
 	}
+	currentBlock := self.GetBlock(head)
+	// Make sure head block is available.
+	if currentBlock == nil {
+		// Corrupt or empty database, init from scratch
+		glog.V(logger.Warn).Infof("WARNING: Head block missing, resetting chain; hash: %v", head)
+		return self.Reset()
+	}
+	// Make sure the state associated with the block is available.
+	// Similar to check in block_validator#ValidateBlock.
+	if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
+		// Dangling block without a state associated, init from scratch
+		glog.V(logger.Warn).Infof("WARNING: Head state missing, resetting chain; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
+		return self.Reset()
+	}
+
+	// Everything seems to be fine, set as the head block
+	self.currentBlock = currentBlock
+
 	// Restore the last known head header
 	currentHeader := self.currentBlock.Header()
 	if head := GetHeadHeaderHash(self.chainDb); head != (common.Hash{}) {
@@ -184,6 +196,7 @@ func (self *BlockChain) loadLastState() error {
 		}
 	}
 	self.hc.SetCurrentHeader(currentHeader)
+
 	// Restore the last known head fast block
 	self.currentFastBlock = self.currentBlock
 	if head := GetHeadFastBlockHash(self.chainDb); head != (common.Hash{}) {
@@ -197,7 +210,7 @@ func (self *BlockChain) loadLastState() error {
 		return err
 	}
 	self.stateCache = statedb
-	self.stateCache.GetAccount(common.Address{})
+	self.stateCache.GetAccount(common.Address{}) // Why?
 
 	// Issue a status log and return
 	headerTd := self.GetTd(self.hc.CurrentHeader().Hash())
@@ -214,7 +227,9 @@ func (self *BlockChain) loadLastState() error {
 // above the new head will be deleted and the new one set. In the case of blocks
 // though, the head may be further rewound if block bodies are missing (non-archive
 // nodes after a fast sync).
-func (bc *BlockChain) SetHead(head uint64) {
+func (bc *BlockChain) SetHead(head uint64) error {
+	glog.V(logger.Warn).Infof("Rewinding blockchain, target: %v", head)
+
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
@@ -222,6 +237,7 @@ func (bc *BlockChain) SetHead(head uint64) {
 		DeleteBody(bc.chainDb, hash)
 	}
 	bc.hc.SetHead(head, delFn)
+	currentHeader := bc.hc.CurrentHeader()
 
 	// Clear out any stale content from the caches
 	bc.bodyCache.Purge()
@@ -229,14 +245,21 @@ func (bc *BlockChain) SetHead(head uint64) {
 	bc.blockCache.Purge()
 	bc.futureBlocks.Purge()
 
-	// Update all computed fields to the new head
-	if bc.currentBlock != nil && bc.hc.CurrentHeader().Number.Uint64() < bc.currentBlock.NumberU64() {
-		bc.currentBlock = bc.GetBlock(bc.hc.CurrentHeader().Hash())
+	// Rewind the block chain, ensuring we don't end up with a stateless head block
+	if bc.currentBlock != nil && currentHeader.Number.Uint64() < bc.currentBlock.NumberU64() {
+		bc.currentBlock = bc.GetBlock(currentHeader.Hash())
 	}
-	if bc.currentFastBlock != nil && bc.hc.CurrentHeader().Number.Uint64() < bc.currentFastBlock.NumberU64() {
-		bc.currentFastBlock = bc.GetBlock(bc.hc.CurrentHeader().Hash())
+	if bc.currentBlock != nil {
+		if _, err := state.New(bc.currentBlock.Root(), bc.chainDb); err != nil {
+			// Rewound state missing, rolled back to before pivot, reset to genesis
+			bc.currentBlock = nil
+		}
 	}
-
+	// Rewind the fast block in a simpleton way to the target head
+	if bc.currentFastBlock != nil && currentHeader.Number.Uint64() < bc.currentFastBlock.NumberU64() {
+		bc.currentFastBlock = bc.GetBlock(currentHeader.Hash())
+	}
+	// If either blocks reached nil, reset to the genesis state
 	if bc.currentBlock == nil {
 		bc.currentBlock = bc.genesisBlock
 	}
@@ -250,7 +273,7 @@ func (bc *BlockChain) SetHead(head uint64) {
 	if err := WriteHeadFastBlockHash(bc.chainDb, bc.currentFastBlock.Hash()); err != nil {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
 	}
-	bc.loadLastState()
+	return bc.loadLastState()
 }
 
 // FastSyncCommitHead sets the current head block to the one defined by the hash
@@ -357,15 +380,17 @@ func (self *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
 }
 
 // Reset purges the entire blockchain, restoring it to its genesis state.
-func (bc *BlockChain) Reset() {
-	bc.ResetWithGenesisBlock(bc.genesisBlock)
+func (bc *BlockChain) Reset() error {
+	return bc.ResetWithGenesisBlock(bc.genesisBlock)
 }
 
 // ResetWithGenesisBlock purges the entire blockchain, restoring it to the
 // specified genesis state.
-func (bc *BlockChain) ResetWithGenesisBlock(genesis *types.Block) {
+func (bc *BlockChain) ResetWithGenesisBlock(genesis *types.Block) error {
 	// Dump the entire block chain and purge the caches
-	bc.SetHead(0)
+	if err := bc.SetHead(0); err != nil {
+		return err
+	}
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
@@ -382,6 +407,8 @@ func (bc *BlockChain) ResetWithGenesisBlock(genesis *types.Block) {
 	bc.hc.SetGenesis(bc.genesisBlock.Header())
 	bc.hc.SetCurrentHeader(bc.genesisBlock.Header())
 	bc.currentFastBlock = bc.genesisBlock
+
+	return nil
 }
 
 // Export writes the active chain to the given writer.
@@ -956,8 +983,8 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 
 	if (stats.queued > 0 || stats.processed > 0 || stats.ignored > 0) && bool(glog.V(logger.Info)) {
 		tend := time.Since(tstart)
-		start, end := chain[0], chain[len(chain)-1]
-		glog.Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n", stats.processed, stats.queued, stats.ignored, txcount, tend, end.Number(), start.Hash().Bytes()[:4], end.Hash().Bytes()[:4])
+		first, last := chain[0], chain[len(chain)-1]
+		glog.Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n", stats.processed, stats.queued, stats.ignored, txcount, tend, last.Number(), first.Hash().Bytes()[:4], last.Hash().Bytes()[:4])
 	}
 	go self.postChainEvents(events, coalescedLogs)
 
