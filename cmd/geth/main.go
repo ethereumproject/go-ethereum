@@ -39,6 +39,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
+	"time"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -262,8 +263,37 @@ func main() {
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
-	node := MakeSystemNode(Version, ctx)
+	node, e := MakeSystemNode(Version, ctx)
 	startNode(ctx, node)
+
+	eAPI := eth.NewPublicEthereumAPI(e)
+	netAPI := eth.NewPublicNetAPI()
+	//
+	//
+	//startTime := time.Now()
+	//lastLogTime := time.Now()
+	//go func() {
+	//	for {
+	//		select {
+	//		case <-pm.quitSync:
+	//			return
+	//		case time.Since(lastLogTime) > time.Second*5:
+	//			// "RO" -> "ReadOut"
+	//			modeRO := "Import"
+	//			if pm.downloader.GetMode() == downloader.FastSync {
+	//				modeRO = "Sync"
+	//			}
+	//			_, current, highest, _, _ := pm.downloader.Progress()
+	//			currentBlock := pm.blockchain.GetBlockByNumber(current)
+	//			highestBlock := pm.blockchain.GetBlockByNumber(highest)
+	//			bodyMean := metrics.DLBodies.RateMean()
+	//			headerMean := metrics.DLHeaders.RateMean()
+	//
+	//			glog.V(logger.Info).Infof("%s", modeRO)
+	//		}
+	//	}
+	//}()
+	
 	node.Wait()
 
 	return nil

@@ -250,6 +250,15 @@ func (d *Downloader) Synchronising() bool {
 	return atomic.LoadInt32(&d.synchronising) > 0
 }
 
+// Experimental getter functions for new logging.
+func (d *Downloader) GetMode() SyncMode {
+	return d.mode
+}
+
+func (d *Downloader) GetPeers() *peerSet {
+	return d.peers
+}
+
 // RegisterPeer injects a new download peer into the set of block source to be
 // used for fetching hashes and blocks from.
 func (d *Downloader) RegisterPeer(id string, version int, currentHead currentHeadRetrievalFn,

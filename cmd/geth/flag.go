@@ -431,8 +431,9 @@ func makeNodeName(version string, ctx *cli.Context) string {
 
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
-func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
+func MakeSystemNode(version string, ctx *cli.Context) (*node.Node, *eth.Ethereum) {
 
+	var ethInstance *eth.Ethereum
 	// global settings
 
 	if ctx.GlobalIsSet(aliasableName(ExtraDataFlag.Name, ctx)) {
@@ -479,7 +480,11 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		glog.Fatalf("%v: failed to create the protocol stack: ", ErrStackFail, err)
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		return eth.New(ctx, ethConf)
+		e, err := eth.New(ctx, ethConf)
+		if err == nil {
+			ethInstance = e
+		}
+		return e, err
 	}); err != nil {
 		glog.Fatalf("%v: failed to register the Ethereum service: ", ErrStackFail, err)
 	}
@@ -493,7 +498,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		glog.V(logger.Info).Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
 	}
 
-	return stack
+	return stack, ethInstance
 }
 
 // shouldAttemptDirMigration decides based on flags if
