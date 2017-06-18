@@ -295,6 +295,11 @@ web3._extend({
 			name: 'traceTransaction',
 			call: 'debug_traceTransaction',
 			params: 1
+		}),
+		new web3._extend.Method({
+			name: 'accountExist',
+			call: 'debug_accountExist',
+			params: 2
 		})
 	],
 	properties: []
