@@ -225,6 +225,7 @@ func New(stateDb ethdb.Database, mux *event.TypeMux, hasHeader headerCheckFn, ha
 // In addition, during the state download phase of fast synchronisation the number
 // of processed and the total number of known states are also returned. Otherwise
 // these are zero.
+// Returns: (origin, current, height, pulled, known)
 func (d *Downloader) Progress() (uint64, uint64, uint64, uint64, uint64) {
 	// Fetch the pending state count outside of the lock to prevent unforeseen deadlocks
 	pendingStates := uint64(d.queue.PendingNodeData())
