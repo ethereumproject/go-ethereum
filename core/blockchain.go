@@ -268,11 +268,15 @@ func (self *BlockChain) loadLastState() error {
 				break
 			}
 			if ee := self.blockIsUnhealthy(bb); ee == nil {
+				glog.V(logger.Debug).Infof("Found possibly OK later block #%d", bb.NumberU64())
 				foundLaterBlock = true
 				lastOkBlock = bb
+			} else {
+				glog.V(logger.Debug).Infof("Found unhealthy block: %v, hash: %x", ee)
 			}
 		}
 		if foundLaterBlock {
+			glog.V(logger.Debug).Infof("Attempting to set head: #%d", lastOkBlock.NumberU64())
 			// SetHead itself finally returns 'loadLastState()' (this function) again,
 			// so all above validations will be re-checked for new state.
 			// That's the only reason this is safe.
