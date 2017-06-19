@@ -1500,3 +1500,18 @@ func TestEIP155Transition(t *testing.T) {
 		t.Error("expected:", errExp, "got:", err)
 	}
 }
+
+func TestBlockChain_BlockIsGenesis(t *testing.T) {
+	// Make chain starting from genesis
+	_, blockchain, err := newCanonical(testChainConfig(), 10, false)
+	if err != nil {
+		t.Fatalf("failed to make new canonical chain: %v", err)
+	}
+
+	if !blockchain.blockIsGenesis(blockchain.GetBlockByNumber(0)) {
+		t.Errorf("expected: is genesis block")
+	}
+	if blockchain.blockIsGenesis(blockchain.GetBlockByNumber(1)) {
+		t.Errorf("expected: is not genesis block")
+	}
+}

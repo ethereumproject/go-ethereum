@@ -42,6 +42,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
 	"github.com/hashicorp/golang-lru"
+	"reflect"
 )
 
 var ErrNoGenesis = errors.New("Genesis not found in chain")
@@ -159,6 +160,42 @@ func (self *BlockChain) getProcInterrupt() bool {
 	return atomic.LoadInt32(&self.procInterrupt) == 1
 }
 
+func (self *BlockChain) blockIsGenesis(b *types.Block) bool {
+	return reflect.DeepEqual(b, self.Genesis())
+}
+
+// blockIsUnhealthy sanity checks for a block's health.
+// If header number is 0 and hash is not genesis hash.
+// Something is wrong; possibly missing/malformed header.
+func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
+	if b == nil {
+		return fmt.Errorf("nil block")
+	}
+	// Block has no header.
+	if b.Header() == nil {
+		return fmt.Errorf("nil header")
+	}
+	// If header number is 0 and block is not genesis.
+	if !self.blockIsGenesis(b) {
+		if b.NumberU64() == 0 {
+			return fmt.Errorf("block number: 0, but is not genesis block: block: %v, \ngenesis: %v", b, self.genesisBlock)
+		}
+		// If is not genesis (by number) and has no parent hash.
+		ph := b.ParentHash()
+		if ph == (common.Hash{}) {
+			return ParentError(ph)
+		}
+		parent := self.GetBlock(ph)
+		if parent == nil {
+			return ParentError(ph)
+		}
+		if e := self.Validator().ValidateHeader(b.Header(), parent.Header(), false); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
 func (self *BlockChain) loadLastState() error {
@@ -174,8 +211,19 @@ func (self *BlockChain) loadLastState() error {
 	// Make sure head block is available.
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
-		glog.V(logger.Warn).Infof("WARNING: Head block missing, resetting chain; hash: %v", head)
+		glog.V(logger.Warn).Infof("WARNING: Head block missing, resetting chain; hash: %x", head)
 		return self.Reset()
+	}
+	// Make sure the head block is valid.
+	if e := self.blockIsUnhealthy(currentBlock); e != nil {
+		glog.V(logger.Warn).Infof("WARNING: Head block unhealthy, resetting chain; error: %v", e)
+		return self.Reset()
+	}
+	if !self.blockIsGenesis(currentBlock) {
+		if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
+			glog.V(logger.Warn).Infof("WARNING: Head block (hash: %x) invalid, resetting chain; err: %v", head, validateErr)
+			return self.Reset()
+		}
 	}
 	// Make sure the state associated with the block is available.
 	// Similar to check in block_validator#ValidateBlock.
@@ -204,6 +252,34 @@ func (self *BlockChain) loadLastState() error {
 			self.currentFastBlock = block
 		}
 	}
+
+	// Look to "rewind" forwards in case of missing/malformed header at or near
+	// actual stored block head, caused by improper/unfulfilled `WriteHead*` functions,
+	// possibly caused by ungraceful stopping on SIGKILL.
+	// WriteHead* failing to write in this scenario would cause the head header to be
+	// misidentified an artificial non-purged re-sync to begin.
+	// I think.
+	if self.blockIsGenesis(self.currentBlock) && self.blockIsGenesis(self.currentFastBlock) && currentHeader == self.Genesis().Header() {
+		var foundLaterBlock = false
+		var lastOkBlock *types.Block
+		for i := 1; i < 5000000; i += 2048 {
+			bb := self.GetBlockByNumber(uint64(i))
+			if bb == nil {
+				break
+			}
+			if ee := self.blockIsUnhealthy(bb); ee == nil {
+				foundLaterBlock = true
+				lastOkBlock = bb
+			}
+		}
+		if foundLaterBlock {
+			// SetHead itself finally returns 'loadLastState()' (this function) again,
+			// so all above validations will be re-checked for new state.
+			// That's the only reason this is safe.
+			return self.SetHead(lastOkBlock.NumberU64())
+		}
+	}
+
 	// Initialize a statedb cache to ensure singleton account bloom filter generation
 	statedb, err := state.New(self.currentBlock.Root(), self.chainDb)
 	if err != nil {
