@@ -30,7 +30,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -194,7 +196,7 @@ func (p *peer) FetchReceipts(request *fetchRequest) error {
 }
 
 // FetchNodeData sends a node state data retrieval request to the remote peer.
-func (p *peer) FetchNodeData(request *fetchRequest) error {
+func (p *peer) FetchNodeData(hashes []common.Hash) error {
 	// Sanity check the protocol version
 	if p.version < 63 {
 		panic(fmt.Sprintf("node data fetch [eth/63+] requested on eth/%d", p.version))
@@ -204,14 +206,7 @@ func (p *peer) FetchNodeData(request *fetchRequest) error {
 		return errAlreadyFetching
 	}
 	p.stateStarted = time.Now()
-
-	// Convert the hash set to a retrievable slice
-	hashes := make([]common.Hash, 0, len(request.Hashes))
-	for hash := range request.Hashes {
-		hashes = append(hashes, hash)
-	}
 	go p.getNodeData(hashes)
-
 	return nil
 }
 
@@ -352,8 +347,9 @@ func (p *peer) String() string {
 // peerSet represents the collection of active peer participating in the chain
 // download procedure.
 type peerSet struct {
-	peers map[string]*peer
-	lock  sync.RWMutex
+	peers       map[string]*peer
+	newPeerFeed event.Feed
+	lock        sync.RWMutex
 }
 
 // newPeerSet creates a new peer set top track the active download sources.
@@ -361,6 +357,10 @@ func newPeerSet() *peerSet {
 	return &peerSet{
 		peers: make(map[string]*peer),
 	}
+}
+
+func (ps *peerSet) SubscribeNewPeers(ch chan<- *peer) event.Subscription {
+	return ps.newPeerFeed.Subscribe(ch)
 }
 
 // Reset iterates over the current peer set, and resets each of the known peers
@@ -386,9 +386,8 @@ func (ps *peerSet) Register(p *peer) error {
 
 	// Register the new peer with some meaningful defaults
 	ps.lock.Lock()
-	defer ps.lock.Unlock()
-
 	if _, ok := ps.peers[p.id]; ok {
+		ps.lock.Unlock()
 		return errAlreadyRegistered
 	}
 	if len(ps.peers) > 0 {
@@ -408,6 +407,9 @@ func (ps *peerSet) Register(p *peer) error {
 		p.stateThroughput /= float64(len(ps.peers))
 	}
 	ps.peers[p.id] = p
+	ps.lock.Unlock()
+
+	ps.newPeerFeed.Send(p)
 	return nil
 }
 
