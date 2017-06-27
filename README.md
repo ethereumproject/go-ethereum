@@ -29,7 +29,11 @@ If your heart is set on the bleeding edge, install from source. However, please 
 #### Dependencies
 Building geth requires both Go >=1.8 and a C compiler.
 
+#### Download/clone the source code
+`$ go get -v github.com/ethereumproject/go-ethereum/...`
+
 #### Installing command executables
+`$ cd $GOPATH/src/github.com/ethereumproject`
 
 To install...
 - the full suite of utilities: `$ go install github.com/ethereumproject/go-ethereum/cmd/...`
