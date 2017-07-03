@@ -45,7 +45,11 @@ import (
 	"reflect"
 )
 
-var ErrNoGenesis = errors.New("Genesis not found in chain")
+var (
+	ErrNoGenesis = errors.New("Genesis not found in chain")
+	errNilBlock = errors.New("nil block")
+	errNilHeader = errors.New("nil header")
+)
 
 const (
 	headerCacheLimit    = 512
@@ -165,15 +169,15 @@ func (self *BlockChain) blockIsGenesis(b *types.Block) bool {
 }
 
 // blockIsUnhealthy sanity checks for a block's health.
-// If header number is 0 and hash is not genesis hash.
-// Something is wrong; possibly missing/malformed header.
+// If header number is 0 and hash is not genesis hash,
+// something is wrong; possibly missing/malformed header.
 func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 	if b == nil {
-		return fmt.Errorf("nil block")
+		return errNilBlock
 	}
 	// Block has no header.
 	if b.Header() == nil {
-		return fmt.Errorf("nil header")
+		return errNilHeader
 	}
 	// If header number is 0 and block is not genesis.
 	if !self.blockIsGenesis(b) {
