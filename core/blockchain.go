@@ -172,27 +172,31 @@ func (self *BlockChain) blockIsGenesis(b *types.Block) bool {
 // If header number is 0 and hash is not genesis hash,
 // something is wrong; possibly missing/malformed header.
 func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
+	// Block is nil.
 	if b == nil {
 		return errNilBlock
 	}
-	// Block has no header.
+	// Block has nil header.
 	if b.Header() == nil {
 		return errNilHeader
 	}
-	// If header number is 0 and block is not genesis.
+
 	if !self.blockIsGenesis(b) {
+		// Block header is not genesis, but has number 0
 		if b.NumberU64() == 0 {
 			return fmt.Errorf("block number: 0, but is not genesis block: block: %v, \ngenesis: %v", b, self.genesisBlock)
 		}
-		// If is not genesis (by number) and has no parent hash.
+		// Block header has no parent hash.
 		ph := b.ParentHash()
 		if ph == (common.Hash{}) {
 			return ParentError(ph)
 		}
 		parent := self.GetBlock(ph)
+		// Block parent by header does not exist.
 		if parent == nil {
 			return ParentError(ph)
 		}
+		// Block header is invalid.
 		if e := self.Validator().ValidateHeader(b.Header(), parent.Header(), false); e != nil {
 			return e
 		}
@@ -211,24 +215,30 @@ func (self *BlockChain) loadLastState() error {
 		glog.V(logger.Warn).Infoln("WARNING: Empty database, resetting chain.")
 		return self.Reset()
 	}
+
+	// Get head block by hash.
 	currentBlock := self.GetBlock(head)
+
 	// Make sure head block is available.
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		glog.V(logger.Warn).Infof("WARNING: Head block missing, resetting chain; hash: %x", head)
 		return self.Reset()
 	}
+
 	// Make sure the head block is valid.
 	if e := self.blockIsUnhealthy(currentBlock); e != nil {
 		glog.V(logger.Warn).Infof("WARNING: Head block unhealthy, resetting chain; error: %v", e)
 		return self.Reset()
 	}
+	// Make sure the head block is valid with the blockchain validator.
 	if !self.blockIsGenesis(currentBlock) {
 		if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
 			glog.V(logger.Warn).Infof("WARNING: Head block (hash: %x) invalid, resetting chain; err: %v", head, validateErr)
 			return self.Reset()
 		}
 	}
+
 	// Make sure the state associated with the block is available.
 	// Similar to check in block_validator#ValidateBlock.
 	if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
@@ -242,11 +252,95 @@ func (self *BlockChain) loadLastState() error {
 
 	// Restore the last known head header
 	currentHeader := self.currentBlock.Header()
+
+	// Get head header by hash.
 	if head := GetHeadHeaderHash(self.chainDb); head != (common.Hash{}) {
 		if header := self.GetHeader(head); header != nil {
 			currentHeader = header
 		}
 	}
+
+	// I0704 10:39:48.937032 core/blockchain.go:206] Last header: #301056 [6371e228…] TD=1104105627630
+	// I0704 10:39:48.937071 core/blockchain.go:207] Last block: #523962 [9c734ef0…] TD=5146934750614
+	// I0704 10:39:48.937085 core/blockchain.go:208] Fast block: #301056 [6371e228…] TD=1104105627630
+
+	// ----
+
+	// Symptoms:
+	//> eth.getBlock('latest')
+	//{
+	//difficulty: 52996379,
+	//	extraData: "0xd883010305844765746887676f312e352e318664617277696e",
+	//	gasLimit: 4712388,
+	//	gasUsed: 23065,
+	//	hash: "0x042bb9560699e0a69d83d45f2dc23d97e0aca9c1b3481cf0281b4bc5dd495956",
+	//	logsBloom: "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+	//	miner: "0x96c0a8ca8af4bc236f551c32b755851d001b1916",
+	//	nonce: "0x3334e255129f50f6",
+	//	number: 526465,
+	//	parentHash: "0x7e5baa2b0b04962c4ac39b1bc370d8ab2d904489884fffdabe875baa467349be",
+	//	receiptsRoot: "0x79f7fbed9d7f8f46d34dc27780695a634196324374cc2914adfc47c740243b66",
+	//	sha3Uncles: "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+	//	size: 693,
+	//	stateRoot: "0x007213e3c605171590ce2eaa61dd24ef6226500e28c8e6e82cd2b36e0e040bb1",
+	//	timestamp: 1457433531,
+	//	totalDifficulty: 5263087760400,
+	//	transactions: ["0x74a9daf4d75daeb64802c937d91892dcd92baed992e485147666205fa1c6eb47"],
+	//transactionsRoot: "0x91dded49f1de81bdd3d38c7444d2af7de508d0e91f7153c1be4433bb5cdfa26d",
+	//	uncles: []
+	//}
+	//> eth.blockNumber
+	//301056
+
+	// ----
+
+	//...skipping...
+	//I0704 10:42:43.718198 core/database_util.go:285] stored header #528821 [0444eee5…]
+	//I0704 10:42:43.718222 core/blockchain.go:929] [1499182963718208961] inserted block #528821 (3 TXs 187953 G 0 UNCs) (0444eee5...). Took
+	//106.585127ms
+	//I0704 10:42:43.720047 core/state/state_object.go:242] 6b80f76ed6e337689e7c0f20025e834b0c8f07cd: #1048589 4923166160000000000 (- 6270000
+	//0000000000)
+	//I0704 10:42:43.720214 core/vm/vm.go:113] running byte VM 1981ee4a
+	//I0704 10:42:43.720538 core/vm/vm.go:113] running byte VM 4e19cdd0
+	//I0704 10:42:43.720739 core/vm/vm.go:116] byte VM 4e19cdd0 done. time: 188.397µs instrc: 73
+	//I0704 10:42:43.720947 core/vm/vm.go:113] running byte VM 4e19cdd0
+	//I0704 10:42:43.721157 core/vm/vm.go:116] byte VM 4e19cdd0 done. time: 199.364µs instrc: 66
+	//I0704 10:42:43.721336 core/vm/vm.go:113] running byte VM eb683b1e
+	//I0704 10:42:43.721729 core/vm/vm.go:116] byte VM eb683b1e done. time: 382.206µs instrc: 145
+	//I0704 10:42:43.721779 core/vm/vm.go:116] byte VM 1981ee4a done. time: 1.553573ms instrc: 273
+	//I0704 10:42:43.721797 core/state/state_object.go:231] 6b80f76ed6e337689e7c0f20025e834b0c8f07cd: #1048590 4985351500000000000 (+ 62185340000000000)
+	//I0704 10:42:43.721855 core/state/state_object.go:231] 70b699b887680072a27b0b55046255a8691b4164: #1048582 16245563983515950616804 (+ 514660000000000)
+	//I0704 10:42:43.722013 core/state_processor.go:121] receipt{med=4987fe53d39357a7714694995a74340066bf81ea33d1d711d701ec80cbd215ad cgas=25733 bloom=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 logs=[]}
+	//I0704 10:42:43.722045 core/state/state_object.go:231] 70b699b887680072a27b0b55046255a8691b4164: #1048582 16250563983515950616804 (+ 5000000000000000000)
+	//I0704 10:42:43.722417 core/database_util.go:350] stored block receipts [d16f9018…]
+	//I0704 10:42:43.722530 core/database_util.go:315] stored block total difficulty [d16f9018…]: 5382000196315
+	//I0704 10:42:43.722570 core/database_util.go:300] stored block body [d16f9018…]
+	//I0704 10:42:43.722619 core/database_util.go:285] stored header #528822 [d16f9018…]
+	//I0704 10:42:43.722643 core/blockchain.go:929] [1499182963722631960] inserted block #528822 (1 TXs 25733 G 0 UNCs) (d16f9018...). Took 4.03041ms
+
+	// ----
+
+	//> eth.syncing
+	//{
+	//currentBlock: 535046,
+	//	highestBlock: 1940368,
+	//	knownStates: 0,
+	//	pulledStates: 0,
+	//	startingBlock: 523962
+	//}
+
+	// ----
+
+	// Note: here "current" == "head" == "latest known"
+	// Problem: currentHeader vs. currentBlock mismatch.
+	// TODO: compare `currentBlock` and `currentHeader`.
+	// - if the header for the fullblock is not the currentHeader...
+	// ---- WTF: All fullblocks should have headers, right?
+	//    - Yes: if the header for the currentBlock is NOT the currentHeader,
+	//      then we have a legitimate mismatch, signaling a corrupted header trie
+	//		at or after the currentBlock.
+	//    - Yes: if the block for the currentHeader is unavailable
+
 	self.hc.SetCurrentHeader(currentHeader)
 
 	// Restore the last known head fast block
@@ -257,6 +351,10 @@ func (self *BlockChain) loadLastState() error {
 		}
 	}
 
+	// Case: Genesis block and fastblock, where there actually exist blocks
+	// in the chain, but n-number of last headers are corrupted, causing it to appear
+	// as if the latest block (by header) is the genesis block.
+	//
 	// Look to "rewind" forwards in case of missing/malformed header at or near
 	// actual stored block head, caused by improper/unfulfilled `WriteHead*` functions,
 	// possibly caused by ungraceful stopping on SIGKILL.
@@ -287,6 +385,9 @@ func (self *BlockChain) loadLastState() error {
 			return self.SetHead(lastOkBlock.NumberU64())
 		}
 	}
+
+	// Case: mismatched header and fast or full block.
+	//
 
 	// Initialize a statedb cache to ensure singleton account bloom filter generation
 	statedb, err := state.New(self.currentBlock.Root(), self.chainDb)
