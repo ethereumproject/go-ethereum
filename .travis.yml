@@ -6,6 +6,10 @@ os:
 - linux
 - osx
 
+env:
+  global:
+    - secure: "MjvfqrKakMa+z+6LFxaL30n+BtjxUm2BnJ6/+S5cbxoCcXGVUBQf9LZ7+FbxIiucZqe7LoawPfLfrzyYPH9Lf03o+gUAdqV2Mm9EYVh5cbF51DmhcRL36Pubm4BeR2DdZTk/v31/TN9g/D9/rsCCwpwFuQB4iuBwYLtyJi8JLopVLpw7/ZI/8EYkOAE/3L0t4ICOMYexKGGi8XkVCC0TWBAHbzFYfeRJxspDNP2WhLS3vJdqDoJKFi/p/ZFzn2J4GKP6hhSUWzG57MpshhYcnIFzt4ZgB1sa1gNF04fe0gT+qAP9WuMFuUPgKhAN/bIPy78BfUi3ScJVYMj6y5D9PzN5+Kp3bo0SsXf6tAJ4t8m8IfU7FBpZkctMxP5aqvu/WX+eHgjNhVkHseZmRO/kst1YfXa5cjjAbiXwivRFtIv7LTrlpshB06k6zj9kD1JngOjf9sLnyYv38Njy/Vb1rK2kkPGMGzLDfkxxmrVgbijfvxX1Hidn97X/y6iLZvq14XsycoWFetiH67OT81grL1hpYC2HyTIdVrG/8CT1FtHsRKa4DqGiWAlaQf8ksm/TPGczylZbtEXFqDLuVl/o0SyOBfsxLiFuOz0cbeThcU8qe5xukK4C9Usu1z7V5h9dMY9y8jKWMNFWOumRjMea1bqS/LEVsUCQ5AmBGWr+AQU="
+
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository ppa:duggan/bats --yes; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
@@ -24,21 +28,11 @@ script:
 
 before_deploy:
 - zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
-- sed -E "s/APPVERSION/$(cat version-base.txt)/" bintray.tpl.json > bintray.json
 - go get -u cloud.google.com/go/storage
 
 deploy:
-  - provider: bintray
-    file: "bintray.json"
-    user: splix
-    key:
-      secure: "c50TvgsSeBMs8LoPO6nQVad3rie0Csh9l2KmwBCCZCLnJNA2nRTMM4EvlNiO8XiYKxms5h3KbzkZXCm+LCmsf+H8U0yupb44prg/MZ8HdvHQ4Qh/hEfQ8rESlxsgu6fjDjF779ge4gfYImyXHkBOCn/PoLkw+Akzw18l2dxsBnAecc+dHwBQ8NQ1Wh7CulD05DEG4SmdMuA/urj4f3kQGkb03jLF8/dNlf8HlTfgREaeKP9rpAtAKsoRIVC+34FdRWN/i8KG3TY+A3+M8bzIFCVNx+sXQ5YKbbtRQbuLPZPF/ELBWsMaxxHwlujhEbsBbZVkHGGZtKk8/EU1w9ZkEQWghXnkIuDxpqvSHzl491xhhpbf+7XL/uonAHlatoNDu3822vrp/eDj/Ys4vOF7F8dYQ7JIyhmXN/P3khehG7FG8mDBqXuImPtiltqvLBGMbsgUFIlaugaB45Zr/Oe2Umf97MgNJeSW/U5qLXN7sS4fPA/KAquty9yzFaxhgsY9iKiGJdAS6AC/CJxmhzEJWgwu6idAmN/L5BaRg29YTtaK+D6AwIVCky9hyHn0VhFN+ieF8H3P3fweG8PX4i63oqTs0+sAGGygzcN6xNit9NtJQ7i3QeGlzRIXfCh2cMz0pU5ErZrWy+kNH1ixzpW9VyugAl6qUQxnyIhbbY5ybIQ="
-    on:
-      branch: master
-    tags: true
-    skip_cleanup: true
   - provider: script
     script:
       - openssl aes-256-cbc -k "$GCP_PASSWD" -in gcloud-travis.json.enc -out .gcloud.json -d
-      - go run gcs-deploy.go -f go-ethereum:geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip -key .gcloud.json
+      - go run gcs-deploy.go -f builds.etcdevteam.com:go-ethereum/$(cat version-base.txt)/geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip -key .gcloud.json
       - rm .gcloud.json
