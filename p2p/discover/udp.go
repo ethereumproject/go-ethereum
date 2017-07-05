@@ -326,25 +326,22 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 	err := <-errc
 
 	// remove nodes from *neighbors response
-	// where the originating address (toaddr) is *not* reserved and the neighbor is reserved.
+	// where the originating address (toaddr) is *not* reserved and the given neighbor is reserved.
 	// This prevents irrelevant private network addresses from causing
-	// attempted discoveries on reserved ports that are not established on
+	// attempted discoveries on reserved ips that are not on
 	// our node's network.
 	// > https://en.wikipedia.org/wiki/Reserved_IP_addresses
 	// > https://github.com/ethereumproject/go-ethereum/issues/283
 	// > https://tools.ietf.org/html/rfc5737
 	// > https://tools.ietf.org/html/rfc3849
 	if !isReserved(toaddr.IP) {
-
-		okNodes := make([]*Node, len(nodes))
-		copy(okNodes, nodes)
-
-		for i, n := range nodes {
+		var okNodes []*Node
+		for _, n := range nodes {
 			if isReserved(n.IP) {
-				// delete node from returnable slice of ok nodes
-				glog.V(logger.Debug).Infof("%v: removing from neighbors: id: %v, ip: ", errReservedAddress, n.ID, n.IP)
-				okNodes = append(okNodes[:i], okNodes[i+1:]...)
+				glog.V(logger.Debug).Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
+				continue
 			}
+			okNodes = append(okNodes, n)
 		}
 		nodes = okNodes
 	}
@@ -670,7 +667,6 @@ func (req *neighbors) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byt
 	if expired(req.Expiration) {
 		return errExpired
 	}
-	// TODO: remove reserved neighbors
 	if !t.handleReply(fromID, neighborsPacket, req) {
 		return errUnsolicitedReply
 	}
