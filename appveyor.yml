@@ -35,5 +35,5 @@ before_deploy:
 deploy_script:
   - ps: >-
       If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
-          go run gcs-deploy.go -f builds.etcdevteam.com:go-ethereum/%VERSION_BASE%/geth-classic-win64-%VERSION%.zip -key .gcloud.json
+          go run gcs-deploy.go -bucket builds.etcdevteam.com -object go-ethereum/%VERSION_BASE%/geth-classic-win64-%VERSION%.zip -file geth-classic-win64-%VERSION%.zip -key .gcloud.json
       }

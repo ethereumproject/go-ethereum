@@ -12,20 +12,20 @@ import (
 	"path"
 )
 
-// Use: go run gcs-deploy.go -f geth-classic-linux-14.0.zip -key ./.gcloud.key
+// Use: go run gcs-deploy.go -bucket builds.etcdevteam.com -object go-ethereum/$(cat version-base.txt)/geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip -file geth-classic-linux-14.0.zip -key ./.gcloud.key
 
 // write treats "object" and "file" as same
-func write(client *storage.Client, bucket, object string) error {
+func write(client *storage.Client, bucket, object, file string) error {
 	ctx := context.Background()
 	// [START upload_file]
-	f, err := os.Open(object)
+	f, err := os.Open(file)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
 	// Write object to storage, ensuring basename for file/object if exists.
-	wc := client.Bucket(bucket).Object(path.Base(object)).NewWriter(ctx)
+	wc := client.Bucket(bucket).Object(object).NewWriter(ctx)
 	if _, err = io.Copy(wc, f); err != nil {
 		return err
 	}
@@ -38,33 +38,30 @@ func write(client *storage.Client, bucket, object string) error {
 
 func main() {
 
-	var k, s string
-	flag.StringVar(&s, "f", "", "source object; in the format of <bucket:object>")
-	flag.StringVar(&k, "key", "", "specify a service account json key file")
+	var key, file, bucket, object string
+	flag.StringVar(&bucket, "bucket", "", "gcp bucket name")
+	flag.StringVar(&object, "object", "", "gcp object path")
+	flag.StringVar(&file, "file", "", "file to upload")
+	flag.StringVar(&key, "key", "", "service account json key file")
 	flag.Parse()
 
-	names := strings.Split(s, ":")
-	if len(names) < 2 {
-		log.Fatal("missing -f flag.\n use: $ go run gc-deploy.go -f <bucket:object>  <- [bucket:object to write to gcs]")
-	}
-	bucket, object := names[0], names[1]
-	if _, e := os.Stat(object); e != nil {
-		log.Fatalf("no object or file by name: %s", object)
+	if _, e := os.Stat(file); e != nil {
+		log.Fatal(file, e)
 	}
 
 	// Ensure key file exists.
-	if _, e := os.Stat(k); e != nil {
-		log.Fatal(k)
+	if _, e := os.Stat(key); e != nil {
+		log.Fatal(file, e)
 	}
 
 	ctx := context.Background()
 
-	client, err := storage.NewClient(ctx, option.WithServiceAccountFile(k))
+	client, err := storage.NewClient(ctx, option.WithServiceAccountFile(key))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	e := write(client, bucket, object)
+	e := write(client, bucket, object, file)
 	if e != nil {
 		log.Fatal(e)
 	}
