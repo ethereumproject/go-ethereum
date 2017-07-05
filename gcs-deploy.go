@@ -8,8 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
-	"path"
 )
 
 // Use: go run gcs-deploy.go -bucket builds.etcdevteam.com -object go-ethereum/$(cat version-base.txt)/geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip -file geth-classic-linux-14.0.zip -key ./.gcloud.key
