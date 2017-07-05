@@ -90,6 +90,32 @@ teardown() {
 	[[ "$output" == *"$default_mainnet_genesis_hash"* ]]
 }
 
+@test "dump-chain-config | --chain privatenet.json | exit 0" {
+
+	run $GETH_CMD --data-dir $DATA_DIR --chain morden dump-chain-config $DATA_DIR/privatenet.json
+	echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Wrote chain config file"* ]]
+	
+	[ -f "$DATA_DIR"/privatenet.json ]
+	
+	run grep -R "morden" "$DATA_DIR"/privatenet.json
+	[ "$status" -eq 0 ]
+	echo "$output"
+	[[ "$output" == *"\"identity\": \"morden\"," ]]
+
+	# Ensure JSON file dump is loadable as external config
+	sed -i.bak s/morden/kitty/ "$DATA_DIR"/privatenet.json
+	run $GETH_CMD --datadir $DATA_DIR --chain "$DATA_DIR"/privatenet.json --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
+	[ "$status" -eq 0 ]
+	echo "$output"
+	[[ "$output" == *"$testnet_genesis_hash"* ]]
+	[[ "$output" == *"kitty"* ]]
+
+	# ensure chain config file is copied to chaindata dir
+	[ -f "$DATA_DIR"/kitty/chain.json ] 
+}
+
 @test "--chain morden dump-chain-config | --chain == morden | exit 0" {
 	
 	# Same as 'chainconfig customnet dump'... higher complexity::more confidence
