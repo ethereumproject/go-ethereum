@@ -141,21 +141,16 @@ func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePat
 // getChainIdentity parses --chain and --testnet (legacy) flags.
 // It will fatal if finds notok value.
 // It returns one of valid strings: ["mainnet", "morden", or --chain="flaggedCustom"]
-var currentChainIdentity = ""
 func mustMakeChainIdentity(ctx *cli.Context) string {
-	// Use a global so we only have to go through this rigamarole once.
-	if currentChainIdentity != "" {
-		return currentChainIdentity
-	}
 
 	if chainIsMorden(ctx) {
-		currentChainIdentity = core.DefaultTestnetChainConfigID
+		//currentChainIdentity = core.DefaultTestnetChainConfigID
 		return core.DefaultTestnetChainConfigID // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
 	}
 	// If --chain is in use.
 	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
 		if chainIdentitiesMain[chainFlagVal] {
-			currentChainIdentity = core.DefaultChainConfigID
+			//currentChainIdentity = core.DefaultChainConfigID
 			return core.DefaultChainConfigID
 		}
 		// Check for unallowed values.
@@ -168,28 +163,28 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 
 		// Check if passed arg exists as a path to a valid config file.
 		if fstat, ferr := os.Stat(filepath.Clean(chainFlagVal)); ferr == nil && !fstat.IsDir() {
-			glog.V(logger.Debug).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
+			glog.V(logger.Detail).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
 			c, e := core.ReadExternalChainConfig(filepath.Clean(chainFlagVal))
 			if e == nil {
-				glog.V(logger.Debug).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
+				glog.V(logger.Detail).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
 					glog.Fatalf("Could not establish chain configuration: %v", e)
 				}
-				currentChainIdentity = c.Identity
+				//currentChainIdentity = c.Identity
 				return c.Identity
 			}
 			glog.V(logger.Debug).Infof("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
 				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, e)
 		}
 		glog.V(logger.Detail).Infof("No existing file at --%v: '%v'.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
-		currentChainIdentity = chainFlagVal
+		//currentChainIdentity = chainFlagVal
 		return chainFlagVal
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
 		return ""
 	}
 	// If no relevant flag is set, return default mainnet.
-	currentChainIdentity = core.DefaultChainConfigID
+	//currentChainIdentity = core.DefaultChainConfigID
 	return core.DefaultChainConfigID
 }
 
