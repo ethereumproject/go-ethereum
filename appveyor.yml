@@ -20,6 +20,7 @@ install:
   - go version
   - go env
   - go get golang.org/x/sys/windows
+  - go get -u cloud.google.com/go/...
 build_script:
   - go test ./...
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
@@ -31,7 +32,6 @@ before_deploy:
   # Set up GCP upload.
   - nuget install secure-file -ExcludeVersion
   - secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret %GCP_PASSWD% -out .gcloud.json
-  - go get -u cloud.google.com/go/...
 deploy_script:
   - ps: >-
       If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
