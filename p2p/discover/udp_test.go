@@ -118,7 +118,7 @@ func newUDPTest(t *testing.T) *udpTest {
 		pipe:       newpipe(),
 		localkey:   newkey(),
 		remotekey:  newkey(),
-		remoteaddr: &net.UDPAddr{IP: net.IP{1, 2, 3, 4}, Port: 30303},
+		remoteaddr: &net.UDPAddr{IP: net.IP{10, 2, 3, 4}, Port: 30303}, // must come from "reserved" address to be valid since findNode tests use reserved address enodes
 	}
 	test.table, test.udp, _ = newUDP(test.localkey, test.pipe, nil, "")
 	return test
