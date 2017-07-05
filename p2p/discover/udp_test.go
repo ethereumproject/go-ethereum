@@ -545,6 +545,55 @@ func TestForwardCompatibility(t *testing.T) {
 	}
 }
 
+func TestIPBetween(t *testing.T) {
+	HandleIpBetween(t, "0.0.0.0", "255.255.255.255", "128.128.128.128", true)
+	HandleIpBetween(t, "0.0.0.0", "128.128.128.128", "255.255.255.255", false)
+	HandleIpBetween(t, "74.50.153.0", "74.50.153.4", "74.50.153.0", true)
+	HandleIpBetween(t, "74.50.153.0", "74.50.153.4", "74.50.153.4", true)
+	HandleIpBetween(t, "74.50.153.0", "74.50.153.4", "74.50.153.5", false)
+	HandleIpBetween(t, "2001:0db8:85a3:0000:0000:8a2e:0370:7334", "74.50.153.4", "74.50.153.2", false)
+	HandleIpBetween(t, "2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:8334", "2001:0db8:85a3:0000:0000:8a2e:0370:7334", true)
+	HandleIpBetween(t, "2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:8334", "2001:0db8:85a3:0000:0000:8a2e:0370:7350", true)
+	HandleIpBetween(t, "2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:8334", "2001:0db8:85a3:0000:0000:8a2e:0370:8334", true)
+	HandleIpBetween(t, "2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:8334", "2001:0db8:85a3:0000:0000:8a2e:0370:8335", false)
+	HandleIpBetween(t, "::ffff:192.0.2.128", "::ffff:192.0.2.250", "::ffff:192.0.2.127", false)
+	HandleIpBetween(t, "::ffff:192.0.2.128", "::ffff:192.0.2.250", "::ffff:192.0.2.128", true)
+	HandleIpBetween(t, "::ffff:192.0.2.128", "::ffff:192.0.2.250", "::ffff:192.0.2.129", true)
+	HandleIpBetween(t, "::ffff:192.0.2.128", "::ffff:192.0.2.250", "::ffff:192.0.2.250", true)
+	HandleIpBetween(t, "::ffff:192.0.2.128", "::ffff:192.0.2.250", "::ffff:192.0.2.251", false)
+	HandleIpBetween(t, "::ffff:192.0.2.128", "::ffff:192.0.2.250", "192.0.2.130", true)
+	HandleIpBetween(t, "192.0.2.128", "192.0.2.250", "::ffff:192.0.2.130", true)
+	HandleIpBetween(t, "idonotparse", "192.0.2.250", "::ffff:192.0.2.130", false)
+}
+
+func HandleIpBetween(t *testing.T, from string, to string, test string, assert bool) {
+	res, e := IpBetween(net.ParseIP(from), net.ParseIP(to), net.ParseIP(test))
+	// If there is an error and we expected truth.
+	if e != nil && assert {
+		t.Errorf("Assertion (have: %s should be: %s) failed on range %s-%s with test %s: error: %v", res, assert, from, to, test, e)
+	}
+	if res != assert {
+		t.Errorf("Assertion (have: %s should be: %s) failed on range %s-%s with test %s", res, assert, from, to, test)
+	}
+}
+
+func TestIsReserved(t *testing.T) {
+	table := []struct{
+		ip string
+		reserved bool
+	}{
+		{"0.1.1.1", true},
+		{"10.0.0.1", true},
+		{"127.12.13.14", true},
+		{"128.1.1.12", false},
+	}
+	for _, tt := range table {
+		if got := isReserved(net.ParseIP(tt.ip)); got != tt.reserved {
+			t.Errorf("unexpected: ip: %v, notReserved? -> want: %v, got: %v", tt.ip, tt.reserved, got)
+		}
+	}
+}
+
 // dgramPipe is a fake UDP socket. It queues all sent datagrams.
 type dgramPipe struct {
 	mu      *sync.Mutex
