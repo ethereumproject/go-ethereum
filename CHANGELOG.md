@@ -28,10 +28,14 @@ Releases considered stable may be found on our [Releases Page](https://github.co
 
 - Dev mode (`--dev`) made compatible with `--chain`
 
+#### Changed
+- _Option_: `--chain <chainIdentifier|mychain.json>` - specify chain identifier or path to JSON configuration file
+
 #### Fixed
 - `geth attach` command uses chain subdirectory schema by default, e.g. `datadir/mainnet/geth.ipc` instead of `datadir/geth.ipc`
 - Sometimes ungraceful stopping on SIGTERM causing corrupted chaindata
 - PublicKey method for protected transactions with malformed chain id causing SIGSEGV
+- Concurrent map read/writes for State Objects
 
 ## [3.5.0] - 2017-06-02 - 402c170
 
