@@ -28,7 +28,7 @@ script:
 
 before_deploy:
 - zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
-- go get -u cloud.google.com/go/storage
+- go get -u cloud.google.com/go/...
 
 deploy:
   - provider: script
