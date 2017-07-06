@@ -25,9 +25,9 @@ script:
 - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.x/' version.txt > version-base.txt
 - go build -ldflags "-X main.Version="`cat version-app.txt` ./cmd/geth
 - bats cmd/geth
-
-before_deploy:
+# Zip for deploy.
 - zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
+# Get deploy golang deps.
 - go get -u cloud.google.com/go/...
 
 deploy:
@@ -36,3 +36,6 @@ deploy:
       - openssl aes-256-cbc -k "$GCP_PASSWD" -in gcloud-travis.json.enc -out .gcloud.json -d
       - go run gcs-deploy.go -bucket builds.etcdevteam.com -object go-ethereum/$(cat version-base.txt)/geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip -file geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip -key .gcloud.json
       - rm .gcloud.json
+    on:
+      branch: master
+    tags: true
