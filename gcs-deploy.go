@@ -31,6 +31,10 @@ func write(client *storage.Client, bucket, object, file string) error {
 		return err
 	}
 	// [END upload_file]
+	log.Printf(`Successfully uploaded:
+	bucket: %v
+	object: %v
+	file: %v`, bucket, object, file)
 	return nil
 }
 
