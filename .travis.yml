@@ -18,12 +18,16 @@ before_install:
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install bats; fi
 
 script:
+# Run go tests.
 - go test ./...
+# Set up git-based build version naming.
 - git describe --tags --always > version.txt
 - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+)-g([a-f0-9]+)/v\1.\2+\3/' version.txt > version-app.txt
 - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.\2/' version.txt > version-only.txt
 - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.x/' version.txt > version-base.txt
+# Build.
 - go build -ldflags "-X main.Version="`cat version-app.txt` ./cmd/geth
+# Run bats integration tests.
 - bats cmd/geth
 # Zip for deploy.
 - zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
@@ -31,11 +35,8 @@ script:
 - go get -u cloud.google.com/go/...
 
 deploy:
-  - provider: script
-    script:
-      - openssl aes-256-cbc -k "$GCP_PASSWD" -in gcloud-travis.json.enc -out .gcloud.json -d
-      - go run gcs-deploy.go -bucket builds.etcdevteam.com -object go-ethereum/$(cat version-base.txt)/geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip -file geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip -key .gcloud.json
-      - rm .gcloud.json
-    on:
-      branch: master
+  provider: script
+  script: travis-deploy.sh
+  on:
+    branch: master
     tags: true
