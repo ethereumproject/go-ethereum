@@ -33,8 +33,6 @@ script:
 before_deploy:
 # Zip for deploy.
 - zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
-# Get deploy golang deps.
-- go get -u cloud.google.com/go/...
 
 deploy:
   provider: script
