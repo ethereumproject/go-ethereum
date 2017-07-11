@@ -35,6 +35,7 @@ before_deploy:
 - zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
 
 deploy:
+  skip_cleanup: true
   provider: script
   script: travis-deploy.sh
   on:
