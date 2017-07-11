@@ -20,7 +20,8 @@ install:
   - go version
   - go env
   - go get golang.org/x/sys/windows
-  - go get -u cloud.google.com/go/...
+  # Have to have this installed for windows to run normal tests.
+  - go get cloud.google.com/go/...
 build_script:
   - go test ./...
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
@@ -35,5 +36,5 @@ before_deploy:
 deploy_script:
   - ps: >-
       If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
-          go run gcs-deploy.go -bucket builds.etcdevteam.com -object go-ethereum/%VERSION_BASE%/geth-classic-win64-%VERSION%.zip -file geth-classic-win64-%VERSION%.zip -key .gcloud.json
+          ./gcs-deploy-windows.exe -bucket builds.etcdevteam.com -object go-ethereum/%VERSION_BASE%/geth-classic-win64-%VERSION%.zip -file geth-classic-win64-%VERSION%.zip -key .gcloud.json
       }

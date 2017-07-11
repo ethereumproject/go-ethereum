@@ -29,14 +29,15 @@ script:
 - go build -ldflags "-X main.Version="`cat version-app.txt` ./cmd/geth
 # Run bats integration tests.
 - bats cmd/geth
+
+before_deploy:
 # Zip for deploy.
 - zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
-# Get deploy golang deps.
-- go get -u cloud.google.com/go/...
 
 deploy:
+  skip_cleanup: true
   provider: script
   script: travis-deploy.sh
   on:
     branch: master
-    tags: true
+  tags: true
