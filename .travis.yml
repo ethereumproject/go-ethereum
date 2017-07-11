@@ -20,24 +20,26 @@ before_install:
 script:
 # Run go tests.
 - go test ./...
-# Set up git-based build version naming.
-- git describe --tags --always > version.txt
-- sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+)-g([a-f0-9]+)/v\1.\2+\3/' version.txt > version-app.txt
-- sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.\2/' version.txt > version-only.txt
-- sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.x/' version.txt > version-base.txt
-# Build.
-- go build -ldflags "-X main.Version="`cat version-app.txt` ./cmd/geth
+# Build for integration tests.
+- go build ./cmd/geth
 # Run bats integration tests.
 - bats cmd/geth
 
 before_deploy:
-# Zip for deploy.
-- zip geth-classic-$TRAVIS_OS_NAME-$(cat version-app.txt).zip geth
+  # Install Janus
+  - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+  # Add Janus to PATH.
+  - export PATH=$PATH:$PWD/janusbin
+  # Build with version
+  - go build -ldflags "-X main.Version="`janus version -format v%M.%m.%P` ./cmd/geth
+  # Zip for deploy.
+  - zip geth-classic-$TRAVIS_OS_NAME-$(janus version -format v%M.%m.%P+%C-%S).zip geth
 
 deploy:
   skip_cleanup: true
   provider: script
-  script: ./travis-deploy.sh
+  script:
+    - janus deploy -to builds.etcdevteam.com/go-ethereum/$(janus version -format %M.%m.x) -files ./*.zip -key ./gcloud-travis.json.enc
   on:
     branch: master
   tags: true
