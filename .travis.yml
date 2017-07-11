@@ -26,14 +26,14 @@ script:
 - bats cmd/geth
 
 before_deploy:
-  # Install Janus
-  - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
-  # Add Janus to PATH.
-  - export PATH=$PATH:$PWD/janusbin
-  # Build with version
-  - go build -ldflags "-X main.Version="`janus version -format v%M.%m.%P` ./cmd/geth
-  # Zip for deploy.
-  - zip geth-classic-$TRAVIS_OS_NAME-$(janus version -format v%M.%m.%P+%C-%S).zip geth
+# Install Janus
+- curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+# Add Janus to PATH.
+- export PATH=$PATH:$PWD/janusbin
+# Build with version
+- go build -ldflags "-X main.Version="`janus version -format v%M.%m.%P` ./cmd/geth
+# Zip for deploy.
+- zip geth-classic-$TRAVIS_OS_NAME-$(janus version -format v%M.%m.%P+%C-%S).zip geth
 
 deploy:
   skip_cleanup: true
