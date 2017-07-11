@@ -36,5 +36,5 @@ before_deploy:
 deploy_script:
   - ps: >-
       If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
-          ./gcs-deploy-windows.exe -bucket builds.etcdevteam.com -object go-ethereum/%VERSION_BASE%/geth-classic-win64-%VERSION%.zip -file geth-classic-win64-%VERSION%.zip -key .gcloud.json
+          bash gcs-deploy-windows.exe -bucket builds.etcdevteam.com -object go-ethereum/%VERSION_BASE%/geth-classic-win64-%VERSION%.zip -file geth-classic-win64-%VERSION%.zip -key .gcloud.json
       }
