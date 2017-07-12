@@ -98,10 +98,6 @@ func NewTransaction(nonce uint64, to common.Address, amount, gasLimit, gasPrice 
 	return &Transaction{signer: BasicSigner{}, data: d}
 }
 
-func (tx *Transaction) Signer() Signer {
-	return tx.signer
-}
-
 func (tx *Transaction) SetSigner(s Signer) {
 	tx.signer = s
 }
