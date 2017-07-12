@@ -24,22 +24,27 @@ script:
 - go build ./cmd/geth
 # Run bats integration tests.
 - bats cmd/geth
+# Remove test build to keep git state clean for goreleaser.
+- rm ./geth
 
 before_deploy:
+# Use goreleaser to create builds and archives.
+# Places builds and their archives in ./dist/
+- bash ./get-goreleaser.sh
+
 # Install Janus
 - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
 # Add Janus to PATH.
 - export PATH=$PATH:$PWD/janusbin
-# Build with version
-- go build -ldflags "-X main.Version="`janus version -format v%M.%m.%P` ./cmd/geth
-# Zip for deploy.
-- zip geth-classic-$TRAVIS_OS_NAME-$(janus version -format v%M.%m.%P+%C-%S).zip geth
 
 deploy:
   skip_cleanup: true
   provider: script
   script:
-    - janus deploy -to builds.etcdevteam.com/go-ethereum/$(janus version -format %M.%m.x) -files ./*.zip -key ./gcloud-travis.json.enc
+    - janus deploy -to builds.etcdevteam.com/go-ethereum/$(janus version -format %M.%m.x) -files ./dist/*.tar.gz -key ./gcloud-travis.json.enc
+    - janus deploy -to builds.etcdevteam.com/go-ethereum/$(janus version -format %M.%m.x) -files ./dist/*.zip -key ./gcloud-travis.json.enc
   on:
     branch: master
+    # Only deploy once; use linux arbitrarily because its faster
+    condition: $TRAVIS_OS_NAME = "linux"
   tags: true

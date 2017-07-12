@@ -1,0 +1,34 @@
+builds:
+- goos:
+  - linux
+  - darwin
+  - windows
+  - freebsd
+  goarch:
+  - amd64
+  - "386"
+  main: ./cmd/geth/main.go
+  binary: geth
+  ldflags: -X main.Version=v{{.Version}}
+archive:
+  format: tar.gz
+  format_overrides:
+    - goos: windows
+      format: zip
+  replacements:
+    darwin: Darwin
+    linux: Linux
+    windows: Windows
+    386: i386
+    amd64: x86_64
+  name_template: 'geth-classic-v{{.Version}}_{{ .Os }}_{{ .Arch }}'
+  files:
+  # leave files empty, so won't include README or LICENSE in archive, just geth binary
+snapshot:
+  # Allows you to change the name of the generated snapshot
+  # releases. The following variables are available:
+  # - Commit
+  # - Tag
+  # - Timestamp
+  # Default: SNAPSHOT-{{.Commit}}
+  name_template: geth-classic-{{.Tag}}-{{.Commit}}
