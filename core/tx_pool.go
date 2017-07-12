@@ -235,6 +235,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return err
 	}
 
+	if !pool.signer.Equal(tx.Signer()) {
+		return ErrInvalidSender
+	}
 	from, err := types.Sender(pool.signer, tx)
 	if err != nil {
 		return ErrInvalidSender
