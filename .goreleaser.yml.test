@@ -9,7 +9,7 @@ builds:
   - "386"
   main: ./cmd/geth/main.go
   binary: geth
-  ldflags: -X main.Version={{.Tag}}
+  ldflags: -X main.Version=v{{.Version}}
 archive:
   format: tar.gz
   format_overrides:
@@ -22,6 +22,6 @@ archive:
     386: i386
     amd64: x86_64
   # We'll use sed to replace this name with one including commit count
-  name_template: 'geth-classic-{{.Tag}}_{{ .Os }}_{{ .Arch }}'
+  name_template: 'geth-classic-{{.Tag}}+72_{{ .Os }}_{{ .Arch }}'
   files:
   # leave files empty, so won't include README or LICENSE in archive, just geth binary

@@ -24,25 +24,30 @@ script:
 - go build ./cmd/geth
 # Run bats integration tests.
 - bats cmd/geth
-# Remove test build to keep git state clean for goreleaser.
-- rm ./geth
 
 before_deploy:
-# Use goreleaser to create builds and archives.
-# Places builds and their archives in ./dist/
-- bash ./get-goreleaser.sh
-
 # Install Janus
 - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
 # Add Janus to PATH.
 - export PATH=$PATH:$PWD/janusbin
 
+# If HEAD is not tagged, use sed substitution to modify
+# archive name template, using janus to get commit count and git HEAD hash
+- export JANUS_COMMIT_COUNT=$(janus version -format %C)
+- export JANUS_SHA1=$(janus version -format %S)
+- if [[ ! $JANUS_COMMIT_COUNT = 0 ]]; then sed -i.bak 's/geth-classic-{{.Tag}}_{{ .Os }}_{{ .Arch }}/geth-classic-{{.Tag}}+'$JANUS_COMMIT_COUNT-$JANUS_SHA1'_{{ .Os }}_{{ .Arch }}/' ./.goreleaser.yml; fi
+
+# Use goreleaser to create builds and archives.
+# Places builds and their archives in ./dist/
+- bash ./get-goreleaser.sh
+
 deploy:
   skip_cleanup: true
   provider: script
   script:
-    - janus deploy -to builds.etcdevteam.com/go-ethereum/$(janus version -format %M.%m.x) -files ./dist/*.tar.gz -key ./gcloud-travis.json.enc
-    - janus deploy -to builds.etcdevteam.com/go-ethereum/$(janus version -format %M.%m.x) -files ./dist/*.zip -key ./gcloud-travis.json.enc
+    - mkdir ./deploy
+    - mv ./dist/*.tar.gz ./dist/*.zip ./deploy/
+    - janus deploy -to builds.etcdevteam.com/go-ethereum/$(janus version -format %M.%m.x) -files ./deploy/* -key ./gcloud-travis.json.enc
   on:
     branch: master
     # Only deploy once; use linux arbitrarily because its faster

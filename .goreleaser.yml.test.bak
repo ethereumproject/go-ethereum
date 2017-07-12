@@ -9,7 +9,7 @@ builds:
   - "386"
   main: ./cmd/geth/main.go
   binary: geth
-  ldflags: -X main.Version={{.Tag}}
+  ldflags: -X main.Version=v{{.Version}}
 archive:
   format: tar.gz
   format_overrides:
