@@ -144,13 +144,11 @@ func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePat
 func mustMakeChainIdentity(ctx *cli.Context) string {
 
 	if chainIsMorden(ctx) {
-		//currentChainIdentity = core.DefaultTestnetChainConfigID
 		return core.DefaultTestnetChainConfigID // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
 	}
 	// If --chain is in use.
 	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
 		if chainIdentitiesMain[chainFlagVal] {
-			//currentChainIdentity = core.DefaultChainConfigID
 			return core.DefaultChainConfigID
 		}
 		// Check for unallowed values.
@@ -170,21 +168,18 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
 					glog.Fatalf("Could not establish chain configuration: %v", e)
 				}
-				//currentChainIdentity = c.Identity
 				return c.Identity
 			}
 			glog.V(logger.Debug).Infof("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
 				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, e)
 		}
 		glog.V(logger.Detail).Infof("No existing file at --%v: '%v'.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
-		//currentChainIdentity = chainFlagVal
 		return chainFlagVal
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
 		return ""
 	}
 	// If no relevant flag is set, return default mainnet.
-	//currentChainIdentity = core.DefaultChainConfigID
 	return core.DefaultChainConfigID
 }
 
