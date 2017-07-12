@@ -98,6 +98,10 @@ func NewTransaction(nonce uint64, to common.Address, amount, gasLimit, gasPrice 
 	return &Transaction{signer: BasicSigner{}, data: d}
 }
 
+func (tx *Transaction) Signer() Signer {
+	return tx.signer
+}
+
 func (tx *Transaction) SetSigner(s Signer) {
 	tx.signer = s
 }
@@ -116,13 +120,26 @@ func (tx *Transaction) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, &tx.data)
 }
 
+// DeriveSigner makes a *best* guess about which signer to use.
+func deriveSigner(V *big.Int) Signer {
+	if V.Sign() != 0 && isProtectedV(V) {
+		return NewChainIdSigner(deriveChainId(V))
+	} else {
+		return BasicSigner{}
+	}
+}
+
 func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 	_, size, _ := s.Kind()
 	err := s.Decode(&tx.data)
 	if err == nil {
 		tx.size.Store(common.StorageSize(rlp.ListSize(size)))
 	}
-	tx.signer = BasicSigner{}
+	if tx.data.V != nil {
+		tx.signer = deriveSigner(tx.data.V)
+	} else {
+		tx.signer = BasicSigner{}
+	}
 	return err
 }
 
