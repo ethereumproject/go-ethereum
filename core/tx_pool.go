@@ -285,6 +285,14 @@ func (self *TxPool) add(tx *types.Transaction) error {
 	if self.pending[hash] != nil {
 		return fmt.Errorf("Known transaction (%x)", hash[:4])
 	}
+
+	// Set transaction signer according to the TxPool.
+	// Otherwise the 'From' field of the transaction cannot be
+	// extracted correctly when EIP-155 is enabled.
+	if tx.Protected() {
+		tx.SetSigner(self.signer)
+	}
+
 	err := self.validateTx(tx)
 	if err != nil {
 		return err
