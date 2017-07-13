@@ -20,20 +20,19 @@ install:
   - go version
   - go env
   - go get golang.org/x/sys/windows
-  - go get -u cloud.google.com/go/...
 build_script:
   - go test ./...
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
-  - 7z a geth-classic-win64-%VERSION%.zip geth.exe
+#  - 7z a geth-classic-win64-%VERSION%.zip geth.exe
 artifacts:
   - path: '*.zip'
     name: geth
-before_deploy:
-  # Set up GCP upload.
-  - nuget install secure-file -ExcludeVersion
-  - secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret %GCP_PASSWD% -out .gcloud.json
-deploy_script:
-  - ps: >-
-      If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
-          go run gcs-deploy.go -bucket builds.etcdevteam.com -object go-ethereum/%VERSION_BASE%/geth-classic-win64-%VERSION%.zip -file geth-classic-win64-%VERSION%.zip -key .gcloud.json
-      }
+#before_deploy:
+#  # Set up GCP upload.
+#  - nuget install secure-file -ExcludeVersion
+#  - secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret %GCP_PASSWD% -out .gcloud.json
+#deploy_script:
+#  - ps: >-
+#      If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
+#          bash gcs-deploy-windows.exe -bucket builds.etcdevteam.com -object go-ethereum/%VERSION_BASE%/geth-classic-win64-%VERSION%.zip -file geth-classic-win64-%VERSION%.zip -key .gcloud.json
+#      }
