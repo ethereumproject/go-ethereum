@@ -2,25 +2,13 @@
 set -e
 
 TAR_FILE="/tmp/goreleaser.tar.gz"
-RELEASES_URL="https://github.com/goreleaser/goreleaser/releases"
+RELEASES_URL="https://github.com/ethereumproject/janus/blob/master/goreleaser/goreleaser_Linux_x86_64.tar.gz?raw=true"
 test -z "$TMPDIR" && TMPDIR="$(mktemp -d)"
 
-last_version() {
-  curl -sL -o /dev/null -w %{url_effective} "$RELEASES_URL/latest" |
-    rev |
-    cut -f1 -d'/'|
-    rev
-}
-
 download() {
-  test -z "$VERSION" && VERSION="$(last_version)"
-  test -z "$VERSION" && {
-    echo "Unable to get goreleaser version." >&2
-    exit 1
-  }
   rm -f "$TAR_FILE"
   curl -s -L -o "$TAR_FILE" \
-    "$RELEASES_URL/download/$VERSION/goreleaser_$(uname -s)_$(uname -m).tar.gz"
+    "$RELEASES_URL"
 }
 
 download
