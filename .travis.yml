@@ -26,6 +26,8 @@ script:
 - bats cmd/geth
 
 before_deploy:
+# Dependency for building for windows
+- go get golang.org/x/sys/windows
 # Install Janus
 - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
 # Add Janus to PATH.
