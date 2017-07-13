@@ -116,10 +116,33 @@ func chainIsMorden(ctx *cli.Context) bool {
 	return ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || chainIdentitiesMorden[ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx))]
 }
 
+// if argument to --chain is a path and is a valid configuration file, copy it to
+// identity/chain.json. It will overwrite an existing configuration file with same identity.
+// This allows specification of a chain config by filename and subsequently by configured identity as well.
+func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePath string) error {
+	// Ensure directory path exists.
+	identityDirPath := common.EnsurePathAbsoluteOrRelativeTo(mustMakeDataDir(ctx), identity)
+	if e := os.MkdirAll(identityDirPath, os.ModePerm); e != nil {
+		return e
+	}
+
+	glog.V(logger.Debug).Infof("Copying %v to %v/chain.json", configFilePath, identityDirPath)
+	b, e := ioutil.ReadFile(configFilePath)
+	if e != nil {
+		return e
+	}
+
+	if e := ioutil.WriteFile(filepath.Join(identityDirPath, "chain.json"), b, os.ModePerm); e != nil {
+		return e
+	}
+	return nil
+}
+
 // getChainIdentity parses --chain and --testnet (legacy) flags.
 // It will fatal if finds notok value.
 // It returns one of valid strings: ["mainnet", "morden", or --chain="flaggedCustom"]
 func mustMakeChainIdentity(ctx *cli.Context) string {
+
 	if chainIsMorden(ctx) {
 		return core.DefaultTestnetChainConfigID // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
 	}
@@ -135,11 +158,22 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 					please use a different identifier`, ErrInvalidFlag, ErrInvalidChainID)
 			return ""
 		}
-		// Check for arguments that look like paths (not allowed).
-		if dir, _ := filepath.Split(chainFlagVal); dir != "" {
-			glog.Fatalf(`%v: %v: chain identity should not be a path`, ErrInvalidFlag, ErrInvalidChainID)
-			return ""
+
+		// Check if passed arg exists as a path to a valid config file.
+		if fstat, ferr := os.Stat(filepath.Clean(chainFlagVal)); ferr == nil && !fstat.IsDir() {
+			glog.V(logger.Detail).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
+			c, e := core.ReadExternalChainConfig(filepath.Clean(chainFlagVal))
+			if e == nil {
+				glog.V(logger.Detail).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
+				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
+					glog.Fatalf("Could not establish chain configuration: %v", e)
+				}
+				return c.Identity
+			}
+			glog.V(logger.Debug).Infof("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
+				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, e)
 		}
+		glog.V(logger.Detail).Infof("No existing file at --%v: '%v'.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
 		return chainFlagVal
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
@@ -616,8 +650,8 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	// Returns surely valid suff chain config.
 	chainDir := MustMakeChainDataDir(ctx)
-	configPath := filepath.Join(chainDir, "chain.json")
-	if _, de := os.Stat(configPath); de != nil && os.IsNotExist(de) {
+	defaultChainConfigPath := filepath.Join(chainDir, "chain.json")
+	if _, de := os.Stat(defaultChainConfigPath); de != nil && os.IsNotExist(de) {
 		glog.Fatalf(`%v: %v
 		It looks like you haven't set up your custom chain yet...
 		Here's a possible workflow for that:
@@ -625,13 +659,13 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		$ geth --chain morden dump-chain-config %v/chain.json
 		$ sed -i.bak s/morden/%v/ %v/chain.json
 		$ vi %v/chain.json # <- make your customizations
-		`, core.ErrChainConfigNotFound, configPath,
+		`, core.ErrChainConfigNotFound, defaultChainConfigPath,
 			chainDir, chainIdentity, chainDir, chainDir)
 	}
-	config, err := core.ReadExternalChainConfig(configPath)
+	config, err := core.ReadExternalChainConfig(defaultChainConfigPath)
 	if err != nil {
 		glog.Fatalf(`invalid external configuration JSON: '%v': %v
-		Valid custom configuration JSON file must be named 'chain.json' and be located in respective chain subdir.`, configPath, err)
+		Valid custom configuration JSON file must be named 'chain.json' and be located in respective chain subdir.`, defaultChainConfigPath, err)
 	}
 
 	// Ensure JSON 'id' value matches name of parent chain subdir.
@@ -659,13 +693,13 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	chainIdentity := mustMakeChainIdentity(ctx)
 	chainIsCustom := !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity])
 	if chainIsCustom {
-		glog.V(logger.Info).Infof("Using custom chain configuration file: \x1b[32m%s\x1b[39m", filepath.Clean(filepath.Join(MustMakeChainDataDir(ctx), "chain.json")))
+		glog.V(logger.Info).Infof("Using custom chain configuration: \x1b[32m%s\x1b[39m", chainIdentity)
 	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
 	glog.V(logger.Info).Infof("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version)
-	glog.V(logger.Info).Infof("Geth is configured to use blockchain: \x1b[32m%v (ETC)\x1b[39m", config.Name)
+	glog.V(logger.Info).Infof("Geth is configured to use ETC blockchain: \x1b[32m%v\x1b[39m", config.Name)
 	glog.V(logger.Info).Infof("Using chain database at: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata")
 
 	glog.V(logger.Info).Infof("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks))
