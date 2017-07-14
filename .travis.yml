@@ -46,10 +46,7 @@ before_deploy:
 deploy:
   skip_cleanup: true
   provider: script
-  script:
-    - mkdir ./deploy
-    - mv ./dist/*.tar.gz ./dist/*.zip ./deploy/
-    - janus deploy -to builds.etcdevteam.com/go-ethereum/$(janus version -format %M.%m.x) -files ./deploy/* -key ./gcloud-travis.json.enc
+  script: ./deploy.sh
   on:
     branch: master
     # Only deploy once; use linux arbitrarily because its faster
