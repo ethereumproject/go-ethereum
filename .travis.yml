@@ -1,6 +1,5 @@
 language: go
 go_import_path: github.com/ethereumproject/go-ethereum
-
 go: 1.8
 os:
 - linux
@@ -18,30 +17,20 @@ before_install:
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install bats; fi
 
 script:
-# Run go tests.
-- go test ./...
-# Build for integration tests.
-- go build ./cmd/geth
-# Run bats integration tests.
-- bats cmd/geth
-
-before_deploy:
-# Dependency for building for windows
-- go get golang.org/x/sys/windows
 # Install Janus
 - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
 # Add Janus to PATH.
 - export PATH=$PATH:$PWD/janusbin
 
-# If HEAD is not tagged, use sed substitution to modify
-# archive name template, using janus to get commit count and git HEAD hash
-- export JANUS_COMMIT_COUNT=$(janus version -format %C)
-- export JANUS_SHA1=$(janus version -format %S)
-- if [[ ! $JANUS_COMMIT_COUNT = 0 ]]; then sed -i.bak 's/geth-classic-{{.Tag}}_{{ .Os }}_{{ .Arch }}/geth-classic-{{.Tag}}+'$JANUS_COMMIT_COUNT-$JANUS_SHA1'_{{ .Os }}_{{ .Arch }}/' ./.goreleaser.yml; fi
+- go version
+- go env
 
-# Use goreleaser to create builds and archives.
-# Places builds and their archives in ./dist/
-- bash ./get-goreleaser.sh
+# Run go tests.
+- go test ./...
+# Build for integration tests.
+- go build -ldflags "-X main.Version="`janus version -format TAG_OR_NIGHTLY` ./cmd/geth
+# Run bats integration tests.
+- bats cmd/geth
 
 deploy:
   skip_cleanup: true
@@ -49,6 +38,4 @@ deploy:
   script: ./deploy.sh
   on:
     branch: master
-    # Only deploy once; use linux arbitrarily because its faster
-    condition: $TRAVIS_OS_NAME = "linux"
   tags: true
