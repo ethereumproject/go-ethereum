@@ -28,8 +28,13 @@ build_script:
 artifacts:
   - path: '*.zip'
     name: geth
+before_deploy:
+  # Set up GCP upload.
+  - nuget install secure-file -ExcludeVersion
+  - secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret %GCP_PASSWD% -out .gcloud.json
 deploy_script:
   - ps: >-
       If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
-        janus.exe deploy -to="builds.etcdevteam.com/go-ethereum/$env:VERSION_BASE/" -files="./*.zip" -key="./gcloud-appveyor.json.enc"
+        janus.exe deploy -to="builds.etcdevteam.com/go-ethereum/$env:VERSION_BASE/" -files="./*.zip" -key="./.gcloud.json"
       }
+
