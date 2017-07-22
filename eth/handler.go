@@ -405,23 +405,21 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
-		isForkCheck := len(headers) == 1 || len(headers) == 0
-		if isForkCheck {
+		if len(headers) == 0 || len(headers) == 1 {
 			if p.timeout != nil {
 				// Disable the fork drop timeout
 				p.timeout.Stop()
 				p.timeout = nil
 			}
-			if len(headers) > 0 {
-				if err := pm.chainConfig.HeaderCheck(headers[0]); err != nil {
-					pm.removePeer(p.id)
-					return err
-				}
-				// Irrelevant of the fork checks, send the header to the fetcher just in case
-				headers = pm.fetcher.FilterHeaders(headers, time.Now())
-			}
 		}
-		if len(headers) > 0 || !isForkCheck {
+		if len(headers) == 1 {
+			if err := pm.chainConfig.HeaderCheck(headers[0]); err != nil {
+				pm.removePeer(p.id)
+				return err
+			}
+			// Irrelevant of the fork checks, send the header to the fetcher just in case
+			headers = pm.fetcher.FilterHeaders(headers, time.Now())
+		} else if len(headers) > 0 {
 			err := pm.downloader.DeliverHeaders(p.id, headers)
 			if err != nil {
 				glog.V(logger.Debug).Infoln(err)
