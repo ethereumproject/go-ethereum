@@ -286,7 +286,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		}
 		if !fork.RequiredHash.IsEmpty() {
 			// Request the peer's fork block header for extra-dat
-			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
+			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil && err != core.ErrHashEmpty {
 				glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
 				return err
 			}
