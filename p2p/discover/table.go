@@ -496,7 +496,7 @@ func (tab *Table) bond(pinged bool, id NodeID, addr *net.UDPAddr, tcpPort uint16
 	}
 	if node != nil {
 		// Add the node to the table even if the bonding ping/pong
-		// fails. It will be relaced quickly if it continues to be
+		// fails. It will be replaced quickly if it continues to be
 		// unresponsive.
 		tab.add(node)
 		tab.db.updateFindFails(id, 0)

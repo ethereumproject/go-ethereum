@@ -1622,6 +1622,19 @@ func (api *PublicDebugAPI) DumpBlock(number uint64) (state.Dump, error) {
 	return stateDb.RawDump([]common.Address{}), nil
 }
 
+// AccountExist checks whether an address is considered exists at a given block.
+func (api *PublicDebugAPI) AccountExist(address common.Address, number uint64) (bool, error) {
+	block := api.eth.BlockChain().GetBlockByNumber(number)
+	if block == nil {
+		return false, fmt.Errorf("block #%d not found", number)
+	}
+	stateDb, err := api.eth.BlockChain().StateAt(block.Root())
+	if err != nil {
+		return false, err
+	}
+	return stateDb.Exist(address), nil
+}
+
 // GetBlockRlp retrieves the RLP encoded for of a single block.
 func (api *PublicDebugAPI) GetBlockRlp(number uint64) (string, error) {
 	block := api.eth.BlockChain().GetBlockByNumber(number)

@@ -33,6 +33,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"time"
+	"syscall"
 )
 
 const (
@@ -66,11 +67,26 @@ func StartNode(stack *node.Node) {
 	}
 	go func() {
 		sigc := make(chan os.Signal, 1)
-		signal.Notify(sigc, os.Interrupt)
+		signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 		defer signal.Stop(sigc)
-		<-sigc
-		glog.Infoln("Got interrupt, shutting down...")
-		go stack.Stop()
+		sig := <-sigc
+		glog.Infof("Got %v, shutting down...", sig)
+
+		fails := make(chan error, 1)
+		go func (fs chan error) {
+			for {
+				select {
+				case e := <-fs:
+					if e != nil {
+						glog.V(logger.Error).Infof("node stop failure: %v", e)
+					}
+				}
+			}
+		}(fails)
+		go func(stack *node.Node) {
+			defer close(fails)
+			fails <- stack.Stop()
+		}(stack)
 
 		// WTF?
 		for i := 10; i > 0; i-- {

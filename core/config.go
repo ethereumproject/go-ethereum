@@ -490,24 +490,23 @@ func ParseBootstrapNodeStrings(nodeStrings []string) []*discover.Node {
 // GetString gets and option value for an options with key 'name',
 // returning value as a string.
 func (o *ForkFeature) GetString(name string) (string, bool) {
+	o.parsedOptionsLock.Lock()
+	defer o.parsedOptionsLock.Unlock()
+
 	if o.ParsedOptions == nil {
-		o.parsedOptionsLock.Lock()
 		o.ParsedOptions = make(map[string]interface{})
-		o.parsedOptionsLock.Unlock()
 	} else {
-		o.parsedOptionsLock.RLock()
 		val, ok := o.ParsedOptions[name]
-		o.parsedOptionsLock.RUnlock()
 		if ok {
 			return val.(string), ok
 		}
 	}
 	o.optionsLock.RLock()
+	defer o.optionsLock.RUnlock()
+
 	val, ok := o.Options[name].(string)
-	o.optionsLock.RUnlock()
-	o.parsedOptionsLock.Lock()
 	o.ParsedOptions[name] = val //expect it as a string in config
-	o.parsedOptionsLock.Unlock()
+
 	return val, ok
 }
 
@@ -515,20 +514,21 @@ func (o *ForkFeature) GetString(name string) (string, bool) {
 // returning value as a *big.Int and ok if it exists.
 func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 	i := new(big.Int)
+
+	o.parsedOptionsLock.Lock()
+	defer o.parsedOptionsLock.Unlock()
+
 	if o.ParsedOptions == nil {
-		o.parsedOptionsLock.Lock()
 		o.ParsedOptions = make(map[string]interface{})
-		o.parsedOptionsLock.Unlock()
 	} else {
-		o.parsedOptionsLock.RLock()
 		val, ok := o.ParsedOptions[name]
-		o.parsedOptionsLock.RUnlock()
 		if ok {
 			if vv, ok := val.(*big.Int); ok {
 				return i.Set(vv), true
 			}
 		}
 	}
+
 	o.optionsLock.RLock()
 	originalValue, ok := o.Options[name]
 	o.optionsLock.RUnlock()
@@ -539,33 +539,25 @@ func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 	// interface{} type assertion for _61_ is float64
 	if value, ok := originalValue.(float64); ok {
 		i.SetInt64(int64(value))
-		o.parsedOptionsLock.Lock()
 		o.ParsedOptions[name] = i
-		o.parsedOptionsLock.Unlock()
 		return i, true
 	}
 	// handle other user-generated incoming options with some, albeit limited, degree of lenience
 	if value, ok := originalValue.(int64); ok {
 		i.SetInt64(value)
-		o.parsedOptionsLock.Lock()
 		o.ParsedOptions[name] = i
-		o.parsedOptionsLock.Unlock()
 		return i, true
 	}
 	if value, ok := originalValue.(int); ok {
 		i.SetInt64(int64(value))
-		o.parsedOptionsLock.Lock()
 		o.ParsedOptions[name] = i
-		o.parsedOptionsLock.Unlock()
 		return i, true
 	}
 	if value, ok := originalValue.(string); ok {
 		ii, ok := new(big.Int).SetString(value, 0)
 		if ok {
 			i.Set(ii)
-			o.parsedOptionsLock.Lock()
 			o.ParsedOptions[name] = i
-			o.parsedOptionsLock.Unlock()
 		}
 		return i, ok
 	}
