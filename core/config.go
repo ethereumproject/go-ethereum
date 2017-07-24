@@ -333,6 +333,10 @@ func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, 
 }
 
 func (c *ChainConfig) HeaderCheck(h *types.Header) error {
+	if (h == &types.Header{}) {
+		return nil
+	}
+
 	for _, fork := range c.Forks {
 		if fork.Block.Cmp(h.Number) != 0 {
 			continue

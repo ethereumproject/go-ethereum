@@ -67,6 +67,7 @@ type peer struct {
 
 	knownTxs    *set.Set // Set of transaction hashes known to be known by this peer
 	knownBlocks *set.Set // Set of block hashes known to be known by this peer
+	knownHeaders *set.Set // Set of header hashes known to be known by this peer
 }
 
 func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
@@ -79,6 +80,7 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		id:          fmt.Sprintf("%x", id[:8]),
 		knownTxs:    set.New(),
 		knownBlocks: set.New(),
+		knownHeaders: set.New(),
 	}
 }
 
@@ -130,6 +132,19 @@ func (p *peer) MarkTransaction(hash common.Hash) {
 		p.knownTxs.Pop()
 	}
 	p.knownTxs.Add(hash)
+}
+
+// MarkHeader sets a header's hash as known for the peer, allowing us
+// to not have to redundantly request it again for fork checks.
+func (p *peer) MarkHeader(hash common.Hash) {
+	if !p.HasKnownHeader(hash) {
+		p.knownHeaders.Add(hash)
+	}
+}
+
+// HasKnownHeader check if a given header is already known for the peer.
+func (p *peer) HasKnownHeader(hash common.Hash) bool {
+	return p.knownHeaders.Has(hash)
 }
 
 // SendTransactions sends transactions to the peer and includes the hashes
