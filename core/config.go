@@ -46,8 +46,6 @@ var (
 
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
-
-	ErrHashEmpty = errors.New("empty hash")
 )
 
 // SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
@@ -336,7 +334,7 @@ func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, 
 
 func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 	if (h == &types.Header{}) {
-		return ErrHashEmpty
+		return nil
 	}
 
 	for _, fork := range c.Forks {

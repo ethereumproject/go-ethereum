@@ -244,6 +244,51 @@ func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *p
 	return newPeer(pv, p, newMeteredMsgWriter(rw))
 }
 
+func (pm *ProtocolManager) requestRequiredHeaders(p *peer) error {
+	// Drop connections on opposite side of network split
+	for _, fork := range pm.chainConfig.Forks {
+		if _, height := p.Head(); height.Cmp(fork.Block) < 0 {
+			glog.V(logger.Debug).Infof("skipping required hash check: peer's head is: %v, beneath %v block number (#%v)", height, fork.Name, fork.Block)
+			break
+		}
+		// Check if our client's current header is beneath the fork.
+		// Note: adjust fork block number subtracting Downloader.MaxHeaderFetch constant, to give ourselves some wiggle room before
+		// requesting the actual header for download
+		// The problem with this is that this check only happens on connecting to a peer,
+		// and the check will not be run once we if we are already connected to a "good-will" peer,
+		// and thus may attempt to download block information that is not from our side of the fork.
+		adjustedForkNumber := new(big.Int).Sub(fork.Block, big.NewInt(downloader.MaxHeaderFetch))
+		if ch := pm.blockchain.CurrentHeader().Number; ch.Cmp(adjustedForkNumber) < 0 {
+			glog.V(logger.Debug).Infof("skipping required hash check: our head is: %v, beneath beneath adjusted fork number: %v", ch, adjustedForkNumber)
+			break
+		}
+		if !fork.RequiredHash.IsEmpty() {
+			if p.HasKnownHeader(fork.RequiredHash) {
+				glog.V(logger.Debug).Infof("skipping required hash check: peer is already known to have required hash")
+				continue
+			}
+			// Request the peer's fork block header for extra-dat
+			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
+				glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
+				return err
+			}
+			// Start a timer to disconnect if the peer doesn't reply in time
+			p.timeout = time.AfterFunc((5 * time.Second), func() {
+				glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
+				pm.removePeer(p.id)
+			})
+			// Make sure it's cleaned up if the peer dies off
+			defer func() {
+				if p.timeout != nil {
+					p.timeout.Stop()
+					p.timeout = nil
+				}
+			}()
+		}
+	}
+	return nil
+}
+
 // handle is the callback invoked to manage the life cycle of an eth peer. When
 // this function terminates, the peer is disconnected.
 func (pm *ProtocolManager) handle(p *peer) error {
@@ -277,33 +322,11 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	// Drop connections on opposite side of network split
-	var fork *core.Fork
-	for i := range pm.chainConfig.Forks {
-		fork = pm.chainConfig.Forks[i]
-		if _, height := p.Head(); height.Cmp(fork.Block) < 0 {
-			break
-		}
-		if !fork.RequiredHash.IsEmpty() {
-			// Request the peer's fork block header for extra-dat
-			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil && err != core.ErrHashEmpty {
-				glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
-				return err
-			}
-			// Start a timer to disconnect if the peer doesn't reply in time
-			p.timeout = time.AfterFunc((5 * time.Second), func() {
-				glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
-				pm.removePeer(p.id)
-			})
-			// Make sure it's cleaned up if the peer dies off
-			defer func() {
-				if p.timeout != nil {
-					p.timeout.Stop()
-					p.timeout = nil
-				}
-			}()
-		}
+	// Check peer for required fork compatibility
+	if err := pm.requestRequiredHeaders(p); err != nil {
+		return err
 	}
+
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
@@ -413,12 +436,20 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			}
 		}
 		if len(headers) == 1 {
-			if err := pm.chainConfig.HeaderCheck(headers[0]); err != nil {
+			header := headers[0]
+			err := pm.chainConfig.HeaderCheck(header)
+			if err != nil {
 				pm.removePeer(p.id)
 				return err
 			}
+			if !header.Hash().IsEmpty() {
+				p.MarkHeader(header.Hash())
+			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
 			headers = pm.fetcher.FilterHeaders(headers, time.Now())
+		}
+		if err := pm.requestRequiredHeaders(p); err != nil {
+			glog.V(logger.Debug).Infoln(err)
 		}
 		err := pm.downloader.DeliverHeaders(p.id, headers)
 		if err != nil {
@@ -459,23 +490,26 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		// Deliver them all to the downloader for queuing
-		trasactions := make([][]*types.Transaction, len(request))
+		transactions := make([][]*types.Transaction, len(request))
 		uncles := make([][]*types.Header, len(request))
 
 		for i, body := range request {
-			trasactions[i] = body.Transactions
+			transactions[i] = body.Transactions
 			uncles[i] = body.Uncles
 		}
 		// Filter out any explicitly requested bodies, deliver the rest to the downloader
-		filter := len(trasactions) > 0 || len(uncles) > 0
+		filter := len(transactions) > 0 || len(uncles) > 0
 		if filter {
-			trasactions, uncles = pm.fetcher.FilterBodies(trasactions, uncles, time.Now())
+			transactions, uncles = pm.fetcher.FilterBodies(transactions, uncles, time.Now())
 		}
-		if len(trasactions) > 0 || len(uncles) > 0 || !filter {
-			err := pm.downloader.DeliverBodies(p.id, trasactions, uncles)
+		if len(transactions) > 0 || len(uncles) > 0 || !filter {
+			err := pm.downloader.DeliverBodies(p.id, transactions, uncles)
 			if err != nil {
 				glog.V(logger.Debug).Infoln(err)
 			}
+		}
+		if err := pm.requestRequiredHeaders(p); err != nil {
+			glog.V(logger.Debug).Infoln(err)
 		}
 
 	case p.version >= eth63 && msg.Code == GetNodeDataMsg:
