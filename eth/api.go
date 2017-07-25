@@ -47,6 +47,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/ethereumproject/go-ethereum/metrics"
 )
 
 const defaultGas = uint64(90000)
@@ -1668,6 +1669,20 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("0x%x", hash), nil
+}
+
+func (api *PublicDebugAPI) Metrics(raw interface{}) (string, error) {
+	b, err := metrics.CollectToJSON()
+	if err != nil {
+		return "", err
+	}
+
+	// if debug.Metrics(true), return raw metrics (programmatic rendering)
+	// else return human-friendly rendering
+	if t, ok := raw.(bool); ok && t {
+		return fmt.Sprintf("%s", b), nil
+	}
+	return string(b), nil
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM
