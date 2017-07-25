@@ -33,6 +33,9 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"github.com/ethereumproject/go-ethereum/common"
 	"path/filepath"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"encoding/json"
 )
 
 var (
@@ -180,7 +183,19 @@ func retrieveMetrics(client rpc.Client) (map[string]interface{}, error) {
 	}
 
 	if res.Result != nil {
-		if mets, ok := res.Result.(map[string]interface{}); ok {
+		r := res.Result.(string)
+		var mets map[string]interface{}
+		var ok bool
+
+		if e := json.Unmarshal([]byte(r), &mets); e != nil {
+			glog.V(logger.Debug).Infof("error unmarshaling: %v", e)
+		} else {
+			ok = true
+			glog.V(logger.Debug).Infof("mets: %v", mets)
+			glog.V(logger.Debug).Infof("mets type: %T", mets)
+		}
+
+		if ok {
 			return mets, nil
 		}
 	}
@@ -190,6 +205,14 @@ func retrieveMetrics(client rpc.Client) (map[string]interface{}, error) {
 
 // resolveMetrics takes a list of input metric patterns, and resolves each to one
 // or more canonical metric names.
+// eg.
+// $ geth monitor [--attach=api-endpoint] metric1 metric2 ... metricN
+//
+// Where a metric may be:
+//
+//*   Full canonical metric (e.g. `system/memory/allocs/AvgRate05Min`)
+//*   Group of metrics (e.g. `system/memory/allocs` or `system/memory`)
+//*   Multiple branching metrics (e.g. `system/memory/allocs,frees/AvgRate01Min`)
 func resolveMetrics(metrics map[string]interface{}, patterns []string) []string {
 	res := []string{}
 	for _, pattern := range patterns {
@@ -200,6 +223,9 @@ func resolveMetrics(metrics map[string]interface{}, patterns []string) []string 
 
 // resolveMetrics takes a single of input metric pattern, and resolves it to one
 // or more canonical metric names.
+// eg.
+// 1. system/memory/allocs/AvgRate05Min -> system/memory/allocs/AvgRate05Min
+// 2. system/memory/allocs,frees/AvgRate01Min -> system/memory/allocs/AvgRate01Min, system/memory/frees/AvgRate01Min
 func resolveMetric(metrics map[string]interface{}, pattern string, path string) []string {
 	results := []string{}
 
@@ -208,7 +234,7 @@ func resolveMetric(metrics map[string]interface{}, pattern string, path string) 
 	if len(parts) > 1 {
 		for _, variation := range strings.Split(parts[0], ",") {
 			if submetrics, ok := metrics[variation].(map[string]interface{}); !ok {
-				log.Fatalf("%s: failed to retrieve system metrics: %q", path, variation)
+				log.Fatalf("%s: failed to resolve system metrics: %q", path, variation)
 			} else {
 				results = append(results, resolveMetric(submetrics, parts[1], path+variation+"/")...)
 			}
