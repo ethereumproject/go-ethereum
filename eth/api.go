@@ -1671,6 +1671,14 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 	return fmt.Sprintf("0x%x", hash), nil
 }
 
+// Metrics return all available registered metrics for the client.
+// FIXME: currently optional bool param is used for choosing string vs. raw JSON.
+// This is pretty pointless; there no (or very little) point for stringyness.
+// It should instead be used to specify human-readable units (eg. "Avg01Min: '169.12K (2.82K/s)',"
+// vs. machine-readable units (eg. "AvgRate01Min: 1599.6190029292586,").
+// Currently is only machine-readable.
+//
+// See https://github.com/ethereumproject/go-ethereum/wiki/Metrics-and-Monitoring for prophetic documentation.
 func (api *PublicDebugAPI) Metrics(stringy *bool) (interface{}, error) {
 
 	b, err := metrics.CollectToJSON()
