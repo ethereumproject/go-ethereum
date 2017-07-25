@@ -1,0 +1,453 @@
+{
+    "disk/readcount": {
+        "value": 0
+    },
+    "disk/readdata": {
+        "value": 0
+    },
+    "disk/writecount": {
+        "value": 0
+    },
+    "disk/writedata": {
+        "value": 0
+    },
+    "download/body": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/body/drop": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/body/timeout": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/header": {
+        "15m.rate": 0.2,
+        "1m.rate": 0.2,
+        "5m.rate": 0.2,
+        "count": 1,
+        "mean.rate": 0.19998910151391736
+    },
+    "download/header/drop": {
+        "15m.rate": 0.2,
+        "1m.rate": 0.2,
+        "5m.rate": 0.2,
+        "count": 1,
+        "mean.rate": 0.19998928829373397
+    },
+    "download/header/timeout": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/receipt": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/receipt/drop": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/receipt/timeout": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/state": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/state/drop": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "download/state/timeout": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/announce": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/announce/dos": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/announce/drop": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/block": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/body": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/broadcast": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/broadcast/dos": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/broadcast/drop": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/filter/block/in": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/filter/block/out": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/filter/body/in": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/filter/body/out": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "fetch/filter/header/in": {
+        "15m.rate": 0.2,
+        "1m.rate": 0.2,
+        "5m.rate": 0.2,
+        "count": 1,
+        "mean.rate": 0.1999896222985114
+    },
+    "fetch/filter/header/out": {
+        "15m.rate": 0.2,
+        "1m.rate": 0.2,
+        "5m.rate": 0.2,
+        "count": 1,
+        "mean.rate": 0.19998962021872727
+    },
+    "fetch/header": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "memory/allocs": {
+        "value": 752263
+    },
+    "memory/frees": {
+        "value": 683477
+    },
+    "memory/inuse": {
+        "value": 24177024
+    },
+    "memory/pauses": {
+        "value": 548953
+    },
+    "msg/block/in": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/block/in/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/block/out": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/block/out/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/body/in": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/body/in/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/body/out": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/body/out/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/hash/in": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/hash/out/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/header/in": {
+        "15m.rate": 0.4,
+        "1m.rate": 0.4,
+        "5m.rate": 0.4,
+        "count": 2,
+        "mean.rate": 0.3999765403359703
+    },
+    "msg/header/in/bytes": {
+        "15m.rate": 212.8,
+        "1m.rate": 212.8,
+        "5m.rate": 212.8,
+        "count": 1064,
+        "mean.rate": 212.78751596922558
+    },
+    "msg/header/out": {
+        "15m.rate": 0.4,
+        "1m.rate": 0.4,
+        "5m.rate": 0.4,
+        "count": 2,
+        "mean.rate": 0.3999765481750508
+    },
+    "msg/header/out/bytes": {
+        "15m.rate": 0.4,
+        "1m.rate": 0.4,
+        "5m.rate": 0.4,
+        "count": 2,
+        "mean.rate": 0.39997656697284734
+    },
+    "msg/misc/in": {
+        "15m.rate": 1.2,
+        "1m.rate": 1.2,
+        "5m.rate": 1.2,
+        "count": 6,
+        "mean.rate": 1.1999311541900144
+    },
+    "msg/misc/in/bytes": {
+        "15m.rate": 67.6,
+        "1m.rate": 67.6,
+        "5m.rate": 67.6,
+        "count": 338,
+        "mean.rate": 67.59624523136613
+    },
+    "msg/misc/out": {
+        "15m.rate": 1.6,
+        "1m.rate": 1.6,
+        "5m.rate": 1.6,
+        "count": 8,
+        "mean.rate": 1.5999116244016736
+    },
+    "msg/misc/out/bytes": {
+        "15m.rate": 98,
+        "1m.rate": 98,
+        "5m.rate": 98,
+        "count": 490,
+        "mean.rate": 97.99459452017167
+    },
+    "msg/receipt/in": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/receipt/in/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/receipt/out": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/receipt/out/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/state/in": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/state/in/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/state/out": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/state/out/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/txn/in": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/txn/in/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/txn/out": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "msg/txn/out/bytes": {
+        "15m.rate": 0,
+        "1m.rate": 0,
+        "5m.rate": 0,
+        "count": 0,
+        "mean.rate": 0
+    },
+    "p2p/in": {
+        "15m.rate": 0.8,
+        "1m.rate": 0.8,
+        "5m.rate": 0.8,
+        "count": 4,
+        "mean.rate": 0.7999604627540888
+    },
+    "p2p/in/bytes": {
+        "15m.rate": 673,
+        "1m.rate": 673,
+        "5m.rate": 673,
+        "count": 3365,
+        "mean.rate": 672.966875628228
+    },
+    "p2p/out": {
+        "15m.rate": 3,
+        "1m.rate": 3,
+        "5m.rate": 3,
+        "count": 15,
+        "mean.rate": 2.999852650837614
+    },
+    "p2p/out/bytes": {
+        "15m.rate": 4008.3999999999996,
+        "1m.rate": 4008.3999999999996,
+        "5m.rate": 4008.3999999999996,
+        "count": 20042,
+        "mean.rate": 4008.202952734641
+    }
+}
