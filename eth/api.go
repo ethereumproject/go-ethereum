@@ -1671,26 +1671,25 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 	return fmt.Sprintf("0x%x", hash), nil
 }
 
-func (api *PublicDebugAPI) Metrics(raw bool) (interface{}, error) {
+func (api *PublicDebugAPI) Metrics(stringy *bool) (interface{}, error) {
 
 	b, err := metrics.CollectToJSON()
 	if err != nil {
 		return nil, err
 	}
 
+	if stringy == nil || !*stringy {
+		out := make(map[string]interface{})
+		e := json.Unmarshal(b, &out)
+		if e != nil {
+			return nil, e
+		}
+		return out, nil
+	}
+
 	// if debug.Metrics(true), return raw metrics (programmatic rendering)
 	// else return human-friendly rendering
-	if raw {
-		return fmt.Sprintf("%s", b), nil
-	}
-
-	out := make(map[string]interface{})
-	e := json.Unmarshal(b, &out)
-	if e != nil {
-		return nil, e
-	}
-
-	return out, nil
+	return fmt.Sprintf("%s", b), nil
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM
