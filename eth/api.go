@@ -1672,11 +1672,9 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 }
 
 // Metrics return all available registered metrics for the client.
-// FIXME: currently optional bool param is used for choosing string vs. raw JSON.
-// This is pretty pointless; there no (or very little) point for stringyness.
-// It should instead be used to specify human-readable units (eg. "Avg01Min: '169.12K (2.82K/s)',"
+// TODO: add optional param for human-readable values instead of float64's
+// eg "Avg01Min: '169.12K (2.82K/s)'
 // vs. machine-readable units (eg. "AvgRate01Min: 1599.6190029292586,").
-// Currently is only machine-readable.
 //
 // See https://github.com/ethereumproject/go-ethereum/wiki/Metrics-and-Monitoring for prophetic documentation.
 func (api *PublicDebugAPI) Metrics(stringy *bool) (interface{}, error) {
@@ -1686,18 +1684,13 @@ func (api *PublicDebugAPI) Metrics(stringy *bool) (interface{}, error) {
 		return nil, err
 	}
 
-	if stringy == nil || !*stringy {
-		out := make(map[string]interface{})
-		e := json.Unmarshal(b, &out)
-		if e != nil {
-			return nil, e
-		}
-		return out, nil
+	out := make(map[string]interface{})
+	e := json.Unmarshal(b, &out)
+	if e != nil {
+		return nil, e
 	}
 
-	// if debug.Metrics(true), return raw metrics (programmatic rendering)
-	// else return human-friendly rendering
-	return fmt.Sprintf("%s", b), nil
+	return out, nil
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM
