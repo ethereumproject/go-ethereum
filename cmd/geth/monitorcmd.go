@@ -205,6 +205,7 @@ func retrieveMetrics(client rpc.Client) (map[string]interface{}, error) {
 
 // resolveMetrics takes a list of input metric patterns, and resolves each to one
 // or more canonical metric names.
+// 'patterns' are user-inputed arguments
 // eg.
 // $ geth monitor [--attach=api-endpoint] metric1 metric2 ... metricN
 //
@@ -213,6 +214,8 @@ func retrieveMetrics(client rpc.Client) (map[string]interface{}, error) {
 //*   Full canonical metric (e.g. `system/memory/allocs/AvgRate05Min`)
 //*   Group of metrics (e.g. `system/memory/allocs` or `system/memory`)
 //*   Multiple branching metrics (e.g. `system/memory/allocs,frees/AvgRate01Min`)
+
+
 func resolveMetrics(metrics map[string]interface{}, patterns []string) []string {
 	res := []string{}
 	for _, pattern := range patterns {
@@ -221,41 +224,91 @@ func resolveMetrics(metrics map[string]interface{}, patterns []string) []string 
 	return res
 }
 
+func sliceContainsString(slice []string, s string) bool {
+	for _, sl := range slice {
+		if sl == s {
+			return true
+		}
+	}
+	return false
+}
+
 // resolveMetrics takes a single of input metric pattern, and resolves it to one
 // or more canonical metric names.
 // eg.
-// 1. system/memory/allocs/AvgRate05Min -> system/memory/allocs/AvgRate05Min
-// 2. system/memory/allocs,frees/AvgRate01Min -> system/memory/allocs/AvgRate01Min, system/memory/frees/AvgRate01Min
+// 1. system/memory/allocs/AvgRate05Min
+//     -> system/memory/allocs/AvgRate05Min
+// 2. system/memory/allocs,frees/AvgRate01Min
+//     -> system/memory/allocs/AvgRate01Min
+//     -> system/memory/frees/AvgRate01Min
+// 3. system/memory/allocs,frees/AvgRate01Min,AvgRate05Min
+//     -> system/memory/allocs/AvgRate01Min
+//     -> system/memory/frees/AvgRate01Min
+//     -> system/memory/allocs/AvgRate05Min
+//     -> system/memory/frees/AvgRate05Min
 func resolveMetric(metrics map[string]interface{}, pattern string, path string) []string {
-	results := []string{}
+	// patterns is an expanded slice of patterns based from comma-separated conjunctions
+	// eg. #2,3 above
+	patterns := []string{}
 
-	// If a nested metric was requested, recurse optionally branching (via comma)
-	parts := strings.SplitN(pattern, "/", 2)
-	if len(parts) > 1 {
-		for _, variation := range strings.Split(parts[0], ",") {
-			if submetrics, ok := metrics[variation].(map[string]interface{}); !ok {
-				log.Fatalf("%s: failed to resolve system metrics: %q", path, variation)
-			} else {
-				results = append(results, resolveMetric(submetrics, parts[1], path+variation+"/")...)
+	outpaths := make(map[int][]string) // lookup for comma-sep'd indexed path vals
+	subpaths := strings.Split(pattern, "/")
+	subpaths2 := strings.Split(pattern, "/")
+	for i, sub := range subpaths {
+		cs := strings.Split(sub, ",")
+		for _, c := range cs {
+			outpaths[i] = append(outpaths[i], c)
+		}
+	}
+	for i, v := range outpaths {
+		for _, o := range v {
+			subpaths2[i] = o
+			s := strings.Join(subpaths2, "/")
+			if !sliceContainsString(patterns, s) {
+				patterns = append(patterns, s)
+			}
+			subpaths2 = subpaths // reset reference path
+		}
+	}
+
+	out := []string{}
+	for k := range metrics {
+		for _, p := range patterns {
+			if strings.HasPrefix(k, p) {
+				out = append(out, k)
 			}
 		}
-		return results
 	}
-	// Depending what the last link is, return or expand
-	for _, variation := range strings.Split(pattern, ",") {
-		switch metric := metrics[variation].(type) {
-		case float64:
-			// Final metric value found, return as singleton
-			results = append(results, path+variation)
+	return out
 
-		case map[string]interface{}:
-			results = append(results, expandMetrics(metric, path+variation+"/")...)
 
-		default:
-			log.Fatal("Metric pattern resolved to unexpected type:", reflect.TypeOf(metric))
-		}
-	}
-	return results
+	//// If a nested metric was requested, recurse optionally branching (via comma)
+	//parts := strings.SplitN(pattern, "/", 2)
+	//if len(parts) > 1 {
+	//	for _, variation := range strings.Split(parts[0], ",") {
+	//		if submetrics, ok := metrics[variation].(map[string]interface{}); !ok {
+	//			log.Fatalf("%s: failed to resolve system metrics: %q", path, variation)
+	//		} else {
+	//			results = append(results, resolveMetric(submetrics, parts[1], path+variation+"/")...)
+	//		}
+	//	}
+	//	return results
+	//}
+	//// Depending what the last link is, return or expand
+	//for _, variation := range strings.Split(pattern, ",") {
+	//	switch metric := metrics[variation].(type) {
+	//	case float64:
+	//		// Final metric value found, return as singleton
+	//		results = append(results, path+variation)
+	//
+	//	case map[string]interface{}:
+	//		results = append(results, expandMetrics(metric, path+variation+"/")...)
+	//
+	//	default:
+	//		log.Fatal("Metric pattern resolved to unexpected type:", reflect.TypeOf(metric))
+	//	}
+	//}
+	//return results
 }
 
 // expandMetrics expands the entire tree of metrics into a flat list of paths.
