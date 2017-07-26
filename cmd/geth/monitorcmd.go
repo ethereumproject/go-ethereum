@@ -214,23 +214,12 @@ func retrieveMetrics(client rpc.Client) (map[string]interface{}, error) {
 //*   Full canonical metric (e.g. `system/memory/allocs/AvgRate05Min`)
 //*   Group of metrics (e.g. `system/memory/allocs` or `system/memory`)
 //*   Multiple branching metrics (e.g. `system/memory/allocs,frees/AvgRate01Min`)
-
-
 func resolveMetrics(metrics map[string]interface{}, patterns []string) []string {
 	res := []string{}
 	for _, pattern := range patterns {
 		res = append(res, resolveMetric(metrics, pattern, "")...)
 	}
 	return res
-}
-
-func sliceContainsString(slice []string, s string) bool {
-	for _, sl := range slice {
-		if sl == s {
-			return true
-		}
-	}
-	return false
 }
 
 // resolveMetrics takes a single of input metric pattern, and resolves it to one
@@ -280,35 +269,6 @@ func resolveMetric(metrics map[string]interface{}, pattern string, path string) 
 		}
 	}
 	return out
-
-
-	//// If a nested metric was requested, recurse optionally branching (via comma)
-	//parts := strings.SplitN(pattern, "/", 2)
-	//if len(parts) > 1 {
-	//	for _, variation := range strings.Split(parts[0], ",") {
-	//		if submetrics, ok := metrics[variation].(map[string]interface{}); !ok {
-	//			log.Fatalf("%s: failed to resolve system metrics: %q", path, variation)
-	//		} else {
-	//			results = append(results, resolveMetric(submetrics, parts[1], path+variation+"/")...)
-	//		}
-	//	}
-	//	return results
-	//}
-	//// Depending what the last link is, return or expand
-	//for _, variation := range strings.Split(pattern, ",") {
-	//	switch metric := metrics[variation].(type) {
-	//	case float64:
-	//		// Final metric value found, return as singleton
-	//		results = append(results, path+variation)
-	//
-	//	case map[string]interface{}:
-	//		results = append(results, expandMetrics(metric, path+variation+"/")...)
-	//
-	//	default:
-	//		log.Fatal("Metric pattern resolved to unexpected type:", reflect.TypeOf(metric))
-	//	}
-	//}
-	//return results
 }
 
 // expandMetrics expands the entire tree of metrics into a flat list of paths.
@@ -332,6 +292,7 @@ func expandMetrics(metrics map[string]interface{}, path string) []string {
 	return list
 }
 
+// FIXME
 // fetchMetric iterates over the metrics map and retrieves a specific one.
 func fetchMetric(metrics map[string]interface{}, metric string) float64 {
 	parts, found := strings.Split(metric, "/"), true
@@ -445,4 +406,14 @@ func updateFooter(ctx *cli.Context, err error, footer *termui.Par) {
 		footer.Text = fmt.Sprintf("Error: %v.", err)
 		footer.TextFgColor = termui.ColorRed | termui.AttrBold
 	}
+}
+
+// sliceContainsStrings is a convenience helper function for resolving metrics paths
+func sliceContainsString(slice []string, s string) bool {
+	for _, sl := range slice {
+		if sl == s {
+			return true
+		}
+	}
+	return false
 }
