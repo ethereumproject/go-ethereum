@@ -268,9 +268,11 @@ func main() {
 func geth(ctx *cli.Context) error {
 
 	// Force RPC enabling if --log-pace is set.
-	if ctx.GlobalIsSet(LogPaceFlag.Name) && !ctx.GlobalBool(aliasableName(RPCEnabledFlag.Name, ctx)) {
-		ctx.Set(aliasableName(RPCEnabledFlag.Name, ctx), "true")
-	}
+	//if ctx.GlobalIsSet(LogPaceFlag.Name) && !ctx.GlobalBool(aliasableName(RPCEnabledFlag.Name, ctx)) {
+	//	ctx.Set(aliasableName(RPCEnabledFlag.Name, ctx), "true")
+	//}
+	// (whilei): was going to use metrics as well, but may not be necessary,
+	// and using RPC internally seems ugly
 
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
