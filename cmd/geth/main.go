@@ -40,6 +40,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
 	"time"
+	"github.com/ethereumproject/go-ethereum/p2p"
+	"net/rpc"
+	"bytes"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -264,10 +267,18 @@ func main() {
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
 	node, e := MakeSystemNode(Version, ctx)
-	startNode(ctx, node)
+	dateth := startNode(ctx, node)
 
-	eAPI := eth.NewPublicEthereumAPI(e)
-	netAPI := eth.NewPublicNetAPI()
+	eapi := eth.NewPublicEthereumAPI(dateth)
+	eapi.
+
+	//by := []byte{}
+	//b := bytes.NewBuffer(by)
+	//r := rpc.NewClient(b)
+	//node.Attach(r, )
+
+	//eAPI := eth.
+	//netAPI := eth.PublicNetAPI{}
 	//
 	//
 	//startTime := time.Now()
@@ -468,7 +479,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 // startNode boots up the system node and all registered protocols, after which
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces and the
 // miner.
-func startNode(ctx *cli.Context, stack *node.Node) {
+func startNode(ctx *cli.Context, stack *node.Node) *eth.Ethereum {
 	// Start up the node itself
 	StartNode(stack)
 
@@ -484,6 +495,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 			log.Fatalf("Failed to start mining: %v", err)
 		}
 	}
+	return ethereum
 }
 
 func makedag(ctx *cli.Context) error {
