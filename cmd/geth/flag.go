@@ -431,9 +431,8 @@ func makeNodeName(version string, ctx *cli.Context) string {
 
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
-func MakeSystemNode(version string, ctx *cli.Context) (*node.Node) {
+func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
-	var ethInstance *eth.Ethereum
 	// global settings
 
 	if ctx.GlobalIsSet(aliasableName(ExtraDataFlag.Name, ctx)) {
@@ -480,11 +479,7 @@ func MakeSystemNode(version string, ctx *cli.Context) (*node.Node) {
 		glog.Fatalf("%v: failed to create the protocol stack: ", ErrStackFail, err)
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		e, err := eth.New(ctx, ethConf)
-		if err == nil {
-			ethInstance = e
-		}
-		return e, err
+		return eth.New(ctx, ethConf)
 	}); err != nil {
 		glog.Fatalf("%v: failed to register the Ethereum service: ", ErrStackFail, err)
 	}
