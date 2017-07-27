@@ -40,9 +40,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/node"
 	"time"
-	"github.com/ethereumproject/go-ethereum/p2p"
-	"net/rpc"
-	"bytes"
+	"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"math/big"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -164,6 +163,7 @@ The output of this command is supposed to be machine-readable.
 		VerbosityFlag,
 		VModuleFlag,
 		LogDirFlag,
+		LogPaceFlag,
 		BacktraceAtFlag,
 		MetricsFlag,
 		FakePoWFlag,
@@ -266,11 +266,25 @@ func main() {
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
-	node, e := MakeSystemNode(Version, ctx)
-	dateth := startNode(ctx, node)
 
-	eapi := eth.NewPublicEthereumAPI(dateth)
-	eapi.
+	// Force RPC enabling if --log-pace is set.
+	if ctx.GlobalIsSet(LogPaceFlag.Name) && !ctx.GlobalBool(aliasableName(RPCEnabledFlag.Name, ctx)) {
+		ctx.Set(aliasableName(RPCEnabledFlag.Name, ctx), "true")
+	}
+
+	n := MakeSystemNode(Version, ctx)
+	ethe := startNode(ctx, n)
+
+	if ctx.GlobalIsSet(LogPaceFlag.Name) {
+		go startPacedLogging(ctx, n, ethe)
+	}
+
+
+	//blockchain := nodeEth.BlockChain()
+	//
+	//client.Send()
+
+
 
 	//by := []byte{}
 	//b := bytes.NewBuffer(by)
@@ -304,10 +318,197 @@ func geth(ctx *cli.Context) error {
 	//		}
 	//	}
 	//}()
-	
-	node.Wait()
+
+	n.Wait()
 
 	return nil
+}
+
+func startPacedLogging(ctx *cli.Context, n *node.Node, e *eth.Ethereum) {
+
+	intervalI := 60
+
+	if v := ctx.GlobalString(aliasableName(LogPaceFlag.Name, ctx)); v != "" {
+		u := string(v[len(v)-1]) // m, s
+		if !(u == "m" || u == "s") {
+			glog.V(logger.Error).Infof("unknown unit suffix: %s; use 'm' (minutes) or 's' (seconds)", u)
+			return
+		}
+		vv := string(v[:(len(v) - 1)])
+		i, e := strconv.Atoi(vv)
+		if e != nil {
+			glog.V(logger.Error).Infof("could not parse %v argument: %v, :%v", aliasableName(LogPaceFlag.Name, ctx), v, e)
+			return
+		}
+		if u == "m" {
+			i = i * 60
+		}
+		intervalI = i
+	}
+	glog.V(logger.Error).Infof("Log-pace [STATUS] interval set: %d seconds", intervalI)
+
+	// Need:
+	//2017-02-03 16:49:00  Sync   #3124227 of #3124363 c76c…34e7   77/ 242/ 7 blk/tx/mgas sec    1/ 4/25 peers
+	//2017-02-03 16:50:00  Sync   #3124247 of #3124363 75e4…8eff   51/  51/ 5 blk/tx/mgas sec    1/ 4/25 peers
+	//2017-02-03 16:51:00  Sync   #3124567 of #3124363 9af3…34ae  117/ 129/11 blk/tx/mgas sec    2/ 5/25 peers
+	//2017-02-03 16:52:00  Sync   #3124787 of #3124363 1e3a…8351    9/   6/ 1 blk/tx/mgas sec    1/ 7/25 peers
+	//2017-02-03 16:52:05  Import #3124788             84e1…1ff4        15/ 7 tx/mgas            3/10/25 peers
+	//2017-02-03 16:52:25  Import #3124789             9e45…a241         5/ 1 tx/mgas            5/12/25 peers
+	//2017-02-03 16:52:45  Import #3124790             d819…f71c         0/ 0 tx/mgas           11/18/25 peers
+	//
+	// - Sync type (Fast/Sync/Import)
+	//   |  downloader....
+	// - #3124787 of #3124363 - block X of total height Y
+	// - c76c…34e7 block hash
+	// - 77/ 242/ 7 blk/tx/mgas sec performance for past minute, avg blocks/transactions/mgas processed per second. 3 character for block, 4 for transactions, 2 for mgas
+	// -- blocks processed per second
+	// -- txs processed per second
+	// -- mgas processed per second
+	// - 1/ 4/25 peers download from 1 peer, connected to 4, of max 25. 2 characters for each part
+
+	// TODO: check and possibly modify existing verbsosity so pace is not interrupted... or?
+
+	//client, err := n.Attach()
+	//if err != nil {
+	//	glog.Fatalln(err)
+	//}
+	tickerInterval := time.Second * time.Duration(int32(intervalI))
+	ticker := time.NewTicker(tickerInterval)
+
+	var lastLoggedBlockNumber uint64
+
+	for {
+		select {
+			case <-ticker.C:
+				peers := e.Downloader().GetPeers()
+				lenpeers := peers.Len()
+				//_, lennodedataidlepeers := peers.NodeDataIdlePeers()
+				_, lenblockidlepeers := peers.BlockIdlePeers()
+				_, lenbodyidlepeers := peers.BodyIdlePeers()
+				_, lenheaderidlepeers := peers.HeaderIdlePeers()
+				_, lenreceiptidlepeers := peers.ReceiptIdlePeers()
+				peers.AllPeers()
+
+				// An ugly, rough way to estimate actively connected/downloading-from peers
+				activepeers := 0
+				if lenblockidlepeers < lenpeers {
+					activepeers += lenblockidlepeers
+				}
+				if lenbodyidlepeers < lenpeers {
+					activepeers += lenbodyidlepeers
+				}
+				if lenheaderidlepeers < lenpeers {
+					activepeers += lenheaderidlepeers
+				}
+				if lenreceiptidlepeers < lenpeers {
+					activepeers += lenreceiptidlepeers
+				}
+
+				maxpeers := ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx))
+
+
+				//origin, current, height, pulled, known := e.Downloader().Progress()
+				_, current, height, _, _ := e.Downloader().Progress()
+				mode := e.Downloader().GetMode()
+
+				fmode := ""
+				ofheight := fmt.Sprintf(" of #%7d", height)
+				heightratio := float64(current) / float64(height)
+				heightratio = heightratio * 100
+				percentheight := fmt.Sprintf("(%4.2f", heightratio)
+				percentheight += "%)"
+				switch mode {
+				case downloader.FullSync:
+					fmode = "FullSync"
+				case downloader.FastSync:
+					fmode = "FastSync"
+				}
+				if current == height && !(current == 0 && height == 0) {
+					fmode = "Import"
+					ofheight = strings.Repeat(" ", 12)
+					percentheight = strings.Repeat(" ", 8)
+				}
+				if height == 0 {
+					ofheight = strings.Repeat(" ", 12)
+					percentheight = strings.Repeat(" ", 8)
+				}
+
+				//t := time.Now()
+				//y, m, d := t.Date()
+				//hour := t.Hour()
+				//minute := t.Minute()
+				//second := t.Second()
+
+				blockchain := e.BlockChain()
+				//td, currentblock, genesisblock := blockchain.Status()
+				_, currentblock, _:= blockchain.Status()
+
+				numBlocksDiff := current - lastLoggedBlockNumber
+				numTxsDiff := 0
+				mGas := new(big.Int)
+
+				var numBlocksDiffPerSecond uint64
+				var numTxsDiffPerSecond int
+				var mGasPerSecond = new(big.Int)
+
+				if numBlocksDiff > 0 && numBlocksDiff != current {
+					for i := lastLoggedBlockNumber; i <= current; i++ {
+						b := blockchain.GetBlockByNumber(i)
+						if b != nil {
+							numTxsDiff += b.Transactions().Len()
+							mGas = new(big.Int).Add(mGas, b.GasUsed())
+						}
+					}
+				}
+
+				// Convert to per-second stats
+				// FIXME(?): Some degree of rounding will happen.
+				// For example, if interval is 10s and we get 6 blocks imported in that span,
+				// stats will show '0' blocks/second. Looks a little strange; but on the other hand,
+				// precision costs visual space, and mostly just looks weird on when starting up sync or
+				// syncing slowly.
+				numBlocksDiffPerSecond = numBlocksDiff / uint64(intervalI)
+				// Don't show initial current / per second val
+				if lastLoggedBlockNumber == 0 {
+					numBlocksDiffPerSecond = 0
+				}
+				numTxsDiffPerSecond = numTxsDiff / intervalI
+				mGasPerSecond = new(big.Int).Div(mGas, big.NewInt(int64(intervalI)))
+				mGasPerSecond = new(big.Int).Div(mGasPerSecond, big.NewInt(1000000))
+				mGasPerSecondI := mGasPerSecond.Int64()
+
+				// Update last logged current block number
+				lastLoggedBlockNumber = current
+
+				// TODO: possibly convert mGas to better unit
+
+				cbhex := currentblock.Hex()
+				cbhexstart := cbhex[2:5] // trim off '0x' prefix
+				cbhexend := cbhex[(len(cbhex) - 3):]
+
+				//datetime := fmt.Sprintf("%4d-%2d-%2d %2d:%2d:%2d", y, m, d, hour, minute, second)
+				blockprogress := fmt.Sprintf("#%7d%s", current, ofheight)
+				cbhexdisplay := fmt.Sprintf("%s…%s", cbhexstart, cbhexend)
+				peersdisplay := fmt.Sprintf("%2d/%2d/%2d peers", activepeers, lenpeers, maxpeers)
+				blocksprocesseddisplay := fmt.Sprintf("%3d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
+
+				glog.V(logger.Error).Infof("STATUS %s %s %s %s %s %s", fmode, blockprogress, percentheight, cbhexdisplay, blocksprocesseddisplay, peersdisplay)
+				//glog.V(logger.Error).Infof("STATUS %s %s %s %s", fmode, blockprogress, cbhexdisplay, peersdisplay)
+			case <-sigc:
+				ticker.Stop()
+				return
+		}
+	}
+
+	//miner := e.Miner()
+	//mining := miner.Mining()
+	//hashrate := miner.HashRate()
+
+	//n.Attach()
+
+	//sub := e.EventMux().Subscribe()
+	//e := sub.Chan()
+
 }
 
 func status(ctx *cli.Context) error {
