@@ -155,9 +155,8 @@ var (
 	}
 	LogPaceFlag = cli.StringFlag{
 		Name: "log-pace",
-		// TODO: Incompatible is overstated. But there are nuances of their integration that must be considered and negotiated further.
-		Usage: `Toggle paced logging instead of event-based logging. Values must be of the form N(m|s), where N is a positive integer, and (m|s) is the literal 'm' or 's' designating _m_inute or _s_econd. This option is INCOMPATIBLE with the verbosity and vmodule flags.`,
-		Value: "1m",
+		Usage: `Toggle paced logging instead of event-based logging. Argument value should be interval in seconds.`,
+		Value: "60",
 	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",
