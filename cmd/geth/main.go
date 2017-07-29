@@ -42,6 +42,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"math/big"
 	"time"
+	"syscall"
+	signal "os/signal"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -303,14 +305,22 @@ func startPacedLogging(ctx *cli.Context, e *eth.Ethereum) {
 
 	var lastLoggedBlockNumber uint64
 
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigc)
+
 	for {
 		select {
 		case <-ticker.C:
-			lenpeers := e.Downloader().GetPeers().Len()
-			maxpeers := ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx))
+			lenPeers := e.Downloader().GetPeers().Len()
+			maxPeers := ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx))
 
 			_, current, height, _, _ := e.Downloader().Progress() // origin, current, height, pulled, known
 			mode := e.Downloader().GetMode()
+
+			// Get our head block
+			blockchain := e.BlockChain()
+			currentBlockHex := blockchain.CurrentBlock().Hash().Hex()
 
 			// Discover -> not synchronising (searching for peers)
 			// FullSync/FastSync -> synchronising
@@ -321,8 +331,7 @@ func startPacedLogging(ctx *cli.Context, e *eth.Ethereum) {
 			// Calculate and format percent sync of known height
 			heightRatio := float64(current) / float64(height)
 			heightRatio = heightRatio * 100
-			fHeightRatio := fmt.Sprintf("(%4.2f", heightRatio)
-			fHeightRatio += "%)"
+			fHeightRatio := fmt.Sprintf("(%4.2f", heightRatio) + "%)"
 
 			// Wait until syncing because real dl mode will not be engaged until then
 			if e.Downloader().Synchronising() {
@@ -331,10 +340,11 @@ func startPacedLogging(ctx *cli.Context, e *eth.Ethereum) {
 					fMode = "FullSync"
 				case downloader.FastSync:
 					fMode = "FastSync"
+					currentBlockHex = blockchain.CurrentFastBlock().Hash().Hex()
 				}
 			}
 			if current == height && !(current == 0 && height == 0) {
-				fMode = "Import"
+				fMode = "Import  " // with spaces to make same length as Discover, FastSync, FullSync
 				fOfHeight = strings.Repeat(" ", 12)
 				fHeightRatio = strings.Repeat(" ", 7)
 			}
@@ -342,9 +352,6 @@ func startPacedLogging(ctx *cli.Context, e *eth.Ethereum) {
 				fOfHeight = strings.Repeat(" ", 12)
 				fHeightRatio = strings.Repeat(" ", 7)
 			}
-
-			// Get our head block
-			blockchain := e.BlockChain()
 
 			// Calculate block stats for interval
 			numBlocksDiff := current - lastLoggedBlockNumber
@@ -388,13 +395,12 @@ func startPacedLogging(ctx *cli.Context, e *eth.Ethereum) {
 			lastLoggedBlockNumber = current
 
 			// Format head block hex for printing (eg. d4e…fa3)
-			cbhex := blockchain.CurrentHeader().Hash().Hex() // Use header since fast sync will yield only genesis block
-			cbhexstart := cbhex[2:5] // trim off '0x' prefix
-			cbhexend := cbhex[(len(cbhex) - 3):]
+			cbhexstart := currentBlockHex[2:5] // trim off '0x' prefix
+			cbhexend := currentBlockHex[(len(currentBlockHex) - 3):]
 
 			blockprogress := fmt.Sprintf("#%7d%s", current, fOfHeight)
 			cbhexdisplay := fmt.Sprintf("%s…%s", cbhexstart, cbhexend)
-			peersdisplay := fmt.Sprintf("%2d/%2d peers", lenpeers, maxpeers)
+			peersdisplay := fmt.Sprintf("%2d/%2d peers", lenPeers, maxPeers)
 			blocksprocesseddisplay := fmt.Sprintf("%4d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
 
 			// Log to ERROR.
