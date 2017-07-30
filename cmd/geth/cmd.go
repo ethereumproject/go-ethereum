@@ -85,8 +85,13 @@ func StartNode(stack *node.Node) {
 				}
 			}
 		}(fails)
+
 		go func(stack *node.Node) {
-			defer close(fails)
+			defer func() {
+				close(fails)
+				// Ensure any write-pending I/O gets written.
+				glog.Flush()
+			}()
 			fails <- stack.Stop()
 		}(stack)
 
