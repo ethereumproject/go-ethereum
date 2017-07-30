@@ -42,8 +42,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"math/big"
 	"time"
-	"syscall"
-	signal "os/signal"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -304,10 +302,6 @@ func startPacedLogging(ctx *cli.Context, e *eth.Ethereum) {
 	ticker := time.NewTicker(tickerInterval)
 
 	var lastLoggedBlockNumber uint64
-
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(sigc)
 
 	for {
 		select {

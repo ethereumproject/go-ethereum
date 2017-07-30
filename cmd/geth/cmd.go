@@ -40,7 +40,8 @@ const (
 	importBatchSize = 2500
 )
 
-
+// sigc is a single-val channel for listening to program interrupt
+var sigc = make(chan os.Signal, 1)
 
 // Fatalf formats a message to standard error and exits the program.
 // The message is also printed to standard output if standard error
@@ -68,7 +69,6 @@ func StartNode(stack *node.Node) {
 		Fatalf("Error starting protocol stack: %v", err)
 	}
 	go func() {
-		sigc := make(chan os.Signal, 1)
 		signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 		defer signal.Stop(sigc)
 		sig := <-sigc
