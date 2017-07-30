@@ -163,7 +163,7 @@ The output of this command is supposed to be machine-readable.
 		VerbosityFlag,
 		VModuleFlag,
 		LogDirFlag,
-		LogPaceFlag,
+		LogStatusFlag,
 		BacktraceAtFlag,
 		MetricsFlag,
 		FakePoWFlag,
@@ -270,26 +270,26 @@ func geth(ctx *cli.Context) error {
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
 
-	if ctx.GlobalIsSet(LogPaceFlag.Name) {
-		go startPacedLogging(ctx, ethe)
+	if ctx.GlobalIsSet(LogStatusFlag.Name) {
+		go runStatusLogs(ctx, ethe)
 	}
 	n.Wait()
 
 	return nil
 }
 
-// startPacedLogging starts STATUS logging at a given interval.
+// runStatusLogs starts STATUS logging at a given interval.
 // It should be run as a goroutine.
 // --log-pace=42 : logs STATUS information every 42 seconds
-func startPacedLogging(ctx *cli.Context, e *eth.Ethereum) {
+func runStatusLogs(ctx *cli.Context, e *eth.Ethereum) {
 
 	// Establish default interval.
 	intervalI := 60
 
-	if v := ctx.GlobalString(aliasableName(LogPaceFlag.Name, ctx)); v != "" {
+	if v := ctx.GlobalString(aliasableName(LogStatusFlag.Name, ctx)); v != "" {
 		i, e := strconv.Atoi(v)
 		if e != nil {
-			glog.Fatalf("%v: could not parse '%v' argument: %v", e, aliasableName(LogPaceFlag.Name, ctx), v)
+			glog.Fatalf("%v: could not parse '%v' argument: %v", e, aliasableName(LogStatusFlag.Name, ctx), v)
 		}
 		if i < 1 {
 			glog.Fatalf("interval value must be a positive integer, got: %d", i)
@@ -326,7 +326,7 @@ func startPacedLogging(ctx *cli.Context, e *eth.Ethereum) {
 			// Calculate and format percent sync of known height
 			heightRatio := float64(current) / float64(height)
 			heightRatio = heightRatio * 100
-			fHeightRatio := fmt.Sprintf("(%4.2f", heightRatio) + "%)"
+			fHeightRatio := fmt.Sprintf("(%4.2f%%)", heightRatio)
 
 			// Wait until syncing because real dl mode will not be engaged until then
 			if e.Downloader().Synchronising() {

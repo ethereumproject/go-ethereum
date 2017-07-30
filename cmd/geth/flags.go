@@ -153,9 +153,9 @@ var (
 		Usage: "Directory in which to write log files, redirecting terminal out (stderr)",
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
 	}
-	LogPaceFlag = cli.StringFlag{
-		Name: "log-pace",
-		Usage: `Toggle paced logging instead of event-based logging. Argument value should be interval in seconds.`,
+	LogStatusFlag = cli.StringFlag{
+		Name: "log-status",
+		Usage: `Toggle interval-based STATUS logs. Argument value should be interval in seconds.`,
 		Value: "60",
 	}
 	BacktraceAtFlag = cli.GenericFlag{
