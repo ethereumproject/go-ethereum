@@ -42,6 +42,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"math/big"
 	"time"
+	"golang.org/x/tools/refactor/satisfy"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -271,28 +272,74 @@ func geth(ctx *cli.Context) error {
 	ethe := startNode(ctx, n)
 
 	if ctx.GlobalIsSet(LogStatusFlag.Name) {
-		go runStatusLogs(ctx, ethe)
+		dispatchStatusLogs(ctx, ethe)
 	}
 	n.Wait()
 
 	return nil
 }
 
-// runStatusLogs starts STATUS logging at a given interval.
+type StatusLogFeatAvailability int
+const (
+	StatusFeatAvailable   StatusLogFeatAvailability = iota
+	StatusFeatRegistered
+	StatusFeatNonexistent
+)
+var availableLogStatusFeatures = map[string]StatusLogFeatAvailability{
+	"sync": StatusFeatAvailable,
+}
+
+func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
+	flagName := aliasableName(LogStatusFlag.Name, ctx)
+	v := ctx.GlobalString(flagName)
+	if v == "" {
+		glog.Fatalf("%v: %v", flagName, ErrInvalidFlag)
+	}
+
+	for _, p := range strings.Split(v, ",") {
+		// Ignore hanging or double commas
+		if p == "" {
+			continue
+		}
+
+		// If possible, split sync=60 into ["sync", "60"], otherwise yields ["sync"], ["60"], or ["someothernonsense"]
+		eqs := strings.Split(p, "=")
+
+		// Catch unavailable and duplicate status feature logs
+		if availableLogStatusFeatures[eqs[0]] == StatusFeatNonexistent {
+			glog.Fatalf("%v: %v: unavailable status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
+		}
+		if availableLogStatusFeatures[eqs[0]] == StatusFeatRegistered {
+			glog.Fatalf("%v: %v: duplicate status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
+		}
+
+		// If user just uses "sync" instead of "sync=42", append empty string and delegate to each status log function how to handle it
+		if len(eqs) == 1 {
+			eqs = append(eqs, "")
+		}
+		switch eqs[0] {
+		case "sync":
+			availableLogStatusFeatures["sync"] = StatusFeatRegistered
+			go runStatusSyncLogs(ethe, eqs[1], ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
+		}
+	}
+}
+
+// runStatusSyncLogs starts STATUS logging at a given interval.
 // It should be run as a goroutine.
 // --log-pace=42 : logs STATUS information every 42 seconds
-func runStatusLogs(ctx *cli.Context, e *eth.Ethereum) {
+func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 
 	// Establish default interval.
 	intervalI := 60
 
-	if v := ctx.GlobalString(aliasableName(LogStatusFlag.Name, ctx)); v != "" {
-		i, e := strconv.Atoi(v)
+	if interval != "" {
+		i, e := strconv.Atoi(interval)
 		if e != nil {
-			glog.Fatalf("%v: could not parse '%v' argument: %v", e, aliasableName(LogStatusFlag.Name, ctx), v)
+			glog.Fatalf("STATUS SYNC %v: could not parse argument: %v", e, interval)
 		}
 		if i < 1 {
-			glog.Fatalf("interval value must be a positive integer, got: %d", i)
+			glog.Fatalf("STATUS SYNC interval value must be a positive integer, got: %d", i)
 		}
 		intervalI = i
 	}
@@ -308,7 +355,6 @@ func runStatusLogs(ctx *cli.Context, e *eth.Ethereum) {
 		select {
 		case <-ticker.C:
 			lenPeers := e.Downloader().GetPeers().Len()
-			maxPeers := ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx))
 
 			_, current, height, _, _ := e.Downloader().Progress() // origin, current, height, pulled, known
 			mode := e.Downloader().GetMode()

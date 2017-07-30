@@ -155,8 +155,8 @@ var (
 	}
 	LogStatusFlag = cli.StringFlag{
 		Name: "log-status",
-		Usage: `Toggle interval-based STATUS logs. Argument value should be interval in seconds.`,
-		Value: "60",
+		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
+		Value: "sync=60",
 	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",
