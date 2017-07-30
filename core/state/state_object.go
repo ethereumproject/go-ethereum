@@ -227,7 +227,7 @@ func (c *StateObject) AddBalance(amount *big.Int) {
 	}
 	c.SetBalance(new(big.Int).Add(c.Balance(), amount))
 
-	if glog.V(logger.Core) {
+	if glog.V(logger.Debug) {
 		glog.Infof("%x: #%d %v (+ %v)\n", c.Address(), c.Nonce(), c.Balance(), amount)
 	}
 }
