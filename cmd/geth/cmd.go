@@ -25,24 +25,24 @@ import (
 
 	"strings"
 
+	"errors"
+	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/eth"
+	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"time"
-	"syscall"
-	"math/big"
 	"gopkg.in/urfave/cli.v1"
-	"strconv"
-	"github.com/ethereumproject/go-ethereum/eth/downloader"
-	"path/filepath"
 	"io/ioutil"
-	"github.com/ethereumproject/ethash"
-	"github.com/ethereumproject/go-ethereum/core/state"
-	"errors"
+	"math/big"
+	"path/filepath"
+	"strconv"
+	"syscall"
+	"time"
 )
 
 const (
@@ -84,7 +84,7 @@ func StartNode(stack *node.Node) {
 		glog.Infof("Got %v, shutting down...", sig)
 
 		fails := make(chan error, 1)
-		go func (fs chan error) {
+		go func(fs chan error) {
 			for {
 				select {
 				case e := <-fs:
@@ -751,8 +751,9 @@ func version(ctx *cli.Context) error {
 
 // LogStatusFeatAvailability is used to register and track use of available status logging features, eg. "STATUS SYNC"
 type LogStatusFeatAvailability int
+
 const (
-	StatusFeatAvailable   LogStatusFeatAvailability = iota
+	StatusFeatAvailable LogStatusFeatAvailability = iota
 	StatusFeatRegistered
 	StatusFeatNonexistent
 )
