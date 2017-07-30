@@ -145,6 +145,14 @@ func SetToStderr(toStderr bool) {
 	logging.mu.Unlock()
 }
 
+// SetAlsoToStderr sets global output option
+// for logging to both FS and stderr.
+func SetAlsoToStderr(to bool) {
+	logging.mu.Lock()
+	logging.alsoToStderr = to
+	logging.mu.Unlock()
+}
+
 // GetTraceLocation returns the global TraceLocation flag.
 func GetTraceLocation() *TraceLocation {
 	return &logging.traceLocation

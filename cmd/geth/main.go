@@ -206,9 +206,10 @@ The output of this command is supposed to be machine-readable.
 					return e
 				}
 				glog.SetLogDir(p)
+				glog.SetAlsoToStderr(true)
 			}
 		} else {
-			glog.SetToStderr(true) // I don't know why...
+			glog.SetToStderr(true)
 		}
 
 		if s := ctx.String("metrics"); s != "" {
