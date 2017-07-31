@@ -575,16 +575,16 @@ func (srv *Server) listenLoop() {
 		for {
 			fd, err = srv.listener.Accept()
 			if tempErr, ok := err.(tempError); ok && tempErr.Temporary() {
-				glog.V(logger.Debug).Infof("Temporary read error: %v", err)
+				glog.V(logger.Debug).Infof("P2P SERVER CONN ERROR -> Temporary read error: %v", err)
 				continue
 			} else if err != nil {
-				glog.V(logger.Debug).Infof("Read error: %v", err)
+				glog.V(logger.Debug).Infof("P2P SERVER CONN ERROR -> Read error: %v", err)
 				return
 			}
 			break
 		}
 		fd = newMeteredConn(fd, true)
-		glog.V(logger.Debug).Infof("Accepted conn %v\n", fd.RemoteAddr())
+		glog.V(logger.Debug).Infof("P2P SERVER CONN ACCEPT remote_addr=%v\n", fd.RemoteAddr())
 
 		// Spawn the handler. It will give the slot back when the connection
 		// has been established.
@@ -611,36 +611,36 @@ func (srv *Server) setupConn(fd net.Conn, flags connFlag, dialDest *discover.Nod
 	// Run the encryption handshake.
 	var err error
 	if c.id, err = c.doEncHandshake(srv.PrivateKey, dialDest); err != nil {
-		glog.V(logger.Debug).Infof("%v faild enc handshake: %v", c, err)
+		glog.V(logger.Debug).Infof("P2P SERVER CONN FAIL conn=%v -> failed enc handshake: %v", c, err)
 		c.close(err)
 		return
 	}
 	// For dialed connections, check that the remote public key matches.
 	if dialDest != nil && c.id != dialDest.ID {
 		c.close(DiscUnexpectedIdentity)
-		glog.V(logger.Debug).Infof("%v dialed identity mismatch, want %x", c, dialDest.ID[:8])
+		glog.V(logger.Debug).Infof("P2P SERVER CONN CLOSE conn=%v -> dialed identity mismatch, want %x", c, dialDest.ID[:8])
 		return
 	}
 	if err := srv.checkpoint(c, srv.posthandshake); err != nil {
-		glog.V(logger.Debug).Infof("%v failed checkpoint posthandshake: %v", c, err)
+		glog.V(logger.Debug).Infof("P2P SERVER CONN CLOSE conn=%v -> failed checkpoint posthandshake: %v", c, err)
 		c.close(err)
 		return
 	}
 	// Run the protocol handshake
 	phs, err := c.doProtoHandshake(srv.ourHandshake)
 	if err != nil {
-		glog.V(logger.Debug).Infof("%v failed proto handshake: %v", c, err)
+		glog.V(logger.Debug).Infof("P2P SERVER CONN CLOSE conn=%v -> failed proto handshake: %v", c, err)
 		c.close(err)
 		return
 	}
 	if phs.ID != c.id {
-		glog.V(logger.Debug).Infof("%v wrong proto handshake identity: %x", c, phs.ID[:8])
+		glog.V(logger.Debug).Infof("P2P SERVER CONN CLOSE conn=%v -> wrong proto handshake identity: %x", c, phs.ID[:8])
 		c.close(DiscUnexpectedIdentity)
 		return
 	}
 	c.caps, c.name = phs.Caps, phs.Name
 	if err := srv.checkpoint(c, srv.addpeer); err != nil {
-		glog.V(logger.Debug).Infof("%v failed checkpoint addpeer: %v", c, err)
+		glog.V(logger.Debug).Infof("P2P SERVER CONN CLOSE conn=%v -> failed checkpoint addpeer: %v", c, err)
 		c.close(err)
 		return
 	}
@@ -668,7 +668,7 @@ func (srv *Server) checkpoint(c *conn, stage chan<- *conn) error {
 // it waits until the Peer logic returns and removes
 // the peer.
 func (srv *Server) runPeer(p *Peer) {
-	glog.V(logger.Debug).Infof("Added %v\n", p)
+	glog.V(logger.Debug).Infof("PEER ADD %v\n", p)
 	srvjslog.LogJson(&logger.P2PConnected{
 		RemoteId:            p.ID().String(),
 		RemoteAddress:       p.RemoteAddr().String(),
@@ -684,7 +684,7 @@ func (srv *Server) runPeer(p *Peer) {
 	// before returning, so this send should not select on srv.quit.
 	srv.delpeer <- p
 
-	glog.V(logger.Debug).Infof("Removed %v (%v)\n", p, discreason)
+	glog.V(logger.Debug).Infof("PEER REMOVE %v -> %v\n", p, discreason)
 	srvjslog.LogJson(&logger.P2PDisconnected{
 		RemoteId:       p.ID().String(),
 		NumConnections: srv.PeerCount(),

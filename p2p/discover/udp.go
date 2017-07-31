@@ -319,6 +319,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		}
 		return nreceived >= bucketSize
 	})
+	glog.V(logger.Debug).Infof("PEER SEND FINDNODE %v %v", toaddr, toid.String()[:8])
 	t.send(toaddr, findnodePacket, findnode{
 		Target:     target,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
@@ -338,7 +339,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		var okNodes []*Node
 		for _, n := range nodes {
 			if isReserved(n.IP) {
-				glog.V(logger.Debug).Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
+				glog.V(logger.Debug).Infof("PEER FILTER NEIGHBOR %v from=%v neighbor_ip=%v neighbor_id=%v", errReservedAddress, toaddr, n.IP, n.ID.String()[:8])
 				continue
 			}
 			okNodes = append(okNodes, n)
@@ -611,6 +612,7 @@ func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 	if expired(req.Expiration) {
 		return errExpired
 	}
+	glog.V(logger.Debug).Infof("PEER SEND PONG %v %v", from, fromID.String()[:8])
 	t.send(from, pongPacket, pong{
 		To:         makeEndpoint(from, req.From.TCP),
 		ReplyTok:   mac,
@@ -656,6 +658,7 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 	for i, n := range closest {
 		p.Nodes = append(p.Nodes, nodeToRPC(n))
 		if len(p.Nodes) == maxNeighbors || i == len(closest)-1 {
+			glog.V(logger.Debug).Infof("PEER SEND NEIGHBORS chunk=%v/%v to_addr=%v to_id=%v", i, len(closest), from, fromID.String()[:8])
 			t.send(from, neighborsPacket, p)
 			p.Nodes = p.Nodes[:0]
 		}
@@ -664,6 +667,7 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 }
 
 func (req *neighbors) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
+	glog.V(logger.Debug).Infof("PEER GOT NEIGHBORS %v %v", from, fromID.String()[:8])
 	if expired(req.Expiration) {
 		return errExpired
 	}

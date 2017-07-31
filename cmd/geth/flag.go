@@ -387,7 +387,7 @@ func MakeAddress(accman *accounts.Manager, account string) (accounts.Account, er
 func MakeEtherbase(accman *accounts.Manager, ctx *cli.Context) common.Address {
 	accounts := accman.Accounts()
 	if !ctx.GlobalIsSet(aliasableName(EtherbaseFlag.Name, ctx)) && len(accounts) == 0 {
-		glog.V(logger.Error).Infoln("WARNING: No etherbase set and no accounts found as default")
+		glog.V(logger.Warn).Infoln("WARNING: No etherbase set and no accounts found as default")
 		return common.Address{}
 	}
 	etherbase := ctx.GlobalString(aliasableName(EtherbaseFlag.Name, ctx))

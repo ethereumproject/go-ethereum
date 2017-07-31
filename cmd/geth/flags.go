@@ -153,6 +153,11 @@ var (
 		Usage: "Directory in which to write log files, redirecting terminal out (stderr)",
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
 	}
+	LogStatusFlag = cli.StringFlag{
+		Name: "log-status",
+		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
+		Value: "sync=60",
+	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",
 		Usage: "Request a stack trace at a specific logging statement (e.g. \"block.go:271\")",

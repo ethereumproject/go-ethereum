@@ -50,7 +50,7 @@ const (
 var errIncompatibleConfig = errors.New("incompatible configuration")
 
 func errResp(code errCode, format string, v ...interface{}) error {
-	return fmt.Errorf("%v - %v", code, fmt.Sprintf(format, v...))
+	return fmt.Errorf("%v: %v", code, fmt.Sprintf(format, v...))
 }
 
 type ProtocolManager struct {
