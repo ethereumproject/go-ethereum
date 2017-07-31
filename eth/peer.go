@@ -281,7 +281,7 @@ func (p *peer) readStatus(network int, status *statusData, genesis common.Hash) 
 		return errResp(ErrDecode, "msg %v: %v", msg, err)
 	}
 	if status.GenesisBlock != genesis {
-		return errResp(ErrGenesisBlockMismatch, "%x (!= %x)", status.GenesisBlock, genesis)
+		return errResp(ErrGenesisBlockMismatch, "%s (!= %s)", status.GenesisBlock.Hex()[2:8], genesis.Hex()[2:8])
 	}
 	if int(status.NetworkId) != network {
 		return errResp(ErrNetworkIdMismatch, "%d (!= %d)", status.NetworkId, network)

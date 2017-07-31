@@ -42,12 +42,29 @@ const (
 const (
 	// devp2p message codes
 	handshakeMsg = 0x00
-	discMsg      = 0x01
-	pingMsg      = 0x02
-	pongMsg      = 0x03
-	getPeersMsg  = 0x04
-	peersMsg     = 0x05
+	discMsg = 0x01
+	pingMsg = 0x02
+	pongMsg = 0x03
+	getPeersMsg = 0x04
+	peersMsg = 0x05
 )
+
+var p2pMsgCodeStrings = map[uint64]string {
+	handshakeMsg: "HANDSHAKE",
+	discMsg: "DISCONNECT",
+	pingMsg: "PING",
+	pongMsg: "PONG",
+	getPeersMsg: "GETPEERS",
+	peersMsg: "PEERS",
+}
+
+func printP2PMessageCode(c uint64) string {
+	o := p2pMsgCodeStrings[c]
+	if o == "" {
+		o = "PROTOCOL"
+	}
+	return o
+}
 
 // protoHandshake is the RLP structure of the protocol handshake.
 type protoHandshake struct {
@@ -118,7 +135,7 @@ func (p *Peer) Disconnect(reason DiscReason) {
 
 // String implements fmt.Stringer.
 func (p *Peer) String() string {
-	return fmt.Sprintf("Peer %x %v", p.rw.id[:8], p.RemoteAddr())
+	return fmt.Sprintf("[PEER](id=%x remote_addr=%v)", p.rw.id[:8], p.RemoteAddr())
 }
 
 func newPeer(conn *conn, protocols []Protocol) *Peer {
@@ -157,27 +174,27 @@ loop:
 			// A write finished. Allow the next write to start if
 			// there was no error.
 			if err != nil {
-				glog.V(logger.Detail).Infof("%v: write error: %v\n", p, err)
+				glog.V(logger.Detail).Infof("PEER WRITE ERROR %v -> %v\n", p, err)
 				reason = DiscNetworkError
 				break loop
 			}
 			writeStart <- struct{}{}
 		case err := <-readErr:
 			if r, ok := err.(DiscReason); ok {
-				glog.V(logger.Debug).Infof("%v: remote requested disconnect: %v\n", p, r)
+				glog.V(logger.Debug).Infof("PEER DISCONNECT REMOTE %v -> %v\n", p, r)
 				requested = true
 				reason = r
 			} else {
-				glog.V(logger.Detail).Infof("%v: read error: %v\n", p, err)
+				glog.V(logger.Detail).Infof("PEER READ ERROR %v -> %v\n", p, err)
 				reason = DiscNetworkError
 			}
 			break loop
 		case err := <-p.protoErr:
 			reason = discReasonForError(err)
-			glog.V(logger.Debug).Infof("%v: protocol error: %v (%v)\n", p, err, reason)
+			glog.V(logger.Debug).Infof("PEER PROTOCOL ERROR %v -> %v -> %v\n", p, reason, err)
 			break loop
 		case reason = <-p.disc:
-			glog.V(logger.Debug).Infof("%v: locally requested disconnect: %v\n", p, reason)
+			glog.V(logger.Debug).Infof("PEER DISCONNECT LOCAL %v -> %v\n", p, reason)
 			break loop
 		}
 	}
@@ -198,6 +215,7 @@ func (p *Peer) pingLoop() {
 	for {
 		select {
 		case <-ping.C:
+			glog.V(logger.Debug).Infof("PEER SEND PING %v", p)
 			if err := SendItems(p.rw, pingMsg); err != nil {
 				p.protoErr <- err
 				return
@@ -228,6 +246,7 @@ func (p *Peer) handle(msg Msg) error {
 	switch {
 	case msg.Code == pingMsg:
 		msg.Discard()
+		glog.V(logger.Debug).Infof("PEER SEND PONG %v", p)
 		go SendItems(p.rw, pongMsg)
 	case msg.Code == discMsg:
 		var reason [1]DiscReason
@@ -298,14 +317,14 @@ func (p *Peer) startProtocols(writeStart <-chan struct{}, writeErr chan<- error)
 		proto.closed = p.closed
 		proto.wstart = writeStart
 		proto.werr = writeErr
-		glog.V(logger.Detail).Infof("%v: Starting protocol %s/%d\n", p, proto.Name, proto.Version)
+		glog.V(logger.Detail).Infof("PEER PROTOCOL START %v -> %s/%d\n", p, proto.Name, proto.Version)
 		go func() {
 			err := proto.Run(p, proto)
 			if err == nil {
-				glog.V(logger.Detail).Infof("%v: Protocol %s/%d returned\n", p, proto.Name, proto.Version)
+				glog.V(logger.Detail).Infof("PEER PROTOCOL RETURN %v -> %s/%d\n", p, proto.Name, proto.Version)
 				err = errors.New("protocol returned")
 			} else if err != io.EOF {
-				glog.V(logger.Detail).Infof("%v: Protocol %s/%d error: %v\n", p, proto.Name, proto.Version, err)
+				glog.V(logger.Detail).Infof("PEER PROTOCOL ERROR %v -> %s/%d: %v\n", p, proto.Name, proto.Version, err)
 			}
 			p.protoErr <- err
 			p.wg.Done()
