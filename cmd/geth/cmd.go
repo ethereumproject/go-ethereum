@@ -574,13 +574,13 @@ func rollback(ctx *cli.Context) error {
 
 	bc.SetHead(blockIndex)
 
-	nowCurrentState := bc.CurrentBlock().Number().Uint64()
-	if nowCurrentState != blockIndex {
-		glog.Fatalf("ERROR: Wanted rollback to set head to: %v, instead current head is: %v", blockIndex, nowCurrentState)
-	} else {
-		glog.Infof("SUCCESS: Head block set to: %v", nowCurrentState)
+	// Check if *neither* block nor fastblock numbers match desired head number
+	nowCurrentHead := bc.CurrentBlock().Number().Uint64()
+	nowCurrentFastHead := bc.CurrentFastBlock().Number().Uint64()
+	if nowCurrentHead != blockIndex && nowCurrentFastHead != blockIndex {
+		glog.Fatalf("ERROR: Wanted rollback to set head to: %v, instead current head is: %v", blockIndex, nowCurrentHead)
 	}
-
+	glog.Infof("SUCCESS: Head block set to: %v", nowCurrentHead)
 	return nil
 }
 
