@@ -49,9 +49,6 @@ const (
 	importBatchSize = 2500
 )
 
-// sigc is a single-val channel for listening to program interrupt
-var sigc = make(chan os.Signal, 1)
-
 // Fatalf formats a message to standard error and exits the program.
 // The message is also printed to standard output if standard error
 // is redirected to a different file.
@@ -78,6 +75,8 @@ func StartNode(stack *node.Node) {
 		Fatalf("Error starting protocol stack: %v", err)
 	}
 	go func() {
+		// sigc is a single-val channel for listening to program interrupt
+		var sigc = make(chan os.Signal, 1)
 		signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 		defer signal.Stop(sigc)
 		sig := <-sigc
@@ -826,6 +825,9 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 	ticker := time.NewTicker(tickerInterval)
 
 	var lastLoggedBlockNumber uint64
+	var sigc = make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigc)
 
 	for {
 		select {
@@ -924,15 +926,10 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			// This allows maximum user optionality for desired integration with rest of event-based logging.
 			glog.V(logger.Error).Infof("STATUS SYNC %s %s %s %s %s %s", fMode, blockprogress, fHeightRatio, cbhexdisplay, blocksprocesseddisplay, peersdisplay)
 
-			// Experimental: if mining, show some readily-available stats for that, too
-			miner := e.Miner()
-			if miner.Mining() {
-				hashrate := miner.HashRate()
-				glog.V(logger.Error).Infof("STATUS MINE (%2d) %8d", e.MinerThreads, hashrate)
-			}
-			// Listen for interrupt
 		case <-sigc:
+			// Listen for interrupt
 			ticker.Stop()
+			glog.V(logger.Error).Infoln("STATUS SYNC Stopping logging.")
 			return
 		}
 	}
