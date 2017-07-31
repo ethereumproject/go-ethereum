@@ -819,7 +819,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 		intervalI = i
 	}
 
-	glog.V(logger.Error).Infof("STATUS SYNC Log-pace interval set: %d seconds", intervalI)
+	glog.V(logger.Error).Infof("STATUS SYNC Log interval set: %d seconds", intervalI)
 
 	tickerInterval := time.Second * time.Duration(int32(intervalI))
 	ticker := time.NewTicker(tickerInterval)
