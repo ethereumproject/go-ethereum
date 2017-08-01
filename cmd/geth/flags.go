@@ -150,13 +150,23 @@ var (
 	}
 	LogDirFlag = DirectoryFlag{
 		Name:  "log-dir,logdir",
-		Usage: "Directory in which to write log files, redirecting terminal out (stderr)",
+		Usage: "Directory in which to write log files.",
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
 	}
 	LogStatusFlag = cli.StringFlag{
 		Name: "log-status",
 		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
 		Value: "sync=60",
+	}
+	MLogFlag = cli.BoolTFlag{
+		Name: "mlog",
+		Usage: "Toggle machine-readable logging.",
+	}
+	MLogDirFlag = DirectoryFlag{
+		Name: "mlog-dir",
+		Usage: "Directory in which to write machine log files.",
+		// TODO: move to chain-subdir?
+		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mlogs")},
 	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",

@@ -49,6 +49,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"time"
 )
 
 func init() {
@@ -429,6 +430,53 @@ func makeNodeName(version string, ctx *cli.Context) string {
 	return name
 }
 
+func mustMakeMLogDir(ctx *cli.Context) string {
+	if ctx.GlobalIsSet(MLogDirFlag.Name) {
+		p := ctx.GlobalString(MLogDirFlag.Name)
+		if p == "" {
+			glog.Fatalf("Flag %v requires a non-empty argument", MLogDirFlag.Name)
+			return ""
+		}
+		cwd, e := os.Getwd()
+		if e != nil {
+			cwd = "."
+		}
+		rp := common.EnsurePathAbsoluteOrRelativeTo(cwd, p)
+		if filepath.IsAbs(rp) {
+			return rp
+		}
+		ap, e := filepath.Abs(rp)
+		if e != nil {
+			glog.Fatalf("could not establish absolute path for mlog dir: %v", e)
+		}
+		return ap
+	}
+	rp := common.EnsurePathAbsoluteOrRelativeTo(mustMakeDataDir(ctx), "mlogs")
+	if !filepath.IsAbs(rp) {
+		af, e := filepath.Abs(rp)
+		if e != nil {
+			glog.Fatalf("cannot make absolute path for chain data dir: %v: %v", rp, e)
+		}
+		rp = af
+	}
+	return rp
+}
+
+func makeMLog(ctx *cli.Context) (string, error) {
+	now:= time.Now()
+
+	mlogdir := mustMakeMLogDir(ctx)
+	logger.SetMLogDir(mlogdir)
+
+	_, filename, err := logger.CreateMLogFile(now)
+	if err != nil {
+		return "", err
+	}
+	glog.V(logger.Info).Infof("created m log file: %v", filename)
+	logger.New(mlogdir, filename, 1)
+	return filename, nil
+}
+
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
@@ -487,6 +535,17 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		if err := stack.Register(func(*node.ServiceContext) (node.Service, error) { return whisper.New(), nil }); err != nil {
 			glog.Fatalf("%v: failed to register the Whisper service: ", ErrStackFail, err)
 		}
+	}
+
+	// If --mlog enabled, configure and create mlog dir and file
+	if ctx.GlobalBoolT(MLogFlag.Name) {
+		fname, e := makeMLog(ctx)
+		if e != nil {
+			glog.Fatalf("Failed to start mlog: %v", e)
+		}
+		glog.V(logger.Info).Infof("Writing mlog: %v", fname)
+	} else {
+		glog.V(logger.Warn).Infof("Disabled: mlog")
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {

@@ -225,6 +225,7 @@ func (p *Peer) readLoop(errc chan<- error) {
 }
 
 func (p *Peer) handle(msg Msg) error {
+	mlog.Sendf(1,"PEER HANDLE %v", msg)
 	switch {
 	case msg.Code == pingMsg:
 		msg.Discard()

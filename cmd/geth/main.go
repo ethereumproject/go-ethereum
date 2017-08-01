@@ -153,6 +153,8 @@ The output of this command is supposed to be machine-readable.
 		VModuleFlag,
 		LogDirFlag,
 		LogStatusFlag,
+		MLogFlag,
+		MLogDirFlag,
 		BacktraceAtFlag,
 		MetricsFlag,
 		FakePoWFlag,
@@ -262,6 +264,7 @@ func geth(ctx *cli.Context) error {
 	if ctx.GlobalIsSet(LogStatusFlag.Name) {
 		dispatchStatusLogs(ctx, ethe)
 	}
+
 	n.Wait()
 
 	return nil

@@ -309,6 +309,9 @@ func (srv *Server) Start() (err error) {
 	srv.running = true
 	glog.V(logger.Info).Infoln("Starting Server")
 
+	glog.V(logger.Error).Infoln("MLOG INIT")
+	mlogOnce.Do(initMLogging)
+
 	// static fields
 	if srv.PrivateKey == nil {
 		return fmt.Errorf("Server.PrivateKey must be set to a non-nil key")
