@@ -1,4 +1,4 @@
-package p2p
+package discover
 
 import (
 	"github.com/ethereumproject/go-ethereum/logger"
@@ -9,6 +9,6 @@ var mlog *logger.Logger
 var mlogOnce sync.Once
 
 func initMLogging() {
-	mlog = logger.NewLogger("p2p")
+	mlog = logger.NewLogger("discover")
 	mlog.Infoln("[mlog] ON")
 }

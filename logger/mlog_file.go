@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"bytes"
+	"runtime"
 )
 
 // MaxSize is the maximum size of a log file in bytes.
@@ -118,5 +120,60 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 	symlink := filepath.Join(*mLogDir, link)
 	os.Remove(symlink)        // ignore err
 	os.Symlink(name, symlink) // ignore err
+
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "Log file created at: %s\n", t.Format("2006/01/02 15:04:05"))
+	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
+	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	fmt.Fprintln(&buf, strings.Repeat("-", 61))
+	f.Write(buf.Bytes())
+
 	return f, fname, nil
+}
+
+type MLogT struct {
+	Receiver string
+	Verb string
+	Subject string
+	Details []MLogDetailT
+}
+
+type MLogDetailT struct {
+	Owner string
+	Key string
+	Value interface{}
+}
+
+// SetDetails is a setter function for inline literal manipulation.
+func (m MLogT) SetDetails(ds []MLogDetailT) {
+	m.Details = ds
+}
+
+// String implements the 'stringer' interface for
+// an MLogT struct.
+// eg. $RECEIVER $SUBJECT $VERB $RECEIVER:DETAIL $RECEIVER:DETAIL $SUBJECT:DETAIL $SUBJECT:DETAIL
+func (m MLogT) String() string {
+	placeholderEmpty := "-"
+	if m.Receiver == "" {
+		m.Receiver = placeholderEmpty
+	}
+	if m.Subject == "" {
+		m.Subject = placeholderEmpty
+	}
+	if m.Verb == "" {
+		m.Verb = placeholderEmpty
+	}
+	out := fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	for _, d := range m.Details {
+		if d.String() == "" {
+			out += " " + placeholderEmpty
+			continue
+		}
+		out += " " + d.String()
+	}
+	return out
+}
+
+func (d MLogDetailT) String() string {
+	return fmt.Sprint(d.Value)
 }
