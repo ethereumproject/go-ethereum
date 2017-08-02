@@ -145,8 +145,9 @@ type MLogDetailT struct {
 }
 
 // SetDetails is a setter function for inline literal manipulation.
-func (m MLogT) SetDetails(ds []MLogDetailT) {
+func (m MLogT) SetDetails(ds []MLogDetailT) MLogT {
 	m.Details = ds
+	return m
 }
 
 // String implements the 'stringer' interface for

@@ -611,16 +611,13 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 }
 
 func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-	mlog.Sendln(1, logger.MLogT{
-		"PING",
-		"HANDLE",
-		"FROM",
+	mlog.Sendln(1, mlogPingHandleFrom.SetDetails(
 		[]logger.MLogDetailT{
 			{"FROM", "UDP_ADDRESS", from},
 			{"FROM", "ID", fromID},
 			{"PING", "EXPIRED", expired(req.Expiration)},
 		},
-	}.String())
+	).String())
 	if expired(req.Expiration) {
 		return errExpired
 	}
@@ -637,16 +634,13 @@ func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 }
 
 func (req *pong) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-	mlog.Sendln(1, logger.MLogT{
-		"PONG",
-		"HANDLE",
-		"FROM",
+	mlog.Sendln(1, mlogPongHandleFrom.SetDetails(
 		[]logger.MLogDetailT{
 			{"FROM", "UDP_ADDRESS", from},
 			{"FROM", "ID", fromID},
-			{"PONG", "EXPIRED", expired(req.Expiration)},
+			{"PING", "EXPIRED", expired(req.Expiration)},
 		},
-	}.String())
+	).String())
 	if expired(req.Expiration) {
 		return errExpired
 	}
@@ -657,16 +651,13 @@ func (req *pong) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 }
 
 func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-	mlog.Sendln(1, logger.MLogT{
-		"FIND_NODE",
-		"HANDLE",
-		"FROM",
+	mlog.Sendln(1, mlogFindNodeHandleFrom.SetDetails(
 		[]logger.MLogDetailT{
 			{"FROM", "UDP_ADDRESS", from},
 			{"FROM", "ID", fromID},
 			{"PONG", "EXPIRED", expired(req.Expiration)},
 		},
-	}.String())
+	).String())
 	if expired(req.Expiration) {
 		return errExpired
 	}
@@ -689,10 +680,7 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 	for i, n := range closest {
 		p.Nodes = append(p.Nodes, nodeToRPC(n))
 		if len(p.Nodes) == maxNeighbors || i == len(closest)-1 {
-			mlog.Sendln(1, logger.MLogT{
-				"FIND_NODE",
-				"SEND",
-				"NEIGHBORS",
+			mlog.Sendln(1, mlogFindNodeSendNeighbors.SetDetails(
 				[]logger.MLogDetailT{
 					{"FIND_NODE", "UDP_ADDRESS", from},
 					{"FIND_NODE", "ID", fromID},
@@ -700,7 +688,7 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 					{"NEIGHBORS", "CHUNKS", len(closest)},
 					{"NEIGHBORS", "NODES_LEN", len(p.Nodes)},
 				},
-			}.String())
+			).String())
 			t.send(from, neighborsPacket, p)
 			p.Nodes = p.Nodes[:0]
 		}
@@ -709,16 +697,13 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 }
 
 func (req *neighbors) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-	mlog.Sendln(1, logger.MLogT{
-		"NEIGHBORS",
-		"HANDLE",
-		"FROM",
+	mlog.Sendln(1, mlogNeighborsHandleFrom.SetDetails(
 		[]logger.MLogDetailT{
 			{"FROM", "UDP_ADDRESS", from},
 			{"FROM", "ID", fromID},
 			{"NEIGHBORS", "EXPIRED", expired(req.Expiration)},
 		},
-	}.String())
+	).String())
 	if expired(req.Expiration) {
 		return errExpired
 	}
