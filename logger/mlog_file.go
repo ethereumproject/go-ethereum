@@ -29,6 +29,7 @@ import (
 	"time"
 	"bytes"
 	"runtime"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 // MaxSize is the maximum size of a log file in bytes.
@@ -144,9 +145,23 @@ type MLogDetailT struct {
 	Value interface{}
 }
 
-// SetDetails is a setter function for inline literal manipulation.
-func (m MLogT) SetDetails(ds []MLogDetailT) MLogT {
-	m.Details = ds
+// SetDetailValues is a setter function for setting values for pre-existing details.
+// It accepts a variadic number of empty interfaces.
+// If the number of arguments does not match  the number of established details
+// for the receiving MLogT, it will fatal error.
+// Arguments MUST be provided in the order in which they should be applied to the
+// slice of existing details.
+func (m MLogT) SetDetailValues(detailVals ...interface{}) MLogT {
+
+	// Check for congruence between argument length and registered details.
+	if len(detailVals) != len(m.Details) {
+		glog.Fatal("mlog: wrong number of details set, want: ", len(m.Details), "got:", len(detailVals))
+	}
+
+	for i, detailval := range detailVals {
+		m.Details[i].Value = detailval
+	}
+
 	return m
 }
 
@@ -166,6 +181,8 @@ func (m MLogT) String() string {
 	}
 	out := fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
+		// Note that MLogDetailT implements stringer interface, yielding only
+		// auto-formatted Detail.Value as string
 		if d.String() == "" {
 			out += " " + placeholderEmpty
 			continue

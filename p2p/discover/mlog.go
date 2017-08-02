@@ -17,11 +17,8 @@
 
 // This file 'mlog' is home to the 'discover' package implementation of mlog.
 // All available mlog lines should be established here as variables and documented.
-// For each instance of an mlog call, the respective MLogT variable SetDetails()
+// For each instance of an mlog call, the respective MLogT variable SetDetailValues()
 // method should be called with per-use instance details.
-
-// TODO: consider a consider a concise way to self-document available details
-// for each mlog line.
 
 package discover
 
@@ -33,6 +30,10 @@ import (
 var mlog *logger.Logger
 var mlogOnce sync.Once
 
+// initMLogging registers a logger for the discoverpackage
+// It should only be called once.
+// You can ensure this via:
+// mlogOnce.Do(initMLogging) when the package is initialized
 func initMLogging() {
 	mlog = logger.NewLogger("discover")
 	mlog.Infoln("[mlog] ON")
@@ -45,6 +46,11 @@ var mlogPingHandleFrom = logger.MLogT{
 	Receiver: "PING",
 	Verb: "HANDLE",
 	Subject: "FROM",
+	Details: []logger.MLogDetailT{
+		{"FROM", "UDP_ADDRESS", "STRING"},
+		{"FROM", "ID", "STRING"},
+		{"PING", "EXPIRED", "BOOL"},
+	},
 }
 
 // mlogPongHandleFrom is called once for each pong request from a node FROM
@@ -52,6 +58,11 @@ var mlogPongHandleFrom = logger.MLogT{
 	Receiver: "PONG",
 	Verb: "HANDLE",
 	Subject: "FROM",
+	Details: []logger.MLogDetailT{
+		{"FROM", "UDP_ADDRESS", "STRING"},
+		{"FROM", "ID", "STRING"},
+		{"PING", "EXPIRED", "BOOL"},
+	},
 }
 
 // mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
@@ -59,6 +70,11 @@ var mlogFindNodeHandleFrom = logger.MLogT{
 	Receiver: "FIND_NODE",
 	Verb: "HANDLE",
 	Subject: "FROM",
+	Details: []logger.MLogDetailT{
+		{"FROM", "UDP_ADDRESS", "STRING"},
+		{"FROM", "ID", "STRING"},
+		{"FIND_NODE", "EXPIRED", "BOOL"},
+	},
 }
 
 // mlogFindNodeSendNeighbors is called once for each sent NEIGHBORS request
@@ -66,6 +82,13 @@ var mlogFindNodeSendNeighbors = logger.MLogT{
 	Receiver: "FIND_NODE",
 	Verb: "SEND",
 	Subject: "NEIGHBORS",
+	Details: []logger.MLogDetailT{
+		{"FIND_NODE", "UDP_ADDRESS", "STRING"},
+		{"FIND_NODE", "ID", "STRING"},
+		{"NEIGHBORS", "CHUNK", "INT"},
+		{"NEIGHBORS", "CHUNKS", "INT"},
+		{"NEIGHBORS", "NODES_LEN", "INT"},
+	},
 }
 
 // mlogNeighborsHandleFrom is called once for each neighbors request from a node FROM
@@ -73,4 +96,9 @@ var mlogNeighborsHandleFrom = logger.MLogT{
 	Receiver: "NEIGHBORS",
 	Verb: "HANDLE",
 	Subject: "FROM",
+	Details: []logger.MLogDetailT{
+		{"FROM", "UDP_ADDRESS", "STRING"},
+		{"FROM", "ID", "STRING"},
+		{"NEIGHBORS", "EXPIRED", "BOOL"},
+	},
 }
