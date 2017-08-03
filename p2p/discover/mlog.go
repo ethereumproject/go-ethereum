@@ -38,7 +38,6 @@ const MLogTag = "discover"
 // mlogOnce.Do(initMLogging) when the package is initialized
 func initMLogging() {
 	mlog = logger.NewLogger(MLogTag)
-	mlog.Infoln("[mlog] ON")
 }
 
 // MLogLines is an exported slice of all available mlog LINES.

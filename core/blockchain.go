@@ -159,6 +159,10 @@ func (self *BlockChain) getProcInterrupt() bool {
 	return atomic.LoadInt32(&self.procInterrupt) == 1
 }
 
+func init() {
+	mlogOnce.Do(initMLogging)
+}
+
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
 func (self *BlockChain) loadLastState() error {
@@ -785,6 +789,16 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 		glog.Fatalf("failed to write block contents: %v", err)
 	}
 
+	mlog.Sendf(1, mlogBlockchainWriteBlock.SetDetailValues(
+		block.Number(),
+		block.Hash().Hex(),
+		block.Size().Int64(),
+		block.Transactions().Len(),
+		block.GasUsed(),
+		block.Coinbase().Hex(),
+		block.Time(),
+	).String())
+
 	self.futureBlocks.Remove(block.Hash())
 
 	return
@@ -957,7 +971,25 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 	if (stats.queued > 0 || stats.processed > 0 || stats.ignored > 0) && bool(glog.V(logger.Info)) {
 		tend := time.Since(tstart)
 		start, end := chain[0], chain[len(chain)-1]
-		glog.Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n", stats.processed, stats.queued, stats.ignored, txcount, tend, end.Number(), start.Hash().Bytes()[:4], end.Hash().Bytes()[:4])
+		mlog.Sendf(1, mlogBlockchainInsertBlocks.SetDetailValues(
+			stats.processed,
+			stats.queued,
+			stats.ignored,
+			txcount,
+			end.Number(),
+			start.Hash().Hex(),
+			end.Hash().Hex(),
+			tend,
+		).String())
+		glog.Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n",
+			stats.processed,
+			stats.queued,
+			stats.ignored,
+			txcount,
+			tend,
+			end.Number(),
+			start.Hash().Bytes()[:4],
+			end.Hash().Bytes()[:4])
 	}
 	go self.postChainEvents(events, coalescedLogs)
 
