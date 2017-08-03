@@ -133,6 +133,7 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 }
 
 type MLogT struct {
+	Description string
 	Receiver string
 	Verb string
 	Subject string

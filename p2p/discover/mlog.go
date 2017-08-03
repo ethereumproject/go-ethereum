@@ -30,75 +30,132 @@ import (
 var mlog *logger.Logger
 var mlogOnce sync.Once
 
+const MLogTag = "discover"
+
 // initMLogging registers a logger for the discoverpackage
 // It should only be called once.
 // You can ensure this via:
 // mlogOnce.Do(initMLogging) when the package is initialized
 func initMLogging() {
-	mlog = logger.NewLogger("discover")
+	mlog = logger.NewLogger(MLogTag)
 	mlog.Infoln("[mlog] ON")
+}
+
+// MLogLines is an exported slice of all available mlog LINES.
+// May be used for automatic mlog docmentation generator, or
+// for API usage/display/documentation otherwise.
+var MLogLines = []logger.MLogT{
+	mlogPingHandleFrom,
+	mlogPingSendTo,
+	mlogPongHandleFrom,
+	mlogPongSendTo,
+	mlogFindNodeHandleFrom,
+	mlogFindNodeSendTo,
+	mlogNeighborsHandleFrom,
+	mlogNeighborsSendTo,
 }
 
 // Collect and document available mlog lines.
 
+// PING
 // mlogPingHandleFrom is called once for each ping request from a node FROM
 var mlogPingHandleFrom = logger.MLogT{
+	Description: "Called once for each received PING request from peer FROM.",
 	Receiver: "PING",
 	Verb: "HANDLE",
 	Subject: "FROM",
 	Details: []logger.MLogDetailT{
 		{"FROM", "UDP_ADDRESS", "STRING"},
 		{"FROM", "ID", "STRING"},
-		{"PING", "EXPIRED", "BOOL"},
+		{"PING", "BYTES_TRANSFERRED", "INT"},
 	},
 }
 
+var mlogPingSendTo = logger.MLogT{
+	Description: "Called once for each outgoing PING request to peer TO.",
+	Receiver: "PING",
+	Verb: "SEND",
+	Subject: "TO",
+	Details: []logger.MLogDetailT{
+		{"TO", "UDP_ADDRESS", "STRING"},
+		{"PING", "BYTES_TRANSFERRED", "INT"},
+	},
+}
+
+// PONG
 // mlogPongHandleFrom is called once for each pong request from a node FROM
 var mlogPongHandleFrom = logger.MLogT{
+	Description: "Called once for each received PONG request from peer FROM.",
 	Receiver: "PONG",
 	Verb: "HANDLE",
 	Subject: "FROM",
 	Details: []logger.MLogDetailT{
 		{"FROM", "UDP_ADDRESS", "STRING"},
 		{"FROM", "ID", "STRING"},
-		{"PING", "EXPIRED", "BOOL"},
+		{"PONG", "BYTES_TRANSFERRED", "INT"},
 	},
 }
 
+// mlogPingHandleFrom is called once for each ping request from a node FROM
+var mlogPongSendTo = logger.MLogT{
+	Description: "Called once for each outgoing PONG request to peer TO.",
+	Receiver: "PONG",
+	Verb: "SEND",
+	Subject: "TO",
+	Details: []logger.MLogDetailT{
+		{"TO", "UDP_ADDRESS", "STRING"},
+		{"PONG", "BYTES_TRANSFERRED", "INT"},
+	},
+}
+
+// FINDNODE
 // mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
 var mlogFindNodeHandleFrom = logger.MLogT{
-	Receiver: "FIND_NODE",
+	Description: "Called once for each received FIND_NODE request from peer FROM.",
+	Receiver: "FINDNODE",
 	Verb: "HANDLE",
 	Subject: "FROM",
 	Details: []logger.MLogDetailT{
 		{"FROM", "UDP_ADDRESS", "STRING"},
 		{"FROM", "ID", "STRING"},
-		{"FIND_NODE", "EXPIRED", "BOOL"},
+		{"FINDNODE", "BYTES_TRANSFERRED", "INT"},
 	},
 }
 
-// mlogFindNodeSendNeighbors is called once for each sent NEIGHBORS request
-var mlogFindNodeSendNeighbors = logger.MLogT{
-	Receiver: "FIND_NODE",
+// mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
+var mlogFindNodeSendTo = logger.MLogT{
+	Description: "Called once for each received FIND_NODE request from peer FROM.",
+	Receiver: "FINDNODE",
 	Verb: "SEND",
-	Subject: "NEIGHBORS",
+	Subject: "TO",
 	Details: []logger.MLogDetailT{
-		{"FIND_NODE", "UDP_ADDRESS", "STRING"},
-		{"FIND_NODE", "ID", "STRING"},
-		{"NEIGHBORS", "CHUNK", "INT"},
-		{"NEIGHBORS", "CHUNKS", "INT"},
-		{"NEIGHBORS", "NODES_LEN", "INT"},
+		{"TO", "UDP_ADDRESS", "STRING"},
+		{"FINDNODE", "BYTES_TRANSFERRED", "INT"},
 	},
 }
 
+// NEIGHBORS
 // mlogNeighborsHandleFrom is called once for each neighbors request from a node FROM
 var mlogNeighborsHandleFrom = logger.MLogT{
+	Description: `Called once for each received NEIGHBORS request from peer FROM.`,
 	Receiver: "NEIGHBORS",
 	Verb: "HANDLE",
 	Subject: "FROM",
 	Details: []logger.MLogDetailT{
 		{"FROM", "UDP_ADDRESS", "STRING"},
 		{"FROM", "ID", "STRING"},
-		{"NEIGHBORS", "EXPIRED", "BOOL"},
+		{"NEIGHBORS", "BYTES_TRANSFERRED", "INT"},
+	},
+}
+
+// mlogFindNodeSendNeighbors is called once for each sent NEIGHBORS request
+var mlogNeighborsSendTo = logger.MLogT{
+	Description: `Called once for each outgoing NEIGHBORS request to peer TO.`,
+	Receiver: "NEIGHBORS",
+	Verb: "SEND",
+	Subject: "TO",
+	Details: []logger.MLogDetailT{
+		{"TO", "UDP_ADDRESS", "STRING"},
+		{"NEIGHBORS", "BYTES_TRANSFERRED", "INT"},
 	},
 }
