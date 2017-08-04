@@ -125,10 +125,12 @@ var (
 	MemInuse  = metrics.GetOrRegisterGauge("memory/inuse", reg)
 	MemPauses = metrics.GetOrRegisterGauge("memory/pauses", reg)
 
-	DiskReads      = metrics.GetOrRegisterGauge("disk/readcount", reg)
-	DiskReadBytes  = metrics.GetOrRegisterGauge("disk/readdata", reg)
-	DiskWrites     = metrics.GetOrRegisterGauge("disk/writecount", reg)
-	DiskWriteBytes = metrics.GetOrRegisterGauge("disk/writedata", reg)
+	//DiskReads      = metrics.GetOrRegisterGauge("disk/readcount", reg)
+	//DiskReadBytes  = metrics.GetOrRegisterGauge("disk/readdata", reg)
+	//DiskWrites     = metrics.GetOrRegisterGauge("disk/writecount", reg)
+	//DiskWriteBytes = metrics.GetOrRegisterGauge("disk/writedata", reg)
+
+	NumGoRoutines = metrics.GetOrRegisterGauge("runtime/goroutines", reg)
 )
 
 // diskStats is the per process disk I/O statistics.
@@ -139,7 +141,7 @@ type diskStats struct {
 	WriteBytes int64 // Total number of byte written
 }
 
-func Update() {
+func UpdateSysMetrics() {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
 	MemAllocs.Update(int64(mem.Mallocs))
@@ -147,16 +149,18 @@ func Update() {
 	MemInuse.Update(int64(mem.Alloc))
 	MemPauses.Update(int64(mem.PauseTotalNs))
 
-	var disk diskStats
-	readDiskStats(&disk)
-	DiskReads.Update(disk.ReadCount)
-	DiskReadBytes.Update(disk.ReadBytes)
-	DiskWrites.Update(disk.WriteCount)
-	DiskWriteBytes.Update(disk.WriteBytes)
+	NumGoRoutines.Update(int64(runtime.NumGoroutine()))
+
+	//var disk diskStats
+	//readDiskStats(&disk)
+	//DiskReads.Update(disk.ReadCount)
+	//DiskReadBytes.Update(disk.ReadBytes)
+	//DiskWrites.Update(disk.WriteCount)
+	//DiskWriteBytes.Update(disk.WriteBytes)
 }
 
 func CollectToJSON() ([]byte, error) {
-	Update()
+	UpdateSysMetrics()
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
@@ -178,7 +182,7 @@ func CollectToFile(file string) {
 	encoder := json.NewEncoder(bufio.NewWriter(f))
 
 	for range time.Tick(3 * time.Second) {
-		Update()
+		UpdateSysMetrics()
 		if err := encoder.Encode(reg); err != nil {
 			glog.Errorf("metrics: log to %q: %s", file, err)
 		}

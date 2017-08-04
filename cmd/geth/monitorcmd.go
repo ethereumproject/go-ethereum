@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"reflect"
 	"runtime"
 	"strings"
 	"time"
@@ -35,7 +34,7 @@ import (
 	"path/filepath"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/logger"
-	"encoding/json"
+	"regexp"
 )
 
 var (
@@ -91,12 +90,16 @@ func monitor(ctx *cli.Context) error {
 		log.Fatalf("Failed to retrieve system metrics: %s", err)
 	}
 	monitored := resolveMetrics(metrics, ctx.Args())
+	glog.V(logger.Debug).Infof("monitored: %v, args: %v", monitored, ctx.Args())
 	if len(monitored) == 0 {
 		list := expandMetrics(metrics, "")
 		sort.Strings(list)
 
 		if len(list) > 0 {
-			log.Fatalf("No metrics specified. Available: %q", list)
+			if len(ctx.Args()) == 0 {
+				log.Fatalf("No metrics specified. Available: \n%s", listWithNewlines(list))
+			}
+			log.Fatalf("No metrics found matching that pattern. Available metrics: \n%s", listWithNewlines(list))
 		} else {
 			log.Fatal("No metrics collected by geth (--metrics).")
 		}
@@ -163,9 +166,13 @@ func monitor(ctx *cli.Context) error {
 	return nil
 }
 
+func listWithNewlines(availableMetrics []string) string {
+	return strings.Join(availableMetrics, "\n")
+}
+
 // retrieveMetrics contacts the attached geth node and retrieves the entire set
 // of collected system metrics.
-func retrieveMetrics(client rpc.Client) (map[string]interface{}, error) {
+func retrieveMetrics(client rpc.Client) (map[string]float64, error) {
 	req := map[string]interface{}{
 		"id":      new(int64),
 		"method":  "debug_metrics",
@@ -183,20 +190,13 @@ func retrieveMetrics(client rpc.Client) (map[string]interface{}, error) {
 	}
 
 	if res.Result != nil {
-		r := res.Result.(string)
-		var mets map[string]interface{}
-		var ok bool
-
-		if e := json.Unmarshal([]byte(r), &mets); e != nil {
-			glog.V(logger.Debug).Infof("error unmarshaling: %v", e)
-		} else {
-			ok = true
-			glog.V(logger.Debug).Infof("mets: %v", mets)
-			glog.V(logger.Debug).Infof("mets type: %T", mets)
+		r, ok := res.Result.(map[string]interface{})
+		if !ok {
+			glog.Fatalln("Could not convert resulting JSON response to type map[string]interface{}")
 		}
 
 		if ok {
-			return mets, nil
+			return flattenToFloat(r), nil
 		}
 	}
 
@@ -214,7 +214,7 @@ func retrieveMetrics(client rpc.Client) (map[string]interface{}, error) {
 //*   Full canonical metric (e.g. `system/memory/allocs/AvgRate05Min`)
 //*   Group of metrics (e.g. `system/memory/allocs` or `system/memory`)
 //*   Multiple branching metrics (e.g. `system/memory/allocs,frees/AvgRate01Min`)
-func resolveMetrics(metrics map[string]interface{}, patterns []string) []string {
+func resolveMetrics(metrics map[string]float64, patterns []string) []string {
 	res := []string{}
 	for _, pattern := range patterns {
 		res = append(res, resolveMetric(metrics, pattern, "")...)
@@ -224,6 +224,7 @@ func resolveMetrics(metrics map[string]interface{}, patterns []string) []string 
 
 // resolveMetrics takes a single of input metric pattern, and resolves it to one
 // or more canonical metric names.
+// It is the user-argument parser
 // eg.
 // 1. system/memory/allocs/AvgRate05Min
 //     -> system/memory/allocs/AvgRate05Min
@@ -235,77 +236,60 @@ func resolveMetrics(metrics map[string]interface{}, patterns []string) []string 
 //     -> system/memory/frees/AvgRate01Min
 //     -> system/memory/allocs/AvgRate05Min
 //     -> system/memory/frees/AvgRate05Min
-func resolveMetric(metrics map[string]interface{}, pattern string, path string) []string {
-	// patterns is an expanded slice of patterns based from comma-separated conjunctions
-	// eg. #2,3 above
-	patterns := []string{}
-
-	outpaths := make(map[int][]string) // lookup for comma-sep'd indexed path vals
-	subpaths := strings.Split(pattern, "/")
-	subpaths2 := strings.Split(pattern, "/")
-	for i, sub := range subpaths {
-		cs := strings.Split(sub, ",")
-		for _, c := range cs {
-			outpaths[i] = append(outpaths[i], c)
-		}
-	}
-	for i, v := range outpaths {
-		for _, o := range v {
-			subpaths2[i] = o
-			s := strings.Join(subpaths2, "/")
-			if !sliceContainsString(patterns, s) {
-				patterns = append(patterns, s)
-			}
-			subpaths2 = subpaths // reset reference path
-		}
-	}
-
-	out := []string{}
-	for k := range metrics {
-		for _, p := range patterns {
-			if strings.HasPrefix(k, p) {
-				out = append(out, k)
-			}
+func resolveMetric(metrics map[string]float64, pattern string, path string) []string {
+	var out []string
+	re := regexp.MustCompile(pattern)
+	for met := range metrics {
+		if re.MatchString(met) {
+			out = append(out, met)
 		}
 	}
 	return out
 }
 
 // expandMetrics expands the entire tree of metrics into a flat list of paths.
-func expandMetrics(metrics map[string]interface{}, path string) []string {
-	// Iterate over all fields and expand individually
-	list := []string{}
-	for name, metric := range metrics {
-		switch metric := metric.(type) {
-		case float64:
-			// Final metric value found, append to list
-			list = append(list, path+name)
-
-		case map[string]interface{}:
-			// Tree of metrics found, expand recursively
-			list = append(list, expandMetrics(metric, path+name+"/")...)
-
-		default:
-			log.Fatalf("%s: Metric pattern %q resolved to unexpected type: %v", path, name, reflect.TypeOf(metric))
-		}
+func expandMetrics(metrics map[string]float64, path string) []string {
+	var list []string
+	for k := range metrics {
+		list = append(list, k)
 	}
 	return list
 }
 
-// FIXME
-// fetchMetric iterates over the metrics map and retrieves a specific one.
-func fetchMetric(metrics map[string]interface{}, metric string) float64 {
-	parts, found := strings.Split(metric, "/"), true
-	for _, part := range parts[:len(parts)-1] {
-		metrics, found = metrics[part].(map[string]interface{})
-		if !found {
-			return 0
+// flattenToFloat takes:
+/*
+p2p/bytes/in: map[string]interface{}
+where interface{} val is:
+map{
+  15m.rate: 0
+  5m.rate: 4
+  1m.rate: 1.3
+  mean.rate: 0.7222
+  count: 14
+}
+
+and returns:
+map{
+p2p/bytes/in/15m.rate: 0
+p2p/bytes/in/5m.rate: 4
+p2p/bytes/in/1m.rate: 1.3
+p2p/bytes/in/mean.rate: 0.7222
+p2p/bytes/in/count: 14
+}
+
+*/
+func flattenToFloat(rawMets map[string]interface{}) map[string]float64 {
+	var mets = make(map[string]float64)
+	for k, v := range rawMets {
+		if vi, ok := v.(map[string]interface{}); ok {
+			for vk, vv := range vi {
+				if f, fok := vv.(float64); fok {
+					mets[k + "/" + vk] = f
+				}
+			}
 		}
 	}
-	if v, ok := metrics[parts[len(parts)-1]].(float64); ok {
-		return v
-	}
-	return 0
+	return mets
 }
 
 // refreshCharts retrieves a next batch of metrics, and inserts all the new
@@ -314,9 +298,9 @@ func refreshCharts(client rpc.Client, metrics []string, data [][]float64, units 
 	values, err := retrieveMetrics(client)
 	for i, metric := range metrics {
 		if len(data) < 512 {
-			data[i] = append([]float64{fetchMetric(values, metric)}, data[i]...)
+			data[i] = append([]float64{values[metric]}, data[i]...)
 		} else {
-			data[i] = append([]float64{fetchMetric(values, metric)}, data[i][:len(data[i])-1]...)
+			data[i] = append([]float64{values[metric]}, data[i][:len(data[i])-1]...)
 		}
 		if updateChart(metric, data[i], &units[i], charts[i], err) {
 			realign = true
