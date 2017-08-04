@@ -10,6 +10,10 @@ var mlogOnce sync.Once
 
 const MLogTag = "blockchain"
 
+func init() {
+	mlogOnce.Do(initMLogging)
+}
+
 // initMLogging registers a logger for the discoverpackage
 // It should only be called once.
 // You can ensure this via:

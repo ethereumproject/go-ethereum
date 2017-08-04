@@ -32,6 +32,10 @@ var mlogOnce sync.Once
 
 const MLogTag = "discover"
 
+func init() {
+	mlogOnce.Do(initMLogging)
+}
+
 // initMLogging registers a logger for the discoverpackage
 // It should only be called once.
 // You can ensure this via:

@@ -483,9 +483,6 @@ var (
 )
 
 func init() {
-	glog.V(logger.Error).Infoln("MLOG INIT")
-	mlogOnce.Do(initMLogging)
-
 	p := neighbors{Expiration: ^uint64(0)}
 	maxSizeNode := rpcNode{IP: make(net.IP, 16), UDP: ^uint16(0), TCP: ^uint16(0)}
 	for n := 0; ; n++ {

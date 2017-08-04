@@ -159,10 +159,6 @@ func (self *BlockChain) getProcInterrupt() bool {
 	return atomic.LoadInt32(&self.procInterrupt) == 1
 }
 
-func init() {
-	mlogOnce.Do(initMLogging)
-}
-
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
 func (self *BlockChain) loadLastState() error {
