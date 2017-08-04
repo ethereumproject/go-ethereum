@@ -977,7 +977,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			end.Hash().Hex(),
 			tend,
 		).String())
-		glog.Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n",
+		glog.V(logger.Info).Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n",
 			stats.processed,
 			stats.queued,
 			stats.ignored,

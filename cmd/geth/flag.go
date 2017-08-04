@@ -472,7 +472,6 @@ func makeMLog(ctx *cli.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	glog.V(logger.Info).Infof("created m log file: %v", filename)
 	logger.New(mlogdir, filename, 1)
 	return filename, nil
 }

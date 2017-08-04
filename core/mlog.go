@@ -61,6 +61,6 @@ var mlogBlockchainInsertBlocks = logger.MLogT{
 		{"BLOCKS", "LAST_NUMBER", "INT"},
 		{"BLOCKS", "FIRST_HASH", "STRING"},
 		{"BLOCKS", "LAST_HASH", "STRING"},
-		{"INSERT", "TIME", "TIME"},
+		{"INSERT", "TIME", "INTERVAL"},
 	},
 }

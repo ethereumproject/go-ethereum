@@ -126,7 +126,7 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 	fmt.Fprintf(&buf, "Log file created at: %s\n", t.Format("2006/01/02 15:04:05"))
 	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
 	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	fmt.Fprintln(&buf, strings.Repeat("-", 61))
+	fmt.Fprintln(&buf, glog.Separator("-"))
 	f.Write(buf.Bytes())
 
 	return f, fname, nil
