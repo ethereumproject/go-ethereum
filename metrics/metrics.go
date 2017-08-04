@@ -125,11 +125,6 @@ var (
 	MemInuse  = metrics.GetOrRegisterGauge("memory/inuse", reg)
 	MemPauses = metrics.GetOrRegisterGauge("memory/pauses", reg)
 
-	//DiskReads      = metrics.GetOrRegisterGauge("disk/readcount", reg)
-	//DiskReadBytes  = metrics.GetOrRegisterGauge("disk/readdata", reg)
-	//DiskWrites     = metrics.GetOrRegisterGauge("disk/writecount", reg)
-	//DiskWriteBytes = metrics.GetOrRegisterGauge("disk/writedata", reg)
-
 	NumGoRoutines = metrics.GetOrRegisterGauge("runtime/goroutines", reg)
 )
 
@@ -150,13 +145,6 @@ func UpdateSysMetrics() {
 	MemPauses.Update(int64(mem.PauseTotalNs))
 
 	NumGoRoutines.Update(int64(runtime.NumGoroutine()))
-
-	//var disk diskStats
-	//readDiskStats(&disk)
-	//DiskReads.Update(disk.ReadCount)
-	//DiskReadBytes.Update(disk.ReadBytes)
-	//DiskWrites.Update(disk.WriteCount)
-	//DiskWriteBytes.Update(disk.WriteBytes)
 }
 
 func CollectToJSON() ([]byte, error) {

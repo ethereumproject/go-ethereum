@@ -33,7 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"path/filepath"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/logger"
 	"regexp"
 )
 
@@ -90,7 +89,6 @@ func monitor(ctx *cli.Context) error {
 		log.Fatalf("Failed to retrieve system metrics: %s", err)
 	}
 	monitored := resolveMetrics(metrics, ctx.Args())
-	glog.V(logger.Debug).Infof("monitored: %v, args: %v", monitored, ctx.Args())
 	if len(monitored) == 0 {
 		list := expandMetrics(metrics, "")
 		sort.Strings(list)
@@ -166,6 +164,8 @@ func monitor(ctx *cli.Context) error {
 	return nil
 }
 
+// listWithNewlines is a convenience function for showing available
+// metrics in case there are none specified or no matches
 func listWithNewlines(availableMetrics []string) string {
 	return strings.Join(availableMetrics, "\n")
 }
@@ -177,7 +177,7 @@ func retrieveMetrics(client rpc.Client) (map[string]float64, error) {
 		"id":      new(int64),
 		"method":  "debug_metrics",
 		"jsonrpc": "2.0",
-		"params":  []interface{}{true},
+		"params":  []interface{}{},
 	}
 
 	if err := client.Send(req); err != nil {
@@ -209,11 +209,7 @@ func retrieveMetrics(client rpc.Client) (map[string]float64, error) {
 // eg.
 // $ geth monitor [--attach=api-endpoint] metric1 metric2 ... metricN
 //
-// Where a metric may be:
-//
-//*   Full canonical metric (e.g. `system/memory/allocs/AvgRate05Min`)
-//*   Group of metrics (e.g. `system/memory/allocs` or `system/memory`)
-//*   Multiple branching metrics (e.g. `system/memory/allocs,frees/AvgRate01Min`)
+// Where a metric may be: a REGEX to match available metrics paths/strings/names
 func resolveMetrics(metrics map[string]float64, patterns []string) []string {
 	res := []string{}
 	for _, pattern := range patterns {
@@ -224,18 +220,6 @@ func resolveMetrics(metrics map[string]float64, patterns []string) []string {
 
 // resolveMetrics takes a single of input metric pattern, and resolves it to one
 // or more canonical metric names.
-// It is the user-argument parser
-// eg.
-// 1. system/memory/allocs/AvgRate05Min
-//     -> system/memory/allocs/AvgRate05Min
-// 2. system/memory/allocs,frees/AvgRate01Min
-//     -> system/memory/allocs/AvgRate01Min
-//     -> system/memory/frees/AvgRate01Min
-// 3. system/memory/allocs,frees/AvgRate01Min,AvgRate05Min
-//     -> system/memory/allocs/AvgRate01Min
-//     -> system/memory/frees/AvgRate01Min
-//     -> system/memory/allocs/AvgRate05Min
-//     -> system/memory/frees/AvgRate05Min
 func resolveMetric(metrics map[string]float64, pattern string, path string) []string {
 	var out []string
 	re := regexp.MustCompile(pattern)

@@ -1677,7 +1677,7 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 // vs. machine-readable units (eg. "AvgRate01Min: 1599.6190029292586,").
 //
 // See https://github.com/ethereumproject/go-ethereum/wiki/Metrics-and-Monitoring for prophetic documentation.
-func (api *PublicDebugAPI) Metrics(stringy *bool) (interface{}, error) {
+func (api *PublicDebugAPI) Metrics() (interface{}, error) {
 
 	b, err := metrics.CollectToJSON()
 	if err != nil {
