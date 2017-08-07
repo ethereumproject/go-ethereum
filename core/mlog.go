@@ -37,6 +37,8 @@ var mlogBlockchainWriteBlock = logger.MLogT{
 	Verb: "WRITE",
 	Subject: "BLOCK",
 	Details: []logger.MLogDetailT{
+		{"WRITE", "STATUS", "STRING"},
+		{"WRITE", "ERROR", "STRING"},
 		{"BLOCK", "NUMBER", "INT"},
 		{"BLOCK", "HASH", "STRING"},
 		{"BLOCK", "SIZE", "INT"},

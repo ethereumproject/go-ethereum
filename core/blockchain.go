@@ -747,6 +747,30 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 
 // WriteBlock writes the block to the chain.
 func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err error) {
+
+	defer func(status WriteStatus, err error) {
+		mlogWriteStatus := "UNKNOWN"
+		switch status {
+		case NonStatTy:
+			mlogWriteStatus = "NONE"
+		case CanonStatTy:
+			mlogWriteStatus = "CANON"
+		case SideStatTy:
+			mlogWriteStatus = "SIDE"
+		}
+		mlog.Sendf(1, mlogBlockchainWriteBlock.SetDetailValues(
+			mlogWriteStatus,
+			err,
+			block.Number(),
+			block.Hash().Hex(),
+			block.Size().Int64(),
+			block.Transactions().Len(),
+			block.GasUsed(),
+			block.Coinbase().Hex(),
+			block.Time(),
+		).String())
+	}(status, err)
+
 	self.wg.Add(1)
 	defer self.wg.Done()
 
@@ -784,16 +808,6 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	if err := WriteBlock(self.chainDb, block); err != nil {
 		glog.Fatalf("failed to write block contents: %v", err)
 	}
-
-	mlog.Sendf(1, mlogBlockchainWriteBlock.SetDetailValues(
-		block.Number(),
-		block.Hash().Hex(),
-		block.Size().Int64(),
-		block.Transactions().Len(),
-		block.GasUsed(),
-		block.Coinbase().Hex(),
-		block.Time(),
-	).String())
 
 	self.futureBlocks.Remove(block.Hash())
 
