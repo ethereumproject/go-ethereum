@@ -599,26 +599,26 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 	}
 	// Use fmt Type interpolator to decide kind of request received,
 	// since packet is an interface with 1 method: handle.
-	switch p := fmt.Sprintf("%T", packet); p {
-	case "*discover.ping":
+	switch packet.(type) {
+	case *ping:
 		mlog.Sendln(1, mlogPingHandleFrom.SetDetailValues(
 			from,
 			fromID,
 			len(buf),
 		).String())
-	case "*discover.pong":
+	case *pong:
 		mlog.Sendln(1, mlogPongHandleFrom.SetDetailValues(
 			from,
 			fromID,
 			len(buf),
 		).String())
-	case "*discover.findnode":
+	case *findnode:
 		mlog.Sendln(1, mlogFindNodeHandleFrom.SetDetailValues(
 			from,
 			fromID,
 			len(buf),
 		).String())
-	case "*discover.neighbors":
+	case *neighbors:
 		mlog.Sendln(1, mlogNeighborsHandleFrom.SetDetailValues(
 			from,
 			fromID,
