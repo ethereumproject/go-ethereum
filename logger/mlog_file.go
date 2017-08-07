@@ -194,5 +194,5 @@ func (m MLogT) String() string {
 }
 
 func (d MLogDetailT) String() string {
-	return fmt.Sprint(d.Value)
+	return fmt.Sprintf("[%v]", d.Value)
 }
