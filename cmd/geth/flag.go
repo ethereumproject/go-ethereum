@@ -478,14 +478,16 @@ func makeMLogFileLogger(ctx *cli.Context) (string, error) {
 
 func mustRegisterMLogsFromContext(ctx *cli.Context) {
 	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalString(MLogComponentsFlag.Name)); e != nil {
-		glog.V(logger.Error).Infof("Available machine log components:")
-		var doc string
+		var components []string
+		doc := "\n"
 		for k, v := range logger.MLogRegistryAvailable {
+			components = append(components, string(k))
 			doc += fmt.Sprintf("\n%s\n", k)
 			for _, vv := range v {
 				doc += fmt.Sprintf("  %v\n", vv.String(true))
 			}
 		}
+		glog.V(logger.Error).Infof("Available machine log components: %v", components)
 		glog.Fatalf("%s\n%s", doc, e)
 	}
 	fname, e := makeMLogFileLogger(ctx)

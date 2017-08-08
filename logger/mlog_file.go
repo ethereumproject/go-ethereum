@@ -223,10 +223,6 @@ func (m MLogT) SetDetailValues(detailVals ...interface{}) MLogT {
 // an MLogT struct.
 // eg. $RECEIVER $SUBJECT $VERB $RECEIVER:DETAIL $RECEIVER:DETAIL $SUBJECT:DETAIL $SUBJECT:DETAIL
 func (m MLogT) String(documentation ...bool) string {
-	forDoc := false
-	if documentation != nil {
-		forDoc = documentation[0]
-	}
 	placeholderEmpty := "-"
 	if m.Receiver == "" {
 		m.Receiver = placeholderEmpty
@@ -241,14 +237,14 @@ func (m MLogT) String(documentation ...bool) string {
 	for _, d := range m.Details {
 		out += " " + d.String(documentation...)
 	}
-	if forDoc {
+	if documentation != nil && len(documentation) > 0 && documentation[0] {
 		out += fmt.Sprintf("\n    %s", m.Description)
 	}
 	return out
 }
 
 func (d MLogDetailT) String(documentation ...bool) string {
-	if documentation != nil && documentation[0] {
+	if documentation != nil && len(documentation) > 0 && documentation[0] {
 		return fmt.Sprintf("$%s:%s:%s", d.Owner, d.Key, d.Value)
 	}
 	return fmt.Sprintf("[%v]", d.Value)

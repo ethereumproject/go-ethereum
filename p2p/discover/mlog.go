@@ -26,12 +26,12 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 )
 
-var mlogDiscover = logger.MLogPostComponent("discover", MLogLines)
+var mlogDiscover = logger.MLogPostComponent("discover", mLogLines)
 
-// MLogLines is an exported slice of all available mlog LINES.
+// mLogLines is a private slice of all available mlog LINES.
 // May be used for automatic mlog docmentation generator, or
 // for API usage/display/documentation otherwise.
-var MLogLines = []logger.MLogT{
+var mLogLines = []logger.MLogT{
 	mlogPingHandleFrom,
 	mlogPingSendTo,
 	mlogPongHandleFrom,

@@ -4,12 +4,12 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 )
 
-var mlogBlockchain = logger.MLogPostComponent("blockchain", MLogLines)
+var mlogBlockchain = logger.MLogPostComponent("blockchain", mLogLines)
 
-// MLogLines is an exported slice of all available mlog LINES.
+// mLogLines is an private slice of all available mlog LINES.
 // May be used for automatic mlog documentation generator, or
 // for API usage/display/documentation otherwise.
-var MLogLines = []logger.MLogT{
+var mLogLines = []logger.MLogT{
 	mlogBlockchainWriteBlock,
 	mlogBlockchainInsertBlocks,
 }
