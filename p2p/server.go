@@ -668,6 +668,12 @@ func (srv *Server) checkpoint(c *conn, stage chan<- *conn) error {
 // it waits until the Peer logic returns and removes
 // the peer.
 func (srv *Server) runPeer(p *Peer) {
+	mlogServer.Send(mlogServerPeerAdded.SetDetailValues(
+		srv.PeerCount(),
+		p.ID().String(),
+		p.RemoteAddr().String(),
+		p.Name(),
+	).String())
 	glog.V(logger.Debug).Infof("Added %v\n", p)
 	srvjslog.LogJson(&logger.P2PConnected{
 		RemoteId:            p.ID().String(),
@@ -684,6 +690,11 @@ func (srv *Server) runPeer(p *Peer) {
 	// before returning, so this send should not select on srv.quit.
 	srv.delpeer <- p
 
+	mlogServer.Send(mlogServerPeerRemove.SetDetailValues(
+		srv.PeerCount(),
+		p.ID().String(),
+		discreason,
+	).String())
 	glog.V(logger.Debug).Infof("Removed %v (%v)\n", p, discreason)
 	srvjslog.LogJson(&logger.P2PDisconnected{
 		RemoteId:       p.ID().String(),
