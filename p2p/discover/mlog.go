@@ -26,7 +26,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 )
 
-var mlogDiscover = logger.MLogPostComponent("discover", mLogLines)
+var mlogDiscover = logger.MLogRegisterAvailable("discover", mLogLines)
 
 // mLogLines is a private slice of all available mlog LINES.
 // May be used for automatic mlog docmentation generator, or

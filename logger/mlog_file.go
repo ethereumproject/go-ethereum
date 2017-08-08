@@ -15,7 +15,7 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 
-// File I/O for mlogs.
+// File I/O and registry for mlogs.
 
 package logger
 
@@ -41,15 +41,20 @@ var (
 	errMLogComponentUnavailable = errors.New("provided component name is unavailable")
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
-	// with MLogPostComponent.
+	// with MLogRegisterAvailable.
 	MLogRegistryAvailable = make(map[mlogComponent][]MLogT)
-	// MLogRegistry contains all registered mlog component and their respective loggers.
-	MLogRegistry = make(map[mlogComponent]*Logger)
-	mlogRegLock sync.RWMutex
+	// MLogRegistryActive contains all registered mlog component and their respective loggers.
+	MLogRegistryActive = make(map[mlogComponent]*Logger)
+	mlogRegLock        sync.RWMutex
 )
 
+// mlogComponent is used as a golang receiver type that can call Send(logLine).
 type mlogComponent string
 
+// The following vars and init() essentially duplicate those found in glog_file;
+// the reason for the non-DRYness of that is that this allows us flexibility
+// as we finalize the spec and format for the mlog lines, allowing customization
+// of the establish system if desired, without exporting the vars from glog.
 var (
 	pid      = os.Getpid()
 	program  = filepath.Base(os.Args[0])
@@ -72,7 +77,10 @@ func init() {
 	userName = strings.Replace(userName, `\`, "_", -1)
 }
 
-func MLogPostComponent(name string, lines []MLogT) mlogComponent {
+// MLogRegisterAvailable is called for each log component variable from a package/mlog.go file
+// as they set up their mlog vars.
+// It registers an mlog component as Available.
+func MLogRegisterAvailable(name string, lines []MLogT) mlogComponent {
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
 	MLogRegistryAvailable[c] = lines
@@ -80,12 +88,17 @@ func MLogPostComponent(name string, lines []MLogT) mlogComponent {
 	return c
 }
 
+// MLogRegisterComponentsFromContext receives a comma-separated string of
+// desired mlog components.
+// It returns an error if the specified mlog component is unavailable.
+// For each available component, the desires mlog components are registered as active,
+// creating new loggers for each.
 func MLogRegisterComponentsFromContext(s string) error {
 	ss := strings.Split(s, ",")
 	for _, c := range ss {
 		ct := strings.TrimSpace(c)
 		if MLogRegistryAvailable[mlogComponent(ct)] != nil {
-			MLogRegister(mlogComponent(ct))
+			MLogRegisterActive(mlogComponent(ct))
 			continue
 		}
 		return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
@@ -93,23 +106,25 @@ func MLogRegisterComponentsFromContext(s string) error {
 	return nil
 }
 
-// MLogRegister registers a component for mlogging.
+// MLogRegisterActive registers a component for mlogging.
 // Only registered loggers will write to mlog file.
-func MLogRegister(component mlogComponent) {
+func MLogRegisterActive(component mlogComponent) {
 	mlogRegLock.Lock()
-	MLogRegistry[component] = NewLogger(string(component))
+	MLogRegistryActive[component] = NewLogger(string(component))
 	mlogRegLock.Unlock()
 }
 
-// SendMLog writes enabled component mlogs to file.
+// SendMLog writes enabled component mlogs to file if the component is registered active.
 func (c mlogComponent) Send(logLine string) {
 	mlogRegLock.RLock()
-	if l := MLogRegistry[c]; l != nil {
+	if l := MLogRegistryActive[c]; l != nil {
 		l.Sendf(1, logLine)
 	}
 	mlogRegLock.RUnlock()
 }
 
+// SetMLogDir sets the mlog directory, into which one mlog file per session
+// will be written.
 func SetMLogDir(str string) {
 	*mLogDir = str
 }
@@ -175,7 +190,7 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
 	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	cmps := []string{}
-	for k := range MLogRegistry {
+	for k := range MLogRegistryActive {
 		cmps = append(cmps, string(k))
 	}
 	fmt.Fprintf(&buf, "Registered components: %v\n", cmps) // no need for fancy formatting
@@ -185,6 +200,7 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 	return f, fname, nil
 }
 
+// MLogT defines an mlog LINE
 type MLogT struct {
 	Description string
 	Receiver string
@@ -193,6 +209,7 @@ type MLogT struct {
 	Details []MLogDetailT
 }
 
+// MLogDetailT defines an mlog LINE DETAILS
 type MLogDetailT struct {
 	Owner string
 	Key string
@@ -243,6 +260,9 @@ func (m MLogT) String(documentation ...bool) string {
 	return out
 }
 
+// String implements the stringer interface for mlog details.
+// It can used to provide raw mlog-formatted strings, or
+// strings formatted for self-documentation.
 func (d MLogDetailT) String(documentation ...bool) string {
 	if documentation != nil && len(documentation) > 0 && documentation[0] {
 		return fmt.Sprintf("$%s:%s:%s", d.Owner, d.Key, d.Value)

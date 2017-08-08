@@ -4,7 +4,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 )
 
-var mlogBlockchain = logger.MLogPostComponent("blockchain", mLogLines)
+var mlogBlockchain = logger.MLogRegisterAvailable("blockchain", mLogLines)
 
 // mLogLines is an private slice of all available mlog LINES.
 // May be used for automatic mlog documentation generator, or
