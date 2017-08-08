@@ -19,7 +19,13 @@ Releases considered __stable__ may be found on our [Releases Page](https://githu
 
 Rolling builds for the master branch may be found at [builds.etcdevteam.com](builds.etcdevteam.com).
 
-## [3.5.86] - 2017-07-19 -
+## [Unreleased]
+
+#### Added
+- JSON-RPC: `debug_traceTransaction` method
+- P2P: improve peer discovery by allowing "good-will" for peers with unknown HF blocks
+
+## [3.5.86] - 2017-07-19 - db60074
 
 #### Added
 - Newly configurable in external `chain.json`:
@@ -35,7 +41,7 @@ Rolling builds for the master branch may be found at [builds.etcdevteam.com](bui
 
 #### Changed
 - Nightly and tagged release distribution builds now available at [builds.etcdevteam.com](builds.etcdevteam.com) (instead of Bintray)
-- _Option_: `--chain <chainIdentifier|mychain.json>` - specify chain identifier or path to JSON configuration file
+- _Option_: `--chain <chainIdentifier|mychain.json>` - specify chain identifier OR path to JSON configuration file
 
 #### Fixed
 - `geth attach` command uses chain subdirectory schema by default, e.g. `datadir/mainnet/geth.ipc` instead of `datadir/geth.ipc`
