@@ -929,7 +929,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 		case <-sigc:
 			// Listen for interrupt
 			ticker.Stop()
-			glog.V(logger.Error).Infoln("STATUS SYNC Stopping logging.")
+			glog.V(logger.Debug).Infoln("STATUS SYNC Stopping logging.")
 			return
 		}
 	}
