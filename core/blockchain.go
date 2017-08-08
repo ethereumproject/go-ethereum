@@ -758,7 +758,7 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 		case SideStatTy:
 			mlogWriteStatus = "SIDE"
 		}
-		mlog.Sendf(1, mlogBlockchainWriteBlock.SetDetailValues(
+		mlogBlockchain.Send(mlogBlockchainWriteBlock.SetDetailValues(
 			mlogWriteStatus,
 			err,
 			block.Number(),
@@ -981,7 +981,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 	if (stats.queued > 0 || stats.processed > 0 || stats.ignored > 0) && bool(glog.V(logger.Info)) {
 		tend := time.Since(tstart)
 		start, end := chain[0], chain[len(chain)-1]
-		mlog.Sendf(1, mlogBlockchainInsertBlocks.SetDetailValues(
+		mlogBlockchain.Send(mlogBlockchainInsertBlocks.SetDetailValues(
 			stats.processed,
 			stats.queued,
 			stats.ignored,

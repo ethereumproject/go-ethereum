@@ -137,9 +137,12 @@ var AppHelpFlagGroups = []flagGroup{
 		Name: "LOGGING AND DEBUGGING",
 		Flags: []cli.Flag{
 			VerbosityFlag,
-			LogDirFlag,
 			VModuleFlag,
+			LogDirFlag,
 			LogStatusFlag,
+			MLogFlag,
+			MLogDirFlag,
+			MLogComponentsFlag,
 			BacktraceAtFlag,
 			MetricsFlag,
 			FakePoWFlag,

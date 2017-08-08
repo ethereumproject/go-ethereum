@@ -155,6 +155,7 @@ The output of this command is supposed to be machine-readable.
 		LogStatusFlag,
 		MLogFlag,
 		MLogDirFlag,
+		MLogComponentsFlag,
 		BacktraceAtFlag,
 		MetricsFlag,
 		FakePoWFlag,

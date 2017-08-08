@@ -506,22 +506,22 @@ func (t *udp) send(toaddr *net.UDPAddr, ptype byte, req interface{}) error {
 	}
 	switch ptype {
 	case pingPacket:
-		mlog.Sendln(1, mlogPingSendTo.SetDetailValues(
+		mlogDiscover.Send(mlogPingSendTo.SetDetailValues(
 			toaddr,
 			len(packet),
 		).String())
 	case pongPacket:
-		mlog.Sendln(1, mlogPongSendTo.SetDetailValues(
+		mlogDiscover.Send(mlogPongSendTo.SetDetailValues(
 			toaddr,
 			len(packet),
 		).String())
 	case findnodePacket:
-		mlog.Sendln(1, mlogFindNodeSendTo.SetDetailValues(
+		mlogDiscover.Send(mlogFindNodeSendTo.SetDetailValues(
 			toaddr,
 			len(packet),
 		).String())
 	case neighborsPacket:
-		mlog.Sendln(1, mlogNeighborsSendTo.SetDetailValues(
+		mlogDiscover.Send(mlogNeighborsSendTo.SetDetailValues(
 			toaddr,
 			len(packet),
 		).String())
@@ -598,25 +598,25 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 	// since packet is an interface with 1 method: handle.
 	switch p := fmt.Sprintf("%T", packet); p {
 	case "*discover.ping":
-		mlog.Sendln(1, mlogPingHandleFrom.SetDetailValues(
+		mlogDiscover.Send(mlogPingHandleFrom.SetDetailValues(
 			from,
 			fromID,
 			len(buf),
 		).String())
 	case "*discover.pong":
-		mlog.Sendln(1, mlogPongHandleFrom.SetDetailValues(
+		mlogDiscover.Send(mlogPongHandleFrom.SetDetailValues(
 			from,
 			fromID,
 			len(buf),
 		).String())
 	case "*discover.findnode":
-		mlog.Sendln(1, mlogFindNodeHandleFrom.SetDetailValues(
+		mlogDiscover.Send(mlogFindNodeHandleFrom.SetDetailValues(
 			from,
 			fromID,
 			len(buf),
 		).String())
 	case "*discover.neighbors":
-		mlog.Sendln(1, mlogNeighborsHandleFrom.SetDetailValues(
+		mlogDiscover.Send(mlogNeighborsHandleFrom.SetDetailValues(
 			from,
 			fromID,
 			len(buf),

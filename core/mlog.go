@@ -2,30 +2,15 @@ package core
 
 import (
 	"github.com/ethereumproject/go-ethereum/logger"
-	"sync"
 )
 
-var mlog *logger.Logger
-var mlogOnce sync.Once
-
-const MLogTag = "blockchain"
-
-func init() {
-	mlogOnce.Do(initMLogging)
-}
-
-// initMLogging registers a logger for the discoverpackage
-// It should only be called once.
-// You can ensure this via:
-// mlogOnce.Do(initMLogging) when the package is initialized
-func initMLogging() {
-	mlog = logger.NewLogger(MLogTag)
-}
+var mlogBlockchain = logger.MLogPostComponent("blockchain", MLogLines)
 
 // MLogLines is an exported slice of all available mlog LINES.
 // May be used for automatic mlog documentation generator, or
 // for API usage/display/documentation otherwise.
 var MLogLines = []logger.MLogT{
+	mlogBlockchainWriteBlock,
 	mlogBlockchainInsertBlocks,
 }
 

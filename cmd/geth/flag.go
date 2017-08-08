@@ -462,7 +462,7 @@ func mustMakeMLogDir(ctx *cli.Context) string {
 	return rp
 }
 
-func makeMLog(ctx *cli.Context) (string, error) {
+func makeMLogFileLogger(ctx *cli.Context) (string, error) {
 	now:= time.Now()
 
 	mlogdir := mustMakeMLogDir(ctx)
@@ -474,6 +474,25 @@ func makeMLog(ctx *cli.Context) (string, error) {
 	}
 	logger.New(mlogdir, filename, 1)
 	return filename, nil
+}
+
+func mustRegisterMLogsFromContext(ctx *cli.Context) {
+	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalString(MLogComponentsFlag.Name)); e != nil {
+		glog.V(logger.Error).Infof("Available machine log components:")
+		var doc string
+		for k, v := range logger.MLogRegistryAvailable {
+			doc += fmt.Sprintf("\n%s\n", k)
+			for _, vv := range v {
+				doc += fmt.Sprintf("  %v\n", vv.String(true))
+			}
+		}
+		glog.Fatalf("%s\n%s", doc, e)
+	}
+	fname, e := makeMLogFileLogger(ctx)
+	if e != nil {
+		glog.Fatalf("Failed to start machine log: %v", e)
+	}
+	glog.V(logger.Info).Infof("Machine logs file: %v", fname)
 }
 
 // MakeSystemNode sets up a local node, configures the services to launch and
@@ -538,13 +557,9 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	// If --mlog enabled, configure and create mlog dir and file
 	if ctx.GlobalBoolT(MLogFlag.Name) {
-		fname, e := makeMLog(ctx)
-		if e != nil {
-			glog.Fatalf("Failed to start mlog: %v", e)
-		}
-		glog.V(logger.Info).Infof("Writing mlog: %v", fname)
+		mustRegisterMLogsFromContext(ctx)
 	} else {
-		glog.V(logger.Warn).Infof("Disabled: mlog")
+		glog.V(logger.Warn).Infof("Machine logs: disabled")
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {

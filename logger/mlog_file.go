@@ -30,26 +30,25 @@ import (
 	"bytes"
 	"runtime"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"sync"
 )
 
-// MaxSize is the maximum size of a log file in bytes.
-var MaxSize uint64 = 1024 * 1024 * 1800
+var (
+	// If non-empty, overrides the choice of directory in which to write logs.
+	// See createLogDirs for the full list of possible destinations.
+	mLogDir *string = new(string)
 
-// If non-empty, overrides the choice of directory in which to write logs.
-// See createLogDirs for the full list of possible destinations.
-//var mLogDir = flag.String("log_dir", "", "If non-empty, write log files in this directory")
-var mLogDir *string = new(string)
+	errMLogComponentUnavailable = errors.New("provided component name is unavailable")
 
-func SetMLogDir(str string) {
-	*mLogDir = str
-}
+	// MLogRegistryAvailable contains all available mlog components submitted by any package
+	// with MLogPostComponent.
+	MLogRegistryAvailable = make(map[mlogComponent][]MLogT)
+	// MLogRegistry contains all registered mlog component and their respective loggers.
+	MLogRegistry = make(map[mlogComponent]*Logger)
+	mlogRegLock sync.RWMutex
+)
 
-func createLogDirs() error {
-	if *mLogDir != "" {
-		return os.MkdirAll(*mLogDir, os.ModePerm)
-	}
-	return errors.New("createLogDirs received empty string")
-}
+type mlogComponent string
 
 var (
 	pid      = os.Getpid()
@@ -71,6 +70,55 @@ func init() {
 
 	// Sanitize userName since it may contain filepath separators on Windows.
 	userName = strings.Replace(userName, `\`, "_", -1)
+}
+
+func MLogPostComponent(name string, lines []MLogT) mlogComponent {
+	c := mlogComponent(name)
+	mlogRegLock.Lock()
+	MLogRegistryAvailable[c] = lines
+	mlogRegLock.Unlock()
+	return c
+}
+
+func MLogRegisterComponentsFromContext(s string) error {
+	ss := strings.Split(s, ",")
+	for _, c := range ss {
+		ct := strings.TrimSpace(c)
+		if MLogRegistryAvailable[mlogComponent(ct)] != nil {
+			MLogRegister(mlogComponent(ct))
+			continue
+		}
+		return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
+	}
+	return nil
+}
+
+// MLogRegister registers a component for mlogging.
+// Only registered loggers will write to mlog file.
+func MLogRegister(component mlogComponent) {
+	mlogRegLock.Lock()
+	MLogRegistry[component] = NewLogger(string(component))
+	mlogRegLock.Unlock()
+}
+
+// SendMLog writes enabled component mlogs to file.
+func (c mlogComponent) Send(logLine string) {
+	mlogRegLock.RLock()
+	if l := MLogRegistry[c]; l != nil {
+		l.Sendf(1, logLine)
+	}
+	mlogRegLock.RUnlock()
+}
+
+func SetMLogDir(str string) {
+	*mLogDir = str
+}
+
+func createLogDirs() error {
+	if *mLogDir != "" {
+		return os.MkdirAll(*mLogDir, os.ModePerm)
+	}
+	return errors.New("createLogDirs received empty string")
 }
 
 // shortHostname returns its argument, truncating at the first period.
@@ -126,6 +174,11 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 	fmt.Fprintf(&buf, "Log file created at: %s\n", t.Format("2006/01/02 15:04:05"))
 	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
 	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	cmps := []string{}
+	for k := range MLogRegistry {
+		cmps = append(cmps, string(k))
+	}
+	fmt.Fprintf(&buf, "Registered components: %v\n", cmps) // no need for fancy formatting
 	fmt.Fprintln(&buf, glog.Separator("-"))
 	f.Write(buf.Bytes())
 
@@ -169,7 +222,11 @@ func (m MLogT) SetDetailValues(detailVals ...interface{}) MLogT {
 // String implements the 'stringer' interface for
 // an MLogT struct.
 // eg. $RECEIVER $SUBJECT $VERB $RECEIVER:DETAIL $RECEIVER:DETAIL $SUBJECT:DETAIL $SUBJECT:DETAIL
-func (m MLogT) String() string {
+func (m MLogT) String(documentation ...bool) string {
+	forDoc := false
+	if documentation != nil {
+		forDoc = documentation[0]
+	}
 	placeholderEmpty := "-"
 	if m.Receiver == "" {
 		m.Receiver = placeholderEmpty
@@ -182,17 +239,17 @@ func (m MLogT) String() string {
 	}
 	out := fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
-		// Note that MLogDetailT implements stringer interface, yielding only
-		// auto-formatted Detail.Value as string
-		if d.String() == "" {
-			out += " " + placeholderEmpty
-			continue
-		}
-		out += " " + d.String()
+		out += " " + d.String(documentation...)
+	}
+	if forDoc {
+		out += fmt.Sprintf("\n    %s", m.Description)
 	}
 	return out
 }
 
-func (d MLogDetailT) String() string {
+func (d MLogDetailT) String(documentation ...bool) string {
+	if documentation != nil && documentation[0] {
+		return fmt.Sprintf("$%s:%s:%s", d.Owner, d.Key, d.Value)
+	}
 	return fmt.Sprintf("[%v]", d.Value)
 }

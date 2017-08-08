@@ -13,6 +13,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"gopkg.in/urfave/cli.v1"
 	"path/filepath"
+	"github.com/ethereumproject/go-ethereum/logger"
 )
 
 // These are all the command line flags we support.
@@ -160,13 +161,24 @@ var (
 	}
 	MLogFlag = cli.BoolTFlag{
 		Name: "mlog",
-		Usage: "Toggle machine-readable logging.",
+		Usage: "Toggle machine-readable logging (default: true)",
 	}
 	MLogDirFlag = DirectoryFlag{
 		Name: "mlog-dir",
-		Usage: "Directory in which to write machine log files.",
+		Usage: "Directory in which to write machine log files",
 		// TODO: move to chain-subdir?
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mlogs")},
+	}
+	MLogComponentsFlag = cli.StringFlag{
+		Name: "mlog-components",
+		Usage: "Set machine-readable logging components, comma-separated",
+		Value: func() string {
+			var components []string
+			for k := range logger.MLogRegistryAvailable {
+				components = append(components, string(k))
+			}
+			return strings.Join(components, ",")
+		}(),
 	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",
