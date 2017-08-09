@@ -483,6 +483,9 @@ var (
 )
 
 func init() {
+	glog.V(logger.Error).Infoln("MLOG INIT")
+	mlogOnce.Do(initMLogging)
+
 	p := neighbors{Expiration: ^uint64(0)}
 	maxSizeNode := rpcNode{IP: make(net.IP, 16), UDP: ^uint16(0), TCP: ^uint16(0)}
 	for n := 0; ; n++ {
@@ -503,6 +506,28 @@ func (t *udp) send(toaddr *net.UDPAddr, ptype byte, req interface{}) error {
 	packet, err := encodePacket(t.priv, ptype, req)
 	if err != nil {
 		return err
+	}
+	switch ptype {
+	case pingPacket:
+		mlog.Sendln(1, mlogPingSendTo.SetDetailValues(
+			toaddr,
+			len(packet),
+		).String())
+	case pongPacket:
+		mlog.Sendln(1, mlogPongSendTo.SetDetailValues(
+			toaddr,
+			len(packet),
+		).String())
+	case findnodePacket:
+		mlog.Sendln(1, mlogFindNodeSendTo.SetDetailValues(
+			toaddr,
+			len(packet),
+		).String())
+	case neighborsPacket:
+		mlog.Sendln(1, mlogNeighborsSendTo.SetDetailValues(
+			toaddr,
+			len(packet),
+		).String())
 	}
 	glog.V(logger.Detail).Infof(">>> %v %T\n", toaddr, req)
 	if _, err = t.conn.WriteToUDP(packet, toaddr); err != nil {
@@ -571,6 +596,34 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 	status := "ok"
 	if err = packet.handle(t, from, fromID, hash); err != nil {
 		status = err.Error()
+	}
+	// Use fmt Type interpolator to decide kind of request received,
+	// since packet is an interface with 1 method: handle.
+	switch packet.(type) {
+	case *ping:
+		mlog.Sendln(1, mlogPingHandleFrom.SetDetailValues(
+			from,
+			fromID,
+			len(buf),
+		).String())
+	case *pong:
+		mlog.Sendln(1, mlogPongHandleFrom.SetDetailValues(
+			from,
+			fromID,
+			len(buf),
+		).String())
+	case *findnode:
+		mlog.Sendln(1, mlogFindNodeHandleFrom.SetDetailValues(
+			from,
+			fromID,
+			len(buf),
+		).String())
+	case *neighbors:
+		mlog.Sendln(1, mlogNeighborsHandleFrom.SetDetailValues(
+			from,
+			fromID,
+			len(buf),
+		).String())
 	}
 	glog.V(logger.Detail).Infof("<<< %v %T: %s\n", from, packet, status)
 	return err
