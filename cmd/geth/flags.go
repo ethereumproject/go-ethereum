@@ -159,9 +159,10 @@ var (
 		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
 		Value: "sync=60",
 	}
-	MLogFlag = cli.BoolTFlag{
+	MLogFlag = cli.StringFlag{
 		Name: "mlog",
-		Usage: "Toggle machine-readable logging (default: true)",
+		Usage: "Set machine-readable log format: [plain|kv|json|off]",
+		Value: "kv",
 	}
 	MLogDirFlag = DirectoryFlag{
 		Name: "mlog-dir",

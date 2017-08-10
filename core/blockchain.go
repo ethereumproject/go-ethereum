@@ -768,7 +768,7 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 			block.GasUsed(),
 			block.Coinbase().Hex(),
 			block.Time(),
-		).String())
+		))
 	}(status, err)
 
 	self.wg.Add(1)
@@ -990,7 +990,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			start.Hash().Hex(),
 			end.Hash().Hex(),
 			tend,
-		).String())
+		))
 		glog.V(logger.Info).Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n",
 			stats.processed,
 			stats.queued,

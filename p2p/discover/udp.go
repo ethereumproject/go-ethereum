@@ -509,22 +509,22 @@ func (t *udp) send(toaddr *net.UDPAddr, ptype byte, req interface{}) error {
 		mlogDiscover.Send(mlogPingSendTo.SetDetailValues(
 			toaddr,
 			len(packet),
-		).String())
+		))
 	case pongPacket:
 		mlogDiscover.Send(mlogPongSendTo.SetDetailValues(
 			toaddr,
 			len(packet),
-		).String())
+		))
 	case findnodePacket:
 		mlogDiscover.Send(mlogFindNodeSendTo.SetDetailValues(
 			toaddr,
 			len(packet),
-		).String())
+		))
 	case neighborsPacket:
 		mlogDiscover.Send(mlogNeighborsSendTo.SetDetailValues(
 			toaddr,
 			len(packet),
-		).String())
+		))
 	}
 	glog.V(logger.Detail).Infof(">>> %v %T\n", toaddr, req)
 	if _, err = t.conn.WriteToUDP(packet, toaddr); err != nil {
@@ -600,27 +600,27 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 	case "*discover.ping":
 		mlogDiscover.Send(mlogPingHandleFrom.SetDetailValues(
 			from,
-			fromID,
+			fromID.String(),
 			len(buf),
-		).String())
+		))
 	case "*discover.pong":
 		mlogDiscover.Send(mlogPongHandleFrom.SetDetailValues(
 			from,
-			fromID,
+			fromID.String(),
 			len(buf),
-		).String())
+		))
 	case "*discover.findnode":
 		mlogDiscover.Send(mlogFindNodeHandleFrom.SetDetailValues(
 			from,
-			fromID,
+			fromID.String(),
 			len(buf),
-		).String())
+		))
 	case "*discover.neighbors":
 		mlogDiscover.Send(mlogNeighborsHandleFrom.SetDetailValues(
 			from,
-			fromID,
+			fromID.String(),
 			len(buf),
-		).String())
+		))
 	}
 	glog.V(logger.Detail).Infof("<<< %v %T: %s\n", from, packet, status)
 	return err

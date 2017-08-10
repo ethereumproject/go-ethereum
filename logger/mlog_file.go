@@ -14,31 +14,47 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-
 // File I/O and registry for mlogs.
 
 package logger
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"os"
 	"os/user"
 	"path/filepath"
-	"strings"
-	"time"
-	"bytes"
 	"runtime"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"strings"
 	"sync"
+	"time"
+	"encoding/json"
 )
+
+type mlogFormat uint
+
+const (
+	mLOGPlain         mlogFormat = iota
+	mLOGKV
+	MLOGJSON
+)
+
+var MLogStringToFormat = map[string]mlogFormat{
+	"plain": mLOGPlain,
+	"kv":    mLOGKV,
+	"json":  MLOGJSON,
+}
 
 var (
 	// If non-empty, overrides the choice of directory in which to write logs.
 	// See createLogDirs for the full list of possible destinations.
-	mLogDir *string = new(string)
+	mLogDir    *string     = new(string)
+	mLogFormat mlogFormat = mLOGKV
 
 	errMLogComponentUnavailable = errors.New("provided component name is unavailable")
+	ErrUnkownMLogFormat = errors.New("unknown mlog format")
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
 	// with MLogRegisterAvailable.
@@ -115,18 +131,50 @@ func MLogRegisterActive(component mlogComponent) {
 }
 
 // SendMLog writes enabled component mlogs to file if the component is registered active.
-func (c mlogComponent) Send(logLine string) {
+func (c mlogComponent) Send(msg MLogT) {
 	mlogRegLock.RLock()
 	if l := MLogRegistryActive[c]; l != nil {
-		l.Sendf(1, logLine)
+		l.SendFormatted(GetMLogFormat(), 1, msg)
 	}
 	mlogRegLock.RUnlock()
+}
+
+func (l *Logger) SendFormatted(format mlogFormat, level LogLevel, msg MLogT) {
+	switch format {
+	case mLOGKV:
+		l.Sendln(level, msg.FormatKV())
+	case MLOGJSON:
+		logMessageC <- stdMsg{level, string(msg.FormatJSON())}
+	case mLOGPlain:
+		l.Sendln(level, string(msg.FormatPlain()))
+	//case MLOGDocumentation:
+		// don't handle this because this is just for one-off help/usage printing documentation
+	default:
+		glog.Fatalf("Unknown mlog format: %v", format)
+	}
 }
 
 // SetMLogDir sets the mlog directory, into which one mlog file per session
 // will be written.
 func SetMLogDir(str string) {
 	*mLogDir = str
+}
+
+func SetMLogFormat(format mlogFormat) {
+	mLogFormat = format
+}
+
+func SetMLogFormatFromString(formatString string) error {
+	if f := MLogStringToFormat[formatString]; f < 1 {
+		return ErrUnkownMLogFormat
+	} else {
+		SetMLogFormat(f)
+	}
+	return nil
+}
+
+func GetMLogFormat() mlogFormat {
+	return mLogFormat
 }
 
 func createLogDirs() error {
@@ -202,18 +250,95 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 
 // MLogT defines an mlog LINE
 type MLogT struct {
-	Description string
-	Receiver string
-	Verb string
-	Subject string
-	Details []MLogDetailT
+	Description string        `json:"-"`
+	Receiver    string        `json:"receiver"`
+	Verb        string        `json:"verb"`
+	Subject     string        `json:"subject"`
+	Details     []MLogDetailT `json:"details"`
 }
 
 // MLogDetailT defines an mlog LINE DETAILS
 type MLogDetailT struct {
-	Owner string
-	Key string
-	Value interface{}
+	Owner string      `json:"owner"`
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
+}
+
+func (m *MLogT) placeholderize() {
+	placeholderEmpty := "-"
+	if m.Receiver == "" {
+		m.Receiver = placeholderEmpty
+	}
+	if m.Subject == "" {
+		m.Subject = placeholderEmpty
+	}
+	if m.Verb == "" {
+		m.Verb = placeholderEmpty
+	}
+}
+
+func (m *MLogT) FormatJSON() []byte {
+	b, _ := m.MarshalJSON()
+	return b
+}
+
+func (m *MLogT) FormatKV() (out string) {
+	m.placeholderize()
+	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	for _, d := range m.Details {
+		out += fmt.Sprintf(" %s.%s=[%v]", d.Owner, d.Key, d.Value)
+	}
+	return out
+}
+
+func (m *MLogT) FormatPlain() (out string) {
+	m.placeholderize()
+	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	for _, d := range m.Details {
+		out += fmt.Sprintf(" [%v]", d.Value)
+	}
+	return out
+}
+
+func (m *MLogT) MarshalJSON() ([]byte, error) {
+	var obj = make(map[string]interface{})
+	obj["event"] = m.EventName()
+	obj["ts"] = time.Now()
+	for _, d := range m.Details {
+		obj[d.EventName()] = d.Value
+	}
+	return json.Marshal(obj)
+}
+
+// Format usage print available mlog vars formatted for stderr help/usage instructions.
+func (m *MLogT) FormatUsage() (out string) {
+	// eg. BLOCKCHAIN WRITE BLOCK
+	out += fmt.Sprintf("\n%s %s %s", m.Receiver, m.Verb, m.Subject)
+	for _, d := range m.Details {
+		// eg. $BLOCK.HASH=<STRING>
+		out += fmt.Sprintf(" $%s.%s=[%s]", d.Owner, d.Key, d.Value)
+	}
+	out += fmt.Sprintf("\n  > %s", m.Description)
+	return out
+}
+
+// FormatDocumentation prints wiki-ready documentation for all available component mlog LINES.
+func (m *MLogT) FormatDocumentation() (out string) {
+	return out
+}
+
+// EventName implements the JsonMsg interface in case wanting to use existing half-established json logging system
+func (m *MLogT) EventName() string {
+	r := strings.ToLower(m.Receiver)
+	v := strings.ToLower(m.Verb)
+	s := strings.ToLower(m.Subject)
+	return strings.Join([]string{r,v,s}, ".")
+}
+
+func (m *MLogDetailT) EventName() string {
+	o := strings.ToLower(m.Owner)
+	k := strings.ToLower(m.Key)
+	return strings.Join([]string{o, k}, ".")
 }
 
 // SetDetailValues is a setter function for setting values for pre-existing details.
@@ -234,38 +359,4 @@ func (m MLogT) SetDetailValues(detailVals ...interface{}) MLogT {
 	}
 
 	return m
-}
-
-// String implements the 'stringer' interface for
-// an MLogT struct.
-// eg. $RECEIVER $SUBJECT $VERB $RECEIVER:DETAIL $RECEIVER:DETAIL $SUBJECT:DETAIL $SUBJECT:DETAIL
-func (m MLogT) String(documentation ...bool) string {
-	placeholderEmpty := "-"
-	if m.Receiver == "" {
-		m.Receiver = placeholderEmpty
-	}
-	if m.Subject == "" {
-		m.Subject = placeholderEmpty
-	}
-	if m.Verb == "" {
-		m.Verb = placeholderEmpty
-	}
-	out := fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
-	for _, d := range m.Details {
-		out += " " + d.String(documentation...)
-	}
-	if documentation != nil && len(documentation) > 0 && documentation[0] {
-		out += fmt.Sprintf("\n    %s", m.Description)
-	}
-	return out
-}
-
-// String implements the stringer interface for mlog details.
-// It can used to provide raw mlog-formatted strings, or
-// strings formatted for self-documentation.
-func (d MLogDetailT) String(documentation ...bool) string {
-	if documentation != nil && len(documentation) > 0 && documentation[0] {
-		return fmt.Sprintf("$%s:%s:%s", d.Owner, d.Key, d.Value)
-	}
-	return fmt.Sprintf("[%v]", d.Value)
 }

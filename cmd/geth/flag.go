@@ -472,23 +472,34 @@ func makeMLogFileLogger(ctx *cli.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	logger.New(mlogdir, filename, 1)
+	// logger print without header prefix if json
+	// TODO: refactor flags logic to mlog
+	flags := log.LstdFlags
+	if f := ctx.GlobalString(MLogFlag.Name); logger.MLogStringToFormat[f] == logger.MLOGJSON {
+		flags = 0
+	}
+	logger.New(mlogdir, filename, 1, flags)
 	return filename, nil
 }
 
 func mustRegisterMLogsFromContext(ctx *cli.Context) {
 	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalString(MLogComponentsFlag.Name)); e != nil {
+		// print documentation if user enters unavailable mlog component
 		var components []string
 		doc := "\n"
 		for k, v := range logger.MLogRegistryAvailable {
 			components = append(components, string(k))
-			doc += fmt.Sprintf("\n%s\n", k)
+			doc += fmt.Sprintf("\n[%s] %s\n", k, glog.Separator("-"))
 			for _, vv := range v {
-				doc += fmt.Sprintf("  %v\n", vv.String(true))
+				doc += fmt.Sprintln(vv.FormatUsage())
 			}
 		}
 		glog.V(logger.Error).Infof("Available machine log components: %v", components)
-		glog.Fatalf("%s\n%s", doc, e)
+		glog.Fatalf("%s\nError: %s", doc, e)
+	}
+	// Set the global logger mlog format from context
+	if e := logger.SetMLogFormatFromString(ctx.GlobalString(MLogFlag.Name)); e != nil {
+		glog.Fatalf("Error setting mlog format: %v, value was: %v", e, ctx.GlobalString(MLogFlag.Name))
 	}
 	fname, e := makeMLogFileLogger(ctx)
 	if e != nil {
@@ -558,7 +569,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	// If --mlog enabled, configure and create mlog dir and file
-	if ctx.GlobalBoolT(MLogFlag.Name) {
+	if ctx.GlobalString(MLogFlag.Name) != "off" {
 		mustRegisterMLogsFromContext(ctx)
 	} else {
 		glog.V(logger.Warn).Infof("Machine logs: disabled")
