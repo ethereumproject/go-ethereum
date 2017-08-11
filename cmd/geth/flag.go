@@ -451,7 +451,8 @@ func mustMakeMLogDir(ctx *cli.Context) string {
 		}
 		return ap
 	}
-	rp := common.EnsurePathAbsoluteOrRelativeTo(mustMakeDataDir(ctx), "mlogs")
+	
+	rp := common.EnsurePathAbsoluteOrRelativeTo(MustMakeChainDataDir(ctx), "mlogs")
 	if !filepath.IsAbs(rp) {
 		af, e := filepath.Abs(rp)
 		if e != nil {
