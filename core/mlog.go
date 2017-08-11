@@ -17,26 +17,27 @@ var mLogLines = []logger.MLogT{
 // Collect and document available mlog lines.
 
 var mlogBlockchainWriteBlock = logger.MLogT{
-	Description: "Called when a single block is added to the chaindb without error.",
+	Description: `Called when a single block written to the chain database.
+A STATUS of NONE means it was written _without_ any abnormal chain event, such as a split.`,
 	Receiver: "BLOCKCHAIN",
 	Verb: "WRITE",
 	Subject: "BLOCK",
 	Details: []logger.MLogDetailT{
 		{"WRITE", "STATUS", "STRING"},
-		{"WRITE", "ERROR", "STRING"},
-		{"BLOCK", "NUMBER", "INT"},
+		{"WRITE", "ERROR", "STRING_OR_NULL"},
+		{"BLOCK", "NUMBER", "BIGINT"},
 		{"BLOCK", "HASH", "STRING"},
-		{"BLOCK", "SIZE", "INT"},
+		{"BLOCK", "SIZE", "INT64"},
 		{"BLOCK", "TRANSACTIONS_COUNT", "INT"},
-		{"BLOCK", "GAS_USED", "INT"},
+		{"BLOCK", "GAS_USED", "BIGINT"},
 		{"BLOCK", "COINBASE", "STRING"},
-		{"BLOCK", "TIME", "INT"},
+		{"BLOCK", "TIME", "BIGINT"},
 	},
 }
 
 
 var mlogBlockchainInsertBlocks = logger.MLogT{
-	Description: "Called when a chain of blocks is inserted into our client's chain db.",
+	Description: "Called when a chain of blocks is inserted into the chain database.",
 	Receiver: "BLOCKCHAIN",
 	Verb: "INSERT",
 	Subject: "BLOCKS",
@@ -45,9 +46,9 @@ var mlogBlockchainInsertBlocks = logger.MLogT{
 		{"BLOCKS", "QUEUED", "INT"},
 		{"BLOCKS", "IGNORED", "INT"},
 		{"BLOCKS", "TRANSACTIONS_COUNT", "INT"},
-		{"BLOCKS", "LAST_NUMBER", "INT"},
+		{"BLOCKS", "LAST_NUMBER", "BIGINT"},
 		{"BLOCKS", "FIRST_HASH", "STRING"},
 		{"BLOCKS", "LAST_HASH", "STRING"},
-		{"INSERT", "TIME", "INTERVAL"},
+		{"INSERT", "TIME", "DURATION"},
 	},
 }

@@ -31,21 +31,15 @@ import (
 	"sync"
 	"time"
 	"encoding/json"
+	"math/big"
 )
 
 type mlogFormat uint
-
 const (
 	mLOGPlain         mlogFormat = iota
 	mLOGKV
 	MLOGJSON
 )
-
-var MLogStringToFormat = map[string]mlogFormat{
-	"plain": mLOGPlain,
-	"kv":    mLOGKV,
-	"json":  MLOGJSON,
-}
 
 var (
 	// If non-empty, overrides the choice of directory in which to write logs.
@@ -62,7 +56,37 @@ var (
 	// MLogRegistryActive contains all registered mlog component and their respective loggers.
 	MLogRegistryActive = make(map[mlogComponent]*Logger)
 	mlogRegLock        sync.RWMutex
+
+	// Abstract literals (for documentation examples, labels)
+	mlogInterfaceExamples = map[string]interface{}{
+		"INT": int(0),
+		"BIGINT": new(big.Int),
+		"STRING": "string",
+		"STRING_OR_NULL": nil,
+	}
+
+	MLogStringToFormat = map[string]mlogFormat{
+		"plain": mLOGPlain,
+		"kv":    mLOGKV,
+		"json":  MLOGJSON,
+	}
 )
+
+// MLogT defines an mlog LINE
+type MLogT struct {
+	Description string        `json:"-"`
+	Receiver    string        `json:"receiver"`
+	Verb        string        `json:"verb"`
+	Subject     string        `json:"subject"`
+	Details     []MLogDetailT `json:"details"`
+}
+
+// MLogDetailT defines an mlog LINE DETAILS
+type MLogDetailT struct {
+	Owner string      `json:"owner"`
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
+}
 
 // mlogComponent is used as a golang receiver type that can call Send(logLine).
 type mlogComponent string
@@ -248,22 +272,6 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 	return f, fname, nil
 }
 
-// MLogT defines an mlog LINE
-type MLogT struct {
-	Description string        `json:"-"`
-	Receiver    string        `json:"receiver"`
-	Verb        string        `json:"verb"`
-	Subject     string        `json:"subject"`
-	Details     []MLogDetailT `json:"details"`
-}
-
-// MLogDetailT defines an mlog LINE DETAILS
-type MLogDetailT struct {
-	Owner string      `json:"owner"`
-	Key   string      `json:"key"`
-	Value interface{} `json:"value"`
-}
-
 func (m *MLogT) placeholderize() {
 	placeholderEmpty := "-"
 	if m.Receiver == "" {
@@ -286,7 +294,7 @@ func (m *MLogT) FormatKV() (out string) {
 	m.placeholderize()
 	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
-		out += fmt.Sprintf(" %s.%s=[%v]", d.Owner, d.Key, d.Value)
+		out += fmt.Sprintf(" %s=[%v]", d.EventName(), d.Value)
 	}
 	return out
 }
@@ -322,8 +330,94 @@ func (m *MLogT) FormatUsage() (out string) {
 	return out
 }
 
+func (m *MLogT) FormatJSONExample() []byte {
+	mm := &MLogT{
+		Receiver: m.Receiver,
+		Verb: m.Verb,
+		Subject: m.Subject,
+	}
+	var dets []MLogDetailT
+	for _, d := range m.Details {
+		ex := mlogInterfaceExamples[d.Value.(string)]
+		// Type of var not matched to interfaceexample
+		if ex == "" {
+			continue
+		}
+		dets = append(dets, MLogDetailT{
+			Owner: d.Owner,
+			Key: d.Key,
+			Value: ex,
+		})
+	}
+	mm.Details = dets
+	b, _ := mm.MarshalJSON()
+	return b
+}
+
 // FormatDocumentation prints wiki-ready documentation for all available component mlog LINES.
-func (m *MLogT) FormatDocumentation() (out string) {
+// Output should be in markdown.
+func (m *MLogT) FormatDocumentation(cmp mlogComponent) (out string) {
+
+	// Get the json example before converting to abstract literal format, eg STRING -> $STRING
+	// This keeps the interface example dictionary as a separate concern.
+	exJSON := string(m.FormatJSONExample())
+
+	// Set up arbitrary documentation abstract literal format
+	docDetails := []MLogDetailT{}
+	for _, d := range m.Details {
+		dd := d.AsDocumentation()
+		docDetails = append(docDetails, *dd)
+	}
+	m.Details = docDetails
+
+	exPlain := m.FormatPlain()
+	exKV := m.FormatKV()
+
+	t := time.Now()
+	lStandardHeaderDateTime := fmt.Sprintf("%4d/%02d/%02d %02d:%02d:%02d",
+		t.Year(), t.Month(), t.Day(),
+		t.Hour(), t.Minute(), t.Second())
+	cmpS := fmt.Sprintf("[%s]", cmp)
+
+	out += fmt.Sprintf(`
+#### %s %s %s
+%s
+
+__Key value__:
+` + "```" + `
+%s %s %s
+` + "```" + `
+
+__JSON__:
+` + "```json" + `
+%s
+` + "```" + `
+
+__Plain__:
+` + "```" + `
+%s %s %s
+` + "```" + `
+
+_%d detail values_:
+
+`, m.Receiver, m.Verb, m.Subject,
+		m.Description,
+		lStandardHeaderDateTime,
+		cmpS,
+		exKV,
+		exJSON,
+		lStandardHeaderDateTime,
+		cmpS,
+		exPlain,
+		len(m.Details))
+
+	var details string
+	for _, d := range m.Details {
+		details += fmt.Sprintf("- `%s`: %s\n", d.EventName(), d.Value)
+	}
+	details += "\n"
+
+	out += details
 	return out
 }
 
@@ -339,6 +433,11 @@ func (m *MLogDetailT) EventName() string {
 	o := strings.ToLower(m.Owner)
 	k := strings.ToLower(m.Key)
 	return strings.Join([]string{o, k}, ".")
+}
+
+func (m *MLogDetailT) AsDocumentation() *MLogDetailT {
+	m.Value = fmt.Sprintf("$%s", m.Value)
+	return m
 }
 
 // SetDetailValues is a setter function for setting values for pre-existing details.

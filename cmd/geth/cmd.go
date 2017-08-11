@@ -934,3 +934,49 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 		}
 	}
 }
+
+func stringInSlice(s string, sl []string) bool {
+	for _, l := range sl {
+		if l == s {
+			return true
+		}
+	}
+	return false
+}
+
+func makeMLogDocumentation(ctx *cli.Context) error {
+	wantComponents := ctx.Args()
+
+	// If no components specified, print all.
+	if len(wantComponents) == 0 {
+		for k := range logger.MLogRegistryAvailable {
+			wantComponents = append(wantComponents, string(k))
+		}
+	}
+
+	// "table of contents"
+	for cmp, lines := range logger.MLogRegistryAvailable {
+		if !stringInSlice(string(cmp), wantComponents) {
+			continue
+		}
+		fmt.Printf("\n[%s]\n\n", cmp)
+		for _, line := range lines {
+			// print anchor links ul list items
+			fmt.Printf("- [%s](#%s)\n", line.EventName(), strings.Replace(line.EventName(), ".", "-", -1))
+		}
+	}
+
+	fmt.Println("\n----\n") // hr
+
+	// each LINE
+	for cmp, lines := range logger.MLogRegistryAvailable {
+		if !stringInSlice(string(cmp), wantComponents) {
+			continue
+		}
+		for _, line := range lines {
+			fmt.Println(line.FormatDocumentation(cmp))
+		}
+	}
+
+	return nil
+}

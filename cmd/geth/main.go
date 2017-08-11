@@ -98,6 +98,14 @@ Runs quick benchmark on first GPU found.
 The output of this command is supposed to be machine-readable.
 `,
 		},
+		{
+			Action: makeMLogDocumentation,
+			Name: "mdoc",
+			Usage: "Generate mlog documentation in markdown format",
+			Description: `
+The output of this command should be human readable, and wiki-ready.
+`,
+		},
 	}
 
 	app.Flags = []cli.Flag{
