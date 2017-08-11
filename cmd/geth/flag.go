@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -48,7 +49,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
 func init() {
@@ -567,7 +567,7 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 
 	ethConf := &eth.Config{
 		ChainConfig:             sconf.ChainConfig,
-		Genesis: sconf.Genesis,
+		Genesis:                 sconf.Genesis,
 		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
 		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
@@ -627,6 +627,23 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 			config.Consensus = "ethash-test"
 		}
+
+		// Allow flags to override external config file for bootnodes and network id.
+		//
+		// Check for flagged bootnodes.
+		if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
+			config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
+			glog.V(logger.Warn).Infof(`WARNING: overwriting external bootnodes configuration with those from --%s flag. Value set from flag: %v`, aliasableName(BootnodesFlag.Name, ctx), config.ParsedBootstrap)
+		}
+
+		if ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
+			i := ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx))
+			glog.V(logger.Warn).Infof(`WARNING: overwriting external network id configuration with that from --%s flag. Value set from flag: %d`, aliasableName(NetworkIdFlag.Name, ctx), i)
+			if i < 1 {
+				glog.Fatalf("Network ID cannot be less than 1. Got: %d", i)
+			}
+			config.Network = i
+		}
 	}()
 
 	chainIdentity := mustMakeChainIdentity(ctx)
@@ -640,7 +657,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		config.Genesis = core.DefaultGenesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
-		if chainIsMorden(ctx) {
+		if chainIsMorden(ctx) || chainIdentitiesMorden[config.Identity] {
 			config.Network = 2
 			config.Genesis = core.TestNetGenesis
 			state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
@@ -671,11 +688,6 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 	// Ensure JSON 'id' value matches name of parent chain subdir.
 	if config.Identity != chainIdentity {
 		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, ErrInvalidChainID, config.Identity, chainIdentity)
-	}
-
-	// Check for flagged bootnodes.
-	if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
-		glog.Fatalf("Conflicting custom chain config and --%s flags. Please use either but not both.", aliasableName(BootnodesFlag.Name, ctx))
 	}
 
 	// Set statedb StartingNonce from external config, if specified (is optional)
