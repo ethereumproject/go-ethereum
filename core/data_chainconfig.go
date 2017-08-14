@@ -180,7 +180,7 @@ var TestConfig = &ChainConfig{
 					ID: "reward",
 					Options: ChainFeatureConfigOptions{
 						"type": "ecip1017",
-						"era": 5000000,
+						"era": 3000000, // for mainnet will be 5m
 					},
 				},
 			},
