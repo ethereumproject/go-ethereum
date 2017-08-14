@@ -10,6 +10,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"fmt"
 )
 
 var (
@@ -199,22 +200,37 @@ func TestGetBlockWinnerRewardForUnclesByEra(t *testing.T) {
 // Accruing over block cases simulates miner account winning many times.
 // Uses maps of running sums for winner & 2 uncles to keep tally.
 func TestAccumulateRewards1(t *testing.T) {
-	configs := []*ChainConfig{TestConfig}
+	configs := []*ChainConfig{DefaultConfig, TestConfig}
 
+	// t.Logf("Accruing balances over cases. 2 uncles. Configs mainnet=0, morden=1")
 	for i, config := range configs {
 		// Set up era len by chain configurations.
 		feat, _, exists := config.HasFeature("reward")
+		eraLen := new(big.Int)
 		if !exists {
-			t.Skip("Skipping test; no reward feature configured.")
+			// t.Logf("No ecip1017 feature installed for config=%d, setting up a placeholder ecip1017 feature for testing.", i)
+			dhFork := config.ForkByName("Diehard")
+			dhFork.Features = append(dhFork.Features, &ForkFeature{
+				ID: "reward",
+				Options: ChainFeatureConfigOptions{
+					"type": "ecip1017",
+					"era": 5000000, // for mainnet will be 5m
+				},
+			})
+			feat, _, exists = config.HasFeature("reward")
+			if !exists {
+				t.Fatal("no expected feature installed")
+			}
 		}
 		eraLen, ok := feat.GetBigInt("era")
 		if !ok {
-			t.Log("No era length configured, is required.")
-			t.Fail()
+			t.Error("No era length configured, is required.")
 		}
-		era0 := eraLen
-		era1 := new(big.Int).Mul(eraLen, big.NewInt(2))
-		era2 := new(big.Int).Mul(eraLen, big.NewInt(3))
+
+		// Eras boundaries for testing.
+		era0Boundary := eraLen
+		era1Boundary := new(big.Int).Mul(eraLen, big.NewInt(2))
+		era2Boundary := new(big.Int).Mul(eraLen, big.NewInt(3))
 
 		db, _ := ethdb.NewMemDatabase()
 
@@ -255,17 +271,17 @@ func TestAccumulateRewards1(t *testing.T) {
 		cases := []*big.Int{
 			big.NewInt(11), // avoid messy if-switches for ommer availability/numbering
 
-			new(big.Int).Sub(era0, big.NewInt(1)),
-			new(big.Int).Sub(era0, big.NewInt(0)),
-			new(big.Int).Add(era0, big.NewInt(1)),
+			new(big.Int).Sub(era0Boundary, big.NewInt(1)),
+			new(big.Int).Sub(era0Boundary, big.NewInt(0)),
+			new(big.Int).Add(era0Boundary, big.NewInt(1)),
 
-			new(big.Int).Sub(era1, big.NewInt(1)),
-			new(big.Int).Sub(era1, big.NewInt(0)),
-			new(big.Int).Add(era1, big.NewInt(1)),
+			new(big.Int).Sub(era1Boundary, big.NewInt(1)),
+			new(big.Int).Sub(era1Boundary, big.NewInt(0)),
+			new(big.Int).Add(era1Boundary, big.NewInt(1)),
 
-			new(big.Int).Sub(era2, big.NewInt(1)),
-			new(big.Int).Sub(era2, big.NewInt(0)),
-			new(big.Int).Add(era2, big.NewInt(1)),
+			new(big.Int).Sub(era2Boundary, big.NewInt(1)),
+			new(big.Int).Sub(era2Boundary, big.NewInt(0)),
+			new(big.Int).Add(era2Boundary, big.NewInt(1)),
 		}
 
 		for _, bn := range cases {
@@ -299,6 +315,7 @@ func TestAccumulateRewards1(t *testing.T) {
 			AccumulateRewards(config, stateDB, header, uncles)
 
 			// Check balances.
+			// t.Logf("config=%d block=%d era=%d w:%d u1:%d u2:%d", i, bn, new(big.Int).Add(era, big.NewInt(1)), winnerB, unclesB[0], unclesB[1])
 			if wb := stateDB.GetBalance(header.Coinbase); wb.Cmp(winnerB) != 0 {
 				t.Errorf("winner balance @ %v, want: %v, got: %v (config: %v)", bn, winnerB, wb, i)
 			}
@@ -335,18 +352,18 @@ var (
 	Era4UncleReward       = new(big.Int).Div(new(big.Int).Mul(new(big.Int).Div(Era3WinnerReward, big.NewInt(5)), big.NewInt(4)), big32)
 )
 
-type expectedEra int
-
+// expectedEraForTesting is a 1-indexed version of era number,
+// used exclusively for testing.
+type expectedEraForTesting int
 const (
-	era1 expectedEra = iota + 1
+	era1 expectedEraForTesting = iota + 1
 	era2
 	era3
 	era4
 )
 
 type expectedRewards map[common.Address]*big.Int
-
-func calculateExpectedEraRewards(era expectedEra, numUncles int) expectedRewards {
+func calculateExpectedEraRewards(era expectedEraForTesting, numUncles int) expectedRewards {
 	wr := new(big.Int)
 	wur := new(big.Int)
 	ur := new(big.Int)
@@ -375,6 +392,139 @@ func calculateExpectedEraRewards(era expectedEra, numUncles int) expectedRewards
 	}
 }
 
+// expectedEraFromBlockNumber is similar to GetBlockEra, but it
+// returns a 1-indexed version of the number of type expectedEraForTesting
+func expectedEraFromBlockNumber(i, eralen *big.Int, t *testing.T) expectedEraForTesting {
+	e := GetBlockEra(i, eralen)
+	ePlusOne := new(big.Int).Add(e, big.NewInt(1)) // since expectedEraForTesting is not 0-indexed; iota + 1
+	ei := ePlusOne.Int64()
+	expEra := int(ei)
+	if expEra > 4 || expEra < 1 {
+		t.Fatalf("Unexpected era value, want 1 < e < 5, got: %d", expEra)
+	}
+	return expectedEraForTesting(expEra)
+}
+
+type expectedRewardCase struct {
+	eraNum  expectedEraForTesting
+	block   *big.Int
+	rewards expectedRewards
+}
+func (r expectedRewards) String() string {
+	return fmt.Sprintf("w: %d, u1: %d, u2: %d", r[WinnerCoinbase], r[Uncle1Coinbase], r[Uncle2Coinbase])
+}
+// String implements stringer interface for expectedRewardCase --
+// useful for double-checking test cases with t.Log
+// to visually ensure getting all desired test cases.
+func (c *expectedRewardCase) String() string {
+	return fmt.Sprintf("block=%d era=%d rewards=%s", c.block, c.eraNum, c.rewards)
+}
+// makeExpectedRewardCasesForConfig makes an array of expectedRewardCases.
+// It checks boundary cases for era length and fork numbers.
+//
+// An example of output:
+// ----
+//	{
+//		// mainnet
+//		{
+//			block:   big.NewInt(2),
+//			rewards: calculateExpectedEraRewards(era1, 1),
+//		},
+//		{
+//			block:   big.NewInt(3000001),
+//			rewards: calculateExpectedEraRewards(era1, 1),
+//		},
+//		{
+//			block:   big.NewInt(5000001),
+//			rewards: calculateExpectedEraRewards(era2, 1),
+//		},
+//		{
+//			block:   big.NewInt(10000000),
+//			rewards: calculateExpectedEraRewards(era2, 1),
+//		},
+//		{
+//			block:   big.NewInt(10000001),
+//			rewards: calculateExpectedEraRewards(era3, 1),
+//		},
+//		{
+//			block:   big.NewInt(15000000),
+//			rewards: calculateExpectedEraRewards(era3, 1),
+//		},
+//		{
+//			block:   big.NewInt(15000001),
+//			rewards: calculateExpectedEraRewards(era4, 1),
+//		},
+//		{
+//			block:   big.NewInt(20000000),
+//			rewards: calculateExpectedEraRewards(era4, 1),
+//		},
+//	},
+func makeExpectedRewardCasesForConfig(c *ChainConfig, numUncles int, t *testing.T) []expectedRewardCase {
+	erasToTest := []expectedEraForTesting{era1, era2, era3}
+	eraLen := new(big.Int)
+	feat, _, configured := c.HasFeature("reward")
+	if !configured {
+		eraLen = defaultEraLength
+	} else {
+		elen, ok := feat.GetBigInt("era")
+		if !ok {
+			t.Error("unexpected reward length not configured")
+		} else {
+			eraLen = elen
+		}
+	}
+
+	var cases []expectedRewardCase
+	var boundaryDiffs = []int64{-2, -1, 0, 1, 2}
+
+	// Include trivial initial early block values.
+	for _, i := range []*big.Int{big.NewInt(2), big.NewInt(13)} {
+		cases = append(cases, expectedRewardCase{
+			eraNum: era1,
+			block: i,
+			rewards: calculateExpectedEraRewards(era1, numUncles),
+		})
+	}
+
+	// Test boundaries of forks.
+	for _, f := range c.Forks {
+		fn := f.Block
+		for _, d := range boundaryDiffs {
+			fnb := new(big.Int).Add(fn, big.NewInt(d))
+			if fnb.Sign() < 1 {
+				t.Fatalf("unexpected 0 or neg block number: %d", fnb)
+			}
+			expEra := expectedEraFromBlockNumber(fnb, eraLen, t)
+
+			cases = append(cases, expectedRewardCase{
+				eraNum:  expEra,
+				block:   fnb,
+				rewards: calculateExpectedEraRewards(expEra, numUncles),
+			})
+		}
+	}
+
+	// Test boundaries of era.
+	for _, e := range erasToTest {
+		for _, d := range boundaryDiffs {
+			eb := big.NewInt(int64(e))
+			eraBoundary := new(big.Int).Mul(eb, eraLen)
+			bn := new(big.Int).Add(eraBoundary, big.NewInt(d))
+			if bn.Sign() < 1 {
+				t.Fatalf("unexpected 0 or neg block number: %d", bn)
+			}
+			era := expectedEraFromBlockNumber(bn, eraLen, t)
+			cases = append(cases, expectedRewardCase{
+				eraNum: era,
+				block: bn,
+				rewards: calculateExpectedEraRewards(era, numUncles),
+			})
+		}
+	}
+
+	return cases
+}
+
 // Non-accruing over block cases simulates instance,
 // ie. a miner wins once at different blocks.
 //
@@ -384,163 +534,14 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 	// Order matters here; expected cases must be ordered the same.
 	// Will uses indexes to match expectations -> test outcomes.
 	configs := []*ChainConfig{DefaultConfig, TestConfig}
-	cases := [][]struct {
-		eraNum  expectedEra
-		block   *big.Int
-		rewards expectedRewards
-	}{
-		{
-			// Default (mainnet)
-			{
-				eraNum:  era1,
-				block:   big.NewInt(2),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(13),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(2999999),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(3000000),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(3000001),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(4999999),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(5000000),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era2,
-				block:   big.NewInt(5000001),
-				rewards: calculateExpectedEraRewards(era2, 2),
-			},
-			{
-				eraNum:  era2,
-				block:   big.NewInt(5000010),
-				rewards: calculateExpectedEraRewards(era2, 2),
-			},
-			{
-				eraNum:  era2,
-				block:   big.NewInt(10000000),
-				rewards: calculateExpectedEraRewards(era2, 2),
-			},
-			{
-				eraNum:  era3,
-				block:   big.NewInt(10000001),
-				rewards: calculateExpectedEraRewards(era3, 2),
-			},
-			{
-				eraNum:  era3,
-				block:   big.NewInt(15000000),
-				rewards: calculateExpectedEraRewards(era3, 2),
-			},
-			{
-				eraNum:  era4,
-				block:   big.NewInt(15000001),
-				rewards: calculateExpectedEraRewards(era4, 2),
-			},
-			{
-				eraNum:  era4,
-				block:   big.NewInt(20000000),
-				rewards: calculateExpectedEraRewards(era4, 2),
-			},
-		},
-		// testnet (morden)
-		{
-			{
-				eraNum:  era1,
-				block:   big.NewInt(2),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(13),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(1914999),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(1915000),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(1915001),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(2999999),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era1,
-				block:   big.NewInt(3000000),
-				rewards: calculateExpectedEraRewards(era1, 2),
-			},
-			{
-				eraNum:  era2,
-				block:   big.NewInt(3000001),
-				rewards: calculateExpectedEraRewards(era2, 2),
-			},
-			{
-				eraNum:  era2,
-				block:   big.NewInt(3000010),
-				rewards: calculateExpectedEraRewards(era2, 2),
-			},
-			{
-				eraNum:  era2,
-				block:   big.NewInt(6000000),
-				rewards: calculateExpectedEraRewards(era2, 2),
-			},
-			{
-				eraNum:  era3,
-				block:   big.NewInt(6000001),
-				rewards: calculateExpectedEraRewards(era3, 2),
-			},
-			{
-				eraNum:  era3,
-				block:   big.NewInt(9000000),
-				rewards: calculateExpectedEraRewards(era3, 2),
-			},
-			{
-				eraNum:  era4,
-				block:   big.NewInt(9000001),
-				rewards: calculateExpectedEraRewards(era4, 2),
-			},
-			{
-				eraNum:  era4,
-				block:   big.NewInt(12000000),
-				rewards: calculateExpectedEraRewards(era4, 2),
-			},
-		},
+	cases := [][]expectedRewardCase{}
+	for _, c := range configs {
+		cases = append(cases, makeExpectedRewardCasesForConfig(c, 2, t))
 	}
-
+	// t.Logf("Non-accruing balances over cases. 2 uncles. Configs mainnet=0, morden=1")
 	for i, config := range configs {
 		// Here's where cases slice is assign according to config slice.
 		for _, c := range cases[i] {
-
 			db, _ := ethdb.NewMemDatabase()
 			stateDB, err := state.New(common.Hash{}, db)
 			if err != nil {
@@ -597,6 +598,7 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 			}
 
 			// Check balances.
+			// t.Logf("config=%d block=%d era=%d w:%d u1:%d u2:%d", i, c.block, c.eraNum, gotWinnerBalance, gotUncle1Balance, gotUncle2Balance)
 			if configured {
 				if gotWinnerBalance.Cmp(c.rewards[WinnerCoinbase]) != 0 {
 					t.Errorf("Config: %v | Era %v: winner balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, c.rewards[WinnerCoinbase], gotWinnerBalance, new(big.Int).Sub(gotWinnerBalance, c.rewards[WinnerCoinbase]))
@@ -618,7 +620,6 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 					t.Errorf("Config: %v | Era %v: uncle2 balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, Era1UncleReward, gotUncle2Balance, new(big.Int).Sub(gotUncle2Balance, c.rewards[Uncle2Coinbase]))
 				}
 			}
-
 			db.Close()
 		}
 	}
@@ -631,122 +632,11 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 func TestAccumulateRewards3_1Uncle(t *testing.T) {
 
 	configs := []*ChainConfig{DefaultConfig, TestConfig}
-	cases := [][]struct {
-		block   *big.Int
-		rewards expectedRewards
-	}{
-		{
-			// mainnet
-			{
-				block:   big.NewInt(2),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(13),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(2999999),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(3000000),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(3000001),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(4999999),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(5000001),
-				rewards: calculateExpectedEraRewards(era2, 1),
-			},
-			{
-				block:   big.NewInt(5000010),
-				rewards: calculateExpectedEraRewards(era2, 1),
-			},
-			{
-				block:   big.NewInt(10000000),
-				rewards: calculateExpectedEraRewards(era2, 1),
-			},
-			{
-				block:   big.NewInt(10000001),
-				rewards: calculateExpectedEraRewards(era3, 1),
-			},
-			{
-				block:   big.NewInt(15000000),
-				rewards: calculateExpectedEraRewards(era3, 1),
-			},
-			{
-				block:   big.NewInt(15000001),
-				rewards: calculateExpectedEraRewards(era4, 1),
-			},
-			{
-				block:   big.NewInt(20000000),
-				rewards: calculateExpectedEraRewards(era4, 1),
-			},
-		},
-		// testnet
-		{
-			{
-				block:   big.NewInt(2),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(13),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(1914999),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(1915000),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(1915001),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(2999999),
-				rewards: calculateExpectedEraRewards(era1, 1),
-			},
-			{
-				block:   big.NewInt(3000001),
-				rewards: calculateExpectedEraRewards(era2, 1),
-			},
-			{
-				block:   big.NewInt(3000010),
-				rewards: calculateExpectedEraRewards(era2, 1),
-			},
-			{
-				block:   big.NewInt(6000000),
-				rewards: calculateExpectedEraRewards(era2, 1),
-			},
-			{
-				block:   big.NewInt(6000001),
-				rewards: calculateExpectedEraRewards(era3, 1),
-			},
-			{
-				block:   big.NewInt(9000000),
-				rewards: calculateExpectedEraRewards(era3, 1),
-			},
-			{
-				block:   big.NewInt(9000001),
-				rewards: calculateExpectedEraRewards(era4, 1),
-			},
-			{
-				block:   big.NewInt(12000000),
-				rewards: calculateExpectedEraRewards(era4, 1),
-			},
-		},
+	cases := [][]expectedRewardCase{}
+	for _, c := range configs {
+		cases = append(cases, makeExpectedRewardCasesForConfig(c, 1, t))
 	}
-
+	// t.Logf("Non-accruing balances over cases. 1 uncle. Configs mainnet=0, morden=1")
 	for i, config := range configs {
 		for _, c := range cases[i] {
 
@@ -792,7 +682,14 @@ func TestAccumulateRewards3_1Uncle(t *testing.T) {
 			}
 			era := GetBlockEra(c.block, eraLen)
 
+			// Check we have expected era number.
+			indexed1EraNum := new(big.Int).Add(era, big.NewInt(1))
+			if indexed1EraNum.Cmp(big.NewInt(int64(c.eraNum))) != 0 {
+				t.Errorf("era num mismatch, want: %v, got %v", c.eraNum, indexed1EraNum)
+			}
+
 			// Check balances.
+			// t.Logf("config=%d block=%d era=%d w:%d u1:%d", i, c.block, c.eraNum, gotWinnerBalance, gotUncle1Balance)
 			if configured {
 				if gotWinnerBalance.Cmp(c.rewards[WinnerCoinbase]) != 0 {
 					t.Errorf("Config: %v | Era %v: winner balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, c.rewards[WinnerCoinbase], gotWinnerBalance, new(big.Int).Sub(gotWinnerBalance, c.rewards[WinnerCoinbase]))
@@ -821,120 +718,11 @@ func TestAccumulateRewards3_1Uncle(t *testing.T) {
 func TestAccumulateRewards4_0Uncles(t *testing.T) {
 
 	configs := []*ChainConfig{DefaultConfig, TestConfig}
-	cases := [][]struct {
-		block   *big.Int
-		rewards expectedRewards
-	}{
-		{
-			{
-				block:   big.NewInt(2),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(13),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(2999999),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(3000000),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(3000001),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(4999999),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(5000001),
-				rewards: calculateExpectedEraRewards(era2, 0),
-			},
-			{
-				block:   big.NewInt(5000010),
-				rewards: calculateExpectedEraRewards(era2, 0),
-			},
-			{
-				block:   big.NewInt(10000000),
-				rewards: calculateExpectedEraRewards(era2, 0),
-			},
-			{
-				block:   big.NewInt(10000001),
-				rewards: calculateExpectedEraRewards(era3, 0),
-			},
-			{
-				block:   big.NewInt(15000000),
-				rewards: calculateExpectedEraRewards(era3, 0),
-			},
-			{
-				block:   big.NewInt(15000001),
-				rewards: calculateExpectedEraRewards(era4, 0),
-			},
-			{
-				block:   big.NewInt(20000000),
-				rewards: calculateExpectedEraRewards(era4, 0),
-			},
-		},
-		{
-			{
-				block:   big.NewInt(2),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(13),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(1914999),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(1915000),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(1915001),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(2999999),
-				rewards: calculateExpectedEraRewards(era1, 0),
-			},
-			{
-				block:   big.NewInt(3000001),
-				rewards: calculateExpectedEraRewards(era2, 0),
-			},
-			{
-				block:   big.NewInt(3000010),
-				rewards: calculateExpectedEraRewards(era2, 0),
-			},
-			{
-				block:   big.NewInt(6000000),
-				rewards: calculateExpectedEraRewards(era2, 0),
-			},
-			{
-				block:   big.NewInt(6000001),
-				rewards: calculateExpectedEraRewards(era3, 0),
-			},
-			{
-				block:   big.NewInt(9000000),
-				rewards: calculateExpectedEraRewards(era3, 0),
-			},
-			{
-				block:   big.NewInt(9000001),
-				rewards: calculateExpectedEraRewards(era4, 0),
-			},
-			{
-				block:   big.NewInt(12000000),
-				rewards: calculateExpectedEraRewards(era4, 0),
-			},
-		},
+	cases := [][]expectedRewardCase{}
+	for _, c := range configs {
+		cases = append(cases, makeExpectedRewardCasesForConfig(c, 0, t))
 	}
-
+	// t.Logf("Non-accruing balances over cases. 0 uncles. Configs mainnet=0, morden=1")
 	for i, config := range configs {
 		for _, c := range cases[i] {
 
@@ -974,6 +762,7 @@ func TestAccumulateRewards4_0Uncles(t *testing.T) {
 			era := GetBlockEra(c.block, eraLen)
 
 			// Check balances.
+			// t.Logf("config=%d block=%d era=%d w:%d", i, c.block, c.eraNum, gotWinnerBalance)
 			if configured {
 				if gotWinnerBalance.Cmp(c.rewards[WinnerCoinbase]) != 0 {
 					t.Errorf("Config: %v | Era %v: winner balance @ %v, want: %v, got: %v, \n-> diff: %v", i, era, c.block, c.rewards[WinnerCoinbase], gotWinnerBalance, new(big.Int).Sub(gotWinnerBalance, c.rewards[WinnerCoinbase]))
