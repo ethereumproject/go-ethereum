@@ -487,16 +487,12 @@ func mustRegisterMLogsFromContext(ctx *cli.Context) {
 	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalString(MLogComponentsFlag.Name)); e != nil {
 		// print documentation if user enters unavailable mlog component
 		var components []string
-		doc := "\n"
-		for k, v := range logger.MLogRegistryAvailable {
+		for k := range logger.MLogRegistryAvailable {
 			components = append(components, string(k))
-			doc += fmt.Sprintf("\n[%s] %s\n", k, glog.Separator("-"))
-			for _, vv := range v {
-				doc += fmt.Sprintln(vv.FormatUsage())
-			}
 		}
+		glog.V(logger.Error).Infof("Error: %s", e)
 		glog.V(logger.Error).Infof("Available machine log components: %v", components)
-		glog.Fatalf("%s\nError: %s", doc, e)
+		os.Exit(1)
 	}
 	// Set the global logger mlog format from context
 	if e := logger.SetMLogFormatFromString(ctx.GlobalString(MLogFlag.Name)); e != nil {
