@@ -336,6 +336,7 @@ var (
 )
 
 type expectedEra int
+
 const (
 	era1 expectedEra = iota + 1
 	era2
@@ -343,29 +344,36 @@ const (
 	era4
 )
 
-type rewards map[common.Address]*big.Int
-var (
-	era1Rewards = rewards{
-		WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, new(big.Int).Mul(Era1WinnerUncleReward, common.Big2)),
-		Uncle1Coinbase: Era1UncleReward,
-		Uncle2Coinbase: Era1UncleReward,
+type expectedRewards map[common.Address]*big.Int
+
+func calculateExpectedEraRewards(era expectedEra, numUncles int) expectedRewards {
+	wr := new(big.Int)
+	wur := new(big.Int)
+	ur := new(big.Int)
+	switch era {
+	case era1:
+		wr = Era1WinnerReward
+		wur = Era1WinnerUncleReward
+		ur = Era1UncleReward
+	case era2:
+		wr = Era2WinnerReward
+		wur = Era2WinnerUncleReward
+		ur = Era2UncleReward
+	case era3:
+		wr = Era3WinnerReward
+		wur = Era3WinnerUncleReward
+		ur = Era3UncleReward
+	case era4:
+		wr = Era4WinnerReward
+		wur = Era4WinnerUncleReward
+		ur = Era4UncleReward
 	}
-	era2Rewards = rewards{
-		WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, new(big.Int).Mul(Era2WinnerUncleReward, common.Big2)),
-		Uncle1Coinbase: Era2UncleReward,
-		Uncle2Coinbase: Era2UncleReward,
+	return expectedRewards{
+		WinnerCoinbase: new(big.Int).Add(wr, new(big.Int).Mul(wur, big.NewInt(int64(numUncles)))),
+		Uncle1Coinbase: ur,
+		Uncle2Coinbase: ur,
 	}
-	era3Rewards = rewards{
-		WinnerCoinbase: new(big.Int).Add(Era3WinnerReward, new(big.Int).Mul(Era3WinnerUncleReward, common.Big2)),
-		Uncle1Coinbase: Era3UncleReward,
-		Uncle2Coinbase: Era3UncleReward,
-	}
-	era4Rewards = rewards{
-		WinnerCoinbase: new(big.Int).Add(Era4WinnerReward, new(big.Int).Mul(Era4WinnerUncleReward, common.Big2)),
-		Uncle1Coinbase: Era4UncleReward,
-		Uncle2Coinbase: Era4UncleReward,
-	}
-)
+}
 
 // Non-accruing over block cases simulates instance,
 // ie. a miner wins once at different blocks.
@@ -376,155 +384,155 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 	// Order matters here; expected cases must be ordered the same.
 	// Will uses indexes to match expectations -> test outcomes.
 	configs := []*ChainConfig{DefaultConfig, TestConfig}
-	cases := [][]struct{
-		eraNum expectedEra
+	cases := [][]struct {
+		eraNum  expectedEra
 		block   *big.Int
-		rewards rewards
+		rewards expectedRewards
 	}{
 		{
 			// Default (mainnet)
 			{
-				eraNum: era1,
-				block: big.NewInt(2),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(2),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(13),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(13),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(2999999),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(2999999),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(3000000),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(3000000),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(3000001),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(3000001),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(4999999),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(4999999),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(5000000),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(5000000),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era2,
-				block: big.NewInt(5000001),
-				rewards: era2Rewards,
+				eraNum:  era2,
+				block:   big.NewInt(5000001),
+				rewards: calculateExpectedEraRewards(era2, 2),
 			},
 			{
-				eraNum: era2,
-				block: big.NewInt(5000010),
-				rewards: era2Rewards,
+				eraNum:  era2,
+				block:   big.NewInt(5000010),
+				rewards: calculateExpectedEraRewards(era2, 2),
 			},
 			{
-				eraNum: era2,
-				block: big.NewInt(10000000),
-				rewards: era2Rewards,
+				eraNum:  era2,
+				block:   big.NewInt(10000000),
+				rewards: calculateExpectedEraRewards(era2, 2),
 			},
 			{
-				eraNum: era3,
-				block: big.NewInt(10000001),
-				rewards: era3Rewards,
+				eraNum:  era3,
+				block:   big.NewInt(10000001),
+				rewards: calculateExpectedEraRewards(era3, 2),
 			},
 			{
-				eraNum: era3,
-				block: big.NewInt(15000000),
-				rewards: era3Rewards,
+				eraNum:  era3,
+				block:   big.NewInt(15000000),
+				rewards: calculateExpectedEraRewards(era3, 2),
 			},
 			{
-				eraNum: era4,
+				eraNum:  era4,
 				block:   big.NewInt(15000001),
-				rewards: era4Rewards,
+				rewards: calculateExpectedEraRewards(era4, 2),
 			},
 			{
-				eraNum: era4,
+				eraNum:  era4,
 				block:   big.NewInt(20000000),
-				rewards: era4Rewards,
+				rewards: calculateExpectedEraRewards(era4, 2),
 			},
 		},
 		// testnet (morden)
 		{
 			{
-				eraNum: era1,
-				block: big.NewInt(2),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(2),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(13),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(13),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(1914999),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(1914999),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(1915000),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(1915000),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(1915001),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(1915001),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(2999999),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(2999999),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era1,
-				block: big.NewInt(3000000),
-				rewards: era1Rewards,
+				eraNum:  era1,
+				block:   big.NewInt(3000000),
+				rewards: calculateExpectedEraRewards(era1, 2),
 			},
 			{
-				eraNum: era2,
-				block: big.NewInt(3000001),
-				rewards: era2Rewards,
+				eraNum:  era2,
+				block:   big.NewInt(3000001),
+				rewards: calculateExpectedEraRewards(era2, 2),
 			},
 			{
-				eraNum: era2,
-				block: big.NewInt(3000010),
-				rewards: era2Rewards,
+				eraNum:  era2,
+				block:   big.NewInt(3000010),
+				rewards: calculateExpectedEraRewards(era2, 2),
 			},
 			{
-				eraNum: era2,
-				block: big.NewInt(6000000),
-				rewards: era2Rewards,
+				eraNum:  era2,
+				block:   big.NewInt(6000000),
+				rewards: calculateExpectedEraRewards(era2, 2),
 			},
 			{
-				eraNum: era3,
-				block: big.NewInt(6000001),
-				rewards: era3Rewards,
+				eraNum:  era3,
+				block:   big.NewInt(6000001),
+				rewards: calculateExpectedEraRewards(era3, 2),
 			},
 			{
-				eraNum: era3,
-				block: big.NewInt(9000000),
-				rewards: era3Rewards,
+				eraNum:  era3,
+				block:   big.NewInt(9000000),
+				rewards: calculateExpectedEraRewards(era3, 2),
 			},
 			{
-				eraNum: era4,
+				eraNum:  era4,
 				block:   big.NewInt(9000001),
-				rewards: era4Rewards,
+				rewards: calculateExpectedEraRewards(era4, 2),
 			},
 			{
-				eraNum: era4,
+				eraNum:  era4,
 				block:   big.NewInt(12000000),
-				rewards: era4Rewards,
+				rewards: calculateExpectedEraRewards(era4, 2),
 			},
 		},
 	}
@@ -625,194 +633,116 @@ func TestAccumulateRewards3_1Uncle(t *testing.T) {
 	configs := []*ChainConfig{DefaultConfig, TestConfig}
 	cases := [][]struct {
 		block   *big.Int
-		rewards rewards
+		rewards expectedRewards
 	}{
 		{
 			// mainnet
 			{
-				block: big.NewInt(2),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(2),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(13),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(13),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(2999999),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(2999999),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(3000000),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(3000000),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(3000001),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(3000001),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(4999999),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(4999999),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(5000001),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
-					Uncle1Coinbase: Era2UncleReward,
-				},
+				block:   big.NewInt(5000001),
+				rewards: calculateExpectedEraRewards(era2, 1),
 			},
 			{
-				block: big.NewInt(5000010),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
-					Uncle1Coinbase: Era2UncleReward,
-				},
+				block:   big.NewInt(5000010),
+				rewards: calculateExpectedEraRewards(era2, 1),
 			},
 			{
-				block: big.NewInt(10000000),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
-					Uncle1Coinbase: Era2UncleReward,
-				},
+				block:   big.NewInt(10000000),
+				rewards: calculateExpectedEraRewards(era2, 1),
 			},
 			{
-				block: big.NewInt(10000001),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era3WinnerReward, Era3WinnerUncleReward),
-					Uncle1Coinbase: Era3UncleReward,
-				},
+				block:   big.NewInt(10000001),
+				rewards: calculateExpectedEraRewards(era3, 1),
 			},
 			{
-				block: big.NewInt(15000000),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era3WinnerReward, Era3WinnerUncleReward),
-					Uncle1Coinbase: Era3UncleReward,
-				},
+				block:   big.NewInt(15000000),
+				rewards: calculateExpectedEraRewards(era3, 1),
 			},
 			{
-				block: big.NewInt(15000001),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era4WinnerReward, Era4WinnerUncleReward),
-					Uncle1Coinbase: Era4UncleReward,
-				},
+				block:   big.NewInt(15000001),
+				rewards: calculateExpectedEraRewards(era4, 1),
 			},
 			{
-				block: big.NewInt(20000000),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era4WinnerReward, Era4WinnerUncleReward),
-					Uncle1Coinbase: Era4UncleReward,
-				},
+				block:   big.NewInt(20000000),
+				rewards: calculateExpectedEraRewards(era4, 1),
 			},
 		},
 		// testnet
 		{
 			{
-				block: big.NewInt(2),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(2),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(13),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(13),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(1914999),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(1914999),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(1915000),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(1915000),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(1915001),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(1915001),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(2999999),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era1WinnerReward, Era1WinnerUncleReward),
-					Uncle1Coinbase: Era1UncleReward,
-				},
+				block:   big.NewInt(2999999),
+				rewards: calculateExpectedEraRewards(era1, 1),
 			},
 			{
-				block: big.NewInt(3000001),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
-					Uncle1Coinbase: Era2UncleReward,
-				},
+				block:   big.NewInt(3000001),
+				rewards: calculateExpectedEraRewards(era2, 1),
 			},
 			{
-				block: big.NewInt(3000010),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
-					Uncle1Coinbase: Era2UncleReward,
-				},
+				block:   big.NewInt(3000010),
+				rewards: calculateExpectedEraRewards(era2, 1),
 			},
 			{
-				block: big.NewInt(6000000),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era2WinnerReward, Era2WinnerUncleReward),
-					Uncle1Coinbase: Era2UncleReward,
-				},
+				block:   big.NewInt(6000000),
+				rewards: calculateExpectedEraRewards(era2, 1),
 			},
 			{
-				block: big.NewInt(6000001),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era3WinnerReward, Era3WinnerUncleReward),
-					Uncle1Coinbase: Era3UncleReward,
-				},
+				block:   big.NewInt(6000001),
+				rewards: calculateExpectedEraRewards(era3, 1),
 			},
 			{
-				block: big.NewInt(9000000),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era3WinnerReward, Era3WinnerUncleReward),
-					Uncle1Coinbase: Era3UncleReward,
-				},
+				block:   big.NewInt(9000000),
+				rewards: calculateExpectedEraRewards(era3, 1),
 			},
 			{
-				block: big.NewInt(9000001),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era4WinnerReward, Era4WinnerUncleReward),
-					Uncle1Coinbase: Era4UncleReward,
-				},
+				block:   big.NewInt(9000001),
+				rewards: calculateExpectedEraRewards(era4, 1),
 			},
 			{
-				block: big.NewInt(12000000),
-				rewards: rewards{
-					WinnerCoinbase: new(big.Int).Add(Era4WinnerReward, Era4WinnerUncleReward),
-					Uncle1Coinbase: Era4UncleReward,
-				},
+				block:   big.NewInt(12000000),
+				rewards: calculateExpectedEraRewards(era4, 1),
 			},
 		},
 	}
@@ -890,171 +820,117 @@ func TestAccumulateRewards3_1Uncle(t *testing.T) {
 // Tests winner includes 0 ommer headers.
 func TestAccumulateRewards4_0Uncles(t *testing.T) {
 
-	type rewards map[common.Address]*big.Int
-
 	configs := []*ChainConfig{DefaultConfig, TestConfig}
 	cases := [][]struct {
 		block   *big.Int
-		rewards rewards
+		rewards expectedRewards
 	}{
 		{
 			{
-				block: big.NewInt(2),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(2),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(13),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(13),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(2999999),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(2999999),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(3000000),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(3000000),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(3000001),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(3000001),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(4999999),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(4999999),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(5000001),
-				rewards: rewards{
-					WinnerCoinbase: Era2WinnerReward,
-				},
+				block:   big.NewInt(5000001),
+				rewards: calculateExpectedEraRewards(era2, 0),
 			},
 			{
-				block: big.NewInt(5000010),
-				rewards: rewards{
-					WinnerCoinbase: Era2WinnerReward,
-				},
+				block:   big.NewInt(5000010),
+				rewards: calculateExpectedEraRewards(era2, 0),
 			},
 			{
-				block: big.NewInt(10000000),
-				rewards: rewards{
-					WinnerCoinbase: Era2WinnerReward,
-				},
+				block:   big.NewInt(10000000),
+				rewards: calculateExpectedEraRewards(era2, 0),
 			},
 			{
-				block: big.NewInt(10000001),
-				rewards: rewards{
-					WinnerCoinbase: Era3WinnerReward,
-				},
+				block:   big.NewInt(10000001),
+				rewards: calculateExpectedEraRewards(era3, 0),
 			},
 			{
-				block: big.NewInt(15000000),
-				rewards: rewards{
-					WinnerCoinbase: Era3WinnerReward,
-				},
+				block:   big.NewInt(15000000),
+				rewards: calculateExpectedEraRewards(era3, 0),
 			},
 			{
-				block: big.NewInt(15000001),
-				rewards: rewards{
-					WinnerCoinbase: Era4WinnerReward,
-				},
+				block:   big.NewInt(15000001),
+				rewards: calculateExpectedEraRewards(era4, 0),
 			},
 			{
-				block: big.NewInt(20000000),
-				rewards: rewards{
-					WinnerCoinbase: Era4WinnerReward,
-				},
+				block:   big.NewInt(20000000),
+				rewards: calculateExpectedEraRewards(era4, 0),
 			},
 		},
 		{
 			{
-				block: big.NewInt(2),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(2),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(13),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(13),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(1914999),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(1914999),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(1915000),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(1915000),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(1915001),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(1915001),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(2999999),
-				rewards: rewards{
-					WinnerCoinbase: Era1WinnerReward,
-				},
+				block:   big.NewInt(2999999),
+				rewards: calculateExpectedEraRewards(era1, 0),
 			},
 			{
-				block: big.NewInt(3000001),
-				rewards: rewards{
-					WinnerCoinbase: Era2WinnerReward,
-				},
+				block:   big.NewInt(3000001),
+				rewards: calculateExpectedEraRewards(era2, 0),
 			},
 			{
-				block: big.NewInt(3000010),
-				rewards: rewards{
-					WinnerCoinbase: Era2WinnerReward,
-				},
+				block:   big.NewInt(3000010),
+				rewards: calculateExpectedEraRewards(era2, 0),
 			},
 			{
-				block: big.NewInt(6000000),
-				rewards: rewards{
-					WinnerCoinbase: Era2WinnerReward,
-				},
+				block:   big.NewInt(6000000),
+				rewards: calculateExpectedEraRewards(era2, 0),
 			},
 			{
-				block: big.NewInt(6000001),
-				rewards: rewards{
-					WinnerCoinbase: Era3WinnerReward,
-				},
+				block:   big.NewInt(6000001),
+				rewards: calculateExpectedEraRewards(era3, 0),
 			},
 			{
-				block: big.NewInt(9000000),
-				rewards: rewards{
-					WinnerCoinbase: Era3WinnerReward,
-				},
+				block:   big.NewInt(9000000),
+				rewards: calculateExpectedEraRewards(era3, 0),
 			},
 			{
-				block: big.NewInt(9000001),
-				rewards: rewards{
-					WinnerCoinbase: Era4WinnerReward,
-				},
+				block:   big.NewInt(9000001),
+				rewards: calculateExpectedEraRewards(era4, 0),
 			},
 			{
-				block: big.NewInt(12000000),
-				rewards: rewards{
-					WinnerCoinbase: Era4WinnerReward,
-				},
+				block:   big.NewInt(12000000),
+				rewards: calculateExpectedEraRewards(era4, 0),
 			},
 		},
 	}
