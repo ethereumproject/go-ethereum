@@ -248,8 +248,9 @@ func GetBlockWinnerRewardByEra(era *big.Int) *big.Int {
 // GetBlockEra gets which "Era" a given block is within, given an era length (ecip-1017 has era=5,000,000 blocks)
 // Returns a zero-index era number, so "Era 1": 0, "Era 2": 1, "Era 3": 2 ...
 func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
-	if blockNum.Cmp(big.NewInt(0)) <= 0 {
-		return big.NewInt(0)
+	// If genesis block or impossible negative-numbered block, return zero-val.
+	if blockNum.Sign() < 1 {
+		return new(big.Int)
 	}
 
 	remainder := big.NewInt(0).Mod(big.NewInt(0).Sub(blockNum, big.NewInt(1)), eraLength)
