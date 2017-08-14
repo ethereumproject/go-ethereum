@@ -1781,13 +1781,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	}
 
 	// Wait to make sure all data is set after sync
-	n := time.Now()
-	for tester.downloader.synchronising > 0 {
-		if time.Since(n) > time.Second {
-			break
-		}
-	}
-	t.Logf("required %v for downloader to synchronise", time.Since(n))
+	time.Sleep(400 * time.Millisecond)
 
 	// Retry limit exhausted, downloader will switch to full sync, should succeed
 	if err := tester.sync("peer", nil, FastSync); err != nil {
