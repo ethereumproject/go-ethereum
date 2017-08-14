@@ -36,7 +36,7 @@ import (
 
 type mlogFormat uint
 const (
-	mLOGPlain         mlogFormat = iota
+	mLOGPlain         mlogFormat = iota + 1
 	mLOGKV
 	MLOGJSON
 )
