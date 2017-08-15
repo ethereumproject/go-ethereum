@@ -54,7 +54,7 @@ var mlogMinerCommitUncle = logger.MLogT{
 If $COMMIT_UNCLE is non-nil, uncle is not committed.`,
 	Receiver: "MINER",
 	Verb: "COMMIT",
-	Subject: "UNClE",
+	Subject: "UNCLE",
 	Details: []logger.MLogDetailT{
 		{"COMMIT", "BLOCK_NUMBER", "BIGINT"},
 		{"UNCLE", "HASH", "STRING"},
