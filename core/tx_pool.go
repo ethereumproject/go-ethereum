@@ -225,54 +225,70 @@ func (pool *TxPool) SetLocal(tx *types.Transaction) {
 // to the consensus rules.
 func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	local := pool.localTx.contains(tx.Hash())
+	var e error
+	defer func() {
+		mlogTxPool.Send(mlogTxPoolValidateTx.SetDetailValues(
+			tx.Hash().Hex(),
+			e,
+		))
+	}()
 	// Drop transactions under our own minimal accepted gas price
 	if !local && pool.minGasPrice.Cmp(tx.GasPrice()) > 0 {
-		return ErrCheap
+		e = ErrCheap
+		return e
 	}
 
 	currentState, err := pool.currentState()
 	if err != nil {
-		return err
+		e = err
+		return e
 	}
 
 	from, err := types.Sender(pool.signer, tx)
 	if err != nil {
-		return ErrInvalidSender
+		e = ErrInvalidSender
+		return e
 	}
 
 	// Make sure the account exist. Non existent accounts
 	// haven't got funds and well therefor never pass.
 	if !currentState.Exist(from) {
-		return ErrNonExistentAccount
+		e = ErrNonExistentAccount
+		return e
 	}
 
 	// Last but not least check for nonce errors
 	if currentState.GetNonce(from) > tx.Nonce() {
-		return ErrNonce
+		e = ErrNonce
+		return e
 	}
 
 	// Check the transaction doesn't exceed the current
 	// block limit gas.
 	if pool.gasLimit().Cmp(tx.Gas()) < 0 {
-		return ErrGasLimit
+		e = ErrGasLimit
+		return e
 	}
 
 	// Transactions can't be negative. This may never happen
 	// using RLP decoded transactions but may occur if you create
 	// a transaction using the RPC for example.
 	if tx.Value().Sign() < 0 {
-		return ErrNegativeValue
+		e = ErrNegativeValue
+		return e
 	}
 
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
-		return ErrInsufficientFunds
+		e = ErrInsufficientFunds
+		return e
 	}
 
 	intrGas := IntrinsicGas(tx.Data(), MessageCreatesContract(tx), pool.homestead)
 	if tx.Gas().Cmp(intrGas) < 0 {
-		return ErrIntrinsicGas
+		e = ErrIntrinsicGas
+		return e
 	}
 
 	return nil
@@ -291,19 +307,24 @@ func (self *TxPool) add(tx *types.Transaction) error {
 	}
 	self.queueTx(hash, tx)
 
-	if glog.V(logger.Debug) {
-		var toname string
-		if to := tx.To(); to != nil {
-			toname = common.Bytes2Hex(to[:4])
-		} else {
-			toname = "[NEW_CONTRACT]"
-		}
-		// we can ignore the error here because From is
-		// verified in ValidateTransaction.
-		f, _ := types.Sender(self.signer, tx)
-		from := common.Bytes2Hex(f[:4])
-		glog.Infof("(t) %x => %s (%v) %x\n", from, toname, tx.Value, hash)
+	var toname string
+	if to := tx.To(); to != nil {
+		toname = common.Bytes2Hex(to[:4])
+	} else {
+		toname = "[NEW_CONTRACT]"
 	}
+	// we can ignore the error here because From is
+	// verified in ValidateTransaction.
+	f, _ := types.Sender(self.signer, tx)
+	from := common.Bytes2Hex(f[:4])
+
+	mlogTxPool.Send(mlogTxPoolAddTx.SetDetailValues(
+		f.Hex(),
+		tx.To().Hex(),
+		tx.Value,
+		hash.Hex(),
+	))
+	glog.V(logger.Debug).Infof("(t) %x => %s (%v) %x\n", from, toname, tx.Value, hash)
 
 	return nil
 }

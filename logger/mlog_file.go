@@ -63,6 +63,7 @@ var (
 		"BIGINT": new(big.Int),
 		"STRING": "string",
 		"STRING_OR_NULL": nil,
+		"DURATION": time.Minute + time.Second * 3 + time.Millisecond * 42,
 	}
 
 	MLogStringToFormat = map[string]mlogFormat{

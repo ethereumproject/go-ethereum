@@ -322,14 +322,22 @@ func (self *worker) wait() {
 			}
 
 			// check staleness and display confirmation
-			var stale, confirm string
+			var stale, confirm, staleOrConfirmMsg string
 			canonBlock := self.chain.GetBlockByNumber(block.NumberU64())
 			if canonBlock != nil && canonBlock.Hash() != block.Hash() {
 				stale = "stale "
+				staleOrConfirmMsg = "stale"
 			} else {
 				confirm = "Wait 5 blocks for confirmation"
+				staleOrConfirmMsg = "wait_confirm"
 				work.localMinedBlocks = newLocalMinedBlock(block.Number().Uint64(), work.localMinedBlocks)
 			}
+			mlogMiner.Send(mlogMinerMineBlock.SetDetailValues(
+				block.Number(),
+				block.Hash().Hex(),
+				staleOrConfirmMsg,
+				miningLogAtDepth,
+			))
 			glog.V(logger.Info).Infof("🔨  Mined %sblock (#%v / %x). %s", stale, block.Number(), block.Hash().Bytes()[:4], confirm)
 
 			self.commitNewWork()
@@ -427,6 +435,9 @@ func (self *worker) logLocalMinedBlocks(current, previous *Work) {
 		for checkBlockNum := previous.Block.NumberU64(); checkBlockNum < nextBlockNum; checkBlockNum++ {
 			inspectBlockNum := checkBlockNum - miningLogAtDepth
 			if self.isBlockLocallyMined(current, inspectBlockNum) {
+				mlogMiner.Send(mlogMinerConfirmMinedBlock.SetDetailValues(
+					inspectBlockNum,
+				))
 				glog.V(logger.Info).Infof("🔨 🔗  Mined %d blocks back: block #%v", miningLogAtDepth, inspectBlockNum)
 			}
 		}
@@ -549,7 +560,14 @@ func (self *worker) commitNewWork() {
 
 	// We only care about logging if we're actually mining.
 	if atomic.LoadInt32(&self.mining) == 1 {
-		glog.V(logger.Info).Infof("commit new work on block %v with %d txs & %d uncles. Took %v\n", work.Block.Number(), work.tcount, len(uncles), time.Since(tstart))
+		elapsed := time.Since(tstart)
+		mlogMiner.Send(mlogMinerCommitWorkBlock.SetDetailValues(
+			work.Block.Number(),
+			work.tcount,
+			len(uncles),
+			elapsed,
+		))
+		glog.V(logger.Info).Infof("commit new work on block %v with %d txs & %d uncles. Took %v\n", work.Block.Number(), work.tcount, len(uncles), elapsed)
 		self.logLocalMinedBlocks(work, previous)
 	}
 	self.push(work)
@@ -557,14 +575,25 @@ func (self *worker) commitNewWork() {
 
 func (self *worker) commitUncle(work *Work, uncle *types.Header) error {
 	hash := uncle.Hash()
+	var e error
+	defer func() {
+		mlogMiner.Send(mlogMinerCommitUncle.SetDetailValues(
+			work.Block.Number(),
+			hash.Hex(),
+			e,
+		))
+	}()
 	if work.uncles.Has(hash) {
-		return core.UncleError("Uncle not unique")
+		e = core.UncleError("Uncle not unique")
+		return e
 	}
 	if !work.ancestors.Has(uncle.ParentHash) {
-		return core.UncleError(fmt.Sprintf("Uncle's parent unknown (%x)", uncle.ParentHash[0:4]))
+		e = core.UncleError(fmt.Sprintf("Uncle's parent unknown (%x)", uncle.ParentHash[0:4]))
+		return e
 	}
 	if work.family.Has(hash) {
-		return core.UncleError(fmt.Sprintf("Uncle already in family (%x)", hash))
+		e = core.UncleError(fmt.Sprintf("Uncle already in family (%x)", hash))
+		return e
 	}
 	work.uncles.Add(uncle.Hash())
 	return nil
@@ -638,6 +667,7 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 			env.tcount++
 			coalescedLogs = append(coalescedLogs, logs...)
 		}
+
 	}
 	if len(coalescedLogs) > 0 || env.tcount > 0 {
 		go func(logs vm.Logs, tcount int) {
@@ -655,6 +685,15 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, g
 	snap := env.state.Snapshot()
 
 	receipt, logs, _, err := core.ApplyTransaction(env.config, bc, gp, env.state, env.header, tx, env.header.GasUsed)
+
+	defer func() {
+		mlogMiner.Send(mlogMinerCommitTx.SetDetailValues(
+			env.Block.Number(),
+			tx.Hash().Hex(),
+			err,
+		))
+	}()
+
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		return err, nil

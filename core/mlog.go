@@ -4,14 +4,20 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 )
 
-var mlogBlockchain = logger.MLogRegisterAvailable("blockchain", mLogLines)
+var mlogBlockchain = logger.MLogRegisterAvailable("blockchain", mLogLinesBlockchain)
+var mlogTxPool = logger.MLogRegisterAvailable("txpool", mLogLinesTxPool)
 
 // mLogLines is an private slice of all available mlog LINES.
 // May be used for automatic mlog documentation generator, or
 // for API usage/display/documentation otherwise.
-var mLogLines = []logger.MLogT{
+var mLogLinesBlockchain = []logger.MLogT{
 	mlogBlockchainWriteBlock,
 	mlogBlockchainInsertBlocks,
+}
+
+var mLogLinesTxPool = []logger.MLogT{
+	mlogTxPoolAddTx,
+	mlogTxPoolValidateTx,
 }
 
 // Collect and document available mlog lines.
@@ -52,3 +58,30 @@ var mlogBlockchainInsertBlocks = logger.MLogT{
 		{"INSERT", "TIME", "DURATION"},
 	},
 }
+
+var mlogTxPoolAddTx = logger.MLogT{
+	Description: `Called once when a valid transaction is added to tx pool.
+$TO.NAME will be the account address hex or '[NEW_CONTRACT]' in case of a contract.`,
+	Receiver: "TXPOOL",
+	Verb: "ADD",
+	Subject: "TX",
+	Details: []logger.MLogDetailT{
+		{"TX", "FROM", "STRING"},
+		{"TX", "TO", "STRING"},
+		{"TX", "VALUE", "BIGINT"},
+		{"TX", "HASH", "STRING"},
+	},
+}
+
+var mlogTxPoolValidateTx = logger.MLogT{
+	Description: `Called once when validating a single transaction.
+If transaction is invalid, TX.ERROR will be non-nil, otherwise it will be nil.`,
+	Receiver: "TXPOOL",
+	Verb: "VALIDATE",
+	Subject: "TX",
+	Details: []logger.MLogDetailT{
+		{"TX", "HASH", "STRING"},
+		{"TX", "ERROR", "STRING_OR_NULL"},
+	},
+}
+
