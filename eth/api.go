@@ -1701,7 +1701,7 @@ type ExecutionResult struct {
 	ReturnValue string   `json:"returnValue"`
 }
 
-// TraceCall executes a call and returns the amount of gas, created logs and optionally returned values.
+// TraceCall executes a call and returns the amount of gas and optionally returned values.
 func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) (*ExecutionResult, error) {
 	// Fetch the state associated with the block number
 	stateDb, block, err := stateAndBlockByNumber(s.miner, s.bc, blockNr, s.chainDb)
@@ -1749,6 +1749,84 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 		Gas:         gas,
 		ReturnValue: fmt.Sprintf("%x", ret),
 	}, nil
+}
+
+// TraceTransaction returns the amount of gas and execution result of the given transaction.
+func (s *PublicDebugAPI) TraceTransaction(txHash common.Hash) (*ExecutionResult, error) {
+	var result *ExecutionResult
+	tx, blockHash, _, txIndex := core.GetTransaction(s.eth.ChainDb(), txHash)
+	if tx == nil {
+		return result, fmt.Errorf("tx '%x' not found", txHash)
+	}
+
+	msg, vmenv, err := s.computeTxEnv(blockHash, int(txIndex))
+	if err != nil {
+		return nil, err
+	}
+
+	gp := new(core.GasPool).AddGas(tx.Gas())
+	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	return &ExecutionResult{
+		Gas: gas,
+		ReturnValue: fmt.Sprintf("%x", ret),
+	}, nil
+}
+
+// computeTxEnv returns the execution environment of a certain transaction.
+func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, *core.VMEnv, error) {
+
+	// Create the parent state.
+	block := s.eth.BlockChain().GetBlock(blockHash)
+	if block == nil {
+		return nil, nil, fmt.Errorf("block %x not found", blockHash)
+	}
+	parent := s.eth.BlockChain().GetBlock(block.ParentHash())
+	if parent == nil {
+		return nil, nil, fmt.Errorf("block parent %x not found", block.ParentHash())
+	}
+	statedb, err := s.eth.BlockChain().StateAt(parent.Root())
+	if err != nil {
+		return nil, nil, err
+	}
+	txs := block.Transactions()
+
+	// Recompute transactions up to the target index.
+	for idx, tx := range txs {
+		// Assemble the transaction call message
+		// Retrieve the account state object to interact with
+		var from *state.StateObject
+		fromAddress, e := tx.From()
+		if e != nil {
+			return nil, nil, e
+		}
+		if fromAddress == (common.Address{}) {
+			from = statedb.GetOrNewStateObject(common.Address{})
+		} else {
+			from = statedb.GetOrNewStateObject(fromAddress)
+		}
+
+		msg := callmsg{
+			from: from,
+			to: tx.To(),
+			gas: tx.Gas(),
+			gasPrice: tx.GasPrice(),
+			value: tx.Value(),
+			data: tx.Data(),
+		}
+
+		vmenv := core.NewEnv(statedb, s.eth.chainConfig, s.eth.BlockChain(), msg, block.Header())
+		if idx == txIndex {
+			return msg, vmenv, nil
+		}
+
+		gp := new(core.GasPool).AddGas(tx.Gas())
+		_, _, err := core.ApplyMessage(vmenv, msg, gp)
+		if err != nil {
+			return nil, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)
+		}
+		statedb.DeleteSuicides()
+	}
+	return nil, nil, fmt.Errorf("tx index %d out of range for block %x", txIndex, blockHash)
 }
 
 // PublicNetAPI offers network related RPC methods
