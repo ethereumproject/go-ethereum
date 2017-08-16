@@ -178,6 +178,26 @@ var TestConfig = &ChainConfig{
 				},
 			},
 		},
+		{
+			Name: "Monetary Policy",
+			Block: big.NewInt(2500000),
+			Features: []*ForkFeature{
+				{
+					ID: "ecip1017",
+					Options: ChainFeatureConfigOptions{
+						"type": "reward",
+						"era": 3000000,
+					},
+				},
+				{
+					ID: "ecip1029",
+					Options: ChainFeatureConfigOptions{
+						"type": "difficulty",
+						"name": "ghost",
+					},
+				},
+			},
+		},
 	},
 	BadHashes: []*BadHash{
 		{

@@ -762,8 +762,11 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	localTd := self.GetTd(self.currentBlock.Hash())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
-	for _, uncle := range block.Uncles() {
-		externTd = new(big.Int).Add(uncle.Difficulty, externTd)
+	// #GHOST Include uncles in total difficulty calculation
+	if _, _, configured := self.config.GetFeature(block.Number(), "ecip1029"); configured {
+		for _, uncle := range block.Uncles() {
+			externTd = new(big.Int).Add(uncle.Difficulty, externTd)
+		}
 	}
 
 	// If the total difficulty is higher than our known, add it to the canonical chain
