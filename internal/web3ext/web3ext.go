@@ -340,6 +340,11 @@ web3._extend({
 			call: 'eth_submitTransaction',
 			params: 1,
 			inputFormatter: [web3._extend.formatters.inputTransactionFormatter]
+		}),
+		new web3._extend.Method({
+			name: 'chainId',
+			call: 'eth_chainId',
+			params: 0
 		})
 	],
 	properties:
