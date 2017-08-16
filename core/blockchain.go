@@ -762,6 +762,10 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	localTd := self.GetTd(self.currentBlock.Hash())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
+	for _, uncle := range block.uncles {
+		externTd = new(big.Int).Add(uncle.Difficulty(), externTd)
+	}
+
 	// If the total difficulty is higher than our known, add it to the canonical chain
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
 	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
