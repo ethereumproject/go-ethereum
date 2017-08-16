@@ -176,6 +176,15 @@ func (s *PublicEthereumAPI) Syncing() (interface{}, error) {
 	}, nil
 }
 
+// ChainId returns the chain-configured value for EIP-155 chain id, used in signing protected txs.
+// If EIP-155 is not configured it will return 0.
+// Number will be returned as a string in hexadecimal format.
+// 61 - Mainnet $((0x3d))
+// 62 - Morden $((0x3e))
+func (s *PublicEthereumAPI) ChainId() *big.Int {
+	return s.e.chainConfig.GetChainID()
+}
+
 // PublicMinerAPI provides an API to control the miner.
 // It offers only methods that operate on data that pose no security risk when it is publicly accessible.
 type PublicMinerAPI struct {
