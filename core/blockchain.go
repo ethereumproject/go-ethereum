@@ -763,7 +763,7 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
 	for _, uncle := range block.Uncles() {
-		externTd = new(big.Int).Add(uncle.Difficulty(), externTd)
+		externTd = new(big.Int).Add(uncle.Difficulty, externTd)
 	}
 
 	// If the total difficulty is higher than our known, add it to the canonical chain
