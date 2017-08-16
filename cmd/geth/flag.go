@@ -168,6 +168,13 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
 					glog.Fatalf("Could not copy chain configuration: %v", e)
 				}
+				// In edge case of using a config file for default configuration (decided by 'identity'),
+				// set global context and override config file.
+				if chainIdentitiesMorden[c.Identity] || chainIdentitiesMain[c.Identity] {
+					if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), c.Identity); e != nil {
+						glog.Fatalf("Could not set global context chain identity to morden, error: %v", e)
+					}
+				}
 				return c.Identity
 			}
 			glog.Fatalf("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
@@ -624,18 +631,14 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	config := &core.SufficientChainConfig{}
 	defer func() {
+		// Allow flags to override external config file.
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 			config.Consensus = "ethash-test"
 		}
-
-		// Allow flags to override external config file for bootnodes and network id.
-		//
-		// Check for flagged bootnodes.
 		if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
 			config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
 			glog.V(logger.Warn).Infof(`WARNING: overwriting external bootnodes configuration with those from --%s flag. Value set from flag: %v`, aliasableName(BootnodesFlag.Name, ctx), config.ParsedBootstrap)
 		}
-
 		if ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
 			i := ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx))
 			glog.V(logger.Warn).Infof(`WARNING: overwriting external network id configuration with that from --%s flag. Value set from flag: %d`, aliasableName(NetworkIdFlag.Name, ctx), i)
@@ -648,6 +651,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	chainIdentity := mustMakeChainIdentity(ctx)
 
+	// If chain identity is either of defaults (via config file or flag), use defaults.
 	if chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity] {
 		// Initialise chain configuration before handling migrations or setting up node.
 		config.Identity = chainIdentity
@@ -657,7 +661,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		config.Genesis = core.DefaultGenesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
-		if chainIsMorden(ctx) || chainIdentitiesMorden[config.Identity] {
+		if chainIsMorden(ctx) {
 			config.Network = 2
 			config.Genesis = core.TestNetGenesis
 			state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
