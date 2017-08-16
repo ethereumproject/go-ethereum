@@ -19,11 +19,12 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -100,8 +101,8 @@ The output of this command is supposed to be machine-readable.
 		},
 		{
 			Action: makeMLogDocumentation,
-			Name: "mdoc",
-			Usage: "Generate mlog documentation in markdown format",
+			Name:   "mdoc",
+			Usage:  "Generate mlog documentation in markdown format",
 			Description: `
 The output of this command should be human readable, and wiki-ready.
 `,
@@ -213,7 +214,7 @@ The output of this command should be human readable, and wiki-ready.
 		}
 
 		if s := ctx.String("metrics"); s != "" {
-			go metrics.Collect(s)
+			go metrics.CollectToFile(s)
 		}
 
 		// This should be the only place where reporting is enabled

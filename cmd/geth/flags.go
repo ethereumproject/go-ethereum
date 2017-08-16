@@ -6,14 +6,15 @@ import (
 
 	"strings"
 
+	"path/filepath"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
+	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"gopkg.in/urfave/cli.v1"
-	"path/filepath"
-	"github.com/ethereumproject/go-ethereum/logger"
 )
 
 // These are all the command line flags we support.
@@ -35,7 +36,7 @@ var (
 		Usage: "Directory path for the keystore",
 	}
 	ChainIdentityFlag = cli.StringFlag{
-		Name: "chain",
+		Name:  "chain",
 		Usage: `Chain identifier (default='mainnet', test='morden') or path to JSON chain configuration file (eg './path/to/chain.json').`,
 		Value: core.DefaultChainConfigID,
 	}
@@ -155,23 +156,23 @@ var (
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
 	}
 	LogStatusFlag = cli.StringFlag{
-		Name: "log-status",
+		Name:  "log-status",
 		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
 		Value: "sync=60",
 	}
 	MLogFlag = cli.StringFlag{
-		Name: "mlog",
+		Name:  "mlog",
 		Usage: "Set machine-readable log format: [plain|kv|json|off]",
 		Value: "kv",
 	}
 	MLogDirFlag = DirectoryFlag{
-		Name: "mlog-dir",
+		Name:  "mlog-dir",
 		Usage: "Directory in which to write machine log files",
 		// TODO: move to chain-subdir?
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mlogs")},
 	}
 	MLogComponentsFlag = cli.StringFlag{
-		Name: "mlog-components",
+		Name:  "mlog-components",
 		Usage: "Set machine-readable logging components, comma-separated",
 		Value: func() string {
 			var components []string

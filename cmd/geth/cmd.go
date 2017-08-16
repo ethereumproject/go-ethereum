@@ -26,6 +26,13 @@ import (
 	"strings"
 
 	"errors"
+	"io/ioutil"
+	"math/big"
+	"path/filepath"
+	"strconv"
+	"syscall"
+	"time"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -37,12 +44,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
-	"io/ioutil"
-	"math/big"
-	"path/filepath"
-	"strconv"
-	"syscall"
-	"time"
 )
 
 const (

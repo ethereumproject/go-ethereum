@@ -26,6 +26,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/rcrowley/go-metrics"
+	"bytes"
 )
 
 // Reg is the metrics destination.
@@ -124,10 +125,7 @@ var (
 	MemInuse  = metrics.GetOrRegisterGauge("memory/inuse", reg)
 	MemPauses = metrics.GetOrRegisterGauge("memory/pauses", reg)
 
-	DiskReads      = metrics.GetOrRegisterGauge("disk/readcount", reg)
-	DiskReadBytes  = metrics.GetOrRegisterGauge("disk/readdata", reg)
-	DiskWrites     = metrics.GetOrRegisterGauge("disk/writecount", reg)
-	DiskWriteBytes = metrics.GetOrRegisterGauge("disk/writedata", reg)
+	NumGoRoutines = metrics.GetOrRegisterGauge("runtime/goroutines", reg)
 )
 
 // diskStats is the per process disk I/O statistics.
@@ -138,8 +136,31 @@ type diskStats struct {
 	WriteBytes int64 // Total number of byte written
 }
 
-// Collect writes metrics to the given file.
-func Collect(file string) {
+func UpdateSysMetrics() {
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+	MemAllocs.Update(int64(mem.Mallocs))
+	MemFrees.Update(int64(mem.Frees))
+	MemInuse.Update(int64(mem.Alloc))
+	MemPauses.Update(int64(mem.PauseTotalNs))
+
+	NumGoRoutines.Update(int64(runtime.NumGoroutine()))
+}
+
+func CollectToJSON() ([]byte, error) {
+	UpdateSysMetrics()
+
+	var b bytes.Buffer
+	writer := bufio.NewWriter(&b)
+	defer writer.Flush()
+
+	metrics.WriteJSONOnce(reg, writer)
+
+	return b.Bytes(), nil
+}
+
+// CollectToFile writes metrics to the given file.
+func CollectToFile(file string) {
 	f, err := os.OpenFile(file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		glog.Fatal(err)
@@ -149,20 +170,7 @@ func Collect(file string) {
 	encoder := json.NewEncoder(bufio.NewWriter(f))
 
 	for range time.Tick(3 * time.Second) {
-		var mem runtime.MemStats
-		runtime.ReadMemStats(&mem)
-		MemAllocs.Update(int64(mem.Mallocs))
-		MemFrees.Update(int64(mem.Frees))
-		MemInuse.Update(int64(mem.Alloc))
-		MemPauses.Update(int64(mem.PauseTotalNs))
-
-		var disk diskStats
-		readDiskStats(&disk)
-		DiskReads.Update(disk.ReadCount)
-		DiskReadBytes.Update(disk.ReadBytes)
-		DiskWrites.Update(disk.WriteCount)
-		DiskWriteBytes.Update(disk.WriteBytes)
-
+		UpdateSysMetrics()
 		if err := encoder.Encode(reg); err != nil {
 			glog.Errorf("metrics: log to %q: %s", file, err)
 		}
