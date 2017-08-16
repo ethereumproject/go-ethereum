@@ -202,7 +202,7 @@ The output of this command is supposed to be machine-readable.
 		}
 
 		if s := ctx.String("metrics"); s != "" {
-			go metrics.Collect(s)
+			go metrics.CollectToFile(s)
 		}
 
 		// This should be the only place where reporting is enabled
