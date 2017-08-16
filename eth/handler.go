@@ -692,7 +692,7 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 		if parent := pm.blockchain.GetBlock(block.ParentHash()); parent != nil {
 			td = new(big.Int).Add(block.Difficulty(), pm.blockchain.GetTd(block.ParentHash()))
 
-			for _, uncle := range block.uncles {
+			for _, uncle := range block.Uncles() {
 				td = new(big.Int).Add(uncle.Difficulty(), td)
 			}
 		} else {

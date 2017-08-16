@@ -762,7 +762,7 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	localTd := self.GetTd(self.currentBlock.Hash())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
-	for _, uncle := range block.uncles {
+	for _, uncle := range block.Uncles() {
 		externTd = new(big.Int).Add(uncle.Difficulty(), externTd)
 	}
 
