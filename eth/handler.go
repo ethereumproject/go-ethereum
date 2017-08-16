@@ -688,17 +688,15 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 	// If propagation is requested, send to a subset of the peer
 	if propagate {
 		// Calculate the TD of the block (it's not imported yet, so block.Td is not valid)
-		var td *big.Int
+		var td, ghostTd *big.Int
 		if parent := pm.blockchain.GetBlock(block.ParentHash()); parent != nil {
 			td = new(big.Int).Add(block.Difficulty(), pm.blockchain.GetTd(block.ParentHash()))
-
 			// #GHOST
 			if _, _, configured := pm.chainConfig.GetFeature(block.Number(), "ecip1029"); configured {
 				for _, uncle := range block.Uncles() {
-					td = new(big.Int).Add(uncle.Difficulty, td)
+					ghostTd = new(big.Int).Add(uncle.Difficulty, td)
 				}
 			}
-
 		} else {
 			glog.V(logger.Error).Infof("propagating dangling block #%d [%x]", block.NumberU64(), hash[:4])
 			return
@@ -706,7 +704,13 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 		// Send the block to a subset of our peers
 		transfer := peers[:int(math.Sqrt(float64(len(peers))))]
 		for _, peer := range transfer {
-			peer.SendNewBlock(block, td)
+
+			// Keep eth63 using old total difficulty meaning.
+			if ghostTd.Sign() > 0 && peer.version >= eth70 {
+				peer.SendNewBlock(block, ghostTd)
+			} else {
+				peer.SendNewBlock(block, td)
+			}
 		}
 		glog.V(logger.Detail).Infof("propagated block %x to %d peers in %v", hash[:4], len(transfer), time.Since(block.ReceivedAt))
 	}
