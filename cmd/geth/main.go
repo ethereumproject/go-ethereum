@@ -102,10 +102,20 @@ The output of this command is supposed to be machine-readable.
 		{
 			Action: makeMLogDocumentation,
 			Name:   "mdoc",
-			Usage:  "Generate mlog documentation in markdown format",
+			Usage:  "Generate mlog documentation",
 			Description: `
-The output of this command should be human readable, and wiki-ready.
+Auto-generates documentation for all available mlog lines.
+Use -md switch to toggle markdown output (eg. for wiki).
+Arguments may be used to specify exclusive candidate components;
+so 'geth mdoc -md discover' will generate markdown documentation only
+for the 'discover' component.
 `,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name: "md",
+					Usage: "Toggle markdown formatting",
+				},
+			},
 		},
 	}
 

@@ -955,6 +955,17 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 		}
 	}
 
+	// Should throw an error if any unavailable components were specified.
+	cs := []string{}
+	for c := range logger.MLogRegistryAvailable {
+		cs = append(cs, string(c))
+	}
+	for _, c := range wantComponents {
+		if !stringInSlice(c, cs) {
+			glog.Fatalf("Specified component does not exist: %s\n ? Available components: %v", c, cs)
+		}
+	}
+
 	// "table of contents"
 	for cmp, lines := range logger.MLogRegistryAvailable {
 		if !stringInSlice(string(cmp), wantComponents) {
@@ -963,21 +974,29 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 		fmt.Printf("\n[%s]\n\n", cmp)
 		for _, line := range lines {
 			// print anchor links ul list items
-			fmt.Printf("- [%s](#%s)\n", line.EventName(), strings.Replace(line.EventName(), ".", "-", -1))
+			if ctx.Bool("md") {
+				fmt.Printf("- [%s](#%s)\n", line.EventName(), strings.Replace(line.EventName(), ".", "-", -1))
+			} else {
+				fmt.Printf("- %s\n", line.EventName())
+			}
 		}
 	}
 
-	fmt.Println("\n----\n") // hr
+	// Only print per-line markdown documentation if -md flag given.
+	if ctx.Bool("md") {
+		fmt.Println("\n----\n") // hr
 
-	// each LINE
-	for cmp, lines := range logger.MLogRegistryAvailable {
-		if !stringInSlice(string(cmp), wantComponents) {
-			continue
-		}
-		for _, line := range lines {
-			fmt.Println(line.FormatDocumentation(cmp))
+		// each LINE
+		for cmp, lines := range logger.MLogRegistryAvailable {
+			if !stringInSlice(string(cmp), wantComponents) {
+				continue
+			}
+			for _, line := range lines {
+				fmt.Println(line.FormatDocumentation(cmp))
+			}
 		}
 	}
 
+	fmt.Println()
 	return nil
 }
