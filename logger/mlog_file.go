@@ -295,7 +295,12 @@ func (m *MLogT) FormatKV() (out string) {
 	m.placeholderize()
 	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
-		out += fmt.Sprintf(" %s=[%v]", d.EventName(), d.Value)
+		v := fmt.Sprintf("%v", d.Value)
+		// quote strings which contains spaces
+		if strings.Contains(v, " ") {
+			v = fmt.Sprintf(`"%v"`, d.Value)
+		}
+		out += fmt.Sprintf(" %s=%v", d.EventName(), v)
 	}
 	return out
 }
@@ -304,7 +309,12 @@ func (m *MLogT) FormatPlain() (out string) {
 	m.placeholderize()
 	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
-		out += fmt.Sprintf(" [%v]", d.Value)
+		v := fmt.Sprintf("%v", d.Value)
+		// quote strings which contains spaces
+		if strings.Contains(v, " ") {
+			v = fmt.Sprintf(`"%v"`, d.Value)
+		}
+		out += fmt.Sprintf(" %v", v)
 	}
 	return out
 }
@@ -325,7 +335,7 @@ func (m *MLogT) FormatUsage() (out string) {
 	out += fmt.Sprintf("\n%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		// eg. $BLOCK.HASH=<STRING>
-		out += fmt.Sprintf(" $%s.%s=[%s]", d.Owner, d.Key, d.Value)
+		out += fmt.Sprintf(" $%s.%s=%s", d.Owner, d.Key, d.Value)
 	}
 	out += fmt.Sprintf("\n  > %s", m.Description)
 	return out
