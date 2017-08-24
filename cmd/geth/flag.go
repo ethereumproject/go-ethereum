@@ -481,13 +481,13 @@ func makeMLogFileLogger(ctx *cli.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// logger print without header prefix if json
-	// TODO: refactor flags logic to mlog
-	flags := log.LstdFlags
+	// withTs toggles custom timestamp ISO8601 prefix
+	// logger print without timestamp header prefix if json
+	withTs := true
 	if f := ctx.GlobalString(MLogFlag.Name); logger.MLogStringToFormat[f] == logger.MLOGJSON {
-		flags = 0
+		withTs = false
 	}
-	logger.New(mlogdir, filename, 1, flags)
+	logger.BuildNewMLogSystem(mlogdir, filename, 1, 0, withTs) // flags: 0 disables automatic log package time prefix
 	return filename, nil
 }
 

@@ -48,6 +48,21 @@ func New(datadir string, logFile string, logLevel int, flags int) LogSystem {
 	return sys
 }
 
+func BuildNewMLogSystem(datadir string, logFile string, logLevel int, flags int, withTimestamp bool) LogSystem {
+	var writer io.Writer
+	if logFile == "" {
+		writer = os.Stdout
+	} else {
+		writer = openLogFile(datadir, logFile)
+	}
+
+	var sys LogSystem
+	sys = NewMLogSystem(writer, flags, LogLevel(logLevel), withTimestamp)
+	AddLogSystem(sys)
+
+	return sys
+}
+
 func NewJSONsystem(datadir string, logFile string) LogSystem {
 	var writer io.Writer
 	if logFile == "-" {
