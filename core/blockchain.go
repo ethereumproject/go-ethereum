@@ -331,6 +331,42 @@ func (self *BlockChain) loadLastState() error {
 
 	// ----
 
+	// 20170828
+	// ~/Library/EthereumClassic  ⟠ geth --chain morden
+	//I0828 06:47:52.591259 cmd/geth/flag.go:799] --------------------------------------------------------------------------------------------------------------
+	//I0828 06:47:52.591513 cmd/geth/flag.go:801] Starting Geth Classic source
+	//I0828 06:47:52.591521 cmd/geth/flag.go:802] Geth is configured to use ETC blockchain: Morden Testnet
+	//I0828 06:47:52.591532 cmd/geth/flag.go:803] Using chain database at: /Users/ia/Library/EthereumClassic/morden/chaindata
+	//I0828 06:47:52.591540 cmd/geth/flag.go:805] 4 blockchain upgrades associated with this configuration:
+	//I0828 06:47:52.591547 cmd/geth/flag.go:808]   494000 Homestead
+	//I0828 06:47:52.591570 cmd/geth/flag.go:808]  1783000 GasReprice
+	//I0828 06:47:52.591579 cmd/geth/flag.go:808]  1885000 The DAO Hard Fork
+	//I0828 06:47:52.591588 cmd/geth/flag.go:808]  1915000 Diehard
+	//I0828 06:47:52.591599 cmd/geth/flag.go:824] --------------------------------------------------------------------------------------------------------------
+	//I0828 06:47:52.594092 cmd/geth/flag.go:513] Machine logs file: /Users/ia/Library/EthereumClassic/morden/mlogs/geth.mh.ia.mlog.20170828-064752.8095
+	//I0828 06:47:52.594704 ethdb/database.go:63] Allotted 128MB cache and 1024 file handles to /Users/ia/Library/EthereumClassic/morden/chaindata
+	//I0828 06:47:52.642831 ethdb/database.go:63] Allotted 16MB cache and 16 file handles to /Users/ia/Library/EthereumClassic/morden/dapp
+	//I0828 06:47:52.659460 eth/backend.go:155] Protocol Versions: [63 62], Network Id: 2, Chain Id: 62
+	//I0828 06:47:52.660896 eth/backend.go:183] Blockchain DB Version: 3
+	//I0828 06:47:52.661997 eth/backend.go:234] Successfully established morden testnet genesis block: 0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303
+	//I0828 06:47:52.667538 core/blockchain.go:206] Last header: #301056 [6371e228…] TD=1104105627630
+	//I0828 06:47:52.667758 core/blockchain.go:207] Last block: #676733 [e90d5610…] TD=16249820006016
+	//I0828 06:47:52.667776 core/blockchain.go:208] Fast block: #301056 [6371e228…] TD=1104105627630
+	//I0828 06:47:52.670413 p2p/server.go:310] Starting Server
+	//I0828 06:47:52.696965 p2p/discover/udp.go:249] Listening, enode://0e26baef07556c3719c1b379d4635a463f24635cfdbdd714bf6fd39f9fa6018b2f8ec88d2b1493a5c73f0769f9fe4033de2e851aa654aac83c1a87c33f79c515@75.134.144.252:30303
+	//I0828 06:47:52.707712 p2p/nat/nat.go:111] Mapped network port udp:30303 -> 30303 (ethereum discovery) using NAT-PMP(192.168.86.1)
+	//I0828 06:47:52.839146 p2p/server.go:553] Listening on [::]:30303
+	//I0828 06:47:52.840023 node/node.go:295] IPC endpoint opened: /Users/ia/Library/EthereumClassic/morden/geth.ipc
+	//I0828 06:47:52.864191 p2p/nat/nat.go:111] Mapped network port tcp:30303 -> 30303 (ethereum p2p) using NAT-PMP(192.168.86.1)
+	//^CI0828 06:48:02.337744 cmd/geth/cmd.go:84] Got interrupt, shutting down...
+	//I0828 06:48:02.338024 node/node.go:327] IPC endpoint closed: /Users/ia/Library/EthereumClassic/morden/geth.ipc
+	//I0828 06:48:02.338771 core/blockchain.go:568] Chain manager stopped
+	//I0828 06:48:02.338798 eth/handler.go:219] Stopping ethereum protocol handler...
+	//I0828 06:48:02.338832 eth/handler.go:240] Ethereum protocol handler stopped
+	//I0828 06:48:02.338970 core/tx_pool.go:165] Transaction pool stopped
+	//I0828 06:48:02.339028 eth/backend.go:483] Automatic pregeneration of ethash DAG: OFF (ethash dir: /Users/ia/.ethash)
+
+
 	// Note: here "current" == "head" == "latest known"
 	// Problem: currentHeader vs. currentBlock mismatch.
 	// TODO: compare `currentBlock` and `currentHeader`.
