@@ -62,6 +62,7 @@ var (
 		"INT": int(0),
 		"BIGINT": new(big.Int),
 		"STRING": "string",
+		"QUOTEDSTRING": "string with spaces",
 		"STRING_OR_NULL": nil,
 		"DURATION": time.Minute + time.Second * 3 + time.Millisecond * 42,
 	}

@@ -993,6 +993,7 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 			}
 			for _, line := range lines {
 				fmt.Println(line.FormatDocumentation(cmp))
+				fmt.Println("----")
 			}
 		}
 	}

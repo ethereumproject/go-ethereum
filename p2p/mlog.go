@@ -30,6 +30,6 @@ var mlogServerPeerRemove = logger.MLogT{
 	Details: []logger.MLogDetailT{
 		{"SERVER", "PEER_COUNT", "INT"},
 		{"PEER", "ID", "STRING"},
-		{"REMOVE", "REASON", "STRING"},
+		{"REMOVE", "REASON", "QUOTEDSTRING"},
 	},
 }
