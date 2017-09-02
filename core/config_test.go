@@ -629,9 +629,9 @@ func TestSufficientChainConfig_IsValid(t *testing.T) {
 			scc.ChainConfig = oo
 
 			ooo := scc.Bootstrap
-			scc.Bootstrap = nil
-			if s, ok := scc.IsValid(); ok {
-				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
+			scc.Bootstrap = []string{}
+			if s, ok := scc.IsValid(); !ok {
+				t.Errorf("unexpected notok: %v @ %v/%v", s, i, j)
 			}
 			scc.Bootstrap = ooo
 

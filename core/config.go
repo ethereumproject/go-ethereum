@@ -38,6 +38,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"strings"
 )
 
 var (
@@ -195,10 +196,6 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 
 	if cid := c.ChainConfig.GetChainID(); cid.Cmp(new(big.Int)) == 0 {
 		return "diehard chainid", false
-	}
-
-	if c.Bootstrap == nil || len(c.Bootstrap) == 0 {
-		return "bootstrap", false
 	}
 
 	return "", true
@@ -477,6 +474,10 @@ func ParseBootstrapNodeStrings(nodeStrings []string) []*discover.Node {
 	bootnodes := []*discover.Node{}
 
 	for _, url := range nodeStrings {
+		url = strings.TrimSpace(url)
+		if url == "" {
+			continue
+		}
 		node, err := discover.ParseNode(url)
 		if err != nil {
 			glog.V(logger.Error).Infof("Bootstrap URL %s: %v\n", url, err)
