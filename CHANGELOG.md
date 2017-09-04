@@ -13,18 +13,41 @@ __Legend__:
 <Removed> for deprecated features removed in this release.
 <Fixed> for any bug fixes.
 <Security> to invite users to upgrade in case of vulnerabilities.
+<Consensus> to invite users to upgrade in case of consensus protocol changes.
 ```
 
 Releases considered __stable__ may be found on our [Releases Page](https://github.com/ethereumproject/go-ethereum/releases).
 
 Rolling builds for the master branch may be found at [builds.etcdevteam.com](builds.etcdevteam.com).
 
-## [Unreleased]
+## [4.0.0] - 2017-09-05 -
+
+#### Consensus
+- [ECIP-1017](https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1017.md) - implement monetary policy on Morden Testnet (2 million block era) and Mainnet (5 million block era)
 
 #### Added
 - JSON-RPC: `debug_traceTransaction` method
-- JSON-RPC: `eth_chainId` method; returns configured Ethereum EIP-155 chain id for signing protected txs
+- JSON-RPC: `eth_chainId` method; returns configured Ethereum EIP-155 chain id for signing protected txs. For congruent behavior in Ethereum Foundation and Parity clients, please see https://github.com/ethereum/EIPs/pull/695 and https://github.com/paritytech/parity/pull/6329.
 - P2P: improve peer discovery by allowing "good-will" for peers with unknown HF blocks
+- _Option_: `--log-status` - enable interval-based status logging, e.g. `--log-status="sync=10"`, where `sync` is the context (currently the only one implemented) and `10` is interval in seconds.
+
+#### Fixed
+- geth/cmd: Improve chain configuration file handling to allow specifying a file instead
+  of chain identity and allow flag overrides for bootnodes and network-id.
+- _Command_: `monitor` - enables sexy terminal-based graphs for metrics around
+  a specified set of modules, e.g.
+
+  ```
+  $ geth
+  ```
+
+  ```
+  $ geth monitor "p2p/.*/(count|average)" "msg/txn/out/.*/count"
+  ```
+
+#### Refactored
+- P2P: Improve wording for logging as-yet-unknown nodes.
+
 
 ## [3.5.86] - 2017-07-19 - db60074
 
