@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -48,7 +49,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
 func init() {
@@ -161,19 +161,26 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 
 		// Check if passed arg exists as a path to a valid config file.
 		if fstat, ferr := os.Stat(filepath.Clean(chainFlagVal)); ferr == nil && !fstat.IsDir() {
-			glog.V(logger.Detail).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
-			c, e := core.ReadExternalChainConfig(filepath.Clean(chainFlagVal))
-			if e == nil {
-				glog.V(logger.Detail).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
+			glog.V(logger.Debug).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
+			c, configurationError := core.ReadExternalChainConfig(filepath.Clean(chainFlagVal))
+			if configurationError == nil {
+				glog.V(logger.Debug).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
-					glog.Fatalf("Could not establish chain configuration: %v", e)
+					glog.Fatalf("Could not copy chain configuration: %v", e)
+				}
+				// In edge case of using a config file for default configuration (decided by 'identity'),
+				// set global context and override config file.
+				if chainIdentitiesMorden[c.Identity] || chainIdentitiesMain[c.Identity] {
+					if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), c.Identity); e != nil {
+						glog.Fatalf("Could not set global context chain identity to morden, error: %v", e)
+					}
 				}
 				return c.Identity
 			}
-			glog.V(logger.Debug).Infof("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
-				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, e)
+			glog.Fatalf("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
+				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, configurationError)
 		}
-		glog.V(logger.Detail).Infof("No existing file at --%v: '%v'.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
+		glog.V(logger.Debug).Infof("No existing file at --%v: '%v'. Using literal chain identity.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
 		return chainFlagVal
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
@@ -387,7 +394,7 @@ func MakeAddress(accman *accounts.Manager, account string) (accounts.Account, er
 func MakeEtherbase(accman *accounts.Manager, ctx *cli.Context) common.Address {
 	accounts := accman.Accounts()
 	if !ctx.GlobalIsSet(aliasableName(EtherbaseFlag.Name, ctx)) && len(accounts) == 0 {
-		glog.V(logger.Error).Infoln("WARNING: No etherbase set and no accounts found as default")
+		glog.V(logger.Warn).Infoln("WARNING: No etherbase set and no accounts found as default")
 		return common.Address{}
 	}
 	etherbase := ctx.GlobalString(aliasableName(EtherbaseFlag.Name, ctx))
@@ -567,7 +574,7 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 
 	ethConf := &eth.Config{
 		ChainConfig:             sconf.ChainConfig,
-		Genesis: sconf.Genesis,
+		Genesis:                 sconf.Genesis,
 		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
 		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
@@ -624,13 +631,27 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	config := &core.SufficientChainConfig{}
 	defer func() {
+		// Allow flags to override external config file.
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 			config.Consensus = "ethash-test"
+		}
+		if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
+			config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
+			glog.V(logger.Warn).Infof(`WARNING: overwriting external bootnodes configuration with those from --%s flag. Value set from flag: %v`, aliasableName(BootnodesFlag.Name, ctx), config.ParsedBootstrap)
+		}
+		if ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
+			i := ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx))
+			glog.V(logger.Warn).Infof(`WARNING: overwriting external network id configuration with that from --%s flag. Value set from flag: %d`, aliasableName(NetworkIdFlag.Name, ctx), i)
+			if i < 1 {
+				glog.Fatalf("Network ID cannot be less than 1. Got: %d", i)
+			}
+			config.Network = i
 		}
 	}()
 
 	chainIdentity := mustMakeChainIdentity(ctx)
 
+	// If chain identity is either of defaults (via config file or flag), use defaults.
 	if chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity] {
 		// Initialise chain configuration before handling migrations or setting up node.
 		config.Identity = chainIdentity
@@ -671,11 +692,6 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 	// Ensure JSON 'id' value matches name of parent chain subdir.
 	if config.Identity != chainIdentity {
 		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, ErrInvalidChainID, config.Identity, chainIdentity)
-	}
-
-	// Check for flagged bootnodes.
-	if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
-		glog.Fatalf("Conflicting custom chain config and --%s flags. Please use either but not both.", aliasableName(BootnodesFlag.Name, ctx))
 	}
 
 	// Set statedb StartingNonce from external config, if specified (is optional)

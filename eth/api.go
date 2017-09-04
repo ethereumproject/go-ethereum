@@ -47,6 +47,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/ethereumproject/go-ethereum/metrics"
 )
 
 const defaultGas = uint64(90000)
@@ -173,6 +174,15 @@ func (s *PublicEthereumAPI) Syncing() (interface{}, error) {
 		"pulledStates":  rpc.NewHexNumber(pulled),
 		"knownStates":   rpc.NewHexNumber(known),
 	}, nil
+}
+
+// ChainId returns the chain-configured value for EIP-155 chain id, used in signing protected txs.
+// If EIP-155 is not configured it will return 0.
+// Number will be returned as a string in hexadecimal format.
+// 61 - Mainnet $((0x3d))
+// 62 - Morden $((0x3e))
+func (s *PublicEthereumAPI) ChainId() *big.Int {
+	return s.e.chainConfig.GetChainID()
 }
 
 // PublicMinerAPI provides an API to control the miner.
@@ -1668,6 +1678,28 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("0x%x", hash), nil
+}
+
+// Metrics return all available registered metrics for the client.
+// TODO: add optional param for human-readable values instead of float64's
+// eg "Avg01Min: '169.12K (2.82K/s)'
+// vs. machine-readable units (eg. "AvgRate01Min: 1599.6190029292586,").
+//
+// See https://github.com/ethereumproject/go-ethereum/wiki/Metrics-and-Monitoring for prophetic documentation.
+func (api *PublicDebugAPI) Metrics() (interface{}, error) {
+
+	b, err := metrics.CollectToJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[string]interface{})
+	e := json.Unmarshal(b, &out)
+	if e != nil {
+		return nil, e
+	}
+
+	return out, nil
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM

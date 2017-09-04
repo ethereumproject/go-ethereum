@@ -23,6 +23,7 @@ Rolling builds for the master branch may be found at [builds.etcdevteam.com](bui
 
 #### Added
 - JSON-RPC: `debug_traceTransaction` method
+- JSON-RPC: `eth_chainId` method; returns configured Ethereum EIP-155 chain id for signing protected txs
 - P2P: improve peer discovery by allowing "good-will" for peers with unknown HF blocks
 
 ## [3.5.86] - 2017-07-19 - db60074
