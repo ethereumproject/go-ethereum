@@ -104,6 +104,19 @@ var DefaultConfig = &ChainConfig{
 				},
 			},
 		},
+		{
+			Name: "Gotham",
+			Block: big.NewInt(5000000),
+			Features: []*ForkFeature{
+				{
+					ID: "reward",
+					Options: ChainFeatureConfigOptions{
+						"type": "ecip1017",
+						"era":  5000000,
+					},
+				},
+			},
+		},
 	},
 	BadHashes: []*BadHash{
 		{
@@ -174,6 +187,19 @@ var TestConfig = &ChainConfig{
 					Options: ChainFeatureConfigOptions{
 						"type":   "ecip1010",
 						"length": 2000000,
+					},
+				},
+			},
+		},
+		{
+			Name: "Gotham",
+			Block: big.NewInt(2000000),
+			Features: []*ForkFeature{
+				{
+					ID: "reward",
+					Options: ChainFeatureConfigOptions{
+						"type": "ecip1017",
+						"era":  2000000, // for mainnet will be 5m
 					},
 				},
 			},

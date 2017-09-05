@@ -227,13 +227,13 @@ func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, 
 
 		// Mutate the state and block according to any hard-fork specs
 		if config == nil {
-			config = MakeChainConfig()
+			config = DefaultConfig // MakeChainConfig()
 		}
 		// Execute any user modifications to the block and finalize it
 		if gen != nil {
 			gen(i, b)
 		}
-		AccumulateRewards(statedb, h, b.uncles)
+		AccumulateRewards(config, statedb, h, b.uncles)
 		root, err := statedb.Commit()
 		if err != nil {
 			panic(fmt.Sprintf("state write error: %v", err))
