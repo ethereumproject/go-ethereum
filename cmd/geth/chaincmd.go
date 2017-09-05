@@ -23,8 +23,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+	"strings"
+	"bufio"
 
-//	"encoding/json"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -32,8 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
-	"strings"
-	"bufio"
 )
 
 var (
@@ -209,17 +208,27 @@ func upgradeDB(ctx *cli.Context) error {
 // Revised use allows n hashes|ints as comma-separated first argument and n addresses as comma-separated second argument,
 // dumping only state information for given addresses if they're present.
 // revised use: $ geth dump [hash|num],[hash|num],...,[hash|num] [address],[address],...,[address]
+//
+// Added unsorted dumping algorithm.
+// revised use: $ geth dump [unsorted] [hash|num],[hash|num],...,[hash|num] [address],[address],...,[address]
+
 func dump(ctx *cli.Context) error {
 
 	if ctx.NArg() == 0 {
 		return fmt.Errorf("%v: use: $ geth dump [blockHash|blockNum],[blockHash|blockNum] [[addressHex|addressPrefixedHex],[addressHex|addressPrefixedHex]]", ErrInvalidFlag)
 	}
 
-	blocks := strings.Split(ctx.Args()[0], ",")
+	firstArg := 0
+	unsorted := ctx.Args()[0] == "unsorted"
+	if unsorted {
+		firstArg = 1
+	}
+
+	blocks := strings.Split(ctx.Args()[firstArg], ",")
 	addresses := []common.Address{}
 	argaddress := ""
-	if ctx.NArg() > 1 {
-		argaddress = ctx.Args()[1]
+	if ctx.NArg() > firstArg+1 {
+		argaddress = ctx.Args()[firstArg+1]
 	}
 
 	if argaddress != "" {
@@ -263,7 +272,13 @@ func dump(ctx *cli.Context) error {
 			if n != 0 {
 				out.WriteString(",\n")
 			}
-			err = state.SortedDump(addresses,prefix,indent,out)
+
+			if unsorted {
+				err = state.UnsortedDump(addresses,prefix,indent,out)
+			} else {
+				err = state.SortedDump(addresses, prefix, indent, out)
+			}
+
 			if err != nil {
 				return err
 			}

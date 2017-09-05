@@ -17,21 +17,16 @@
 package state
 
 import (
+	"bytes"
+	"sync"
+	"sort"
+	"bufio"
+	"io"
 	"encoding/json"
+	"compress/zlib"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-//	"compress/zlib"
-	"bytes"
-	"sync"
-//	"io"
-	"sort"
-	"bufio"
-	"runtime"
-	"compress/zlib"
-	"io"
 )
 
 type DumpAccount struct {
@@ -137,14 +132,10 @@ func (self *Zipper) ZipBytes(data []byte) (result []byte, err error) {
 		n = 1
 	}
 	if n > ZipperPieceLength {
-		glog.V(logger.Info).Infof("big blob %d bytes length", n)
 		result = self.Bf.Bytes()
 		self.Bf = bytes.Buffer{}
 	} else {
 		if n + self.MemBrk > ZipperBlockLength || self.Mem == nil {
-			if self.Mem != nil && false {
-				runtime.GC()
-			}
 			self.Mem = make([]byte,ZipperBlockLength)
 			self.MemBrk = 0
 		}
@@ -400,7 +391,6 @@ func (self *StateDB) SortedDump(addresses []common.Address, prefix string, inden
 	var accounts map[string][]byte
 
 	accounts, err = self.LoadEncodedAccounts(addresses)
-	glog.V(logger.Info).Infof("loaded %d accounts", len(accounts))
 	if err != nil {
 		return
 	}
