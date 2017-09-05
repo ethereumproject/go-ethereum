@@ -231,15 +231,44 @@ func TestMakeGenesisDump2(t *testing.T) {
 	}
 }
 
-func makeTestChainConfig() *ChainConfig {
+func getDefaultChainConfigSorted() *ChainConfig {
 	return DefaultConfig.SortForks()
 }
 
 // Unit-y tests.
 
+func TestChainConfig_HasFeature(t *testing.T) {
+	c := TestConfig.SortForks()
+	for _, id := range allAvailableTestnetConfigKeys {
+		if _, _, ok := c.HasFeature(id); !ok {
+			t.Errorf("feature not found: %v", id)
+		}
+	}
+	c = getDefaultChainConfigSorted()
+	for _, id := range allAvailableDefaultConfigKeys {
+		if _, _, ok := c.HasFeature(id); !ok {
+			t.Errorf("feature not found: %v", id)
+		}
+	}
+
+	// never gets unavailable keys
+	c = TestConfig.SortForks()
+	for _, id := range unavailableConfigKeys {
+		if _, _, ok := c.HasFeature(id); ok {
+			t.Errorf("nonexisting feature found: %v", id)
+		}
+	}
+	c = getDefaultChainConfigSorted()
+	for _, id := range unavailableConfigKeys {
+		if _, _, ok := c.HasFeature(id); ok {
+			t.Errorf("nonexisting feature found: %v", id)
+		}
+	}
+}
+
 // TestChainConfig_GetFeature should be able to get all features described in DefaultConfig.
 func TestChainConfig_GetFeature(t *testing.T) {
-	c := makeTestChainConfig()
+	c := getDefaultChainConfigSorted()
 	var dict = make(map[*big.Int][]string)
 	for _, fork := range c.Forks {
 		for _, feat := range fork.Features {
@@ -256,43 +285,52 @@ func TestChainConfig_GetFeature(t *testing.T) {
 	}
 }
 
-var allAvailableConfigKeys = []string{
+var allAvailableDefaultConfigKeys = []string{
 	"difficulty",
 	"gastable",
 	"eip155",
 }
-
-// TestChainConfig_EventuallyGetAllPossibleFeatures should aggregate all available features from previous branches
-func TestChainConfig_GetFeature2_EventuallyGetAllPossibleFeatures(t *testing.T) {
-	c := makeTestChainConfig()
-	for _, id := range allAvailableConfigKeys {
-		if _, _, ok := c.GetFeature(big.NewInt(5000000), id); !ok {
-			t.Errorf("could not get feature with id: %v, at block: %v", id, big.NewInt(5000000))
-		}
-	}
+var allAvailableTestnetConfigKeys = []string{
+	"difficulty",
+	"gastable",
+	"eip155",
+	"reward",
 }
-
 var unavailableConfigKeys = []string{
 	"foo",
 	"bar",
 	"monkey",
 }
 
+// veryHighBlock is a block in the far distant future (so far, in fact, that it will never actually exist)
+// Used to test cumulative aggregation functions, ie "eventually".
+var veryHighBlock *big.Int = big.NewInt(250000000)
+
+// TestChainConfig_EventuallyGetAllPossibleFeatures should aggregate all available features from previous branches
+func TestChainConfig_GetFeature2_EventuallyGetAllPossibleFeatures(t *testing.T) {
+	c := getDefaultChainConfigSorted()
+	for _, id := range allAvailableDefaultConfigKeys {
+		if _, _, ok := c.GetFeature(veryHighBlock, id); !ok {
+			t.Errorf("could not get feature with id: %v, at block: %v", id, big.NewInt(5000000))
+		}
+	}
+}
+
 // TestChainConfig_NeverGetNonexistantFeatures should never eventually collect features that don't exist
 func TestChainConfig_GetFeature3_NeverGetNonexistantFeatures(t *testing.T) {
-	c := makeTestChainConfig()
+	c := getDefaultChainConfigSorted()
 	for _, id := range unavailableConfigKeys {
-		if feat, _, ok := c.GetFeature(big.NewInt(5000000), id); ok {
+		if feat, _, ok := c.GetFeature(veryHighBlock, id); ok {
 			t.Errorf("found unexpected feature: %v, for name: %v, at block: %v", feat, id, big.NewInt(5000000))
 		}
 	}
 }
 
 func TestChainConfig_GetFeature4_WorkForHighNumbers(t *testing.T) {
-	c := makeTestChainConfig()
-	highBlock := big.NewInt(99999999999999999)
-	if _, _, ok := c.GetFeature(highBlock, "difficulty"); !ok {
-		t.Errorf("unexpected unfound difficulty feature for far-future block: %v", highBlock)
+	c := getDefaultChainConfigSorted()
+	ultraHighBlock := big.NewInt(99999999999999999)
+	if _, _, ok := c.GetFeature(ultraHighBlock, "difficulty"); !ok {
+		t.Errorf("unexpected unfound difficulty feature for far-future block: %v", ultraHighBlock)
 	}
 }
 
@@ -339,7 +377,7 @@ func TestChainConfig_GetChainID(t *testing.T) {
 
 // TestChainConfig_GetFeature_DefaultEIP155 should get the eip155 feature for (only and above) its default implemented block.
 func TestChainConfig_GetFeature5_DefaultEIP155(t *testing.T) {
-	c := makeTestChainConfig()
+	c := getDefaultChainConfigSorted()
 	var tables = map[*big.Int]*big.Int{
 		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): nil,
 		DefaultConfig.ForkByName("Homestead").Block:                                   nil,
@@ -376,7 +414,7 @@ func TestChainConfig_GetFeature5_DefaultEIP155(t *testing.T) {
 
 // TestChainConfig_GetFeature_DefaultGasTables sets that GetFeatures gets expected feature values for default fork configs.
 func TestChainConfig_GetFeature6_DefaultGasTables(t *testing.T) {
-	c := makeTestChainConfig()
+	c := getDefaultChainConfigSorted()
 	var tables = map[*big.Int]string{
 		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): "",
 		DefaultConfig.ForkByName("Homestead").Block:                                   "homestead",
@@ -413,7 +451,7 @@ func TestChainConfig_GetFeature6_DefaultGasTables(t *testing.T) {
 
 // TestChainConfig_GetFeature_DefaultGasTables sets that GetFeatures gets expected feature values for default fork configs.
 func TestChainConfig_GetFeature7_DefaultDifficulty(t *testing.T) {
-	c := makeTestChainConfig()
+	c := getDefaultChainConfigSorted()
 	var tables = map[*big.Int]string{
 		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): "",
 		DefaultConfig.ForkByName("Homestead").Block:                                   "homestead",
@@ -450,7 +488,7 @@ func TestChainConfig_GetFeature7_DefaultDifficulty(t *testing.T) {
 
 func TestChainConfig_SortForks(t *testing.T) {
 	// check code data default
-	c := makeTestChainConfig()
+	c := getDefaultChainConfigSorted()
 	n := big.NewInt(0)
 	for _, fork := range c.Forks {
 		if n.Cmp(fork.Block) > 0 {
@@ -475,7 +513,7 @@ func TestChainConfig_SortForks(t *testing.T) {
 }
 
 func TestChainConfig_GetSigner(t *testing.T) {
-	c := makeTestChainConfig()
+	c := getDefaultChainConfigSorted()
 	var forkBlocks []*big.Int
 	for _, fork := range c.Forks {
 		forkBlocks = append(forkBlocks, fork.Block)
