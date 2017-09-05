@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"time"
 
-	"encoding/json"
+//	"encoding/json"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -33,6 +33,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
 	"strings"
+	"bufio"
 )
 
 var (
@@ -231,8 +232,17 @@ func dump(ctx *cli.Context) error {
 	chain, chainDb := MakeChain(ctx)
 	defer chainDb.Close()
 
-	dumps := state.Dumps{}
-	for _, b := range blocks {
+	prefix := ""
+	indent := "    "
+
+	out := bufio.NewWriter(os.Stdout)
+
+	if len(blocks) > 1 {
+		prefix = indent
+		out.WriteString("[\n")
+	}
+
+	for n, b := range blocks {
 		b = strings.TrimSpace(b)
 		var block *types.Block
 		if hashish(b) {
@@ -242,7 +252,7 @@ func dump(ctx *cli.Context) error {
 			block = chain.GetBlockByNumber(uint64(num))
 		}
 		if block == nil {
-			fmt.Println("{}")
+			out.WriteString("{}\n")
 			log.Fatal("block not found")
 		} else {
 			state, err := state.New(block.Root(), chainDb)
@@ -250,19 +260,22 @@ func dump(ctx *cli.Context) error {
 				return fmt.Errorf("could not create new state: %v", err)
 			}
 
-			if len(blocks) > 1 {
-				dumps = append(dumps, state.RawDump(addresses))
-			} else {
-				fmt.Printf("%s\n", state.Dump(addresses))
-				return nil
+			if n != 0 {
+				out.WriteString(",\n")
+			}
+			err = state.SortedDump(addresses,prefix,indent,out)
+			if err != nil {
+				return err
 			}
 		}
 	}
-	json, err := json.MarshalIndent(dumps, "", "    ")
-	if err != nil {
-		return fmt.Errorf("dump err: %v", err)
+
+	if len(blocks) > 1 {
+		out.WriteString("\n]")
 	}
-	fmt.Printf("%s\n", json)
+
+	out.WriteString("\n")
+	out.Flush()
 
 	return nil
 }
