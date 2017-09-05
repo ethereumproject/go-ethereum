@@ -20,7 +20,7 @@ Releases considered __stable__ may be found on our [Releases Page](https://githu
 
 Rolling builds for the master branch may be found at [builds.etcdevteam.com](builds.etcdevteam.com).
 
-## [4.0.0] - 2017-09-05 -
+## [4.0.0] - 2017-09-05
 
 #### Consensus
 - [ECIP-1017](https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1017.md) - implement monetary policy on Morden Testnet (2 million block era) and Mainnet (5 million block era)
@@ -45,7 +45,6 @@ Rolling builds for the master branch may be found at [builds.etcdevteam.com](bui
   $ geth monitor "p2p/.*/(count|average)" "msg/txn/out/.*/count"
   ```
 
-#### Refactored
 - P2P: Improve wording for logging as-yet-unknown nodes.
 
 
