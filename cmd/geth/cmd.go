@@ -36,7 +36,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	jsonAssets "github.com/ethereumproject/go-ethereum/cmd/geth/assets"
 	"gopkg.in/urfave/cli.v1"
 	"io/ioutil"
 	"math/big"
