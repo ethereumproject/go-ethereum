@@ -43,7 +43,6 @@ import (
 	"strconv"
 	"syscall"
 	"time"
-	"encoding/json"
 )
 
 const (
@@ -934,48 +933,4 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			return
 		}
 	}
-}
-
-func showConfig(ctx *cli.Context) error {
-
-	glog.V(logger.Error).Infoln("hello", ctx.Args())
-
-	//go get github.com/omeid/go-resources/cmd/resources
-	//cd ethereumproject/go-ethereum
-	//
-	//mkdir -p cmd/geth/assets
-	//resources -declare -var=FS -package=assets -output=assets/assets.go cmd/geth/config
-	//data, err := assets.FS.Open("your/files/here")
-	data, err := jsonAssets.FS.Open("/config/testnet.json")
-	if err != nil {
-		glog.Fatalf("Err opening assets: %v", err)
-	}
-	var config = &core.SufficientChainConfig{}
-	if json.NewDecoder(data).Decode(config); err != nil {
-		return fmt.Errorf("%s", err)
-	}
-
-
-	////go get -u github.com/jteeuwen/go-bindata/...
-	////go-bindata -o cmd/geth/assets.go cmd/geth/config/
-	//data, err := Asset("cmd/geth/config/testnet.json")
-	//if err != nil {
-	//	glog.Fatalf("Err asset: %v", err)
-	//}
-	////glog.V(logger.Error).Infoln(data)
-	//glog.V(logger.Error).Infoln("--> haz data")
-	//
-	//var config = &core.SufficientChainConfig{}
-	//e := json.Unmarshal(data, &config)
-	//if e != nil {
-	//	glog.Fatalf("Unmarshal data err: %v", e)
-	//}
-
-	s, ok := config.IsValid()
-	if !ok {
-		glog.Fatalln("not ok config invalid:", s)
-	}
-	glog.V(logger.Error).Infoln(config.Identity, config.ChainConfig.GetChainID(), ok)
-
-	return nil
 }

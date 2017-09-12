@@ -337,10 +337,10 @@ func TestChainConfig_GetFeature4_WorkForHighNumbers(t *testing.T) {
 func TestChainConfig_GetChainID(t *testing.T) {
 	// Test default hardcoded configs.
 	if DefaultConfig.GetChainID().Cmp(DefaultChainConfigChainID) != 0 {
-		t.Error("got: %v, want: %v", DefaultConfig.GetChainID(), DefaultTestnetChainConfigChainID)
+		t.Errorf("got: %v, want: %v", DefaultConfig.GetChainID(), DefaultTestnetChainConfigChainID)
 	}
 	if TestConfig.GetChainID().Cmp(DefaultTestnetChainConfigChainID) != 0 {
-		t.Error("got: %v, want: %v", TestConfig.GetChainID(), DefaultTestnetChainConfigChainID)
+		t.Errorf("got: %v, want: %v", TestConfig.GetChainID(), DefaultTestnetChainConfigChainID)
 	}
 
 	// If no chainID (config is empty) returns 0.
@@ -353,8 +353,8 @@ func TestChainConfig_GetChainID(t *testing.T) {
 
 	// Test parsing default external mainnet config.
 	cases := map[string]*big.Int{
-		"../cmd/geth/config/mainnet.json": DefaultChainConfigChainID,
-		"../cmd/geth/config/testnet.json": DefaultTestnetChainConfigChainID,
+		"../core/config/mainnet.json": DefaultChainConfigChainID,
+		"../core/config/morden.json": DefaultTestnetChainConfigChainID,
 	}
 	for extConfigPath, wantInt := range cases {
 		p, e := filepath.Abs(extConfigPath)

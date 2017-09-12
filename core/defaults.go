@@ -3,7 +3,6 @@ package core
 import (
 	"math/big"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"fmt"
 	"github.com/ethereumproject/go-ethereum/core/assets"
 	"encoding/json"
 )
@@ -28,7 +27,7 @@ var (
 func readConfigFromDefaults(configPath string) *SufficientChainConfig {
 	data, err := assets.DEFAULTS.Open(configPath)
 	if err != nil {
-		glog.Fatalf("Err opening default chain config assets (mainnet): %v", err)
+		glog.Fatalf("Err opening default chain config assets (%s): %v", configPath, err)
 	}
 	var config = &SufficientChainConfig{}
 	if json.NewDecoder(data).Decode(config); err != nil {
@@ -38,8 +37,8 @@ func readConfigFromDefaults(configPath string) *SufficientChainConfig {
 }
 
 func init() {
-	mainnetConfigDefaults := readConfigFromDefaults("/config/mainnet.json")
-	mordenConfigDefaults := readConfigFromDefaults("/config/testnet.json")
+	mainnetConfigDefaults := readConfigFromDefaults("/core/config/mainnet.json")
+	mordenConfigDefaults := readConfigFromDefaults("/core/config/morden.json")
 
 	DefaultChainConfigID = mainnetConfigDefaults.Identity
 	DefaultTestnetChainConfigID = mordenConfigDefaults.Identity
@@ -47,8 +46,8 @@ func init() {
 	DefaultChainConfigName = mainnetConfigDefaults.Name
 	DefaultTestnetChainConfigName = mordenConfigDefaults.Name
 
-	DefaultChainConfigChainID = mainnetConfigDefaults.Network
-	DefaultTestnetChainConfigChainID = mordenConfigDefaults.Network
+	DefaultChainConfigChainID = mainnetConfigDefaults.ChainConfig.GetChainID()
+	DefaultTestnetChainConfigChainID = mordenConfigDefaults.ChainConfig.GetChainID()
 
 	DefaultConfig = mainnetConfigDefaults.ChainConfig
 	TestConfig = mordenConfigDefaults.ChainConfig

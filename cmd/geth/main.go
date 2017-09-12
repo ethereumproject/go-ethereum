@@ -98,12 +98,6 @@ Runs quick benchmark on first GPU found.
 The output of this command is supposed to be machine-readable.
 `,
 		},
-		{
-			Action: showConfig,
-			Name: "config",
-			Usage: "Show test config",
-			Description: "",
-		},
 	}
 
 	app.Flags = []cli.Flag{
