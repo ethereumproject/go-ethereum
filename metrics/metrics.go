@@ -147,13 +147,36 @@ func UpdateSysMetrics() {
 	NumGoRoutines.Update(int64(runtime.NumGoroutine()))
 }
 
+// GetReg is a stand-in getter function for the single available metrics registry.
+func GetReg() metrics.Registry {
+	return reg
+}
+
+//func CollectToHuman() ([]byte, error) {
+//	b, err := CollectToJSON()
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	out := make(map[string]interface{})
+//	err = json.Unmarshal(b, &out)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//
+//	metrics.Each(func (string, interface{}) {
+//
+//	})
+//}
+
+
 func CollectToJSON() ([]byte, error) {
 	UpdateSysMetrics()
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
 	defer writer.Flush()
-
 	metrics.WriteJSONOnce(reg, writer)
 
 	return b.Bytes(), nil
