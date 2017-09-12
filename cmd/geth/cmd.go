@@ -36,6 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	jsonAssets "github.com/ethereumproject/go-ethereum/cmd/geth/assets"
 	"gopkg.in/urfave/cli.v1"
 	"io/ioutil"
 	"math/big"
@@ -43,6 +44,7 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+	"encoding/json"
 )
 
 const (
@@ -933,4 +935,28 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			return
 		}
 	}
+}
+
+func showConfig(ctx *cli.Context) error {
+	glog.V(logger.Error).Infoln("hello", ctx.Args())
+	//data, err := assets.FS.Open("your/files/here")
+	data, err := jsonAssets.FS.Open("/config/testnet.json")
+	if err != nil {
+		glog.Fatalf("Err opening assets: %v", err)
+	}
+	//glog.V(logger.Error).Infoln(data)
+	glog.V(logger.Error).Infoln("--> haz data")
+
+	var config = &core.SufficientChainConfig{}
+	if json.NewDecoder(data).Decode(config); err != nil {
+		return fmt.Errorf("%s", err)
+	}
+
+	s, ok := config.IsValid()
+	if !ok {
+		glog.Fatalln("not ok config invalid:", s)
+	}
+	glog.V(logger.Error).Infoln(config.Identity, config.ChainConfig.GetChainID(), ok)
+
+	return nil
 }
