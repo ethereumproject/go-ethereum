@@ -36,7 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	//jsonAssets "github.com/ethereumproject/go-ethereum/cmd/geth/assets"
+	jsonAssets "github.com/ethereumproject/go-ethereum/cmd/geth/assets"
 	"gopkg.in/urfave/cli.v1"
 	"io/ioutil"
 	"math/big"
@@ -947,30 +947,30 @@ func showConfig(ctx *cli.Context) error {
 	//mkdir -p cmd/geth/assets
 	//resources -declare -var=FS -package=assets -output=assets/assets.go cmd/geth/config
 	//data, err := assets.FS.Open("your/files/here")
-	//data, err := jsonAssets.FS.Open("/config/testnet.json")
-	//if err != nil {
-	//	glog.Fatalf("Err opening assets: %v", err)
-	//}
-	//var config = &core.SufficientChainConfig{}
-	//if json.NewDecoder(data).Decode(config); err != nil {
-	//	return fmt.Errorf("%s", err)
-	//}
-
-
-	//go get -u github.com/jteeuwen/go-bindata/...
-	//go-bindata -o cmd/geth/assets.go cmd/geth/config/
-	data, err := Asset("cmd/geth/config/testnet.json")
+	data, err := jsonAssets.FS.Open("/config/testnet.json")
 	if err != nil {
-		glog.Fatalf("Err asset: %v", err)
+		glog.Fatalf("Err opening assets: %v", err)
 	}
-	//glog.V(logger.Error).Infoln(data)
-	glog.V(logger.Error).Infoln("--> haz data")
-
 	var config = &core.SufficientChainConfig{}
-	e := json.Unmarshal(data, &config)
-	if e != nil {
-		glog.Fatalf("Unmarshal data err: %v", e)
+	if json.NewDecoder(data).Decode(config); err != nil {
+		return fmt.Errorf("%s", err)
 	}
+
+
+	////go get -u github.com/jteeuwen/go-bindata/...
+	////go-bindata -o cmd/geth/assets.go cmd/geth/config/
+	//data, err := Asset("cmd/geth/config/testnet.json")
+	//if err != nil {
+	//	glog.Fatalf("Err asset: %v", err)
+	//}
+	////glog.V(logger.Error).Infoln(data)
+	//glog.V(logger.Error).Infoln("--> haz data")
+	//
+	//var config = &core.SufficientChainConfig{}
+	//e := json.Unmarshal(data, &config)
+	//if e != nil {
+	//	glog.Fatalf("Unmarshal data err: %v", e)
+	//}
 
 	s, ok := config.IsValid()
 	if !ok {
