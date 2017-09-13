@@ -16,6 +16,10 @@ var (
 	DefaultChainConfigChainID *big.Int
 	DefaultTestnetChainConfigChainID *big.Int
 
+	DefaultSufficientConfigMainnet *SufficientChainConfig
+	DefaultSufficientConfigMorden  *SufficientChainConfig
+
+	// TODO: refactor ChainConfigs and Genesis's to use attributes of SufficentChainConfigs instead of own vars
 	DefaultConfig *ChainConfig
 	TestConfig *ChainConfig
 
@@ -36,27 +40,27 @@ func init() {
 		glog.Fatal("Error opening morden default JSON:", err)
 	}
 
-	mainnetConfigDefaults, err := parseExternalChainConfig(mainnetJSONData)
+	DefaultSufficientConfigMainnet, err = parseExternalChainConfig(mainnetJSONData)
 	if err != nil {
 		glog.Fatal("Error parsing mainnet defaults from JSON:", err)
 	}
-	mordenConfigDefaults, err := parseExternalChainConfig(mordenJSONData)
+	DefaultSufficientConfigMorden, err = parseExternalChainConfig(mordenJSONData)
 	if err != nil {
 		glog.Fatal("Error parsing morden defaults from JSON:", err)
 	}
 
-	DefaultChainConfigID = mainnetConfigDefaults.Identity
-	DefaultTestnetChainConfigID = mordenConfigDefaults.Identity
+	DefaultChainConfigID = DefaultSufficientConfigMainnet.Identity
+	DefaultTestnetChainConfigID = DefaultSufficientConfigMorden.Identity
 
-	DefaultChainConfigName = mainnetConfigDefaults.Name
-	DefaultTestnetChainConfigName = mordenConfigDefaults.Name
+	DefaultChainConfigName = DefaultSufficientConfigMainnet.Name
+	DefaultTestnetChainConfigName = DefaultSufficientConfigMorden.Name
 
-	DefaultChainConfigChainID = mainnetConfigDefaults.ChainConfig.GetChainID()
-	DefaultTestnetChainConfigChainID = mordenConfigDefaults.ChainConfig.GetChainID()
+	DefaultChainConfigChainID = DefaultSufficientConfigMainnet.ChainConfig.GetChainID()
+	DefaultTestnetChainConfigChainID = DefaultSufficientConfigMorden.ChainConfig.GetChainID()
 
-	DefaultConfig = mainnetConfigDefaults.ChainConfig
-	TestConfig = mordenConfigDefaults.ChainConfig
+	DefaultConfig = DefaultSufficientConfigMainnet.ChainConfig
+	TestConfig = DefaultSufficientConfigMorden.ChainConfig
 
-	DefaultGenesis = mainnetConfigDefaults.Genesis
-	TestNetGenesis = mordenConfigDefaults.Genesis
+	DefaultGenesis = DefaultSufficientConfigMainnet.Genesis
+	TestNetGenesis = DefaultSufficientConfigMorden.Genesis
 }

@@ -279,9 +279,9 @@ func MakeBootstrapNodesFromContext(ctx *cli.Context) []*discover.Node {
 
 		// --testnet/--chain=morden flag overrides --config flag
 		if chainIsMorden(ctx) {
-			return TestNetBootNodes
+			return core.DefaultSufficientConfigMorden.ParsedBootstrap
 		}
-		return HomesteadBootNodes
+		return core.DefaultSufficientConfigMainnet.ParsedBootstrap
 	}
 	return core.ParseBootstrapNodeStrings(strings.Split(ctx.GlobalString(aliasableName(BootnodesFlag.Name, ctx)), ","))
 }

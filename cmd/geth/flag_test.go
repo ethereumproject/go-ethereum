@@ -12,6 +12,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"gopkg.in/urfave/cli.v1"
+	"github.com/ethereumproject/go-ethereum/core"
 )
 
 var ogHome string  // placeholder
@@ -275,8 +276,8 @@ func TestMakeBootstrapNodesFromContext3(t *testing.T) {
 	}
 	context = cli.NewContext(app, set, nil)
 	got := MakeBootstrapNodesFromContext(context)
-	if len(got) != len(HomesteadBootNodes) {
-		t.Errorf("wanted: %v, got %v", len(HomesteadBootNodes), len(got))
+	if len(got) != len(core.DefaultSufficientConfigMainnet.ParsedBootstrap) {
+		t.Errorf("wanted: %v, got %v", len(core.DefaultSufficientConfigMainnet.ParsedBootstrap), len(got))
 	}
 }
 
@@ -293,8 +294,8 @@ func TestMakeBootstrapNodesFromContext4(t *testing.T) {
 	}
 	context = cli.NewContext(app, set, nil)
 	got := MakeBootstrapNodesFromContext(context)
-	if len(got) != len(TestNetBootNodes) {
-		t.Errorf("wanted: %v, got %v", len(TestNetBootNodes), len(got))
+	if len(got) != len(core.DefaultSufficientConfigMorden.ParsedBootstrap) {
+		t.Errorf("wanted: %v, got %v", len(core.DefaultSufficientConfigMorden.ParsedBootstrap), len(got))
 	}
 }
 

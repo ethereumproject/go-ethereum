@@ -631,7 +631,6 @@ func dumpChainConfig(ctx *cli.Context) error {
 		stateConf = nil
 	}
 
-	// Note that we use default configs (not externalizable).
 	chainConfig := MustMakeChainConfigFromDefaults(ctx)
 	var nodes []string
 	for _, node := range MakeBootstrapNodesFromContext(ctx) {
