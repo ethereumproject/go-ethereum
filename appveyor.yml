@@ -25,7 +25,7 @@ install:
   - go get github.com/omeid/go-resources/cmd/resources
 build_script:
   # Ensure (a double check) that the default JSON configs are compiled.
-  - resources -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json
+  - resources -fmt -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json
   - go test ./...
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
