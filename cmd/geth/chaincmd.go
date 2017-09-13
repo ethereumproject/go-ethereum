@@ -23,8 +23,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+	"strings"
+	"bufio"
 
-	"encoding/json"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -32,7 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
-	"strings"
 )
 
 var (
@@ -208,17 +208,27 @@ func upgradeDB(ctx *cli.Context) error {
 // Revised use allows n hashes|ints as comma-separated first argument and n addresses as comma-separated second argument,
 // dumping only state information for given addresses if they're present.
 // revised use: $ geth dump [hash|num],[hash|num],...,[hash|num] [address],[address],...,[address]
+//
+// Added unsorted dumping algorithm.
+// revised use: $ geth dump [unsorted] [hash|num],[hash|num],...,[hash|num] [address],[address],...,[address]
+
 func dump(ctx *cli.Context) error {
 
 	if ctx.NArg() == 0 {
 		return fmt.Errorf("%v: use: $ geth dump [blockHash|blockNum],[blockHash|blockNum] [[addressHex|addressPrefixedHex],[addressHex|addressPrefixedHex]]", ErrInvalidFlag)
 	}
 
-	blocks := strings.Split(ctx.Args()[0], ",")
+	firstArg := 0
+	unsorted := ctx.Args()[0] == "unsorted"
+	if unsorted {
+		firstArg = 1
+	}
+
+	blocks := strings.Split(ctx.Args()[firstArg], ",")
 	addresses := []common.Address{}
 	argaddress := ""
-	if ctx.NArg() > 1 {
-		argaddress = ctx.Args()[1]
+	if ctx.NArg() > firstArg+1 {
+		argaddress = ctx.Args()[firstArg+1]
 	}
 
 	if argaddress != "" {
@@ -231,8 +241,17 @@ func dump(ctx *cli.Context) error {
 	chain, chainDb := MakeChain(ctx)
 	defer chainDb.Close()
 
-	dumps := state.Dumps{}
-	for _, b := range blocks {
+	prefix := ""
+	indent := "    "
+
+	out := bufio.NewWriter(os.Stdout)
+
+	if len(blocks) > 1 {
+		prefix = indent
+		out.WriteString("[\n")
+	}
+
+	for n, b := range blocks {
 		b = strings.TrimSpace(b)
 		var block *types.Block
 		if hashish(b) {
@@ -242,7 +261,7 @@ func dump(ctx *cli.Context) error {
 			block = chain.GetBlockByNumber(uint64(num))
 		}
 		if block == nil {
-			fmt.Println("{}")
+			out.WriteString("{}\n")
 			log.Fatal("block not found")
 		} else {
 			state, err := state.New(block.Root(), chainDb)
@@ -250,19 +269,28 @@ func dump(ctx *cli.Context) error {
 				return fmt.Errorf("could not create new state: %v", err)
 			}
 
-			if len(blocks) > 1 {
-				dumps = append(dumps, state.RawDump(addresses))
+			if n != 0 {
+				out.WriteString(",\n")
+			}
+
+			if unsorted {
+				err = state.UnsortedDump(addresses,prefix,indent,out)
 			} else {
-				fmt.Printf("%s\n", state.Dump(addresses))
-				return nil
+				err = state.SortedDump(addresses, prefix, indent, out)
+			}
+
+			if err != nil {
+				return err
 			}
 		}
 	}
-	json, err := json.MarshalIndent(dumps, "", "    ")
-	if err != nil {
-		return fmt.Errorf("dump err: %v", err)
+
+	if len(blocks) > 1 {
+		out.WriteString("\n]")
 	}
-	fmt.Printf("%s\n", json)
+
+	out.WriteString("\n")
+	out.Flush()
 
 	return nil
 }

@@ -329,6 +329,26 @@ func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, 
 	return okForkFeature, okFork, found
 }
 
+// HasFeature looks up if fork feature exists on any fork at any block in the configuration.
+// In case of multiple same-'id'd features, returns latest (assuming forks are sorted).
+func (c *ChainConfig) HasFeature(id string) (*ForkFeature, *Fork, bool) {
+	var okForkFeature = &ForkFeature{}
+	var okFork = &Fork{}
+	var found = false
+	if id != "" {
+		for _, f := range c.Forks {
+			for _, ff := range f.Features {
+				if ff.ID == id {
+					okForkFeature = ff
+					okFork = f
+					found = true
+				}
+			}
+		}
+	}
+	return okForkFeature, okFork, found
+}
+
 func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 	for _, fork := range c.Forks {
 		if fork.Block.Cmp(h.Number) != 0 {
