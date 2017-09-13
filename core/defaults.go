@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/core/assets"
-	"encoding/json"
 )
 
 var (
@@ -24,21 +23,27 @@ var (
 	DefaultGenesis *GenesisDump
 )
 
-func readConfigFromDefaults(configPath string) *SufficientChainConfig {
-	data, err := assets.DEFAULTS.Open(configPath)
-	if err != nil {
-		glog.Fatalf("Err opening default chain config assets (%s): %v", configPath, err)
-	}
-	var config = &SufficientChainConfig{}
-	if json.NewDecoder(data).Decode(config); err != nil {
-		glog.Fatalf("%v", err)
-	}
-	return config
-}
-
 func init() {
-	mainnetConfigDefaults := readConfigFromDefaults("/core/config/mainnet.json")
-	mordenConfigDefaults := readConfigFromDefaults("/core/config/morden.json")
+
+	var err error
+
+	mainnetJSONData, err := assets.DEFAULTS.Open("/core/config/mainnet.json")
+	if err != nil {
+		glog.Fatal("Error opening mainnet default JSON:", err)
+	}
+	mordenJSONData, err := assets.DEFAULTS.Open("/core/config/morden.json")
+	if err != nil {
+		glog.Fatal("Error opening morden default JSON:", err)
+	}
+
+	mainnetConfigDefaults, err := parseExternalChainConfig(mainnetJSONData)
+	if err != nil {
+		glog.Fatal("Error parsing mainnet defaults from JSON:", err)
+	}
+	mordenConfigDefaults, err := parseExternalChainConfig(mordenJSONData)
+	if err != nil {
+		glog.Fatal("Error parsing morden defaults from JSON:", err)
+	}
 
 	DefaultChainConfigID = mainnetConfigDefaults.Identity
 	DefaultTestnetChainConfigID = mordenConfigDefaults.Identity

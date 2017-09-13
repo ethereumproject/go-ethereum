@@ -361,7 +361,7 @@ func TestChainConfig_GetChainID(t *testing.T) {
 		if e != nil {
 			t.Fatalf("filepath err: %v", e)
 		}
-		extConfig, err := ReadExternalChainConfig(p)
+		extConfig, err := ReadExternalChainConfigFromFile(p)
 		if err != nil {
 			t.Fatalf("could not decode file: %v", err)
 		}

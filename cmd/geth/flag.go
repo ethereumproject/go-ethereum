@@ -162,7 +162,7 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 		// Check if passed arg exists as a path to a valid config file.
 		if fstat, ferr := os.Stat(filepath.Clean(chainFlagVal)); ferr == nil && !fstat.IsDir() {
 			glog.V(logger.Debug).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
-			c, configurationError := core.ReadExternalChainConfig(filepath.Clean(chainFlagVal))
+			c, configurationError := core.ReadExternalChainConfigFromFile(filepath.Clean(chainFlagVal))
 			if configurationError == nil {
 				glog.V(logger.Debug).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
@@ -683,7 +683,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		`, core.ErrChainConfigNotFound, defaultChainConfigPath,
 			chainDir, chainIdentity, chainDir, chainDir)
 	}
-	config, err := core.ReadExternalChainConfig(defaultChainConfigPath)
+	config, err := core.ReadExternalChainConfigFromFile(defaultChainConfigPath)
 	if err != nil {
 		glog.Fatalf(`invalid external configuration JSON: '%v': %v
 		Valid custom configuration JSON file must be named 'chain.json' and be located in respective chain subdir.`, defaultChainConfigPath, err)
