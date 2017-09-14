@@ -209,8 +209,9 @@ func upgradeDB(ctx *cli.Context) error {
 // dumping only state information for given addresses if they're present.
 // revised use: $ geth dump [hash|num],[hash|num],...,[hash|num] [address],[address],...,[address]
 //
-// Added unsorted dumping algorithm.
-// revised use: $ geth dump [unsorted] [hash|num],[hash|num],...,[hash|num] [address],[address],...,[address]
+// Added unsorted/sorted dumping algorithms.
+// unsorted dump is used by default.
+// revised use: $ geth dump [sorted] [hash|num],[hash|num],...,[hash|num] [address],[address],...,[address]
 
 func dump(ctx *cli.Context) error {
 
@@ -219,8 +220,8 @@ func dump(ctx *cli.Context) error {
 	}
 
 	firstArg := 0
-	unsorted := ctx.Args()[0] == "unsorted"
-	if unsorted {
+	sorted := ctx.Args()[0] == "sorted"
+	if sorted {
 		firstArg = 1
 	}
 
@@ -273,10 +274,10 @@ func dump(ctx *cli.Context) error {
 				out.WriteString(",\n")
 			}
 
-			if unsorted {
-				err = state.UnsortedDump(addresses,prefix,indent,out)
-			} else {
+			if sorted {
 				err = state.SortedDump(addresses, prefix, indent, out)
+			} else {
+				err = state.UnsortedDump(addresses,prefix,indent,out)
 			}
 
 			if err != nil {
