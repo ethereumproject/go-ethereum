@@ -144,12 +144,12 @@ func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePat
 func mustMakeChainIdentity(ctx *cli.Context) string {
 
 	if chainIsMorden(ctx) {
-		return core.DefaultTestnetChainConfigID // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
+		return core.DefaultConfigMorden.Identity // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
 	}
 	// If --chain is in use.
 	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
 		if chainIdentitiesMain[chainFlagVal] {
-			return core.DefaultChainConfigID
+			return core.DefaultConfigMainnet.Identity
 		}
 		// Check for unallowed values.
 		if chainIdentitiesBlacklist[chainFlagVal] {
@@ -187,7 +187,7 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 		return ""
 	}
 	// If no relevant flag is set, return default mainnet.
-	return core.DefaultChainConfigID
+	return core.DefaultConfigMainnet.Identity
 }
 
 // mustMakeChainConfigNameDefaulty gets mainnet or testnet defaults if in use.
@@ -197,9 +197,9 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 // separately through external JSON config otherwise).
 func mustMakeChainConfigNameDefaulty(ctx *cli.Context) string {
 	if chainIsMorden(ctx) {
-		return core.DefaultTestnetChainConfigName
+		return core.DefaultConfigMorden.Name
 	}
-	return core.DefaultChainConfigName
+	return core.DefaultConfigMainnet.Name
 }
 
 // mustMakeDataDir retrieves the currently requested data directory, terminating
@@ -279,9 +279,9 @@ func MakeBootstrapNodesFromContext(ctx *cli.Context) []*discover.Node {
 
 		// --testnet/--chain=morden flag overrides --config flag
 		if chainIsMorden(ctx) {
-			return core.DefaultSufficientConfigMorden.ParsedBootstrap
+			return core.DefaultConfigMorden.ParsedBootstrap
 		}
-		return core.DefaultSufficientConfigMainnet.ParsedBootstrap
+		return core.DefaultConfigMainnet.ParsedBootstrap
 	}
 	return core.ParseBootstrapNodeStrings(strings.Split(ctx.GlobalString(aliasableName(BootnodesFlag.Name, ctx)), ","))
 }
@@ -658,12 +658,12 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
 		config.Network = eth.NetworkId // 1, default mainnet
 		config.Consensus = "ethash"
-		config.Genesis = core.DefaultGenesis
+		config.Genesis = core.DefaultConfigMainnet.Genesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
 		if chainIsMorden(ctx) {
 			config.Network = 2
-			config.Genesis = core.TestNetGenesis
+			config.Genesis = core.DefaultConfigMorden.Genesis
 			state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
 		}
 		return config
@@ -742,9 +742,9 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 
 // MustMakeChainConfigFromDefaults reads the chain configuration from hardcode.
 func MustMakeChainConfigFromDefaults(ctx *cli.Context) *core.ChainConfig {
-	c := core.DefaultConfig
+	c := core.DefaultConfigMainnet.ChainConfig
 	if chainIsMorden(ctx) {
-		c = core.TestConfig
+		c = core.DefaultConfigMorden.ChainConfig
 	}
 	return c
 }

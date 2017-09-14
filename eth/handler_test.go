@@ -62,7 +62,7 @@ func TestProtocolCompatibility(t *testing.T) {
 
 // Tests that block headers can be retrieved from a remote chain based on user queries.
 func TestGetBlockHeaders62(t *testing.T) {
-	core.TestConfig.Forks = []*core.Fork{
+	core.DefaultConfigMorden.ChainConfig.Forks = []*core.Fork{
 		{
 			Name:  "Homestead",
 			Block: big.NewInt(0),
