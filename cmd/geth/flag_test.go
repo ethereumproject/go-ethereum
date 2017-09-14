@@ -136,6 +136,8 @@ func TestMustMakeChainDataDir(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		// Unset cache.
+		cacheChainIdentity = ""
 
 		if c.err != nil {
 			t.Log("skipping test for erroring use case (will pass, but go test doesn't like glog)")
@@ -193,6 +195,9 @@ func TestGetChainIdentityValue(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		// Unset cache.
+		cacheChainIdentity = ""
+		
 		if c.want == "" {
 			t.Log("skipping test for erroring use case (will pass, but go test doesn't like glog)")
 			continue
