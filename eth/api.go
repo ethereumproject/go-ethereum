@@ -48,8 +48,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	ethMetrics "github.com/ethereumproject/go-ethereum/metrics"
-	"github.com/rcrowley/go-metrics"
-	"strings"
 )
 
 const defaultGas = uint64(90000)
@@ -1702,100 +1700,52 @@ func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
 	format := func(total float64, rate float64) string {
 		return fmt.Sprintf("%s (%s/s)", round(total, 0), round(rate, 2))
 	}
-	// Iterate over all the metrics, and just dump for now
-	counters := make(map[string]interface{})
 
-	ethMetrics.GetReg().Each(func(name string, metric interface{}) {
-		// Create or retrieve the counter hierarchy for this metric
-		root, parts := counters, strings.Split(name, "/")
-		for _, part := range parts[:len(parts)-1] {
-			if _, ok := root[part]; !ok {
-				root[part] = make(map[string]interface{})
-			}
-			root = root[part].(map[string]interface{})
-		}
-		name = parts[len(parts)-1]
+	var b []byte
+	var err error
 
-		// Fill the counter with the metric details, formatting if requested
-		if raw {
-			switch metric := metric.(type) {
-			case metrics.Meter:
-				root[name] = map[string]interface{}{
-					"AvgRate01Min": metric.Rate1(),
-					"AvgRate05Min": metric.Rate5(),
-					"AvgRate15Min": metric.Rate15(),
-					"MeanRate":     metric.RateMean(),
-					"Overall":      float64(metric.Count()),
+	b, err = ethMetrics.CollectToJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[string]interface{})
+	err = json.Unmarshal(b, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	// human friendly if specified
+	if !raw {
+		rout := out
+		for k, v := range out {
+			if m, ok := v.(map[string]interface{}); ok {
+				// This is one way of differentiating Meters, Timers, and Gauges.
+				// whilei: (having some trouble with *metrics.StandardTimer(etc) type switches)
+				// If new types metrics are introduced, they should have their relevant values added here.
+				if _, ok := m["mean.rate"]; ok {
+					h1m := format(m["1m.rate"].(float64)*60, m["1m.rate"].(float64))
+					h5m := format(m["5m.rate"].(float64)*300, m["5m.rate"].(float64))
+					h15m := format(m["15m.rate"].(float64)*900, m["15m.rate"].(float64))
+					hmr := format(m["mean.rate"].(float64), m["mean.rate"].(float64))
+					rout[k] = map[string]interface{}{
+						"1m.rate":   h1m,
+						"5m.rate":   h5m,
+						"15m.rate":  h15m,
+						"mean.rate": hmr,
+						"count":     fmt.Sprintf("%v", m["count"]),
+					}
+				} else if _, ok := m["value"]; ok {
+					rout[k] = map[string]interface{}{
+						"value": fmt.Sprintf("%v", m["value"]),
+					}
 				}
-
-			case metrics.Timer:
-				root[name] = map[string]interface{}{
-					"AvgRate01Min": metric.Rate1(),
-					"AvgRate05Min": metric.Rate5(),
-					"AvgRate15Min": metric.Rate15(),
-					"MeanRate":     metric.RateMean(),
-					"Overall":      float64(metric.Count()),
-					"Percentiles": map[string]interface{}{
-						"5":  metric.Percentile(0.05),
-						"20": metric.Percentile(0.2),
-						"50": metric.Percentile(0.5),
-						"80": metric.Percentile(0.8),
-						"95": metric.Percentile(0.95),
-					},
-				}
-
-			default:
-				root[name] = "Unknown metric type"
-			}
-		} else {
-			switch metric := metric.(type) {
-			case metrics.Meter:
-				root[name] = map[string]interface{}{
-					"Avg01Min": format(metric.Rate1()*60, metric.Rate1()),
-					"Avg05Min": format(metric.Rate5()*300, metric.Rate5()),
-					"Avg15Min": format(metric.Rate15()*900, metric.Rate15()),
-					"Overall":  format(float64(metric.Count()), metric.RateMean()),
-				}
-
-			case metrics.Timer:
-				root[name] = map[string]interface{}{
-					"Avg01Min": format(metric.Rate1()*60, metric.Rate1()),
-					"Avg05Min": format(metric.Rate5()*300, metric.Rate5()),
-					"Avg15Min": format(metric.Rate15()*900, metric.Rate15()),
-					"Overall":  format(float64(metric.Count()), metric.RateMean()),
-					"Maximum":  time.Duration(metric.Max()).String(),
-					"Minimum":  time.Duration(metric.Min()).String(),
-					"Percentiles": map[string]interface{}{
-						"5":  time.Duration(metric.Percentile(0.05)).String(),
-						"20": time.Duration(metric.Percentile(0.2)).String(),
-						"50": time.Duration(metric.Percentile(0.5)).String(),
-						"80": time.Duration(metric.Percentile(0.8)).String(),
-						"95": time.Duration(metric.Percentile(0.95)).String(),
-					},
-				}
-
-			default:
-				root[name] = "Unknown metric type"
 			}
 		}
-	})
-	return counters, nil
+		return rout, nil
+	}
 
-	//var b []byte
-	//var err error
-	//
-	//b, err = metrics.CollectToJSON()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//out := make(map[string]interface{})
-	//err = json.Unmarshal(b, &out)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//return out, nil
+	return out, nil
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM
