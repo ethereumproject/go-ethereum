@@ -70,8 +70,196 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 	if fork := DefaultConfigMorden.ChainConfig.ForkByName("Gotham"); fork.Block.Cmp(big.NewInt(2000000)) != 0 {
 		t.Errorf("Unexpected fork: %v", fork)
 	}
+	
+	checks := []struct{
+		Config *SufficientChainConfig
+		Block *big.Int
+		Name string
+		Features []*ForkFeature
+	}{
+		{
+			Config: DefaultConfigMorden,
+			Block: big.NewInt(494000),
+			Name: "Homestead",
+			Features: []*ForkFeature{
+				{
+					ID: "difficulty",
+					Options: ChainFeatureConfigOptions{
+						"type": "homestead",
+					},
+				},
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "homestead",
+					},
+				},
+			},
+		},
+		{
+			Config: DefaultConfigMainnet,
+			Block: big.NewInt(1150000),
+			Name: "Homestead",
+			Features: []*ForkFeature{
+				{
+					ID: "difficulty",
+					Options: ChainFeatureConfigOptions{
+						"type": "homestead",
+					},
+				},
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "homestead",
+					},
+				},
+			},
+		},
+		{
+			Config: DefaultConfigMorden,
+			Block: big.NewInt(1885000),
+			Name: "The DAO Hard Fork",
+		},
+		{
+			Config: DefaultConfigMainnet,
+			Block: big.NewInt(1920000),
+			Name: "The DAO Hard Fork",
+		},
+		{
+			Config: DefaultConfigMorden,
+			Block: big.NewInt(1783000),
+			Name: "GasReprice",
+			Features: []*ForkFeature{
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "eip150",
+					},
+				},
+			},
+		},
+		{
+			Config: DefaultConfigMainnet,
+			Block: big.NewInt(2500000),
+			Name: "GasReprice",
+			Features: []*ForkFeature{
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "eip150",
+					},
+				},
+			},
+		},
+		{
+			Config: DefaultConfigMorden,
+			Block: big.NewInt(1915000),
+			Name: "Diehard",
+			Features: []*ForkFeature{
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "eip160",
+					},
+				},
+				{
+					ID: "eip155",
+					Options: ChainFeatureConfigOptions{
+						"chainID": big.NewInt(62),
+					},
+				},
+				{
+					ID: "difficulty",
+					Options: ChainFeatureConfigOptions{
+						"length": big.NewInt(2000000),
+						"type": "ecip1010",
+					},
+				},
+			},
+		},
+		{
+			Config: DefaultConfigMainnet,
+			Block: big.NewInt(3000000),
+			Name: "Diehard",
+			Features: []*ForkFeature{
+				{
+					ID: "gastable",
+					Options: ChainFeatureConfigOptions{
+						"type": "eip160",
+					},
+				},
+				{
+					ID: "eip155",
+					Options: ChainFeatureConfigOptions{
+						"chainID": big.NewInt(61),
+					},
+				},
+				{
+					ID: "difficulty",
+					Options: ChainFeatureConfigOptions{
+						"length": big.NewInt(2000000),
+						"type": "ecip1010",
+					},
+				},
+			},
+		},
+		{
+			Config: DefaultConfigMorden,
+			Block: big.NewInt(2000000),
+			Name: "Gotham",
+			Features: []*ForkFeature{
+				{
+					ID: "reward",
+					Options: ChainFeatureConfigOptions{
+						"era": big.NewInt(2000000),
+						"type": "ecip1017",
+					},
+				},
+			},
+		},
+		{
+			Config: DefaultConfigMainnet,
+			Block: big.NewInt(5000000),
+			Name: "Gotham",
+			Features: []*ForkFeature{
+				{
+					ID: "reward",
+					Options: ChainFeatureConfigOptions{
+						"era": big.NewInt(5000000),
+						"type": "ecip1017",
+					},
+				},
+			},
+		},
+	}
+	for _, check := range checks {
+		// Ensure fork exists at correct block
+		if fork := check.Config.ChainConfig.ForkByName(check.Name); fork.Block.Cmp(check.Block) != 0 {
+			t.Errorf("got: %v, want: %v", fork.Block, check.Block)
+		}
+		for _, feat := range check.Features {
+			ff, f, ok := check.Config.ChainConfig.GetFeature(check.Block, feat.ID)
+			if !ok {
+				t.Errorf("unfound fork feat: %s", feat.ID)
+			}
+			for k, v := range ff.Options {
+				switch v.(type) {
+				case *big.Int:
+					if big.NewInt(feat.Options[k].(int64)).Cmp(big.NewInt(v.(int64))) != 0 {
+						t.Errorf("mismatch for feature options: got: %v/%v, want: %v/%v", k, feat.Options[k], k, v)
+					}
+				case string:
+					if feat.Options[k] != v {
+						t.Errorf("mismatch for feature options: got: %v/%v, want: %v/%v", k, feat.Options[k], k, v)
+					}
+				}
 
-	// TODO: check each individual feature
+			}
+			if f.Block.Cmp(check.Block) != 0 {
+				t.Errorf("feature fork block wrong: got: %v, want: %v", f.Block, check.Block)
+			}
+		}
+	}
 
 	// Number of bootstrap nodes
 	if l := len(DefaultConfigMainnet.ParsedBootstrap); l != 10 {
