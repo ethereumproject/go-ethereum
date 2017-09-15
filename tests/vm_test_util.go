@@ -27,6 +27,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/maquina/classic"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
@@ -211,7 +212,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 		panic("malformed gas, price or value")
 	}
 	// Reset the pre-compiled contracts for VM tests.
-	vm.Precompiled = make(map[string]*vm.PrecompiledAccount)
+	classic.Precompiled = make(map[string]*classic.PrecompiledAccount)
 
 	caller := state.GetOrNewStateObject(from)
 

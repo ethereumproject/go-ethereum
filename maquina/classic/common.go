@@ -14,21 +14,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package vm
+package classic
 
 import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-)
-
-// Type is the VM type accepted by **NewVm**
-type Type byte
-
-const (
-	StdVmTy Type = iota // Default standard VM
-	JitVmTy             // LLVM JIT VM
-	MaxVmTy
 )
 
 var (

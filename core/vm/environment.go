@@ -18,8 +18,19 @@ package vm
 
 import (
 	"math/big"
+	"reflect"
+	"errors"
 
 	"github.com/ethereumproject/go-ethereum/common"
+)
+
+// Type is the VM type
+type Type byte
+
+const (
+	StdVmTy Type = iota // Default standard VM
+	SputnikVmTy
+	MaxVmTy
 )
 
 // RuleSet is an interface that defines the current rule set during the
@@ -29,6 +40,15 @@ type RuleSet interface {
 	// GasTable returns the gas prices for this phase, which is based on
 	// block number passed in.
 	GasTable(*big.Int) *GasTable
+}
+
+// ContractRef is a reference to the contract's backing object
+type ContractRef interface {
+	ReturnGas(*big.Int, *big.Int)
+	Address() common.Address
+	Value() *big.Int
+	SetCode(common.Hash, []byte)
+	ForEachStorage(callback func(key, value common.Hash) bool)
 }
 
 // Environment is an EVM requirement and helper which allows access to outside
@@ -62,8 +82,6 @@ type Environment interface {
 	Transfer(from, to Account, amount *big.Int)
 	// Adds a LOG to the state
 	AddLog(*Log)
-	// Type of the VM
-	Vm() Vm
 	// Get the curret calling depth
 	Depth() int
 	// Set the current calling depth
@@ -76,14 +94,8 @@ type Environment interface {
 	DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
 	// Create a new contract
 	Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error)
-}
-
-// Vm is the basic interface for an implementation of the EVM.
-type Vm interface {
-	// Run should execute the given contract with the input given in in
-	// and return the contract execution return bytes or an error if it
-	// failed.
-	Run(c *Contract, in []byte) ([]byte, error)
+	// VmType the type of VM
+	VmType() Type
 }
 
 // Database is a EVM database for full state querying.
@@ -129,3 +141,32 @@ type Account interface {
 	ForEachStorage(cb func(key, value common.Hash) bool)
 	Value() *big.Int
 }
+
+type GasTable struct {
+	ExtcodeSize *big.Int
+	ExtcodeCopy *big.Int
+	Balance     *big.Int
+	SLoad       *big.Int
+	Calls       *big.Int
+	Suicide     *big.Int
+	ExpByte     *big.Int
+
+	// CreateBySuicide occurs when the
+	// refunded account is one that does
+	// not exist. This logic is similar
+	// to call. May be left nil. Nil means
+	// not charged.
+	CreateBySuicide *big.Int
+}
+
+// IsEmpty return true if all values are zero values,
+// which useful for checking JSON-decoded empty state.
+func (g *GasTable) IsEmpty() bool {
+	return reflect.DeepEqual(g, GasTable{})
+}
+
+
+var (
+	OutOfGasError          = errors.New("Out of gas")
+	CodeStoreOutOfGasError = errors.New("Contract creation code storage out of gas")
+)

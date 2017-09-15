@@ -256,7 +256,7 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 		}
 	}
 
-	if err != nil && IsValueTransferErr(err) {
+	if err != nil && vm.IsValueTransferErr(err) {
 		return nil, nil, nil, InvalidTxError(err)
 	}
 

@@ -23,13 +23,13 @@ import (
 	"strconv"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/maquina/classic"
 )
 
 func init() {
@@ -213,7 +213,7 @@ type Env struct {
 
 	vmTest bool
 
-	evm *vm.EVM
+	evm *classic.EVM
 }
 
 func NewEnv(ruleSet RuleSet, state *state.StateDB) *Env {
@@ -248,13 +248,12 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	}
 	env.Gas = new(big.Int)
 
-	env.evm = vm.New(env)
+	env.evm = classic.NewVM(env)
 
 	return env
 }
 
 func (self *Env) RuleSet() vm.RuleSet      { return self.ruleSet }
-func (self *Env) Vm() vm.Vm                { return self.evm }
 func (self *Env) Origin() common.Address   { return self.origin }
 func (self *Env) BlockNumber() *big.Int    { return self.number }
 func (self *Env) Coinbase() common.Address { return self.coinbase }
@@ -292,7 +291,7 @@ func (self *Env) Transfer(from, to vm.Account, amount *big.Int) {
 	if self.skipTransfer {
 		return
 	}
-	core.Transfer(from, to, amount)
+	classic.Transfer(from, to, amount)
 }
 
 func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
@@ -301,7 +300,7 @@ func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, g
 
 		return nil, nil
 	}
-	ret, err := core.Call(self, caller, addr, data, gas, price, value)
+	ret, err := classic.Call(self, caller, addr, data, gas, price, value)
 	self.Gas = gas
 
 	return ret, err
@@ -313,7 +312,7 @@ func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byt
 
 		return nil, nil
 	}
-	return core.CallCode(self, caller, addr, data, gas, price, value)
+	return classic.CallCode(self, caller, addr, data, gas, price, value)
 }
 
 func (self *Env) DelegateCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
@@ -322,7 +321,7 @@ func (self *Env) DelegateCall(caller vm.ContractRef, addr common.Address, data [
 
 		return nil, nil
 	}
-	return core.DelegateCall(self, caller, addr, data, gas, price)
+	return classic.DelegateCall(self, caller, addr, data, gas, price)
 }
 
 func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
@@ -334,8 +333,12 @@ func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *b
 
 		return nil, obj.Address(), nil
 	} else {
-		return core.Create(self, caller, data, gas, price, value)
+		return classic.Create(self, caller, data, gas, price, value)
 	}
+}
+
+func (self *Env) Run(contract *classic.Contract, input []byte) (ret []byte, err error) {
+	return self.evm.Run(contract,input)
 }
 
 type Message struct {
