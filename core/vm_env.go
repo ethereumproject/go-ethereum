@@ -21,7 +21,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/maquina/classic"
+	"github.com/ethereumproject/go-ethereum/machine/classic"
 )
 
 // GetHashFn returns a function for which the VM env can query block hashes through

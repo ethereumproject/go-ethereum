@@ -32,7 +32,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/maquina/classic"
+	"github.com/ethereumproject/go-ethereum/machine/classic"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
@@ -244,16 +244,16 @@ func (self *VMEnv) Db() vm.Database           { return self.state }
 func (self *VMEnv) SnapshotDatabase() int     { return self.state.Snapshot() }
 func (self *VMEnv) RevertToSnapshot(snap int) { self.state.RevertToSnapshot(snap) }
 func (self *VMEnv) Origin() common.Address    { return *self.transactor }
-func (self *VMEnv) BlockNumber() *big.Int     { return new(big.Int) }
-func (self *VMEnv) Coinbase() common.Address  { return *self.transactor }
-func (self *VMEnv) Time() *big.Int            { return self.time }
-func (self *VMEnv) Difficulty() *big.Int      { return common.Big1 }
-func (self *VMEnv) BlockHash() []byte         { return make([]byte, 32) }
-func (self *VMEnv) Value() *big.Int           { return self.value }
-func (self *VMEnv) GasLimit() *big.Int        { return big.NewInt(1000000000) }
-func (self *VMEnv) VmType() vm.Type           { return vm.StdVmTy }
-func (self *VMEnv) Depth() int                { return 0 }
-func (self *VMEnv) SetDepth(i int)            { self.depth = i }
+func (self *VMEnv) BlockNumber() *big.Int    { return new(big.Int) }
+func (self *VMEnv) Coinbase() common.Address { return *self.transactor }
+func (self *VMEnv) Time() *big.Int           { return self.time }
+func (self *VMEnv) Difficulty() *big.Int     { return common.Big1 }
+func (self *VMEnv) BlockHash() []byte        { return make([]byte, 32) }
+func (self *VMEnv) Value() *big.Int          { return self.value }
+func (self *VMEnv) GasLimit() *big.Int       { return big.NewInt(1000000000) }
+func (self *VMEnv) VmType() vm.Type          { return vm.ClassicVmTy }
+func (self *VMEnv) Depth() int               { return 0 }
+func (self *VMEnv) SetDepth(i int)           { self.depth = i }
 func (self *VMEnv) GetHash(n uint64) common.Hash {
 	if self.block.Number().Cmp(big.NewInt(int64(n))) == 0 {
 		return self.block.Hash()

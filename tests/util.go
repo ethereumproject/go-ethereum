@@ -29,7 +29,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/maquina/classic"
+	"github.com/ethereumproject/go-ethereum/machine/classic"
 )
 
 func init() {
@@ -261,7 +261,7 @@ func (self *Env) Time() *big.Int           { return self.time }
 func (self *Env) Difficulty() *big.Int     { return self.difficulty }
 func (self *Env) Db() vm.Database          { return self.state }
 func (self *Env) GasLimit() *big.Int       { return self.gasLimit }
-func (self *Env) VmType() vm.Type          { return vm.StdVmTy }
+func (self *Env) VmType() vm.Type          { return vm.ClassicVmTy }
 func (self *Env) GetHash(n uint64) common.Hash {
 	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 }

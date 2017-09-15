@@ -55,7 +55,7 @@ func NewEnv(
 }
 
 func (self *VMEnv) VmType() vm.Type {
-	return vm.StdVmTy
+	return vm.ClassicVmTy
 }
 
 func (self *VMEnv) RuleSet() vm.RuleSet      { 
@@ -142,7 +142,7 @@ func (self *VMEnv) Create(me vm.ContractRef, data []byte, gas, price, value *big
 	return Create(self, me, data, gas, price, value)
 }
 
-type EVMRun interface {
+type EVMRunner interface {
 	Run(*Contract,[]byte) ([]byte,error)
 }
 
