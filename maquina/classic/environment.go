@@ -34,10 +34,6 @@ type VMEnv struct {
 	getHashFn func(uint64) common.Hash // getHashFn callback is used to retrieve block hashes
  	from      common.Address
  	value     *big.Int
-
-//	msg         Message        // Message appliod
-//	chain     *BlockChain              // Blockchain handle
-//  chainConfig *ChainConfig   // Chain configuration
 }
 
 func NewEnv(

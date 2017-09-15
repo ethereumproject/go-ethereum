@@ -3,10 +3,11 @@ package classic
 import (
 	"testing"
 	"math/big"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 func TestGasIsEmpty(t *testing.T) {
-	var DefaultGasRepriceGasTable = &GasTable{
+	var DefaultGasRepriceGasTable = &vm.GasTable{
 		ExtcodeSize:     big.NewInt(700),
 		ExtcodeCopy:     big.NewInt(700),
 		Balance:         big.NewInt(400),
