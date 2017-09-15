@@ -28,7 +28,7 @@ import (
 type Type byte
 
 const (
-	StdVmTy Type = iota // Default standard VM
+	ClassicVmTy Type = iota // Default standard VM
 	SputnikVmTy
 	MaxVmTy
 )

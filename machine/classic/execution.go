@@ -112,7 +112,7 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	contract.SetCallCode(codeAddr, codeHash, code)
 	defer contract.Finalise()
 
-	ret, err = env.(EVMRun).Run(contract, input)
+	ret, err = env.(EVMRunner).Run(contract, input)
 	// if the contract creation ran successfully and no errors were returned
 	// calculate the gas required to store the code. If the code could not
 	// be stored due to not enough gas set an error and let it be handled
@@ -162,7 +162,7 @@ func execDelegateCall(env vm.Environment, caller vm.ContractRef, originAddr, toA
 	contract.SetCallCode(codeAddr, codeHash, code)
 	defer contract.Finalise()
 
-	ret, err = env.(EVMRun).Run(contract, input)
+	ret, err = env.(EVMRunner).Run(contract, input)
 	if err != nil {
 		contract.UseGas(contract.Gas)
 
