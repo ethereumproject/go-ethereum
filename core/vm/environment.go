@@ -170,3 +170,39 @@ var (
 	OutOfGasError          = errors.New("Out of gas")
 	CodeStoreOutOfGasError = errors.New("Contract creation code storage out of gas")
 )
+
+type Status byte
+
+type VirtualMachine interface {
+	// Commit an account information to this VM. This should only
+	// be used when receiving `RequireError`.
+	CommitAccount(commitment Account) error
+	// Commit a block hash to this VM. This should only be used when
+	// receiving `RequireError`.
+	CommitBlockhash(number *big.Int, hash *big.Int) error
+	// Returns the current status of the VM.
+	Status() (Status, error)
+	// Run one instruction and return. If it succeeds, VM status can
+	// still be `Running`. If the call stack has more than one items,
+	// this will only executes the last items' one single
+	// instruction.
+	Step() error
+	// Run instructions until it reaches a `RequireError` or
+	// exits. If this function succeeds, the VM status can only be
+	// either `ExitedOk` or `ExitedErr`.
+	Fire() error
+	// Returns the changed or committed accounts information up to
+	// current execution status.
+	Accounts() (map[common.Address]Account, error)
+	// Returns the out value, if any.
+	Out() ([]byte, error)
+	// Returns the available gas of this VM.
+	AvailableGas() (*big.Int, error)
+	// Returns the refunded gas of this VM.
+	RefundedGas() (*big.Int, error)
+	// Returns logs to be appended to the current block if the user
+	// decided to accept the running status of this VM.
+	Logs() ([]Log, error)
+	// Returns all removed account addresses as for current VM execution.
+	Removed() ([]common.Address, error)
+}
