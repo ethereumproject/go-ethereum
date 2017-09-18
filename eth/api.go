@@ -1681,10 +1681,6 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 }
 
 // Metrics return all available registered metrics for the client.
-// TODO: add optional param for human-readable values instead of float64's
-// eg "Avg01Min: '169.12K (2.82K/s)'
-// vs. machine-readable units (eg. "AvgRate01Min: 1599.6190029292586,").
-//
 // See https://github.com/ethereumproject/go-ethereum/wiki/Metrics-and-Monitoring for prophetic documentation.
 func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
 
