@@ -102,6 +102,9 @@ var (
 	}
 
 	devModeDataDirPath = filepath.Join(os.TempDir(), "/ethereum_dev_mode")
+
+	cacheChainIdentity string
+	cacheChainConfig *core.SufficientChainConfig
 )
 
 // chainIsMorden allows either
@@ -141,28 +144,38 @@ func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePat
 // getChainIdentity parses --chain and --testnet (legacy) flags.
 // It will fatal if finds notok value.
 // It returns one of valid strings: ["mainnet", "morden", or --chain="flaggedCustom"]
-func mustMakeChainIdentity(ctx *cli.Context) string {
+func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
+
+	if cacheChainIdentity != "" {
+		return cacheChainIdentity
+	}
+	defer func () {
+		cacheChainIdentity = identity
+	}()
 
 	if chainIsMorden(ctx) {
-		return core.DefaultTestnetChainConfigID // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
+		identity = core.DefaultConfigMorden.Identity // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
+		return identity
 	}
 	// If --chain is in use.
 	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
 		if chainIdentitiesMain[chainFlagVal] {
-			return core.DefaultChainConfigID
+			identity = core.DefaultConfigMainnet.Identity
+			return identity
 		}
 		// Check for unallowed values.
 		if chainIdentitiesBlacklist[chainFlagVal] {
 			glog.Fatalf(`%v: %v: reserved word
 					reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes',
 					please use a different identifier`, ErrInvalidFlag, ErrInvalidChainID)
-			return ""
+			identity = ""
+			return identity
 		}
 
 		// Check if passed arg exists as a path to a valid config file.
 		if fstat, ferr := os.Stat(filepath.Clean(chainFlagVal)); ferr == nil && !fstat.IsDir() {
 			glog.V(logger.Debug).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
-			c, configurationError := core.ReadExternalChainConfig(filepath.Clean(chainFlagVal))
+			c, configurationError := core.ReadExternalChainConfigFromFile(filepath.Clean(chainFlagVal))
 			if configurationError == nil {
 				glog.V(logger.Debug).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
@@ -175,19 +188,23 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 						glog.Fatalf("Could not set global context chain identity to morden, error: %v", e)
 					}
 				}
-				return c.Identity
+				identity = c.Identity
+				return identity
 			}
 			glog.Fatalf("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
 				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, configurationError)
 		}
 		glog.V(logger.Debug).Infof("No existing file at --%v: '%v'. Using literal chain identity.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
-		return chainFlagVal
+		identity = chainFlagVal
+		return identity
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
-		return ""
+		identity = ""
+		return identity
 	}
 	// If no relevant flag is set, return default mainnet.
-	return core.DefaultChainConfigID
+	identity = core.DefaultConfigMainnet.Identity
+	return identity
 }
 
 // mustMakeChainConfigNameDefaulty gets mainnet or testnet defaults if in use.
@@ -197,9 +214,9 @@ func mustMakeChainIdentity(ctx *cli.Context) string {
 // separately through external JSON config otherwise).
 func mustMakeChainConfigNameDefaulty(ctx *cli.Context) string {
 	if chainIsMorden(ctx) {
-		return core.DefaultTestnetChainConfigName
+		return core.DefaultConfigMorden.Name
 	}
-	return core.DefaultChainConfigName
+	return core.DefaultConfigMainnet.Name
 }
 
 // mustMakeDataDir retrieves the currently requested data directory, terminating
@@ -279,9 +296,9 @@ func MakeBootstrapNodesFromContext(ctx *cli.Context) []*discover.Node {
 
 		// --testnet/--chain=morden flag overrides --config flag
 		if chainIsMorden(ctx) {
-			return TestNetBootNodes
+			return core.DefaultConfigMorden.ParsedBootstrap
 		}
-		return HomesteadBootNodes
+		return core.DefaultConfigMainnet.ParsedBootstrap
 	}
 	return core.ParseBootstrapNodeStrings(strings.Split(ctx.GlobalString(aliasableName(BootnodesFlag.Name, ctx)), ","))
 }
@@ -629,6 +646,10 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 // reading a file a couple of times was more efficient than storing a global.
 func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig {
 
+	if cacheChainConfig != nil {
+		return cacheChainConfig
+	}
+
 	config := &core.SufficientChainConfig{}
 	defer func() {
 		// Allow flags to override external config file.
@@ -647,6 +668,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 			}
 			config.Network = i
 		}
+		cacheChainConfig = config
 	}()
 
 	chainIdentity := mustMakeChainIdentity(ctx)
@@ -658,12 +680,12 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
 		config.Network = eth.NetworkId // 1, default mainnet
 		config.Consensus = "ethash"
-		config.Genesis = core.DefaultGenesis
+		config.Genesis = core.DefaultConfigMainnet.Genesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
 		if chainIsMorden(ctx) {
 			config.Network = 2
-			config.Genesis = core.TestNetGenesis
+			config.Genesis = core.DefaultConfigMorden.Genesis
 			state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
 		}
 		return config
@@ -683,7 +705,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		`, core.ErrChainConfigNotFound, defaultChainConfigPath,
 			chainDir, chainIdentity, chainDir, chainDir)
 	}
-	config, err := core.ReadExternalChainConfig(defaultChainConfigPath)
+	config, err := core.ReadExternalChainConfigFromFile(defaultChainConfigPath)
 	if err != nil {
 		glog.Fatalf(`invalid external configuration JSON: '%v': %v
 		Valid custom configuration JSON file must be named 'chain.json' and be located in respective chain subdir.`, defaultChainConfigPath, err)
@@ -742,9 +764,9 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 
 // MustMakeChainConfigFromDefaults reads the chain configuration from hardcode.
 func MustMakeChainConfigFromDefaults(ctx *cli.Context) *core.ChainConfig {
-	c := core.DefaultConfig
+	c := core.DefaultConfigMainnet.ChainConfig
 	if chainIsMorden(ctx) {
-		c = core.TestConfig
+		c = core.DefaultConfigMorden.ChainConfig
 	}
 	return c
 }

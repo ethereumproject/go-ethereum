@@ -19,7 +19,7 @@ func TestConfigErrorProperties(t *testing.T) {
 }
 
 func TestChainConfig_IsHomestead(t *testing.T) {
-	config := DefaultConfig
+	config := DefaultConfigMainnet.ChainConfig
 
 	if config.IsHomestead(big.NewInt(10000)) {
 		t.Errorf("Unexpected for %d", 10000)
@@ -49,7 +49,7 @@ func TestChainConfig_IsHomestead(t *testing.T) {
 }
 
 func TestChainConfig_IsDiehard(t *testing.T) {
-	config := DefaultConfig
+	config := DefaultConfigMainnet.ChainConfig
 
 	if config.IsDiehard(big.NewInt(1920000)) {
 		t.Errorf("Unexpected for %d", 1920000)
@@ -78,7 +78,7 @@ func TestChainConfig_IsDiehard(t *testing.T) {
 }
 
 func TestChainConfig_IsExplosion(t *testing.T) {
-	config := DefaultConfig
+	config := DefaultConfigMainnet.ChainConfig
 
 	if config.IsExplosion(big.NewInt(1920000)) {
 		t.Errorf("Unexpected for %d", 1920000)
@@ -197,7 +197,7 @@ func TestMakeGenesisDump(t *testing.T) {
 
 func TestMakeGenesisDump2(t *testing.T) {
 	// setup so we have a genesis block in this test db
-	for i, gen := range []*GenesisDump{DefaultGenesis, TestNetGenesis} {
+	for i, gen := range []*GenesisDump{DefaultConfigMainnet.Genesis, DefaultConfigMorden.Genesis} {
 		db, _ := ethdb.NewMemDatabase()
 		genesisDump := gen
 		gBlock1, err := WriteGenesisBlock(db, genesisDump)
@@ -232,13 +232,13 @@ func TestMakeGenesisDump2(t *testing.T) {
 }
 
 func getDefaultChainConfigSorted() *ChainConfig {
-	return DefaultConfig.SortForks()
+	return DefaultConfigMainnet.ChainConfig.SortForks()
 }
 
 // Unit-y tests.
 
 func TestChainConfig_HasFeature(t *testing.T) {
-	c := TestConfig.SortForks()
+	c := DefaultConfigMorden.ChainConfig.SortForks()
 	for _, id := range allAvailableTestnetConfigKeys {
 		if _, _, ok := c.HasFeature(id); !ok {
 			t.Errorf("feature not found: %v", id)
@@ -252,7 +252,7 @@ func TestChainConfig_HasFeature(t *testing.T) {
 	}
 
 	// never gets unavailable keys
-	c = TestConfig.SortForks()
+	c = DefaultConfigMorden.ChainConfig.SortForks()
 	for _, id := range unavailableConfigKeys {
 		if _, _, ok := c.HasFeature(id); ok {
 			t.Errorf("nonexisting feature found: %v", id)
@@ -266,7 +266,7 @@ func TestChainConfig_HasFeature(t *testing.T) {
 	}
 }
 
-// TestChainConfig_GetFeature should be able to get all features described in DefaultConfig.
+// TestChainConfig_GetFeature should be able to get all features described in DefaultChainConfigMainnet.
 func TestChainConfig_GetFeature(t *testing.T) {
 	c := getDefaultChainConfigSorted()
 	var dict = make(map[*big.Int][]string)
@@ -336,11 +336,11 @@ func TestChainConfig_GetFeature4_WorkForHighNumbers(t *testing.T) {
 
 func TestChainConfig_GetChainID(t *testing.T) {
 	// Test default hardcoded configs.
-	if DefaultConfig.GetChainID().Cmp(DefaultChainConfigChainID) != 0 {
-		t.Error("got: %v, want: %v", DefaultConfig.GetChainID(), DefaultTestnetChainConfigChainID)
+	if DefaultConfigMainnet.ChainConfig.GetChainID().Cmp(DefaultConfigMainnet.ChainConfig.GetChainID()) != 0 {
+		t.Errorf("got: %v, want: %v", DefaultConfigMainnet.ChainConfig.GetChainID(), DefaultConfigMainnet.ChainConfig.GetChainID())
 	}
-	if TestConfig.GetChainID().Cmp(DefaultTestnetChainConfigChainID) != 0 {
-		t.Error("got: %v, want: %v", TestConfig.GetChainID(), DefaultTestnetChainConfigChainID)
+	if DefaultConfigMorden.ChainConfig.GetChainID().Cmp(DefaultConfigMorden.ChainConfig.GetChainID()) != 0 {
+		t.Errorf("got: %v, want: %v", DefaultConfigMorden.ChainConfig.GetChainID(), DefaultConfigMorden.ChainConfig.GetChainID())
 	}
 
 	// If no chainID (config is empty) returns 0.
@@ -353,15 +353,15 @@ func TestChainConfig_GetChainID(t *testing.T) {
 
 	// Test parsing default external mainnet config.
 	cases := map[string]*big.Int{
-		"../cmd/geth/config/mainnet.json": DefaultChainConfigChainID,
-		"../cmd/geth/config/testnet.json": DefaultTestnetChainConfigChainID,
+		"../core/config/mainnet.json": DefaultConfigMainnet.ChainConfig.GetChainID(),
+		"../core/config/morden.json":  DefaultConfigMorden.ChainConfig.GetChainID(),
 	}
 	for extConfigPath, wantInt := range cases {
 		p, e := filepath.Abs(extConfigPath)
 		if e != nil {
 			t.Fatalf("filepath err: %v", e)
 		}
-		extConfig, err := ReadExternalChainConfig(p)
+		extConfig, err := ReadExternalChainConfigFromFile(p)
 		if err != nil {
 			t.Fatalf("could not decode file: %v", err)
 		}
@@ -379,17 +379,17 @@ func TestChainConfig_GetChainID(t *testing.T) {
 func TestChainConfig_GetFeature5_DefaultEIP155(t *testing.T) {
 	c := getDefaultChainConfigSorted()
 	var tables = map[*big.Int]*big.Int{
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): nil,
-		DefaultConfig.ForkByName("Homestead").Block:                                   nil,
-		big.NewInt(0).Add(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): nil,
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block, big.NewInt(1)): nil,
+		DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block:                                   nil,
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block, big.NewInt(1)): nil,
 
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("GasReprice").Block, big.NewInt(1)): nil,
-		DefaultConfig.ForkByName("GasReprice").Block:                                   nil,
-		big.NewInt(0).Add(DefaultConfig.ForkByName("GasReprice").Block, big.NewInt(1)): nil,
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block, big.NewInt(1)): nil,
+		DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block:                                   nil,
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block, big.NewInt(1)): nil,
 
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("Diehard").Block, big.NewInt(1)): nil,
-		DefaultConfig.ForkByName("Diehard").Block:                                   big.NewInt(61),
-		big.NewInt(0).Add(DefaultConfig.ForkByName("Diehard").Block, big.NewInt(1)): big.NewInt(61),
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block, big.NewInt(1)): nil,
+		DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block:                                   big.NewInt(61),
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block, big.NewInt(1)): big.NewInt(61),
 	}
 	for block, expected := range tables {
 		feat, fork, ok := c.GetFeature(block, "eip155")
@@ -416,17 +416,17 @@ func TestChainConfig_GetFeature5_DefaultEIP155(t *testing.T) {
 func TestChainConfig_GetFeature6_DefaultGasTables(t *testing.T) {
 	c := getDefaultChainConfigSorted()
 	var tables = map[*big.Int]string{
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): "",
-		DefaultConfig.ForkByName("Homestead").Block:                                   "homestead",
-		big.NewInt(0).Add(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): "homestead",
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block, big.NewInt(1)): "",
+		DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block:                                   "homestead",
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block, big.NewInt(1)): "homestead",
 
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("GasReprice").Block, big.NewInt(1)): "homestead",
-		DefaultConfig.ForkByName("GasReprice").Block:                                   "eip150",
-		big.NewInt(0).Add(DefaultConfig.ForkByName("GasReprice").Block, big.NewInt(1)): "eip150",
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block, big.NewInt(1)): "homestead",
+		DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block:                                   "eip150",
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block, big.NewInt(1)): "eip150",
 
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("Diehard").Block, big.NewInt(1)): "eip150",
-		DefaultConfig.ForkByName("Diehard").Block:                                   "eip160",
-		big.NewInt(0).Add(DefaultConfig.ForkByName("Diehard").Block, big.NewInt(1)): "eip160",
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block, big.NewInt(1)): "eip150",
+		DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block:                                   "eip160",
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block, big.NewInt(1)): "eip160",
 	}
 	for block, expected := range tables {
 		feat, fork, ok := c.GetFeature(block, "gastable")
@@ -453,17 +453,17 @@ func TestChainConfig_GetFeature6_DefaultGasTables(t *testing.T) {
 func TestChainConfig_GetFeature7_DefaultDifficulty(t *testing.T) {
 	c := getDefaultChainConfigSorted()
 	var tables = map[*big.Int]string{
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): "",
-		DefaultConfig.ForkByName("Homestead").Block:                                   "homestead",
-		big.NewInt(0).Add(DefaultConfig.ForkByName("Homestead").Block, big.NewInt(1)): "homestead",
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block, big.NewInt(1)): "",
+		DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block:                                   "homestead",
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block, big.NewInt(1)): "homestead",
 
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("GasReprice").Block, big.NewInt(1)): "homestead",
-		DefaultConfig.ForkByName("GasReprice").Block:                                   "homestead",
-		big.NewInt(0).Add(DefaultConfig.ForkByName("GasReprice").Block, big.NewInt(1)): "homestead",
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block, big.NewInt(1)): "homestead",
+		DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block:                                   "homestead",
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block, big.NewInt(1)): "homestead",
 
-		big.NewInt(0).Sub(DefaultConfig.ForkByName("Diehard").Block, big.NewInt(1)): "homestead",
-		DefaultConfig.ForkByName("Diehard").Block:                                   "ecip1010",
-		big.NewInt(0).Add(DefaultConfig.ForkByName("Diehard").Block, big.NewInt(1)): "ecip1010",
+		big.NewInt(0).Sub(DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block, big.NewInt(1)): "homestead",
+		DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block:                                   "ecip1010",
+		big.NewInt(0).Add(DefaultConfigMainnet.ChainConfig.ForkByName("Diehard").Block, big.NewInt(1)): "ecip1010",
 	}
 	for block, expected := range tables {
 		feat, fork, ok := c.GetFeature(block, "difficulty")
@@ -574,8 +574,8 @@ func makeOKSufficientChainConfig(dump *GenesisDump, config *ChainConfig) *Suffic
 
 // TestSufficientChainConfig_IsValid tests against defaulty dumps and chainconfigs.
 func TestSufficientChainConfig_IsValid(t *testing.T) {
-	dumps := []*GenesisDump{DefaultGenesis, TestNetGenesis}
-	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	dumps := []*GenesisDump{DefaultConfigMainnet.Genesis, DefaultConfigMorden.Genesis}
+	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
 
 	for i, dump := range dumps {
 		for j, config := range configs {

@@ -46,7 +46,7 @@ type SimulatedBackend struct {
 func NewSimulatedBackend(accounts ...core.GenesisAccount) *SimulatedBackend {
 	database, _ := ethdb.NewMemDatabase()
 	core.WriteGenesisBlockForTesting(database, accounts...)
-	blockchain, _ := core.NewBlockChain(database, core.TestConfig, new(core.FakePow), new(event.TypeMux))
+	blockchain, _ := core.NewBlockChain(database, core.DefaultConfigMorden.ChainConfig, new(core.FakePow), new(event.TypeMux))
 
 	backend := &SimulatedBackend{
 		database:   database,
@@ -68,7 +68,7 @@ func (b *SimulatedBackend) Commit() {
 
 // Rollback aborts all pending transactions, reverting to the last committed state.
 func (b *SimulatedBackend) Rollback() {
-	blocks, _ := core.GenerateChain(core.TestConfig, b.blockchain.CurrentBlock(), b.database, 1, func(int, *core.BlockGen) {})
+	blocks, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, b.blockchain.CurrentBlock(), b.database, 1, func(int, *core.BlockGen) {})
 
 	b.pendingBlock = blocks[0]
 	b.pendingState, _ = state.New(b.pendingBlock.Root(), b.database)
@@ -117,7 +117,7 @@ func (b *SimulatedBackend) ContractCall(contract common.Address, data []byte, pe
 		data:     data,
 	}
 	// Execute the call and return
-	vmenv := core.NewEnv(statedb, core.TestConfig, b.blockchain, msg, block.Header())
+	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
 
 	out, _, err := core.ApplyMessage(vmenv, msg, gaspool)
@@ -167,7 +167,7 @@ func (b *SimulatedBackend) EstimateGasLimit(sender common.Address, contract *com
 		data:     data,
 	}
 	// Execute the call and return
-	vmenv := core.NewEnv(statedb, core.TestConfig, b.blockchain, msg, block.Header())
+	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
 
 	_, gas, _, err := core.NewStateTransition(vmenv, msg, gaspool).TransitionDb()
@@ -177,7 +177,7 @@ func (b *SimulatedBackend) EstimateGasLimit(sender common.Address, contract *com
 // SendTransaction implements ContractTransactor.SendTransaction, delegating the raw
 // transaction injection to the remote node.
 func (b *SimulatedBackend) SendTransaction(tx *types.Transaction) error {
-	blocks, _ := core.GenerateChain(core.TestConfig, b.blockchain.CurrentBlock(), b.database, 1, func(number int, block *core.BlockGen) {
+	blocks, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, b.blockchain.CurrentBlock(), b.database, 1, func(number int, block *core.BlockGen) {
 		for _, tx := range b.pendingBlock.Transactions() {
 			block.AddTx(tx)
 		}

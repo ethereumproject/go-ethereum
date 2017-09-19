@@ -85,13 +85,13 @@ func NewHeaderChain(chainDb ethdb.Database, config *ChainConfig, getValidator ge
 		getValidator:  getValidator,
 	}
 
-	gen := DefaultGenesis
+	gen := DefaultConfigMainnet.Genesis
 	genname := "mainnet"
 	// Check if ChainConfig is mainnet or testnet and write genesis accordingly.
 	// If it's neither (custom), write default (this will be overwritten or avoided,
 	// but maintains consistent implementation.
-	if config == TestConfig {
-		gen = TestNetGenesis
+	if config == DefaultConfigMorden.ChainConfig {
+		gen = DefaultConfigMorden.Genesis
 		genname = "morden testnet"
 	}
 

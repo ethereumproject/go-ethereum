@@ -85,7 +85,7 @@ func proc(t testing.TB) (Validator, *BlockChain) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = WriteGenesisBlock(db, TestNetGenesis)
+	_, err = WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +321,7 @@ func TestDifficultyBombExplodeTestnet(t *testing.T) {
 
 // Compare expected difficulties on edges of forks.
 func TestCalcDifficulty1(t *testing.T) {
-	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
 	for i, config := range configs {
 
 		parentTime := uint64(1513175023)
