@@ -173,6 +173,17 @@ var (
 
 type Status byte
 
+const (
+	ExitedOk = iota
+	ExitedErr
+)
+
+type RquireAccountError struct {
+}
+
+type RequireHashError struct {
+}
+
 type VirtualMachine interface {
 	// Commit an account information to this VM. This should only
 	// be used when receiving `RequireError`.
@@ -191,6 +202,8 @@ type VirtualMachine interface {
 	// exits. If this function succeeds, the VM status can only be
 	// either `ExitedOk` or `ExitedErr`.
 	Fire() error
+	// Launch new VM
+	Launch() error
 	// Returns the changed or committed accounts information up to
 	// current execution status.
 	Accounts() (map[common.Address]Account, error)

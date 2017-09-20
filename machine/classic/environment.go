@@ -30,7 +30,7 @@ type VMEnv struct {
 	state     *state.StateDB // State to use for executing
 	evm       *EVM           // The Ethereum Virtual Machine
 	depth     int            // Current execution depth
-	header    *types.Header            // Header information
+	header    *types.Header  // Header information
 	getHashFn func(uint64) common.Hash // getHashFn callback is used to retrieve block hashes
  	from      common.Address
  	value     *big.Int
