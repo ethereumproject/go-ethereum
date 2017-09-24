@@ -22,6 +22,7 @@ import (
 	"errors"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"fmt"
 )
 
 // Type is the VM type
@@ -134,12 +135,13 @@ type Account interface {
 	AddBalance(amount *big.Int)
 	SetBalance(*big.Int)
 	SetNonce(uint64)
+	SetCode(common.Hash, []byte)
+	Nonce() uint64
 	Balance() *big.Int
 	Address() common.Address
-	ReturnGas(*big.Int, *big.Int)
-	SetCode(common.Hash, []byte)
-	ForEachStorage(cb func(key, value common.Hash) bool)
 	Value() *big.Int
+	ReturnGas(*big.Int, *big.Int)
+	ForEachStorage(cb func(key, value common.Hash) bool)
 }
 
 type GasTable struct {
@@ -178,19 +180,40 @@ const (
 	ExitedErr
 )
 
-type RquireAccountError struct {
+type RequireAccountError struct {
+	Address common.Address
+}
+
+func (self *RequireAccountError) Error() string {
+	return fmt.Sprintf("required account %v", self.Address.Str())
+}
+
+type RequireCodeError struct {
+	Address common.Address
+}
+
+func (self *RequireCodeError) Error() string {
+	return fmt.Sprintf("required code %v", self.Address.Str())
 }
 
 type RequireHashError struct {
+	Number uint64
+}
+
+func (self *RequireHashError) Error() string {
+	return fmt.Sprintf("required hash %v", "")
 }
 
 type VirtualMachine interface {
 	// Commit an account information to this VM. This should only
-	// be used when receiving `RequireError`.
+	// be used when receiving `RequireAccountError`.
 	CommitAccount(commitment Account) error
 	// Commit a block hash to this VM. This should only be used when
-	// receiving `RequireError`.
-	CommitBlockhash(number *big.Int, hash *big.Int) error
+	// receiving `RequireBlockhashError`.
+	CommitBlockhash(number uint64,hash common.Hash) error
+	// Commit a contract code to this VM. This should only be used when
+	// receiving `RequireCodeError`.
+	CommitCode(address common.Address, hash common.Hash, code []byte) error
 	// Returns the current status of the VM.
 	Status() (Status, error)
 	// Run one instruction and return. If it succeeds, VM status can
@@ -202,8 +225,10 @@ type VirtualMachine interface {
 	// exits. If this function succeeds, the VM status can only be
 	// either `ExitedOk` or `ExitedErr`.
 	Fire() error
-	// Launch new VM
-	Launch() error
+	// Start new VM
+	Start(table GasTable, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) error
+	// Finish started VM
+	Finish() error
 	// Returns the changed or committed accounts information up to
 	// current execution status.
 	Accounts() (map[common.Address]Account, error)
