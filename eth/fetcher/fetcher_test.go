@@ -78,7 +78,7 @@ func init() {
 // contains a transaction and every 5th an uncle to allow testing correct block
 // reassembly.
 func makeChain(n int, seed byte, parent *types.Block) ([]common.Hash, map[common.Hash]*types.Block) {
-	blocks, _ := core.GenerateChain(core.TestConfig, parent, testdb, n, func(i int, block *core.BlockGen) {
+	blocks, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, parent, testdb, n, func(i int, block *core.BlockGen) {
 		block.SetCoinbase(common.Address{seed})
 
 		// If the block number is multiple of 3, send a bonus transaction to the miner

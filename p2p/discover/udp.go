@@ -41,9 +41,43 @@ var (
 	errExpired          = errors.New("expired")
 	errUnsolicitedReply = errors.New("unsolicited reply")
 	errUnknownNode      = errors.New("unknown node")
+	errReservedAddress  = errors.New("reserved address neighbor from non-reserved source")
+	errInvalidIp        = errors.New("invalid ip")
 	errTimeout          = errors.New("RPC timeout")
 	errClockWarp        = errors.New("reply deadline too far in the future")
 	errClosed           = errors.New("socket closed")
+
+	// Note: golang/net.IP provides some similar functionality via #IsLinkLocalUnicast, ...Multicast, etc.
+	// I would rather duplicate the information in a unified and comprehensive system than
+	// patch-in with a couple available library methods.
+	// I expect many of these occasions will be very unlikely.
+	//
+	// IPv4
+	ipv4ReservedRangeThis               = [2]net.IP{net.ParseIP("0.0.0.0"), net.ParseIP("0.255.255.255")}
+	ipv4ReservedRangePrivateNetwork     = [2]net.IP{net.ParseIP("10.0.0.0"), net.ParseIP("10.255.255.255")}
+	ipv4ReservedRangeProviderSubscriber = [2]net.IP{net.ParseIP("100.64.0.0"), net.ParseIP("100.127.255.255")}
+	ipv4ReservedRangeLoopback           = [2]net.IP{net.ParseIP("127.0.0.0"), net.ParseIP("127.255.255.255")}
+	ipv4ReservedRangeLinkLocal          = [2]net.IP{net.ParseIP("169.254.0.0"), net.ParseIP("169.254.255.255")}
+	ipv4ReservedRangeLocalPrivate1      = [2]net.IP{net.ParseIP("172.16.0.0"), net.ParseIP("172.31.255.255")}
+	ipv4ReservedRangeSpecialPurpose     = [2]net.IP{net.ParseIP("192.0.0.0"), net.ParseIP("192.0.0.255")}
+	ipv4ReservedRangeTestNet1           = [2]net.IP{net.ParseIP("192.0.2.0"), net.ParseIP("192.0.2.255")}
+	ipv4ReservedRange6to4               = [2]net.IP{net.ParseIP("192.88.99.0"), net.ParseIP("192.88.99.255")}
+	ipv4ReservedRangeLocalPrivate2      = [2]net.IP{net.ParseIP("192.168.0.0"), net.ParseIP("192.168.255.255")}
+	ipv4ReservedRangeSubnets            = [2]net.IP{net.ParseIP("198.18.0.0"), net.ParseIP("198.19.255.255")}
+	ipv4ReservedRangeTestNet2           = [2]net.IP{net.ParseIP("198.51.100.0"), net.ParseIP("198.51.100.255")}
+	ipv4ReservedRangeTestNet3           = [2]net.IP{net.ParseIP("203.0.113.0"), net.ParseIP("203.0.113.255")}
+	ipv4ReservedRangeMulticast          = [2]net.IP{net.ParseIP("224.0.0.0"), net.ParseIP("239.255.255.255")}
+	ipv4ReservedRangeFuture             = [2]net.IP{net.ParseIP("240.0.0.0"), net.ParseIP("255.255.255.254")}
+	ipv4ReservedRangeLimitedBroadcast   = [2]net.IP{net.ParseIP("255.255.255.255"), net.ParseIP("255.255.255.255")}
+
+	// IPv6
+	ipv6ReservedRangeUnspecified   = [2]net.IP{net.ParseIP("::"), net.ParseIP("::")}
+	ipv6ReservedRangeLoopback      = [2]net.IP{net.ParseIP("::1"), net.ParseIP("::1")}
+	ipv6ReservedRangeDocumentation = [2]net.IP{net.ParseIP("2001:db8::"), net.ParseIP("2001:db8:ffff:ffff:ffff:ffff:ffff:ffff")}
+	ipv6ReservedRange6to4          = [2]net.IP{net.ParseIP("2002::"), net.ParseIP("2002:ffff:ffff:ffff:ffff:ffff:ffff:ffff")}
+	ipv6ReservedRangeUniqueLocal   = [2]net.IP{net.ParseIP("fc00::"), net.ParseIP("fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")}
+	ipv6ReservedRangeLinkLocal     = [2]net.IP{net.ParseIP("fe80::"), net.ParseIP("febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff")}
+	ipv6ReservedRangeMulticast     = [2]net.IP{net.ParseIP("ff00::"), net.ParseIP("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")}
 )
 
 // Timeouts
@@ -290,6 +324,28 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	})
 	err := <-errc
+
+	// remove nodes from *neighbors response
+	// where the originating address (toaddr) is *not* reserved and the given neighbor is reserved.
+	// This prevents irrelevant private network addresses from causing
+	// attempted discoveries on reserved ips that are not on
+	// our node's network.
+	// > https://en.wikipedia.org/wiki/Reserved_IP_addresses
+	// > https://github.com/ethereumproject/go-ethereum/issues/283
+	// > https://tools.ietf.org/html/rfc5737
+	// > https://tools.ietf.org/html/rfc3849
+	if !isReserved(toaddr.IP) {
+		var okNodes []*Node
+		for _, n := range nodes {
+			if isReserved(n.IP) {
+				glog.V(logger.Debug).Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
+				continue
+			}
+			okNodes = append(okNodes, n)
+		}
+		nodes = okNodes
+	}
+
 	return nodes, err
 }
 
@@ -619,4 +675,63 @@ func (req *neighbors) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byt
 
 func expired(ts uint64) bool {
 	return time.Unix(int64(ts), 0).Before(time.Now())
+}
+
+func isReserved(ip net.IP) bool {
+	reserved := [][2]net.IP{
+		ipv4ReservedRangeThis,
+		ipv4ReservedRangePrivateNetwork,
+		ipv4ReservedRangeProviderSubscriber,
+		ipv4ReservedRangeLoopback,
+		ipv4ReservedRangeLinkLocal,
+		ipv4ReservedRangeLocalPrivate1,
+		ipv4ReservedRangeSpecialPurpose,
+		ipv4ReservedRangeTestNet1,
+		ipv4ReservedRange6to4,
+		ipv4ReservedRangeLocalPrivate2,
+		ipv4ReservedRangeSubnets,
+		ipv4ReservedRangeTestNet2,
+		ipv4ReservedRangeTestNet3,
+		ipv4ReservedRangeMulticast,
+		ipv4ReservedRangeFuture,
+		ipv4ReservedRangeLimitedBroadcast,
+		ipv6ReservedRangeUnspecified,
+		ipv6ReservedRangeLoopback,
+		ipv6ReservedRangeDocumentation,
+		ipv6ReservedRange6to4,
+		ipv6ReservedRangeUniqueLocal,
+		ipv6ReservedRangeLinkLocal,
+		ipv6ReservedRangeMulticast,
+	}
+	for _, r := range reserved {
+		isReserved, err := IpBetween(r[0], r[1], ip)
+		if err != nil {
+			glog.V(logger.Debug).Infof("error checking if ip reserved: %v", err)
+			return true
+		}
+		if isReserved {
+			return true
+		}
+	}
+	return false
+}
+
+// IpBetween determines if a given ip is between two others (inclusive)
+// > https://stackoverflow.com/questions/19882961/go-golang-check-ip-address-in-range
+func IpBetween(from net.IP, to net.IP, test net.IP) (bool, error) {
+	if from == nil || to == nil || test == nil {
+		return false, errInvalidIp
+	}
+
+	from16 := from.To16()
+	to16 := to.To16()
+	test16 := test.To16()
+	if from16 == nil || to16 == nil || test16 == nil {
+		return false, errors.New("ip did not convert to a 16 byte")
+	}
+
+	if bytes.Compare(test16, from16) >= 0 && bytes.Compare(test16, to16) <= 0 {
+		return true, nil
+	}
+	return false, nil
 }

@@ -3,16 +3,19 @@ clone_folder: c:\gopath\src\github.com\ethereumproject\go-ethereum
 os: Visual Studio 2015
 environment:
   GOPATH: c:\gopath
+  GCP_PASSWD:
+    secure: erzLJz7qT0kCJa+jZG6Sf9wwkfLYO2UDLzydkKTdwqA=
 install:
   - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
-  - git describe --tags --always > version.txt
-  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+)-g([a-f0-9]+)/v\1.\2+\3/' version.txt > version-app.txt
-  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.\2/' version.txt > version-only.txt
-  - sed -E 's/v([[:digit:]]+\.[[:digit:]]+)\.[[:digit:]]-([[:digit:]]+).+/v\1.x/' version.txt > version-base.txt
-  - set /p VERSION=<version-app.txt
-  - set /p VERSION_ONLY=<version-only.txt
-  - set /p VERSION_BASE=<version-base.txt
-  - echo %VERSION_BASE% %VERSION_ONLY% %VERSION%
+
+  # Install janus.
+  - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get-windows.sh | bash
+  - set PATH=./janusbin;%PATH%
+
+  - ps: $env:VERSION_BASE = "$(janus.exe version -format='v%M.%m.x')"
+  - ps: $env:VERSION = "$(janus.exe version -format='TAG_OR_NIGHTLY')"
+
+  - echo %VERSION_BASE% %VERSION%
   - echo %PATH%
   - echo %GOPATH%
   - go version
@@ -25,28 +28,13 @@ build_script:
 artifacts:
   - path: '*.zip'
     name: geth
-deploy:
-  - provider: BinTray
-    username: splix
-    api_key:
-      secure: yBy4Pe1aiUnBXLheSJNzRQxvVUm+g7etLEdKDWv82XvxAup4wg2nKZ/ogTyJkWxx
-    subject: ethereumproject
-    repo: GoEthereumClassic
-    package: go-ethereum
-    version: "%VERSION_BASE%"
-    publish: true
-    override: true
-    on:
-      branch: master
-  - provider: BinTray
-    username: splix
-    api_key:
-      secure: yBy4Pe1aiUnBXLheSJNzRQxvVUm+g7etLEdKDWv82XvxAup4wg2nKZ/ogTyJkWxx
-    subject: ethereumproject
-    repo: GoEthereumClassic
-    package: go-ethereum
-    version: "%VERSION%"
-    publish: true
-    override: false
-    on:
-      appveyor_repo_tag: true
+before_deploy:
+  # Set up GCP upload.
+  - nuget install secure-file -ExcludeVersion
+  - secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret %GCP_PASSWD% -out .gcloud.json
+deploy_script:
+  - ps: >-
+      If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
+        janus.exe deploy -to="builds.etcdevteam.com/go-ethereum/$env:VERSION_BASE/" -files="./*.zip" -key="./.gcloud.json"
+      }
+

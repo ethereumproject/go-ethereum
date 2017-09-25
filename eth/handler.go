@@ -404,9 +404,19 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&headers); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+		// Good will assumption. Even if the peer is ahead of the fork check header but returns
+		// empty header response, it might be that the peer is a light client which only keeps
+		// the last 256 block headers. Besides it does not prevent network attacks. See #313 for
+		// an explaination.
+		if len(headers) == 0 && p.timeout != nil {
+			// Disable the fork drop timeout
+			p.timeout.Stop()
+			p.timeout = nil
+			return nil
+		}
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
-		isForkCheck := len(headers) == 1
-		if isForkCheck {
+		filter := len(headers) == 1
+		if filter {
 			if p.timeout != nil {
 				// Disable the fork drop timeout
 				p.timeout.Stop()
@@ -419,7 +429,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
 			headers = pm.fetcher.FilterHeaders(headers, time.Now())
 		}
-		if len(headers) > 0 || !isForkCheck {
+		if len(headers) > 0 || !filter {
 			err := pm.downloader.DeliverHeaders(p.id, headers)
 			if err != nil {
 				glog.V(logger.Debug).Infoln(err)
