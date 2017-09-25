@@ -139,6 +139,7 @@ var AppHelpFlagGroups = []flagGroup{
 			VerbosityFlag,
 			LogDirFlag,
 			VModuleFlag,
+			LogStatusFlag,
 			BacktraceAtFlag,
 			MetricsFlag,
 			FakePoWFlag,

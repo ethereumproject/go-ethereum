@@ -35,11 +35,8 @@ var (
 	}
 	ChainIdentityFlag = cli.StringFlag{
 		Name: "chain",
-		Usage: `Identifier of blockchain network to use (default='mainnet', test='morden').
-	If using a custom identity (i.e. --chain=custom),
-	there must be a valid JSON chain configuration
-	file at <datadir>/custom/chain.json`,
-		Value: core.DefaultChainConfigID,
+		Usage: `Chain identifier (default='mainnet', test='morden') or path to JSON chain configuration file (eg './path/to/chain.json').`,
+		Value: core.DefaultConfigMainnet.Identity,
 	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "network-id, networkid",
@@ -155,6 +152,11 @@ var (
 		Name:  "log-dir,logdir",
 		Usage: "Directory in which to write log files, redirecting terminal out (stderr)",
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
+	}
+	LogStatusFlag = cli.StringFlag{
+		Name: "log-status",
+		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
+		Value: "sync=60",
 	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",

@@ -38,6 +38,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"strings"
+	"io"
 )
 
 var (
@@ -197,10 +199,6 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "diehard chainid", false
 	}
 
-	if c.Bootstrap == nil || len(c.Bootstrap) == 0 {
-		return "bootstrap", false
-	}
-
 	return "", true
 }
 
@@ -332,6 +330,26 @@ func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, 
 	return okForkFeature, okFork, found
 }
 
+// HasFeature looks up if fork feature exists on any fork at any block in the configuration.
+// In case of multiple same-'id'd features, returns latest (assuming forks are sorted).
+func (c *ChainConfig) HasFeature(id string) (*ForkFeature, *Fork, bool) {
+	var okForkFeature = &ForkFeature{}
+	var okFork = &Fork{}
+	var found = false
+	if id != "" {
+		for _, f := range c.Forks {
+			for _, ff := range f.Features {
+				if ff.ID == id {
+					okForkFeature = ff
+					okFork = f
+					found = true
+				}
+			}
+		}
+	}
+	return okForkFeature, okFork, found
+}
+
 func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 	for _, fork := range c.Forks {
 		if fork.Block.Cmp(h.Number) != 0 {
@@ -403,29 +421,10 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
-// ReadExternalChainConfig reads a flagged external json file for blockchain configuration.
-// It returns a valid and full ("hard") configuration or an error.
-func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error) {
-
-	// ensure flag arg cleanliness
-	flaggedExternalChainConfigPath := filepath.Clean(incomingPath)
-
-	// ensure file exists and that it is NOT a directory
-	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("ERROR: No existing chain configuration file found at: %s", flaggedExternalChainConfigPath)
-	} else if info.IsDir() {
-		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
-	}
-
-	f, err := os.Open(flaggedExternalChainConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
-	}
-	defer f.Close()
-
+func parseExternalChainConfig(f io.Reader) (*SufficientChainConfig, error) {
 	var config = &SufficientChainConfig{}
-	if json.NewDecoder(f).Decode(config); err != nil {
-		return nil, fmt.Errorf("%s: %s", flaggedExternalChainConfigPath, err)
+	if err := json.NewDecoder(f).Decode(config); err != nil {
+		return nil, fmt.Errorf("%v: %s", f, err)
 	}
 
 	// Make JSON 'id' -> 'identity' (for backwards compatibility)
@@ -446,7 +445,33 @@ func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error
 	}
 
 	config.ChainConfig = config.ChainConfig.SortForks()
+	return config, nil
+}
 
+// ReadExternalChainConfigFromFile reads a flagged external json file for blockchain configuration.
+// It returns a valid and full ("hard") configuration or an error.
+func ReadExternalChainConfigFromFile(incomingPath string) (*SufficientChainConfig, error) {
+
+	// ensure flag arg cleanliness
+	flaggedExternalChainConfigPath := filepath.Clean(incomingPath)
+
+	// ensure file exists and that it is NOT a directory
+	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("ERROR: No existing chain configuration file found at: %s", flaggedExternalChainConfigPath)
+	} else if info.IsDir() {
+		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
+	}
+
+	f, err := os.Open(flaggedExternalChainConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
+	}
+	defer f.Close()
+
+	config, err := parseExternalChainConfig(f)
+	if err != nil {
+		return nil, err
+	}
 	return config, nil
 }
 
@@ -457,6 +482,10 @@ func ParseBootstrapNodeStrings(nodeStrings []string) []*discover.Node {
 	bootnodes := []*discover.Node{}
 
 	for _, url := range nodeStrings {
+		url = strings.TrimSpace(url)
+		if url == "" {
+			continue
+		}
 		node, err := discover.ParseNode(url)
 		if err != nil {
 			glog.V(logger.Error).Infof("Bootstrap URL %s: %v\n", url, err)
