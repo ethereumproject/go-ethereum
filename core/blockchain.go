@@ -365,7 +365,7 @@ func (self *BlockChain) loadLastState() error {
 // though, the head may be further rewound if block bodies are missing (non-archive
 // nodes after a fast sync).
 func (bc *BlockChain) SetHead(head uint64) error {
-	glog.V(logger.Warn).Infof("Rewinding blockchain, target: %v", head)
+	glog.V(logger.Warn).Infof("Setting blockchain head, target: %v", head)
 
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
