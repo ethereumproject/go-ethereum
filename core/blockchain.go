@@ -197,9 +197,64 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 			return ParentError(ph)
 		}
 		// Block header is invalid.
-		if e := self.Validator().ValidateHeader(b.Header(), parent.Header(), false); e != nil {
+		if e := ValidateHeader(self.config, self.pow, b.Header(), parent.Header(), true, false); e != nil {
 			return e
 		}
+		// Block is invalid (redundantly also checks header, but not header pow)
+		if validateErr := self.Validator().ValidateBlock(b); validateErr != nil && !IsKnownBlockErr(validateErr) {
+			return validateErr
+		}
+		// Block is stateless.
+		if _, err := state.New(b.Root(), self.chainDb); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Soft resets should only be called in case of probable corrupted or invalid stored data.
+// The blockchain state should be loaded so that cached head values are available, eg CurrentBlock(), etc.
+func (self *BlockChain) ResetWithRecoveryEffort(from int, increment int) error {
+	var foundLaterBlock = false
+	var lastOkBlock *types.Block
+	// TODO: replace hardcoded 5m height limit with last known height of chain...
+	// In order for this number to be available at the time this function is called, the number
+	// may need to be persisted locally from the last connection.
+	for i := from; i > 0 && i < 50000000; i += increment {
+		bb := self.GetBlockByNumber(uint64(i))
+		if bb == nil {
+			if increment > 1 && i - increment > 1 {
+				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i - increment, 1)
+				return self.ResetWithRecoveryEffort(i-increment, 1) // hone in
+			}
+			glog.V(logger.Debug).Infof("No block data available for block #%d", uint64(i))
+			break
+		}
+		ee := self.blockIsUnhealthy(bb)
+		if ee == nil {
+			glog.V(logger.Debug).Infof("Found OK later block #%d", bb.NumberU64())
+			foundLaterBlock = true
+			lastOkBlock = bb
+			// ---------------------------------------------------------------
+			// Everything seems to be fine, set as the head block
+			self.currentBlock = bb
+			self.hc.SetCurrentHeader(self.currentBlock.Header())
+			self.currentFastBlock = self.currentBlock
+			// ---------------------------------------------------------------
+			continue
+		}
+		glog.V(logger.Error).Infof("WARNING: Found unhealthy block #%d (%v): \n\n%v", i, ee, bb)
+		if increment == 1 {
+			break
+		}
+		return self.ResetWithRecoveryEffort(i-increment, 1)
+	}
+	if foundLaterBlock {
+		glog.V(logger.Warn).Infof("WARNING: Recovering head to: #%d", lastOkBlock.NumberU64())
+		// SetHead itself finally returns 'loadLastState()' (this function) again,
+		// so all above validations will be re-checked for new state.
+		// That's the only reason this is safe.
+		return self.SetHead(lastOkBlock.NumberU64())
 	}
 	return nil
 }
@@ -207,7 +262,6 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
 func (self *BlockChain) loadLastState() error {
-	// EPROJECT
 	// Restore the last known head block
 	head := GetHeadBlockHash(self.chainDb)
 	if head == (common.Hash{}) {
@@ -216,27 +270,20 @@ func (self *BlockChain) loadLastState() error {
 		return self.Reset()
 	}
 
-	// Get head block by hash.
+	// Get head block by hash
 	currentBlock := self.GetBlock(head)
 
 	// Make sure head block is available.
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		glog.V(logger.Warn).Infof("WARNING: Head block missing, resetting chain; hash: %x", head)
-		return self.Reset()
+		return self.ResetWithRecoveryEffort(1, 2048)
 	}
 
-	// Make sure the head block is valid.
+	// Make sure the head block (and header) is valid.
 	if e := self.blockIsUnhealthy(currentBlock); e != nil {
-		glog.V(logger.Warn).Infof("WARNING: Head block unhealthy, resetting chain; error: %v", e)
-		return self.Reset()
-	}
-	// Make sure the head block is valid with the blockchain validator.
-	if !self.blockIsGenesis(currentBlock) {
-		if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
-			glog.V(logger.Warn).Infof("WARNING: Head block (hash: %x) invalid, resetting chain; err: %v", head, validateErr)
-			return self.Reset()
-		}
+		glog.V(logger.Error).Infof("WARNING: Unhealthy block #%d (%x): %v, \nResetting chain with attempt to recover...", currentBlock.Number(), currentBlock.Hash(), e)
+		return self.ResetWithRecoveryEffort(1, 2048)
 	}
 
 	// Make sure the state associated with the block is available.
@@ -244,7 +291,7 @@ func (self *BlockChain) loadLastState() error {
 	if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
 		// Dangling block without a state associated, init from scratch
 		glog.V(logger.Warn).Infof("WARNING: Head state missing, resetting chain; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
-		return self.Reset()
+		return self.ResetWithRecoveryEffort(1, 2048)
 	}
 
 	// Everything seems to be fine, set as the head block
@@ -260,123 +307,6 @@ func (self *BlockChain) loadLastState() error {
 		}
 	}
 
-	// I0704 10:39:48.937032 core/blockchain.go:206] Last header: #301056 [6371e228…] TD=1104105627630
-	// I0704 10:39:48.937071 core/blockchain.go:207] Last block: #523962 [9c734ef0…] TD=5146934750614
-	// I0704 10:39:48.937085 core/blockchain.go:208] Fast block: #301056 [6371e228…] TD=1104105627630
-
-	// ----
-
-	// Symptoms:
-	//> eth.getBlock('latest')
-	//{
-	//difficulty: 52996379,
-	//	extraData: "0xd883010305844765746887676f312e352e318664617277696e",
-	//	gasLimit: 4712388,
-	//	gasUsed: 23065,
-	//	hash: "0x042bb9560699e0a69d83d45f2dc23d97e0aca9c1b3481cf0281b4bc5dd495956",
-	//	logsBloom: "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-	//	miner: "0x96c0a8ca8af4bc236f551c32b755851d001b1916",
-	//	nonce: "0x3334e255129f50f6",
-	//	number: 526465,
-	//	parentHash: "0x7e5baa2b0b04962c4ac39b1bc370d8ab2d904489884fffdabe875baa467349be",
-	//	receiptsRoot: "0x79f7fbed9d7f8f46d34dc27780695a634196324374cc2914adfc47c740243b66",
-	//	sha3Uncles: "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-	//	size: 693,
-	//	stateRoot: "0x007213e3c605171590ce2eaa61dd24ef6226500e28c8e6e82cd2b36e0e040bb1",
-	//	timestamp: 1457433531,
-	//	totalDifficulty: 5263087760400,
-	//	transactions: ["0x74a9daf4d75daeb64802c937d91892dcd92baed992e485147666205fa1c6eb47"],
-	//transactionsRoot: "0x91dded49f1de81bdd3d38c7444d2af7de508d0e91f7153c1be4433bb5cdfa26d",
-	//	uncles: []
-	//}
-	//> eth.blockNumber
-	//301056
-
-	// ----
-
-	//...skipping...
-	//I0704 10:42:43.718198 core/database_util.go:285] stored header #528821 [0444eee5…]
-	//I0704 10:42:43.718222 core/blockchain.go:929] [1499182963718208961] inserted block #528821 (3 TXs 187953 G 0 UNCs) (0444eee5...). Took
-	//106.585127ms
-	//I0704 10:42:43.720047 core/state/state_object.go:242] 6b80f76ed6e337689e7c0f20025e834b0c8f07cd: #1048589 4923166160000000000 (- 6270000
-	//0000000000)
-	//I0704 10:42:43.720214 core/vm/vm.go:113] running byte VM 1981ee4a
-	//I0704 10:42:43.720538 core/vm/vm.go:113] running byte VM 4e19cdd0
-	//I0704 10:42:43.720739 core/vm/vm.go:116] byte VM 4e19cdd0 done. time: 188.397µs instrc: 73
-	//I0704 10:42:43.720947 core/vm/vm.go:113] running byte VM 4e19cdd0
-	//I0704 10:42:43.721157 core/vm/vm.go:116] byte VM 4e19cdd0 done. time: 199.364µs instrc: 66
-	//I0704 10:42:43.721336 core/vm/vm.go:113] running byte VM eb683b1e
-	//I0704 10:42:43.721729 core/vm/vm.go:116] byte VM eb683b1e done. time: 382.206µs instrc: 145
-	//I0704 10:42:43.721779 core/vm/vm.go:116] byte VM 1981ee4a done. time: 1.553573ms instrc: 273
-	//I0704 10:42:43.721797 core/state/state_object.go:231] 6b80f76ed6e337689e7c0f20025e834b0c8f07cd: #1048590 4985351500000000000 (+ 62185340000000000)
-	//I0704 10:42:43.721855 core/state/state_object.go:231] 70b699b887680072a27b0b55046255a8691b4164: #1048582 16245563983515950616804 (+ 514660000000000)
-	//I0704 10:42:43.722013 core/state_processor.go:121] receipt{med=4987fe53d39357a7714694995a74340066bf81ea33d1d711d701ec80cbd215ad cgas=25733 bloom=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 logs=[]}
-	//I0704 10:42:43.722045 core/state/state_object.go:231] 70b699b887680072a27b0b55046255a8691b4164: #1048582 16250563983515950616804 (+ 5000000000000000000)
-	//I0704 10:42:43.722417 core/database_util.go:350] stored block receipts [d16f9018…]
-	//I0704 10:42:43.722530 core/database_util.go:315] stored block total difficulty [d16f9018…]: 5382000196315
-	//I0704 10:42:43.722570 core/database_util.go:300] stored block body [d16f9018…]
-	//I0704 10:42:43.722619 core/database_util.go:285] stored header #528822 [d16f9018…]
-	//I0704 10:42:43.722643 core/blockchain.go:929] [1499182963722631960] inserted block #528822 (1 TXs 25733 G 0 UNCs) (d16f9018...). Took 4.03041ms
-
-	// ----
-
-	//> eth.syncing
-	//{
-	//currentBlock: 535046,
-	//	highestBlock: 1940368,
-	//	knownStates: 0,
-	//	pulledStates: 0,
-	//	startingBlock: 523962
-	//}
-
-	// ----
-
-	// 20170828
-	// ~/Library/EthereumClassic  ⟠ geth --chain morden
-	//I0828 06:47:52.591259 cmd/geth/flag.go:799] --------------------------------------------------------------------------------------------------------------
-	//I0828 06:47:52.591513 cmd/geth/flag.go:801] Starting Geth Classic source
-	//I0828 06:47:52.591521 cmd/geth/flag.go:802] Geth is configured to use ETC blockchain: Morden Testnet
-	//I0828 06:47:52.591532 cmd/geth/flag.go:803] Using chain database at: /Users/ia/Library/EthereumClassic/morden/chaindata
-	//I0828 06:47:52.591540 cmd/geth/flag.go:805] 4 blockchain upgrades associated with this configuration:
-	//I0828 06:47:52.591547 cmd/geth/flag.go:808]   494000 Homestead
-	//I0828 06:47:52.591570 cmd/geth/flag.go:808]  1783000 GasReprice
-	//I0828 06:47:52.591579 cmd/geth/flag.go:808]  1885000 The DAO Hard Fork
-	//I0828 06:47:52.591588 cmd/geth/flag.go:808]  1915000 Diehard
-	//I0828 06:47:52.591599 cmd/geth/flag.go:824] --------------------------------------------------------------------------------------------------------------
-	//I0828 06:47:52.594092 cmd/geth/flag.go:513] Machine logs file: /Users/ia/Library/EthereumClassic/morden/mlogs/geth.mh.ia.mlog.20170828-064752.8095
-	//I0828 06:47:52.594704 ethdb/database.go:63] Allotted 128MB cache and 1024 file handles to /Users/ia/Library/EthereumClassic/morden/chaindata
-	//I0828 06:47:52.642831 ethdb/database.go:63] Allotted 16MB cache and 16 file handles to /Users/ia/Library/EthereumClassic/morden/dapp
-	//I0828 06:47:52.659460 eth/backend.go:155] Protocol Versions: [63 62], Network Id: 2, Chain Id: 62
-	//I0828 06:47:52.660896 eth/backend.go:183] Blockchain DB Version: 3
-	//I0828 06:47:52.661997 eth/backend.go:234] Successfully established morden testnet genesis block: 0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303
-	//I0828 06:47:52.667538 core/blockchain.go:206] Last header: #301056 [6371e228…] TD=1104105627630
-	//I0828 06:47:52.667758 core/blockchain.go:207] Last block: #676733 [e90d5610…] TD=16249820006016
-	//I0828 06:47:52.667776 core/blockchain.go:208] Fast block: #301056 [6371e228…] TD=1104105627630
-	//I0828 06:47:52.670413 p2p/server.go:310] Starting Server
-	//I0828 06:47:52.696965 p2p/discover/udp.go:249] Listening, enode://0e26baef07556c3719c1b379d4635a463f24635cfdbdd714bf6fd39f9fa6018b2f8ec88d2b1493a5c73f0769f9fe4033de2e851aa654aac83c1a87c33f79c515@75.134.144.252:30303
-	//I0828 06:47:52.707712 p2p/nat/nat.go:111] Mapped network port udp:30303 -> 30303 (ethereum discovery) using NAT-PMP(192.168.86.1)
-	//I0828 06:47:52.839146 p2p/server.go:553] Listening on [::]:30303
-	//I0828 06:47:52.840023 node/node.go:295] IPC endpoint opened: /Users/ia/Library/EthereumClassic/morden/geth.ipc
-	//I0828 06:47:52.864191 p2p/nat/nat.go:111] Mapped network port tcp:30303 -> 30303 (ethereum p2p) using NAT-PMP(192.168.86.1)
-	//^CI0828 06:48:02.337744 cmd/geth/cmd.go:84] Got interrupt, shutting down...
-	//I0828 06:48:02.338024 node/node.go:327] IPC endpoint closed: /Users/ia/Library/EthereumClassic/morden/geth.ipc
-	//I0828 06:48:02.338771 core/blockchain.go:568] Chain manager stopped
-	//I0828 06:48:02.338798 eth/handler.go:219] Stopping ethereum protocol handler...
-	//I0828 06:48:02.338832 eth/handler.go:240] Ethereum protocol handler stopped
-	//I0828 06:48:02.338970 core/tx_pool.go:165] Transaction pool stopped
-	//I0828 06:48:02.339028 eth/backend.go:483] Automatic pregeneration of ethash DAG: OFF (ethash dir: /Users/ia/.ethash)
-
-
-	// Note: here "current" == "head" == "latest known"
-	// Problem: currentHeader vs. currentBlock mismatch.
-	// TODO: compare `currentBlock` and `currentHeader`.
-	// - if the header for the fullblock is not the currentHeader...
-	// ---- WTF: All fullblocks should have headers, right?
-	//    - Yes: if the header for the currentBlock is NOT the currentHeader,
-	//      then we have a legitimate mismatch, signaling a corrupted header trie
-	//		at or after the currentBlock.
-	//    - Yes: if the block for the currentHeader is unavailable
-
 	self.hc.SetCurrentHeader(currentHeader)
 
 	// Restore the last known head fast block
@@ -388,42 +318,28 @@ func (self *BlockChain) loadLastState() error {
 	}
 
 	// Case: Genesis block and fastblock, where there actually exist blocks
-	// in the chain, but n-number of last headers are corrupted, causing it to appear
-	// as if the latest block (by header) is the genesis block.
+	// in the chain, but last-h/b/fb key-vals (placeholders) are corrupted/wrong, causing it to appear
+	// as if the latest block is the genesis block.
 	//
-	// Look to "rewind" forwards in case of missing/malformed header at or near
+	// Look to "rewind" FORWARDS in case of missing/malformed header/placeholder at or near
 	// actual stored block head, caused by improper/unfulfilled `WriteHead*` functions,
 	// possibly caused by ungraceful stopping on SIGKILL.
 	// WriteHead* failing to write in this scenario would cause the head header to be
 	// misidentified an artificial non-purged re-sync to begin.
 	// I think.
-	if self.blockIsGenesis(self.currentBlock) && self.blockIsGenesis(self.currentFastBlock) && currentHeader == self.Genesis().Header() {
-		var foundLaterBlock = false
-		var lastOkBlock *types.Block
-		for i := 1; i < 5000000; i += 2048 {
-			bb := self.GetBlockByNumber(uint64(i))
-			if bb == nil {
-				break
-			}
-			if ee := self.blockIsUnhealthy(bb); ee == nil {
-				glog.V(logger.Debug).Infof("Found possibly OK later block #%d", bb.NumberU64())
-				foundLaterBlock = true
-				lastOkBlock = bb
-			} else {
-				glog.V(logger.Debug).Infof("Found unhealthy block: %v, hash: %x", ee)
-			}
-		}
-		if foundLaterBlock {
-			glog.V(logger.Debug).Infof("Attempting to set head: #%d", lastOkBlock.NumberU64())
-			// SetHead itself finally returns 'loadLastState()' (this function) again,
-			// so all above validations will be re-checked for new state.
-			// That's the only reason this is safe.
-			return self.SetHead(lastOkBlock.NumberU64())
+	if self.blockIsGenesis(self.currentBlock) && self.blockIsGenesis(self.currentFastBlock) && currentHeader.Hash() == self.Genesis().Header().Hash() {
+		if e := self.ResetWithRecoveryEffort(1, 2048); e != nil {
+			glog.V(logger.Error).Infof("Error doing blockchain data recovery effort: %v", e)
 		}
 	}
 
-	// Case: mismatched header and fast or full block.
+	// Case: current header below fast or full block.
 	//
+	// If the current header is behind head block OR fast block, we should reset to the height of last OK header.
+	if self.hc.CurrentHeader().Number.Cmp(self.currentBlock.Number()) < 0 || self.hc.CurrentHeader().Number.Cmp(self.currentFastBlock.Number()) < 0 {
+		glog.V(logger.Warn).Infof("WARNING: Found header height below block height, resetting to header height...")
+		return self.SetHead(self.hc.CurrentHeader().Number.Uint64())
+	}
 
 	// Initialize a statedb cache to ensure singleton account bloom filter generation
 	statedb, err := state.New(self.currentBlock.Root(), self.chainDb)
@@ -431,7 +347,7 @@ func (self *BlockChain) loadLastState() error {
 		return err
 	}
 	self.stateCache = statedb
-	self.stateCache.GetAccount(common.Address{}) // Why?
+	self.stateCache.GetAccount(common.Address{})
 
 	// Issue a status log and return
 	headerTd := self.GetTd(self.hc.CurrentHeader().Hash())
@@ -494,7 +410,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	if err := WriteHeadFastBlockHash(bc.chainDb, bc.currentFastBlock.Hash()); err != nil {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
 	}
-	return bc.loadLastState()
+	return nil // bc.loadLastState()
 }
 
 // FastSyncCommitHead sets the current head block to the one defined by the hash
