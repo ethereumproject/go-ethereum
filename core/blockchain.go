@@ -214,7 +214,7 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 
 // Soft resets should only be called in case of probable corrupted or invalid stored data.
 // The blockchain state should be loaded so that cached head values are available, eg CurrentBlock(), etc.
-func (self *BlockChain) ResetWithRecoveryEffort(from int, increment int) error {
+func (self *BlockChain) Recovery(from int, increment int) uint64 {
 	var foundLaterBlock = false
 	var lastOkBlock *types.Block
 	// TODO: replace hardcoded 5m height limit with last known height of chain...
@@ -225,7 +225,7 @@ func (self *BlockChain) ResetWithRecoveryEffort(from int, increment int) error {
 		if bb == nil {
 			if increment > 1 && i - increment > 1 {
 				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i - increment, 1)
-				return self.ResetWithRecoveryEffort(i-increment, 1) // hone in
+				return self.Recovery(i-increment, 1) // hone in
 			}
 			glog.V(logger.Debug).Infof("No block data available for block #%d", uint64(i))
 			break
@@ -247,16 +247,16 @@ func (self *BlockChain) ResetWithRecoveryEffort(from int, increment int) error {
 		if increment == 1 {
 			break
 		}
-		return self.ResetWithRecoveryEffort(i-increment, 1)
+		return self.Recovery(i-increment, 1)
 	}
 	if foundLaterBlock {
 		glog.V(logger.Warn).Infof("WARNING: Recovering head to: #%d", lastOkBlock.NumberU64())
 		// SetHead itself finally returns 'loadLastState()' (this function) again,
 		// so all above validations will be re-checked for new state.
 		// That's the only reason this is safe.
-		return self.SetHead(lastOkBlock.NumberU64())
+		return lastOkBlock.NumberU64()
 	}
-	return nil
+	return 0
 }
 
 // loadLastState loads the last known chain state from the database. This method
@@ -277,13 +277,21 @@ func (self *BlockChain) loadLastState() error {
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		glog.V(logger.Warn).Infof("WARNING: Head block missing, resetting chain; hash: %x", head)
-		return self.ResetWithRecoveryEffort(1, 2048)
+		recoveredHeight := self.Recovery(1, 2048)
+		if recoveredHeight == 0 {
+			return self.Reset()
+		}
+		return self.SetHead(recoveredHeight)
 	}
 
 	// Make sure the head block (and header) is valid.
 	if e := self.blockIsUnhealthy(currentBlock); e != nil {
 		glog.V(logger.Error).Infof("WARNING: Unhealthy block #%d (%x): %v, \nResetting chain with attempt to recover...", currentBlock.Number(), currentBlock.Hash(), e)
-		return self.ResetWithRecoveryEffort(1, 2048)
+		recoveredHeight := self.Recovery(1, 2048)
+		if recoveredHeight == 0 {
+			return self.Reset()
+		}
+		return self.SetHead(recoveredHeight)
 	}
 
 	// Make sure the state associated with the block is available.
@@ -291,7 +299,11 @@ func (self *BlockChain) loadLastState() error {
 	if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
 		// Dangling block without a state associated, init from scratch
 		glog.V(logger.Warn).Infof("WARNING: Head state missing, resetting chain; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
-		return self.ResetWithRecoveryEffort(1, 2048)
+		recoveredHeight := self.Recovery(1, 2048)
+		if recoveredHeight == 0 {
+			return self.Reset()
+		}
+		return self.SetHead(recoveredHeight)
 	}
 
 	// Everything seems to be fine, set as the head block
@@ -328,8 +340,9 @@ func (self *BlockChain) loadLastState() error {
 	// misidentified an artificial non-purged re-sync to begin.
 	// I think.
 	if self.blockIsGenesis(self.currentBlock) && self.blockIsGenesis(self.currentFastBlock) && currentHeader.Hash() == self.Genesis().Header().Hash() {
-		if e := self.ResetWithRecoveryEffort(1, 2048); e != nil {
-			glog.V(logger.Error).Infof("Error doing blockchain data recovery effort: %v", e)
+		recoveredHeight := self.Recovery(1, 2048)
+		if recoveredHeight > 0 {
+			return self.SetHead(recoveredHeight)
 		}
 	}
 
@@ -1050,6 +1063,9 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 		// error if it fails.
 		switch {
 		case i == 0:
+			//if self.stateCache == nil {
+			//	panic("statecache nil")
+			//}
 			err = self.stateCache.Reset(self.GetBlock(block.ParentHash()).Root())
 		default:
 			err = self.stateCache.Reset(chain[i-1].Root())
