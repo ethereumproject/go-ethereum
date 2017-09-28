@@ -23,6 +23,15 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
+// ContractRef is a reference to the contract's backing object
+type ContractRef interface {
+	ReturnGas(*big.Int, *big.Int)
+	Address() common.Address
+	//Value() *big.Int
+	SetCode(common.Hash, []byte)
+	ForEachStorage(callback func(key, value common.Hash) bool)
+}
+
 // Contract represents an ethereum contract in the state database. It contains
 // the the contract code, calling arguments. Contract implements ContractRef
 type Contract struct {
@@ -30,8 +39,8 @@ type Contract struct {
 	// contract. However when the "call method" is delegated this value
 	// needs to be initialised to that of the caller's caller.
 	CallerAddress common.Address
-	caller        vm.ContractRef
-	self          vm.ContractRef
+	caller        ContractRef
+	self          ContractRef
 
 	jumpdests destinations // result of JUMPDEST analysis.
 
@@ -48,7 +57,7 @@ type Contract struct {
 }
 
 // NewContract returns a new contract environment for the execution of EVM.
-func NewContract(caller vm.ContractRef, object vm.ContractRef, value, gas, price *big.Int) *Contract {
+func NewContract(caller ContractRef, object ContractRef, value, gas, price *big.Int) *Contract {
 	c := &Contract{CallerAddress: caller.Address(), caller: caller, self: object, Args: nil}
 
 	if parent, ok := caller.(*Contract); ok {

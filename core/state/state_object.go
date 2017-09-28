@@ -91,6 +91,21 @@ type StateObject struct {
 	onDirty   func(addr common.Address) // Callback method to mark a state object newly dirty
 }
 
+// AccountObject is a reduced StateObject interface
+type AccountObject interface {
+	SubBalance(amount *big.Int)
+	AddBalance(amount *big.Int)
+	SetBalance(*big.Int)
+	SetNonce(uint64)
+	SetCode(common.Hash, []byte)
+	Nonce() uint64
+	Balance() *big.Int
+	Address() common.Address
+//	Value() *big.Int
+	ReturnGas(*big.Int, *big.Int)
+	ForEachStorage(cb func(key, value common.Hash) bool)
+}
+
 // Account is the Ethereum consensus representation of accounts.
 // These objects are stored in the main account trie.
 type Account struct {
@@ -351,9 +366,9 @@ func (self *StateObject) Nonce() uint64 {
 // Never called, but must be present to allow StateObject to be used
 // as a vm.Account interface that also satisfies the vm.ContractRef
 // interface. Interfaces are awesome.
-func (self *StateObject) Value() *big.Int {
-	panic("Value on StateObject should never be called")
-}
+//func (self *StateObject) Value() *big.Int {
+//	panic("Value on StateObject should never be called")
+//}
 
 func (self *StateObject) ForEachStorage(cb func(key, value common.Hash) bool) {
 	// When iterating over the storage check the cache first

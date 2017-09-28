@@ -39,13 +39,13 @@ var (
 // The EVM will run the byte code VM or JIT VM based on the passed
 // configuration.
 type EVM struct {
-	env       vm.Environment
+	env       Environment
 	jumpTable vmJumpTable
 	gasTable  vm.GasTable
 }
 
 // NewVM returns a new instance of the EVM.
-func NewVM(env vm.Environment) *EVM {
+func NewVM(env Environment) *EVM {
 	return &EVM{
 		env:       env,
 		jumpTable: newJumpTable(env.RuleSet(), env.BlockNumber()),
@@ -178,7 +178,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 // calculateGasAndSize calculates the required given the opcode and stack items calculates the new memorysize for
 // the operation. This does not reduce gas or resizes the memory.
-func calculateGasAndSize(gasTable *vm.GasTable, env vm.Environment, contract *Contract, caller vm.ContractRef, op vm.OpCode, statedb vm.Database, mem *Memory, stack *stack) (*big.Int, *big.Int, error) {
+func calculateGasAndSize(gasTable *vm.GasTable, env Environment, contract *Contract, caller ContractRef, op vm.OpCode, statedb Database, mem *Memory, stack *stack) (*big.Int, *big.Int, error) {
 	var (
 		gas                 = new(big.Int)
 		newMemSize *big.Int = new(big.Int)
