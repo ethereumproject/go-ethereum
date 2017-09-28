@@ -1,6 +1,9 @@
-package vm
+package classic
 
-import "fmt"
+import (
+	"fmt"
+//	"errors"
+)
 
 type ValueTransferError struct {
 	message string
@@ -13,7 +16,15 @@ func ValueTransferErr(str string, v ...interface{}) *ValueTransferError {
 func (self *ValueTransferError) Error() string {
 	return self.message
 }
+
 func IsValueTransferErr(e error) bool {
 	_, ok := e.(*ValueTransferError)
 	return ok
 }
+
+/*
+var (
+ 	OutOfGasError          = errors.New("Out of gas")
+	CodeStoreOutOfGasError = errors.New("Contract creation code storage out of gas")
+)
+*/

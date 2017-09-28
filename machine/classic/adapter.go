@@ -1,10 +1,12 @@
 package classic
 
 import (
-	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/common"
 	"math/big"
 	"errors"
+
+	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 type command struct {
@@ -18,6 +20,7 @@ const (
 	cmdAccountID
 	cmdHashID
 	cmdCodeID
+	cmdRulesID
 )
 
 var (
@@ -32,12 +35,11 @@ type vmHash struct {
 
 type vmAccount struct {
 	address common.Address
-	balance *big.Int
-	code    []byte
-	hash    common.Hash
 	nonce   uint64
+	balance *big.Int
 	storage map[string]string
-	value   *big.Int
+	changes map[string]bool
+	modified bool
 }
 
 func (self *vmAccount) SubBalance(amount *big.Int) {}
@@ -50,7 +52,6 @@ func (self *vmAccount) Address() common.Address { return self.address }
 func (self *vmAccount) ReturnGas(*big.Int, *big.Int) {}
 func (self *vmAccount) SetCode(common.Hash, []byte) {}
 func (self *vmAccount) ForEachStorage(cb func(key, value common.Hash) bool) {}
-func (self *vmAccount) Value() *big.Int { return self.value }
 func (self *vmAccount) Set(vm.Account) {}
 
 type vmCode struct {
@@ -98,17 +99,17 @@ type vmEnv struct {
 }
 
 type vmAdapter struct {
-	env	*vmEnv
 	status vm.Status
+	env    *vmEnv
 }
 
-func AdaptVM() vm.VirtualMachine {
+func NewMachine() vm.Machine {
 	adapter := &vmAdapter{}
 	return adapter
 }
 
-func (self *vmAdapter) CommitAccount(commitment vm.Account) (err error) {
-	account := vmAccount{}
+func (self *vmAdapter) 	CommitAccount(address common.Address, nonce uint64, balance *big.Int) (err error) {
+	account := vmAccount{address:address,nonce:nonce,balance:balance}
 	self.env.cmdc <- &command{cmdAccountID, &account}
 	return
 }
@@ -160,8 +161,9 @@ func (self *vmEnv) handleOnError(err error) {
 	}
 }
 
-func (self *vmAdapter) Start() (err error) {
+func (self *vmAdapter) Start(blockNumber uint64, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (ctx vm.Context, err error) {
 	if self.env == nil {
+		ctx = self
 		env := &vmEnv{}
 		env.evm = NewVM(env)
 		self.env = env
@@ -228,7 +230,7 @@ func (self *vmAdapter) RefundedGas() (gas *big.Int, err error) {
 	return
 }
 
-func (self *vmAdapter) Logs() (logs []vm.Log, err error) {
+func (self *vmAdapter) Logs() (logs state.Logs, err error) {
 	return
 }
 
@@ -236,8 +238,12 @@ func (self *vmAdapter) Removed() (addresses []common.Address, err error) {
 	return
 }
 
-func (self *vmEnv) VmType() vm.Type {
-	return vm.ClassicVmTy
+func (self *vmAdapter) Name() string {
+	return "CLASSIC VM"
+}
+
+func (self *vmAdapter) Type() vm.Type {
+	return vm.ClassicVm
 }
 
 func (self *vmEnv) RuleSet() vm.RuleSet {
@@ -272,7 +278,7 @@ func (self *vmEnv) Value() *big.Int {
 	return nil
 }
 
-func (self *vmEnv) Db() vm.Database {
+func (self *vmEnv) Db() Database {
 	return self
 }
 
@@ -294,7 +300,7 @@ func (self *vmEnv) GetHash(n uint64) common.Hash {
 	}
 }
 
-func (self *vmEnv) AddLog(log *vm.Log) {
+func (self *vmEnv) AddLog(log *state.Log) {
 
 }
 
@@ -311,23 +317,23 @@ func (self *vmEnv) RevertToSnapshot(snapshot int) {
 	//self.state.RevertToSnapshot(snapshot)
 }
 
-func (self *vmEnv) Transfer(from, to vm.Account, amount *big.Int) {
+func (self *vmEnv) Transfer(from, to state.AccountObject, amount *big.Int) {
 	Transfer(from, to, amount)
 }
 
-func (self *vmEnv) Call(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *vmEnv) Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return Call(self, me, addr, data, gas, price, value)
 }
 
-func (self *vmEnv) CallCode(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *vmEnv) CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return CallCode(self, me, addr, data, gas, price, value)
 }
 
-func (self *vmEnv) DelegateCall(me vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
-	return DelegateCall(self, me, addr, data, gas, price)
+func (self *vmEnv) DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return DelegateCall(self, me.(*Contract), addr, data, gas, price)
 }
 
-func (self *vmEnv) Create(me vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+func (self *vmEnv) Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return Create(self, me, data, gas, price, value)
 }
 
@@ -335,11 +341,11 @@ func (self *vmEnv) Run(contract *Contract, input []byte) (ret []byte, err error)
 	return self.evm.Run(contract,input)
 }
 
-func (self *vmEnv) GetAccount(addr common.Address) vm.Account {
+func (self *vmEnv) GetAccount(addr common.Address) state.AccountObject {
 	return self.QueryAccount(addr)
 }
 
-func (self *vmEnv) CreateAccount(common.Address) vm.Account {
+func (self *vmEnv) CreateAccount(common.Address) state.AccountObject {
 	return nil
 }
 
@@ -353,7 +359,7 @@ func (self *vmEnv) QueryCode(addr common.Address) *vmCode {
 	}
 }
 
-func (self *vmEnv) QueryAccount(addr common.Address) vm.Account {
+func (self *vmEnv) QueryAccount(addr common.Address) state.AccountObject {
 	for {
 		if a, exists := self.accounts[addr]; exists {
 			return a

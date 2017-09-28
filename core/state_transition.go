@@ -24,6 +24,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	db "github.com/ethereumproject/go-ethereum/core/state"
 )
 
 var (
@@ -57,9 +58,8 @@ type StateTransition struct {
 	initialGas    *big.Int
 	value         *big.Int
 	data          []byte
-	state         vm.Database
-
-	env vm.Environment
+	state         *db.StateDB
+	env 		  VmEnv
 }
 
 // Message represents a message sent to a contract.
@@ -106,7 +106,7 @@ func IntrinsicGas(data []byte, contractCreation, homestead bool) *big.Int {
 }
 
 // NewStateTransition initialises and returns a new state transition object.
-func NewStateTransition(env vm.Environment, msg Message, gp *GasPool) *StateTransition {
+func NewStateTransition(env VmEnv, msg Message, gp *GasPool) *StateTransition {
 	return &StateTransition{
 		gp:         gp,
 		env:        env,
@@ -127,14 +127,14 @@ func NewStateTransition(env vm.Environment, msg Message, gp *GasPool) *StateTran
 // the gas used (which includes gas refunds) and an error if it failed. An error always
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
-func ApplyMessage(env vm.Environment, msg Message, gp *GasPool) ([]byte, *big.Int, error) {
+func ApplyMessage(env VmEnv, msg Message, gp *GasPool) ([]byte, *big.Int, error) {
 	st := NewStateTransition(env, msg, gp)
 
 	ret, _, gasUsed, err := st.TransitionDb()
 	return ret, gasUsed, err
 }
 
-func (self *StateTransition) from() (vm.Account, error) {
+func (self *StateTransition) from() (db.AccountObject, error) {
 	var (
 		f   common.Address
 		err error
@@ -149,7 +149,7 @@ func (self *StateTransition) from() (vm.Account, error) {
 	return self.state.GetAccount(f), nil
 }
 
-func (self *StateTransition) to() vm.Account {
+func (self *StateTransition) to() db.AccountObject {
 	if self.msg == nil {
 		return nil
 	}
@@ -250,18 +250,16 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	} else {
 		// Increment the nonce for the next transaction
 		self.state.SetNonce(sender.Address(), self.state.GetNonce(sender.Address())+1)
-		ret, err = vmenv.Call(sender, self.to().Address(), self.data, self.gas, self.gasPrice, self.value)
+		ret, err = vmenv.Call(sender.Address(), self.to().Address(), self.data, self.gas, self.gasPrice, self.value)
 		if err != nil {
 			glog.V(logger.Core).Infoln("VM call err:", err)
 		}
 	}
 
-	if err != nil && vm.IsValueTransferErr(err) {
+	if err == TransferError {
 		return nil, nil, nil, InvalidTxError(err)
-	}
-
-	// We aren't interested in errors here. Errors returned by the VM are non-consensus errors and therefor shouldn't bubble up
-	if err != nil {
+	} else {
+		// We aren't interested in errors here. Errors returned by the VM are non-consensus errors and therefor shouldn't bubble up
 		err = nil
 	}
 

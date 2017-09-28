@@ -25,6 +25,81 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
+// Database is a EVM database for full state querying.
+type Database interface {
+	GetAccount(common.Address) state.AccountObject
+	CreateAccount(common.Address) state.AccountObject
+
+	AddBalance(common.Address, *big.Int)
+	GetBalance(common.Address) *big.Int
+
+	GetNonce(common.Address) uint64
+	SetNonce(common.Address, uint64)
+
+	GetCodeHash(common.Address) common.Hash
+	GetCodeSize(common.Address) int
+	GetCode(common.Address) []byte
+	SetCode(common.Address, []byte)
+
+	AddRefund(*big.Int)
+	GetRefund() *big.Int
+
+	GetState(common.Address, common.Hash) common.Hash
+	SetState(common.Address, common.Hash, common.Hash)
+
+	Suicide(common.Address) bool
+	HasSuicided(common.Address) bool
+
+	// Exist reports whether the given account exists in state.
+	// Notably this should also return true for suicided accounts.
+	Exist(common.Address) bool
+}
+
+// Environment is an EVM requirement and helper which allows access to outside
+// information such as states.
+type Environment interface {
+	// The current ruleset
+	RuleSet() vm.RuleSet
+	// The state database
+	Db() Database
+	// Creates a restorable snapshot
+	SnapshotDatabase() int
+	// Set database to previous snapshot
+	RevertToSnapshot(int)
+	// Address of the original invoker (first occurrence of the VM invoker)
+	Origin() common.Address
+	// The block number this VM is invoked on
+	BlockNumber() *big.Int
+	// The n'th hash ago from this block number
+	GetHash(uint64) common.Hash
+	// The handler's address
+	Coinbase() common.Address
+	// The current time (block time)
+	Time() *big.Int
+	// Difficulty set on the current block
+	Difficulty() *big.Int
+	// The gas limit of the block
+	GasLimit() *big.Int
+	// Determines whether it's possible to transact
+	CanTransfer(from common.Address, balance *big.Int) bool
+	// Transfers amount from one account to the other
+	Transfer(from, to state.AccountObject, amount *big.Int)
+	// Adds a LOG to the state
+	AddLog(*state.Log)
+	// Get the curret calling depth
+	Depth() int
+	// Set the current calling depth
+	SetDepth(i int)
+	// Call another contract
+	Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
+	// Take another's contract code and execute within our own context
+	CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
+	// Same as CallCode except sender and value is propagated from parent to child scope
+	DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
+	// Create a new contract
+	Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error)
+}
+
 type VMEnv struct {
 	rules     vm.RuleSet
 	state     *state.StateDB // State to use for executing
@@ -39,7 +114,7 @@ type VMEnv struct {
 func NewEnv(
 	state *state.StateDB, rules vm.RuleSet, header *types.Header,
 	from common.Address, value *big.Int,
-	hashFn func(uint64) common.Hash) (vm.Environment,error) {
+	hashFn func(uint64) common.Hash) (Environment,error) {
 
 	env := &VMEnv{
 		rules:     rules,
@@ -52,10 +127,6 @@ func NewEnv(
 
 	env.evm = NewVM(env)
 	return env, nil
-}
-
-func (self *VMEnv) VmType() vm.Type {
-	return vm.ClassicVmTy
 }
 
 func (self *VMEnv) RuleSet() vm.RuleSet      { 
@@ -90,7 +161,7 @@ func (self *VMEnv) Value() *big.Int {
 	return self.value 
 }
 
-func (self *VMEnv) Db() vm.Database { 
+func (self *VMEnv) Db() Database {
 	return self.state 
 }
 
@@ -106,7 +177,7 @@ func (self *VMEnv) GetHash(n uint64) common.Hash {
 	return self.getHashFn(n)
 }
 
-func (self *VMEnv) AddLog(log *vm.Log) {
+func (self *VMEnv) AddLog(log *state.Log) {
 	self.state.AddLog(log)
 }
 
@@ -122,23 +193,23 @@ func (self *VMEnv) RevertToSnapshot(snapshot int) {
 	self.state.RevertToSnapshot(snapshot)
 }
 
-func (self *VMEnv) Transfer(from, to vm.Account, amount *big.Int) {
+func (self *VMEnv) Transfer(from, to state.AccountObject, amount *big.Int) {
 	Transfer(from, to, amount)
 }
 
-func (self *VMEnv) Call(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *VMEnv) Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return Call(self, me, addr, data, gas, price, value)
 }
 
-func (self *VMEnv) CallCode(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *VMEnv) CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return CallCode(self, me, addr, data, gas, price, value)
 }
 
-func (self *VMEnv) DelegateCall(me vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
-	return DelegateCall(self, me, addr, data, gas, price)
+func (self *VMEnv) DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return DelegateCall(self, me.(*Contract), addr, data, gas, price)
 }
 
-func (self *VMEnv) Create(me vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+func (self *VMEnv) Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return Create(self, me, data, gas, price, value)
 }
 
