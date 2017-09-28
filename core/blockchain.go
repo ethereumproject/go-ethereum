@@ -165,7 +165,13 @@ func (self *BlockChain) getProcInterrupt() bool {
 }
 
 func (self *BlockChain) blockIsGenesis(b *types.Block) bool {
-	return reflect.DeepEqual(b, self.Genesis())
+	if self.Genesis() != nil {
+		return reflect.DeepEqual(b, self.Genesis())
+	}
+	ht, _ := DefaultConfigMorden.Genesis.Header()
+	hm, _ := DefaultConfigMainnet.Genesis.Header()
+	return b.Hash() == ht.Hash() || b.Hash() == hm.Hash()
+
 }
 
 // blockIsUnhealthy sanity checks for a block's health.
@@ -180,7 +186,7 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 	if b.Header() == nil {
 		return errNilHeader
 	}
-
+	//
 	if !self.blockIsGenesis(b) {
 		// Block header is not genesis, but has number 0
 		if b.NumberU64() == 0 {
@@ -214,15 +220,15 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 
 // Soft resets should only be called in case of probable corrupted or invalid stored data.
 // The blockchain state should be loaded so that cached head values are available, eg CurrentBlock(), etc.
-func (self *BlockChain) Recovery(from int, increment int) uint64 {
-	var foundLaterBlock = false
-	var lastOkBlock *types.Block
+func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	// TODO: replace hardcoded 5m height limit with last known height of chain...
 	// In order for this number to be available at the time this function is called, the number
 	// may need to be persisted locally from the last connection.
 	for i := from; i > 0 && i < 50000000; i += increment {
 		bb := self.GetBlockByNumber(uint64(i))
+		// If block does not exist in db.
 		if bb == nil {
+			// Traverse in small steps (increment =1) from last known big step (increment >1) checkpoint.
 			if increment > 1 && i - increment > 1 {
 				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i - increment, 1)
 				return self.Recovery(i-increment, 1) // hone in
@@ -232,15 +238,14 @@ func (self *BlockChain) Recovery(from int, increment int) uint64 {
 		}
 		ee := self.blockIsUnhealthy(bb)
 		if ee == nil {
-			glog.V(logger.Debug).Infof("Found OK later block #%d", bb.NumberU64())
-			foundLaterBlock = true
-			lastOkBlock = bb
-			// ---------------------------------------------------------------
 			// Everything seems to be fine, set as the head block
+			glog.V(logger.Debug).Infof("Found OK later block #%d", bb.NumberU64())
+
+			checkpoint = bb.NumberU64()
+
 			self.currentBlock = bb
 			self.hc.SetCurrentHeader(self.currentBlock.Header())
 			self.currentFastBlock = self.currentBlock
-			// ---------------------------------------------------------------
 			continue
 		}
 		glog.V(logger.Error).Infof("WARNING: Found unhealthy block #%d (%v): \n\n%v", i, ee, bb)
@@ -249,14 +254,10 @@ func (self *BlockChain) Recovery(from int, increment int) uint64 {
 		}
 		return self.Recovery(i-increment, 1)
 	}
-	if foundLaterBlock {
-		glog.V(logger.Warn).Infof("WARNING: Recovering head to: #%d", lastOkBlock.NumberU64())
-		// SetHead itself finally returns 'loadLastState()' (this function) again,
-		// so all above validations will be re-checked for new state.
-		// That's the only reason this is safe.
-		return lastOkBlock.NumberU64()
+	if checkpoint > 0 {
+		glog.V(logger.Warn).Infof("WARNING: Recovering head to: #%d", checkpoint)
 	}
-	return 0
+	return checkpoint
 }
 
 // loadLastState loads the last known chain state from the database. This method
@@ -284,9 +285,9 @@ func (self *BlockChain) loadLastState() error {
 		return self.SetHead(recoveredHeight)
 	}
 
-	// Make sure the head block (and header) is valid.
-	if e := self.blockIsUnhealthy(currentBlock); e != nil {
-		glog.V(logger.Error).Infof("WARNING: Unhealthy block #%d (%x): %v, \nResetting chain with attempt to recover...", currentBlock.Number(), currentBlock.Hash(), e)
+	// Ensure head block is valid by blockchain validator.
+	if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
+		glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery...", currentBlock.Number(), currentBlock.Hash(), validateErr)
 		recoveredHeight := self.Recovery(1, 2048)
 		if recoveredHeight == 0 {
 			return self.Reset()
@@ -329,7 +330,7 @@ func (self *BlockChain) loadLastState() error {
 		}
 	}
 
-	// Case: Genesis block and fastblock, where there actually exist blocks
+	// Case: Apparent genesis full block and fastblock, where there actually exist blocks
 	// in the chain, but last-h/b/fb key-vals (placeholders) are corrupted/wrong, causing it to appear
 	// as if the latest block is the genesis block.
 	//
