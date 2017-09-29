@@ -221,10 +221,42 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 // Soft resets should only be called in case of probable corrupted or invalid stored data.
 // The blockchain state should be loaded so that cached head values are available, eg CurrentBlock(), etc.
 func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
-	// TODO: replace hardcoded 5m height limit with last known height of chain...
+
+	// Function for random dynamic incremental stepping through recoverable blocks.
+	// This avoids a set pattern for checking block validity, which might present
+	// a vulnerability.
+	// Random increments are only implemented with using an interval > 1.
+	rInc := func(i int) (int) {
+		mrand.Seed(time.Now().UTC().UnixNano())
+		halfIncrement := i / 2
+		ri := mrand.Int63n(int64(halfIncrement))
+		if ri % 2 == 0 {
+			return i + int(ri)
+		}
+		return i - int(ri)
+	}
+	dynamicIncrement := increment
+	if increment > 1 {
+		dynamicIncrement = rInc(increment)
+	}
+
+	// Set up logging for block recovery progress.
+	ticker := time.NewTicker(time.Second * 2)
+	defer ticker.Stop()
+	go func() {
+		for range ticker.C {
+			glog.V(logger.Info).Infof("Recovered checkpoint at block #%d", checkpoint)
+		}
+	}()
+
 	// In order for this number to be available at the time this function is called, the number
 	// may need to be persisted locally from the last connection.
-	for i := from; i > 0 && i < 50000000; i += increment {
+	for i := from; i > 0 && i < 50000000; i += dynamicIncrement {
+		if increment > 1 {
+			dynamicIncrement = rInc(increment)
+		}
+
+		// func (r *Rand) Int63n(n int64) int64
 		bb := self.GetBlockByNumber(uint64(i))
 		// If block does not exist in db.
 		if bb == nil {
@@ -236,6 +268,8 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 			glog.V(logger.Debug).Infof("No block data available for block #%d", uint64(i))
 			break
 		}
+		// blockIsUnhealthy runs various block sanity checks, over and above Validator efforts to ensure
+		// no expected block strangenesses.
 		ee := self.blockIsUnhealthy(bb)
 		if ee == nil {
 			// Everything seems to be fine, set as the head block
@@ -263,6 +297,20 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
 func (self *BlockChain) loadLastState() error {
+
+	// recoverOrReset checks for recoverable block data.
+	// If no recoverable block data is found, plain Reset() is called.
+	// If safe blockchain data exists (so head block was wrong/invalid), blockchain db head
+	// is set to last available safe checkpoint.
+	recoverOrReset := func() error {
+		glog.V(logger.Warn).Infoln("Checking database for recoverable block data...")
+		recoveredHeight := self.Recovery(1, 2048)
+		if recoveredHeight == 0 {
+			return self.Reset()
+		}
+		return self.SetHead(recoveredHeight)
+	}
+
 	// Restore the last known head block
 	head := GetHeadBlockHash(self.chainDb)
 	if head == (common.Hash{}) {
@@ -278,33 +326,21 @@ func (self *BlockChain) loadLastState() error {
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		glog.V(logger.Warn).Infof("WARNING: Head block missing, resetting chain; hash: %x", head)
-		recoveredHeight := self.Recovery(1, 2048)
-		if recoveredHeight == 0 {
-			return self.Reset()
-		}
-		return self.SetHead(recoveredHeight)
+		return recoverOrReset()
 	}
 
 	// Ensure head block is valid by blockchain validator.
 	if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
 		glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery...", currentBlock.Number(), currentBlock.Hash(), validateErr)
-		recoveredHeight := self.Recovery(1, 2048)
-		if recoveredHeight == 0 {
-			return self.Reset()
-		}
-		return self.SetHead(recoveredHeight)
+		return recoverOrReset()
 	}
 
 	// Make sure the state associated with the block is available.
 	// Similar to check in block_validator#ValidateBlock.
 	if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
-		// Dangling block without a state associated, init from scratch
+		// Dangling block without a state associated
 		glog.V(logger.Warn).Infof("WARNING: Head state missing, resetting chain; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
-		recoveredHeight := self.Recovery(1, 2048)
-		if recoveredHeight == 0 {
-			return self.Reset()
-		}
-		return self.SetHead(recoveredHeight)
+		return recoverOrReset()
 	}
 
 	// Everything seems to be fine, set as the head block
@@ -340,10 +376,12 @@ func (self *BlockChain) loadLastState() error {
 	// WriteHead* failing to write in this scenario would cause the head header to be
 	// misidentified an artificial non-purged re-sync to begin.
 	// I think.
+	//
+	// If apparently genesis block.
 	if self.blockIsGenesis(self.currentBlock) && self.blockIsGenesis(self.currentFastBlock) && currentHeader.Hash() == self.Genesis().Header().Hash() {
-		recoveredHeight := self.Recovery(1, 2048)
-		if recoveredHeight > 0 {
-			return self.SetHead(recoveredHeight)
+		// And if block #1 exists
+		if self.GetBlockByNumber(1) != nil {
+			return recoverOrReset()
 		}
 	}
 
