@@ -20,7 +20,7 @@ const (
 	cmdAccountID
 	cmdHashID
 	cmdCodeID
-	cmdRulesID
+	cmdRuleID
 )
 
 var (
@@ -53,6 +53,8 @@ func (self *vmAccount) ReturnGas(*big.Int, *big.Int) {}
 func (self *vmAccount) SetCode(common.Hash, []byte) {}
 func (self *vmAccount) ForEachStorage(cb func(key, value common.Hash) bool) {}
 func (self *vmAccount) Set(vm.Account) {}
+func (self *vmAccount) Code() []byte { return nil }
+func (self *vmAccount) CodeHash() common.Hash { return common.Hash{} }
 
 type vmCode struct {
 	address common.Address
@@ -77,10 +79,16 @@ func (self *vmCode) Size() int {
 	return self.size
 }
 
+type vmRule struct {
+	number uint64
+	table *vm.GasTable
+	fork  vm.Fork
+}
+
 type vmEnv struct {
 	cmdc    	chan *command
-	errc    	chan error
-	rules   	vm.RuleSet
+	rqc			chan *vm.Require
+	rules   	map[uint64]*vmRule
 	evm     	*EVM
 	depth   	int
 	contract 	*Contract
@@ -88,6 +96,7 @@ type vmEnv struct {
 	output      []byte
 	stepByStep	bool
 
+	address     common.Address
 	accounts 	map[common.Address]*vmAccount
 	codes 		map[common.Address]*vmCode
 	hashes 		map[uint64]*vmHash
@@ -108,6 +117,20 @@ func NewMachine() vm.Machine {
 	return adapter
 }
 
+func (self *vmAdapter) Address() (common.Address, error) {
+	if self.env == nil {
+		return common.Address{}, vm.TerminatedError
+	} else {
+		return self.env.address, nil
+	}
+}
+
+func (self *vmAdapter) CommitRules(number uint64, table *vm.GasTable, fork vm.Fork) (err error) {
+	rule := vmRule{number,table,fork}
+	self.env.cmdc <- &command{cmdRuleID, &rule}
+	return
+}
+
 func (self *vmAdapter) 	CommitAccount(address common.Address, nonce uint64, balance *big.Int) (err error) {
 	account := vmAccount{address:address,nonce:nonce,balance:balance}
 	self.env.cmdc <- &command{cmdAccountID, &account}
@@ -126,9 +149,8 @@ func (self *vmAdapter) CommitCode(address common.Address, hash common.Hash, code
 	return
 }
 
-func (self *vmAdapter) Status() (status vm.Status, err error) {
-	status = self.status
-	return
+func (self *vmAdapter) Status() vm.Status {
+	return self.status
 }
 
 func (self *vmEnv) handleCmdc(cmd *command) {
@@ -142,6 +164,9 @@ func (self *vmEnv) handleCmdc(cmd *command) {
 	case cmdAccountID:
 		a := cmd.value.(*vmAccount)
 		self.accounts[a.Address()] = a
+	case cmdRuleID:
+		r := cmd.value.(*vmRule)
+		self.rules[r.number] = r
 	case cmdStepID:
 		self.stepByStep = true
 		return
@@ -153,15 +178,15 @@ func (self *vmEnv) handleCmdc(cmd *command) {
 	}
 }
 
-func (self *vmEnv) handleOnError(err error) {
-	self.errc <- err
+func (self *vmEnv) handleOnError(rq *vm.Require) {
+	self.rqc <- rq
 	for {
 		cmd := <-self.cmdc
 		self.handleCmdc(cmd)
 	}
 }
 
-func (self *vmAdapter) Start(blockNumber uint64, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (ctx vm.Context, err error) {
+func (self *vmAdapter) Call(blockNumber uint64, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (ctx vm.Context, err error) {
 	if self.env == nil {
 		ctx = self
 		env := &vmEnv{}
@@ -174,8 +199,10 @@ func (self *vmAdapter) Start(blockNumber uint64, caller common.Address, to commo
 			}
 			if cmd.code == cmdStepID || cmd.code == cmdFireID {
 				e.stepByStep = cmd.code == cmdStepID
-				e.output, e.err = e.evm.Run(e.contract,e.input)
-				e.errc <- e.err
+				callerRef := e.QueryAccount(caller)
+				e.address = to
+				e.output, e.err = e.Call(callerRef,to,data,gas,price,value)
+				e.rqc <- nil
 				return
 			} else {
 				e.handleCmdc(cmd)
@@ -186,6 +213,34 @@ func (self *vmAdapter) Start(blockNumber uint64, caller common.Address, to commo
 	}
 	return
 }
+
+func (self *vmAdapter) Create(blockNumber uint64, caller common.Address, code []byte, gas, price, value *big.Int) (ctx vm.Context, err error) {
+	if self.env == nil {
+		ctx = self
+		env := &vmEnv{}
+		env.evm = NewVM(env)
+		self.env = env
+		go func (e *vmEnv) {
+			cmd, ok := <-e.cmdc
+			if !ok {
+				return
+			}
+			if cmd.code == cmdStepID || cmd.code == cmdFireID {
+				e.stepByStep = cmd.code == cmdStepID
+				callerRef := e.QueryAccount(caller)
+				e.output, e.address, e.err = e.Create(callerRef,code,gas,price,value)
+				e.rqc <- nil
+				return
+			} else {
+				e.handleCmdc(cmd)
+			}
+		}(env)
+	} else {
+		err = errors.New("already started")
+	}
+	return
+}
+
 
 func (self *vmAdapter) Finish() (err error) {
 	if self.env == nil {
@@ -198,22 +253,20 @@ func (self *vmAdapter) Finish() (err error) {
 }
 
 
-func (self *vmAdapter) Step() (err error) {
-	self.env.cmdc <-cmdStep
-	err = <-self.env.errc
-	return
+func (self *vmAdapter) Debug() (vm.Debugger, error) {
+	return nil, nil
 }
 
-func (self *vmAdapter) Fire() (err error) {
+func (self *vmAdapter) Fire() (*vm.Require) {
 	self.env.cmdc <- cmdFire
-	err = <-self.env.errc
-	return
+	rq := <-self.env.rqc
+	return rq
 }
 
-func (self *vmAdapter) Accounts() (accounts map[common.Address]vm.Account, err error) {
-	accounts = map[common.Address]vm.Account{}
-	for k,v := range self.env.accounts {
-		accounts[k] = v
+func (self *vmAdapter) Accounts() (accounts []vm.Account, err error) {
+	accounts = []vm.Account{}
+	for _,v := range self.env.accounts {
+		accounts = append(accounts,v)
 	}
 	return
 }
@@ -238,6 +291,14 @@ func (self *vmAdapter) Removed() (addresses []common.Address, err error) {
 	return
 }
 
+func (self *vmAdapter) Err() error {
+	if self.env == nil {
+		return vm.TerminatedError
+	} else {
+		return self.env.err
+	}
+}
+
 func (self *vmAdapter) Name() string {
 	return "CLASSIC VM"
 }
@@ -246,8 +307,28 @@ func (self *vmAdapter) Type() vm.Type {
 	return vm.ClassicVm
 }
 
+func (self *vmEnv) QueryRule(number uint64) *vmRule {
+	for {
+		if r, exists := self.rules[number]; exists {
+			return r
+		} else {
+			self.handleOnError(&vm.Require{ID:vm.RequireRules,Number:number})
+		}
+	}
+}
+
+func (self *vmEnv) GasTable(block *big.Int) *vm.GasTable{
+	number := block.Uint64()
+	return self.QueryRule(number).table
+}
+
+func (self *vmEnv) IsHomestead(block *big.Int) bool{
+	number := block.Uint64()
+	return self.QueryRule(number).fork >= vm.Homestead
+}
+
 func (self *vmEnv) RuleSet() vm.RuleSet {
-	return nil
+	return self
 }
 
 func (self *vmEnv) Origin() common.Address {
@@ -295,7 +376,7 @@ func (self *vmEnv) GetHash(n uint64) common.Hash {
 		if h, exists := self.hashes[n]; exists {
 			return h.hash
 		} else {
-			self.handleOnError(&vm.RequireHashError{n})
+			self.handleOnError(&vm.Require{ID:vm.RequireHash,Number:n})
 		}
 	}
 }
@@ -354,7 +435,7 @@ func (self *vmEnv) QueryCode(addr common.Address) *vmCode {
 		if c, exists := self.codes[addr]; exists {
 			return c
 		} else {
-			self.handleOnError(&vm.RequireCodeError{addr})
+			self.handleOnError(&vm.Require{ID:vm.RequireCode,Address:addr})
 		}
 	}
 }
@@ -364,7 +445,7 @@ func (self *vmEnv) QueryAccount(addr common.Address) state.AccountObject {
 		if a, exists := self.accounts[addr]; exists {
 			return a
 		} else {
-			self.handleOnError(&vm.RequireAccountError{addr})
+			self.handleOnError(&vm.Require{ID:vm.RequireAccount,Address:addr})
 		}
 	}
 }

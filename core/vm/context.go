@@ -24,6 +24,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"errors"
 )
 
 // Type is the VM type
@@ -179,3 +180,8 @@ type Machine interface {
 	// Create contract in new VM context
 	Create(blockNumber uint64, caller common.Address, code []byte, gas, price, value *big.Int) (Context, error)
 }
+
+var (
+	TerminatedError = errors.New("VM context terminated")
+	BrokenError = errors.New("VM context broken")
+)

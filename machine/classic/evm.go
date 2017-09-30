@@ -378,6 +378,6 @@ func (evm *EVM) RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Co
 
 		return ret, nil
 	} else {
-		return nil, vm.OutOfGasError
+		return nil, OutOfGasError
 	}
 }

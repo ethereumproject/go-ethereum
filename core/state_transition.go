@@ -21,7 +21,6 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	db "github.com/ethereumproject/go-ethereum/core/state"
@@ -166,7 +165,7 @@ func (self *StateTransition) to() db.AccountObject {
 
 func (self *StateTransition) useGas(amount *big.Int) error {
 	if self.gas.Cmp(amount) < 0 {
-		return vm.OutOfGasError
+		return OutOfGasError
 	}
 	self.gas.Sub(self.gas, amount)
 
@@ -239,7 +238,7 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	//var addr common.Address
 	if contractCreation {
 		ret, _, err = vmenv.Create(sender, self.data, self.gas, self.gasPrice, self.value)
-		if homestead && err == vm.CodeStoreOutOfGasError {
+		if homestead && err == CodeStoreOutOfGasError {
 			self.gas = big.NewInt(0)
 		}
 

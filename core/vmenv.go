@@ -70,10 +70,14 @@ func (self *vmEnv) do(callOrCreate func(*vmEnv)(vm.Context,error)) ([]byte, comm
 			err error
 			out []byte
 			address common.Address
+			pa *common.Address
 		)
 		context, err = callOrCreate(self)
 		if err == nil {
-			out, address, err = self.execute(context)
+			out, pa, err = self.execute(context)
+			if pa != nil {
+				address = *pa
+			}
 			context.Finish()
 		}
 		if err != machineBrokenError {
@@ -100,7 +104,7 @@ func (self *vmEnv) Create(caller state.AccountObject, data []byte, gas, price, v
 
 var machineBrokenError = errors.New("machine broken")
 
-func (self *vmEnv) execute(ctx vm.Context) ([]byte,common.Address,error) {
+func (self *vmEnv) execute(ctx vm.Context) ([]byte,*common.Address,error) {
 	for {
 		req := ctx.Fire()
 		if req != nil {
@@ -166,7 +170,7 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,common.Address,error) {
 						o.SetCode(v.CodeHash(),code)
 					}
 				}
-				return out, address, nil
+				return out, &address, nil
 			case vm.TransferErr:
 				return nil, nil, InvalidTxError(ctx.Err())
 			case vm.Broken, vm.Terminated :
@@ -205,7 +209,7 @@ func getFork(number *big.Int, chainConfig *ChainConfig) vm.Fork {
 }
 
 func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) (VmEnv,error) {
-	var machine vm.Machine = nil // classic.NewMachine()
+	var machine vm.Machine = classic.NewMachine()
 	fork := getFork(header.Number, chainConfig)
 	vmenv := &vmEnv{
 		header.Coinbase,
@@ -219,3 +223,8 @@ func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain,
 	return vmenv, nil
 }
 
+var (
+ 	OutOfGasError			= errors.New("Out of gas")
+	CodeStoreOutOfGasError	= errors.New("Contract creation code storage out of gas")
+	TransferError			= errors.New("Insufficient balance, transfer failed")
+)
