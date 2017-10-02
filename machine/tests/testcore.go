@@ -1,4 +1,3 @@
-
 package tests
 
 import (
@@ -10,13 +9,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"math/big"
+	"bytes"
 
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/common"
-	"bytes"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/core/types"
 )
 
@@ -160,7 +158,7 @@ func insertAccount(state *state.StateDB, saddr string, account Account) {
 	}
 }
 
-func checkLogs(tlog []Log, logs vm.Logs) error {
+func checkLogs(tlog []Log, logs state.Logs) error {
 
 	if len(tlog) != len(logs) {
 		return fmt.Errorf("log length mismatch. Expected %d, got %d", len(tlog), len(logs))
@@ -183,7 +181,7 @@ func checkLogs(tlog []Log, logs vm.Logs) error {
 					}
 				}
 			}
-			genBloom := common.LeftPadBytes(types.LogsBloom(vm.Logs{logs[i]}).Bytes(), 256)
+			genBloom := common.LeftPadBytes(types.LogsBloom(state.Logs{logs[i]}).Bytes(), 256)
 
 			if !bytes.Equal(genBloom, common.Hex2Bytes(log.BloomF)) {
 				return fmt.Errorf("bloom mismatch")

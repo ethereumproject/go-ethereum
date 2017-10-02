@@ -238,7 +238,7 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	//var addr common.Address
 	if contractCreation {
 		ret, _, err = vmenv.Create(sender, self.data, self.gas, self.gasPrice, self.value)
-		if homestead && err == CodeStoreOutOfGasError {
+		if homestead && err == OutOfGasError {
 			self.gas = big.NewInt(0)
 		}
 
@@ -255,8 +255,8 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 		}
 	}
 
-	if err == TransferError {
-		return nil, nil, nil, InvalidTxError(err)
+	if IsInvalidTxErr(err) {
+		return nil, nil, nil, err
 	} else {
 		// We aren't interested in errors here. Errors returned by the VM are non-consensus errors and therefor shouldn't bubble up
 		err = nil

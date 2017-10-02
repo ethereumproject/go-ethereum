@@ -45,6 +45,7 @@ type RuleSet struct {
 	ExplosionBlock           *big.Int
 }
 
+
 type Env struct {
 	ruleSet      RuleSet
 	depth        int
@@ -64,30 +65,75 @@ type Env struct {
 
 	vmTest bool
 
-	evm vm.VirtualMachine
+	evm vm.Machine
 }
 
-func (self *Env) Call(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	self.evm.Start(me.Address(), addr, data, gas, price, value)
-	defer self.evm.Finish()
+func (self *Env) Call(me common.Address, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	ctx, _ := self.evm.Call(self.number.Uint64(), me, addr, data, gas, price, value)
 	for {
-		err := self.evm.Fire()
-		if err != nil {
-			if e, ok := err.(*vm.RequireAccountError); ok {
-				acc := self.state.GetAccount(e.Address)
-				self.evm.CommitAccount(acc)
-			} else if e, ok := err.(*vm.RequireHashError); ok {
+		r := ctx.Fire()
+		if r != nil {
+			switch r.ID {
+			case vm.RequireAccount:
+				acc := self.state.GetAccount(r.Address)
+				ctx.CommitAccount(acc.Address(),acc.Nonce(),acc.Balance())
+			case vm.RequireHash:
 				hash := common.Hash{}
-				self.evm.CommitBlockhash(e.Number,hash)
-			} else if e, ok := err.(*vm.RequireCodeError); ok {
-
-			} else {
-				return nil,e
+				ctx.CommitBlockhash(r.Number,hash)
+			case vm.RequireCode:
+				ctx.CommitCode(r.Address,self.state.GetCodeHash(r.Address),self.state.GetCode(r.Address))
+			case vm.RequireRules:
+				fork := vm.Frontier
+				if self.ruleSet.IsHomestead(self.number) {
+					fork = vm.Homestead
+				}
+				ctx.CommitRules(self.ruleSet.GasTable(self.number),fork,self.difficulty,self.gasLimit,self.time)
 			}
 		} else {
-			out, err := self.evm.Out()
+			out, err := ctx.Out()
 			return out, err
 		}
+	}
+}
+
+func (r RuleSet) IsHomestead(n *big.Int) bool {
+	return n.Cmp(r.HomesteadBlock) >= 0
+}
+func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
+	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
+		return &vm.GasTable{
+			ExtcodeSize:     big.NewInt(20),
+			ExtcodeCopy:     big.NewInt(20),
+			Balance:         big.NewInt(20),
+			SLoad:           big.NewInt(50),
+			Calls:           big.NewInt(40),
+			Suicide:         big.NewInt(0),
+			ExpByte:         big.NewInt(10),
+			CreateBySuicide: nil,
+		}
+	}
+	if r.DiehardBlock == nil || num == nil || num.Cmp(r.DiehardBlock) < 0 {
+		return &vm.GasTable{
+			ExtcodeSize:     big.NewInt(700),
+			ExtcodeCopy:     big.NewInt(700),
+			Balance:         big.NewInt(400),
+			SLoad:           big.NewInt(200),
+			Calls:           big.NewInt(700),
+			Suicide:         big.NewInt(5000),
+			ExpByte:         big.NewInt(10),
+			CreateBySuicide: big.NewInt(25000),
+		}
+	}
+
+	return &vm.GasTable{
+		ExtcodeSize:     big.NewInt(700),
+		ExtcodeCopy:     big.NewInt(700),
+		Balance:         big.NewInt(400),
+		SLoad:           big.NewInt(200),
+		Calls:           big.NewInt(700),
+		Suicide:         big.NewInt(5000),
+		ExpByte:         big.NewInt(50),
+		CreateBySuicide: big.NewInt(25000),
 	}
 }
 
@@ -123,7 +169,7 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	}
 
 	env.Gas = new(big.Int)
-	env.evm = classic.AdaptVM()
+	env.evm = classic.NewMachine()
 
 	return env
 }
@@ -228,7 +274,7 @@ func runVmTest(test VmTest) error {
 	return nil
 }
 
-func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Logs, *big.Int, error) {
 	var (
 		to       = common.HexToAddress(exec["address"])
 		from     = common.HexToAddress(exec["caller"])
@@ -256,7 +302,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 	vmenv.skipTransfer = true
 	vmenv.initial = true
 
-	ret, err := vmenv.Call(caller, to, data, gas, price, value)
+	ret, err := vmenv.Call(caller.Address(), to, data, gas, price, value)
 	return ret, vmenv.state.Logs(), vmenv.Gas, err
 }
 
