@@ -23,7 +23,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 )
 
@@ -40,9 +40,9 @@ type Filter struct {
 	addresses  []common.Address
 	topics     [][]common.Hash
 
-	BlockCallback       func(*types.Block, vm.Logs)
+	BlockCallback       func(*types.Block, state.Logs)
 	TransactionCallback func(*types.Transaction)
-	LogCallback         func(*vm.Log, bool)
+	LogCallback         func(*state.Log, bool)
 }
 
 // Create a new filter which uses a bloom filter on blocks to figure out whether a particular block
@@ -71,10 +71,10 @@ func (self *Filter) SetTopics(topics [][]common.Hash) {
 }
 
 // Run filters logs with the current parameters set
-func (self *Filter) Find() vm.Logs {
+func (self *Filter) Find() state.Logs {
 	latestBlock := core.GetBlock(self.db, core.GetHeadBlockHash(self.db))
 	if latestBlock == nil {
-		return vm.Logs{}
+		return state.Logs{}
 	}
 	var beginBlockNo uint64 = uint64(self.begin)
 	if self.begin == -1 {
@@ -94,7 +94,7 @@ func (self *Filter) Find() vm.Logs {
 	return self.mipFind(beginBlockNo, endBlockNo, 0)
 }
 
-func (self *Filter) mipFind(start, end uint64, depth int) (logs vm.Logs) {
+func (self *Filter) mipFind(start, end uint64, depth int) (logs state.Logs) {
 	level := core.MIPMapLevels[depth]
 	// normalise numerator so we can work in level specific batches and
 	// work with the proper range checks
@@ -124,7 +124,7 @@ func (self *Filter) mipFind(start, end uint64, depth int) (logs vm.Logs) {
 	return logs
 }
 
-func (self *Filter) getLogs(start, end uint64) (logs vm.Logs) {
+func (self *Filter) getLogs(start, end uint64) (logs state.Logs) {
 	for i := start; i <= end; i++ {
 		var block *types.Block
 		hash := core.GetCanonicalHash(self.db, i)
@@ -141,7 +141,7 @@ func (self *Filter) getLogs(start, end uint64) (logs vm.Logs) {
 			// Get the logs of the block
 			var (
 				receipts   = core.GetBlockReceipts(self.db, block.Hash())
-				unfiltered vm.Logs
+				unfiltered state.Logs
 			)
 			for _, receipt := range receipts {
 				unfiltered = append(unfiltered, receipt.Logs...)
@@ -163,8 +163,8 @@ func includes(addresses []common.Address, a common.Address) bool {
 	return false
 }
 
-func (self *Filter) FilterLogs(logs vm.Logs) vm.Logs {
-	var ret vm.Logs
+func (self *Filter) FilterLogs(logs state.Logs) state.Logs {
+	var ret state.Logs
 
 	// Filter the logs for interesting stuff
 Logs:

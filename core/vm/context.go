@@ -24,6 +24,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"errors"
 )
 
 // Type is the VM type
@@ -81,6 +82,7 @@ type Status byte
 
 const (
 	ExitedOk Status = iota
+	Inactive	  // vm is inactive
 	Running       // vm is running
 	RequireErr    // vm requires some information
 	TransferErr   // account has insufficient balance and transfer is not possible
@@ -102,8 +104,6 @@ type Account interface {
 	Address() common.Address
 	Nonce() uint64
 	Balance() *big.Int
-	Code() []byte
-	CodeHash() common.Hash
 }
 
 type RequireID byte
@@ -121,12 +121,6 @@ type Require struct {
 	Number  uint64
 }
 
-type Debugger interface {
-	// Run one instruction and return. If it succeeds, VM status can
-	// still be `Running`.
-	Step() *Require
-}
-
 type Context interface {
 	// Commit an account information to this VM. This should only
 	// be used when receiving `RequireAccountError`.
@@ -134,36 +128,27 @@ type Context interface {
 	// Commit a block hash to this VM. This should only be used when
 	// receiving `RequireBlockhashError`.
 	CommitBlockhash(number uint64,hash common.Hash) error
-	// Commit a contract code to this VM. This should only be used when
-	// receiving `RequireCodeError`.
+	// Commit a contract code to this VM.
 	CommitCode(address common.Address, hash common.Hash, code []byte) error
-	// Commit a contract code to this VM. This should only be used when
-	// receiving `RequireRulesError`.
-	CommitRules(number uint64, table *GasTable, fork Fork) error
+	// Commit a gas rules
+	CommitRules(table *GasTable, fork Fork, difficulty, gasLimit, time *big.Int) error
 	// Finish VM context
 	Finish() error
-	// Returns the changed or committed accounts information up to
-	// current execution status.
-	Accounts() ([]Account, error)
+	// Returns the changed accounts information
+	Modified() ([]Account, error)
+	// Returns all addresses of removed accounts.
+	Removed() ([]common.Address, error)
+	// Returns all addresses of committed and not modified accounts
+	Committed() ([]common.Address, error)
+	// Returns the created accounts code.
+	Code(common.Address) (common.Hash, []byte, error)
 	// Returns new contract address on Create and called contract address on Call.
 	Address() (common.Address, error)
 	// Returns the out value, if any.
 	Out() ([]byte, error)
-	// Returns the available gas of this VM.
-	AvailableGas() (*big.Int, error)
-	// Returns the refunded gas of this VM.
-	RefundedGas() (*big.Int, error)
 	// Returns logs to be appended to the current block if the user
 	// decided to accept the running status of this VM.
 	Logs() (state.Logs, error)
-	// Returns all removed account addresses as for current VM execution.
-	Removed() ([]common.Address, error)
-	// Debug VM
-	Debug() (Debugger, error)
-	// Type of VM
-	Type() Type
-	// Name of VM
-	Name() string
 	// Returns the current status of the VM.
 	Status() Status
 	// Returns the current error in details.
@@ -178,4 +163,13 @@ type Machine interface {
 	Call(blockNumber uint64, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (Context, error)
 	// Create contract in new VM context
 	Create(blockNumber uint64, caller common.Address, code []byte, gas, price, value *big.Int) (Context, error)
+	// Type of VM
+	Type() Type
+	// Name of VM
+	Name() string
 }
+
+var (
+	TerminatedError = errors.New("VM context terminated")
+	BrokenError = errors.New("VM context broken")
+)

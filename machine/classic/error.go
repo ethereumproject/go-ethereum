@@ -22,9 +22,3 @@ func IsValueTransferErr(e error) bool {
 	return ok
 }
 
-/*
-var (
- 	OutOfGasError          = errors.New("Out of gas")
-	CodeStoreOutOfGasError = errors.New("Contract creation code storage out of gas")
-)
-*/

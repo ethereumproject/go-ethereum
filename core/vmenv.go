@@ -40,6 +40,9 @@ type VmEnv interface {
 type vmEnv struct {
 	coinbase 	common.Address
 	number  	*big.Int
+	difficulty  *big.Int
+	gasLimit	*big.Int
+	time		*big.Int
 	db      	*state.StateDB
 	hashfn		func(n uint64) common.Hash
 	fork		vm.Fork
@@ -70,13 +73,17 @@ func (self *vmEnv) do(callOrCreate func(*vmEnv)(vm.Context,error)) ([]byte, comm
 			err error
 			out []byte
 			address common.Address
+			pa *common.Address
 		)
 		context, err = callOrCreate(self)
 		if err == nil {
-			out, address, err = self.execute(context)
+			out, pa, err = self.execute(context)
+			if pa != nil {
+				address = *pa
+			}
 			context.Finish()
 		}
-		if err != machineBrokenError {
+		if err != vm.BrokenError {
 			return out, address, err
 		} else {
 			// ?? mybe will better to switch to the classic vm and try again before ??
@@ -98,9 +105,7 @@ func (self *vmEnv) Create(caller state.AccountObject, data []byte, gas, price, v
 	})
 }
 
-var machineBrokenError = errors.New("machine broken")
-
-func (self *vmEnv) execute(ctx vm.Context) ([]byte,common.Address,error) {
+func (self *vmEnv) execute(ctx vm.Context) ([]byte,*common.Address,error) {
 	for {
 		req := ctx.Fire()
 		if req != nil {
@@ -121,9 +126,7 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,common.Address,error) {
 				hash := self.hashfn(number)
 				ctx.CommitBlockhash(number,hash)
 			case vm.RequireRules:
-				number := new(big.Int).SetUint64(req.Number)
-				fork := self.fork
-				ctx.CommitRules(req.Number,self.rules.GasTable(number),fork)
+				ctx.CommitRules(self.rules.GasTable(self.number),self.fork,self.difficulty,self.gasLimit,self.time)
 			default:
 				if ctx.Status() == vm.RequireErr {
 					// ?? unsupported VM implementaion ??
@@ -140,17 +143,18 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,common.Address,error) {
 			case vm.ExitedOk:
 				out, err := ctx.Out()
 				if err != nil {
-					return nil, nil, machineBrokenError
+					return nil, nil, err
 				}
 				address, err := ctx.Address()
 				if err != nil {
-					return nil, nil, machineBrokenError
+					return nil, nil, err
 				}
-				accounts, err := ctx.Accounts()
+				accounts, err := ctx.Modified()
 				if err != nil {
-					return nil, nil, machineBrokenError
+					return nil, nil, err
 				}
 				// applying state here
+				snapshot := self.db.Snapshot()
 				for _, v := range accounts {
 					var o state.AccountObject
 					address := v.Address()
@@ -158,19 +162,25 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,common.Address,error) {
 						o = self.db.GetAccount(address)
 					} else {
 						o = self.db.CreateAccount(address)
+						hash, code, err := ctx.Code(address)
+						if err != nil {
+							self.db.RevertToSnapshot(snapshot)
+							return nil, nil, err
+						}
+						if code {
+							o.SetCode(hash,code)
+						}
 					}
 					o.SetBalance(v.Balance())
 					o.SetNonce(v.Nonce())
-					code := v.Code()
-					if code != nil {
-						o.SetCode(v.CodeHash(),code)
-					}
 				}
-				return out, address, nil
+				return out, &address, nil
 			case vm.TransferErr:
 				return nil, nil, InvalidTxError(ctx.Err())
-			case vm.Broken, vm.Terminated :
-				return nil, nil, machineBrokenError
+			case vm.Broken, vm.Terminated, vm.BadCode :
+				return nil, nil, ctx.Err()
+			case vm.OutOfGas:
+				return nil, nil, OutOfGasError
 			default:
 				// ?? unsupported VM implementaion ??
 				// should we panic or use known VM instead?
@@ -205,11 +215,14 @@ func getFork(number *big.Int, chainConfig *ChainConfig) vm.Fork {
 }
 
 func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) (VmEnv,error) {
-	var machine vm.Machine = nil // classic.NewMachine()
+	var machine vm.Machine = classic.NewMachine()
 	fork := getFork(header.Number, chainConfig)
 	vmenv := &vmEnv{
 		header.Coinbase,
 		header.Number,
+		header.Difficulty,
+		header.GasLimit,
+		header.Time,
 		statedb,
 		GetHashFn(header.ParentHash, chain),
 		fork,
@@ -219,3 +232,6 @@ func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain,
 	return vmenv, nil
 }
 
+var (
+ 	OutOfGasError			= errors.New("Out of gas")
+)
