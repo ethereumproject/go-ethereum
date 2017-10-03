@@ -113,9 +113,9 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 		// If block1920000 doesn't exist, given above checks for directory structure expectations,
 		// I think it's safe to assume that the chaindata directory is just too 'young', where it hasn't
 		// synced until block 1920000, and therefore can be migrated.
-		conf := core.DefaultConfig
+		conf := core.DefaultConfigMainnet.ChainConfig
 		if chainIsMorden(ctx) {
-			conf = core.TestConfig
+			conf = core.DefaultConfigMorden.ChainConfig
 		}
 
 		hf := conf.ForkByName("The DAO Hard Fork")

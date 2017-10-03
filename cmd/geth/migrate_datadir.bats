@@ -43,7 +43,7 @@ setup() {
 	elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then
 	    # Do something under 32 bits Windows NT platform
 	    echo "Win32 not supported."
-	    exit 1 
+	    exit 1
 	elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW64_NT" ]; then
 	    # Do something under 64 bits Windows NT platform
 	    TEST_OS_HF=windows
@@ -109,7 +109,7 @@ teardown() {
 
 	# Ensure datadir is renamed.
 	! [ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
-	
+
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME" ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
@@ -206,7 +206,7 @@ teardown() {
 
 	# Set up custom net config.
 	mkdir -p $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
+	cp $BATS_TEST_DIRNAME/../../core/config/mainnet.json $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
 
 	run $GETH_CMD --fast --verbosity 5 --chain kitty --ipc-disable --exec='exit' console
@@ -299,7 +299,7 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
 
 	run $GETH_CMD --fast --verbosity 5 --exec='exit' console
-	echo "$output"	
+	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
@@ -310,7 +310,7 @@ teardown() {
 }
 
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETC3.3 schema without any ETC data in it" {
-	
+
 	mkdir -p "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/{chaindata,nodes,dapp,keystore} # We're on Bash 4.0, right?
 	echo "bellow word" > "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/nodekey
 
@@ -318,7 +318,7 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/chaindata ]
 
 	run $GETH_CMD --fast --verbosity 5 --exec='exit' console
-	echo "$output"	
+	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
@@ -334,7 +334,7 @@ teardown() {
 }
 
 @test "shouldnot migrate datadir /Ethereum/ -> /EthereumClassic/ from ETHF schema without any ETH data in it" {
-	
+
 	mkdir -p "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth # We're on Bash 4.0, right?
 	echo "bellow word" > "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth.ipc
 
@@ -342,7 +342,7 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX"/geth ]
 
 	run $GETH_CMD --fast --verbosity 5 --exec='exit' console
-	echo "$output"	
+	echo "$output"
 	[ "$status" -eq 0 ]
 
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME_EX" ]
@@ -353,5 +353,3 @@ teardown() {
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet ]
 	[ -d "$DATA_DIR_PARENT"/"$DATA_DIR_NAME"/mainnet/chaindata ]
 }
-
-
