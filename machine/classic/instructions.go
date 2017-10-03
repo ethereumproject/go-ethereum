@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package vm
+package classic
 
 import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
 var callStipend = big.NewInt(2300) // Free gas given at beginning of call.
@@ -28,10 +30,10 @@ var callStipend = big.NewInt(2300) // Free gas given at beginning of call.
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
 
 type instruction struct {
-	op   OpCode
-	pc   uint64
-	fn   instrFn
-	data *big.Int
+	op    vm.OpCode
+	pc    uint64
+	fn    instrFn
+	data  *big.Int
 
 	gas   *big.Int
 	spop  int
@@ -44,7 +46,7 @@ func (instr instruction) halts() bool {
 	return instr.returns
 }
 
-func (instr instruction) Op() OpCode {
+func (instr instruction) Op() vm.OpCode {
 	return instr.op
 }
 
@@ -530,7 +532,7 @@ func makeLog(size int) instrFn {
 		}
 
 		d := memory.Get(mStart.Int64(), mSize.Int64())
-		log := NewLog(contract.Address(), topics, d, env.BlockNumber().Uint64())
+		log := state.NewLog(contract.Address(), topics, d, env.BlockNumber().Uint64())
 		env.AddLog(log)
 	}
 }

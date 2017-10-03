@@ -14,19 +14,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package vm
+package classic
 
 import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 // ContractRef is a reference to the contract's backing object
 type ContractRef interface {
 	ReturnGas(*big.Int, *big.Int)
 	Address() common.Address
-	Value() *big.Int
+	//Value() *big.Int
 	SetCode(common.Hash, []byte)
 	ForEachStorage(callback func(key, value common.Hash) bool)
 }
@@ -89,8 +90,8 @@ func (c *Contract) AsDelegate() *Contract {
 }
 
 // GetOp returns the n'th element in the contract's byte array
-func (c *Contract) GetOp(n uint64) OpCode {
-	return OpCode(c.GetByte(n))
+func (c *Contract) GetOp(n uint64) vm.OpCode {
+	return vm.OpCode(c.GetByte(n))
 }
 
 // GetByte returns the n'th byte in the contract's byte array

@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package vm
+package classic
 
 import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 // destinations stores one map per contract (keyed by hash of code).
@@ -49,11 +50,11 @@ func (d destinations) has(codehash common.Hash, code []byte, dest *big.Int) bool
 func jumpdests(code []byte) []byte {
 	m := make([]byte, len(code)/8+1)
 	for pc := uint64(0); pc < uint64(len(code)); pc++ {
-		op := OpCode(code[pc])
-		if op == JUMPDEST {
+		op := vm.OpCode(code[pc])
+		if op == vm.JUMPDEST {
 			m[pc/8] |= 1 << (pc % 8)
-		} else if op >= PUSH1 && op <= PUSH32 {
-			a := uint64(op) - uint64(PUSH1) + 1
+		} else if op >= vm.PUSH1 && op <= vm.PUSH32 {
+			a := uint64(op) - uint64(vm.PUSH1) + 1
 			pc += a
 		}
 	}
