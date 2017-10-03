@@ -14,7 +14,24 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/machine/classic"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"os"
+	"os/signal"
+	"syscall"
+	"runtime"
 )
+
+func init() {
+	sigChan := make(chan os.Signal)
+	go func() {
+		stacktrace := make([]byte, 8192)
+		for _ = range sigChan {
+			length := runtime.Stack(stacktrace, true)
+			fmt.Println(string(stacktrace[:length]))
+			syscall.Exit(-1)
+		}
+	}()
+	signal.Notify(sigChan, syscall.SIGINT)
+}
 
 type VmEnv struct {
 	CurrentCoinbase   string
@@ -52,7 +69,6 @@ type Env struct {
 	state        *state.StateDB
 	skipTransfer bool
 	initial      bool
-	Gas          *big.Int
 
 	origin   common.Address
 	parent   common.Hash
@@ -68,15 +84,19 @@ type Env struct {
 	evm vm.Machine
 }
 
-func (self *Env) Call(me common.Address, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *Env) Call(me common.Address, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, *big.Int, error) {
 	ctx, _ := self.evm.Call(self.number.Uint64(), me, addr, data, gas, price, value)
 	for {
 		r := ctx.Fire()
 		if r != nil {
 			switch r.ID {
 			case vm.RequireAccount:
-				acc := self.state.GetAccount(r.Address)
-				ctx.CommitAccount(acc.Address(),acc.Nonce(),acc.Balance())
+				if self.state.Exist(r.Address) {
+					a := self.state.GetAccount(r.Address)
+					ctx.CommitAccount(a.Address(),a.Nonce(),a.Balance())
+				} else {
+					ctx.CommitAccount(r.Address,0,nil)
+				}
 			case vm.RequireHash:
 				hash := common.Hash{}
 				ctx.CommitBlockhash(r.Number,hash)
@@ -88,10 +108,42 @@ func (self *Env) Call(me common.Address, addr common.Address, data []byte, gas, 
 					fork = vm.Homestead
 				}
 				ctx.CommitRules(self.ruleSet.GasTable(self.number),fork,self.difficulty,self.gasLimit,self.time)
+			case vm.RequireValue:
+				value := self.state.GetState(r.Address,r.Hash)
+				ctx.CommitValue(r.Address,r.Hash,value)
 			}
 		} else {
-			out, err := ctx.Out()
-			return out, err
+			if ctx.Status() == vm.ExitedOk {
+				modified, _ := ctx.Modified()
+				for _, a := range modified {
+					var o state.AccountObject
+					addr := a.Address()
+					if self.state.Exist(addr) {
+						o = self.state.GetAccount(addr)
+					} else {
+						o = self.state.CreateAccount(addr)
+						hash, code, _ := ctx.Code(addr)
+						if code != nil {
+							o.SetCode(hash,code)
+						}
+					}
+					o.SetBalance(a.Balance())
+					o.SetNonce(a.Nonce())
+				}
+				removed, _ := ctx.Removed()
+				for _, a := range removed {
+					self.state.Suicide(a)
+				}
+				kvs, _ := ctx.Values()
+				for _, kv := range kvs {
+					self.state.SetState(kv.Address(),kv.Key(),kv.Value())
+				}
+				logs, _ := ctx.Logs()
+				for _, l := range logs {
+					self.state.AddLog(l)
+				}
+			}
+			return ctx.Out()
 		}
 	}
 }
@@ -168,8 +220,8 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 		panic("malformed current gas limit")
 	}
 
-	env.Gas = new(big.Int)
 	env.evm = classic.NewMachine()
+	env.evm.SkipTransfer()
 
 	return env
 }
@@ -302,8 +354,8 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 	vmenv.skipTransfer = true
 	vmenv.initial = true
 
-	ret, err := vmenv.Call(caller.Address(), to, data, gas, price, value)
-	return ret, vmenv.state.Logs(), vmenv.Gas, err
+	ret, gasRefund, err := vmenv.Call(caller.Address(), to, data, gas, price, value)
+	return ret, vmenv.state.Logs(), gasRefund, err
 }
 
 func TestVMArithmetic(t *testing.T) {

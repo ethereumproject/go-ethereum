@@ -36,7 +36,7 @@ func init() {
 	glog.SetV(0)
 }
 
-func checkLogs(tlog []Log, logs vm.Logs) error {
+func checkLogs(tlog []Log, logs classic.Logs) error {
 
 	if len(tlog) != len(logs) {
 		return fmt.Errorf("log length mismatch. Expected %d, got %d", len(tlog), len(logs))
@@ -259,13 +259,13 @@ func (self *Env) BlockNumber() *big.Int    { return self.number }
 func (self *Env) Coinbase() common.Address { return self.coinbase }
 func (self *Env) Time() *big.Int           { return self.time }
 func (self *Env) Difficulty() *big.Int     { return self.difficulty }
-func (self *Env) Db() vm.Database          { return self.state }
+func (self *Env) Db() classic.Database     { return self.state }
 func (self *Env) GasLimit() *big.Int       { return self.gasLimit }
-func (self *Env) VmType() vm.Type          { return vm.ClassicVmTy }
+func (self *Env) VmType() vm.Type          { return vm.ClassicVm }
 func (self *Env) GetHash(n uint64) common.Hash {
 	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 }
-func (self *Env) AddLog(log *vm.Log) {
+func (self *Env) AddLog(log *state.Log) {
 	self.state.AddLog(log)
 }
 func (self *Env) Depth() int     { return self.depth }
@@ -287,14 +287,14 @@ func (self *Env) RevertToSnapshot(snapshot int) {
 	self.state.RevertToSnapshot(snapshot)
 }
 
-func (self *Env) Transfer(from, to vm.Account, amount *big.Int) {
+func (self *Env) Transfer(from, to state.AccountObject, amount *big.Int) {
 	if self.skipTransfer {
 		return
 	}
 	classic.Transfer(from, to, amount)
 }
 
-func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *Env) Call(caller classic.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	if self.vmTest && self.depth > 0 {
 		caller.ReturnGas(gas, price)
 
@@ -306,7 +306,7 @@ func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, g
 	return ret, err
 
 }
-func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *Env) CallCode(caller classic.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	if self.vmTest && self.depth > 0 {
 		caller.ReturnGas(gas, price)
 
@@ -315,16 +315,16 @@ func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byt
 	return classic.CallCode(self, caller, addr, data, gas, price, value)
 }
 
-func (self *Env) DelegateCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+func (self *Env) DelegateCall(caller classic.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
 	if self.vmTest && self.depth > 0 {
 		caller.ReturnGas(gas, price)
 
 		return nil, nil
 	}
-	return classic.DelegateCall(self, caller, addr, data, gas, price)
+	return classic.DelegateCall(self, caller.(*classic.Contract), addr, data, gas, price)
 }
 
-func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+func (self *Env) Create(caller classic.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	if self.vmTest {
 		caller.ReturnGas(gas, price)
 

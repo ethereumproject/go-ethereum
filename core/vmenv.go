@@ -141,7 +141,7 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,*common.Address,error) {
 		} else {
 			switch ctx.Status() {
 			case vm.ExitedOk:
-				out, err := ctx.Out()
+				out, _, err := ctx.Out()
 				if err != nil {
 					return nil, nil, err
 				}
@@ -177,9 +177,9 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,*common.Address,error) {
 				return out, &address, nil
 			case vm.TransferErr:
 				return nil, nil, InvalidTxError(ctx.Err())
-			case vm.Broken, vm.Terminated, vm.BadCode :
+			case vm.Broken, vm.BadCodeErr :
 				return nil, nil, ctx.Err()
-			case vm.OutOfGas:
+			case vm.OutOfGasErr:
 				return nil, nil, OutOfGasError
 			default:
 				// ?? unsupported VM implementaion ??
@@ -233,5 +233,5 @@ func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain,
 }
 
 var (
- 	OutOfGasError			= errors.New("Out of gas")
+ 	OutOfGasError = errors.New("Out of gas")
 )

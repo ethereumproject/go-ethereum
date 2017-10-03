@@ -30,23 +30,25 @@ import (
 // Type is the VM type
 type Type byte
 const (
-	// classic VM
-	ClassicVm Type = iota
-	// sputnik VM
-	SputnikVm
-	// other external VM connected through RPC
-	OtherVm
+	ClassicVm Type = iota	// classic VM (legacy implementation from ethereum)
+	SputnikVm				// modern VM
+	OtherVm					// other external VM connected through RPC
 )
 
+// ManagerType says how to manage VM
+type ManagerType byte
 const (
-	ManageLocalVm = iota
-	UseExternalVm
+	ManageLocalVm ManagerType = iota // Automaticaly start/fork VM process and manage it
+	UseExternalVm	 // VM process managed separately
 )
+
+// ConnectionType says how to connect to VM
+type ConnectionType byte
 const (
-	LocalVm = iota
-	LocalIpcVm
-	LocalRpcVm
-	RemoteRpcVm
+	LocalVm ConnectionType = iota  // VM is in the same process
+	LocalIpcVm 		// VM is in the other copy of the process
+	LocalRpcVm		// VM is another executable listening on specified host:port
+	RemoteRpcVm	    // VM is started on other host
 )
 
 const DefaultVm      = ClassicVm
@@ -79,26 +81,30 @@ func (g *GasTable) IsEmpty() bool {
 }
 
 type Status byte
-
 const (
 	ExitedOk Status = iota
 	Inactive	  // vm is inactive
 	Running       // vm is running
 	RequireErr    // vm requires some information
 	TransferErr   // account has insufficient balance and transfer is not possible
-	OutOfGas      // out of gas error occurred
-	BadCode       // bad contract code
-	Terminated    // vm context terminated
+	OutOfGasErr   // out of gas error occurred
+	BadCodeErr    // bad contract code
+	ExitedErr     // unspecified error occured
 	Broken        // connection with vm is broken or vm is not response
 )
 
 type Fork byte
-
 const (
 	Frontier Fork = iota
 	Homestead
 	Diehard
 )
+
+type KeyValue interface {
+	Address() common.Address
+	Key() common.Hash
+	Value() common.Hash
+}
 
 type Account interface {
 	Address() common.Address
@@ -107,58 +113,60 @@ type Account interface {
 }
 
 type RequireID byte
-
 const (
 	RequireAccount RequireID = iota
 	RequireCode
 	RequireHash
 	RequireRules
+	RequireValue
 )
 
 type Require struct {
 	ID RequireID
 	Address common.Address
+	Hash    common.Hash
 	Number  uint64
 }
 
 type Context interface {
-	// Commit an account information to this VM. This should only
-	// be used when receiving `RequireAccountError`.
+	// Commit an account information
 	CommitAccount(address common.Address, nonce uint64, balance *big.Int) error
-	// Commit a block hash to this VM. This should only be used when
-	// receiving `RequireBlockhashError`.
+	// Commit a block hash
 	CommitBlockhash(number uint64,hash common.Hash) error
-	// Commit a contract code to this VM.
+	// Commit a contract code
 	CommitCode(address common.Address, hash common.Hash, code []byte) error
 	// Commit a gas rules
 	CommitRules(table *GasTable, fork Fork, difficulty, gasLimit, time *big.Int) error
+	// Commit a state
+	CommitValue(address common.Address, key common.Hash, value common.Hash) error
 	// Finish VM context
 	Finish() error
 	// Returns the changed accounts information
 	Modified() ([]Account, error)
-	// Returns all addresses of removed accounts.
+	// Returns all addresses of removed accounts
 	Removed() ([]common.Address, error)
-	// Returns all addresses of committed and not modified accounts
-	Committed() ([]common.Address, error)
-	// Returns the created accounts code.
+	// Returns the created accounts code
 	Code(common.Address) (common.Hash, []byte, error)
-	// Returns new contract address on Create and called contract address on Call.
+	// Returns modified stored values
+	Values() ([]KeyValue, error)
+	// Returns new contract address on Create and called contract address on Call
 	Address() (common.Address, error)
-	// Returns the out value, if any.
-	Out() ([]byte, error)
+	// Returns the out value and gas refund if any
+	Out() ([]byte, *big.Int, error)
 	// Returns logs to be appended to the current block if the user
-	// decided to accept the running status of this VM.
+	// decided to accept the running status of this VM
 	Logs() (state.Logs, error)
-	// Returns the current status of the VM.
+	// Returns the current status of the VM
 	Status() Status
-	// Returns the current error in details.
+	// Returns the current error in details
 	Err() error
-	// Run instructions until it reaches a `RequireErr` or
-	// exits.
+	// Run instructions until it reaches a `RequireErr` or exits
 	Fire() *Require
 }
 
 type Machine interface {
+	// Test feature
+	SkipTransfer() error
 	// Call contract in new VM context
 	Call(blockNumber uint64, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (Context, error)
 	// Create contract in new VM context
@@ -170,6 +178,5 @@ type Machine interface {
 }
 
 var (
-	TerminatedError = errors.New("VM context terminated")
 	BrokenError = errors.New("VM context broken")
 )

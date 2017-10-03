@@ -70,12 +70,14 @@ func exec(env Environment, caller ContractRef, address, codeAddr *common.Address
 	if env.Depth() > callCreateDepthMax {
 		caller.ReturnGas(gas, gasPrice)
 
+		fmt.Printf("max depth %v > %v\n",env.Depth(),callCreateDepthMax)
 		return nil, common.Address{}, errCallCreateDepth
 	}
 
 	if !env.CanTransfer(caller.Address(), value) {
 		caller.ReturnGas(gas, gasPrice)
 
+		fmt.Printf("no fund, required %v\n",value)
 		return nil, common.Address{}, ValueTransferErr("insufficient funds to transfer value. Req %v, has %v", value, env.Db().GetBalance(caller.Address()))
 	}
 
