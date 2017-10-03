@@ -18,6 +18,7 @@ import (
 	"os/signal"
 	"syscall"
 	"runtime"
+	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
 func init() {
@@ -85,7 +86,12 @@ type Env struct {
 }
 
 func (self *Env) Call(me common.Address, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, *big.Int, error) {
-	ctx, _ := self.evm.Call(self.number.Uint64(), me, addr, data, gas, price, value)
+	ctx, _ := self.evm.Call(me, addr, data, gas, price, value)
+	fork := vm.Frontier
+	if self.ruleSet.IsHomestead(self.number) {
+		fork = vm.Homestead
+	}
+	ctx.CommitInfo(self.number.Uint64(),self.coinbase,self.ruleSet.GasTable(self.number),fork,self.difficulty,self.gasLimit,self.time)
 	for {
 		r := ctx.Fire()
 		if r != nil {
@@ -98,16 +104,12 @@ func (self *Env) Call(me common.Address, addr common.Address, data []byte, gas, 
 					ctx.CommitAccount(r.Address,0,nil)
 				}
 			case vm.RequireHash:
-				hash := common.Hash{}
+				hash := common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(r.Number)).String())))
 				ctx.CommitBlockhash(r.Number,hash)
 			case vm.RequireCode:
 				ctx.CommitCode(r.Address,self.state.GetCodeHash(r.Address),self.state.GetCode(r.Address))
-			case vm.RequireRules:
-				fork := vm.Frontier
-				if self.ruleSet.IsHomestead(self.number) {
-					fork = vm.Homestead
-				}
-				ctx.CommitRules(self.ruleSet.GasTable(self.number),fork,self.difficulty,self.gasLimit,self.time)
+			case vm.RequireInfo:
+				panic("Info is already commited")
 			case vm.RequireValue:
 				value := self.state.GetState(r.Address,r.Hash)
 				ctx.CommitValue(r.Address,r.Hash,value)
@@ -221,7 +223,7 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	}
 
 	env.evm = classic.NewMachine()
-	env.evm.SkipTransfer()
+	env.evm.SetTestFeatures(vm.AllTestFeatures)
 
 	return env
 }

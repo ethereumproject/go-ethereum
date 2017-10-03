@@ -36,7 +36,7 @@ func init() {
 	glog.SetV(0)
 }
 
-func checkLogs(tlog []Log, logs classic.Logs) error {
+func checkLogs(tlog []Log, logs state.Logs) error {
 
 	if len(tlog) != len(logs) {
 		return fmt.Errorf("log length mismatch. Expected %d, got %d", len(tlog), len(logs))
@@ -59,7 +59,7 @@ func checkLogs(tlog []Log, logs classic.Logs) error {
 					}
 				}
 			}
-			genBloom := common.LeftPadBytes(types.LogsBloom(vm.Logs{logs[i]}).Bytes(), 256)
+			genBloom := common.LeftPadBytes(types.LogsBloom(state.Logs{logs[i]}).Bytes(), 256)
 
 			if !bytes.Equal(genBloom, common.Hex2Bytes(log.BloomF)) {
 				return fmt.Errorf("bloom mismatch")

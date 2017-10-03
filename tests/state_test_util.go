@@ -147,7 +147,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		ret []byte
 		// gas  *big.Int
 		// err  error
-		logs vm.Logs
+		logs state.Logs
 	)
 
 	ret, logs, _, _ = RunState(ruleSet, statedb, env, test.Transaction)
@@ -202,7 +202,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 	return nil
 }
 
-func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string) ([]byte, state.Logs, *big.Int, error) {
 	data := common.FromHex(tx["data"])
 	gas, _ := new(big.Int).SetString(tx["gasLimit"], 0)
 	price, _ := new(big.Int).SetString(tx["gasPrice"], 0)
@@ -237,11 +237,27 @@ func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string
 	message := NewMessage(addr, to, data, value, gas, price, nonce)
 	vmenv := NewEnvFromMap(ruleSet, statedb, env, tx)
 	vmenv.origin = addr
-	ret, _, err := core.ApplyMessage(vmenv, message, gaspool)
+	ret, _, err := core.ApplyMessage(&vmAdapter{vmenv}, message, gaspool)
 	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || core.IsGasLimitErr(err) {
 		statedb.RevertToSnapshot(snapshot)
 	}
 	statedb.Commit()
 
 	return ret, vmenv.state.Logs(), vmenv.Gas, err
+}
+
+type vmAdapter struct {
+	env *Env
+}
+
+func (self *vmAdapter) Coinbase() common.Address	{ return self.env.Coinbase() }
+func (self *vmAdapter) BlockNumber() *big.Int		{ return self.env.BlockNumber() }
+func (self *vmAdapter) RuleSet() vm.RuleSet			{ return self.env.RuleSet() }
+func (self *vmAdapter) Db() *state.StateDB			{ return self.env.state }
+
+func (self *vmAdapter) Call(sender common.Address, to common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	return self.env.Call(self.env.state.GetAccount(sender), to, data, gas, price, value)
+}
+func (self *vmAdapter) Create(me state.AccountObject, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+	return self.env.Create(me, data, gas, price, value)
 }

@@ -7,6 +7,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"errors"
+	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
 type command struct {
@@ -26,7 +28,7 @@ const (
 	cmdAccountID
 	cmdHashID
 	cmdCodeID
-	cmdRuleID
+	cmdInfoID
 	cmdValueID
 )
 
@@ -87,16 +89,18 @@ type vmCode struct {
 	hash    common.Hash
 }
 
-type vmRule struct {
+type vmInfo struct {
 	table      *vm.GasTable
 	fork       vm.Fork
 	difficulty *big.Int
 	gasLimit   *big.Int
 	time       *big.Int
+	coinbase   common.Address
+	number     uint64
 }
 
 type machine struct {
-	skipTransfer bool
+	features int
 }
 
 type context struct {
@@ -137,7 +141,7 @@ type keyValueMap map[common.Hash]*keyValue
 type vmEnv struct {
 	cmdc       chan *command
 	rqc        chan *vm.Require
-	rules      *vmRule
+	info       *vmInfo
 	evm        *EVM
 	depth      int
 	contract   *Contract
@@ -146,13 +150,11 @@ type vmEnv struct {
 
 	db          *state.StateDB
 	origin      common.Address
-	coinbase    common.Address
 	address     common.Address
 	account     map[common.Address]ChangeLevel
 	code        map[common.Address]ChangeLevel
 	hash        map[uint64]*vmHash
 	values      map[common.Address]keyValueMap
-	blocknumber uint64
 
 	Gas *big.Int
 
@@ -165,10 +167,9 @@ func NewMachine() vm.Machine {
 	return &machine{}
 }
 
-func mkEnv(env *vmEnv, number uint64, m *machine) *vmEnv {
+func mkEnv(env *vmEnv, m *machine) *vmEnv {
 	env.rqc = make(chan *vm.Require)
 	env.cmdc = make(chan *command)
-	env.blocknumber = number
 	db, _ := ethdb.NewMemDatabase()
 	env.db, _ = state.New(common.Hash{}, db)
 	env.account = make(map[common.Address]ChangeLevel)
@@ -188,8 +189,8 @@ func (self *machine) Type() vm.Type {
 	return vm.ClassicVm
 }
 
-func (self *machine) SkipTransfer() error {
-	self.skipTransfer = true
+func (self *machine) SetTestFeatures(features int) error {
+	self.features = features
 	return nil
 }
 
@@ -205,15 +206,16 @@ func (self *vmEnv) updateStatus() {
 	}
 }
 
-func (self *machine) Call(blockNumber uint64, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (vm.Context, error) {
+func (self *machine) Call(caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (vm.Context, error) {
 	ctx := &context{}
 	go func(e *vmEnv) {
-		cmd, ok := <-e.cmdc
-		if !ok {
-			close(e.rqc)
-			return
-		}
+		e.origin = caller
 		for {
+			cmd, ok := <-e.cmdc
+			if !ok {
+				close(e.rqc)
+				return
+			}
 			if cmd.code == cmdStepID || cmd.code == cmdFireID {
 				e.status = vm.Running
 				e.stepByStep = cmd.code == cmdStepID
@@ -230,20 +232,21 @@ func (self *machine) Call(blockNumber uint64, caller common.Address, to common.A
 				e.handleCmdc(cmd)
 			}
 		}
-	}(mkEnv(&ctx.env, blockNumber, self))
+	}(mkEnv(&ctx.env, self))
 
 	return ctx, nil
 }
 
-func (self *machine) Create(blockNumber uint64, caller common.Address, code []byte, gas, price, value *big.Int) (vm.Context, error) {
+func (self *machine) Create(caller common.Address, code []byte, gas, price, value *big.Int) (vm.Context, error) {
 	ctx := &context{}
 
 	go func(e *vmEnv) {
-		cmd, ok := <-e.cmdc
-		if !ok {
-			return
-		}
+		e.origin = caller
 		for {
+			cmd, ok := <-e.cmdc
+			if !ok {
+				return
+			}
 			if cmd.code == cmdStepID || cmd.code == cmdFireID {
 				e.status = vm.Running
 				e.stepByStep = cmd.code == cmdStepID
@@ -258,7 +261,7 @@ func (self *machine) Create(blockNumber uint64, caller common.Address, code []by
 				e.handleCmdc(cmd)
 			}
 		}
-	}(mkEnv(&ctx.env, blockNumber, self))
+	}(mkEnv(&ctx.env, self))
 
 	return ctx, nil
 }
@@ -305,8 +308,8 @@ func (self *vmEnv) handleCmdc(cmd *command) bool {
 			self.values[v.addr] = valmap
 		}
 		valmap[v.key] = v
-	case cmdRuleID:
-		self.rules = cmd.value.(*vmRule)
+	case cmdInfoID:
+		self.info = cmd.value.(*vmInfo)
 	case cmdStepID:
 		self.stepByStep = true
 		return true
@@ -329,6 +332,13 @@ func (self *vmEnv) handleRequire(rq *vm.Require) {
 			return
 		}
 	}
+}
+
+func (self *vmEnv) brokeVm(text string) {
+	self.status = vm.Broken
+	self.err = errors.New(text)
+	self.rqc <- nil
+	panic(vm.BrokenError)
 }
 
 func (self *vmEnv) queryCode(addr common.Address) {
@@ -370,19 +380,19 @@ func (self *vmEnv) queryValue(addr common.Address, key common.Hash) common.Hash 
 	}
 }
 
-func (self *vmEnv) queryRule() *vmRule {
+func (self *vmEnv) queryInfo() *vmInfo {
 	for {
-		if self.rules != nil {
-			return self.rules
+		if self.info != nil {
+			return self.info
 		} else {
-			self.handleRequire(&vm.Require{ID: vm.RequireRules, Number: self.blocknumber})
+			self.handleRequire(&vm.Require{ID: vm.RequireInfo})
 		}
 	}
 }
 
-func (self *context) CommitRules(table *vm.GasTable, fork vm.Fork, difficulty, gasLimit, time *big.Int) (err error) {
-	rule := vmRule{table, fork, difficulty, gasLimit, time}
-	self.env.cmdc <- &command{cmdRuleID, &rule}
+func (self *context) CommitInfo(blockNumber uint64, coinbase common.Address, table *vm.GasTable, fork vm.Fork, difficulty, gasLimit, time *big.Int) (err error) {
+	info := vmInfo{table, fork, difficulty, gasLimit, time,  coinbase, blockNumber}
+	self.env.cmdc <- &command{cmdInfoID, &info}
 	return
 }
 
@@ -492,21 +502,19 @@ func (self *context) Err() error {
 }
 
 func (self *vmEnv) GasTable(block *big.Int) *vm.GasTable {
-	number := block.Uint64()
-	if number != self.blocknumber {
-		self.status = vm.Broken
-		panic("invalid block number")
+	info := self.queryInfo()
+	if info.number != block.Uint64() {
+		self.brokeVm("invalid block number in RulesSet.GasTable")
 	}
-	return self.queryRule().table
+	return self.queryInfo().table
 }
 
 func (self *vmEnv) IsHomestead(block *big.Int) bool {
-	number := block.Uint64()
-	if number != self.blocknumber {
-		self.status = vm.Broken
-		panic("invalid block number")
+	info := self.queryInfo()
+	if info.number != block.Uint64() {
+		self.brokeVm("invalid block number in RulesSet.IsHomestead")
 	}
-	return self.queryRule().fork >= vm.Homestead
+	return self.queryInfo().fork >= vm.Homestead
 }
 
 func (self *vmEnv) RuleSet() vm.RuleSet {
@@ -518,23 +526,23 @@ func (self *vmEnv) Origin() common.Address {
 }
 
 func (self *vmEnv) BlockNumber() *big.Int {
-	return new(big.Int).SetUint64(self.blocknumber)
+	return new(big.Int).SetUint64(self.queryInfo().number)
 }
 
 func (self *vmEnv) Coinbase() common.Address {
-	return self.coinbase
+	return self.queryInfo().coinbase
 }
 
 func (self *vmEnv) Time() *big.Int {
-	return self.queryRule().time
+	return self.queryInfo().time
 }
 
 func (self *vmEnv) Difficulty() *big.Int {
-	return self.queryRule().difficulty
+	return self.queryInfo().difficulty
 }
 
 func (self *vmEnv) GasLimit() *big.Int {
-	return self.queryRule().gasLimit
+	return self.queryInfo().gasLimit
 }
 
 func (self *vmEnv) Db() Database {
@@ -565,7 +573,7 @@ func (self *vmEnv) AddLog(log *state.Log) {
 }
 
 func (self *vmEnv) CanTransfer(from common.Address, balance *big.Int) bool {
-	if self.machine.skipTransfer {
+	if (self.machine.features & vm.TestSkipTransfer) > 0 {
 		return true
 	}
 	return self.GetBalance(from).Cmp(balance) >= 0
@@ -580,24 +588,43 @@ func (self *vmEnv) RevertToSnapshot(snapshot int) {
 }
 
 func (self *vmEnv) Transfer(from, to state.AccountObject, amount *big.Int) {
-	if !self.machine.skipTransfer {
+	if (self.machine.features & vm.TestSkipTransfer) == 0 {
 		Transfer(from, to, amount)
 	}
 }
 
 func (self *vmEnv) Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	if (self.machine.features & vm.TestSkipSubCall) > 0 && self.depth > 0 {
+		me.ReturnGas(gas, price)
+		return nil, nil
+	}
 	return Call(self, me, addr, data, gas, price, value)
 }
 
 func (self *vmEnv) CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	if (self.machine.features & vm.TestSkipSubCall) > 0 && self.depth > 0 {
+		me.ReturnGas(gas, price)
+		return nil, nil
+	}
 	return CallCode(self, me, addr, data, gas, price, value)
 }
 
 func (self *vmEnv) DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	if (self.machine.features & vm.TestSkipSubCall) > 0 && self.depth > 0 {
+		me.ReturnGas(gas, price)
+		return nil, nil
+	}
 	return DelegateCall(self, me.(*Contract), addr, data, gas, price)
 }
 
 func (self *vmEnv) Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+	if (self.machine.features & vm.TestSkipCreate) > 0 {
+		me.ReturnGas(gas, price)
+		nonce := self.db.GetNonce(me.Address())
+		obj := self.db.GetOrNewStateObject(crypto.CreateAddress(me.Address(), nonce))
+		self.account[obj.Address()] = Modified
+		return nil, obj.Address(), nil
+	}
 	return Create(self, me, data, gas, price, value)
 }
 

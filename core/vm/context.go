@@ -117,7 +117,7 @@ const (
 	RequireAccount RequireID = iota
 	RequireCode
 	RequireHash
-	RequireRules
+	RequireInfo
 	RequireValue
 )
 
@@ -135,8 +135,8 @@ type Context interface {
 	CommitBlockhash(number uint64,hash common.Hash) error
 	// Commit a contract code
 	CommitCode(address common.Address, hash common.Hash, code []byte) error
-	// Commit a gas rules
-	CommitRules(table *GasTable, fork Fork, difficulty, gasLimit, time *big.Int) error
+	// Commit an info
+	CommitInfo(blockNumber uint64, coinbase common.Address, table *GasTable, fork Fork, difficulty, gasLimit, time *big.Int) error
 	// Commit a state
 	CommitValue(address common.Address, key common.Hash, value common.Hash) error
 	// Finish VM context
@@ -164,13 +164,22 @@ type Context interface {
 	Fire() *Require
 }
 
+const (
+	TestFeaturesDisabled = iota*2
+	TestSkipTransfer
+	TestSkipSubCall
+	TestSkipCreate
+)
+
+const AllTestFeatures = TestSkipTransfer | TestSkipSubCall | TestSkipCreate
+
 type Machine interface {
 	// Test feature
-	SkipTransfer() error
+	SetTestFeatures(int) error
 	// Call contract in new VM context
-	Call(blockNumber uint64, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (Context, error)
+	Call(caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (Context, error)
 	// Create contract in new VM context
-	Create(blockNumber uint64, caller common.Address, code []byte, gas, price, value *big.Int) (Context, error)
+	Create(caller common.Address, code []byte, gas, price, value *big.Int) (Context, error)
 	// Type of VM
 	Type() Type
 	// Name of VM

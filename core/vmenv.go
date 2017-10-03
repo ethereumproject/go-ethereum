@@ -94,28 +94,35 @@ func (self *vmEnv) do(callOrCreate func(*vmEnv)(vm.Context,error)) ([]byte, comm
 
 func (self *vmEnv) Call(sender common.Address, to common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	out, _, err := self.do(func(e *vmEnv)(vm.Context,error){
-		return e.machine.Call(e.number.Uint64(),sender,to,data,gas,price,value)
+		return e.machine.Call(sender,to,data,gas,price,value)
 	})
 	return out, err
 }
 
 func (self *vmEnv) Create(caller state.AccountObject, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return self.do(func(e *vmEnv)(vm.Context,error){
-		return e.machine.Create(e.number.Uint64(),caller.Address(),data,gas,price,value)
+		return e.machine.Create(caller.Address(),data,gas,price,value)
 	})
 }
 
 func (self *vmEnv) execute(ctx vm.Context) ([]byte,*common.Address,error) {
+	if err := ctx.CommitInfo(self.number.Uint64(),self.coinbase,
+							 self.rules.GasTable(self.number),self.fork,
+							 self.difficulty,self.gasLimit,self.time);
+		err != nil {
+		return nil, nil, err
+	}
 	for {
 		req := ctx.Fire()
 		if req != nil {
 			switch req.ID {
 			case vm.RequireAccount:
-				acc := self.db.GetAccount(req.Address)
-				addr := acc.Address()
-				nonce := acc.Nonce()
-				balance := acc.Balance()
-				ctx.CommitAccount(addr,nonce,balance)
+				if self.db.Exist(req.Address) {
+					a := self.db.GetAccount(req.Address)
+					ctx.CommitAccount(a.Address(),a.Nonce(),a.Balance())
+				} else {
+					ctx.CommitAccount(req.Address,0,nil)
+				}
 			case vm.RequireCode:
 				addr := req.Address
 				code := self.db.GetCode(addr)
@@ -125,8 +132,11 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,*common.Address,error) {
 				number := req.Number
 				hash := self.hashfn(number)
 				ctx.CommitBlockhash(number,hash)
-			case vm.RequireRules:
-				ctx.CommitRules(self.rules.GasTable(self.number),self.fork,self.difficulty,self.gasLimit,self.time)
+			case vm.RequireInfo:
+				panic("info already commited")
+			case vm.RequireValue:
+				value := self.db.GetState(req.Address,req.Hash)
+				ctx.CommitValue(req.Address,req.Hash,value)
 			default:
 				if ctx.Status() == vm.RequireErr {
 					// ?? unsupported VM implementaion ??
@@ -149,13 +159,25 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,*common.Address,error) {
 				if err != nil {
 					return nil, nil, err
 				}
-				accounts, err := ctx.Modified()
+				modified, err := ctx.Modified()
+				if err != nil {
+					return nil, nil, err
+				}
+				removed, _ := ctx.Removed()
+				if err != nil {
+					return nil, nil, err
+				}
+				values, _ := ctx.Values()
+				if err != nil {
+					return nil, nil, err
+				}
+				logs, _ := ctx.Logs()
 				if err != nil {
 					return nil, nil, err
 				}
 				// applying state here
 				snapshot := self.db.Snapshot()
-				for _, v := range accounts {
+				for _, v := range modified {
 					var o state.AccountObject
 					address := v.Address()
 					if self.db.Exist(address) {
@@ -167,12 +189,21 @@ func (self *vmEnv) execute(ctx vm.Context) ([]byte,*common.Address,error) {
 							self.db.RevertToSnapshot(snapshot)
 							return nil, nil, err
 						}
-						if code {
+						if code != nil {
 							o.SetCode(hash,code)
 						}
 					}
 					o.SetBalance(v.Balance())
 					o.SetNonce(v.Nonce())
+				}
+				for _, a := range removed {
+					self.db.Suicide(a)
+				}
+				for _, kv := range values {
+					self.db.SetState(kv.Address(),kv.Key(),kv.Value())
+				}
+				for _, l := range logs {
+					self.db.AddLog(l)
 				}
 				return out, &address, nil
 			case vm.TransferErr:

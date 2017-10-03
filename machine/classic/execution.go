@@ -67,17 +67,16 @@ func Create(env Environment, caller ContractRef, code []byte, gas, gasPrice, val
 func exec(env Environment, caller ContractRef, address, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value *big.Int) (ret []byte, addr common.Address, err error) {
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
+
 	if env.Depth() > callCreateDepthMax {
 		caller.ReturnGas(gas, gasPrice)
 
-		fmt.Printf("max depth %v > %v\n",env.Depth(),callCreateDepthMax)
 		return nil, common.Address{}, errCallCreateDepth
 	}
 
 	if !env.CanTransfer(caller.Address(), value) {
 		caller.ReturnGas(gas, gasPrice)
 
-		fmt.Printf("no fund, required %v\n",value)
 		return nil, common.Address{}, ValueTransferErr("insufficient funds to transfer value. Req %v, has %v", value, env.Db().GetBalance(caller.Address()))
 	}
 

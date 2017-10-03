@@ -26,7 +26,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/machine/classic"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
@@ -123,6 +122,7 @@ func runVmTests(tests map[string]VmTest, skipTests []string) error {
 			return nil
 		}
 
+		fmt.Printf("-- TEST %s ------\n",name)
 		if err := runVmTest(test); err != nil {
 			return fmt.Errorf("%s %s", name, err.Error())
 		}
@@ -199,7 +199,7 @@ func runVmTest(test VmTest) error {
 	return nil
 }
 
-func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Logs, *big.Int, error) {
 	var (
 		to       = common.HexToAddress(exec["address"])
 		from     = common.HexToAddress(exec["caller"])
