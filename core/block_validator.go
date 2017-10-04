@@ -46,7 +46,7 @@ var (
 
 // Difficulty allows passing configurable options to a given difficulty algorithm.
 type DifficultyConfig struct {
-	Name string `json:"name"`
+	Name    string                 `json:"name"`
 	Options map[string]interface{} `json:"options"`
 }
 
@@ -277,31 +277,33 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
 	}
 	name, ok := f.GetString("type")
-	if !ok { name = "" } // will fall to default panic
+	if !ok {
+		name = ""
+	} // will fall to default panic
 	switch name {
-		case "ecip1010":
-			if length, ok := f.GetBigInt("length"); ok {
-				explosionBlock := big.NewInt(0).Add(fork.Block, length)
-				if num.Cmp(explosionBlock) < 0 {
-					return calcDifficultyDiehard(time, parentTime, parentDiff,
-						fork.Block)
-				} else {
-					return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
-						fork.Block, explosionBlock)
-				}
+	case "ecip1010":
+		if length, ok := f.GetBigInt("length"); ok {
+			explosionBlock := big.NewInt(0).Add(fork.Block, length)
+			if num.Cmp(explosionBlock) < 0 {
+				return calcDifficultyDiehard(time, parentTime, parentDiff,
+					fork.Block)
 			} else {
-				panic(fmt.Sprintf("Length is not set for diehard difficulty at %v", num))
+				return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
+					fork.Block, explosionBlock)
 			}
-		case "homestead":
-			return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
-		case "frontier":
-			return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
-		default:
-			panic(fmt.Sprintf("Unsupported difficulty '%v' for block: %v", name, num))
+		} else {
+			panic(fmt.Sprintf("Length is not set for diehard difficulty at %v", num))
+		}
+	case "homestead":
+		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
+	case "frontier":
+		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
+	default:
+		panic(fmt.Sprintf("Unsupported difficulty '%v' for block: %v", name, num))
 	}
 }
 
-func calcDifficultyDiehard(time, parentTime uint64 , parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
+func calcDifficultyDiehard(time, parentTime uint64, parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +

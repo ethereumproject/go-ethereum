@@ -21,9 +21,9 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	db "github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	db "github.com/ethereumproject/go-ethereum/core/state"
 )
 
 var (
@@ -58,7 +58,7 @@ type StateTransition struct {
 	value         *big.Int
 	data          []byte
 	state         *db.StateDB
-	env 		  *VmEnv
+	env           *VmEnv
 }
 
 // Message represents a message sent to a contract.

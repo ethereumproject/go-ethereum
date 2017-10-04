@@ -20,8 +20,8 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/types"
 )
 
 // TxPreEvent is posted when a transaction enters the transaction pool.

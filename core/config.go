@@ -38,8 +38,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
-	"strings"
 	"io"
+	"strings"
 )
 
 var (
@@ -55,9 +55,9 @@ type SufficientChainConfig struct {
 	ID              string           `json:"id,omitempty"` // deprecated in favor of 'Identity', method decoding should id -> identity
 	Identity        string           `json:"identity"`
 	Name            string           `json:"name,omitempty"`
-	State           *StateConfig     `json:"state"`   // don't omitempty for clarity of potential custom options
-	Network         int              `json:"network"` // eth.NetworkId (mainnet=1, morden=2)
-	Consensus       string           `json:"consensus"`     // pow type (ethash OR ethash-test)
+	State           *StateConfig     `json:"state"`     // don't omitempty for clarity of potential custom options
+	Network         int              `json:"network"`   // eth.NetworkId (mainnet=1, morden=2)
+	Consensus       string           `json:"consensus"` // pow type (ethash OR ethash-test)
 	Genesis         *GenesisDump     `json:"genesis"`
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
