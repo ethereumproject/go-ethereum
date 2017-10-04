@@ -288,10 +288,10 @@ func throwJSException(msg interface{}) otto.Value {
 // variables.
 func newErrorResponse(call otto.FunctionCall, code int, msg string, id interface{}) (response otto.Value) {
 	// Bundle the error into a JSON RPC call response
-	res := rpc.JSONErrResponse{
+	res := rpc.JSONResponse{
 		Version: rpc.JSONRPCVersion,
 		Id:      id,
-		Error: rpc.JSONError{
+		Error: &rpc.JSONError{
 			Code:    code,
 			Message: msg,
 		},

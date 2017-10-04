@@ -577,7 +577,7 @@ func TestAPIGather(t *testing.T) {
 		if err := client.Send(rpc.JSONRequest{Id: []byte("1"), Version: "2.0", Method: test.Method}); err != nil {
 			t.Fatalf("test %d: failed to send API request: %v", i, err)
 		}
-		reply := new(rpc.JSONSuccessResponse)
+		reply := new(rpc.JSONResponse)
 		if err := client.Recv(reply); err != nil {
 			t.Fatalf("test %d: failed to read API reply: %v", i, err)
 		}
