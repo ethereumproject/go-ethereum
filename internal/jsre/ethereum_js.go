@@ -3943,7 +3943,7 @@ module.exports = {
     inputCallFormatter: inputCallFormatter,
     inputTransactionFormatter: inputTransactionFormatter,
     inputAddressFormatter: inputAddressFormatter,
-	inputOptionalBoolFormatter: inputOptionalBoolFormatter,
+    inputOptionalBoolFormatter: inputOptionalBoolFormatter,
     inputPostFormatter: inputPostFormatter,
     outputBigNumberFormatter: outputBigNumberFormatter,
     outputTransactionFormatter: outputTransactionFormatter,
