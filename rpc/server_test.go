@@ -125,7 +125,7 @@ func testServerMethodExecution(t *testing.T, method string) {
 		t.Fatal(err)
 	}
 
-	response := JSONSuccessResponse{Result: &Result{}}
+	response := JSONResponse{Result: &Result{}}
 	if err := in.Decode(&response); err != nil {
 		t.Fatal(err)
 	}
