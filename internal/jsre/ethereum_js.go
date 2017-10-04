@@ -3744,6 +3744,23 @@ var inputTransactionFormatter = function (options){
 };
 
 /**
+ * Allows optional boolean value as input. If null input, returns false.
+ *
+ * @method inputOptionalBoolFormatter
+ * @param {bool} optional bool val, either of form [bool] or bool
+ * @returns bool
+*/
+var inputOptionalBoolFormatter = function (options) {
+	if (typeof options === 'boolean') {
+		return options;
+	}
+	if (typeof options === 'object') {
+		return options[0];
+	}
+	return false;
+};
+
+/**
  * Formats the output of a transaction to its proper values
  *
  * @method outputTransactionFormatter
@@ -3926,6 +3943,7 @@ module.exports = {
     inputCallFormatter: inputCallFormatter,
     inputTransactionFormatter: inputTransactionFormatter,
     inputAddressFormatter: inputAddressFormatter,
+    inputOptionalBoolFormatter: inputOptionalBoolFormatter,
     inputPostFormatter: inputPostFormatter,
     outputBigNumberFormatter: outputBigNumberFormatter,
     outputTransactionFormatter: outputTransactionFormatter,

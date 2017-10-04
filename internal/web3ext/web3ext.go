@@ -208,7 +208,8 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'metrics',
 			call: 'debug_metrics',
-			params: 0
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputOptionalBoolFormatter]
 		}),
 		new web3._extend.Method({
 			name: 'verbosity',

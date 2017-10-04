@@ -177,7 +177,7 @@ func retrieveMetrics(client rpc.Client) (map[string]float64, error) {
 		"id":      new(int64),
 		"method":  "debug_metrics",
 		"jsonrpc": "2.0",
-		"params":  []interface{}{},
+		"params":  []interface{}{true},
 	}
 
 	if err := client.Send(req); err != nil {
