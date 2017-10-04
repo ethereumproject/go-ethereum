@@ -220,5 +220,5 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 		ExplosionBlock:           big.NewInt(5000000),
 	}, state, env, exec)
 	ret, err := vmenv.Call(from, to, data, gas, price, value)
-	return ret, vmenv.Db().Logs(), gas, err
+	return ret, vmenv.Db.Logs(), gas, err
 }

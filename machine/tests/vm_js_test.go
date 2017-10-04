@@ -105,7 +105,7 @@ func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	}
 }
 
-func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]string, exeValues map[string]string) *core.Env {
+func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]string, exeValues map[string]string) *core.VmEnv {
 
 	number, _ := new(big.Int).SetString(envValues["currentNumber"], 0)
 	if number == nil {
@@ -137,7 +137,7 @@ func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]stri
 		return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 	}
 
-	env := &core.Env{
+	env := &core.VmEnv{
 		common.HexToAddress(envValues["currentCoinbase"]),
 		number,
 		difficulty,
@@ -284,7 +284,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 	}, state, env, exec)
 
 	ret, err := vmenv.Call(caller.Address(), to, data, gas, price, value)
-	return ret, vmenv.Db().Logs(), gas, err
+	return ret, vmenv.Db.Logs(), gas, err
 }
 
 func TestVMArithmetic(t *testing.T) {

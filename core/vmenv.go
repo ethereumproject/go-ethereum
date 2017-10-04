@@ -18,65 +18,39 @@
 package core
 
 import (
-	"math/big"
 	"errors"
+	"math/big"
 
+	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/machine/classic"
-	"fmt"
 )
 
-// for compatibility reasons
-type VmEnv interface {
-	Coinbase() common.Address
-	BlockNumber() *big.Int
-	RuleSet() vm.RuleSet
-	Db() *state.StateDB
-	Call(sender common.Address, to common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
-	Create(me state.AccountObject, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error)
+type VmEnv struct {
+	Coinbase    common.Address
+	BlockNumber *big.Int
+	Difficulty  *big.Int
+	GasLimit    *big.Int
+	Time        *big.Int
+	Db          *state.StateDB
+	Hashfn      func(n uint64) common.Hash
+	Fork        vm.Fork
+	RuleSet     vm.RuleSet
+	Machine     vm.Machine
 }
 
-type Env struct {
-	Coinbase_ 	common.Address
-	Number_  	*big.Int
-	Difficulty_ *big.Int
-	GasLimit_	*big.Int
-	Time_		*big.Int
-	Db_      	*state.StateDB
-	Hashfn_		func(n uint64) common.Hash
-	Fork_		vm.Fork
-	Rules_      vm.RuleSet
-	Machine_	vm.Machine
-}
-
-func (self *Env) Coinbase() common.Address {
-	return self.Coinbase_
-}
-
-func (self *Env) BlockNumber() *big.Int {
-	return self.Number_
-}
-
-func (self *Env) RuleSet() vm.RuleSet {
-	return self.Rules_
-}
-
-func (self *Env) Db() *state.StateDB {
-	return self.Db_
-}
-
-func (self *Env) do(callOrCreate func(*Env)(vm.Context,error)) ([]byte, common.Address, *big.Int, error) {
+func (self *VmEnv) do(callOrCreate func(*VmEnv) (vm.Context, error)) ([]byte, common.Address, *big.Int, error) {
 	for {
 		var (
 			context vm.Context
-			err error
-			out []byte
+			err     error
+			out     []byte
 			address common.Address
-			pa *common.Address
-			gas *big.Int
+			pa      *common.Address
+			gas     *big.Int
 		)
 		context, err = callOrCreate(self)
 		if err == nil {
@@ -98,29 +72,26 @@ func (self *Env) do(callOrCreate func(*Env)(vm.Context,error)) ([]byte, common.A
 	}
 }
 
-func (self *Env) Call(sender common.Address, to common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	out, _, gasRefund, err := self.do(func(e *Env)(vm.Context,error){
-		return e.Machine_.Call(sender,to,data,gas,price,value)
+func (self *VmEnv) Call(sender common.Address, to common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	out, _, gasRefund, err := self.do(func(e *VmEnv) (vm.Context, error) {
+		return e.Machine.Call(sender, to, data, gas, price, value)
 	})
-	//fmt.Printf("CALL GAS %v => %v\n",gas.Int64(),gasRefund.Int64())
 	gas.Set(gasRefund)
 	return out, err
 }
 
-func (self *Env) Create(caller state.AccountObject, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
-	out, addr, gasRefund, err := self.do(func(e *Env)(vm.Context,error){
-		return e.Machine_.Create(caller.Address(),data,gas,price,value)
+func (self *VmEnv) Create(caller state.AccountObject, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+	out, addr, gasRefund, err := self.do(func(e *VmEnv) (vm.Context, error) {
+		return e.Machine.Create(caller.Address(), data, gas, price, value)
 	})
-	//fmt.Printf("CREATE GAS %v => %v\n",gas.Int64(),gasRefund.Int64())
 	gas.Set(gasRefund)
 	return out, addr, err
 }
 
-func (self *Env) execute(ctx vm.Context) ([]byte,*common.Address,*big.Int,error) {
-	if err := ctx.CommitInfo(self.Number_.Uint64(),self.Coinbase_,
-							 self.Rules_.GasTable(self.Number_),self.Fork_,
-							 self.Difficulty_,self.GasLimit_,self.Time_);
-		err != nil {
+func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, error) {
+	if err := ctx.CommitInfo(self.BlockNumber.Uint64(), self.Coinbase,
+		self.RuleSet.GasTable(self.BlockNumber), self.Fork,
+		self.Difficulty, self.GasLimit, self.Time); err != nil {
 		return nil, nil, nil, err
 	}
 	for {
@@ -128,26 +99,26 @@ func (self *Env) execute(ctx vm.Context) ([]byte,*common.Address,*big.Int,error)
 		if req != nil {
 			switch req.ID {
 			case vm.RequireAccount:
-				if self.Db_.Exist(req.Address) {
-					a := self.Db_.GetAccount(req.Address)
-					ctx.CommitAccount(a.Address(),a.Nonce(),a.Balance())
+				if self.Db.Exist(req.Address) {
+					a := self.Db.GetAccount(req.Address)
+					ctx.CommitAccount(a.Address(), a.Nonce(), a.Balance())
 				} else {
-					ctx.CommitAccount(req.Address,0,nil)
+					ctx.CommitAccount(req.Address, 0, nil)
 				}
 			case vm.RequireCode:
 				addr := req.Address
-				code := self.Db_.GetCode(addr)
-				hash := self.Db_.GetCodeHash(addr)
-				ctx.CommitCode(addr,hash,code)
+				code := self.Db.GetCode(addr)
+				hash := self.Db.GetCodeHash(addr)
+				ctx.CommitCode(addr, hash, code)
 			case vm.RequireHash:
 				number := req.Number
-				hash := self.Hashfn_(number)
-				ctx.CommitBlockhash(number,hash)
+				hash := self.Hashfn(number)
+				ctx.CommitBlockhash(number, hash)
 			case vm.RequireInfo:
 				panic("info already commited")
 			case vm.RequireValue:
-				value := self.Db_.GetState(req.Address,req.Hash)
-				ctx.CommitValue(req.Address,req.Hash,value)
+				value := self.Db.GetState(req.Address, req.Hash)
+				ctx.CommitValue(req.Address, req.Hash, value)
 			default:
 				if ctx.Status() == vm.RequireErr {
 					// ?? unsupported VM implementaion ??
@@ -187,48 +158,48 @@ func (self *Env) execute(ctx vm.Context) ([]byte,*common.Address,*big.Int,error)
 					return nil, nil, nil, err
 				}
 				// applying state here
-				snapshot := self.Db_.Snapshot()
+				snapshot := self.Db.Snapshot()
 				for _, v := range modified {
 					var o state.AccountObject
 					address := v.Address()
-					if self.Db_.Exist(address) {
-						o = self.Db_.GetAccount(address)
+					if self.Db.Exist(address) {
+						o = self.Db.GetAccount(address)
 					} else {
-						o = self.Db_.CreateAccount(address)
+						o = self.Db.CreateAccount(address)
 						hash, code, err := ctx.Code(address)
 						if err != nil {
-							self.Db_.RevertToSnapshot(snapshot)
+							self.Db.RevertToSnapshot(snapshot)
 							return nil, nil, nil, err
 						}
 						if code != nil {
-							o.SetCode(hash,code)
+							o.SetCode(hash, code)
 						}
 					}
 					o.SetBalance(v.Balance())
 					o.SetNonce(v.Nonce())
 				}
 				for _, a := range removed {
-					self.Db_.Suicide(a)
+					self.Db.Suicide(a)
 				}
 				for _, kv := range values {
-					self.Db_.SetState(kv.Address(),kv.Key(),kv.Value())
+					self.Db.SetState(kv.Address(), kv.Key(), kv.Value())
 				}
 				for _, l := range logs {
-					self.Db_.AddLog(l)
+					self.Db.AddLog(l)
 				}
 				return out, &address, gas, nil
 			case vm.TransferErr:
-				_, gas,_ := ctx.Out()
+				_, gas, _ := ctx.Out()
 				return nil, nil, gas, InvalidTxError(ctx.Err())
-			case vm.Broken, vm.BadCodeErr, vm.ExitedErr :
-				_, gas,_ := ctx.Out()
+			case vm.Broken, vm.BadCodeErr, vm.ExitedErr:
+				_, gas, _ := ctx.Out()
 				return nil, nil, gas, ctx.Err()
 			case vm.OutOfGasErr:
 				return nil, nil, nil, OutOfGasError
 			default:
 				// ?? unsupported VM implementaion ??
 				// should we panic or use known VM instead?
-				panic(fmt.Sprintf("incorrect VM state %d",ctx.Status()))
+				panic(fmt.Sprintf("incorrect VM state %d", ctx.Status()))
 			}
 		}
 	}
@@ -257,13 +228,13 @@ func getFork(number *big.Int, chainConfig *ChainConfig) vm.Fork {
 	return vm.Frontier
 }
 
-func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) VmEnv {
+func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) *VmEnv {
 	machine, err := VmManager.ConnectMachine()
 	if err != nil {
 		panic(err)
 	}
 	fork := getFork(header.Number, chainConfig)
-	vmenv := &Env{
+	vmenv := &VmEnv{
 		header.Coinbase,
 		header.Number,
 		header.Difficulty,
@@ -278,15 +249,13 @@ func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain,
 	return vmenv
 }
 
-var (
- 	OutOfGasError = errors.New("Out of gas")
-)
+var OutOfGasError = errors.New("Out of gas")
 
 type VmManagerSingleton struct {
-
 }
+
 var VmManager = &VmManagerSingleton{}
 
-func (self *VmManagerSingleton) ConnectMachine() (vm.Machine,error) {
+func (self *VmManagerSingleton) ConnectMachine() (vm.Machine, error) {
 	return classic.NewMachine(), nil
 }

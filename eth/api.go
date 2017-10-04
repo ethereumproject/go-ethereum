@@ -1783,7 +1783,7 @@ func (s *PublicDebugAPI) TraceTransaction(txHash common.Hash) (*ExecutionResult,
 }
 
 // computeTxEnv returns the execution environment of a certain transaction.
-func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, core.VmEnv, error) {
+func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, *core.VmEnv, error) {
 
 	// Create the parent state.
 	block := s.eth.BlockChain().GetBlock(blockHash)

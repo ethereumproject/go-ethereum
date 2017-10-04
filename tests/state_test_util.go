@@ -240,23 +240,5 @@ func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string
 	}
 	statedb.Commit()
 
-	return ret, vmenv.Db().Logs(), err
+	return ret, vmenv.Db.Logs(), err
 }
-
-/*
-type vmAdapter struct {
-	env *Env
-}
-
-func (self *vmAdapter) Coinbase() common.Address	{ return self.env.Coinbase() }
-func (self *vmAdapter) BlockNumber() *big.Int		{ return self.env.BlockNumber() }
-func (self *vmAdapter) RuleSet() vm.RuleSet			{ return self.env.RuleSet() }
-func (self *vmAdapter) Db() *state.StateDB			{ return self.env.state }
-
-func (self *vmAdapter) Call(sender common.Address, to common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	return self.env.Call(self.env.state.GetAccount(sender), to, data, gas, price, value)
-}
-func (self *vmAdapter) Create(me state.AccountObject, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
-	return self.env.Create(me, data, gas, price, value)
-}
-*/
