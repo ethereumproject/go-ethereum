@@ -252,9 +252,9 @@ func NewEnv(db *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg 
 var OutOfGasError = errors.New("Out of gas")
 
 type vmManager struct {
-	isConfigured 	bool
-	useVmType 		vm.Type
-	useVmManagment 	vm.ManagerType
+	isConfigured    bool
+	useVmType       vm.Type
+	useVmManagment  vm.ManagerType
 	useVmConnection vm.ConnectionType
 	useVmRemotePort int
 	useVmRemoteHost string
@@ -285,4 +285,3 @@ func (self *vmManager) ConnectMachine() (vm.Machine, error) {
 		return nil, BadVmUsageError
 	}
 }
-
