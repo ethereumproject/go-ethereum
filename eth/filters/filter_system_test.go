@@ -22,7 +22,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/event"
 )
 
@@ -38,7 +38,7 @@ func TestCallbacks(t *testing.T) {
 	)
 
 	blockFilter := &Filter{
-		BlockCallback: func(*types.Block, vm.Logs) {
+		BlockCallback: func(*types.Block, state.Logs) {
 			close(blockDone)
 		},
 	}
@@ -48,21 +48,21 @@ func TestCallbacks(t *testing.T) {
 		},
 	}
 	logFilter := &Filter{
-		LogCallback: func(l *vm.Log, oob bool) {
+		LogCallback: func(l *state.Log, oob bool) {
 			if !oob {
 				close(logDone)
 			}
 		},
 	}
 	removedLogFilter := &Filter{
-		LogCallback: func(l *vm.Log, oob bool) {
+		LogCallback: func(l *state.Log, oob bool) {
 			if oob {
 				close(removedLogDone)
 			}
 		},
 	}
 	pendingLogFilter := &Filter{
-		LogCallback: func(*vm.Log, bool) {
+		LogCallback: func(*state.Log, bool) {
 			close(pendingLogDone)
 		},
 	}
@@ -75,9 +75,9 @@ func TestCallbacks(t *testing.T) {
 
 	mux.Post(core.ChainEvent{})
 	mux.Post(core.TxPreEvent{})
-	mux.Post(vm.Logs{&vm.Log{}})
-	mux.Post(core.RemovedLogsEvent{Logs: vm.Logs{&vm.Log{}}})
-	mux.Post(core.PendingLogsEvent{Logs: vm.Logs{&vm.Log{}}})
+	mux.Post(state.Logs{&state.Log{}})
+	mux.Post(core.RemovedLogsEvent{Logs: state.Logs{&state.Log{}}})
+	mux.Post(core.PendingLogsEvent{Logs: state.Logs{&state.Log{}}})
 
 	const dura = 5 * time.Second
 	failTimer := time.NewTimer(dura)
