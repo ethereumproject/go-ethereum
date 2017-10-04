@@ -228,7 +228,7 @@ func getFork(number *big.Int, chainConfig *ChainConfig) vm.Fork {
 	return vm.Frontier
 }
 
-func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) *VmEnv {
+func NewEnv(db *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) *VmEnv {
 	machine, err := VmManager.ConnectMachine()
 	if err != nil {
 		panic(err)
@@ -240,7 +240,7 @@ func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain,
 		header.Difficulty,
 		header.GasLimit,
 		header.Time,
-		statedb,
+		db,
 		GetHashFn(header.ParentHash, chain),
 		fork,
 		chainConfig,
@@ -251,11 +251,38 @@ func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain,
 
 var OutOfGasError = errors.New("Out of gas")
 
-type VmManagerSingleton struct {
+type vmManager struct {
+	isConfigured 	bool
+	useVmType 		vm.Type
+	useVmManagment 	vm.ManagerType
+	useVmConnection vm.ConnectionType
+	useVmRemotePort int
+	useVmRemoteHost string
 }
 
-var VmManager = &VmManagerSingleton{}
+var VmManager = &vmManager{}
 
-func (self *VmManagerSingleton) ConnectMachine() (vm.Machine, error) {
-	return classic.NewMachine(), nil
+func (self *vmManager) autoConfig() {
+
+	self.useVmType = vm.DefaultVm
+	self.useVmManagment = vm.DefaultVmUsage
+	self.useVmConnection = vm.DefaultVmProto
+	self.useVmRemoteHost = vm.DefaultVmHost
+	self.useVmRemotePort = vm.DefaultVmPort
+
+	self.isConfigured = true
 }
+
+var BadVmUsageError = errors.New("VM can't be used in this way")
+
+func (self *vmManager) ConnectMachine() (vm.Machine, error) {
+	if !self.isConfigured {
+		self.autoConfig()
+	}
+	if self.useVmType == vm.ClassicVm && self.useVmConnection == vm.LocalVm {
+		return classic.NewMachine(), nil
+	} else {
+		return nil, BadVmUsageError
+	}
+}
+
