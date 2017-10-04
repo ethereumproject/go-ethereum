@@ -26,6 +26,13 @@ import (
 	"strings"
 
 	"errors"
+	"io/ioutil"
+	"math/big"
+	"path/filepath"
+	"strconv"
+	"syscall"
+	"time"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -37,12 +44,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
-	"io/ioutil"
-	"math/big"
-	"path/filepath"
-	"strconv"
-	"syscall"
-	"time"
 )
 
 const (
@@ -818,7 +819,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 		intervalI = i
 	}
 
-	glog.V(logger.Error).Infof("STATUS SYNC Log interval set: %d seconds", intervalI)
+	glog.V(logger.Info).Infof("STATUS SYNC Log interval set: %d seconds", intervalI)
 
 	tickerInterval := time.Second * time.Duration(int32(intervalI))
 	ticker := time.NewTicker(tickerInterval)
@@ -928,8 +929,74 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 		case <-sigc:
 			// Listen for interrupt
 			ticker.Stop()
-			glog.V(logger.Error).Infoln("STATUS SYNC Stopping logging.")
+			glog.V(logger.Debug).Infoln("STATUS SYNC Stopping logging.")
 			return
 		}
 	}
+}
+
+func stringInSlice(s string, sl []string) bool {
+	for _, l := range sl {
+		if l == s {
+			return true
+		}
+	}
+	return false
+}
+
+func makeMLogDocumentation(ctx *cli.Context) error {
+	wantComponents := ctx.Args()
+
+	// If no components specified, print all.
+	if len(wantComponents) == 0 {
+		for k := range logger.MLogRegistryAvailable {
+			wantComponents = append(wantComponents, string(k))
+		}
+	}
+
+	// Should throw an error if any unavailable components were specified.
+	cs := []string{}
+	for c := range logger.MLogRegistryAvailable {
+		cs = append(cs, string(c))
+	}
+	for _, c := range wantComponents {
+		if !stringInSlice(c, cs) {
+			glog.Fatalf("Specified component does not exist: %s\n ? Available components: %v", c, cs)
+		}
+	}
+
+	// "table of contents"
+	for cmp, lines := range logger.MLogRegistryAvailable {
+		if !stringInSlice(string(cmp), wantComponents) {
+			continue
+		}
+		fmt.Printf("\n[%s]\n\n", cmp)
+		for _, line := range lines {
+			// print anchor links ul list items
+			if ctx.Bool("md") {
+				fmt.Printf("- [%s](#%s)\n", line.EventName(), strings.Replace(line.EventName(), ".", "-", -1))
+			} else {
+				fmt.Printf("- %s\n", line.EventName())
+			}
+		}
+	}
+
+	// Only print per-line markdown documentation if -md flag given.
+	if ctx.Bool("md") {
+		fmt.Println("\n----\n") // hr
+
+		// each LINE
+		for cmp, lines := range logger.MLogRegistryAvailable {
+			if !stringInSlice(string(cmp), wantComponents) {
+				continue
+			}
+			for _, line := range lines {
+				fmt.Println(line.FormatDocumentation(cmp))
+				fmt.Println("----")
+			}
+		}
+	}
+
+	fmt.Println()
+	return nil
 }
