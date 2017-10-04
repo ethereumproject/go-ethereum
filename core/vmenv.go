@@ -257,7 +257,7 @@ func getFork(number *big.Int, chainConfig *ChainConfig) vm.Fork {
 	return vm.Frontier
 }
 
-func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) (VmEnv,error) {
+func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) VmEnv {
 	machine, err := VmManager.ConnectMachine()
 	if err != nil {
 		panic(err)
@@ -275,7 +275,7 @@ func NewEnv(statedb *state.StateDB, chainConfig *ChainConfig, chain *BlockChain,
 		chainConfig,
 		machine,
 	}
-	return vmenv, nil
+	return vmenv
 }
 
 var (

@@ -1,4 +1,3 @@
-
 // Copyright 2017 (c) ETCDEV Team
 
 // This file is part of the go-ethereum library.
@@ -22,40 +21,43 @@ import (
 	"math/big"
 	"reflect"
 
+	"errors"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"errors"
 )
 
 // Type is the VM type
 type Type byte
+
 const (
-	ClassicVm Type = iota	// classic VM (legacy implementation from ethereum)
-	SputnikVm				// modern VM
-	OtherVm					// other external VM connected through RPC
+	ClassicVm Type = iota // classic VM (legacy implementation from ethereum)
+	SputnikVm             // modern VM
+	OtherVm               // other external VM connected through RPC
 )
 
 // ManagerType says how to manage VM
 type ManagerType byte
+
 const (
 	ManageLocalVm ManagerType = iota // Automaticaly start/fork VM process and manage it
-	UseExternalVm	 // VM process managed separately
+	UseExternalVm                    // VM process managed separately
 )
 
 // ConnectionType says how to connect to VM
 type ConnectionType byte
+
 const (
-	LocalVm ConnectionType = iota  // VM is in the same process
-	LocalIpcVm 		// VM is in the other copy of the process
-	LocalRpcVm		// VM is another executable listening on specified host:port
-	RemoteRpcVm	    // VM is started on other host
+	LocalVm     ConnectionType = iota // VM is in the same process
+	LocalIpcVm                        // VM is in the other copy of the process
+	LocalRpcVm                        // VM is another executable listening on specified host:port
+	RemoteRpcVm                       // VM is started on other host
 )
 
-const DefaultVm      = ClassicVm
+const DefaultVm = ClassicVm
 const DefaultVmProto = LocalVm
 const DefaultVmUsage = ManageLocalVm
-const DefaultVmPort  = 30301
-const DefaultVmHost  = "localhost"
+const DefaultVmPort = 30301
+const DefaultVmHost = "localhost"
 
 type GasTable struct {
 	ExtcodeSize *big.Int
@@ -81,19 +83,21 @@ func (g *GasTable) IsEmpty() bool {
 }
 
 type Status byte
+
 const (
-	ExitedOk Status = iota
-	Inactive	  // vm is inactive
-	Running       // vm is running
-	RequireErr    // vm requires some information
-	TransferErr   // account has insufficient balance and transfer is not possible
-	OutOfGasErr   // out of gas error occurred
-	BadCodeErr    // bad contract code
-	ExitedErr     // unspecified error occured
-	Broken        // connection with vm is broken or vm is not response
+	ExitedOk    Status = iota
+	Inactive           // vm is inactive
+	Running            // vm is running
+	RequireErr         // vm requires some information
+	TransferErr        // account has insufficient balance and transfer is not possible
+	OutOfGasErr        // out of gas error occurred
+	BadCodeErr         // bad contract code
+	ExitedErr          // unspecified error occured
+	Broken             // connection with vm is broken or vm is not response
 )
 
 type Fork byte
+
 const (
 	Frontier Fork = iota
 	Homestead
@@ -113,6 +117,7 @@ type Account interface {
 }
 
 type RequireID byte
+
 const (
 	RequireAccount RequireID = iota
 	RequireCode
@@ -122,7 +127,7 @@ const (
 )
 
 type Require struct {
-	ID RequireID
+	ID      RequireID
 	Address common.Address
 	Hash    common.Hash
 	Number  uint64
@@ -132,7 +137,7 @@ type Context interface {
 	// Commit an account information
 	CommitAccount(address common.Address, nonce uint64, balance *big.Int) error
 	// Commit a block hash
-	CommitBlockhash(number uint64,hash common.Hash) error
+	CommitBlockhash(number uint64, hash common.Hash) error
 	// Commit a contract code
 	CommitCode(address common.Address, hash common.Hash, code []byte) error
 	// Commit an info
@@ -165,7 +170,7 @@ type Context interface {
 }
 
 const (
-	TestFeaturesDisabled = iota*2
+	TestFeaturesDisabled = iota * 2
 	TestSkipTransfer
 	TestSkipSubCall
 	TestSkipCreate

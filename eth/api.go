@@ -779,10 +779,7 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 	}
 
 	// Execute the call and return
-	vmenv, err := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
-	if err != nil {
-		return "0x", big.NewInt(0), err
-	}
+	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
 
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
@@ -1753,10 +1750,7 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 	}
 
 	// Execute the call and return
-	vmenv, err := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
-	if err != nil {
-		return nil, err
-	}
+	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
 
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
@@ -1830,10 +1824,8 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 			data: tx.Data(),
 		}
 
-		vmenv, err := core.NewEnv(statedb, s.eth.chainConfig, s.eth.BlockChain(), msg, block.Header())
-		if err != nil {
-			return msg, nil, err
-		}
+		vmenv := core.NewEnv(statedb, s.eth.chainConfig, s.eth.BlockChain(), msg, block.Header())
+
 		if idx == txIndex {
 			return msg, vmenv, nil
 		}
