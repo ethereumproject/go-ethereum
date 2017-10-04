@@ -504,29 +504,33 @@ func (t *udp) send(toaddr *net.UDPAddr, ptype byte, req interface{}) error {
 	if err != nil {
 		return err
 	}
-	switch ptype {
-	case pingPacket:
-		mlogDiscover.Send(mlogPingSendTo.SetDetailValues(
-			toaddr.String(),
-			len(packet),
-		))
-	case pongPacket:
-		mlogDiscover.Send(mlogPongSendTo.SetDetailValues(
-			toaddr.String(),
-			len(packet),
-		))
-	case findnodePacket:
-		mlogDiscover.Send(mlogFindNodeSendTo.SetDetailValues(
-			toaddr.String(),
-			len(packet),
-		))
-	case neighborsPacket:
-		mlogDiscover.Send(mlogNeighborsSendTo.SetDetailValues(
-			toaddr.String(),
-			len(packet),
-		))
+	if logger.MlogEnabled() {
+		switch ptype {
+		// @sorpass: again, performance penalty?
+		case pingPacket:
+			mlogDiscover.Send(mlogPingSendTo.SetDetailValues(
+				toaddr.String(),
+				len(packet),
+			))
+		case pongPacket:
+			mlogDiscover.Send(mlogPongSendTo.SetDetailValues(
+				toaddr.String(),
+				len(packet),
+			))
+		case findnodePacket:
+			mlogDiscover.Send(mlogFindNodeSendTo.SetDetailValues(
+				toaddr.String(),
+				len(packet),
+			))
+		case neighborsPacket:
+			mlogDiscover.Send(mlogNeighborsSendTo.SetDetailValues(
+				toaddr.String(),
+				len(packet),
+			))
+		}
 	}
 	glog.V(logger.Detail).Infof(">>> %v %T\n", toaddr, req)
+
 	if _, err = t.conn.WriteToUDP(packet, toaddr); err != nil {
 		glog.V(logger.Detail).Infoln("UDP send failed:", err)
 	}
@@ -594,33 +598,35 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 	if err = packet.handle(t, from, fromID, hash); err != nil {
 		status = err.Error()
 	}
-	// Use fmt Type interpolator to decide kind of request received,
-	// since packet is an interface with 1 method: handle.
-	switch p := fmt.Sprintf("%T", packet); p {
-	case "*discover.ping":
-		mlogDiscover.Send(mlogPingHandleFrom.SetDetailValues(
-			from.String(),
-			fromID.String(),
-			len(buf),
-		))
-	case "*discover.pong":
-		mlogDiscover.Send(mlogPongHandleFrom.SetDetailValues(
-			from.String(),
-			fromID.String(),
-			len(buf),
-		))
-	case "*discover.findnode":
-		mlogDiscover.Send(mlogFindNodeHandleFrom.SetDetailValues(
-			from.String(),
-			fromID.String(),
-			len(buf),
-		))
-	case "*discover.neighbors":
-		mlogDiscover.Send(mlogNeighborsHandleFrom.SetDetailValues(
-			from.String(),
-			fromID.String(),
-			len(buf),
-		))
+	if logger.MlogEnabled() {
+		// Use fmt Type interpolator to decide kind of request received,
+		// since packet is an interface with 1 method: handle.
+		switch p := fmt.Sprintf("%T", packet); p {
+		case "*discover.ping":
+			mlogDiscover.Send(mlogPingHandleFrom.SetDetailValues(
+				from.String(),
+				fromID.String(),
+				len(buf),
+			))
+		case "*discover.pong":
+			mlogDiscover.Send(mlogPongHandleFrom.SetDetailValues(
+				from.String(),
+				fromID.String(),
+				len(buf),
+			))
+		case "*discover.findnode":
+			mlogDiscover.Send(mlogFindNodeHandleFrom.SetDetailValues(
+				from.String(),
+				fromID.String(),
+				len(buf),
+			))
+		case "*discover.neighbors":
+			mlogDiscover.Send(mlogNeighborsHandleFrom.SetDetailValues(
+				from.String(),
+				fromID.String(),
+				len(buf),
+			))
+		}
 	}
 	glog.V(logger.Detail).Infof("<<< %v %T: %s\n", from, packet, status)
 	return err

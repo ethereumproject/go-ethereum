@@ -72,6 +72,11 @@ var (
 		"kv":    mLOGKV,
 		"json":  MLOGJSON,
 	}
+
+	// Global var set to false if "--mlog=off", used to simply/
+	// speed-up checks to avoid performance penalty if mlog is
+	// off.
+	isMlogEnabled bool = true
 )
 
 // MLogT defines an mlog LINE
@@ -117,6 +122,16 @@ func init() {
 
 	// Sanitize userName since it may contain filepath separators on Windows.
 	userName = strings.Replace(userName, `\`, "_", -1)
+}
+
+// Getters.
+func SetMlogEnabled(b bool) (bool) {
+	isMlogEnabled = b
+	return isMlogEnabled
+}
+
+func MlogEnabled() bool {
+	return isMlogEnabled
 }
 
 // MLogRegisterAvailable is called for each log component variable from a package/mlog.go file

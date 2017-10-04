@@ -748,28 +748,30 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 // WriteBlock writes the block to the chain.
 func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err error) {
 
-	defer func(status WriteStatus, err error) {
-		mlogWriteStatus := "UNKNOWN"
-		switch status {
-		case NonStatTy:
-			mlogWriteStatus = "NONE"
-		case CanonStatTy:
-			mlogWriteStatus = "CANON"
-		case SideStatTy:
-			mlogWriteStatus = "SIDE"
-		}
-		mlogBlockchain.Send(mlogBlockchainWriteBlock.SetDetailValues(
-			mlogWriteStatus,
-			err,
-			block.Number(),
-			block.Hash().Hex(),
-			block.Size().Int64(),
-			block.Transactions().Len(),
-			block.GasUsed(),
-			block.Coinbase().Hex(),
-			block.Time(),
-		))
-	}(status, err)
+	if logger.MlogEnabled() {
+		defer func(status WriteStatus, err error) {
+			mlogWriteStatus := "UNKNOWN"
+			switch status {
+			case NonStatTy:
+				mlogWriteStatus = "NONE"
+			case CanonStatTy:
+				mlogWriteStatus = "CANON"
+			case SideStatTy:
+				mlogWriteStatus = "SIDE"
+			}
+			mlogBlockchain.Send(mlogBlockchainWriteBlock.SetDetailValues(
+				mlogWriteStatus,
+				err,
+				block.Number(),
+				block.Hash().Hex(),
+				block.Size().Int64(),
+				block.Transactions().Len(),
+				block.GasUsed(),
+				block.Coinbase().Hex(),
+				block.Time(),
+			))
+		}(status, err)
+	}
 
 	self.wg.Add(1)
 	defer self.wg.Done()
@@ -981,16 +983,18 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 	if (stats.queued > 0 || stats.processed > 0 || stats.ignored > 0) && bool(glog.V(logger.Info)) {
 		tend := time.Since(tstart)
 		start, end := chain[0], chain[len(chain)-1]
-		mlogBlockchain.Send(mlogBlockchainInsertBlocks.SetDetailValues(
-			stats.processed,
-			stats.queued,
-			stats.ignored,
-			txcount,
-			end.Number(),
-			start.Hash().Hex(),
-			end.Hash().Hex(),
-			tend,
-		))
+		if logger.MlogEnabled() {
+			mlogBlockchain.Send(mlogBlockchainInsertBlocks.SetDetailValues(
+				stats.processed,
+				stats.queued,
+				stats.ignored,
+				txcount,
+				end.Number(),
+				start.Hash().Hex(),
+				end.Hash().Hex(),
+				tend,
+			))
+		}
 		glog.V(logger.Info).Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n",
 			stats.processed,
 			stats.queued,

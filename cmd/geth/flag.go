@@ -586,7 +586,10 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	if ctx.GlobalString(MLogFlag.Name) != "off" {
 		mustRegisterMLogsFromContext(ctx)
 	} else {
-		glog.V(logger.Warn).Infof("Machine logs: disabled")
+		// Just demonstrative code.
+		if b := logger.SetMlogEnabled(false); b == false && logger.MlogEnabled() == false {
+			glog.V(logger.Warn).Infof("Machine logs: disabled")
+		}
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {

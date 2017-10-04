@@ -223,9 +223,8 @@ func (pool *TxPool) SetLocal(tx *types.Transaction) {
 
 // validateTx checks whether a transaction is valid according
 // to the consensus rules.
-func (pool *TxPool) validateTx(tx *types.Transaction) error {
+func (pool *TxPool) validateTx(tx *types.Transaction) (e error) {
 	local := pool.localTx.contains(tx.Hash())
-	var e error
 	defer func() {
 		mlogTxPool.Send(mlogTxPoolValidateTx.SetDetailValues(
 			tx.Hash().Hex(),
@@ -235,39 +234,39 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	// Drop transactions under our own minimal accepted gas price
 	if !local && pool.minGasPrice.Cmp(tx.GasPrice()) > 0 {
 		e = ErrCheap
-		return e
+		return
 	}
 
 	currentState, err := pool.currentState()
 	if err != nil {
 		e = err
-		return e
+		return
 	}
 
 	from, err := types.Sender(pool.signer, tx)
 	if err != nil {
 		e = ErrInvalidSender
-		return e
+		return
 	}
 
 	// Make sure the account exist. Non existent accounts
 	// haven't got funds and well therefor never pass.
 	if !currentState.Exist(from) {
 		e = ErrNonExistentAccount
-		return e
+		return
 	}
 
 	// Last but not least check for nonce errors
 	if currentState.GetNonce(from) > tx.Nonce() {
 		e = ErrNonce
-		return e
+		return
 	}
 
 	// Check the transaction doesn't exceed the current
 	// block limit gas.
 	if pool.gasLimit().Cmp(tx.Gas()) < 0 {
 		e = ErrGasLimit
-		return e
+		return
 	}
 
 	// Transactions can't be negative. This may never happen
@@ -275,23 +274,22 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 	// a transaction using the RPC for example.
 	if tx.Value().Sign() < 0 {
 		e = ErrNegativeValue
-		return e
+		return
 	}
 
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
 	if currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
 		e = ErrInsufficientFunds
-		return e
+		return
 	}
 
 	intrGas := IntrinsicGas(tx.Data(), MessageCreatesContract(tx), pool.homestead)
 	if tx.Gas().Cmp(intrGas) < 0 {
 		e = ErrIntrinsicGas
-		return e
+		return
 	}
-
-	return nil
+	return // e=nil
 }
 
 // validate and queue transactions.
@@ -318,13 +316,17 @@ func (self *TxPool) add(tx *types.Transaction) error {
 	f, _ := types.Sender(self.signer, tx)
 	from := common.Bytes2Hex(f[:4])
 
-	mlogTxPool.Send(mlogTxPoolAddTx.SetDetailValues(
-		f.Hex(),
-		tx.To().Hex(),
-		tx.Value,
-		hash.Hex(),
-	))
-	glog.V(logger.Debug).Infof("(t) %x => %s (%v) %x\n", from, toname, tx.Value, hash)
+	if logger.MlogEnabled() {
+		mlogTxPool.Send(mlogTxPoolAddTx.SetDetailValues(
+			f.Hex(),
+			tx.To().Hex(),
+			tx.Value,
+			hash.Hex(),
+		))
+	}
+	if glog.V(logger.Debug) {
+		glog.Infof("(t) %x => %s (%v) %x\n", from, toname, tx.Value, hash)
+	}
 
 	return nil
 }

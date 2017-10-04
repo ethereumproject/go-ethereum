@@ -140,10 +140,12 @@ func (self *Miner) Stop() {
 	self.worker.stop()
 	atomic.StoreInt32(&self.mining, 0)
 	atomic.StoreInt32(&self.shouldStart, 0)
-	mlogMiner.Send(mlogMinerStop.SetDetailValues(
-		self.coinbase.Hex(),
-		self.threads,
-	))
+	if logger.MlogEnabled() {
+		mlogMiner.Send(mlogMinerStop.SetDetailValues(
+			self.coinbase.Hex(),
+			self.threads,
+		))
+	}
 }
 
 func (self *Miner) Register(agent Agent) {
