@@ -69,7 +69,7 @@ func verifyArguments(ctx *cli.Context, client rpc.Client) error {
 
 	module := ctx.Args()[0]
 	if _, ok := modules[module]; !ok {
-		return fmt.Errorf("Unknown API module: %s", module)
+		return fmt.Errorf("unknown API module: %s", module)
 	}
 
 	return nil
@@ -92,15 +92,19 @@ func callRPC(ctx *cli.Context, client rpc.Client) (interface{}, error) {
 		return nil, err
 	}
 
-	var res rpc.JSONSuccessResponse
+	var res rpc.JSONResponse
 	if err := client.Recv(&res); err != nil {
 		return nil, err
+	}
+	if res.Error != nil {
+		return nil, fmt.Errorf("error in %s_%s: %s (code: %d)",
+			module, method, res.Error.Message, res.Error.Code)
 	}
 	if res.Result != nil {
 		return res.Result, nil
 	}
 
-	return nil, errors.New("No API response")
+	return nil, errors.New("no API response")
 }
 
 func prettyPrint(result interface{}) error {
