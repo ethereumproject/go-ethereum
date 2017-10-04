@@ -122,7 +122,6 @@ func runVmTests(tests map[string]VmTest, skipTests []string) error {
 			return nil
 		}
 
-		fmt.Printf("-- TEST %s ------\n",name)
 		if err := runVmTest(test); err != nil {
 			return fmt.Errorf("%s %s", name, err.Error())
 		}
@@ -213,19 +212,13 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 	}
 	// Reset the pre-compiled contracts for VM tests.
 	classic.Precompiled = make(map[string]*classic.PrecompiledAccount)
-
-	caller := state.GetOrNewStateObject(from)
-
+	state.GetOrNewStateObject(from)
 	vmenv := NewEnvFromMap(RuleSet{
 		HomesteadBlock:           big.NewInt(1150000),
 		HomesteadGasRepriceBlock: big.NewInt(2500000),
 		DiehardBlock:             big.NewInt(3000000),
 		ExplosionBlock:           big.NewInt(5000000),
 	}, state, env, exec)
-	vmenv.vmTest = true
-	vmenv.skipTransfer = true
-	vmenv.initial = true
-	ret, err := vmenv.Call(caller, to, data, gas, price, value)
-
-	return ret, vmenv.state.Logs(), vmenv.Gas, err
+	ret, err := vmenv.Call(from, to, data, gas, price, value)
+	return ret, vmenv.Db().Logs(), gas, err
 }

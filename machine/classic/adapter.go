@@ -148,6 +148,8 @@ type vmEnv struct {
 	output     []byte
 	stepByStep bool
 
+	followingTransfer bool
+
 	db          *state.StateDB
 	origin      common.Address
 	address     common.Address
@@ -574,7 +576,10 @@ func (self *vmEnv) AddLog(log *state.Log) {
 
 func (self *vmEnv) CanTransfer(from common.Address, balance *big.Int) bool {
 	if (self.machine.features & vm.TestSkipTransfer) > 0 {
-		return true
+		if !self.followingTransfer {
+			self.followingTransfer = true
+			return true
+		}
 	}
 	return self.GetBalance(from).Cmp(balance) >= 0
 }
