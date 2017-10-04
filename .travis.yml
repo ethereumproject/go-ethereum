@@ -24,7 +24,6 @@ script:
 
 - go version
 - go env
-
 # Run go tests.
 - go test ./...
 # Build for integration tests.

@@ -17,7 +17,7 @@ teardown() {
 	unset GENESIS_TESTNET
 }
 
-## dump-chain-config JSON 
+## dump-chain-config JSON
 
 # Test dumping chain configuration to JSON file.
 @test "dump-chain-config | exit 0" {
@@ -65,7 +65,7 @@ teardown() {
 }
 
 @test "dump-chain-config | --chain | exit 0" {
-	
+
 	# Same as 'chainconfig customnet dump'... higher complexity::more confidence
 	customnet="$DATA_DIR"/kitty
 	mkdir -p "$customnet"
@@ -74,9 +74,9 @@ teardown() {
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
-	
+
 	[ -f "$customnet"/chain.json ]
-	
+
 	run grep -R "mainnet" "$customnet"/chain.json
 	[ "$status" -eq 0 ]
 	echo "$output"
@@ -96,9 +96,9 @@ teardown() {
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
-	
+
 	[ -f "$DATA_DIR"/privatenet.json ]
-	
+
 	run grep -R "morden" "$DATA_DIR"/privatenet.json
 	[ "$status" -eq 0 ]
 	echo "$output"
@@ -113,11 +113,11 @@ teardown() {
 	[[ "$output" == *"kitty"* ]]
 
 	# ensure chain config file is copied to chaindata dir
-	[ -f "$DATA_DIR"/kitty/chain.json ] 
+	[ -f "$DATA_DIR"/kitty/chain.json ]
 }
 
 @test "--chain morden dump-chain-config | --chain == morden | exit 0" {
-	
+
 	# Same as 'chainconfig customnet dump'... higher complexity::more confidence
 	customnet="$DATA_DIR"/kitty
 	mkdir -p "$customnet"
@@ -126,9 +126,9 @@ teardown() {
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
-	
+
 	[ -f "$customnet"/chain.json ]
-	
+
 	run grep -R "morden" "$customnet"/chain.json
 	[ "$status" -eq 0 ]
 	echo "$output"
@@ -144,7 +144,7 @@ teardown() {
 
 # Dump morden and make customization and test that customizations are installed.
 @test "--chain morden dump-chain-config | --chain -> kitty | exit 0" {
-	
+
 	# Same as 'chainconfig customnet dump'... higher complexity::more confidence
 	customnet="$DATA_DIR"/kitty
 	mkdir -p "$customnet"
@@ -153,9 +153,9 @@ teardown() {
 	echo "$output"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Wrote chain config file"* ]]
-	
+
 	[ -f "$customnet"/chain.json ]
-	
+
 	run grep -R "morden" "$customnet"/chain.json
 	[ "$status" -eq 0 ]
 	echo "$output"
@@ -166,7 +166,7 @@ teardown() {
 	sed -i.bak s/identity/id/ "$customnet"/chain.json	# ensure identity is aliases to identity
 	# remove starting nonce from external config
 	# config file should still be valid, but genesis should have different hash than default morden genesis
-	grep -v 'startingNonce' "$customnet"/chain.json > "$DATA_DIR"/stripped.json 
+	grep -v 'startingNonce' "$customnet"/chain.json > "$DATA_DIR"/stripped.json
 	[ "$status" -eq 0 ]
 	mv "$DATA_DIR"/stripped.json "$customnet"/chain.json
 
@@ -187,7 +187,7 @@ teardown() {
 ## load /data
 
 # Test loading mainnet chain configuration from data/ JSON file.
-# Test ensures 
+# Test ensures
 # - can load default external JSON config
 # - use datadir/subdir schema (/mainnet)
 # - configured nonce matches external nonce (soft check since 42 is default, too)
@@ -253,7 +253,7 @@ teardown() {
 
 @test "--chain kitty --testnet | exit !=0" {
 	mkdir -p $DATA_DIR/kitty
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	cp $BATS_TEST_DIRNAME/../../core/config/mainnet.json $DATA_DIR/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 	run $GETH_CMD --data-dir $DATA_DIR --chain kitty  --testnet console
 	echo "$output"
@@ -263,7 +263,7 @@ teardown() {
 
 @test "--chain kitty --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 | exit 0" {
 	mkdir -p $DATA_DIR/kitty
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	cp $BATS_TEST_DIRNAME/../../core/config/mainnet.json $DATA_DIR/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 	run $GETH_CMD --data-dir $DATA_DIR --chain kitty --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 console
 	echo "$output"
@@ -299,29 +299,29 @@ freshconfig() {
 	rm -fr $DATA_DIR
 	DATA_DIR=`mktemp -d`
 	mkdir -p $DATA_DIR/kitty
-	cp "$BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json" "$DATA_DIR/kitty/chain.json"
+	cp "$BATS_TEST_DIRNAME/../../core/config/mainnet.json" "$DATA_DIR/kitty/chain.json"
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 }
 
 @test "--chain kitty @ sed -i s/key/badkey/ kitty/chain.json | exit !=0" {
 	declare -a OK_VARS=(id genesis chainConfig bootstrap) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(did genes chainconfig bootsrap)
-	
+
 	mkdir -p $DATA_DIR/kitty
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	cp $BATS_TEST_DIRNAME/../../core/config/mainnet.json $DATA_DIR/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
-	
+
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
 		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/kitty/chain.json"
-		
+
 		run $GETH_CMD --datadir $DATA_DIR --chain kitty console
 		echo "$output"
 		[ "$status" -ne 0 ]
 		if [ ! "$status" -ne 0 ]; then
 			echo "allowed invalid attribute: ${var}"
-		fi		
+		fi
 
 		freshconfig()
 		((counter=counter+1))
@@ -331,22 +331,22 @@ freshconfig() {
 @test "--chain kitty @ sed -i s/subkey/badsubkey/ kitty/chain.json | exit !=0" {
 	declare -a OK_VARS=(nonce gasLimit difficulty forks alloc balance Block Hash) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(noneonce gasLim dificile knives allok bills Clock Cash)
-	
+
 	mkdir -p $DATA_DIR/kitty
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	cp $BATS_TEST_DIRNAME/../../core/config/mainnet.json $DATA_DIR/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
-	
+
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
 		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/kitty/chain.json"
-		
+
 		run $GETH_CMD --datadir $DATA_DIR --chain kitty console
 		echo "$output"
 		[ "$status" -ne 0 ]
 		if [ ! "$status" -ne 0 ]; then
 			echo "allowed invalid attribute: ${var}"
-		fi		
+		fi
 
 		freshconfig()
 		((counter=counter+1))
@@ -356,35 +356,24 @@ freshconfig() {
 @test "--chain kitty @ sed -i s/value/badvalue/ kitty/chain.json | exit !=0" {
 	declare -a    OK_VARS=(0x0000000000000042 0x0000000000000000000000000000000000000000000000000000000000001388 0x0000000000000000000000000000000000000000 enode homestead) # 'name' can be blank... it's only for human consumption
 	declare -a NOTOK_VARS=(Ox0000000000000042 Ox0000000000000000000000000000000000000000000000000000000000001388 0x000000000000000000000000000000000000000  ewok  homeinbed)
-	
+
 	mkdir -p $DATA_DIR/kitty
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/config/mainnet.json $DATA_DIR/kitty/chain.json
+	cp $BATS_TEST_DIRNAME/../../core/config/mainnet.json $DATA_DIR/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
-	
+
 	counter=0
 	for var in "${OK_VARS[@]}"
 	do
 		sed -i.bu "s/${var}/${NOTOK_VARS[counter]}/" "$DATA_DIR/kitty/chain.json"
-		
+
 		run $GETH_CMD --datadir $DATA_DIR --chain kitty console
 		echo "$output"
 		[ "$status" -ne 0 ]
 		if [ ! "$status" -ne 0 ]; then
 			echo "allowed invalid attribute: ${var}"
-		fi		
+		fi
 
 		freshconfig()
 		((counter=counter+1))
 	done
 }
-
-
-
-
-
-
-
-
-
-
-

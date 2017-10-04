@@ -373,7 +373,7 @@ func makeExpectedRewardCasesForConfig(c *ChainConfig, numUncles int, t *testing.
 // Accruing over block cases simulates miner account winning many times.
 // Uses maps of running sums for winner & 2 uncles to keep tally.
 func TestAccumulateRewards1(t *testing.T) {
-	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
 	cases := [][]expectedRewardCase{}
 	for _, c := range configs {
 		cases = append(cases, makeExpectedRewardCasesForConfig(c, 2, t))
@@ -517,7 +517,7 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 
 	// Order matters here; expected cases must be ordered the same.
 	// Will uses indexes to match expectations -> test outcomes.
-	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
 	cases := [][]expectedRewardCase{}
 	for _, c := range configs {
 		cases = append(cases, makeExpectedRewardCasesForConfig(c, 2, t))
@@ -615,7 +615,7 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 // Tests winner includes 1 ommer header.
 func TestAccumulateRewards3_1Uncle(t *testing.T) {
 
-	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
 	cases := [][]expectedRewardCase{}
 	for _, c := range configs {
 		cases = append(cases, makeExpectedRewardCasesForConfig(c, 1, t))
@@ -701,7 +701,7 @@ func TestAccumulateRewards3_1Uncle(t *testing.T) {
 // Tests winner includes 0 ommer headers.
 func TestAccumulateRewards4_0Uncles(t *testing.T) {
 
-	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
 	cases := [][]expectedRewardCase{}
 	for _, c := range configs {
 		cases = append(cases, makeExpectedRewardCasesForConfig(c, 0, t))
