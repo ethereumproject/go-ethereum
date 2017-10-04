@@ -462,15 +462,10 @@ func mustMakeMLogDir(ctx *cli.Context) string {
 			glog.Fatalf("Flag %v requires a non-empty argument", MLogDirFlag.Name)
 			return ""
 		}
-		cwd, e := os.Getwd()
-		if e != nil {
-			cwd = "."
+		if filepath.IsAbs(p) {
+			return p
 		}
-		rp := common.EnsurePathAbsoluteOrRelativeTo(cwd, p)
-		if filepath.IsAbs(rp) {
-			return rp
-		}
-		ap, e := filepath.Abs(rp)
+		ap, e := filepath.Abs(p)
 		if e != nil {
 			glog.Fatalf("could not establish absolute path for mlog dir: %v", e)
 		}
