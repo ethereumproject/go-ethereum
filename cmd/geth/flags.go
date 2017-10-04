@@ -36,7 +36,7 @@ var (
 	ChainIdentityFlag = cli.StringFlag{
 		Name: "chain",
 		Usage: `Chain identifier (default='mainnet', test='morden') or path to JSON chain configuration file (eg './path/to/chain.json').`,
-		Value: core.DefaultChainConfigID,
+		Value: core.DefaultConfigMainnet.Identity,
 	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "network-id, networkid",

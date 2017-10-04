@@ -383,7 +383,6 @@ func (self *StateDB) UnsortedRawDump(addresses []common.Address, fwr func(chan E
 	close(c2)
 	err = <-c3
 	return
-
 }
 
 func (self *StateDB) SortedDump(addresses []common.Address, prefix string, indent string, out io.Writer) (err error){
