@@ -227,7 +227,7 @@ func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, 
 
 		// Mutate the state and block according to any hard-fork specs
 		if config == nil {
-			config = DefaultConfig // MakeChainConfig()
+			config = DefaultConfigMainnet.ChainConfig // MakeChainConfig()
 		}
 		// Execute any user modifications to the block and finalize it
 		if gen != nil {
@@ -287,7 +287,7 @@ func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *Block
 	evmux := &event.TypeMux{}
 
 	// Initialize a fresh chain with only a genesis block
-	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
+	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
 	if err != nil {
 		return nil, nil, err
 	}
