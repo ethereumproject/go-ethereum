@@ -338,7 +338,9 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		var okNodes []*Node
 		for _, n := range nodes {
 			if isReserved(n.IP) {
-				glog.V(logger.Debug).Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
+				if glog.V(logger.Debug) {
+					glog.Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
+				}
 				continue
 			}
 			okNodes = append(okNodes, n)
@@ -529,7 +531,9 @@ func (t *udp) send(toaddr *net.UDPAddr, ptype byte, req interface{}) error {
 			))
 		}
 	}
-	glog.V(logger.Detail).Infof(">>> %v %T\n", toaddr, req)
+	if glog.V(logger.Detail) {
+		glog.Infof(">>> %v %T\n", toaddr, req)
+	}
 
 	if _, err = t.conn.WriteToUDP(packet, toaddr); err != nil {
 		glog.V(logger.Detail).Infoln("UDP send failed:", err)
@@ -628,7 +632,9 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 			))
 		}
 	}
-	glog.V(logger.Detail).Infof("<<< %v %T: %s\n", from, packet, status)
+	if glog.V(logger.Detail) {
+		glog.Infof("<<< %v %T: %s\n", from, packet, status)
+	}
 	return err
 }
 
