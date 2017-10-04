@@ -477,15 +477,7 @@ func mustMakeMLogDir(ctx *cli.Context) string {
 		return ap
 	}
 
-	rp := common.EnsurePathAbsoluteOrRelativeTo(MustMakeChainDataDir(ctx), "mlogs")
-	if !filepath.IsAbs(rp) {
-		af, e := filepath.Abs(rp)
-		if e != nil {
-			glog.Fatalf("cannot make absolute path for chain data dir: %v: %v", rp, e)
-		}
-		rp = af
-	}
-	return rp
+	return filepath.Join(MustMakeChainDataDir(ctx), "mlogs")
 }
 
 func makeMLogFileLogger(ctx *cli.Context) (string, error) {
