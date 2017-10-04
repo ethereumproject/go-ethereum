@@ -159,7 +159,7 @@ func MLogRegisterActive(component mlogComponent) {
 // SendMLog writes enabled component mlogs to file if the component is registered active.
 func (c mlogComponent) Send(msg MLogT) {
 	mlogRegLock.RLock()
-	if l := MLogRegistryActive[c]; l != nil {
+	if l, exists := MLogRegistryActive[c]; exists {
 		l.SendFormatted(GetMLogFormat(), 1, msg)
 	}
 	mlogRegLock.RUnlock()
