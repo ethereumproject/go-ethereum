@@ -26,7 +26,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/machine/classic"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
@@ -199,7 +198,7 @@ func runVmTest(test VmTest) error {
 	return nil
 }
 
-func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Logs, *big.Int, error) {
 	var (
 		to       = common.HexToAddress(exec["address"])
 		from     = common.HexToAddress(exec["caller"])
@@ -213,19 +212,13 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 	}
 	// Reset the pre-compiled contracts for VM tests.
 	classic.Precompiled = make(map[string]*classic.PrecompiledAccount)
-
-	caller := state.GetOrNewStateObject(from)
-
+	state.GetOrNewStateObject(from)
 	vmenv := NewEnvFromMap(RuleSet{
 		HomesteadBlock:           big.NewInt(1150000),
 		HomesteadGasRepriceBlock: big.NewInt(2500000),
 		DiehardBlock:             big.NewInt(3000000),
 		ExplosionBlock:           big.NewInt(5000000),
 	}, state, env, exec)
-	vmenv.vmTest = true
-	vmenv.skipTransfer = true
-	vmenv.initial = true
-	ret, err := vmenv.Call(caller, to, data, gas, price, value)
-
-	return ret, vmenv.state.Logs(), vmenv.Gas, err
+	ret, err := vmenv.Call(from, to, data, gas, price, value)
+	return ret, vmenv.Db().Logs(), gas, err
 }

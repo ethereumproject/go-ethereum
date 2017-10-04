@@ -67,6 +67,7 @@ func Create(env Environment, caller ContractRef, code []byte, gas, gasPrice, val
 func exec(env Environment, caller ContractRef, address, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value *big.Int) (ret []byte, addr common.Address, err error) {
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
+
 	if env.Depth() > callCreateDepthMax {
 		caller.ReturnGas(gas, gasPrice)
 

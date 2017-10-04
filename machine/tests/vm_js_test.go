@@ -14,7 +14,26 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/machine/classic"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"os"
+	"os/signal"
+	"syscall"
+	"runtime"
+	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/core"
 )
+
+func init() {
+	sigChan := make(chan os.Signal)
+	go func() {
+		stacktrace := make([]byte, 8192)
+		for _ = range sigChan {
+			length := runtime.Stack(stacktrace, true)
+			fmt.Println(string(stacktrace[:length]))
+			syscall.Exit(-1)
+		}
+	}()
+	signal.Notify(sigChan, syscall.SIGINT)
+}
 
 type VmEnv struct {
 	CurrentCoinbase   string
@@ -43,57 +62,6 @@ type RuleSet struct {
 	HomesteadGasRepriceBlock *big.Int
 	DiehardBlock             *big.Int
 	ExplosionBlock           *big.Int
-}
-
-
-type Env struct {
-	ruleSet      RuleSet
-	depth        int
-	state        *state.StateDB
-	skipTransfer bool
-	initial      bool
-	Gas          *big.Int
-
-	origin   common.Address
-	parent   common.Hash
-	coinbase common.Address
-
-	number     *big.Int
-	time       *big.Int
-	difficulty *big.Int
-	gasLimit   *big.Int
-
-	vmTest bool
-
-	evm vm.Machine
-}
-
-func (self *Env) Call(me common.Address, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	ctx, _ := self.evm.Call(self.number.Uint64(), me, addr, data, gas, price, value)
-	for {
-		r := ctx.Fire()
-		if r != nil {
-			switch r.ID {
-			case vm.RequireAccount:
-				acc := self.state.GetAccount(r.Address)
-				ctx.CommitAccount(acc.Address(),acc.Nonce(),acc.Balance())
-			case vm.RequireHash:
-				hash := common.Hash{}
-				ctx.CommitBlockhash(r.Number,hash)
-			case vm.RequireCode:
-				ctx.CommitCode(r.Address,self.state.GetCodeHash(r.Address),self.state.GetCode(r.Address))
-			case vm.RequireRules:
-				fork := vm.Frontier
-				if self.ruleSet.IsHomestead(self.number) {
-					fork = vm.Homestead
-				}
-				ctx.CommitRules(self.ruleSet.GasTable(self.number),fork,self.difficulty,self.gasLimit,self.time)
-			}
-		} else {
-			out, err := ctx.Out()
-			return out, err
-		}
-	}
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
@@ -137,39 +105,56 @@ func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	}
 }
 
-func NewEnv(ruleSet RuleSet, state *state.StateDB) *Env {
-	env := &Env{
-		ruleSet: ruleSet,
-		state:   state,
-	}
-	return env
-}
+func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]string, exeValues map[string]string) *core.Env {
 
-func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]string, exeValues map[string]string) *Env {
-	env := NewEnv(ruleSet, state)
-
-	env.origin = common.HexToAddress(exeValues["caller"])
-	env.parent = common.HexToHash(envValues["previousHash"])
-	env.coinbase = common.HexToAddress(envValues["currentCoinbase"])
-	env.number, _ = new(big.Int).SetString(envValues["currentNumber"], 0)
-	if env.number == nil {
+	number, _ := new(big.Int).SetString(envValues["currentNumber"], 0)
+	if number == nil {
 		panic("malformed current number")
 	}
-	env.time, _ = new(big.Int).SetString(envValues["currentTimestamp"], 0)
-	if env.time == nil {
+	time, _ := new(big.Int).SetString(envValues["currentTimestamp"], 0)
+	if time == nil {
 		panic("malformed current timestamp")
 	}
-	env.difficulty, _ = new(big.Int).SetString(envValues["currentDifficulty"], 0)
-	if env.difficulty == nil {
+	difficulty, _ := new(big.Int).SetString(envValues["currentDifficulty"], 0)
+	if difficulty == nil {
 		panic("malformed current difficulty")
 	}
-	env.gasLimit, _ = new(big.Int).SetString(envValues["currentGasLimit"], 0)
-	if env.gasLimit == nil {
+	gasLimit, _ := new(big.Int).SetString(envValues["currentGasLimit"], 0)
+	if gasLimit == nil {
 		panic("malformed current gas limit")
 	}
+	machine, _ := core.VmManager.ConnectMachine()
+	if machine == nil {
+		panic("could not connect machine")
+	}
 
-	env.Gas = new(big.Int)
-	env.evm = classic.NewMachine()
+	fork := vm.Frontier
+	if ruleSet.IsHomestead(number) {
+		fork = vm.Homestead
+	}
+
+	funcFn := func(n uint64) common.Hash {
+		return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
+	}
+
+	env := &core.Env{
+		common.HexToAddress(envValues["currentCoinbase"]),
+		number,
+		difficulty,
+		gasLimit,
+		time,
+		db,
+		funcFn,
+		fork,
+		ruleSet,
+		machine,
+	}
+
+	//env.origin = common.HexToAddress(exeValues["caller"])
+	//env.parent = common.HexToHash(envValues["previousHash"])
+	//env.coinbase = common.HexToAddress(envValues["currentCoinbase"])
+
+	machine.SetTestFeatures(vm.AllTestFeatures)
 
 	return env
 }
@@ -298,12 +283,8 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 		ExplosionBlock:           big.NewInt(5000000),
 	}, state, env, exec)
 
-	vmenv.vmTest = true
-	vmenv.skipTransfer = true
-	vmenv.initial = true
-
 	ret, err := vmenv.Call(caller.Address(), to, data, gas, price, value)
-	return ret, vmenv.state.Logs(), vmenv.Gas, err
+	return ret, vmenv.Db().Logs(), gas, err
 }
 
 func TestVMArithmetic(t *testing.T) {
