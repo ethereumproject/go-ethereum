@@ -153,7 +153,6 @@ func CollectToJSON() ([]byte, error) {
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
 	defer writer.Flush()
-
 	metrics.WriteJSONOnce(reg, writer)
 
 	return b.Bytes(), nil
