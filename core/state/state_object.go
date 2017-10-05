@@ -226,7 +226,14 @@ func (c *StateObject) AddBalance(amount *big.Int) {
 		return
 	}
 	c.SetBalance(new(big.Int).Add(c.Balance(), amount))
-
+	if logger.MlogEnabled() {
+		mlogState.Send(mlogStateAddBalanceObject.SetDetailValues(
+			c.Address().Hex(),
+			c.Nonce(),
+			c.Balance(),
+			amount,
+		))
+	}
 	if glog.V(logger.Debug) {
 		glog.Infof("%x: #%d %v (+ %v)\n", c.Address(), c.Nonce(), c.Balance(), amount)
 	}
@@ -237,7 +244,14 @@ func (c *StateObject) SubBalance(amount *big.Int) {
 		return
 	}
 	c.SetBalance(new(big.Int).Sub(c.Balance(), amount))
-
+	if logger.MlogEnabled() {
+		mlogState.Send(mlogStateSubBalanceObject.SetDetailValues(
+			c.Address().Hex(),
+			c.Nonce(),
+			c.Balance(),
+			amount,
+		))
+	}
 	if glog.V(logger.Core) {
 		glog.Infof("%x: #%d %v (- %v)\n", c.Address(), c.Nonce(), c.Balance(), amount)
 	}

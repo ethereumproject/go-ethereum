@@ -30,6 +30,8 @@ import (
 
 	"errors"
 
+	"time"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
@@ -453,6 +455,68 @@ func makeNodeName(version string, ctx *cli.Context) string {
 	return name
 }
 
+func mustMakeMLogDir(ctx *cli.Context) string {
+	if ctx.GlobalIsSet(MLogDirFlag.Name) {
+		p := ctx.GlobalString(MLogDirFlag.Name)
+		if p == "" {
+			glog.Fatalf("Flag %v requires a non-empty argument", MLogDirFlag.Name)
+			return ""
+		}
+		if filepath.IsAbs(p) {
+			return p
+		}
+		ap, e := filepath.Abs(p)
+		if e != nil {
+			glog.Fatalf("could not establish absolute path for mlog dir: %v", e)
+		}
+		return ap
+	}
+
+	return filepath.Join(MustMakeChainDataDir(ctx), "mlogs")
+}
+
+func makeMLogFileLogger(ctx *cli.Context) (string, error) {
+	now := time.Now()
+
+	mlogdir := mustMakeMLogDir(ctx)
+	logger.SetMLogDir(mlogdir)
+
+	_, filename, err := logger.CreateMLogFile(now)
+	if err != nil {
+		return "", err
+	}
+	// withTs toggles custom timestamp ISO8601 prefix
+	// logger print without timestamp header prefix if json
+	withTs := true
+	if f := ctx.GlobalString(MLogFlag.Name); logger.MLogStringToFormat[f] == logger.MLOGJSON {
+		withTs = false
+	}
+	logger.BuildNewMLogSystem(mlogdir, filename, 1, 0, withTs) // flags: 0 disables automatic log package time prefix
+	return filename, nil
+}
+
+func mustRegisterMLogsFromContext(ctx *cli.Context) {
+	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalString(MLogComponentsFlag.Name)); e != nil {
+		// print documentation if user enters unavailable mlog component
+		var components []string
+		for k := range logger.MLogRegistryAvailable {
+			components = append(components, string(k))
+		}
+		glog.V(logger.Error).Infof("Error: %s", e)
+		glog.V(logger.Error).Infof("Available machine log components: %v", components)
+		os.Exit(1)
+	}
+	// Set the global logger mlog format from context
+	if e := logger.SetMLogFormatFromString(ctx.GlobalString(MLogFlag.Name)); e != nil {
+		glog.Fatalf("Error setting mlog format: %v, value was: %v", e, ctx.GlobalString(MLogFlag.Name))
+	}
+	fname, e := makeMLogFileLogger(ctx)
+	if e != nil {
+		glog.Fatalf("Failed to start machine log: %v", e)
+	}
+	glog.V(logger.Info).Infof("Machine logs file: %v", fname)
+}
+
 // MakeSystemNode sets up a local node, configures the services to launch and
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
@@ -510,6 +574,16 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	if shhEnable {
 		if err := stack.Register(func(*node.ServiceContext) (node.Service, error) { return whisper.New(), nil }); err != nil {
 			glog.Fatalf("%v: failed to register the Whisper service: ", ErrStackFail, err)
+		}
+	}
+
+	// If --mlog enabled, configure and create mlog dir and file
+	if ctx.GlobalString(MLogFlag.Name) != "off" {
+		mustRegisterMLogsFromContext(ctx)
+	} else {
+		// Just demonstrative code.
+		if b := logger.SetMlogEnabled(false); b == false && logger.MlogEnabled() == false {
+			glog.V(logger.Warn).Infof("Machine logs: disabled")
 		}
 	}
 

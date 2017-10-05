@@ -20,6 +20,7 @@ import (
 	"io"
 	"log"
 	"sync/atomic"
+	"time"
 )
 
 // LogSystem is implemented by log output devices.
@@ -35,9 +36,33 @@ func NewStdLogSystem(writer io.Writer, flags int, level LogLevel) *StdLogSystem 
 	return &StdLogSystem{logger, uint32(level)}
 }
 
+func NewMLogSystem(writer io.Writer, flags int, level LogLevel, withTimestamp bool) *MLogSystem {
+	logger := log.New(writer, "", flags)
+	return &MLogSystem{logger, uint32(level), withTimestamp}
+}
+
+type MLogSystem struct {
+	logger *log.Logger
+	level uint32
+	withTimestamp bool
+}
+
 type StdLogSystem struct {
 	logger *log.Logger
 	level  uint32
+}
+
+func (m *MLogSystem) LogPrint(msg LogMsg) {
+	stdmsg, ok := msg.(stdMsg)
+	if ok {
+		if m.GetLogLevel() >= stdmsg.Level() {
+			if m.withTimestamp {
+				m.logger.Print(time.Now().UTC().Format(time.RFC3339), " ", stdmsg.String())
+			} else {
+				m.logger.Print(stdmsg.String())
+			}
+		}
+	}
 }
 
 func (t *StdLogSystem) LogPrint(msg LogMsg) {
@@ -55,6 +80,10 @@ func (t *StdLogSystem) SetLogLevel(i LogLevel) {
 
 func (t *StdLogSystem) GetLogLevel() LogLevel {
 	return LogLevel(atomic.LoadUint32(&t.level))
+}
+
+func (m *MLogSystem) GetLogLevel() LogLevel {
+	return LogLevel(atomic.LoadUint32(&m.level))
 }
 
 // NewJSONLogSystem creates a LogSystem that prints to the given writer without
