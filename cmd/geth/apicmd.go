@@ -31,10 +31,9 @@ import (
 
 var (
 	apiCommand = cli.Command{
-		Action:          execAPI,
-		Name:            "api",
-		Usage:           "Run any API command",
-		SkipFlagParsing: true,
+		Action: execAPI,
+		Name:   "api",
+		Usage:  "Run any API command",
 		Description: `
 The api command allows to run any method defined in any API module.
 
