@@ -19,6 +19,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
+	"strconv"
+	"strings"
 
 	"gopkg.in/urfave/cli.v1"
 
@@ -85,11 +88,11 @@ func callRPC(ctx *cli.Context, client rpc.Client) (interface{}, error) {
 		method = ctx.Args()[1]
 		args   = ctx.Args()[2:]
 	)
-	req := map[string]interface{}{
-		"id":      new(int64),
-		"method":  module + "_" + method,
-		"jsonrpc": "2.0",
-		"params":  []interface{}{args},
+	req := rpc.JSONRequest{
+		Id:      json.RawMessage(strconv.Itoa(rand.Int())),
+		Method:  module + "_" + method,
+		Version: "2.0",
+		Payload: json.RawMessage("[" + strings.Join(args, ",") + "]"),
 	}
 
 	if err := client.Send(req); err != nil {
