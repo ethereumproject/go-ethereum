@@ -31,6 +31,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"sort"
 )
 
 func RunStateTestWithReader(ruleSet RuleSet, r io.Reader, skipTests []string) error {
@@ -106,12 +107,19 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 		skipTest[name] = true
 	}
 
-	for name, test := range tests {
+	names := []string{}
+	for name, _ := range tests {
+		names = append(names,name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
 		if skipTest[name] /*|| name != "callcodecallcode_11" */ {
 			glog.Infoln("Skipping state test", name)
 			continue
 		}
 
+		fmt.Printf("-- %s --\n",name)
+		test := tests[name]
 		//fmt.Println("StateTest:", name)
 		if err := runStateTest(ruleSet, test); err != nil {
 			return fmt.Errorf("%s: %s\n", name, err.Error())

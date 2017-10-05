@@ -242,7 +242,6 @@ func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]stri
 	//env.origin = common.HexToAddress(exeValues["caller"])
 	//env.parent = common.HexToHash(envValues["previousHash"])
 	//env.coinbase = common.HexToAddress(envValues["currentCoinbase"])
-	machine.SetTestFeatures(vm.AllTestFeatures)
 
 	return env
 }

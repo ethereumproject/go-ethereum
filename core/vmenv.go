@@ -133,7 +133,7 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 		} else {
 			switch ctx.Status() {
 			case vm.ExitedOk:
-				out, gas, err := ctx.Out()
+				out, gas, gasRefund, err := ctx.Out()
 				if err != nil {
 					return nil, nil, nil, err
 				}
@@ -145,7 +145,7 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 				if err != nil {
 					return nil, nil, nil, err
 				}
-				removed, _ := ctx.Removed()
+				suicides, _ := ctx.Suicides()
 				if err != nil {
 					return nil, nil, nil, err
 				}
@@ -159,6 +159,8 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 				}
 				// applying state here
 				snapshot := self.Db.Snapshot()
+				fmt.Printf("refund %v + %v\n",self.Db.GetRefund().Int64(),gasRefund.Int64())
+				self.Db.AddRefund(gasRefund)
 				for _, v := range modified {
 					var o state.AccountObject
 					address := v.Address()
@@ -177,22 +179,26 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 					}
 					o.SetBalance(v.Balance())
 					o.SetNonce(v.Nonce())
-				}
-				for _, a := range removed {
-					self.Db.Suicide(a)
+					fmt.Printf("account: %v balance: %v nunce: %v\n",o.Address().Hex(), o.Balance().Int64(), o.Nonce())
+					fmt.Printf("\t hash: %v codesize: %v\n",self.Db.GetCodeHash(o.Address()).Hex(),len(self.Db.GetCode(o.Address())))
 				}
 				for _, kv := range values {
+					fmt.Printf("set vale %v:%v -> %v\n",kv.Address().Hex(), kv.Key().Hex(), kv.Value().Hex())
 					self.Db.SetState(kv.Address(), kv.Key(), kv.Value())
+				}
+				for _, a := range suicides {
+					fmt.Printf("suicide %v\n",a.Hex())
+					self.Db.Suicide(a)
 				}
 				for _, l := range logs {
 					self.Db.AddLog(l)
 				}
 				return out, &address, gas, nil
 			case vm.TransferErr:
-				_, gas, _ := ctx.Out()
+				_, gas, _, _ := ctx.Out()
 				return nil, nil, gas, InvalidTxError(ctx.Err())
 			case vm.Broken, vm.BadCodeErr, vm.ExitedErr:
-				_, gas, _ := ctx.Out()
+				_, gas, _, _ := ctx.Out()
 				return nil, nil, gas, ctx.Err()
 			case vm.OutOfGasErr:
 				return nil, nil, nil, OutOfGasError

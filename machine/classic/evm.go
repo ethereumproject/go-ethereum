@@ -79,7 +79,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		code       = contract.Code
 		instrCount = 0
 
-		op      vm.OpCode         // current opcode
+		op      vm.OpCode      // current opcode
 		mem     = NewMemory()  // bound memory
 		stack   = newstack()   // local stack
 		statedb = evm.env.Db() // current state
@@ -208,16 +208,16 @@ func calculateGasAndSize(gasTable *vm.GasTable, env Environment, contract *Contr
 		gas.Set(gasTable.Balance)
 	case vm.SLOAD:
 		gas.Set(gasTable.SLoad)
-	case vm.SWAP1, vm.SWAP2, vm.SWAP3, vm.SWAP4, vm.SWAP5, vm.SWAP6, vm.SWAP7, vm.SWAP8, 
-             vm.SWAP9, vm.SWAP10, vm.SWAP11, vm.SWAP12, vm.SWAP13, vm.SWAP14, vm.SWAP15, vm.SWAP16:
+	case vm.SWAP1, vm.SWAP2, vm.SWAP3, vm.SWAP4, vm.SWAP5, vm.SWAP6, vm.SWAP7, vm.SWAP8,
+		vm.SWAP9, vm.SWAP10, vm.SWAP11, vm.SWAP12, vm.SWAP13, vm.SWAP14, vm.SWAP15, vm.SWAP16:
 		n := int(op - vm.SWAP1 + 2)
 		err := stack.require(n)
 		if err != nil {
 			return nil, nil, err
 		}
 		gas.Set(GasFastestStep)
-	case vm.DUP1, vm.DUP2, vm.DUP3, vm.DUP4, vm.DUP5, vm.DUP6, vm.DUP7, vm.DUP8, 
-	     vm.DUP9, vm.DUP10, vm.DUP11, vm.DUP12, vm.DUP13, vm.DUP14, vm.DUP15, vm.DUP16:
+	case vm.DUP1, vm.DUP2, vm.DUP3, vm.DUP4, vm.DUP5, vm.DUP6, vm.DUP7, vm.DUP8,
+		vm.DUP9, vm.DUP10, vm.DUP11, vm.DUP12, vm.DUP13, vm.DUP14, vm.DUP15, vm.DUP16:
 		n := int(op - vm.DUP1 + 1)
 		err := stack.require(n)
 		if err != nil {

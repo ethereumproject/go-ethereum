@@ -21,8 +21,8 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
 var (
@@ -86,6 +86,7 @@ func exec(env Environment, caller ContractRef, address, codeAddr *common.Address
 		nonce := env.Db().GetNonce(caller.Address())
 		env.Db().SetNonce(caller.Address(), nonce+1)
 		addr = crypto.CreateAddress(caller.Address(), nonce)
+		fmt.Printf("%v + %v => %v\n",caller.Address().Hex(),nonce,addr.Hex())
 		address = &addr
 		createAccount = true
 	}
@@ -135,7 +136,7 @@ func exec(env Environment, caller ContractRef, address, codeAddr *common.Address
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil {
 		env.RevertToSnapshot(snapshotPreTransfer)
-		if  (env.RuleSet().IsHomestead(env.BlockNumber()) || err != CodeStoreOutOfGasError) {
+		if env.RuleSet().IsHomestead(env.BlockNumber()) || err != CodeStoreOutOfGasError {
 			contract.UseGas(contract.Gas)
 		}
 	}

@@ -148,16 +148,16 @@ type Context interface {
 	Finish() error
 	// Returns the changed accounts information
 	Modified() ([]Account, error)
-	// Returns all addresses of removed accounts
-	Removed() ([]common.Address, error)
+	// Returns all addresses of sucided accounts
+	Suicides() ([]common.Address, error)
 	// Returns the created accounts code
 	Code(common.Address) (common.Hash, []byte, error)
 	// Returns modified stored values
 	Values() ([]KeyValue, error)
 	// Returns new contract address on Create and called contract address on Call
 	Address() (common.Address, error)
-	// Returns the out value and gas refund if any
-	Out() ([]byte, *big.Int, error)
+	// Returns the out value and gas remaining/refunded if any
+	Out() ([]byte, *big.Int, *big.Int, error)
 	// Returns logs to be appended to the current block if the user
 	// decided to accept the running status of this VM
 	Logs() (state.Logs, error)

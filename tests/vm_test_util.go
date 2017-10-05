@@ -29,6 +29,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/machine/classic"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 func RunVmTestWithReader(r io.Reader, skipTests []string) error {
@@ -219,6 +220,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 		DiehardBlock:             big.NewInt(3000000),
 		ExplosionBlock:           big.NewInt(5000000),
 	}, state, env, exec)
+	vmenv.Machine.SetTestFeatures(vm.AllTestFeatures)
 	ret, err := vmenv.Call(from, to, data, gas, price, value)
 	return ret, vmenv.Db.Logs(), gas, err
 }

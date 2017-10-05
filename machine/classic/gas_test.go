@@ -1,9 +1,9 @@
 package classic
 
 import (
-	"testing"
-	"math/big"
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"math/big"
+	"testing"
 )
 
 func TestGasIsEmpty(t *testing.T) {
