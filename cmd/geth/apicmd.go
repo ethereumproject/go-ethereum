@@ -44,7 +44,7 @@ func execAPI(ctx *cli.Context) error {
 		return err
 	}
 
-	if err := verifyArguments(ctx, client); err != nil {
+	if err := validateArguments(ctx, client); err != nil {
 		return err
 	}
 
@@ -61,7 +61,11 @@ func getClient(ctx *cli.Context) (rpc.Client, error) {
 	return rpc.NewClient(uri)
 }
 
-func verifyArguments(ctx *cli.Context, client rpc.Client) error {
+func validateArguments(ctx *cli.Context, client rpc.Client) error {
+	if len(ctx.Args()) < 2 {
+		return fmt.Errorf("api command requires at least 2 arguments (module and method), %d provided",
+			len(ctx.Args()))
+	}
 	modules, err := client.SupportedModules()
 	if err != nil {
 		return err
