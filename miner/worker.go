@@ -697,7 +697,7 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, g
 	if logger.MlogEnabled() {
 		defer func() {
 			mlogMiner.Send(mlogMinerCommitTx.SetDetailValues(
-				env.Block.Number(),
+				env.header.Number,
 				tx.Hash().Hex(),
 				err,
 			))
