@@ -61,6 +61,7 @@ func makeCLIApp() (app *cli.App) {
 		attachCommand,
 		javascriptCommand,
 		statusCommand,
+		apiCommand,
 		{
 			Action:  makedag,
 			Name:    "make-dag",
