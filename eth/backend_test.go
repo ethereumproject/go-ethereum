@@ -23,7 +23,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 )
 
@@ -32,17 +32,17 @@ func TestMipmapUpgrade(t *testing.T) {
 	addr := common.BytesToAddress([]byte("jeff"))
 	genesis := core.WriteGenesisBlockForTesting(db)
 
-	chain, receipts := core.GenerateChain(core.TestConfig, genesis, db, 10, func(i int, gen *core.BlockGen) {
+	chain, receipts := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, genesis, db, 10, func(i int, gen *core.BlockGen) {
 		var receipts types.Receipts
 		switch i {
 		case 1:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{&vm.Log{Address: addr}}
+			receipt.Logs = state.Logs{&state.Log{Address: addr}}
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 2:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{&vm.Log{Address: addr}}
+			receipt.Logs = state.Logs{&state.Log{Address: addr}}
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		}

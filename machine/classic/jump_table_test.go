@@ -17,9 +17,9 @@
 package classic
 
 import (
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"math/big"
 	"testing"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 type ruleSet struct {

@@ -20,9 +20,9 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
 // Database is a EVM database for full state querying.
@@ -102,26 +102,26 @@ type Environment interface {
 
 type VMEnv struct {
 	rules     vm.RuleSet
-	state     *state.StateDB // State to use for executing
-	evm       *EVM           // The Ethereum Virtual Machine
-	depth     int            // Current execution depth
-	header    *types.Header  // Header information
+	state     *state.StateDB           // State to use for executing
+	evm       *EVM                     // The Ethereum Virtual Machine
+	depth     int                      // Current execution depth
+	header    *types.Header            // Header information
 	getHashFn func(uint64) common.Hash // getHashFn callback is used to retrieve block hashes
- 	from      common.Address
- 	value     *big.Int
+	from      common.Address
+	value     *big.Int
 }
 
 func NewEnv(
 	state *state.StateDB, rules vm.RuleSet, header *types.Header,
 	from common.Address, value *big.Int,
-	hashFn func(uint64) common.Hash) (Environment,error) {
+	hashFn func(uint64) common.Hash) (Environment, error) {
 
 	env := &VMEnv{
 		rules:     rules,
 		state:     state,
 		header:    header,
 		getHashFn: hashFn,
-		from:	   from,
+		from:      from,
 		value:     value,
 	}
 
@@ -129,48 +129,48 @@ func NewEnv(
 	return env, nil
 }
 
-func (self *VMEnv) RuleSet() vm.RuleSet      { 
-	return self.rules 
+func (self *VMEnv) RuleSet() vm.RuleSet {
+	return self.rules
 }
 
-func (self *VMEnv) Origin() common.Address   { 
+func (self *VMEnv) Origin() common.Address {
 	return self.from
 }
 
-func (self *VMEnv) BlockNumber() *big.Int    { 
-	return self.header.Number 
+func (self *VMEnv) BlockNumber() *big.Int {
+	return self.header.Number
 }
 
-func (self *VMEnv) Coinbase() common.Address { 
-	return self.header.Coinbase 
+func (self *VMEnv) Coinbase() common.Address {
+	return self.header.Coinbase
 }
 
-func (self *VMEnv) Time() *big.Int { 
-	return self.header.Time 
+func (self *VMEnv) Time() *big.Int {
+	return self.header.Time
 }
 
-func (self *VMEnv) Difficulty() *big.Int { 
-	return self.header.Difficulty 
+func (self *VMEnv) Difficulty() *big.Int {
+	return self.header.Difficulty
 }
 
-func (self *VMEnv) GasLimit() *big.Int { 
-	return self.header.GasLimit 
+func (self *VMEnv) GasLimit() *big.Int {
+	return self.header.GasLimit
 }
 
-func (self *VMEnv) Value() *big.Int { 
-	return self.value 
+func (self *VMEnv) Value() *big.Int {
+	return self.value
 }
 
 func (self *VMEnv) Db() Database {
-	return self.state 
+	return self.state
 }
 
-func (self *VMEnv) Depth() int { 
-	return self.depth 
+func (self *VMEnv) Depth() int {
+	return self.depth
 }
 
-func (self *VMEnv) SetDepth(i int) { 
-	self.depth = i 
+func (self *VMEnv) SetDepth(i int) {
+	self.depth = i
 }
 
 func (self *VMEnv) GetHash(n uint64) common.Hash {
@@ -214,10 +214,9 @@ func (self *VMEnv) Create(me ContractRef, data []byte, gas, price, value *big.In
 }
 
 type EVMRunner interface {
-	Run(*Contract,[]byte) ([]byte,error)
+	Run(*Contract, []byte) ([]byte, error)
 }
 
 func (self *VMEnv) Run(contract *Contract, input []byte) (ret []byte, err error) {
-	return self.evm.Run(contract,input)
+	return self.evm.Run(contract, input)
 }
-

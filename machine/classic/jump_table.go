@@ -17,8 +17,8 @@
 package classic
 
 import (
-	"math/big"
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"math/big"
 )
 
 type jumpPtr struct {

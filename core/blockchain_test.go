@@ -30,7 +30,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
@@ -67,7 +66,7 @@ func theBlockChain(db ethdb.Database, t *testing.T) *BlockChain {
 	}
 
 	var eventMux event.TypeMux
-	if _, err := WriteGenesisBlock(db, TestNetGenesis); err != nil {
+	if _, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis); err != nil {
 		t.Fatal(err)
 	}
 	blockchain, err := NewBlockChain(db, testChainConfig(), pow, &eventMux)
@@ -448,7 +447,7 @@ func (bproc) ValidateHeader(*types.Header, *types.Header, bool) error { return n
 func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
 	return nil
 }
-func (bproc) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, vm.Logs, *big.Int, error) {
+func (bproc) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, state.Logs, *big.Int, error) {
 	return nil, nil, nil, nil
 }
 
@@ -546,7 +545,7 @@ func testReorg(t *testing.T, first, second []int, td int64, full bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
+	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -594,7 +593,7 @@ func TestInsertHeaderChainBadHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
+	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,7 +617,7 @@ func TestInsertChainBadHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
+	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,7 +647,7 @@ func testReorgBadHashes(t *testing.T, full bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteGenesisBlock(db, TestNetGenesis)
+	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}

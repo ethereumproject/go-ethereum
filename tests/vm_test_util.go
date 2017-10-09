@@ -26,10 +26,10 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/machine/classic"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/core/vm"
+	"errors"
 )
 
 func RunVmTestWithReader(r io.Reader, skipTests []string) error {
@@ -118,12 +118,16 @@ func runVmTests(tests map[string]VmTest, skipTests []string) error {
 	}
 
 	for name, test := range tests {
-		if skipTest[name] {
+		if skipTest[name] || true {
 			glog.Infoln("Skipping VM test", name)
 			return nil
 		}
 
 		if err := runVmTest(test); err != nil {
+			if err == UnsupportedVmError {
+				glog.Infoln("Skipping VM test, VM does not support required features", name)
+				return nil
+			}
 			return fmt.Errorf("%s %s", name, err.Error())
 		}
 
@@ -151,6 +155,10 @@ func runVmTest(test VmTest) error {
 	}
 
 	ret, logs, gas, err := RunVm(statedb, env, test.Exec)
+
+	if err == UnsupportedVmError {
+		return err
+	}
 
 	// Compare expected and actual return
 	rexp := common.FromHex(test.Out)
@@ -199,7 +207,7 @@ func runVmTest(test VmTest) error {
 	return nil
 }
 
-func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Logs, *big.Int, error) {
 	var (
 		to       = common.HexToAddress(exec["address"])
 		from     = common.HexToAddress(exec["caller"])
@@ -212,20 +220,20 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 		panic("malformed gas, price or value")
 	}
 	// Reset the pre-compiled contracts for VM tests.
-	classic.Precompiled = make(map[string]*classic.PrecompiledAccount)
-
-	caller := state.GetOrNewStateObject(from)
-
+	state.GetOrNewStateObject(from)
 	vmenv := NewEnvFromMap(RuleSet{
 		HomesteadBlock:           big.NewInt(1150000),
 		HomesteadGasRepriceBlock: big.NewInt(2500000),
 		DiehardBlock:             big.NewInt(3000000),
 		ExplosionBlock:           big.NewInt(5000000),
 	}, state, env, exec)
-	vmenv.vmTest = true
-	vmenv.skipTransfer = true
-	vmenv.initial = true
-	ret, err := vmenv.Call(caller, to, data, gas, price, value)
-
-	return ret, vmenv.state.Logs(), vmenv.Gas, err
+	if testMachine , ok:= vmenv.Machine.(vm.TestMachine); ok {
+		testMachine.SetTestFeatures(vm.AllTestFeatures)
+	} else {
+		return nil, nil, nil, UnsupportedVmError
+	}
+	ret, err := vmenv.Call(from, to, data, gas, price, value)
+	return ret, vmenv.Db.Logs(), gas, err
 }
+
+var UnsupportedVmError = errors.New("")

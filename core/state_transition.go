@@ -21,9 +21,9 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	db "github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	db "github.com/ethereumproject/go-ethereum/core/state"
 )
 
 var (
@@ -58,7 +58,7 @@ type StateTransition struct {
 	value         *big.Int
 	data          []byte
 	state         *db.StateDB
-	env 		  VmEnv
+	env           *VmEnv
 }
 
 // Message represents a message sent to a contract.
@@ -105,7 +105,7 @@ func IntrinsicGas(data []byte, contractCreation, homestead bool) *big.Int {
 }
 
 // NewStateTransition initialises and returns a new state transition object.
-func NewStateTransition(env VmEnv, msg Message, gp *GasPool) *StateTransition {
+func NewStateTransition(env *VmEnv, msg Message, gp *GasPool) *StateTransition {
 	return &StateTransition{
 		gp:         gp,
 		env:        env,
@@ -115,7 +115,7 @@ func NewStateTransition(env VmEnv, msg Message, gp *GasPool) *StateTransition {
 		initialGas: new(big.Int),
 		value:      msg.Value(),
 		data:       msg.Data(),
-		state:      env.Db(),
+		state:      env.Db,
 	}
 }
 
@@ -126,7 +126,7 @@ func NewStateTransition(env VmEnv, msg Message, gp *GasPool) *StateTransition {
 // the gas used (which includes gas refunds) and an error if it failed. An error always
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
-func ApplyMessage(env VmEnv, msg Message, gp *GasPool) ([]byte, *big.Int, error) {
+func ApplyMessage(env *VmEnv, msg Message, gp *GasPool) ([]byte, *big.Int, error) {
 	st := NewStateTransition(env, msg, gp)
 
 	ret, _, gasUsed, err := st.TransitionDb()
@@ -227,7 +227,7 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	msg := self.msg
 	sender, _ := self.from() // err checked in preCheck
 
-	homestead := self.env.RuleSet().IsHomestead(self.env.BlockNumber())
+	homestead := self.env.RuleSet.IsHomestead(self.env.BlockNumber)
 	contractCreation := MessageCreatesContract(msg)
 	// Pay intrinsic gas
 	if err = self.useGas(IntrinsicGas(self.data, contractCreation, homestead)); err != nil {
@@ -265,7 +265,7 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	requiredGas = new(big.Int).Set(self.gasUsed())
 
 	self.refundGas()
-	self.state.AddBalance(self.env.Coinbase(), new(big.Int).Mul(self.gasUsed(), self.gasPrice))
+	self.state.AddBalance(self.env.Coinbase, new(big.Int).Mul(self.gasUsed(), self.gasPrice))
 
 	return ret, requiredGas, self.gasUsed(), err
 }

@@ -38,6 +38,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"io"
 	"strings"
 )
 
@@ -54,9 +55,9 @@ type SufficientChainConfig struct {
 	ID              string           `json:"id,omitempty"` // deprecated in favor of 'Identity', method decoding should id -> identity
 	Identity        string           `json:"identity"`
 	Name            string           `json:"name,omitempty"`
-	State           *StateConfig     `json:"state"`   // don't omitempty for clarity of potential custom options
-	Network         int              `json:"network"` // eth.NetworkId (mainnet=1, morden=2)
-	Consensus       string           `json:"consensus"`     // pow type (ethash OR ethash-test)
+	State           *StateConfig     `json:"state"`     // don't omitempty for clarity of potential custom options
+	Network         int              `json:"network"`   // eth.NetworkId (mainnet=1, morden=2)
+	Consensus       string           `json:"consensus"` // pow type (ethash OR ethash-test)
 	Genesis         *GenesisDump     `json:"genesis"`
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
@@ -420,29 +421,10 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
-// ReadExternalChainConfig reads a flagged external json file for blockchain configuration.
-// It returns a valid and full ("hard") configuration or an error.
-func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error) {
-
-	// ensure flag arg cleanliness
-	flaggedExternalChainConfigPath := filepath.Clean(incomingPath)
-
-	// ensure file exists and that it is NOT a directory
-	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("ERROR: No existing chain configuration file found at: %s", flaggedExternalChainConfigPath)
-	} else if info.IsDir() {
-		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
-	}
-
-	f, err := os.Open(flaggedExternalChainConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
-	}
-	defer f.Close()
-
+func parseExternalChainConfig(f io.Reader) (*SufficientChainConfig, error) {
 	var config = &SufficientChainConfig{}
-	if json.NewDecoder(f).Decode(config); err != nil {
-		return nil, fmt.Errorf("%s: %s", flaggedExternalChainConfigPath, err)
+	if err := json.NewDecoder(f).Decode(config); err != nil {
+		return nil, fmt.Errorf("%v: %s", f, err)
 	}
 
 	// Make JSON 'id' -> 'identity' (for backwards compatibility)
@@ -463,7 +445,33 @@ func ReadExternalChainConfig(incomingPath string) (*SufficientChainConfig, error
 	}
 
 	config.ChainConfig = config.ChainConfig.SortForks()
+	return config, nil
+}
 
+// ReadExternalChainConfigFromFile reads a flagged external json file for blockchain configuration.
+// It returns a valid and full ("hard") configuration or an error.
+func ReadExternalChainConfigFromFile(incomingPath string) (*SufficientChainConfig, error) {
+
+	// ensure flag arg cleanliness
+	flaggedExternalChainConfigPath := filepath.Clean(incomingPath)
+
+	// ensure file exists and that it is NOT a directory
+	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("ERROR: No existing chain configuration file found at: %s", flaggedExternalChainConfigPath)
+	} else if info.IsDir() {
+		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
+	}
+
+	f, err := os.Open(flaggedExternalChainConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
+	}
+	defer f.Close()
+
+	config, err := parseExternalChainConfig(f)
+	if err != nil {
+		return nil, err
+	}
 	return config, nil
 }
 

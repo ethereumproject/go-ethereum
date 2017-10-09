@@ -25,7 +25,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 )
@@ -85,7 +84,7 @@ func proc(t testing.TB) (Validator, *BlockChain) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = WriteGenesisBlock(db, TestNetGenesis)
+	_, err = WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +136,7 @@ func TestPutReceipt(t *testing.T) {
 	hash[0] = 2
 
 	receipt := new(types.Receipt)
-	receipt.Logs = vm.Logs{&vm.Log{
+	receipt.Logs = state.Logs{&state.Log{
 		Address:     addr,
 		Topics:      []common.Hash{hash},
 		Data:        []byte("hi"),
@@ -321,7 +320,7 @@ func TestDifficultyBombExplodeTestnet(t *testing.T) {
 
 // Compare expected difficulties on edges of forks.
 func TestCalcDifficulty1(t *testing.T) {
-	configs := []*ChainConfig{DefaultConfig, TestConfig}
+	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
 	for i, config := range configs {
 
 		parentTime := uint64(1513175023)

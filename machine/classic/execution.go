@@ -21,8 +21,8 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
 var (
@@ -67,17 +67,16 @@ func Create(env Environment, caller ContractRef, code []byte, gas, gasPrice, val
 func exec(env Environment, caller ContractRef, address, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value *big.Int) (ret []byte, addr common.Address, err error) {
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
+
 	if env.Depth() > callCreateDepthMax {
 		caller.ReturnGas(gas, gasPrice)
 
-		fmt.Printf("max depth %v > %v\n",env.Depth(),callCreateDepthMax)
 		return nil, common.Address{}, errCallCreateDepth
 	}
 
 	if !env.CanTransfer(caller.Address(), value) {
 		caller.ReturnGas(gas, gasPrice)
 
-		fmt.Printf("no fund, required %v\n",value)
 		return nil, common.Address{}, ValueTransferErr("insufficient funds to transfer value. Req %v, has %v", value, env.Db().GetBalance(caller.Address()))
 	}
 
@@ -134,12 +133,16 @@ func exec(env Environment, caller ContractRef, address, codeAddr *common.Address
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
-	if err != nil {
+	if err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != CodeStoreOutOfGasError) {
+		contract.UseGas(contract.Gas)
 		env.RevertToSnapshot(snapshotPreTransfer)
-		if  (env.RuleSet().IsHomestead(env.BlockNumber()) || err != CodeStoreOutOfGasError) {
+	}
+	/*if err != nil {
+		env.RevertToSnapshot(snapshotPreTransfer)
+		if env.RuleSet().IsHomestead(env.BlockNumber()) || err != CodeStoreOutOfGasError {
 			contract.UseGas(contract.Gas)
 		}
-	}
+	}*/
 
 	return ret, addr, err
 }

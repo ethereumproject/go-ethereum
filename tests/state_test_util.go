@@ -28,11 +28,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/machine/classic"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"sort"
 )
 
 func RunStateTestWithReader(ruleSet RuleSet, r io.Reader, skipTests []string) error {
@@ -108,12 +107,18 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 		skipTest[name] = true
 	}
 
-	for name, test := range tests {
+	names := []string{}
+	for name, _ := range tests {
+		names = append(names,name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
 		if skipTest[name] /*|| name != "callcodecallcode_11" */ {
 			glog.Infoln("Skipping state test", name)
 			continue
 		}
 
+		test := tests[name]
 		//fmt.Println("StateTest:", name)
 		if err := runStateTest(ruleSet, test); err != nil {
 			return fmt.Errorf("%s: %s\n", name, err.Error())
@@ -127,6 +132,18 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 }
 
 func runStateTest(ruleSet RuleSet, test VmTest) error {
+	var err error
+	core.VmManager.Autoconfig()
+	if err = runStateTest_(ruleSet, test); err != nil && ReatrtInRawCalssicVm {
+		fmt.Printf("error occured %v\n",err)
+		fmt.Println("\trestarting with raw VM\n")
+		core.VmManager.SwitchToRawClassicVm()
+		err = runStateTest_(ruleSet, test)
+	}
+	return err
+}
+
+func runStateTest_(ruleSet RuleSet, test VmTest) error {
 	db, _ := ethdb.NewMemDatabase()
 	statedb := makePreState(db, test.Pre)
 
@@ -147,10 +164,10 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		ret []byte
 		// gas  *big.Int
 		// err  error
-		logs vm.Logs
+		logs state.Logs
 	)
 
-	ret, logs, _, _ = RunState(ruleSet, statedb, env, test.Transaction)
+	ret, logs, _ = RunState(ruleSet, statedb, env, test.Transaction)
 
 	// Compare expected and actual return
 	rexp := common.FromHex(test.Out)
@@ -202,7 +219,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 	return nil
 }
 
-func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string) ([]byte, state.Logs, error) {
 	data := common.FromHex(tx["data"])
 	gas, _ := new(big.Int).SetString(tx["gasLimit"], 0)
 	price, _ := new(big.Int).SetString(tx["gasPrice"], 0)
@@ -221,7 +238,7 @@ func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string
 		to = &t
 	}
 	// Set pre compiled contracts
-	classic.Precompiled = classic.PrecompiledContracts()
+	// classic.Precompiled = classic.PrecompiledContracts()
 	snapshot := statedb.Snapshot()
 	currentGasLimit, ok := new(big.Int).SetString(env["currentGasLimit"], 0)
 	if !ok {
@@ -236,12 +253,11 @@ func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string
 	addr := crypto.PubkeyToAddress(crypto.ToECDSA(key).PublicKey)
 	message := NewMessage(addr, to, data, value, gas, price, nonce)
 	vmenv := NewEnvFromMap(ruleSet, statedb, env, tx)
-	vmenv.origin = addr
 	ret, _, err := core.ApplyMessage(vmenv, message, gaspool)
 	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || core.IsGasLimitErr(err) {
 		statedb.RevertToSnapshot(snapshot)
 	}
 	statedb.Commit()
 
-	return ret, vmenv.state.Logs(), vmenv.Gas, err
+	return ret, vmenv.Db.Logs(), err
 }

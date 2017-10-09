@@ -25,15 +25,15 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 )
 
 func makeReceipt(addr common.Address) *types.Receipt {
 	receipt := types.NewReceipt(nil, new(big.Int))
-	receipt.Logs = vm.Logs{
-		&vm.Log{Address: addr},
+	receipt.Logs = state.Logs{
+		&state.Log{Address: addr},
 	}
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	return receipt
@@ -57,7 +57,7 @@ func BenchmarkMipmaps(b *testing.B) {
 	defer db.Close()
 
 	genesis := core.WriteGenesisBlockForTesting(db, core.GenesisAccount{Address: addr1, Balance: big.NewInt(1000000)})
-	chain, receipts := core.GenerateChain(core.TestConfig, genesis, db, 100010, func(i int, gen *core.BlockGen) {
+	chain, receipts := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, genesis, db, 100010, func(i int, gen *core.BlockGen) {
 		var receipts types.Receipts
 		switch i {
 		case 2403:
@@ -133,13 +133,13 @@ func TestFilters(t *testing.T) {
 	defer db.Close()
 
 	genesis := core.WriteGenesisBlockForTesting(db, core.GenesisAccount{Address: addr, Balance: big.NewInt(1000000)})
-	chain, receipts := core.GenerateChain(core.TestConfig, genesis, db, 1000, func(i int, gen *core.BlockGen) {
+	chain, receipts := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, genesis, db, 1000, func(i int, gen *core.BlockGen) {
 		var receipts types.Receipts
 		switch i {
 		case 1:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
+			receipt.Logs = state.Logs{
+				&state.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash1},
 				},
@@ -148,8 +148,8 @@ func TestFilters(t *testing.T) {
 			receipts = types.Receipts{receipt}
 		case 2:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
+			receipt.Logs = state.Logs{
+				&state.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash2},
 				},
@@ -158,8 +158,8 @@ func TestFilters(t *testing.T) {
 			receipts = types.Receipts{receipt}
 		case 998:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
+			receipt.Logs = state.Logs{
+				&state.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash3},
 				},
@@ -168,8 +168,8 @@ func TestFilters(t *testing.T) {
 			receipts = types.Receipts{receipt}
 		case 999:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
+			receipt.Logs = state.Logs{
+				&state.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash4},
 				},

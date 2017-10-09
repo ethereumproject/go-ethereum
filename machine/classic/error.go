@@ -2,7 +2,7 @@ package classic
 
 import (
 	"fmt"
-//	"errors"
+	//	"errors"
 )
 
 type ValueTransferError struct {
@@ -21,4 +21,3 @@ func IsValueTransferErr(e error) bool {
 	_, ok := e.(*ValueTransferError)
 	return ok
 }
-

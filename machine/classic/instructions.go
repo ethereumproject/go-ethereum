@@ -20,9 +20,9 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
 var callStipend = big.NewInt(2300) // Free gas given at beginning of call.
@@ -30,10 +30,10 @@ var callStipend = big.NewInt(2300) // Free gas given at beginning of call.
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
 
 type instruction struct {
-	op    vm.OpCode
-	pc    uint64
-	fn    instrFn
-	data  *big.Int
+	op   vm.OpCode
+	pc   uint64
+	fn   instrFn
+	data *big.Int
 
 	gas   *big.Int
 	spop  int
@@ -428,6 +428,7 @@ func opCreate(instr instruction, pc *uint64, env Environment, contract *Contract
 	// homestead we must check for CodeStoreOutOfGasError (homestead only
 	// rule) and treat as an error, if the ruleset is frontier we must
 	// ignore this error and pretend the operation was successful.
+
 	if env.RuleSet().IsHomestead(env.BlockNumber()) && suberr == CodeStoreOutOfGasError {
 		stack.push(new(big.Int))
 	} else if suberr != nil && suberr != CodeStoreOutOfGasError {

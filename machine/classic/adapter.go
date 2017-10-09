@@ -3,21 +3,17 @@ package classic
 import (
 	"math/big"
 
+	"errors"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/crypto"
+	"reflect"
 )
 
 type command struct {
 	code  uint8
 	value interface{}
-}
-
-type account struct {
-	address common.Address
-	nonce   uint64
-	balance *big.Int
 }
 
 const (
@@ -26,7 +22,7 @@ const (
 	cmdAccountID
 	cmdHashID
 	cmdCodeID
-	cmdRuleID
+	cmdInfoID
 	cmdValueID
 )
 
@@ -35,68 +31,8 @@ var (
 	cmdFire = &command{cmdFireID, nil}
 )
 
-type vmHash struct {
-	number uint64
-	hash   common.Hash
-}
-
-type vmAccount struct {
-	onModify func()
-	acc      state.AccountObject
-}
-
-func (self *vmAccount) SubBalance(amount *big.Int) {
-	self.acc.SubBalance(amount)
-	self.onModify()
-}
-
-func (self *vmAccount) AddBalance(amount *big.Int) {
-	self.acc.AddBalance(amount)
-	self.onModify()
-}
-
-func (self *vmAccount) SetBalance(amount *big.Int) {
-	self.acc.SetBalance(amount)
-	self.onModify()
-}
-
-func (self *vmAccount) SetNonce(nonce uint64) {
-	self.acc.SetNonce(nonce)
-	self.onModify()
-}
-
-func (self *vmAccount) ReturnGas(gas, price *big.Int) {
-	self.acc.ReturnGas(gas, price)
-	self.onModify()
-}
-
-func (self *vmAccount) SetCode(hash common.Hash, code []byte) {
-	self.acc.SetCode(hash, code)
-	self.onModify()
-}
-
-func (self *vmAccount) Nonce() uint64           { return self.acc.Nonce() }
-func (self *vmAccount) Balance() *big.Int       { return self.acc.Balance() }
-func (self *vmAccount) Address() common.Address { return self.acc.Address() }
-
-func (self *vmAccount) ForEachStorage(cb func(key, value common.Hash) bool) { panic("unimplemented") }
-
-type vmCode struct {
-	address common.Address
-	code    []byte
-	hash    common.Hash
-}
-
-type vmRule struct {
-	table      *vm.GasTable
-	fork       vm.Fork
-	difficulty *big.Int
-	gasLimit   *big.Int
-	time       *big.Int
-}
-
 type machine struct {
-	skipTransfer bool
+	features int
 }
 
 type context struct {
@@ -110,73 +46,455 @@ const (
 	Absent
 	Committed
 	Modified
-	Removed
+	Suicided
 )
 
-type keyValue struct {
-	addr  common.Address
-	key   common.Hash
-	value common.Hash
+type vmHash struct {
+	number uint64
+	hash   common.Hash
+}
+
+type snapshot interface {
+	Value() int
+}
+
+type vmSnapshot struct {
+	history      []snapshot
+	currSnapshot *int
+}
+
+type vmAccountData struct {
+	snapshot int
+	balance  *big.Int
+	level    ChangeLevel
+	nonce    uint64
+	newborn  bool
+}
+
+func (self *vmAccountData) Value() int { return self.snapshot }
+
+type vmAccount struct {
+	vmSnapshot
+	address common.Address
+	data    *vmAccountData
+}
+
+func newAccount(address common.Address, currSnapshot *int, level ChangeLevel) *vmAccount {
+	acc := &vmAccount{
+		address: address,
+		data: &vmAccountData{
+			*currSnapshot,
+			new(big.Int),
+			level,
+			0,
+			false},
+	}
+	acc.vmSnapshot.currSnapshot = currSnapshot
+	return acc
+}
+
+func (self *vmSnapshot) popSnapshot(snapshot int) interface{} {
+	for len(self.history) > 0 {
+		l := len(self.history) - 1
+		ss := self.history[l]
+		self.history = self.history[:l]
+		if ss.Value() <= snapshot {
+			return ss
+		}
+	}
+	return nil
+}
+
+func (self *vmAccount) RevertToSnapshot(snapshot int) bool {
+	if self.data.snapshot <= snapshot {
+		return true
+	}
+	if ss := self.popSnapshot(snapshot); ss != nil {
+		self.data = ss.(*vmAccountData)
+		return true
+	}
+	return false
+}
+
+func (self *vmAccount) SubBalance(amount *big.Int) {
+	if amount.Sign() == 0 {
+		return
+	}
+	self.setBalance(new(big.Int).Sub(self.Balance(), amount))
+}
+
+func (self *vmAccount) AddBalance(amount *big.Int) {
+	if amount.Sign() == 0 {
+		return
+	}
+	self.setBalance(new(big.Int).Add(self.Balance(), amount))
+}
+
+func (self *vmAccount) Snap() {
+	if *self.currSnapshot < self.data.snapshot {
+		panic("assertion: invalid snapshot value")
+	}
+	if *self.currSnapshot != self.data.snapshot {
+		data := self.data
+		self.history = append(self.history, data)
+		self.data = &vmAccountData{
+			*self.currSnapshot,
+			data.balance,
+			data.level,
+			data.nonce,
+			data.newborn,
+		}
+	}
+	if self.data.level != Suicided {
+		self.data.level = Modified
+	}
+}
+
+func (self *vmAccount) SetNewborn() {
+	self.SetNonce(0)
+	self.data.newborn = true
+}
+
+func (self *vmAccount) IsNewborn() bool {
+	return self.data.newborn
+}
+
+func (self *vmAccount) SetBalance(amount *big.Int) {
+	self.setBalance(new(big.Int).Set(amount))
+}
+
+func (self *vmAccount) setBalance(amount *big.Int) {
+	self.Snap()
+	self.data.balance = amount
+}
+
+func (self *vmAccount) SetNonce(nonce uint64) {
+	self.Snap()
+	self.data.nonce = nonce
+}
+
+func (self *vmAccount) Suicide() bool {
+	switch self.data.level {
+	case Committed, Modified, Suicided:
+		self.Snap()
+		self.data.balance = new(big.Int)
+		self.data.level = Suicided
+		return true
+	default:
+		return false
+	}
+}
+
+func (self *vmAccount) ReturnGas(gas, price *big.Int) {}
+
+func (self *vmAccount) Nonce() uint64           { return self.data.nonce }
+func (self *vmAccount) Balance() *big.Int       { return new(big.Int).Set(self.data.balance) }
+func (self *vmAccount) Address() common.Address { return self.address }
+
+func (self *vmAccount) SetCode(hash common.Hash, code []byte)               { panic("unimplemented") }
+func (self *vmAccount) ForEachStorage(cb func(key, value common.Hash) bool) { panic("unimplemented") }
+
+func (self *vmAccount) Level() ChangeLevel {
+	return self.data.level
+}
+
+type vmCodeData struct {
+	code  []byte
+	hash  common.Hash
 	level ChangeLevel
+
+	snapshot int
 }
 
-func (self *keyValue) Address() common.Address {
-	return self.addr
+func (self *vmCodeData) Value() int { return self.snapshot }
+
+type vmCode struct {
+	vmSnapshot
+	address common.Address
+	data    *vmCodeData
 }
 
-func (self *keyValue) Key() common.Hash {
+func (self *vmCode) RevertToSnapshot(snapshot int) bool {
+	if self.data.snapshot <= snapshot {
+		return true
+	}
+	if ss := self.popSnapshot(snapshot); ss != nil {
+		self.data = ss.(*vmCodeData)
+		return true
+	}
+	return false
+}
+
+func newCode(address common.Address, currSnapshot *int, level ChangeLevel) *vmCode {
+	code := &vmCode{
+		address: address,
+		data: &vmCodeData{
+			snapshot: *currSnapshot,
+			level:    level},
+	}
+	code.vmSnapshot.currSnapshot = currSnapshot
+	return code
+}
+
+func (self *vmCode) Snap() {
+	if *self.currSnapshot < self.data.snapshot {
+		panic("assertion: invalid snapshot value")
+	}
+	if *self.currSnapshot != self.data.snapshot {
+		data := self.data
+		self.history = append(self.history, data)
+		self.data = &vmCodeData{
+			data.code,
+			data.hash,
+			data.level,
+			*self.currSnapshot,
+		}
+	}
+	self.data.level = Modified
+}
+
+func (self *vmCode) Code() []byte {
+	switch self.data.level {
+	case Committed, Modified, Suicided:
+		return self.data.code
+	default:
+		return nil
+	}
+}
+
+func (self *vmCode) Hash() common.Hash {
+	switch self.data.level {
+	case Committed, Modified, Suicided:
+		return self.data.hash
+	default:
+		return common.Hash{}
+	}
+}
+
+func (self *vmCode) SetCode(hash common.Hash, code []byte) {
+	self.Snap()
+	self.data.code = code
+	self.data.hash = hash
+}
+
+func (self *vmCode) Level() ChangeLevel {
+	return self.data.level
+}
+
+type vmInfo struct {
+	table      *vm.GasTable
+	fork       vm.Fork
+	difficulty *big.Int
+	gasLimit   *big.Int
+	time       *big.Int
+	coinbase   common.Address
+	number     uint64
+}
+
+type vmValueData struct {
+	value    common.Hash
+	level    ChangeLevel
+	snapshot int
+}
+
+func (self *vmValueData) Value() int { return self.snapshot }
+
+type vmValue struct {
+	vmSnapshot
+	address common.Address
+	key     common.Hash
+	data    *vmValueData
+}
+
+func (self *vmValue) RevertToSnapshot(snapshot int) bool {
+	if self.data.snapshot <= snapshot {
+		return true
+	}
+	if ss := self.popSnapshot(snapshot); ss != nil {
+		self.data = ss.(*vmValueData)
+		return true
+	}
+	return false
+}
+
+func newValue(address common.Address, key common.Hash, currSnapshot *int, level ChangeLevel) *vmValue {
+	value := &vmValue{
+		address: address,
+		key:     key,
+		data: &vmValueData{
+			snapshot: *currSnapshot,
+			level:    level},
+	}
+	value.vmSnapshot.currSnapshot = currSnapshot
+	return value
+}
+
+func (self *vmValue) Address() common.Address {
+	return self.address
+}
+
+func (self *vmValue) Key() common.Hash {
 	return self.key
 }
 
-func (self *keyValue) Value() common.Hash {
-	return self.value
+func (self *vmValue) Value() common.Hash {
+	return self.data.value
 }
 
-type keyValueMap map[common.Hash]*keyValue
+func (self *vmValue) Snap() {
+	if *self.currSnapshot < self.data.snapshot {
+		panic("assertion: invalid snapshot value")
+	}
+	if *self.currSnapshot != self.data.snapshot {
+		data := self.data
+		self.history = append(self.history, data)
+		self.data = &vmValueData{
+			data.value,
+			data.level,
+			*self.currSnapshot,
+		}
+	}
+	self.data.level = Modified
+}
+
+func (self *vmValue) Set(value common.Hash) {
+	self.Snap()
+	self.data.value = value
+}
+
+func (self *vmValue) Get() common.Hash {
+	switch self.data.level {
+	case Committed, Modified:
+		return self.data.value
+	default:
+		return common.Hash{}
+	}
+}
+
+func (self *vmValue) Level() ChangeLevel {
+	return self.data.level
+}
+
+type vmLog struct {
+	log      *state.Log
+	snapshot int
+}
+
+type vmRefund struct {
+	gas      *big.Int
+	snapshot int
+}
 
 type vmEnv struct {
 	cmdc       chan *command
 	rqc        chan *vm.Require
-	rules      *vmRule
+	info       *vmInfo
 	evm        *EVM
 	depth      int
 	contract   *Contract
 	output     []byte
 	stepByStep bool
 
-	db          *state.StateDB
-	origin      common.Address
-	coinbase    common.Address
-	address     common.Address
-	account     map[common.Address]ChangeLevel
-	code        map[common.Address]ChangeLevel
-	hash        map[uint64]*vmHash
-	values      map[common.Address]keyValueMap
-	blocknumber uint64
+	followingTransfer bool
 
-	Gas *big.Int
+	origin  common.Address
+	address common.Address
+
+	account map[common.Address]*vmAccount
+	code    map[common.Address]*vmCode
+	hash    map[uint64]*vmHash
+	value   map[string]*vmValue
+
+	logs []vmLog
+
+	Gas       *big.Int
+	gasRefund []vmRefund
 
 	status  vm.Status
 	err     error
 	machine *machine
+
+	currSnapshot int
+}
+
+func (self *vmEnv) SnapshotDatabase() int {
+	snapshot := self.currSnapshot
+	self.currSnapshot = self.currSnapshot + 1
+	return snapshot
+}
+
+func (self *vmEnv) RevertAccountsToSnapshot(snapshot int) {
+	keys := reflect.ValueOf(self.account).MapKeys()
+	for _, k := range keys {
+		addr := k.Interface().(common.Address)
+		if !self.account[addr].RevertToSnapshot(snapshot) {
+			delete(self.account, addr)
+		}
+	}
+}
+
+func (self *vmEnv) RevertCodesToSnapshot(snapshot int) {
+	keys := reflect.ValueOf(self.code).MapKeys()
+	for _, k := range keys {
+		addr := k.Interface().(common.Address)
+		if !self.code[addr].RevertToSnapshot(snapshot) {
+			delete(self.code, addr)
+		}
+	}
+}
+
+func (self *vmEnv) RevertValuesToSnapshot(snapshot int) {
+	keys := reflect.ValueOf(self.value).MapKeys()
+	for _, k := range keys {
+		addr := k.Interface().(string)
+		if !self.value[addr].RevertToSnapshot(snapshot) {
+			delete(self.value, addr)
+		}
+	}
+}
+
+func (self *vmEnv) RevertLogsToSnapshot(snapshot int) {
+	for {
+		l := len(self.logs)
+		if l == 0 || self.logs[l-1].snapshot <= snapshot {
+			return
+		}
+		self.logs = self.logs[:l-1]
+	}
+}
+
+func (self *vmEnv) RevertRefundToSnapshot(snapshot int) {
+	for {
+		l := len(self.gasRefund)
+		if l == 0 || self.gasRefund[l-1].snapshot <= snapshot {
+			return
+		}
+		self.gasRefund = self.gasRefund[:l-1]
+	}
+}
+
+func (self *vmEnv) RevertToSnapshot(snapshot int) {
+	self.RevertAccountsToSnapshot(snapshot)
+	self.RevertCodesToSnapshot(snapshot)
+	self.RevertValuesToSnapshot(snapshot)
+	self.RevertLogsToSnapshot(snapshot)
+	self.RevertRefundToSnapshot(snapshot)
 }
 
 func NewMachine() vm.Machine {
 	return &machine{}
 }
 
-func mkEnv(env *vmEnv, number uint64, m *machine) *vmEnv {
+func mkEnv(env *vmEnv, m *machine) *vmEnv {
 	env.rqc = make(chan *vm.Require)
 	env.cmdc = make(chan *command)
-	env.blocknumber = number
-	db, _ := ethdb.NewMemDatabase()
-	env.db, _ = state.New(common.Hash{}, db)
-	env.account = make(map[common.Address]ChangeLevel)
-	env.code = make(map[common.Address]ChangeLevel)
+	env.account = make(map[common.Address]*vmAccount)
+	env.code = make(map[common.Address]*vmCode)
 	env.hash = make(map[uint64]*vmHash)
-	env.values = make(map[common.Address]keyValueMap)
+	env.value = make(map[string]*vmValue)
 	env.status = vm.Inactive
 	env.machine = m
+	env.gasRefund = []vmRefund{{new(big.Int), 0}}
 	return env
 }
 
@@ -188,8 +506,8 @@ func (self *machine) Type() vm.Type {
 	return vm.ClassicVm
 }
 
-func (self *machine) SkipTransfer() error {
-	self.skipTransfer = true
+func (self *machine) SetTestFeatures(features int) error {
+	self.features = features
 	return nil
 }
 
@@ -205,15 +523,16 @@ func (self *vmEnv) updateStatus() {
 	}
 }
 
-func (self *machine) Call(blockNumber uint64, caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (vm.Context, error) {
+func (self *machine) Call(caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (vm.Context, error) {
 	ctx := &context{}
 	go func(e *vmEnv) {
-		cmd, ok := <-e.cmdc
-		if !ok {
-			close(e.rqc)
-			return
-		}
+		e.origin = caller
 		for {
+			cmd, ok := <-e.cmdc
+			if !ok {
+				close(e.rqc)
+				return
+			}
 			if cmd.code == cmdStepID || cmd.code == cmdFireID {
 				e.status = vm.Running
 				e.stepByStep = cmd.code == cmdStepID
@@ -230,20 +549,21 @@ func (self *machine) Call(blockNumber uint64, caller common.Address, to common.A
 				e.handleCmdc(cmd)
 			}
 		}
-	}(mkEnv(&ctx.env, blockNumber, self))
+	}(mkEnv(&ctx.env, self))
 
 	return ctx, nil
 }
 
-func (self *machine) Create(blockNumber uint64, caller common.Address, code []byte, gas, price, value *big.Int) (vm.Context, error) {
+func (self *machine) Create(caller common.Address, code []byte, gas, price, value *big.Int) (vm.Context, error) {
 	ctx := &context{}
 
 	go func(e *vmEnv) {
-		cmd, ok := <-e.cmdc
-		if !ok {
-			return
-		}
+		e.origin = caller
 		for {
+			cmd, ok := <-e.cmdc
+			if !ok {
+				return
+			}
 			if cmd.code == cmdStepID || cmd.code == cmdFireID {
 				e.status = vm.Running
 				e.stepByStep = cmd.code == cmdStepID
@@ -258,7 +578,7 @@ func (self *machine) Create(blockNumber uint64, caller common.Address, code []by
 				e.handleCmdc(cmd)
 			}
 		}
-	}(mkEnv(&ctx.env, blockNumber, self))
+	}(mkEnv(&ctx.env, self))
 
 	return ctx, nil
 }
@@ -270,43 +590,15 @@ func (self *vmEnv) handleCmdc(cmd *command) bool {
 		self.hash[h.number] = h
 	case cmdCodeID:
 		c := cmd.value.(*vmCode)
-		if c.code == nil {
-			self.code[c.address] = Absent
-		} else {
-			var acc state.AccountObject
-			if !self.db.Exist(c.address) {
-				acc = self.db.CreateAccount(c.address)
-			} else {
-				acc = self.db.GetAccount(c.address)
-			}
-			acc.SetCode(c.hash, c.code)
-			self.code[c.address] = Committed
-		}
+		self.code[c.address] = c
 	case cmdAccountID:
-		a := cmd.value.(*account)
-		if a.balance == nil {
-			self.account[a.address] = Absent
-		} else {
-			var acc state.AccountObject
-			if !self.db.Exist(a.address) {
-				acc = self.db.CreateAccount(a.address)
-			} else {
-				acc = self.db.GetAccount(a.address)
-			}
-			acc.SetNonce(a.nonce)
-			acc.SetBalance(a.balance)
-			self.account[a.address] = Committed
-		}
+		a := cmd.value.(*vmAccount)
+		self.account[a.address] = a
 	case cmdValueID:
-		v := cmd.value.(*keyValue)
-		valmap := self.values[v.addr]
-		if valmap == nil {
-			valmap = make(keyValueMap)
-			self.values[v.addr] = valmap
-		}
-		valmap[v.key] = v
-	case cmdRuleID:
-		self.rules = cmd.value.(*vmRule)
+		v := cmd.value.(*vmValue)
+		self.value[v.address.Hex()+":"+v.key.Hex()] = v
+	case cmdInfoID:
+		self.info = cmd.value.(*vmInfo)
 	case cmdStepID:
 		self.stepByStep = true
 		return true
@@ -331,82 +623,107 @@ func (self *vmEnv) handleRequire(rq *vm.Require) {
 	}
 }
 
-func (self *vmEnv) queryCode(addr common.Address) {
+func (self *vmEnv) brokeVm(text string) {
+	self.status = vm.Broken
+	self.err = errors.New(text)
+	self.rqc <- nil
+	panic(vm.BrokenError)
+}
+
+func (self *vmEnv) queryCode(addr common.Address) *vmCode {
 	for {
-		if self.code[addr] == None {
+		if c, exists := self.code[addr]; exists {
+			return c
+		} else {
 			self.handleRequire(&vm.Require{ID: vm.RequireCode, Address: addr})
-		} else {
-			return
 		}
 	}
 }
 
-func (self *vmEnv) queryAccount(addr common.Address) state.AccountObject {
+func (self *vmEnv) queryAccount(addr common.Address) *vmAccount {
 	for {
-		switch self.account[addr] {
-		case None:
+		if a, exists := self.account[addr]; exists {
+			return a
+		} else {
 			self.handleRequire(&vm.Require{ID: vm.RequireAccount, Address: addr})
-		case Committed, Modified:
-			return &vmAccount{func() { self.account[addr] = Modified }, self.db.GetAccount(addr)}
-		default:
-			return nil
 		}
 	}
 }
 
-func (self *vmEnv) queryValue(addr common.Address, key common.Hash) common.Hash {
-	valmap := self.values[addr]
-	if valmap == nil {
-		valmap = make(keyValueMap)
-		self.values[addr] = valmap
+func (self *vmEnv) queryOrCreateAccount(addr common.Address) *vmAccount {
+	acc := self.queryAccount(addr)
+	switch acc.Level() {
+	case Modified, Committed:
+		return acc
+	default:
+		acc.Snap()
+		return acc
 	}
+}
+
+func (self *vmEnv) queryValue(addr common.Address, key common.Hash) *vmValue {
+	valid := addr.Hex() + ":" + key.Hex()
 	for {
-		//var keyval *keyValue
-		if keyval := valmap[key]; keyval == nil {
-			self.handleRequire(&vm.Require{ID: vm.RequireValue, Address: addr, Hash: key})
+		if v, exists := self.value[valid]; exists {
+			return v
 		} else {
-			return keyval.value
+			if acc := self.account[addr]; acc != nil && acc.IsNewborn() {
+				self.value[valid] = newValue(addr, key, &self.currSnapshot, Absent)
+			} else {
+				self.handleRequire(&vm.Require{ID: vm.RequireValue, Address: addr, Hash: key})
+			}
 		}
 	}
 }
 
-func (self *vmEnv) queryRule() *vmRule {
+func (self *vmEnv) queryInfo() *vmInfo {
 	for {
-		if self.rules != nil {
-			return self.rules
+		if self.info != nil {
+			return self.info
 		} else {
-			self.handleRequire(&vm.Require{ID: vm.RequireRules, Number: self.blocknumber})
+			self.handleRequire(&vm.Require{ID: vm.RequireInfo})
 		}
 	}
 }
 
-func (self *context) CommitRules(table *vm.GasTable, fork vm.Fork, difficulty, gasLimit, time *big.Int) (err error) {
-	rule := vmRule{table, fork, difficulty, gasLimit, time}
-	self.env.cmdc <- &command{cmdRuleID, &rule}
+func (self *context) CommitInfo(blockNumber uint64, coinbase common.Address, table *vm.GasTable, fork vm.Fork, difficulty, gasLimit, time *big.Int) (err error) {
+	info := vmInfo{table, fork, difficulty, gasLimit, time, coinbase, blockNumber}
+	self.env.cmdc <- &command{cmdInfoID, &info}
 	return
 }
 
 func (self *context) CommitAccount(address common.Address, nonce uint64, balance *big.Int) (err error) {
-	account := account{address: address, nonce: nonce, balance: balance}
-	self.env.cmdc <- &command{cmdAccountID, &account}
+	a := newAccount(address, &self.env.currSnapshot, Absent)
+	if balance != nil {
+		a.data.balance = balance
+		a.data.nonce = nonce
+		a.data.level = Committed
+	}
+	self.env.cmdc <- &command{cmdAccountID, a}
 	return
 }
 
 func (self *context) CommitBlockhash(number uint64, hash common.Hash) (err error) {
-	v := vmHash{number, hash}
-	self.env.cmdc <- &command{cmdHashID, &v}
+	h := vmHash{number, hash}
+	self.env.cmdc <- &command{cmdHashID, &h}
 	return
 }
 
 func (self *context) CommitCode(address common.Address, hash common.Hash, code []byte) (err error) {
-	v := vmCode{address, code, hash}
-	self.env.cmdc <- &command{cmdCodeID, &v}
+	c := newCode(address, &self.env.currSnapshot, Absent)
+	if code != nil {
+		c.data.code = code
+		c.data.hash = hash
+		c.data.level = Committed
+	}
+	self.env.cmdc <- &command{cmdCodeID, c}
 	return
 }
 
 func (self *context) CommitValue(address common.Address, key common.Hash, value common.Hash) (err error) {
-	v := keyValue{address, key, value, Committed}
-	self.env.cmdc <- &command{cmdValueID, &v}
+	v := newValue(address, key, &self.env.currSnapshot, Committed)
+	v.data.value = value
+	self.env.cmdc <- &command{cmdValueID, v}
 	return
 }
 
@@ -429,61 +746,63 @@ func (self *context) Address() (common.Address, error) {
 }
 
 func (self *context) Code(addr common.Address) (common.Hash, []byte, error) {
-	if self.env.account[addr] == Modified {
-		return self.env.db.GetCodeHash(addr), self.env.db.GetCode(addr), nil
-	} else {
-		return common.Hash{}, nil, nil
-	}
-}
-
-func (self *context) Modified() (accounts []vm.Account, err error) {
-	accounts = []vm.Account{}
-	for addr, level := range self.env.account {
-		if level == Modified {
-			acc := self.env.db.GetAccount(addr)
-			accounts = append(accounts, acc.(vm.Account))
+	if c, exists := self.env.code[addr]; exists {
+		switch c.Level() {
+		case Modified, Committed:
+			return c.Hash(), c.Code(), nil
 		}
 	}
-	if len(accounts) == 0 {
-		accounts = nil
-	}
-	return
+	return common.Hash{}, nil, nil
 }
 
-func (self *context) Removed() (addresses []common.Address, err error) {
-	addresses = []common.Address{}
-	for addr, level := range self.env.account {
-		if level == Removed {
-			addresses = append(addresses, addr)
-		}
-	}
-	if len(addresses) == 0 {
-		addresses = nil
-	}
-	return
+type account struct {
+	acc *vmAccount
+	env *vmEnv
 }
 
-func (self *context) Values() (values []vm.KeyValue, err error) {
-	for _, valmap := range self.env.values {
-		values = []vm.KeyValue{}
-		for _, v := range valmap {
-			if v.level == Modified {
-				values = append(values, v)
+func (self *account) Address() common.Address { return self.acc.address }
+func (self *account) Nonce() uint64 { return self.acc.Nonce() }
+func (self *account) Balance() *big.Int { return self.acc.Balance() }
+func (self *account) IsSuicided() bool { return self.acc.Level() == Suicided }
+func (self *account) IsNewborn() bool { return self.acc.IsNewborn() }
+func (self *account) Code() (common.Hash,[]byte) {
+	address := self.acc.address
+	if code, exists := self.env.code[address]; exists && code.Level() == Modified {
+		return code.Hash(), code.Code()
+	}
+	return common.Hash{}, nil
+}
+func (self *account) Store(f func(common.Hash,common.Hash) error) error {
+	address := self.acc.address
+	for _, v := range self.env.value {
+		if v.Address() == address {
+			if err := f(v.Key(),v.Value()); err != nil {
+				return err
 			}
 		}
-		if len(values) == 0 {
-			values = nil
+	}
+	return nil
+}
+
+func (self *context) Accounts() (accounts []vm.Account, err error) {
+	accounts = []vm.Account{}
+	for _, a := range self.env.account {
+		switch a.Level() {
+		case Modified, Suicided:
+			accounts = append(accounts, &account{a, &self.env })
 		}
 	}
 	return
 }
 
-func (self *context) Out() ([]byte, *big.Int, error) {
-	return self.env.output, self.env.Gas, self.env.err
+func (self *context) Out() ([]byte, *big.Int, *big.Int, error) {
+	return self.env.output, self.env.Gas, self.env.GetRefund(), nil
 }
 
 func (self *context) Logs() (logs state.Logs, err error) {
-	logs = self.env.db.Logs()
+	for _, l := range self.env.logs {
+		logs = append(logs, l.log)
+	}
 	return
 }
 
@@ -492,21 +811,19 @@ func (self *context) Err() error {
 }
 
 func (self *vmEnv) GasTable(block *big.Int) *vm.GasTable {
-	number := block.Uint64()
-	if number != self.blocknumber {
-		self.status = vm.Broken
-		panic("invalid block number")
+	info := self.queryInfo()
+	if info.number != block.Uint64() {
+		self.brokeVm("invalid block number in RulesSet.GasTable")
 	}
-	return self.queryRule().table
+	return self.queryInfo().table
 }
 
 func (self *vmEnv) IsHomestead(block *big.Int) bool {
-	number := block.Uint64()
-	if number != self.blocknumber {
-		self.status = vm.Broken
-		panic("invalid block number")
+	info := self.queryInfo()
+	if info.number != block.Uint64() {
+		self.brokeVm("invalid block number in RulesSet.IsHomestead")
 	}
-	return self.queryRule().fork >= vm.Homestead
+	return self.queryInfo().fork >= vm.Homestead
 }
 
 func (self *vmEnv) RuleSet() vm.RuleSet {
@@ -518,27 +835,26 @@ func (self *vmEnv) Origin() common.Address {
 }
 
 func (self *vmEnv) BlockNumber() *big.Int {
-	return new(big.Int).SetUint64(self.blocknumber)
+	return new(big.Int).SetUint64(self.queryInfo().number)
 }
 
 func (self *vmEnv) Coinbase() common.Address {
-	return self.coinbase
+	return self.queryInfo().coinbase
 }
 
 func (self *vmEnv) Time() *big.Int {
-	return self.queryRule().time
+	return self.queryInfo().time
 }
 
 func (self *vmEnv) Difficulty() *big.Int {
-	return self.queryRule().difficulty
+	return self.queryInfo().difficulty
 }
 
 func (self *vmEnv) GasLimit() *big.Int {
-	return self.queryRule().gasLimit
+	return self.queryInfo().gasLimit
 }
 
 func (self *vmEnv) Db() Database {
-	// wrap database activity
 	return self
 }
 
@@ -561,43 +877,57 @@ func (self *vmEnv) GetHash(n uint64) common.Hash {
 }
 
 func (self *vmEnv) AddLog(log *state.Log) {
-	self.db.AddLog(log)
+	self.logs = append(self.logs, vmLog{log, self.currSnapshot})
 }
 
 func (self *vmEnv) CanTransfer(from common.Address, balance *big.Int) bool {
-	if self.machine.skipTransfer {
-		return true
+	if (self.machine.features & vm.TestSkipTransfer) > 0 {
+		if !self.followingTransfer {
+			self.followingTransfer = true
+			return true
+		}
 	}
 	return self.GetBalance(from).Cmp(balance) >= 0
 }
 
-func (self *vmEnv) SnapshotDatabase() int {
-	return self.db.Snapshot()
-}
-
-func (self *vmEnv) RevertToSnapshot(snapshot int) {
-	self.db.RevertToSnapshot(snapshot)
-}
-
 func (self *vmEnv) Transfer(from, to state.AccountObject, amount *big.Int) {
-	if !self.machine.skipTransfer {
+	if (self.machine.features & vm.TestSkipTransfer) == 0 {
 		Transfer(from, to, amount)
 	}
 }
 
 func (self *vmEnv) Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	if (self.machine.features&vm.TestSkipSubCall) > 0 && self.depth > 0 {
+		me.ReturnGas(gas, price)
+		return nil, nil
+	}
 	return Call(self, me, addr, data, gas, price, value)
 }
 
 func (self *vmEnv) CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	if (self.machine.features&vm.TestSkipSubCall) > 0 && self.depth > 0 {
+		me.ReturnGas(gas, price)
+		return nil, nil
+	}
 	return CallCode(self, me, addr, data, gas, price, value)
 }
 
 func (self *vmEnv) DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	if (self.machine.features&vm.TestSkipSubCall) > 0 && self.depth > 0 {
+		me.ReturnGas(gas, price)
+		return nil, nil
+	}
 	return DelegateCall(self, me.(*Contract), addr, data, gas, price)
 }
 
 func (self *vmEnv) Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+	if (self.machine.features & vm.TestSkipCreate) > 0 {
+		me.ReturnGas(gas, price)
+		caller := self.queryAccount(me.Address())
+		nonce := caller.Nonce()
+		obj := self.queryOrCreateAccount(crypto.CreateAddress(me.Address(), nonce))
+		return nil, obj.Address(), nil
+	}
 	return Create(self, me, data, gas, price, value)
 }
 
@@ -606,93 +936,96 @@ func (self *vmEnv) Run(contract *Contract, input []byte) (ret []byte, err error)
 }
 
 func (self *vmEnv) GetAccount(addr common.Address) state.AccountObject {
-	return self.queryAccount(addr)
+	acc := self.queryAccount(addr)
+	switch acc.Level() {
+	case Modified, Committed, Suicided:
+		return acc
+	default:
+		return nil
+	}
 }
 
 func (self *vmEnv) CreateAccount(addr common.Address) state.AccountObject {
-	self.account[addr] = Modified
-	return self.db.CreateAccount(addr)
+	acc := self.queryAccount(addr)
+	acc.SetNewborn()
+	for _, v := range self.value {
+		if v.Address() == addr {
+			v.Set(common.Hash{})
+		}
+	}
+	return acc
 }
 
 func (self *vmEnv) AddBalance(addr common.Address, ammount *big.Int) {
-	self.queryAccount(addr)
-	self.account[addr] = Modified
-	self.db.AddBalance(addr,ammount)
+	acc := self.queryOrCreateAccount(addr)
+	acc.AddBalance(ammount)
 }
 
 func (self *vmEnv) GetBalance(addr common.Address) *big.Int {
-	self.queryAccount(addr)
-	return self.db.GetBalance(addr)
+	return self.queryAccount(addr).Balance()
 }
 
 func (self *vmEnv) GetNonce(addr common.Address) uint64 {
-	self.queryAccount(addr)
-	return self.db.GetNonce(addr)
+	return self.queryAccount(addr).Nonce()
 }
 
 func (self *vmEnv) SetNonce(addr common.Address, nonce uint64) {
-	self.queryAccount(addr)
-	self.account[addr] = Modified
-	self.db.SetNonce(addr,nonce)
+	self.queryAccount(addr).SetNonce(nonce)
 }
 
 func (self *vmEnv) GetCodeHash(addr common.Address) common.Hash {
-	self.queryCode(addr)
-	return self.db.GetCodeHash(addr)
+	return self.queryCode(addr).Hash()
 }
 
 func (self *vmEnv) GetCodeSize(addr common.Address) int {
-	self.queryCode(addr)
-	return self.db.GetCodeSize(addr)
+	return len(self.queryCode(addr).Code())
 }
 
 func (self *vmEnv) GetCode(addr common.Address) []byte {
-	self.queryCode(addr)
-	return self.db.GetCode(addr)
+	return self.queryCode(addr).Code()
 }
 
 func (self *vmEnv) SetCode(addr common.Address, code []byte) {
-	self.code[addr] = Modified
-	self.db.SetCode(addr, code)
+	self.queryOrCreateAccount(addr)
+	self.queryCode(addr).SetCode(crypto.Keccak256Hash(code), code)
 }
 
 func (self *vmEnv) AddRefund(gas *big.Int) {
-	self.db.AddRefund(gas)
+	refund := self.gasRefund[len(self.gasRefund)-1]
+	if refund.snapshot < self.currSnapshot {
+		g := new(big.Int)
+		g.Add(refund.gas, gas)
+		self.gasRefund = append(self.gasRefund, vmRefund{g, self.currSnapshot})
+	} else {
+		refund.gas.Add(refund.gas, gas)
+	}
 }
 
 func (self *vmEnv) GetRefund() *big.Int {
-	return self.db.GetRefund()
+	return self.gasRefund[len(self.gasRefund)-1].gas
 }
 
 func (self *vmEnv) GetState(address common.Address, key common.Hash) common.Hash {
-	return self.queryValue(address, key)
+	return self.queryValue(address, key).Get()
 }
 
 func (self *vmEnv) SetState(address common.Address, key common.Hash, value common.Hash) {
-	var valmap keyValueMap
-	var keyval *keyValue
-	if valmap = self.values[address]; valmap == nil {
-		valmap = make(keyValueMap)
-		self.values[address] = valmap
-	}
-	if keyval = valmap[key]; keyval == nil {
-		valmap[key] = &keyValue{address, key, value, Modified}
-	} else {
-		keyval.value = value
-		keyval.level = Modified
-	}
+	self.queryOrCreateAccount(address).Snap()
+	self.queryValue(address, key).Set(value)
 }
 
 func (self *vmEnv) Suicide(addr common.Address) bool {
-	self.account[addr] = Removed
-	return self.db.Suicide(addr)
+	return self.queryAccount(addr).Suicide()
 }
 
 func (self *vmEnv) HasSuicided(addr common.Address) bool {
-	return self.db.HasSuicided(addr)
+	return self.queryAccount(addr).Level() == Suicided
 }
 
 func (self *vmEnv) Exist(addr common.Address) bool {
-	self.queryAccount(addr)
-	return self.db.Exist(addr)
+	switch self.queryAccount(addr).Level() {
+	case Committed, Modified, Suicided:
+		return true
+	}
+	return false
 }

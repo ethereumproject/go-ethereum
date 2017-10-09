@@ -104,10 +104,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 func ApplyTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *big.Int) (*types.Receipt, state.Logs, *big.Int, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
 
-	vmEnv, err := NewEnv(statedb, config, bc, tx, header)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	vmEnv := NewEnv(statedb, config, bc, tx, header)
 
 	_, gas, err := ApplyMessage(vmEnv, tx, gp)
 	if err != nil {

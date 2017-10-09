@@ -208,10 +208,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 
 	header := be.bc.CurrentBlock().Header()
 
-	vmenv, err := core.NewEnv(statedb, be.config, be.bc, msg, header)
-	if err != nil {
-		return "", "", err 
-	}
+	vmenv := core.NewEnv(statedb, be.config, be.bc, msg, header)
 
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 	res, gas, err := core.ApplyMessage(vmenv, msg, gp)

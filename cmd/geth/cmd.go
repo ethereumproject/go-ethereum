@@ -622,16 +622,15 @@ func dumpChainConfig(ctx *cli.Context) error {
 
 	// Implicitly favor Morden because it is a smaller, simpler configuration,
 	// so I expect it to be used more frequently than mainnet.
-	genesisDump := core.TestNetGenesis
+	genesisDump := core.DefaultConfigMorden.Genesis
 	netId := 2
 	stateConf := &core.StateConfig{StartingNonce: state.DefaultTestnetStartingNonce}
 	if !chainIsMorden(ctx) {
-		genesisDump = core.DefaultGenesis
+		genesisDump = core.DefaultConfigMainnet.Genesis
 		netId = eth.NetworkId
 		stateConf = nil
 	}
 
-	// Note that we use default configs (not externalizable).
 	chainConfig := MustMakeChainConfigFromDefaults(ctx)
 	var nodes []string
 	for _, node := range MakeBootstrapNodesFromContext(ctx) {
