@@ -226,7 +226,7 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	// This avoids a set pattern for checking block validity, which might present
 	// a vulnerability.
 	// Random increments are only implemented with using an interval > 1.
-	rInc := func(i int) (int) {
+	randomizeIncrement := func(i int) (int) {
 		mrand.Seed(time.Now().UTC().UnixNano())
 		halfIncrement := i / 2
 		ri := mrand.Int63n(int64(halfIncrement))
@@ -235,9 +235,16 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 		}
 		return i - int(ri)
 	}
-	dynamicIncrement := increment
-	if increment > 1 {
-		dynamicIncrement = rInc(increment)
+
+	// Hold setting if should randomize incrementing.
+	shouldRandomizeIncrement := increment > 1
+	// Always base randomization off of original increment,
+	// otherwise we'll eventually skew (narrow) the random set.
+	dynamicalIncrement := increment
+
+	// Establish initial increment value.
+	if shouldRandomizeIncrement {
+		dynamicalIncrement = randomizeIncrement(increment)
 	}
 
 	// Set up logging for block recovery progress.
@@ -249,17 +256,20 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 		}
 	}()
 
+	// Step next block.
+	checkpointBlockNext := self.GetBlockByNumber(uint64(from))
+	if checkpointBlockNext == nil {
+		return 0
+	}
+
 	// In order for this number to be available at the time this function is called, the number
 	// may need to be persisted locally from the last connection.
-	for i := from; i > 0 && i < 50000000; i += dynamicIncrement {
-		if increment > 1 {
-			dynamicIncrement = rInc(increment)
-		}
+	for i := from; i > 0 && checkpointBlockNext != nil; i += dynamicalIncrement {
 
 		// func (r *Rand) Int63n(n int64) int64
-		bb := self.GetBlockByNumber(uint64(i))
+		checkpointBlockNext = self.GetBlockByNumber(uint64(i))
 		// If block does not exist in db.
-		if bb == nil {
+		if checkpointBlockNext == nil {
 			// Traverse in small steps (increment =1) from last known big step (increment >1) checkpoint.
 			if increment > 1 && i - increment > 1 {
 				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i - increment, 1)
@@ -270,19 +280,23 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 		}
 		// blockIsUnhealthy runs various block sanity checks, over and above Validator efforts to ensure
 		// no expected block strangenesses.
-		ee := self.blockIsUnhealthy(bb)
+		ee := self.blockIsUnhealthy(checkpointBlockNext)
 		if ee == nil {
 			// Everything seems to be fine, set as the head block
-			glog.V(logger.Debug).Infof("Found OK later block #%d", bb.NumberU64())
+			glog.V(logger.Debug).Infof("Found OK later block #%d", checkpointBlockNext.NumberU64())
 
-			checkpoint = bb.NumberU64()
+			checkpoint = checkpointBlockNext.NumberU64()
 
-			self.currentBlock = bb
+			self.currentBlock = checkpointBlockNext
 			self.hc.SetCurrentHeader(self.currentBlock.Header())
 			self.currentFastBlock = self.currentBlock
+
+			if shouldRandomizeIncrement {
+				dynamicalIncrement = randomizeIncrement(increment)
+			}
 			continue
 		}
-		glog.V(logger.Error).Infof("WARNING: Found unhealthy block #%d (%v): \n\n%v", i, ee, bb)
+		glog.V(logger.Error).Infof("WARNING: Found unhealthy block #%d (%v): \n\n%v", i, ee, checkpointBlockNext)
 		if increment == 1 {
 			break
 		}
