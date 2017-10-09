@@ -31,6 +31,7 @@ type Type byte
 
 const (
 	ClassicVm Type = iota // classic VM (legacy implementation from ethereum)
+	ClassicRawVm   		  // classic VM with direct usage (w/o RequireErr)
 	SputnikVm             // modern VM
 	OtherVm               // other external VM connected through RPC
 )
@@ -91,7 +92,6 @@ const (
 	RequireErr         // vm requires some information
 	TransferErr        // account has insufficient balance and transfer is not possible
 	OutOfGasErr        // out of gas error occurred
-	BadCodeErr         // bad contract code
 	ExitedErr          // unspecified error occured
 	Broken             // connection with vm is broken or vm is not response
 )
@@ -104,16 +104,14 @@ const (
 	Diehard
 )
 
-type KeyValue interface {
-	Address() common.Address
-	Key() common.Hash
-	Value() common.Hash
-}
-
 type Account interface {
 	Address() common.Address
 	Nonce() uint64
 	Balance() *big.Int
+	IsSuicided() bool
+	IsNewborn() bool
+	Code() (common.Hash,[]byte)
+	Store(func(common.Hash,common.Hash) error) error
 }
 
 type RequireID byte
@@ -147,13 +145,7 @@ type Context interface {
 	// Finish VM context
 	Finish() error
 	// Returns the changed accounts information
-	Modified() ([]Account, error)
-	// Returns all addresses of sucided accounts
-	Suicides() ([]common.Address, error)
-	// Returns the created accounts code
-	Code(common.Address) (common.Hash, []byte, error)
-	// Returns modified stored values
-	Values() ([]KeyValue, error)
+	Accounts() ([]Account, error)
 	// Returns new contract address on Create and called contract address on Call
 	Address() (common.Address, error)
 	// Returns the out value and gas remaining/refunded if any
@@ -179,8 +171,6 @@ const (
 const AllTestFeatures = TestSkipTransfer | TestSkipSubCall | TestSkipCreate
 
 type Machine interface {
-	// Test feature
-	SetTestFeatures(int) error
 	// Call contract in new VM context
 	Call(caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (Context, error)
 	// Create contract in new VM context
@@ -189,6 +179,11 @@ type Machine interface {
 	Type() Type
 	// Name of VM
 	Name() string
+}
+
+type TestMachine interface {
+	// Test feature
+	SetTestFeatures(int) error
 }
 
 var (

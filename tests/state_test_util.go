@@ -118,7 +118,6 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 			continue
 		}
 
-		fmt.Printf("-- %s --\n",name)
 		test := tests[name]
 		//fmt.Println("StateTest:", name)
 		if err := runStateTest(ruleSet, test); err != nil {
@@ -133,6 +132,18 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 }
 
 func runStateTest(ruleSet RuleSet, test VmTest) error {
+	var err error
+	core.VmManager.Autoconfig()
+	if err = runStateTest_(ruleSet, test); err != nil && ReatrtInRawCalssicVm {
+		fmt.Printf("error occured %v\n",err)
+		fmt.Println("\trestarting with raw VM\n")
+		core.VmManager.SwitchToRawClassicVm()
+		err = runStateTest_(ruleSet, test)
+	}
+	return err
+}
+
+func runStateTest_(ruleSet RuleSet, test VmTest) error {
 	db, _ := ethdb.NewMemDatabase()
 	statedb := makePreState(db, test.Pre)
 

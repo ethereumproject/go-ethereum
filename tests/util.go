@@ -32,6 +32,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
+const ReatrtInRawCalssicVm = false
+
 func init() {
 	glog.SetV(0)
 }
@@ -212,10 +214,6 @@ func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]stri
 	if gasLimit == nil {
 		panic("malformed current gas limit")
 	}
-	machine, _ := core.VmManager.ConnectMachine()
-	if machine == nil {
-		panic("could not connect machine")
-	}
 
 	fork := vm.Frontier
 	if ruleSet.IsHomestead(number) {
@@ -224,6 +222,12 @@ func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]stri
 
 	funcFn := func(n uint64) common.Hash {
 		return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
+	}
+
+	machine, _ := core.VmManager.ConnectMachine()
+	//machine := classic.NewRawMachine()
+	if machine == nil {
+		panic("could not connect machine")
 	}
 
 	env := &core.VmEnv{
@@ -238,6 +242,8 @@ func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]stri
 		ruleSet,
 		machine,
 	}
+
+	if machine.Type() == vm.ClassicRawVm { env.SetupRawVm() }
 
 	//env.origin = common.HexToAddress(exeValues["caller"])
 	//env.parent = common.HexToHash(envValues["previousHash"])
@@ -267,3 +273,4 @@ func (self Message) Gas() *big.Int                         { return self.gas }
 func (self Message) Value() *big.Int                       { return self.value }
 func (self Message) Nonce() uint64                         { return self.nonce }
 func (self Message) Data() []byte                          { return self.data }
+

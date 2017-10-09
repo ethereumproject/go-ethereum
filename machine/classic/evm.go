@@ -55,6 +55,7 @@ func NewVM(env Environment) *EVM {
 
 // Run loops and evaluates the contract's code with the given input data
 func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
+
 	evm.env.SetDepth(evm.env.Depth() + 1)
 	defer evm.env.SetDepth(evm.env.Depth() - 1)
 
@@ -119,7 +120,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// calculate the new memory size and gas price for the current executing opcode
 		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("at (PC:%v, OP:%v) : %v\n",pc,op.String(),err.Error())
 		}
 
 		// Use the calculated gas. When insufficient gas is present, use all gas and return an

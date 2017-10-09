@@ -131,77 +131,70 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 				}
 			}
 		} else {
-			switch ctx.Status() {
-			case vm.ExitedOk:
+			switch st := ctx.Status(); st {
+			case vm.ExitedOk, vm.OutOfGasErr, vm.ExitedErr:
 				out, gas, gasRefund, err := ctx.Out()
 				if err != nil {
 					return nil, nil, nil, err
 				}
+
 				address, err := ctx.Address()
 				if err != nil {
 					return nil, nil, nil, err
 				}
-				modified, err := ctx.Modified()
-				if err != nil {
-					return nil, nil, nil, err
-				}
-				suicides, _ := ctx.Suicides()
-				if err != nil {
-					return nil, nil, nil, err
-				}
-				values, _ := ctx.Values()
-				if err != nil {
-					return nil, nil, nil, err
-				}
+
 				logs, _ := ctx.Logs()
 				if err != nil {
 					return nil, nil, nil, err
 				}
-				// applying state here
-				snapshot := self.Db.Snapshot()
-				fmt.Printf("refund %v + %v\n",self.Db.GetRefund().Int64(),gasRefund.Int64())
+
+				accounts, err := ctx.Accounts()
+				if err != nil {
+					return nil, nil, nil, err
+				}
+
 				self.Db.AddRefund(gasRefund)
-				for _, v := range modified {
+				for _, a := range accounts {
+					address := a.Address()
 					var o state.AccountObject
-					address := v.Address()
-					if self.Db.Exist(address) {
-						o = self.Db.GetAccount(address)
-					} else {
+					if a.IsNewborn() {
 						o = self.Db.CreateAccount(address)
-						hash, code, err := ctx.Code(address)
-						if err != nil {
-							self.Db.RevertToSnapshot(snapshot)
-							return nil, nil, nil, err
-						}
+					} else {
+						o = self.Db.GetOrNewStateObject(address)
+					}
+					o.SetBalance(a.Balance())
+					o.SetNonce(a.Nonce())
+					a.Store(func(key,value common.Hash) error {
+						self.Db.SetState(a.Address(),key,value)
+						return nil
+					})
+					if a.IsSuicided() {
+						self.Db.Suicide(address)
+					} else {
+						hash, code := a.Code()
 						if code != nil {
 							o.SetCode(hash, code)
 						}
 					}
-					o.SetBalance(v.Balance())
-					o.SetNonce(v.Nonce())
-					fmt.Printf("account: %v balance: %v nunce: %v\n",o.Address().Hex(), o.Balance().Int64(), o.Nonce())
-					fmt.Printf("\t hash: %v codesize: %v\n",self.Db.GetCodeHash(o.Address()).Hex(),len(self.Db.GetCode(o.Address())))
-				}
-				for _, kv := range values {
-					fmt.Printf("set vale %v:%v -> %v\n",kv.Address().Hex(), kv.Key().Hex(), kv.Value().Hex())
-					self.Db.SetState(kv.Address(), kv.Key(), kv.Value())
-				}
-				for _, a := range suicides {
-					fmt.Printf("suicide %v\n",a.Hex())
-					self.Db.Suicide(a)
+					//fmt.Printf("account: %v balance: %v nonce: %v\n",o.Address().Hex(), o.Balance().Int64(), o.Nonce())
+					//fmt.Printf("\t hash: %v codesize: %v\n",self.Db.GetCodeHash(o.Address()).Hex(),len(self.Db.GetCode(o.Address())))
+					//fmt.Printf("\t suicided: %v\n",self.Db.HasSuicided(o.Address()))
 				}
 				for _, l := range logs {
 					self.Db.AddLog(l)
 				}
-				return out, &address, gas, nil
+				if st == vm.OutOfGasErr {
+					return nil, nil, gas, OutOfGasError
+				} else if st == vm.ExitedErr {
+						return nil, nil, gas, ctx.Err()
+				} else {
+					return out, &address, gas, nil
+				}
 			case vm.TransferErr:
 				_, gas, _, _ := ctx.Out()
 				return nil, nil, gas, InvalidTxError(ctx.Err())
-			case vm.Broken, vm.BadCodeErr, vm.ExitedErr:
-				_, gas, _, _ := ctx.Out()
-				return nil, nil, gas, ctx.Err()
-			case vm.OutOfGasErr:
-				return nil, nil, nil, OutOfGasError
+			case vm.Broken:
+				return nil, nil, nil, vm.BrokenError
 			default:
 				// ?? unsupported VM implementaion ??
 				// should we panic or use known VM instead?
@@ -234,11 +227,21 @@ func getFork(number *big.Int, chainConfig *ChainConfig) vm.Fork {
 	return vm.Frontier
 }
 
-func NewEnv(db *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) *VmEnv {
-	machine, err := VmManager.ConnectMachine()
-	if err != nil {
-		panic(err)
-	}
+func (self *VmEnv) SetupRawVm() *classic.RawMachine{
+	// Hack to use raw classic VM in differential tests
+	var rwm *classic.RawMachine = self.Machine.(*classic.RawMachine)
+	rwm.State_ = self.Db
+	rwm.Difficulty_ = self.Difficulty
+	rwm.GasLimit_ = self.GasLimit
+	rwm.Time_ = self.Time
+	rwm.HashFn_= self.Hashfn
+	rwm.RuleSet_ = self.RuleSet
+	rwm.Number_ = self.BlockNumber
+	rwm.Coinbase_ = self.Coinbase
+	return rwm
+}
+
+func NewEnvWithMachine(machine vm.Machine, db *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) *VmEnv {
 	fork := getFork(header.Number, chainConfig)
 	vmenv := &VmEnv{
 		header.Coinbase,
@@ -252,8 +255,20 @@ func NewEnv(db *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg 
 		chainConfig,
 		machine,
 	}
+	if machine.Type() == vm.ClassicRawVm {
+		vmenv.SetupRawVm()
+	}
 	return vmenv
 }
+
+func NewEnv(db *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) *VmEnv {
+	machine, err := VmManager.ConnectMachine()
+	if err != nil {
+		panic(err)
+	}
+	return NewEnvWithMachine(machine,db,chainConfig,chain,msg,header)
+}
+
 
 var OutOfGasError = errors.New("Out of gas")
 
@@ -269,7 +284,6 @@ type vmManager struct {
 var VmManager = &vmManager{}
 
 func (self *vmManager) autoConfig() {
-
 	self.useVmType = vm.DefaultVm
 	self.useVmManagment = vm.DefaultVmUsage
 	self.useVmConnection = vm.DefaultVmProto
@@ -279,6 +293,22 @@ func (self *vmManager) autoConfig() {
 	self.isConfigured = true
 }
 
+func (self *vmManager) SwitchToRawClassicVm() {
+	self.useVmType = vm.ClassicRawVm
+	self.isConfigured = true
+}
+
+func (self *vmManager) SwitchToClassicVm() {
+	self.useVmType = vm.ClassicVm
+	self.useVmConnection = vm.LocalVm
+	self.isConfigured = true
+}
+
+func (self *vmManager) Autoconfig() {
+	self.isConfigured = false
+	self.autoConfig()
+}
+
 var BadVmUsageError = errors.New("VM can't be used in this way")
 
 func (self *vmManager) ConnectMachine() (vm.Machine, error) {
@@ -286,7 +316,11 @@ func (self *vmManager) ConnectMachine() (vm.Machine, error) {
 		self.autoConfig()
 	}
 	if self.useVmType == vm.ClassicVm && self.useVmConnection == vm.LocalVm {
+		// use classic embedded VM in common way via Machine interface
 		return classic.NewMachine(), nil
+	} else if self.useVmType == vm.ClassicRawVm {
+		// use classic embedded VM directly
+		return classic.NewRawMachine(), nil
 	} else {
 		return nil, BadVmUsageError
 	}

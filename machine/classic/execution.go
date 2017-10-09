@@ -86,7 +86,6 @@ func exec(env Environment, caller ContractRef, address, codeAddr *common.Address
 		nonce := env.Db().GetNonce(caller.Address())
 		env.Db().SetNonce(caller.Address(), nonce+1)
 		addr = crypto.CreateAddress(caller.Address(), nonce)
-		fmt.Printf("%v + %v => %v\n",caller.Address().Hex(),nonce,addr.Hex())
 		address = &addr
 		createAccount = true
 	}
@@ -134,12 +133,16 @@ func exec(env Environment, caller ContractRef, address, codeAddr *common.Address
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
-	if err != nil {
+	if err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != CodeStoreOutOfGasError) {
+		contract.UseGas(contract.Gas)
+		env.RevertToSnapshot(snapshotPreTransfer)
+	}
+	/*if err != nil {
 		env.RevertToSnapshot(snapshotPreTransfer)
 		if env.RuleSet().IsHomestead(env.BlockNumber()) || err != CodeStoreOutOfGasError {
 			contract.UseGas(contract.Gas)
 		}
-	}
+	}*/
 
 	return ret, addr, err
 }

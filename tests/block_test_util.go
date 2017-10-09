@@ -159,6 +159,18 @@ func runBlockTests(homesteadBlock, gasPriceFork *big.Int, bt map[string]*BlockTe
 }
 
 func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error {
+	var err error
+	core.VmManager.Autoconfig()
+	if err = runBlockTest_(homesteadBlock, gasPriceFork, test); err != nil && ReatrtInRawCalssicVm {
+		fmt.Printf("error occured %v\n",err)
+		fmt.Println("\trestarting with raw VM\n")
+		core.VmManager.SwitchToRawClassicVm()
+		err = runBlockTest_(homesteadBlock, gasPriceFork, test)
+	}
+	return err
+}
+
+func runBlockTest_(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error {
 	// import pre accounts & construct test genesis block & state root
 	db, _ := ethdb.NewMemDatabase()
 	if _, err := test.InsertPreState(db); err != nil {

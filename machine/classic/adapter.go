@@ -4,7 +4,6 @@ import (
 	"math/big"
 
 	"errors"
-	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/vm"
@@ -15,12 +14,6 @@ import (
 type command struct {
 	code  uint8
 	value interface{}
-}
-
-type account struct {
-	address common.Address
-	nonce   uint64
-	balance *big.Int
 }
 
 const (
@@ -75,6 +68,7 @@ type vmAccountData struct {
 	balance  *big.Int
 	level    ChangeLevel
 	nonce    uint64
+	newborn  bool
 }
 
 func (self *vmAccountData) Value() int { return self.snapshot }
@@ -92,7 +86,8 @@ func newAccount(address common.Address, currSnapshot *int, level ChangeLevel) *v
 			*currSnapshot,
 			new(big.Int),
 			level,
-			0},
+			0,
+			false},
 	}
 	acc.vmSnapshot.currSnapshot = currSnapshot
 	return acc
@@ -125,14 +120,14 @@ func (self *vmAccount) SubBalance(amount *big.Int) {
 	if amount.Sign() == 0 {
 		return
 	}
-	self.SetBalance(new(big.Int).Sub(self.Balance(), amount))
+	self.setBalance(new(big.Int).Sub(self.Balance(), amount))
 }
 
 func (self *vmAccount) AddBalance(amount *big.Int) {
 	if amount.Sign() == 0 {
 		return
 	}
-	self.SetBalance(new(big.Int).Add(self.Balance(), amount))
+	self.setBalance(new(big.Int).Add(self.Balance(), amount))
 }
 
 func (self *vmAccount) Snap() {
@@ -147,14 +142,30 @@ func (self *vmAccount) Snap() {
 			data.balance,
 			data.level,
 			data.nonce,
+			data.newborn,
 		}
 	}
-	self.data.level = Modified
+	if self.data.level != Suicided {
+		self.data.level = Modified
+	}
+}
+
+func (self *vmAccount) SetNewborn() {
+	self.SetNonce(0)
+	self.data.newborn = true
+}
+
+func (self *vmAccount) IsNewborn() bool {
+	return self.data.newborn
 }
 
 func (self *vmAccount) SetBalance(amount *big.Int) {
+	self.setBalance(new(big.Int).Set(amount))
+}
+
+func (self *vmAccount) setBalance(amount *big.Int) {
 	self.Snap()
-	self.data.balance = new(big.Int).Set(amount)
+	self.data.balance = amount
 }
 
 func (self *vmAccount) SetNonce(nonce uint64) {
@@ -164,7 +175,7 @@ func (self *vmAccount) SetNonce(nonce uint64) {
 
 func (self *vmAccount) Suicide() bool {
 	switch self.data.level {
-	case Committed, Modified:
+	case Committed, Modified, Suicided:
 		self.Snap()
 		self.data.balance = new(big.Int)
 		self.data.level = Suicided
@@ -177,7 +188,7 @@ func (self *vmAccount) Suicide() bool {
 func (self *vmAccount) ReturnGas(gas, price *big.Int) {}
 
 func (self *vmAccount) Nonce() uint64           { return self.data.nonce }
-func (self *vmAccount) Balance() *big.Int       { return self.data.balance }
+func (self *vmAccount) Balance() *big.Int       { return new(big.Int).Set(self.data.balance) }
 func (self *vmAccount) Address() common.Address { return self.address }
 
 func (self *vmAccount) SetCode(hash common.Hash, code []byte)               { panic("unimplemented") }
@@ -242,14 +253,9 @@ func (self *vmCode) Snap() {
 	self.data.level = Modified
 }
 
-func (self *vmCode) Suicide() {
-	self.Snap()
-	self.data.level = Suicided
-}
-
 func (self *vmCode) Code() []byte {
 	switch self.data.level {
-	case Committed, Modified:
+	case Committed, Modified, Suicided:
 		return self.data.code
 	default:
 		return nil
@@ -258,7 +264,7 @@ func (self *vmCode) Code() []byte {
 
 func (self *vmCode) Hash() common.Hash {
 	switch self.data.level {
-	case Committed, Modified:
+	case Committed, Modified, Suicided:
 		return self.data.hash
 	default:
 		return common.Hash{}
@@ -349,11 +355,6 @@ func (self *vmValue) Snap() {
 		}
 	}
 	self.data.level = Modified
-}
-
-func (self *vmValue) Suicide() {
-	self.Snap()
-	self.data.level = Suicided
 }
 
 func (self *vmValue) Set(value common.Hash) {
@@ -666,7 +667,11 @@ func (self *vmEnv) queryValue(addr common.Address, key common.Hash) *vmValue {
 		if v, exists := self.value[valid]; exists {
 			return v
 		} else {
-			self.handleRequire(&vm.Require{ID: vm.RequireValue, Address: addr, Hash: key})
+			if acc := self.account[addr]; acc != nil && acc.IsNewborn() {
+				self.value[valid] = newValue(addr, key, &self.currSnapshot, Absent)
+			} else {
+				self.handleRequire(&vm.Require{ID: vm.RequireValue, Address: addr, Hash: key})
+			}
 		}
 	}
 }
@@ -750,47 +755,48 @@ func (self *context) Code(addr common.Address) (common.Hash, []byte, error) {
 	return common.Hash{}, nil, nil
 }
 
-func (self *context) Modified() (accounts []vm.Account, err error) {
+type account struct {
+	acc *vmAccount
+	env *vmEnv
+}
+
+func (self *account) Address() common.Address { return self.acc.address }
+func (self *account) Nonce() uint64 { return self.acc.Nonce() }
+func (self *account) Balance() *big.Int { return self.acc.Balance() }
+func (self *account) IsSuicided() bool { return self.acc.Level() == Suicided }
+func (self *account) IsNewborn() bool { return self.acc.IsNewborn() }
+func (self *account) Code() (common.Hash,[]byte) {
+	address := self.acc.address
+	if code, exists := self.env.code[address]; exists && code.Level() == Modified {
+		return code.Hash(), code.Code()
+	}
+	return common.Hash{}, nil
+}
+func (self *account) Store(f func(common.Hash,common.Hash) error) error {
+	address := self.acc.address
+	for _, v := range self.env.value {
+		if v.Address() == address {
+			if err := f(v.Key(),v.Value()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (self *context) Accounts() (accounts []vm.Account, err error) {
 	accounts = []vm.Account{}
 	for _, a := range self.env.account {
-		if a.Level() == Modified {
-			accounts = append(accounts, a)
+		switch a.Level() {
+		case Modified, Suicided:
+			accounts = append(accounts, &account{a, &self.env })
 		}
-	}
-	if len(accounts) == 0 {
-		accounts = nil
-	}
-	return
-}
-
-func (self *context) Suicides() (addresses []common.Address, err error) {
-	addresses = []common.Address{}
-	for _, a := range self.env.account {
-		if a.Level() == Suicided {
-			addresses = append(addresses, a.Address())
-		}
-	}
-	if len(addresses) == 0 {
-		addresses = nil
-	}
-	return
-}
-
-func (self *context) Values() (values []vm.KeyValue, err error) {
-	values = []vm.KeyValue{}
-	for _, v := range self.env.value {
-		if v.Level() == Modified {
-			values = append(values, v)
-		}
-	}
-	if len(values) == 0 {
-		values = nil
 	}
 	return
 }
 
 func (self *context) Out() ([]byte, *big.Int, *big.Int, error) {
-	return self.env.output, self.env.Gas, self.env.GetRefund(), self.env.err
+	return self.env.output, self.env.Gas, self.env.GetRefund(), nil
 }
 
 func (self *context) Logs() (logs state.Logs, err error) {
@@ -886,9 +892,6 @@ func (self *vmEnv) CanTransfer(from common.Address, balance *big.Int) bool {
 
 func (self *vmEnv) Transfer(from, to state.AccountObject, amount *big.Int) {
 	if (self.machine.features & vm.TestSkipTransfer) == 0 {
-		if from == nil { fmt.Println("from == nil")}
-		if to == nil { fmt.Println("to == nil")}
-		if amount == nil { fmt.Println("amount == nil")}
 		Transfer(from, to, amount)
 	}
 }
@@ -935,30 +938,31 @@ func (self *vmEnv) Run(contract *Contract, input []byte) (ret []byte, err error)
 func (self *vmEnv) GetAccount(addr common.Address) state.AccountObject {
 	acc := self.queryAccount(addr)
 	switch acc.Level() {
-	case Modified, Committed:
+	case Modified, Committed, Suicided:
 		return acc
 	default:
-		fmt.Printf("account %v in state %v -> nil\n",addr.Hex(),acc.Level())
 		return nil
 	}
 }
 
 func (self *vmEnv) CreateAccount(addr common.Address) state.AccountObject {
 	acc := self.queryAccount(addr)
-	acc.Snap()
-	fmt.Printf("account %v in state %v -> balance %v, nonce %v\n",addr.Hex(),acc.Level(),acc.Balance(),acc.Nonce())
+	acc.SetNewborn()
+	for _, v := range self.value {
+		if v.Address() == addr {
+			v.Set(common.Hash{})
+		}
+	}
 	return acc
 }
 
 func (self *vmEnv) AddBalance(addr common.Address, ammount *big.Int) {
 	acc := self.queryOrCreateAccount(addr)
-	fmt.Printf("add balance %s : %v + %v\n", addr.Hex(), acc.Balance(), ammount.Int64())
 	acc.AddBalance(ammount)
 }
 
 func (self *vmEnv) GetBalance(addr common.Address) *big.Int {
-	acc := self.queryAccount(addr)
-	return acc.Balance()
+	return self.queryAccount(addr).Balance()
 }
 
 func (self *vmEnv) GetNonce(addr common.Address) uint64 {
@@ -1006,16 +1010,11 @@ func (self *vmEnv) GetState(address common.Address, key common.Hash) common.Hash
 }
 
 func (self *vmEnv) SetState(address common.Address, key common.Hash, value common.Hash) {
+	self.queryOrCreateAccount(address).Snap()
 	self.queryValue(address, key).Set(value)
 }
 
 func (self *vmEnv) Suicide(addr common.Address) bool {
-	self.queryCode(addr).Suicide()
-	for _, v := range self.value {
-		if v.Address() == addr {
-			v.Suicide()
-		}
-	}
 	return self.queryAccount(addr).Suicide()
 }
 
@@ -1025,7 +1024,7 @@ func (self *vmEnv) HasSuicided(addr common.Address) bool {
 
 func (self *vmEnv) Exist(addr common.Address) bool {
 	switch self.queryAccount(addr).Level() {
-	case Committed, Modified:
+	case Committed, Modified, Suicided:
 		return true
 	}
 	return false

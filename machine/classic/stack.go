@@ -67,7 +67,8 @@ func (st *stack) peek() *big.Int {
 
 func (st *stack) require(n int) error {
 	if st.len() < n {
-		return fmt.Errorf("stack underflow (%d <=> %d)", len(st.data), n)
+		err := fmt.Errorf("stack underflow (%d <=> %d)", len(st.data), n)
+		return err
 	}
 	return nil
 }
