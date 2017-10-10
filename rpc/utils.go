@@ -224,7 +224,7 @@ func SupportedModules(client Client) (map[string]string, error) {
 		return nil, err
 	}
 
-	var response JSONSuccessResponse
+	var response JSONResponse
 	if err := client.Recv(&response); err != nil {
 		return nil, err
 	}

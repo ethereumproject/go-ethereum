@@ -184,7 +184,7 @@ func retrieveMetrics(client rpc.Client) (map[string]float64, error) {
 		return nil, err
 	}
 
-	var res rpc.JSONSuccessResponse
+	var res rpc.JSONResponse
 	if err := client.Recv(&res); err != nil {
 		return nil, err
 	}
