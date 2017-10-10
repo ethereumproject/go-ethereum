@@ -37,6 +37,9 @@ The Geth console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
 See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console
 `,
+		Flags: []cli.Flag{
+			ExecFlag,
+		},
 	}
 	attachCommand = cli.Command{
 		Action: remoteConsole,
@@ -48,6 +51,9 @@ which exposes a node admin interface as well as the Ðapp JavaScript API.
 See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console.
 This command allows to open a console on a running geth node.
 	`,
+		Flags: []cli.Flag{
+			ExecFlag,
+		},
 	}
 	javascriptCommand = cli.Command{
 		Action: ephemeralConsole,
@@ -86,10 +92,19 @@ func localConsole(ctx *cli.Context) error {
 	defer console.Stop(false)
 
 	// If only a short execution was requested, evaluate and return
+	//
+	// --exec as command sub-flag
+	if script := ctx.String(ExecFlag.Name); script != "" {
+		console.Evaluate(script)
+		return nil
+	}
+
+	// --exec as global flag
 	if script := ctx.GlobalString(ExecFlag.Name); script != "" {
 		console.Evaluate(script)
 		return nil
 	}
+
 	// Otherwise print the welcome screen and enter interactive mode
 	console.Welcome()
 	console.Interactive()
@@ -125,6 +140,14 @@ func remoteConsole(ctx *cli.Context) error {
 	defer console.Stop(false)
 
 	// If only a short execution was requested, evaluate and return
+	//
+	// --exec as command sub-flag
+	if script := ctx.String(ExecFlag.Name); script != "" {
+		console.Evaluate(script)
+		return nil
+	}
+
+	// --exec as global flag
 	if script := ctx.GlobalString(ExecFlag.Name); script != "" {
 		console.Evaluate(script)
 		return nil

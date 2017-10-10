@@ -208,6 +208,17 @@ for the 'discover' component.
 			}
 		}
 
+		// Check for --exec set without console OR attach
+		if ctx.IsSet(ExecFlag.Name) {
+			// If no command is used, OR command is not one of the valid commands attach/console
+			if cmdName := ctx.Args().First(); cmdName == "" || (cmdName != "console" && cmdName != "attach") {
+				log.Printf("Error: --%v flag requires use of 'attach' OR 'console' command, command was: '%v'", ExecFlag.Name, cmdName)
+				cli.ShowCommandHelp(ctx, consoleCommand.Name)
+				cli.ShowCommandHelp(ctx, attachCommand.Name)
+				os.Exit(1)
+			}
+		}
+
 		runtime.GOMAXPROCS(runtime.NumCPU())
 
 		glog.CopyStandardLogTo("INFO")
