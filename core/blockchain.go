@@ -303,7 +303,7 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 		return self.Recovery(i-increment, 1)
 	}
 	if checkpoint > 0 {
-		glog.V(logger.Warn).Infof("WARNING: Recovering head to: #%d", checkpoint)
+		glog.V(logger.Warn).Infof("WARNING: Found recoverable blockchain data through block #%d", checkpoint)
 	}
 	return checkpoint
 }
@@ -320,8 +320,10 @@ func (self *BlockChain) loadLastState() error {
 		glog.V(logger.Warn).Infoln("Checking database for recoverable block data...")
 		recoveredHeight := self.Recovery(1, 2048)
 		if recoveredHeight == 0 {
+			glog.V(logger.Warn).Infoln("WARNING: No recoverable data found, resetting to genesis.")
 			return self.Reset()
 		}
+		glog.V(logger.Warn).Infof("WARNING: Found recoverable blockchain data, setting head to #%d", recoveredHeight)
 		return self.SetHead(recoveredHeight)
 	}
 
@@ -666,7 +668,7 @@ func (bc *BlockChain) insert(block *types.Block) {
 	}
 	bc.currentBlock = block
 
-	// If the block is better than out head or is on a different chain, force update heads
+	// If the block is better than our head or is on a different chain, force update heads
 	if updateHeads {
 		bc.hc.SetCurrentHeader(block.Header())
 
