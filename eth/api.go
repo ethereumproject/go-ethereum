@@ -1744,6 +1744,17 @@ func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
 	return out, nil
 }
 
+// Verbosity implements api method debug_verbosity, enabling setting
+// global logging verbosity on the fly.
+func (api *PublicDebugAPI) Verbosity(n uint64) (string, error) {
+	nint := int(n)
+	if nint <= logger.Detail || nint == logger.Ridiculousness {
+		glog.SetV(nint)
+		return glog.GetVerbosity().String(), nil
+	}
+	return "", errors.New("invalid logging level")
+}
+
 // ExecutionResult groups all structured logs emitted by the EVM
 // while replaying a transaction in debug mode as well as the amount of
 // gas used and the return value
