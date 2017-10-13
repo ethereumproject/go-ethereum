@@ -1747,9 +1747,10 @@ func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
 
 // Verbosity implements api method debug_verbosity, enabling setting
 // global logging verbosity on the fly.
-// Note that it will NOT allow setting verbosity '0', which is off.
-// In place of ability to receive 0, as arg, debug.verbosity() -> debug.verbosity(0) -> glog.GetVerbosity().
-// Shorthand/convenience method.
+// Note that it will NOT allow setting verbosity '0', which is effectively 'off'.
+// In place of ability to receive 0 as a functional parameter, debug.verbosity() -> debug.verbosity(0) -> glog.GetVerbosity().
+// creates a shorthand/convenience method as a "getter" function returning the current value
+// of the verbosity setting.
 func (api *PublicDebugAPI) Verbosity(n uint64) (int, error) {
 	nint := int(n)
 	if nint == 0 {

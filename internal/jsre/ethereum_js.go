@@ -3761,13 +3761,13 @@ var inputOptionalBoolFormatter = function (options) {
 };
 
 /**
- * Allows optional boolean value as input. If null input, returns false.
+ * Allows optional number value as input. If null or empty input, returns 0.
  *
- * @method inputVariadicNumberFormatter
+ * @method inputOptionalNumberFormatter
  * @param {bool} optional number val, either of form [number] or number
- * @returns number or []
+ * @returns number
 */
-var inputVariadicNumberFormatter = function (numbers) {
+var inputOptionalNumberFormatter = function (numbers) {
     if (typeof numbers === 'number') {
         return numbers;
     }
@@ -3979,7 +3979,7 @@ module.exports = {
     inputAddressFormatter: inputAddressFormatter,
     inputOptionalBoolFormatter: inputOptionalBoolFormatter,
     inputOptionalStringFormatter: inputOptionalStringFormatter,
-    inputVariadicNumberFormatter: inputVariadicNumberFormatter,
+    inputOptionalNumberFormatter: inputOptionalNumberFormatter,
     inputPostFormatter: inputPostFormatter,
     outputBigNumberFormatter: outputBigNumberFormatter,
     outputTransactionFormatter: outputTransactionFormatter,
