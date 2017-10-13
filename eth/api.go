@@ -48,6 +48,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	ethMetrics "github.com/ethereumproject/go-ethereum/metrics"
+	"strconv"
 )
 
 const defaultGas = uint64(90000)
@@ -1746,13 +1747,15 @@ func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
 
 // Verbosity implements api method debug_verbosity, enabling setting
 // global logging verbosity on the fly.
-func (api *PublicDebugAPI) Verbosity(n uint64) (string, error) {
+func (api *PublicDebugAPI) Verbosity(n uint64) (int, error) {
 	nint := int(n)
 	if nint <= logger.Detail || nint == logger.Ridiculousness {
 		glog.SetV(nint)
-		return glog.GetVerbosity().String(), nil
+		s := glog.GetVerbosity().String()
+		i, e := strconv.Atoi(s)
+		return i, e
 	}
-	return "", errors.New("invalid logging level")
+	return -1, errors.New("invalid logging level")
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM
