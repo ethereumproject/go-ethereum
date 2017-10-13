@@ -1758,6 +1758,16 @@ func (api *PublicDebugAPI) Verbosity(n uint64) (int, error) {
 	return -1, errors.New("invalid logging level")
 }
 
+// Vmodule implements api method debug_vmodule, enabling setting
+// glog per-module verbosity settings on the fly.
+func (api *PublicDebugAPI) Vmodule(s string) (string, error) {
+	if s == "" {
+		return glog.GetVModule().String(), nil
+	}
+	err := glog.GetVModule().Set(s)
+	return glog.GetVModule().String(), err
+}
+
 // ExecutionResult groups all structured logs emitted by the EVM
 // while replaying a transaction in debug mode as well as the amount of
 // gas used and the return value
