@@ -382,9 +382,13 @@ func (self *BlockChain) loadLastState() error {
 		}
 	}
 
-	// Case: Apparent genesis full block and fastblock, where there actually exist blocks
+	// Case: Head full block and fastblock, where there actually exist blocks beyond that
 	// in the chain, but last-h/b/fb key-vals (placeholders) are corrupted/wrong, causing it to appear
-	// as if the latest block is the genesis block.
+	// as if the latest block is below the actual blockchain db head block.
+	// Update: initial reported case had genesis as constant apparent head.
+	// New logs also can show `1` as apparent head.
+	// -- Solve: instead of checking via hardcode if apparent genesis block and block `1` is nonnil, check if
+	// any block data exists ahead of whatever apparent head is.
 	//
 	// Look to "rewind" FORWARDS in case of missing/malformed header/placeholder at or near
 	// actual stored block head, caused by improper/unfulfilled `WriteHead*` functions,
@@ -392,14 +396,22 @@ func (self *BlockChain) loadLastState() error {
 	// WriteHead* failing to write in this scenario would cause the head header to be
 	// misidentified an artificial non-purged re-sync to begin.
 	// I think.
-	//
-	// If apparently genesis block.
-	if self.blockIsGenesis(self.currentBlock) && self.blockIsGenesis(self.currentFastBlock) && currentHeader.Hash() == self.Genesis().Header().Hash() {
-		// And if block #1 exists
-		if self.GetBlockByNumber(1) != nil {
-			return recoverOrReset()
-		}
+	if self.GetBlockByNumber(self.currentBlock.NumberU64() + 1) != nil {
+		glog.V(logger.Warn).Infoln("WARNING: Found block data beyond apparent head block")
+		return recoverOrReset()
 	}
+
+	// Check head block number::hash.
+	if b := self.GetBlockByNumber(self.currentBlock.NumberU64()); b != nil && b.Header() != nil && b.Header().Hash() != self.currentBlock.Hash() {
+		glog.V(logger.Error).Infof("WARNING: Found head block number and hash mismatch: number=%d, hash=%x", self.currentBlock.NumberU64(), self.currentBlock.Hash())
+		return recoverOrReset()
+	}
+
+	// Check head header number::hash.
+	if h := self.hc.GetHeaderByNumber(self.hc.CurrentHeader().Number.Uint64()); h != nil && self.hc.GetHeader(h.Hash()) != h {
+		glog.V(logger.Error).Infof("WARNING: Found head header number and hash mismatch: number=%d, hash=%x", self.hc.CurrentHeader().Number.Uint64(), self.hc.CurrentHeader().Hash())
+	}
+
 
 	// Case: current header below fast or full block.
 	//
