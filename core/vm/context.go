@@ -26,39 +26,85 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 )
 
+const UnknwonStringValue = "-"
+
 // Type is the VM type
 type Type byte
 
 const (
-	ClassicVm Type = iota // classic VM (legacy implementation from ethereum)
-	ClassicRawVm   		  // classic VM with direct usage (w/o RequireErr)
-	SputnikVm             // modern VM
-	OtherVm               // other external VM connected through RPC
+	ClassicVm    Type = iota // classic VM (legacy implementation from ethereum)
+	ClassicRawVm             // classic VM with direct usage (w/o RequireErr)
+	SputnikVm                // modern embedded VM
+	OtherVm                  // other external VM connected through RPC/IPC
 )
+
+func (tp Type) String() string {
+	switch tp {
+	case ClassicVm:
+		return "ClassicVm"
+	case ClassicRawVm:
+		return "ClassicRawVm"
+	case SputnikVm:
+		return "SputnikVm"
+	case OtherVm:
+		return "OtherVm"
+	default:
+		return UnknwonStringValue
+	}
+}
 
 // ManagerType says how to manage VM
 type ManagerType byte
 
 const (
-	ManageLocalVm ManagerType = iota // Automaticaly start/fork VM process and manage it
-	UseExternalVm                    // VM process managed separately
+	ManageVm ManagerType = iota // Automaticaly start/fork VM process and manage it
+	UseVm                       // VM process managed separately
 )
+
+func (tp ManagerType) String() string {
+	switch tp {
+	case ManageVm:
+		return "ManageVm"
+	case UseVm:
+		return "UseVm"
+	default:
+		return UnknwonStringValue
+	}
+}
 
 // ConnectionType says how to connect to VM
 type ConnectionType byte
 
 const (
-	LocalVm     ConnectionType = iota // VM is in the same process
-	LocalIpcVm                        // VM is in the other copy of the process
-	LocalRpcVm                        // VM is another executable listening on specified host:port
-	RemoteRpcVm                       // VM is started on other host
+	InprocVm ConnectionType = iota // VM is in the same process
+	LocalVm                        // VM is in the other copy of the process
+	IpcVm                          // VM is another executable listening on specified port
+	RpcVm                          // VM is started on other host
 )
 
-const DefaultVm = ClassicVm
-const DefaultVmProto = LocalVm
-const DefaultVmUsage = ManageLocalVm
-const DefaultVmPort = 30301
-const DefaultVmHost = "localhost"
+func (tp ConnectionType) String() string {
+	switch tp {
+	case InprocVm:
+		return "InprocVm"
+	case LocalVm:
+		return "LocalVm"
+	case IpcVm:
+		return "IpcVm"
+	case RpcVm:
+		return "RpcVm"
+	default:
+		return UnknwonStringValue
+	}
+}
+
+const (
+	DefaultVm      = ClassicVm
+	DefaultVmProto = InprocVm
+	DefaultVmUsage = UseVm
+	DefaultVmPort  = 30301
+	DefaultVmHost  = "localhost"
+	DefaultVmIpc   = "gethvm"
+)
 
 type GasTable struct {
 	ExtcodeSize *big.Int
@@ -96,6 +142,29 @@ const (
 	Broken             // connection with vm is broken or vm is not response
 )
 
+func (st Status) String() string {
+	switch st {
+	case ExitedOk:
+		return "ExitedOk"
+	case Inactive:
+		return "Inactive"
+	case Running:
+		return "Running"
+	case RequireErr:
+		return "RequireError"
+	case TransferErr:
+		return "TransferErr"
+	case OutOfGasErr:
+		return "OutOfGasErr"
+	case ExitedErr:
+		return "ExitedErr"
+	case Broken:
+		return "Broken"
+	default:
+		return UnknwonStringValue
+	}
+}
+
 type Fork byte
 
 const (
@@ -104,14 +173,27 @@ const (
 	Diehard
 )
 
+func (fork Fork) String() string {
+	switch fork {
+	case Frontier:
+		return "Frontier"
+	case Homestead:
+		return "Homestead"
+	case Diehard:
+		return "Diehard"
+	default:
+		return UnknwonStringValue
+	}
+}
+
 type Account interface {
 	Address() common.Address
 	Nonce() uint64
 	Balance() *big.Int
 	IsSuicided() bool
 	IsNewborn() bool
-	Code() (common.Hash,[]byte)
-	Store(func(common.Hash,common.Hash) error) error
+	Code() (common.Hash, []byte)
+	Store(func(common.Hash, common.Hash) error) error
 }
 
 type RequireID byte
@@ -123,6 +205,23 @@ const (
 	RequireInfo
 	RequireValue
 )
+
+func (id RequireID) String() string {
+	switch id {
+	case RequireAccount:
+		return "RequireAccount"
+	case RequireCode:
+		return "RequireCode"
+	case RequireHash:
+		return "RequireHash"
+	case RequireInfo:
+		return "RequireInfo"
+	case RequireValue:
+		return "RequireValue"
+	default:
+		return UnknwonStringValue
+	}
+}
 
 type Require struct {
 	ID      RequireID
@@ -161,15 +260,6 @@ type Context interface {
 	Fire() *Require
 }
 
-const (
-	TestFeaturesDisabled = iota * 2
-	TestSkipTransfer
-	TestSkipSubCall
-	TestSkipCreate
-)
-
-const AllTestFeatures = TestSkipTransfer | TestSkipSubCall | TestSkipCreate
-
 type Machine interface {
 	// Call contract in new VM context
 	Call(caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (Context, error)
@@ -180,6 +270,24 @@ type Machine interface {
 	// Name of VM
 	Name() string
 }
+
+type MachineConn interface {
+	// Close connection to machine
+	Close()
+	// Get Machine interface
+	Machine() Machine
+	// Check that connection is alive and machine is on duty
+	IsOnDuty() bool
+}
+
+const (
+	TestFeaturesDisabled = iota * 2
+	TestSkipTransfer
+	TestSkipSubCall
+	TestSkipCreate
+)
+
+const AllTestFeatures = TestSkipTransfer | TestSkipSubCall | TestSkipCreate
 
 type TestMachine interface {
 	// Test feature

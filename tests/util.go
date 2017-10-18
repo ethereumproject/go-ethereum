@@ -29,13 +29,59 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/machine/classic"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
 )
 
-const ReatrtInRawCalssicVm = false
+const useRawVmByDefault = false
+
+var restrtInRawCalssicVm = false
 
 func init() {
-	glog.SetV(0)
+
+	if len(os.Getenv("DEBUG_TESTS")) > 0 {
+		glog.SetToStderr(true)
+		glog.SetV(logger.Debug)
+	}
+
+	os.Setenv("USE_GETH_VM", "IPC")
+	os.Setenv("RESTART_TESTS", "1")
+
+	restrtInRawCalssicVm = !useRawVmByDefault && len(os.Getenv("RESTART_TESTS")) > 0
+	SetTestVmConfig()
+
+	go func() {
+		sigc := make(chan os.Signal, 1)
+		signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM, syscall.Signal(21))
+		<-sigc
+		signal.Stop(sigc)
+		buf := make([]byte, 64*1024)
+		stacklen := runtime.Stack(buf, true)
+		glog.Errorf("=== TERMINATED ===\n*** goroutine dump...\n%s\n*** end\n", buf[:stacklen])
+		os.Exit(-1)
+	}()
+
+}
+
+func SetTestVmConfig() {
+	if useRawVmByDefault {
+		core.VmManager.SwitchToRawClassicVm()
+	} else {
+		core.VmManager.EnvConfig()
+	}
+}
+
+func SetBackupVmConfig() bool {
+	if restrtInRawCalssicVm {
+		core.VmManager.SwitchToRawClassicVm()
+		return true
+	}
+	return false
 }
 
 func checkLogs(tlog []Log, logs state.Logs) error {
@@ -220,14 +266,13 @@ func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]stri
 		fork = vm.Homestead
 	}
 
-	funcFn := func(n uint64) common.Hash {
+	hashFn := func(n uint64) common.Hash {
 		return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 	}
 
-	machine, _ := core.VmManager.ConnectMachine()
-	//machine := classic.NewRawMachine()
+	machine, err := core.VmManager.ConnectMachine()
 	if machine == nil {
-		panic("could not connect machine")
+		panic(fmt.Sprintf("could not connect machine: %v", err))
 	}
 
 	env := &core.VmEnv{
@@ -237,17 +282,15 @@ func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]stri
 		gasLimit,
 		time,
 		db,
-		funcFn,
+		hashFn,
 		fork,
 		ruleSet,
 		machine,
 	}
 
-	if machine.Type() == vm.ClassicRawVm { env.SetupRawVm() }
-
-	//env.origin = common.HexToAddress(exeValues["caller"])
-	//env.parent = common.HexToHash(envValues["previousHash"])
-	//env.coinbase = common.HexToAddress(envValues["currentCoinbase"])
+	if machine.Type() == vm.ClassicRawVm {
+		machine.(*classic.RawMachine).Bind(db, hashFn)
+	}
 
 	return env
 }
@@ -273,4 +316,3 @@ func (self Message) Gas() *big.Int                         { return self.gas }
 func (self Message) Value() *big.Int                       { return self.value }
 func (self Message) Nonce() uint64                         { return self.nonce }
 func (self Message) Data() []byte                          { return self.data }
-

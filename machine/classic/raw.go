@@ -18,45 +18,61 @@
 package classic
 
 import (
-	"math/big"
-	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"fmt"
+	"math/big"
 )
 
+type RuleSet struct {
+	table       *vm.GasTable
+	isHomestead bool
+}
+
+func (self *RuleSet) IsHomestead(*big.Int) bool {
+	return self.isHomestead
+}
+func (self *RuleSet) GasTable(*big.Int) *vm.GasTable {
+	return self.table
+}
+
 type RawContext struct {
-	RuleSet_     vm.RuleSet
+	RuleSet_     RuleSet
 	State_       *state.StateDB
 	Gas          *big.Int
-	Origin_   	 common.Address
-	Coinbase_ 	 common.Address
+	Origin_      common.Address
+	Coinbase_    common.Address
 	Number_      *big.Int
 	Time_        *big.Int
 	Difficulty_  *big.Int
 	GasLimit_    *big.Int
-	HashFn_		 func(n uint64) common.Hash
-	output		 []byte
-	address		 common.Address
+	HashFn_      func(n uint64) common.Hash
+	output       []byte
+	address      common.Address
 	skipTransfer bool
 	initial      bool
-	vmTest 		 bool
+	vmTest       bool
 	depth        int
 	err          error
-	To_			 *common.Address
-	Price_		 *big.Int
-	Value_ 		 *big.Int
-	Input_		 []byte
-	evm 		 *EVM
+	To_          *common.Address
+	Price_       *big.Int
+	Value_       *big.Int
+	Input_       []byte
+	evm          *EVM
 }
 
-type RawMachine struct{
+type RawMachine struct {
 	RawContext
 }
 
 func NewRawMachine() vm.Machine {
 	return &RawMachine{}
+}
+
+func (self *RawMachine) Bind(db *state.StateDB, hashf func(n uint64) common.Hash) {
+	self.State_ = db
+	self.HashFn_ = hashf
 }
 
 func (self *RawMachine) _SetTestFeatures(int) error {
@@ -70,8 +86,6 @@ func (self *RawMachine) Call(caller common.Address, to common.Address, data []by
 	self.Origin_ = caller
 	self.To_ = &to
 	self.Input_ = data
-	self.evm = NewVM(&self.RawContext)
-	fmt.Printf("call %s => %s\n",caller.Hex(),to.Hex())
 	return &self.RawContext, nil
 }
 
@@ -81,13 +95,11 @@ func (self *RawMachine) Create(caller common.Address, code []byte, gas, price, v
 	self.Value_ = value
 	self.Origin_ = caller
 	self.Input_ = code
-	self.evm = NewVM(&self.RawContext)
-	fmt.Printf("create %s => ?\n",caller.Hex())
 	return &self.RawContext, nil
 }
 
 func (*RawMachine) Type() vm.Type { return vm.ClassicRawVm }
-func (*RawMachine) Name() string {return "RAW CLASSIC VM" }
+func (*RawMachine) Name() string  { return "RAW CLASSIC VM" }
 
 func (*RawContext) CommitAccount(address common.Address, nonce uint64, balance *big.Int) error {
 	return nil
@@ -98,9 +110,18 @@ func (*RawContext) CommitBlockhash(number uint64, hash common.Hash) error {
 func (*RawContext) CommitCode(address common.Address, hash common.Hash, code []byte) error {
 	return nil
 }
-func (*RawContext) CommitInfo(blockNumber uint64, coinbase common.Address, table *vm.GasTable, fork vm.Fork, difficulty, gasLimit, time *big.Int) error {
+
+func (self *RawContext) CommitInfo(blockNumber uint64, coinbase common.Address, table *vm.GasTable, fork vm.Fork, difficulty, gasLimit, time *big.Int) error {
+	self.Number_ = new(big.Int).SetUint64(blockNumber)
+	self.Coinbase_ = coinbase
+	self.RuleSet_.table = table
+	self.RuleSet_.isHomestead = fork >= vm.Homestead
+	self.Difficulty_ = difficulty
+	self.GasLimit_ = gasLimit
+	self.Time_ = time
 	return nil
 }
+
 func (*RawContext) CommitValue(address common.Address, key common.Hash, value common.Hash) error {
 	return nil
 }
@@ -120,7 +141,6 @@ func (self *RawContext) Out() ([]byte, *big.Int, *big.Int, error) {
 	return self.output, self.Gas, new(big.Int), nil
 }
 func (self *RawContext) Status() vm.Status {
-	fmt.Printf("STATUS: err => %v\n",self.err)
 	if self.err == nil {
 		return vm.ExitedOk
 	} else if self.err == OutOfGasError {
@@ -134,34 +154,36 @@ func (self *RawContext) Status() vm.Status {
 func (self *RawContext) Err() error {
 	return self.err
 }
+
 // Run instructions until it reaches a `RequireErr` or exits
 func (self *RawContext) Fire() *vm.Require {
+	self.evm = NewVM(self)
 	if self.To_ != nil {
 		caller := self.State_.GetAccount(self.Origin_)
 		self.output, self.err = self.Call(
-			caller,*self.To_,self.Input_,self.Gas,self.Price_,self.Value_)
+			caller, *self.To_, self.Input_, self.Gas, self.Price_, self.Value_)
 	} else {
 		caller := self.State_.GetAccount(self.Origin_)
 		self.output, self.address, self.err = self.Create(
-			caller,self.Input_,self.Gas,self.Price_,self.Value_)
+			caller, self.Input_, self.Gas, self.Price_, self.Value_)
 	}
 	return nil
 }
 
 func (self *RawContext) GetHash(n uint64) common.Hash { return self.HashFn_(n) }
 
-func (self *RawContext) RuleSet() vm.RuleSet      { return self.RuleSet_ }
+func (self *RawContext) RuleSet() vm.RuleSet      { return &self.RuleSet_ }
 func (self *RawContext) Origin() common.Address   { return self.Origin_ }
 func (self *RawContext) BlockNumber() *big.Int    { return self.Number_ }
 func (self *RawContext) Coinbase() common.Address { return self.Coinbase_ }
 func (self *RawContext) Time() *big.Int           { return self.Time_ }
 func (self *RawContext) Difficulty() *big.Int     { return self.Difficulty_ }
-func (self *RawContext) Db() Database     		  { return self.State_ }
+func (self *RawContext) Db() Database             { return self.State_ }
 func (self *RawContext) GasLimit() *big.Int       { return self.GasLimit_ }
 func (self *RawContext) VmType() vm.Type          { return vm.ClassicRawVm }
-func (self *RawContext) AddLog(log *state.Log) 	  { self.State_.AddLog(log) }
+func (self *RawContext) AddLog(log *state.Log)    { self.State_.AddLog(log) }
 func (self *RawContext) Depth() int               { return self.depth }
-func (self *RawContext) SetDepth(i int) 		  { self.depth = i }
+func (self *RawContext) SetDepth(i int)           { self.depth = i }
 
 func (self *RawContext) CanTransfer(from common.Address, balance *big.Int) bool {
 	if self.skipTransfer {
@@ -229,5 +251,5 @@ func (self *RawContext) Create(caller ContractRef, data []byte, gas, price, valu
 }
 
 func (self *RawContext) Run(contract *Contract, input []byte) (ret []byte, err error) {
-	return self.evm.Run(contract,input)
+	return self.evm.Run(contract, input)
 }

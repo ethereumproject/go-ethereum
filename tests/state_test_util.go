@@ -109,7 +109,7 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 
 	names := []string{}
 	for name, _ := range tests {
-		names = append(names,name)
+		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
@@ -123,22 +123,19 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 		if err := runStateTest(ruleSet, test); err != nil {
 			return fmt.Errorf("%s: %s\n", name, err.Error())
 		}
-
-		//glog.Infoln("State test passed: ", name)
-		//fmt.Println(string(statedb.Dump()))
 	}
 	return nil
-
 }
 
 func runStateTest(ruleSet RuleSet, test VmTest) error {
 	var err error
-	core.VmManager.Autoconfig()
-	if err = runStateTest_(ruleSet, test); err != nil && ReatrtInRawCalssicVm {
-		fmt.Printf("error occured %v\n",err)
-		fmt.Println("\trestarting with raw VM\n")
-		core.VmManager.SwitchToRawClassicVm()
-		err = runStateTest_(ruleSet, test)
+	if err = runStateTest_(ruleSet, test); err != nil {
+		fmt.Printf("error occured %v\n", err)
+		if SetBackupVmConfig() {
+			fmt.Println("\trestarting with raw VM\n")
+			err = runStateTest_(ruleSet, test)
+			SetTestVmConfig()
+		}
 	}
 	return err
 }

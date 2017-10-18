@@ -25,7 +25,7 @@ import (
 )
 
 // ipcListen will create a Unix socket on the given endpoint.
-func ipcListen(endpoint string) (net.Listener, error) {
+func IpcListen(endpoint string) (net.Listener, error) {
 	// Ensure the IPC path exists and remove any previous leftover
 	if err := os.MkdirAll(filepath.Dir(endpoint), 0751); err != nil {
 		return nil, err
@@ -40,6 +40,6 @@ func ipcListen(endpoint string) (net.Listener, error) {
 }
 
 // newIPCConnection will connect to a Unix socket on the given endpoint.
-func newIPCConnection(endpoint string) (net.Conn, error) {
+func NewIPCConnection(endpoint string) (net.Conn, error) {
 	return net.DialUnix("unix", nil, &net.UnixAddr{Name: endpoint, Net: "unix"})
 }

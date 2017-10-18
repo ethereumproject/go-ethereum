@@ -106,7 +106,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	)
 	contract.Input = input
 
-	if glog.V(logger.Debug) {
+	if glog.V(logger.Debug + 1) {
 		glog.Infof("running byte VM %x\n", codehash[:4])
 		tstart := time.Now()
 		defer func() {
@@ -120,7 +120,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// calculate the new memory size and gas price for the current executing opcode
 		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
 		if err != nil {
-			return nil, fmt.Errorf("at (PC:%v, OP:%v) : %v\n",pc,op.String(),err.Error())
+			return nil, fmt.Errorf("at (PC:%v, OP:%v) : %v\n", pc, op.String(), err.Error())
 		}
 
 		// Use the calculated gas. When insufficient gas is present, use all gas and return an

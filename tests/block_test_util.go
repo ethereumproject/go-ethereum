@@ -160,12 +160,13 @@ func runBlockTests(homesteadBlock, gasPriceFork *big.Int, bt map[string]*BlockTe
 
 func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error {
 	var err error
-	core.VmManager.Autoconfig()
-	if err = runBlockTest_(homesteadBlock, gasPriceFork, test); err != nil && ReatrtInRawCalssicVm {
-		fmt.Printf("error occured %v\n",err)
-		fmt.Println("\trestarting with raw VM\n")
-		core.VmManager.SwitchToRawClassicVm()
-		err = runBlockTest_(homesteadBlock, gasPriceFork, test)
+	if err = runBlockTest_(homesteadBlock, gasPriceFork, test); err != nil {
+		fmt.Printf("error occured %v\n", err)
+		if SetBackupVmConfig() {
+			fmt.Println("\trestarting with raw VM\n")
+			err = runBlockTest_(homesteadBlock, gasPriceFork, test)
+			SetTestVmConfig()
+		}
 	}
 	return err
 }

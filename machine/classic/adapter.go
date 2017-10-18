@@ -778,22 +778,22 @@ type account struct {
 }
 
 func (self *account) Address() common.Address { return self.acc.address }
-func (self *account) Nonce() uint64 { return self.acc.Nonce() }
-func (self *account) Balance() *big.Int { return self.acc.Balance() }
-func (self *account) IsSuicided() bool { return self.acc.Level() == Suicided }
-func (self *account) IsNewborn() bool { return self.acc.IsNewborn() }
-func (self *account) Code() (common.Hash,[]byte) {
+func (self *account) Nonce() uint64           { return self.acc.Nonce() }
+func (self *account) Balance() *big.Int       { return self.acc.Balance() }
+func (self *account) IsSuicided() bool        { return self.acc.Level() == Suicided }
+func (self *account) IsNewborn() bool         { return self.acc.IsNewborn() }
+func (self *account) Code() (common.Hash, []byte) {
 	address := self.acc.address
 	if code, exists := self.env.code[address]; exists && code.Level() == Modified {
 		return code.Hash(), code.Code()
 	}
 	return common.Hash{}, nil
 }
-func (self *account) Store(f func(common.Hash,common.Hash) error) error {
+func (self *account) Store(f func(common.Hash, common.Hash) error) error {
 	address := self.acc.address
 	for _, v := range self.env.value {
 		if v.Address() == address {
-			if err := f(v.Key(),v.Value()); err != nil {
+			if err := f(v.Key(), v.Value()); err != nil {
 				return err
 			}
 		}
@@ -806,7 +806,7 @@ func (self *context) Accounts() (accounts []vm.Account, err error) {
 	for _, a := range self.env.account {
 		switch a.Level() {
 		case Modified, Suicided:
-			accounts = append(accounts, &account{a, &self.env })
+			accounts = append(accounts, &account{a, &self.env})
 		}
 	}
 	return

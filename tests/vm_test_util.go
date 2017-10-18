@@ -24,12 +24,12 @@ import (
 	"strconv"
 	"testing"
 
+	"errors"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/core/vm"
-	"errors"
 )
 
 func RunVmTestWithReader(r io.Reader, skipTests []string) error {
@@ -227,7 +227,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 		DiehardBlock:             big.NewInt(3000000),
 		ExplosionBlock:           big.NewInt(5000000),
 	}, state, env, exec)
-	if testMachine , ok:= vmenv.Machine.(vm.TestMachine); ok {
+	if testMachine, ok := vmenv.Machine.(vm.TestMachine); ok {
 		testMachine.SetTestFeatures(vm.AllTestFeatures)
 	} else {
 		return nil, nil, nil, UnsupportedVmError

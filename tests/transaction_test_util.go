@@ -24,7 +24,6 @@ import (
 	"runtime"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
@@ -114,12 +113,13 @@ func runTransactionTests(tests map[string]TransactionTest, skipTests []string) e
 
 func runTransactionTest(txTest TransactionTest) error {
 	var err error
-	core.VmManager.Autoconfig()
-	if err = runTransactionTest_(txTest); err != nil && ReatrtInRawCalssicVm {
-		fmt.Printf("error occured %v\n",err)
-		fmt.Println("\trestarting with raw VM\n")
-		core.VmManager.SwitchToRawClassicVm()
-		err = runTransactionTest_(txTest)
+	if err = runTransactionTest_(txTest); err != nil {
+		fmt.Printf("error occured %v\n", err)
+		if SetBackupVmConfig() {
+			fmt.Println("\trestarting with raw VM\n")
+			err = runTransactionTest_(txTest)
+			SetTestVmConfig()
+		}
 	}
 	return err
 }

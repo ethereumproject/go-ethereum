@@ -26,7 +26,13 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/machine/classic"
+	extvm "github.com/ethereumproject/go-ethereum/machine/rpc/client"
+	"os"
+	"strings"
+	"unicode"
 )
 
 type VmEnv struct {
@@ -120,14 +126,14 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 				value := self.Db.GetState(req.Address, req.Hash)
 				ctx.CommitValue(req.Address, req.Hash, value)
 			default:
-				if ctx.Status() == vm.RequireErr {
+				if st := ctx.Status(); st == vm.RequireErr {
 					// ?? unsupported VM implementaion ??
 					// should we panic or use known VM instead?
 					panic("unsupported VM RequireError occured")
 				} else {
 					// ?? incorrect VM implementation ??
 					// Fire or Step can return nil or vm.Require only!
-					panic("incorrect VM state")
+					panic(fmt.Sprintf("incorrect VM state %d (%s)", st, st.String()))
 				}
 			}
 		} else {
@@ -164,8 +170,8 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 					}
 					o.SetBalance(a.Balance())
 					o.SetNonce(a.Nonce())
-					a.Store(func(key,value common.Hash) error {
-						self.Db.SetState(a.Address(),key,value)
+					a.Store(func(key, value common.Hash) error {
+						self.Db.SetState(a.Address(), key, value)
 						return nil
 					})
 					if a.IsSuicided() {
@@ -186,7 +192,7 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 				if st == vm.OutOfGasErr {
 					return nil, nil, gas, OutOfGasError
 				} else if st == vm.ExitedErr {
-						return nil, nil, gas, ctx.Err()
+					return nil, nil, gas, ctx.Err()
 				} else {
 					return out, &address, gas, nil
 				}
@@ -198,7 +204,8 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 			default:
 				// ?? unsupported VM implementaion ??
 				// should we panic or use known VM instead?
-				panic(fmt.Sprintf("incorrect VM state %d", ctx.Status()))
+				st := ctx.Status()
+				panic(fmt.Sprintf("incorrect VM state %d (%s)", st, st.String()))
 			}
 		}
 	}
@@ -227,20 +234,6 @@ func getFork(number *big.Int, chainConfig *ChainConfig) vm.Fork {
 	return vm.Frontier
 }
 
-func (self *VmEnv) SetupRawVm() *classic.RawMachine{
-	// Hack to use raw classic VM in differential tests
-	var rwm *classic.RawMachine = self.Machine.(*classic.RawMachine)
-	rwm.State_ = self.Db
-	rwm.Difficulty_ = self.Difficulty
-	rwm.GasLimit_ = self.GasLimit
-	rwm.Time_ = self.Time
-	rwm.HashFn_= self.Hashfn
-	rwm.RuleSet_ = self.RuleSet
-	rwm.Number_ = self.BlockNumber
-	rwm.Coinbase_ = self.Coinbase
-	return rwm
-}
-
 func NewEnvWithMachine(machine vm.Machine, db *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg Message, header *types.Header) *VmEnv {
 	fork := getFork(header.Number, chainConfig)
 	vmenv := &VmEnv{
@@ -256,7 +249,8 @@ func NewEnvWithMachine(machine vm.Machine, db *state.StateDB, chainConfig *Chain
 		machine,
 	}
 	if machine.Type() == vm.ClassicRawVm {
-		vmenv.SetupRawVm()
+		machine.(*classic.RawMachine).Bind(db, vmenv.Hashfn)
+		// be aware, commitInfo should be called before Fire
 	}
 	return vmenv
 }
@@ -266,9 +260,8 @@ func NewEnv(db *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, msg 
 	if err != nil {
 		panic(err)
 	}
-	return NewEnvWithMachine(machine,db,chainConfig,chain,msg,header)
+	return NewEnvWithMachine(machine, db, chainConfig, chain, msg, header)
 }
-
 
 var OutOfGasError = errors.New("Out of gas")
 
@@ -279,49 +272,145 @@ type vmManager struct {
 	useVmConnection vm.ConnectionType
 	useVmRemotePort int
 	useVmRemoteHost string
+	useVmIpcName    string
+
+	conn vm.MachineConn
 }
 
 var VmManager = &vmManager{}
 
+func (self *vmManager) Close() {
+	if self.conn != nil {
+		self.conn.Close()
+		self.conn = nil
+	}
+}
+
 func (self *vmManager) autoConfig() {
+
+	self.Close()
+
 	self.useVmType = vm.DefaultVm
 	self.useVmManagment = vm.DefaultVmUsage
 	self.useVmConnection = vm.DefaultVmProto
 	self.useVmRemoteHost = vm.DefaultVmHost
 	self.useVmRemotePort = vm.DefaultVmPort
-
-	self.isConfigured = true
+	self.useVmIpcName = vm.DefaultVmIpc
 }
 
-func (self *vmManager) SwitchToRawClassicVm() {
-	self.useVmType = vm.ClassicRawVm
-	self.isConfigured = true
-}
+func (self *vmManager) EnvConfig() {
 
-func (self *vmManager) SwitchToClassicVm() {
-	self.useVmType = vm.ClassicVm
-	self.useVmConnection = vm.LocalVm
-	self.isConfigured = true
+	vmSelector := os.Getenv("USE_GETH_VM")
+	vmOpt := strings.Split(vmSelector, ":")
+	switch tp := strings.ToUpper(vmOpt[0]); tp {
+	case "CLASSIC":
+		self.SwitchToClassicVm()
+		return
+	case "RAWCLASSIC":
+		self.SwitchToRawClassicVm()
+		return
+	case "IPC":
+		connName := vm.DefaultVmIpc
+		manageVm := ""
+		if len(vmOpt) > 1 {
+			var name []rune
+			for _, c := range vmOpt[1] {
+				if unicode.IsLetter(c) ||
+					unicode.IsNumber(c) ||
+					c == '_' || c == '-' {
+					name = append(name, c)
+				}
+			}
+			if len(name) > 0 {
+				connName = string(name)
+			}
+		}
+		self.SwitchToIpc(connName, manageVm)
+	case "":
+		self.Autoconfig()
+	default:
+		glog.Error("found unknown virtual machine usage in environment variable USE_GETH_VM")
+		self.Autoconfig()
+	}
 }
 
 func (self *vmManager) Autoconfig() {
-	self.isConfigured = false
 	self.autoConfig()
+	self.isConfigured = true
+	self.WriteConfigToLog()
+}
+
+func (self *vmManager) SwitchToIpc(connName string, manageVm string) {
+	self.autoConfig()
+	self.useVmType = vm.OtherVm
+	self.useVmConnection = vm.IpcVm
+	self.useVmIpcName = connName
+	self.isConfigured = true
+	self.WriteConfigToLog()
+}
+
+func (self *vmManager) SwitchToRawClassicVm() {
+	self.autoConfig()
+	self.useVmType = vm.ClassicRawVm
+	self.useVmConnection = vm.InprocVm
+	self.isConfigured = true
+	self.WriteConfigToLog()
+}
+
+func (self *vmManager) SwitchToClassicVm() {
+	self.autoConfig()
+	self.useVmType = vm.ClassicVm
+	self.useVmConnection = vm.InprocVm
+	self.isConfigured = true
+	self.WriteConfigToLog()
+}
+
+func (self *vmManager) WriteConfigToLog() {
+	glog.V(logger.Debug).Infof("use virtual machine %s/%s (%s)\n", self.useVmType.String(), self.useVmConnection.String(), self.useVmManagment.String())
+	switch self.useVmConnection {
+	case vm.IpcVm, vm.LocalVm:
+		glog.V(logger.Debug).Infof("virtual machine IPC name '%s' to connect\n", self.useVmIpcName)
+	case vm.RpcVm:
+		glog.V(logger.Debug).Infof("virtual machine RPC addr '%s:%d' to connect\n", self.useVmRemoteHost, self.useVmRemotePort)
+	}
 }
 
 var BadVmUsageError = errors.New("VM can't be used in this way")
 
 func (self *vmManager) ConnectMachine() (vm.Machine, error) {
+
 	if !self.isConfigured {
 		self.autoConfig()
+		self.isConfigured = true
 	}
-	if self.useVmType == vm.ClassicVm && self.useVmConnection == vm.LocalVm {
-		// use classic embedded VM in common way via Machine interface
-		return classic.NewMachine(), nil
-	} else if self.useVmType == vm.ClassicRawVm {
-		// use classic embedded VM directly
-		return classic.NewRawMachine(), nil
-	} else {
+
+	if self.conn != nil {
+		if self.conn.IsOnDuty() {
+			return self.conn.Machine(), nil
+		} else {
+			self.conn.Close()
+			self.conn = nil
+		}
+	}
+
+	switch self.useVmConnection {
+	case vm.InprocVm:
+		switch self.useVmType {
+		case vm.ClassicVm:
+			return classic.NewMachine(), nil
+		case vm.ClassicRawVm:
+			return classic.NewRawMachine(), nil
+		default:
+			return nil, BadVmUsageError
+		}
+	case vm.IpcVm:
+		var err error
+		self.conn, err = extvm.ConnectIpc(self.useVmIpcName)
+		if err != nil {
+			return nil, err
+		}
+		return self.conn.Machine(), nil
+	default:
 		return nil, BadVmUsageError
 	}
 }
