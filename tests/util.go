@@ -49,9 +49,6 @@ func init() {
 		glog.SetV(logger.Debug)
 	}
 
-	os.Setenv("USE_GETH_VM", "IPC")
-	os.Setenv("RESTART_TESTS", "1")
-
 	restrtInRawCalssicVm = !useRawVmByDefault && len(os.Getenv("RESTART_TESTS")) > 0
 	SetTestVmConfig()
 
