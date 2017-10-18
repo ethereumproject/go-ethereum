@@ -585,7 +585,7 @@ func (self *worker) commitUncle(work *Work, uncle *types.Header) error {
 	if logger.MlogEnabled() {
 		defer func() {
 			mlogMiner.Send(mlogMinerCommitUncle.SetDetailValues(
-				work.Block.Number(),
+				uncle.Number,
 				hash.Hex(),
 				e,
 			))
