@@ -338,7 +338,9 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		var okNodes []*Node
 		for _, n := range nodes {
 			if isReserved(n.IP) {
-				glog.V(logger.Debug).Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
+				if glog.V(logger.Debug) {
+					glog.Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
+				}
 				continue
 			}
 			okNodes = append(okNodes, n)
@@ -504,7 +506,35 @@ func (t *udp) send(toaddr *net.UDPAddr, ptype byte, req interface{}) error {
 	if err != nil {
 		return err
 	}
-	glog.V(logger.Detail).Infof(">>> %v %T\n", toaddr, req)
+	if logger.MlogEnabled() {
+		switch ptype {
+		// @sorpass: again, performance penalty?
+		case pingPacket:
+			mlogDiscover.Send(mlogPingSendTo.SetDetailValues(
+				toaddr.String(),
+				len(packet),
+			))
+		case pongPacket:
+			mlogDiscover.Send(mlogPongSendTo.SetDetailValues(
+				toaddr.String(),
+				len(packet),
+			))
+		case findnodePacket:
+			mlogDiscover.Send(mlogFindNodeSendTo.SetDetailValues(
+				toaddr.String(),
+				len(packet),
+			))
+		case neighborsPacket:
+			mlogDiscover.Send(mlogNeighborsSendTo.SetDetailValues(
+				toaddr.String(),
+				len(packet),
+			))
+		}
+	}
+	if glog.V(logger.Detail) {
+		glog.Infof(">>> %v %T\n", toaddr, req)
+	}
+
 	if _, err = t.conn.WriteToUDP(packet, toaddr); err != nil {
 		glog.V(logger.Detail).Infoln("UDP send failed:", err)
 	}
@@ -572,7 +602,39 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 	if err = packet.handle(t, from, fromID, hash); err != nil {
 		status = err.Error()
 	}
-	glog.V(logger.Detail).Infof("<<< %v %T: %s\n", from, packet, status)
+	if logger.MlogEnabled() {
+		// Use fmt Type interpolator to decide kind of request received,
+		// since packet is an interface with 1 method: handle.
+		switch p := fmt.Sprintf("%T", packet); p {
+		case "*discover.ping":
+			mlogDiscover.Send(mlogPingHandleFrom.SetDetailValues(
+				from.String(),
+				fromID.String(),
+				len(buf),
+			))
+		case "*discover.pong":
+			mlogDiscover.Send(mlogPongHandleFrom.SetDetailValues(
+				from.String(),
+				fromID.String(),
+				len(buf),
+			))
+		case "*discover.findnode":
+			mlogDiscover.Send(mlogFindNodeHandleFrom.SetDetailValues(
+				from.String(),
+				fromID.String(),
+				len(buf),
+			))
+		case "*discover.neighbors":
+			mlogDiscover.Send(mlogNeighborsHandleFrom.SetDetailValues(
+				from.String(),
+				fromID.String(),
+				len(buf),
+			))
+		}
+	}
+	if glog.V(logger.Detail) {
+		glog.Infof("<<< %v %T: %s\n", from, packet, status)
+	}
 	return err
 }
 

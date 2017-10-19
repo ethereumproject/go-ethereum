@@ -57,6 +57,11 @@ func NewLogger(tag string) *Logger {
 	return &Logger{"[" + tag + "] "}
 }
 
+// GetTag is a getter function to expose the logger's tag
+func (logger *Logger) GetTag() string {
+	return logger.tag
+}
+
 func (logger *Logger) Sendln(level LogLevel, v ...interface{}) {
 	logMessageC <- stdMsg{level, logger.tag + fmt.Sprintln(v...)}
 }

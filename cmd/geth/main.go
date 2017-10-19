@@ -19,11 +19,12 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -60,6 +61,7 @@ func makeCLIApp() (app *cli.App) {
 		attachCommand,
 		javascriptCommand,
 		statusCommand,
+		apiCommand,
 		{
 			Action:  makedag,
 			Name:    "make-dag",
@@ -97,6 +99,24 @@ Runs quick benchmark on first GPU found.
 			Description: `
 The output of this command is supposed to be machine-readable.
 `,
+		},
+		{
+			Action: makeMLogDocumentation,
+			Name:   "mdoc",
+			Usage:  "Generate mlog documentation",
+			Description: `
+Auto-generates documentation for all available mlog lines.
+Use -md switch to toggle markdown output (eg. for wiki).
+Arguments may be used to specify exclusive candidate components;
+so 'geth mdoc -md discover' will generate markdown documentation only
+for the 'discover' component.
+`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name: "md",
+					Usage: "Toggle markdown formatting",
+				},
+			},
 		},
 	}
 
@@ -153,6 +173,9 @@ The output of this command is supposed to be machine-readable.
 		VModuleFlag,
 		LogDirFlag,
 		LogStatusFlag,
+		MLogFlag,
+		MLogDirFlag,
+		MLogComponentsFlag,
 		BacktraceAtFlag,
 		MetricsFlag,
 		FakePoWFlag,
@@ -182,6 +205,17 @@ The output of this command is supposed to be machine-readable.
 				if e := cli.ShowCommandHelp(ctx, ctx.Args().First()); e != nil {
 					return e
 				}
+			}
+		}
+
+		// Check for --exec set without console OR attach
+		if ctx.IsSet(ExecFlag.Name) {
+			// If no command is used, OR command is not one of the valid commands attach/console
+			if cmdName := ctx.Args().First(); cmdName == "" || (cmdName != "console" && cmdName != "attach") {
+				log.Printf("Error: --%v flag requires use of 'attach' OR 'console' command, command was: '%v'", ExecFlag.Name, cmdName)
+				cli.ShowCommandHelp(ctx, consoleCommand.Name)
+				cli.ShowCommandHelp(ctx, attachCommand.Name)
+				os.Exit(1)
 			}
 		}
 
@@ -262,6 +296,7 @@ func geth(ctx *cli.Context) error {
 	if ctx.GlobalIsSet(LogStatusFlag.Name) {
 		dispatchStatusLogs(ctx, ethe)
 	}
+
 	n.Wait()
 
 	return nil

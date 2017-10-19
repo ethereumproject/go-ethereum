@@ -125,6 +125,10 @@ func (self *Miner) Start(coinbase common.Address, threads int) {
 		self.worker.register(NewCpuAgent(i, self.pow))
 	}
 
+	mlogMiner.Send(mlogMinerStart.SetDetailValues(
+		coinbase.Hex(),
+		threads,
+	))
 	glog.V(logger.Info).Infof("Starting mining operation (CPU=%d TOT=%d)\n", threads, len(self.worker.agents))
 
 	self.worker.start()
@@ -136,6 +140,12 @@ func (self *Miner) Stop() {
 	self.worker.stop()
 	atomic.StoreInt32(&self.mining, 0)
 	atomic.StoreInt32(&self.shouldStart, 0)
+	if logger.MlogEnabled() {
+		mlogMiner.Send(mlogMinerStop.SetDetailValues(
+			self.coinbase.Hex(),
+			self.threads,
+		))
+	}
 }
 
 func (self *Miner) Register(agent Agent) {

@@ -19,7 +19,6 @@ package logger
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -34,7 +33,7 @@ func openLogFile(datadir string, filename string) *os.File {
 	return file
 }
 
-func New(datadir string, logFile string, logLevel int) LogSystem {
+func New(datadir string, logFile string, logLevel int, flags int) LogSystem {
 	var writer io.Writer
 	if logFile == "" {
 		writer = os.Stdout
@@ -43,7 +42,22 @@ func New(datadir string, logFile string, logLevel int) LogSystem {
 	}
 
 	var sys LogSystem
-	sys = NewStdLogSystem(writer, log.LstdFlags, LogLevel(logLevel))
+	sys = NewStdLogSystem(writer, flags, LogLevel(logLevel))
+	AddLogSystem(sys)
+
+	return sys
+}
+
+func BuildNewMLogSystem(datadir string, logFile string, logLevel int, flags int, withTimestamp bool) LogSystem {
+	var writer io.Writer
+	if logFile == "" {
+		writer = os.Stdout
+	} else {
+		writer = openLogFile(datadir, logFile)
+	}
+
+	var sys LogSystem
+	sys = NewMLogSystem(writer, flags, LogLevel(logLevel), withTimestamp)
 	AddLogSystem(sys)
 
 	return sys
