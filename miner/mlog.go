@@ -56,7 +56,7 @@ If $COMMIT_UNCLE is non-nil, uncle is not committed.`,
 	Verb: "COMMIT",
 	Subject: "UNCLE",
 	Details: []logger.MLogDetailT{
-		{"COMMIT", "BLOCK_NUMBER", "BIGINT"},
+		{"UNCLE", "BLOCK_NUMBER", "BIGINT"},
 		{"UNCLE", "HASH", "STRING"},
 		{"COMMIT", "ERROR", "STRING_OR_NULL"},
 	},
