@@ -106,7 +106,7 @@ func (self *machine) doCall(method string, ctx uint64, params []interface{}, res
 		return err
 	}
 
-	response := &rpc.JSONSuccessResponse{Result: result}
+	response := &rpc.JSONResponse{Result: result}
 	if err := self.inp.Decode(response); err != nil {
 		return err
 	}
