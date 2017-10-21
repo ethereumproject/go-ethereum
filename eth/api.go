@@ -48,7 +48,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	ethMetrics "github.com/ethereumproject/go-ethereum/metrics"
-	"strconv"
 )
 
 const defaultGas = uint64(90000)
@@ -1754,15 +1753,11 @@ func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
 func (api *PublicDebugAPI) Verbosity(n uint64) (int, error) {
 	nint := int(n)
 	if nint == 0 {
-		s := glog.GetVerbosity().String()
-		i, e := strconv.Atoi(s)
-		return i, e
+		return int(*glog.GetVerbosity()), nil
 	}
 	if nint <= logger.Detail || nint == logger.Ridiculousness {
 		glog.SetV(nint)
-		s := glog.GetVerbosity().String()
-		i, e := strconv.Atoi(s)
-		return i, e
+		return int(*glog.GetVerbosity()), nil
 	}
 	return -1, errors.New("invalid logging level")
 }
