@@ -21,12 +21,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/eth/downloader"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/eth/downloader"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/p2p/discover"
 )
 
 const (

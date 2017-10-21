@@ -27,9 +27,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ethereumproject/go-ethereum/internal/jsre"
-	"github.com/ethereumproject/go-ethereum/internal/web3ext"
-	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/ellaism/go-ellaism/internal/jsre"
+	"github.com/ellaism/go-ellaism/internal/web3ext"
+	"github.com/ellaism/go-ellaism/rpc"
 	"github.com/peterh/liner"
 	"github.com/robertkrimen/otto"
 )

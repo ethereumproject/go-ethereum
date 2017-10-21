@@ -21,10 +21,10 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ellaism/go-ellaism/core"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
 )
 
 const (

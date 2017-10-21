@@ -26,12 +26,12 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereumproject/go-ethereum/console"
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/metrics"
+	"github.com/ellaism/go-ellaism/console"
+	"github.com/ellaism/go-ellaism/core"
+	"github.com/ellaism/go-ellaism/eth"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/metrics"
 )
 
 // Version is the application revision identifier. It can be set with the linker

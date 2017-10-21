@@ -40,11 +40,11 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/pow"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/crypto"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/pow"
 )
 
 var (

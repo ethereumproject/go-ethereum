@@ -23,9 +23,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/p2p/discover"
 )
 
 const (

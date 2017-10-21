@@ -26,13 +26,13 @@ import (
 
 	"sort"
 
-	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/ellaism/go-ellaism/node"
+	"github.com/ellaism/go-ellaism/rpc"
 	"github.com/gizak/termui"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/common"
 	"path/filepath"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"regexp"
 )
 

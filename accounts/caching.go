@@ -20,7 +20,7 @@ package accounts
 
 import (
 	"time"
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/common"
 	"fmt"
 	"os"
 	"strings"

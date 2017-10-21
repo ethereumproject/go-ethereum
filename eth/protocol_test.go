@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/p2p"
-	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/crypto"
+	"github.com/ellaism/go-ellaism/p2p"
+	"github.com/ellaism/go-ellaism/rlp"
 )
 
 func init() {

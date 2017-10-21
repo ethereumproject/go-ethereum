@@ -19,7 +19,7 @@ package state
 import (
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/common"
 )
 
 type journalEntry interface {

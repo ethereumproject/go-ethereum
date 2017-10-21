@@ -23,7 +23,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/common"
 )
 
 const solcVersion = "0.1.1"

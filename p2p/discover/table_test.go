@@ -27,8 +27,8 @@ import (
 	"testing/quick"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/crypto"
 )
 
 func TestTable_pingReplace(t *testing.T) {

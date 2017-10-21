@@ -17,7 +17,7 @@
 package trie
 
 import (
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/common"
 )
 
 // Iterator is a key-value trie iterator to traverse the data contents.

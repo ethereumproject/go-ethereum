@@ -26,7 +26,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/ellaism/go-ellaism/rlp"
 )
 
 // Version is the application revision identifier. It can be set with the linker

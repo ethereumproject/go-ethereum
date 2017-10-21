@@ -28,9 +28,9 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core/vm"
+	"github.com/ellaism/go-ellaism/ethdb"
 )
 
 // Tests that updating a state trie does not leak any database writes prior to

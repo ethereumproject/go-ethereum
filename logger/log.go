@@ -21,7 +21,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/common"
 )
 
 func openLogFile(datadir string, filename string) *os.File {

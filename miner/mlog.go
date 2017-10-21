@@ -1,6 +1,6 @@
 package miner
 
-import "github.com/ethereumproject/go-ethereum/logger"
+import "github.com/ellaism/go-ellaism/logger"
 
 var mlogMiner = logger.MLogRegisterAvailable("miner", mlogMinerLines)
 

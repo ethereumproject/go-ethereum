@@ -21,14 +21,14 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/eth/downloader"
-	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/p2p"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core"
+	"github.com/ellaism/go-ellaism/core/state"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/crypto"
+	"github.com/ellaism/go-ellaism/eth/downloader"
+	"github.com/ellaism/go-ellaism/ethdb"
+	"github.com/ellaism/go-ellaism/p2p"
 )
 
 // Tests that protocol versions and modes of operations are matched up properly.

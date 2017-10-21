@@ -26,8 +26,8 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/rlp"
 )
 
 var ErrInvalidSig = errors.New("invalid v, r, s values")

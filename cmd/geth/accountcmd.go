@@ -21,11 +21,11 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/ethereumproject/go-ethereum/accounts"
-	"github.com/ethereumproject/go-ethereum/console"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ellaism/go-ellaism/accounts"
+	"github.com/ellaism/go-ellaism/console"
+	"github.com/ellaism/go-ellaism/crypto"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"gopkg.in/urfave/cli.v1"
 )
 

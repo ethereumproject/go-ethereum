@@ -21,10 +21,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/trie"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/crypto"
+	"github.com/ellaism/go-ellaism/ethdb"
+	"github.com/ellaism/go-ellaism/trie"
 )
 
 // testAccount is the data associated with an account used by the state tests.

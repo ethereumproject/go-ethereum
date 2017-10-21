@@ -9,10 +9,10 @@ import (
 
 	"reflect"
 
-	"github.com/ethereumproject/go-ethereum/accounts"
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/accounts"
+	"github.com/ellaism/go-ellaism/common"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ellaism/go-ellaism/core"
 )
 
 var ogHome string  // placeholder

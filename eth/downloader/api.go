@@ -20,8 +20,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/ellaism/go-ellaism/event"
+	"github.com/ellaism/go-ellaism/rpc"
 )
 
 type DoneEvent struct{}

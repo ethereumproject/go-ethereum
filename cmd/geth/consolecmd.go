@@ -21,9 +21,9 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/ethereumproject/go-ethereum/console"
-	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/ellaism/go-ellaism/console"
+	"github.com/ellaism/go-ellaism/node"
+	"github.com/ellaism/go-ellaism/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 

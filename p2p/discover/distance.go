@@ -19,7 +19,7 @@ package discover
 import (
 	"sort"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/common"
 )
 
 // node distance computation.

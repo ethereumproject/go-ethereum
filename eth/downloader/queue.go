@@ -26,15 +26,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/metrics"
-	"github.com/ethereumproject/go-ethereum/trie"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core/state"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/crypto"
+	"github.com/ellaism/go-ellaism/ethdb"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/metrics"
+	"github.com/ellaism/go-ellaism/trie"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
@@ -618,7 +618,7 @@ func (q *queue) reserveHeaders(p *peer, count int, taskPool map[common.Hash]*typ
 		// If we're the first to request this task, initialise the result container
 		index := int(header.Number.Int64() - int64(q.resultOffset))
 		if index >= len(q.resultCache) || index < 0 {
-			glog.Error("index allocation went beyond available resultCache space.\nYou've encountered a sought after, hard to reproduce bug. Please report this to the developers <3 https://github.com/ethereumproject/go-ethereum/issues")
+			glog.Error("index allocation went beyond available resultCache space.\nYou've encountered a sought after, hard to reproduce bug. Please report this to the developers <3 https://github.com/ellaism/go-ellaism/issues")
 			return nil, false, errInvalidChain
 		}
 
