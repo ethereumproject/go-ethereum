@@ -1,23 +1,15 @@
-[![Build Status](https://travis-ci.org/ethereumproject/go-ethereum.svg?branch=master)](https://travis-ci.org/ethereumproject/go-ethereum)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/ethereumproject/go-ethereum?svg=true)](https://ci.appveyor.com/project/splix/go-ethereum)
-[![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
-)](https://godoc.org/github.com/ethereumproject/go-ethereum)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-[![Download](https://api.bintray.com/packages/ethereumproject/GoEthereumClassic/go-ethereum/images/download.svg)](https://bintray.com/ethereumproject/GoEthereumClassic/go-ethereum/_latestVersion)
+## Ethereum Go (Ellaism Blockchain)
 
-## Ethereum Go (Ethereum Classic Blockchain)
-
-Official Go language implementation of the Ethereum protocol supporting the
-_original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and powerful application platform for developers in parallel to Ethereum (ETHF), while differentially rejecting the DAO bailout.
+Official Go language implementation of the Ethereum protocol supporting the Ellaism chain.
 
 ## Install
 
-### :rocket: From a release binary
-The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Home#Developers).
+### :rocket: From a release binary (not yet supported)
+The simplest way to get started running a node is to visit our [Releases page](https://github.com/ellaism/go-ellaism/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ellaism/go-ellaism/wiki/Home#Developers).
 
 CLI one-liner for Darwin:
 ```bash
-$ curl -L -o ~/Downloads/geth-classic-3.5.zip https://github.com/ethereumproject/go-ethereum/releases/download/v3.5.0/geth-classic-osx-v3.5.0.zip; unzip ~/Downloads/geth-classic-3.5.zip -d $HOME/bin/
+$ curl -L -o ~/Downloads/geth-classic-3.5.zip https://github.com/ellaism/go-ellaism/releases/download/v3.5.0/geth-classic-osx-v3.5.0.zip; unzip ~/Downloads/geth-classic-3.5.zip -d $HOME/bin/
 
 $ geth help
 ```
@@ -30,13 +22,13 @@ If your heart is set on the bleeding edge, install from source. However, please 
 Building geth requires both Go >=1.8 and a C compiler.
 
 #### Get source and dependencies
-`$ go get -v github.com/ethereumproject/go-ethereum/...`
+`$ go get -v github.com/ellaism/go-ellaism/...`
 
 #### Installing command executables
 
 To install...
-- the full suite of utilities: `$ go install github.com/ethereumproject/go-ethereum/cmd/...`
-- just __geth__: `$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
+- the full suite of utilities: `$ go install github.com/ellaism/go-ellaism/cmd/...`
+- just __geth__: `$ go install github.com/ellaism/go-ellaism/cmd/geth`
 
 Executables built from source will, by default, be installed in `$GOPATH/bin/`.
 
@@ -58,9 +50,9 @@ This repository includes several wrappers/executables found in the `cmd` directo
 
 ### Data directory
 By default, geth will store all node and blockchain data in a __parent directory__ depending on your OS:
-- Linux: `$HOME/.ethereum-classic/`
-- Mac: `$HOME/Library/EthereumClassic/`
-- Windows: `$HOME/AppData/Roaming/EthereumClassic/`
+- Linux: `$HOME/.ellaism/`
+- Mac: `$HOME/Library/Ellaism/`
+- Windows: `$HOME/AppData/Roaming/Ellaism/`
 
 __You can specify this directory__ with `--data-dir=$HOME/id/rather/put/it/here`.
 
