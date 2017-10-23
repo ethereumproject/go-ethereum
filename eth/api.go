@@ -1744,6 +1744,34 @@ func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
 	return out, nil
 }
 
+// Verbosity implements api method debug_verbosity, enabling setting
+// global logging verbosity on the fly.
+// Note that it will NOT allow setting verbosity '0', which is effectively 'off'.
+// In place of ability to receive 0 as a functional parameter, debug.verbosity() -> debug.verbosity(0) -> glog.GetVerbosity().
+// creates a shorthand/convenience method as a "getter" function returning the current value
+// of the verbosity setting.
+func (api *PublicDebugAPI) Verbosity(n uint64) (int, error) {
+	nint := int(n)
+	if nint == 0 {
+		return int(*glog.GetVerbosity()), nil
+	}
+	if nint <= logger.Detail || nint == logger.Ridiculousness {
+		glog.SetV(nint)
+		return int(*glog.GetVerbosity()), nil
+	}
+	return -1, errors.New("invalid logging level")
+}
+
+// Vmodule implements api method debug_vmodule, enabling setting
+// glog per-module verbosity settings on the fly.
+func (api *PublicDebugAPI) Vmodule(s string) (string, error) {
+	if s == "" {
+		return glog.GetVModule().String(), nil
+	}
+	err := glog.GetVModule().Set(s)
+	return glog.GetVModule().String(), err
+}
+
 // ExecutionResult groups all structured logs emitted by the EVM
 // while replaying a transaction in debug mode as well as the amount of
 // gas used and the return value

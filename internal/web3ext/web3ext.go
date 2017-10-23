@@ -214,12 +214,14 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'verbosity',
 			call: 'debug_verbosity',
-			params: 1
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputOptionalNumberFormatter]
 		}),
 		new web3._extend.Method({
 			name: 'vmodule',
 			call: 'debug_vmodule',
-			params: 1
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputOptionalStringFormatter]
 		}),
 		new web3._extend.Method({
 			name: 'backtraceAt',
