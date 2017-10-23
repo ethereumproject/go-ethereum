@@ -341,7 +341,7 @@ func (self *BlockChain) loadLastState() error {
 	// Make sure head block is available.
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
-		glog.V(logger.Warn).Infof("WARNING: Head block missing, resetting chain; hash: %x", head)
+		glog.V(logger.Warn).Infof("WARNING: Head block missing, hash: %x", head)
 		return recoverOrReset()
 	}
 
