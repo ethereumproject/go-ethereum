@@ -192,6 +192,10 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 		if b.NumberU64() == 0 {
 			return fmt.Errorf("block number: 0, but is not genesis block: block: %v, \ngenesis: %v", b, self.genesisBlock)
 		}
+		// Check total difficulty exists and is at least positive
+		if td := b.Difficulty(); td == nil || b.Difficulty().Sign() < 1 {
+			return fmt.Errorf("invalid TD=%v for block #%d", td, b.NumberU64())
+		}
 		// Block header has no parent hash.
 		ph := b.ParentHash()
 		if ph == (common.Hash{}) {
@@ -370,6 +374,10 @@ func (self *BlockChain) loadLastState() error {
 		if header := self.GetHeader(head); header != nil {
 			currentHeader = header
 		}
+	}
+	// Ensure total difficulty exists and is valid for current header.
+	if td := currentHeader.Difficulty; td == nil || td.Sign() < 1 {
+		glog.V(logger.Warn).Infof("WARNING: Found current header #%d with invalid TD=%v\nAttempting chain reset with recovery...", currentHeader.Number, td)
 	}
 
 	self.hc.SetCurrentHeader(currentHeader)
