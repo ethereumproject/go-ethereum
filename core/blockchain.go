@@ -835,11 +835,15 @@ func (self *BlockChain) Rollback(chain []common.Hash) {
 		}
 		if self.currentFastBlock.Hash() == hash {
 			self.currentFastBlock = self.GetBlock(self.currentFastBlock.ParentHash())
-			WriteHeadFastBlockHash(self.chainDb, self.currentFastBlock.Hash())
+			if err := WriteHeadFastBlockHash(self.chainDb, self.currentFastBlock.Hash()); err != nil {
+				glog.Fatalf("failed to write fast head block hash: %v", err)
+			}
 		}
 		if self.currentBlock.Hash() == hash {
 			self.currentBlock = self.GetBlock(self.currentBlock.ParentHash())
-			WriteHeadBlockHash(self.chainDb, self.currentBlock.Hash())
+			if err := WriteHeadBlockHash(self.chainDb, self.currentBlock.Hash()); err != nil {
+				glog.Fatalf("failed to write head block hash: %v", err)
+			}
 		}
 	}
 }
