@@ -3761,6 +3761,40 @@ var inputOptionalBoolFormatter = function (options) {
 };
 
 /**
+ * Allows optional number value as input. If null or empty input, returns 0.
+ *
+ * @method inputOptionalNumberFormatter
+ * @param {bool} optional number val, either of form [number] or number
+ * @returns number
+*/
+var inputOptionalNumberFormatter = function (numbers) {
+    if (typeof numbers === 'number') {
+        return numbers;
+    }
+    if (typeof numbers === 'object') {
+		return numbers[0];
+	}
+    return 0;
+};
+
+/**
+ * Allows optional string value as input. If null input, returns "".
+ *
+ * @method inputOptionalStringFormatter
+ * @param {string} optional string val, either of form [string] or string
+ * @returns string
+*/
+var inputOptionalStringFormatter = function (optionalString) {
+    if (typeof optionalString === 'string') {
+		return optionalString;
+	}
+	if (typeof optionalString === 'object') {
+		return optionalString[0];
+	}
+	return "";
+};
+
+/**
  * Formats the output of a transaction to its proper values
  *
  * @method outputTransactionFormatter
@@ -3944,6 +3978,8 @@ module.exports = {
     inputTransactionFormatter: inputTransactionFormatter,
     inputAddressFormatter: inputAddressFormatter,
     inputOptionalBoolFormatter: inputOptionalBoolFormatter,
+    inputOptionalStringFormatter: inputOptionalStringFormatter,
+    inputOptionalNumberFormatter: inputOptionalNumberFormatter,
     inputPostFormatter: inputPostFormatter,
     outputBigNumberFormatter: outputBigNumberFormatter,
     outputTransactionFormatter: outputTransactionFormatter,
