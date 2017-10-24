@@ -47,7 +47,7 @@ import (
 
 var (
 	ErrNoGenesis = errors.New("Genesis not found in chain")
-	errNilBlock = errors.New("nil block")
+	errNilBlock  = errors.New("nil block")
 	errNilHeader = errors.New("nil header")
 )
 
@@ -230,11 +230,11 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	// This avoids a set pattern for checking block validity, which might present
 	// a vulnerability.
 	// Random increments are only implemented with using an interval > 1.
-	randomizeIncrement := func(i int) (int) {
+	randomizeIncrement := func(i int) int {
 		mrand.Seed(time.Now().UTC().UnixNano())
 		halfIncrement := i / 2
 		ri := mrand.Int63n(int64(halfIncrement))
-		if ri % 2 == 0 {
+		if ri%2 == 0 {
 			return i + int(ri)
 		}
 		return i - int(ri)
@@ -275,8 +275,8 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 		// If block does not exist in db.
 		if checkpointBlockNext == nil {
 			// Traverse in small steps (increment =1) from last known big step (increment >1) checkpoint.
-			if increment > 1 && i - increment > 1 {
-				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i - increment, 1)
+			if increment > 1 && i-increment > 1 {
+				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i-increment, 1)
 				return self.Recovery(i-increment, 1) // hone in
 			}
 			glog.V(logger.Debug).Infof("No block data available for block #%d", uint64(i))
@@ -378,6 +378,7 @@ func (self *BlockChain) loadLastState() error {
 	// Ensure total difficulty exists and is valid for current header.
 	if td := currentHeader.Difficulty; td == nil || td.Sign() < 1 {
 		glog.V(logger.Warn).Infof("WARNING: Found current header #%d with invalid TD=%v\nAttempting chain reset with recovery...", currentHeader.Number, td)
+		return recoverOrReset()
 	}
 
 	self.hc.SetCurrentHeader(currentHeader)
@@ -404,7 +405,7 @@ func (self *BlockChain) loadLastState() error {
 	// WriteHead* failing to write in this scenario would cause the head header to be
 	// misidentified an artificial non-purged re-sync to begin.
 	// I think.
-	if self.GetBlockByNumber(self.currentBlock.NumberU64() + 1) != nil {
+	if self.GetBlockByNumber(self.currentBlock.NumberU64()+1) != nil {
 		glog.V(logger.Warn).Infoln("WARNING: Found block data beyond apparent head block")
 		return recoverOrReset()
 	}
@@ -419,7 +420,6 @@ func (self *BlockChain) loadLastState() error {
 	if h := self.hc.GetHeaderByNumber(self.hc.CurrentHeader().Number.Uint64()); h != nil && self.hc.GetHeader(h.Hash()) != h {
 		glog.V(logger.Error).Infof("WARNING: Found head header number and hash mismatch: number=%d, hash=%x", self.hc.CurrentHeader().Number.Uint64(), self.hc.CurrentHeader().Hash())
 	}
-
 
 	// Case: current header below fast or full block.
 	//
