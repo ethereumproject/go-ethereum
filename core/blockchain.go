@@ -47,7 +47,7 @@ import (
 
 var (
 	ErrNoGenesis = errors.New("Genesis not found in chain")
-	errNilBlock = errors.New("nil block")
+	errNilBlock  = errors.New("nil block")
 	errNilHeader = errors.New("nil header")
 )
 
@@ -278,11 +278,11 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	// This avoids a set pattern for checking block validity, which might present
 	// a vulnerability.
 	// Random increments are only implemented with using an interval > 1.
-	randomizeIncrement := func(i int) (int) {
+	randomizeIncrement := func(i int) int {
 		mrand.Seed(time.Now().UTC().UnixNano())
 		halfIncrement := i / 2
 		ri := mrand.Int63n(int64(halfIncrement))
-		if ri % 2 == 0 {
+		if ri%2 == 0 {
 			return i + int(ri)
 		}
 		return i - int(ri)
@@ -323,8 +323,8 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 		// If block does not exist in db.
 		if checkpointBlockNext == nil {
 			// Traverse in small steps (increment =1) from last known big step (increment >1) checkpoint.
-			if increment > 1 && i - increment > 1 {
-				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i - increment, 1)
+			if increment > 1 && i-increment > 1 {
+				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i-increment, 1)
 				return self.Recovery(i-increment, 1) // hone in
 			}
 			glog.V(logger.Debug).Infof("No block data available for block #%d", uint64(i))
