@@ -54,6 +54,7 @@ func makeCLIApp() (app *cli.App) {
 		removedbCommand,
 		dumpCommand,
 		rollbackCommand,
+		recoverCommand,
 		monitorCommand,
 		accountCommand,
 		walletCommand,

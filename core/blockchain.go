@@ -144,7 +144,7 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux
 		return nil, ErrNoGenesis
 	}
 
-	if err := bc.loadLastState(); err != nil {
+	if err := bc.LoadLastState(false); err != nil {
 		return nil, err
 	}
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
@@ -157,6 +157,54 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux
 	}
 	// Take ownership of this particular state
 	go bc.update()
+	return bc, nil
+}
+
+func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux *event.TypeMux) (*BlockChain, error) {
+	bodyCache, _ := lru.New(bodyCacheLimit)
+	bodyRLPCache, _ := lru.New(bodyCacheLimit)
+	blockCache, _ := lru.New(blockCacheLimit)
+	futureBlocks, _ := lru.New(maxFutureBlocks)
+
+	bc := &BlockChain{
+		config:       config,
+		chainDb:      chainDb,
+		eventMux:     mux,
+		quit:         make(chan struct{}),
+		bodyCache:    bodyCache,
+		bodyRLPCache: bodyRLPCache,
+		blockCache:   blockCache,
+		futureBlocks: futureBlocks,
+		pow:          pow,
+	}
+	bc.SetValidator(NewBlockValidator(config, bc, pow))
+	bc.SetProcessor(NewStateProcessor(config, bc))
+
+	gv := func() HeaderValidator { return bc.Validator() }
+	var err error
+	bc.hc, err = NewHeaderChain(chainDb, config, gv, bc.getProcInterrupt)
+	if err != nil {
+		return nil, err
+	}
+
+	bc.genesisBlock = bc.GetBlockByNumber(0)
+	if bc.genesisBlock == nil {
+		return nil, ErrNoGenesis
+	}
+
+	//if err := bc.loadLastState(); err != nil {
+	//	return nil, err
+	//}
+	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
+	for i := range config.BadHashes {
+		if header := bc.GetHeader(config.BadHashes[i].Hash); header != nil && header.Number.Cmp(config.BadHashes[i].Block) == 0 {
+			glog.V(logger.Error).Infof("Found bad hash, rewinding chain to block #%d [%x…]", header.Number, header.ParentHash[:4])
+			bc.SetHead(header.Number.Uint64() - 1)
+			glog.V(logger.Error).Infoln("Chain rewind was successful, resuming normal operation")
+		}
+	}
+	// Take ownership of this particular state
+	//go bc.update()
 	return bc, nil
 }
 
@@ -283,7 +331,7 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 			break
 		}
 		// blockIsUnhealthy runs various block sanity checks, over and above Validator efforts to ensure
-		// no expected block strangenesses.
+		// no known block strangenesses.
 		ee := self.blockIsUnhealthy(checkpointBlockNext)
 		if ee == nil {
 			// Everything seems to be fine, set as the head block
@@ -314,7 +362,7 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
-func (self *BlockChain) loadLastState() error {
+func (self *BlockChain) LoadLastState(dryrun bool) error {
 
 	// recoverOrReset checks for recoverable block data.
 	// If no recoverable block data is found, plain Reset() is called.
@@ -335,8 +383,11 @@ func (self *BlockChain) loadLastState() error {
 	head := GetHeadBlockHash(self.chainDb)
 	if head == (common.Hash{}) {
 		// Corrupt or empty database, init from scratch
-		glog.V(logger.Warn).Infoln("WARNING: Empty database, resetting chain.")
-		return self.Reset()
+		if !dryrun {
+			glog.V(logger.Warn).Infoln("WARNING: Empty database, resetting chain.")
+			return self.Reset()
+		}
+		return errors.New("empty HeadBlockHash")
 	}
 
 	// Get head block by hash
@@ -345,22 +396,31 @@ func (self *BlockChain) loadLastState() error {
 	// Make sure head block is available.
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
-		glog.V(logger.Warn).Infof("WARNING: Head block missing, hash: %x", head)
-		return recoverOrReset()
+		if !dryrun {
+			glog.V(logger.Warn).Infof("WARNING: Head block missing, hash: %x", head)
+			return recoverOrReset()
+		}
+		return errors.New("nil currentBlock")
 	}
 
 	// Ensure head block is valid by blockchain validator.
 	if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
-		glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery...", currentBlock.Number(), currentBlock.Hash(), validateErr)
-		return recoverOrReset()
+		if !dryrun {
+			glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery...", currentBlock.Number(), currentBlock.Hash(), validateErr)
+			return recoverOrReset()
+		}
+		return fmt.Errorf("invalid currentBlock: %v", validateErr)
 	}
 
 	// Make sure the state associated with the block is available.
 	// Similar to check in block_validator#ValidateBlock.
 	if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
 		// Dangling block without a state associated
-		glog.V(logger.Warn).Infof("WARNING: Head state missing, resetting chain; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
-		return recoverOrReset()
+		if !dryrun {
+			glog.V(logger.Warn).Infof("WARNING: Head state missing, resetting chain; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
+			return recoverOrReset()
+		}
+		return errors.New("no state for currentBlock")
 	}
 
 	// Everything seems to be fine, set as the head block
@@ -377,7 +437,11 @@ func (self *BlockChain) loadLastState() error {
 	}
 	// Ensure total difficulty exists and is valid for current header.
 	if td := currentHeader.Difficulty; td == nil || td.Sign() < 1 {
-		glog.V(logger.Warn).Infof("WARNING: Found current header #%d with invalid TD=%v\nAttempting chain reset with recovery...", currentHeader.Number, td)
+		if !dryrun {
+			glog.V(logger.Warn).Infof("WARNING: Found current header #%d with invalid TD=%v\nAttempting chain reset with recovery...", currentHeader.Number, td)
+			return recoverOrReset()
+		}
+		return fmt.Errorf("invalid TD=%v for currentHeader=#%d", td, currentHeader.Number)
 	}
 
 	self.hc.SetCurrentHeader(currentHeader)
@@ -404,6 +468,12 @@ func (self *BlockChain) loadLastState() error {
 	// WriteHead* failing to write in this scenario would cause the head header to be
 	// misidentified an artificial non-purged re-sync to begin.
 	// I think.
+
+	// If dryrun, don't use additional safety checks or logging and just return state as-is.
+	if dryrun {
+		return nil
+	}
+
 	if self.GetBlockByNumber(self.currentBlock.NumberU64() + 1) != nil {
 		glog.V(logger.Warn).Infoln("WARNING: Found block data beyond apparent head block")
 		return recoverOrReset()
@@ -419,7 +489,6 @@ func (self *BlockChain) loadLastState() error {
 	if h := self.hc.GetHeaderByNumber(self.hc.CurrentHeader().Number.Uint64()); h != nil && self.hc.GetHeader(h.Hash()) != h {
 		glog.V(logger.Error).Infof("WARNING: Found head header number and hash mismatch: number=%d, hash=%x", self.hc.CurrentHeader().Number.Uint64(), self.hc.CurrentHeader().Hash())
 	}
-
 
 	// Case: current header below fast or full block.
 	//
@@ -498,7 +567,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	if err := WriteHeadFastBlockHash(bc.chainDb, bc.currentFastBlock.Hash()); err != nil {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
 	}
-	return bc.loadLastState()
+	return bc.LoadLastState(false)
 }
 
 // FastSyncCommitHead sets the current head block to the one defined by the hash

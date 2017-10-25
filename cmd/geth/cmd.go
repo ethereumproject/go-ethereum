@@ -44,6 +44,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
+	"github.com/ethereumproject/go-ethereum/pow"
+	"github.com/ethereumproject/go-ethereum/event"
 )
 
 const (
@@ -998,5 +1000,67 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 	}
 
 	fmt.Println()
+	return nil
+}
+
+func recoverChaindata(ctx *cli.Context) error {
+
+	// Congruent to MakeChain(), but
+	var err error
+	sconf := mustMakeSufficientChainConfig(ctx)
+	bcdb := MakeChainDatabase(ctx)
+	defer bcdb.Close()
+
+	pow := pow.PoW(core.FakePow{})
+	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
+		pow = ethash.New()
+	} else {
+		glog.V(logger.Info).Info("Consensus: fake")
+	}
+
+	bc, err := core.NewBlockChainDryrun(bcdb, sconf.ChainConfig, pow, new(event.TypeMux))
+	if err != nil {
+		glog.Fatal("Could not start chain manager: ", err)
+	}
+
+	if blockchainLoadError := bc.LoadLastState(true); blockchainLoadError != nil {
+		fmt.Printf("! Found error while loading blockchain: %v", blockchainLoadError)
+		// but do not return
+	}
+
+	header := bc.CurrentHeader()
+	currentBlock := bc.CurrentBlock()
+	currentFastBlock := bc.CurrentFastBlock()
+
+	fmt.Println("Current status (before recovery attempt):")
+	if header != nil {
+		fmt.Printf("Last header: #%d\n", header.Number.Uint64())
+		if currentBlock != nil {
+			fmt.Printf("Last block: #%d\n", currentBlock.Number())
+		} else {
+			fmt.Println("! Last block: nil")
+		}
+		if currentFastBlock != nil {
+			fmt.Printf("Last fast block: #%d\n", currentFastBlock.Number())
+		} else {
+			fmt.Println("! Last fast block: nil")
+		}
+	} else {
+		fmt.Println("! Last header: nil")
+	}
+
+	fmt.Println(glog.Separator("-"))
+
+	fmt.Println("Checking db validity and recoverable data...")
+	checkpoint := bc.Recovery(1, 2048)
+	fmt.Printf("Found last recoverable checkpoint=#%d\n", checkpoint)
+
+	fmt.Println(glog.Separator("-"))
+
+	fmt.Println("Setting blockchain db head to last safe checkpoint...")
+	if setHeadErr := bc.SetHead(checkpoint); setHeadErr != nil {
+		fmt.Printf("Error setting head: %v\n", setHeadErr)
+		return setHeadErr
+	}
 	return nil
 }
