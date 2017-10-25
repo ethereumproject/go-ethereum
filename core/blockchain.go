@@ -223,8 +223,6 @@ func (self *BlockChain) blockIsGenesis(b *types.Block) bool {
 }
 
 // blockIsUnhealthy sanity checks for a block's health.
-// If header number is 0 and hash is not genesis hash,
-// something is wrong; possibly missing/malformed header.
 func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 	// Block is nil.
 	if b == nil {
@@ -239,17 +237,14 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 	}
 
 	if !self.blockIsGenesis(b) {
-		// Block header is not genesis, but has number 0
+		// If header number is 0 and hash is not genesis hash,
+		// something is wrong; possibly missing/malformed header.
 		if b.NumberU64() == 0 {
 			return fmt.Errorf("block number: 0, but is not genesis block: block: %v, \ngenesis: %v", b, self.genesisBlock)
 		}
 		// Check total difficulty exists and is at least positive
 		if td := b.Difficulty(); td == nil || b.Difficulty().Sign() < 1 {
 			return fmt.Errorf("invalid TD=%v for block #%d", td, b.NumberU64())
-		}
-		// Block is invalid (redundantly also checks header, but not header pow)
-		if validateErr := self.Validator().ValidateBlock(b); validateErr != nil && !IsKnownBlockErr(validateErr) {
-			return validateErr
 		}
 	}
 	return nil
