@@ -44,6 +44,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
+	"bufio"
 )
 
 const (
@@ -998,5 +999,51 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 	}
 
 	fmt.Println()
+	return nil
+}
+
+// https://gist.github.com/r0l1/3dcbb0c8f6cfe9c66ab8008f55f8f28b
+// askForConfirmation asks the user for confirmation. A user must type in "yes" or "no" and
+// then press enter. It has fuzzy matching, so "y", "Y", "yes", "YES", and "Yes" all count as
+// confirmations. If the input is not recognized, it will ask again. The function does not return
+// until it gets a valid response from the user.
+func askForConfirmation(s string) bool {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Printf("%s [y/n]: ", s)
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			glog.Fatalln(err)
+		}
+
+		response = strings.ToLower(strings.TrimSpace(response))
+
+		if response == "y" || response == "yes" {
+			return true
+		} else if response == "n" || response == "no" {
+			return false
+		} else {
+			fmt.Println("* INVALID RESPONSE: Please respond with [y|yes] or [n|no], or use CTRL-C to abort.")
+		}
+	}
+}
+
+// resetChaindata removes (rm -rf's) the /chaindata directory, ensuring
+// eradication of any corrupted chain data.
+func resetChaindata(ctx *cli.Context) error {
+	dir := MustMakeChainDataDir(ctx)
+	dir = filepath.Join(dir, "chaindata")
+	prompt := fmt.Sprintf("\nThis will remove the directory='%s' and all of it's contents.\n** Are you sure you want to remove ALL chain data?", dir)
+	c := askForConfirmation(prompt)
+	if c {
+		if err := os.RemoveAll(dir); err != nil {
+			return err
+		}
+		fmt.Printf("Successfully removed chaindata directory: '%s'\n", dir)
+	} else {
+		fmt.Println("Leaving chaindata untouched. As you were.")
+	}
 	return nil
 }
