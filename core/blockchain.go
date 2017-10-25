@@ -262,10 +262,6 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 		if validateErr := self.Validator().ValidateBlock(b); validateErr != nil && !IsKnownBlockErr(validateErr) {
 			return validateErr
 		}
-		// Block is stateless.
-		if _, err := state.New(b.Root(), self.chainDb); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -474,7 +470,12 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		return nil
 	}
 
-	if self.GetBlockByNumber(self.currentBlock.NumberU64() + 1) != nil {
+	// Get highest known block number, whether fast or full block.
+	highestCurrentBlockFastOrFull := self.currentBlock.Number().Uint64()
+	if fastBlockNum := self.currentFastBlock.Number().Uint64(); fastBlockNum > highestCurrentBlockFastOrFull {
+		highestCurrentBlockFastOrFull = fastBlockNum
+	}
+	if self.GetBlockByNumber(highestCurrentBlockFastOrFull + 1) != nil {
 		glog.V(logger.Warn).Infoln("WARNING: Found block data beyond apparent head block")
 		return recoverOrReset()
 	}
