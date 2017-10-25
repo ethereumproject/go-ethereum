@@ -108,7 +108,7 @@ Use "ethereum dump 0" to dump the genesis block.
 		Usage: "Attempt blockchain data recovery in case of data corruption",
 		Description: `
 		Recover scans and health-checks all available blockchain data in order
-		to recover all consistent and healthy block data up. It will remove invalid or
+		to recover all consistent and healthy block data. It will remove invalid or
 		corrupt block data that may have been caused by hard killing, system failure,
 		space limitations, or attack.
 		`,

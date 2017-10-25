@@ -1005,7 +1005,7 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 
 func recoverChaindata(ctx *cli.Context) error {
 
-	// Congruent to MakeChain(), but
+	// Congruent to MakeChain(), but uses special NewBlockChainDryrun. Avoids a one-off function in flags.go.
 	var err error
 	sconf := mustMakeSufficientChainConfig(ctx)
 	bcdb := MakeChainDatabase(ctx)
