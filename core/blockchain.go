@@ -474,7 +474,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		highestCurrentBlockFastOrFull = fastBlockNum
 	}
 	if b := self.GetBlockByNumber(highestCurrentBlockFastOrFull + 2048); b != nil && self.blockIsUnhealthy(b) == nil {
-		glog.V(logger.Warn).Infoln("WARNING: Found block data beyond apparent head block (head=%d, found=%d", highestCurrentBlockFastOrFull, highestCurrentBlockFastOrFull+1)
+		glog.V(logger.Warn).Infoln("WARNING: Found block data beyond apparent head block (head=%d, found=%d", highestCurrentBlockFastOrFull, highestCurrentBlockFastOrFull+2048)
 		return recoverOrReset()
 	}
 
