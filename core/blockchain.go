@@ -297,10 +297,7 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	}
 
 	// Step next block.
-	checkpointBlockNext := self.GetBlockByNumber(uint64(from))
-	if checkpointBlockNext == nil {
-		return 0
-	}
+	var checkpointBlockNext = self.Genesis()
 
 	// In order for this number to be available at the time this function is called, the number
 	// may need to be persisted locally from the last connection.
@@ -369,8 +366,26 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 			glog.V(logger.Warn).Infoln("WARNING: No recoverable data found, resetting to genesis.")
 			return self.Reset()
 		}
-		glog.V(logger.Warn).Infof("WARNING: Found recoverable blockchain data, setting head to #%d", recoveredHeight)
-		return self.SetHead(recoveredHeight)
+		//glog.V(logger.Warn).Infof("WARNING: Found recoverable blockchain data, setting head to #%d", recoveredHeight)
+		//return self.SetHead(recoveredHeight)
+
+		var blocks types.Blocks
+		for i := 1; i <= int(recoveredHeight); i++ {
+			block := self.GetBlockByNumber(uint64(i))
+			if block == nil {
+				break
+			}
+			blocks = append(blocks, block)
+
+			// Insert every 2048 or remainder as a batch
+			if i == int(recoveredHeight) || i % 2048 == 0 {
+				if _, err := self.InsertChain(blocks); err != nil {
+					glog.Fatalf("i=%d, recoveredHeight=%d, err=%v", i, recoveredHeight, err)
+				}
+				blocks = types.Blocks{}
+			}
+		}
+		return self.LoadLastState(false)
 	}
 
 	// Restore the last known head block
@@ -474,7 +489,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		highestCurrentBlockFastOrFull = fastBlockNum
 	}
 	if b := self.GetBlockByNumber(highestCurrentBlockFastOrFull + 2048); b != nil && self.blockIsUnhealthy(b) == nil {
-		glog.V(logger.Warn).Infoln("WARNING: Found block data beyond apparent head block (head=%d, found=%d", highestCurrentBlockFastOrFull, highestCurrentBlockFastOrFull+2048)
+		glog.V(logger.Warn).Infof("WARNING: Found block data beyond apparent head block (head=%d, found=%d)", highestCurrentBlockFastOrFull, highestCurrentBlockFastOrFull+2048)
 		return recoverOrReset()
 	}
 
