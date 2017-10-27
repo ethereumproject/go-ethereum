@@ -4,37 +4,27 @@ go: 1.8
 os:
 - linux
 - osx
-
-env:
-  global:
-    - secure: "MjvfqrKakMa+z+6LFxaL30n+BtjxUm2BnJ6/+S5cbxoCcXGVUBQf9LZ7+FbxIiucZqe7LoawPfLfrzyYPH9Lf03o+gUAdqV2Mm9EYVh5cbF51DmhcRL36Pubm4BeR2DdZTk/v31/TN9g/D9/rsCCwpwFuQB4iuBwYLtyJi8JLopVLpw7/ZI/8EYkOAE/3L0t4ICOMYexKGGi8XkVCC0TWBAHbzFYfeRJxspDNP2WhLS3vJdqDoJKFi/p/ZFzn2J4GKP6hhSUWzG57MpshhYcnIFzt4ZgB1sa1gNF04fe0gT+qAP9WuMFuUPgKhAN/bIPy78BfUi3ScJVYMj6y5D9PzN5+Kp3bo0SsXf6tAJ4t8m8IfU7FBpZkctMxP5aqvu/WX+eHgjNhVkHseZmRO/kst1YfXa5cjjAbiXwivRFtIv7LTrlpshB06k6zj9kD1JngOjf9sLnyYv38Njy/Vb1rK2kkPGMGzLDfkxxmrVgbijfvxX1Hidn97X/y6iLZvq14XsycoWFetiH67OT81grL1hpYC2HyTIdVrG/8CT1FtHsRKa4DqGiWAlaQf8ksm/TPGczylZbtEXFqDLuVl/o0SyOBfsxLiFuOz0cbeThcU8qe5xukK4C9Usu1z7V5h9dMY9y8jKWMNFWOumRjMea1bqS/LEVsUCQ5AmBGWr+AQU="
-
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository ppa:duggan/bats --yes; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -qq bats; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install bats; fi
-
 script:
-# Install Janus
-- curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
-# Add Janus to PATH.
-- export PATH=$PATH:$PWD/janusbin
-
 - go version
 - go env
-# Run go tests.
 - go test ./...
-# Build for integration tests.
-- go build -ldflags "-X main.Version="`janus version -format TAG_OR_NIGHTLY` ./cmd/geth
-# Run bats integration tests.
+- go build ./cmd/geth
 - bats cmd/geth
-
+before_deploy:
+- sh .ci/deploy.sh
 deploy:
-  skip_cleanup: true
-  provider: script
-  script: ./deploy.sh
+  provider: releases
+  api_key:
+    secure: BjJDAPhaE9ijZlbmb/9tVLXSz2E3mcBcGP5fxwjMnRS0DqbLIXKG4pqF+t95N5XsB9k52HewRK2MaC3xg0qTNn263akVZvIFYMUOieum+cY6hVWGslPQkyAMWgqLI87sya1z3oHUELX9eIFCugSWR+aMNXLzylxJ8EwTqHzG+fJCKZeUe9+3jSam0PIWVS7Zl62Ea9tln0xFnrDrQmEoWOThCJkuVsXOier67SVNN238fnASAmhUGfBlVREvCW6xty9keO3ng6kzHmDoUMsbABu3j6SbGTI4YdkfR7pOqDz15uO7BrI5+u7SvY4W3PByFieQ5kXhvuFV9zvtMM1PEf4EcMqBo7Y80kNBMFhwjl/q2A1pyi+WbWPJB4dnpcY7hzPuJ45NxwCiUoKAwmb5Kf/YXN16UGAwtK4vcgMdSsJfG7nb4tJRVX85UEerO7MXRdzEw1HnVtSKLd6B76kglqpgJHwyzjzL2SELTefLXM0j/AEgpwrrnVV1OiaKUYXcI0Y4RC4VJ5GTWYJGTIXb1Hn/1A4ct7Sz481TYCRk7bxqTmPWlnCb4hJElTTUkbK+Sy3tYJM/SC+sXTa+cHrs+xzzDXP9ynYUe9EJMCAF9EPDW9G0pMhTA/11vJw5hFCJ8Oo8QpDX3NG+Jbtp9LzBE4dQzuGPgSeDLCNskWX9nXg=
+  file: 'geth-ellaism-$TRAVIS_OS_NAME.*'
+  file_glob: true
+  draft: true
   on:
-    branch: master
-  tags: true
+    repo: ellaism/go-ellaism
+    tags: true
