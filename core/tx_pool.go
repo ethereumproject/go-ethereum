@@ -305,11 +305,13 @@ func (self *TxPool) add(tx *types.Transaction) error {
 	}
 	self.queueTx(hash, tx)
 
-	var toname string
+	var toName, toLogName string
 	if to := tx.To(); to != nil {
-		toname = common.Bytes2Hex(to[:4])
+		toName = common.Bytes2Hex(to[:4])
+		toLogName = tx.To().Hex()
 	} else {
-		toname = "[NEW_CONTRACT]"
+		toName = "[NEW_CONTRACT]"
+		toLogName = "[NEW_CONTRACT]"
 	}
 	// we can ignore the error here because From is
 	// verified in ValidateTransaction.
@@ -319,13 +321,13 @@ func (self *TxPool) add(tx *types.Transaction) error {
 	if logger.MlogEnabled() {
 		mlogTxPool.Send(mlogTxPoolAddTx.SetDetailValues(
 			f.Hex(),
-			tx.To().Hex(),
+			toLogName,
 			tx.Value,
 			hash.Hex(),
 		))
 	}
 	if glog.V(logger.Debug) {
-		glog.Infof("(t) %x => %s (%v) %x\n", from, toname, tx.Value, hash)
+		glog.Infof("(t) %x => %s (%v) %x\n", from, toName, tx.Value, hash)
 	}
 
 	return nil
