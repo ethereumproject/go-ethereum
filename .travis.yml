@@ -27,3 +27,5 @@ deploy:
   on:
     repo: ellaism/go-ellaism
     tags: true
+  skip_cleanup: true
+  tag_name: $TRAVIS_TAG
