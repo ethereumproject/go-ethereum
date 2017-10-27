@@ -224,29 +224,87 @@ func (self *BlockChain) blockIsGenesis(b *types.Block) bool {
 
 // blockIsUnhealthy sanity checks for a block's health.
 func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
-	// Block is nil.
-	if b == nil {
-		return errNilBlock
-	}
-	// Block has nil header.
-	if b.Header() == nil {
-		return errNilHeader
-	}
-	if b.Body() == nil {
-		return errors.New("nil body")
+
+	type testCases struct {
+		explanation string
+		test        func(b *types.Block) error
 	}
 
-	if !self.blockIsGenesis(b) {
-		// If header number is 0 and hash is not genesis hash,
-		// something is wrong; possibly missing/malformed header.
-		if b.NumberU64() == 0 {
-			return fmt.Errorf("block number: 0, but is not genesis block: block: %v, \ngenesis: %v", b, self.genesisBlock)
-		}
-		// Check total difficulty exists and is at least positive
-		if td := b.Difficulty(); td == nil || b.Difficulty().Sign() < 1 {
-			return fmt.Errorf("invalid TD=%v for block #%d", td, b.NumberU64())
-		}
+	blockAgnosticCases := []testCases{
+		{"block is nil",
+			func(b *types.Block) error {
+				if b == nil {
+					return errNilBlock
+				}
+				return nil
+			},
+		},
+		{"block has nil header",
+			func(b *types.Block) error {
+				if b.Header() == nil {
+					return errNilHeader
+				}
+				return nil
+			},
+		},
+		{"block has nil body",
+			func(b *types.Block) error {
+				if b.Body() == nil {
+					return errors.New("nil body")
+				}
+				return nil
+			},
+		},
+		{
+			"block has invalid hash",
+			func(b *types.Block) error {
+				if b.Hash() == (common.Hash{}) {
+					return errors.New("block hash empty")
+				}
+				// Note that we're confirming that blockchain "has" this block;
+				// later we'll use "has-with-state" to differentiate fast/full blocks, and want to be sure
+				// that not only is the hash valid, but also that only the state is missing if HasBlockAndState returns false.
+				if !self.HasBlock(b.Hash()) {
+					return fmt.Errorf("blockchain cannot find block with hash=%x", b.Hash())
+				}
+				return nil
+			},
+		},
+		{
+			// TODO: calculate expected td from chain config.
+			// Currently this disallows td=0, and would fail for a custom chain config with genesis td=0x0
+			"block has invalid td",
+			func(b *types.Block) error {
+				if td := b.Difficulty(); td == nil || b.Difficulty().Sign() < 1 {
+					return fmt.Errorf("invalid TD=%v for block #%d", td, b.NumberU64())
+				}
+				return nil
+			},
+		},
+	}
 
+	for _, c := range blockAgnosticCases {
+		if e := c.test(b); e != nil {
+			return e
+		}
+	}
+
+	// Assume genesis block is healthy from chain configuration.
+	if self.blockIsGenesis(b) {
+		return nil
+	}
+
+	// If header number is 0 and hash is not genesis hash,
+	// something is wrong; possibly missing/malformed header.
+	if b.NumberU64() == 0 {
+		return fmt.Errorf("block number: 0, but is not genesis block: block: %v, \ngenesis: %v", b, self.genesisBlock)
+	}
+
+	// sharedBlockCheck does everything that self.Validator().ValidateBlock does, except that it
+	// 1. won't return an early error if the block is already known (eg. ErrKnownBlock)
+	// 2. won't check state
+	sharedBlockCheck := func(b *types.Block) error {
+		// Fast and full blocks should always have headers.
 		pHash := b.ParentHash()
 		if pHash == (common.Hash{}) {
 			return ParentError(pHash)
@@ -255,10 +313,93 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 		if pHeader == nil {
 			return fmt.Errorf("nil parent header for hash: %x", pHash)
 		}
-		if err := self.Validator().ValidateHeader(b.Header(), pHeader, true); err != nil {
+		// Use parent header hash to get block (instead of b.ParentHash)
+		parent := self.GetBlock(pHeader.Hash())
+		if parent == nil {
+			return ParentError(b.ParentHash())
+		}
+
+		if err := self.Validator().ValidateHeader(b.Header(), parent.Header(), true); err != nil {
 			return err
 		}
+
+		// verify the uncles are correctly rewarded
+		if err := self.Validator().VerifyUncles(b, parent); err != nil {
+			return err
+		}
+
+		// Verify UncleHash before running other uncle validations
+		unclesSha := types.CalcUncleHash(b.Uncles())
+		if unclesSha != b.Header().UncleHash {
+			return fmt.Errorf("invalid uncles root hash. received=%x calculated=%x", b.Header().UncleHash, unclesSha)
+		}
+
+		// The transactions Trie's root (R = (Tr [[i, RLP(T1)], [i, RLP(T2)], ... [n, RLP(Tn)]]))
+		// can be used by light clients to make sure they've received the correct Txs
+		txSha := types.DeriveSha(b.Transactions())
+		if txSha != b.Header().TxHash {
+			return fmt.Errorf("invalid transaction root hash. received=%x calculated=%x", b.Header().TxHash, txSha)
+		}
+		return nil
 	}
+
+	// fullBlockCheck ensures state exists for parent and current blocks.
+	fullBlockCheck := func(b *types.Block) error {
+		parent := self.GetBlock(b.ParentHash())
+		if parent == nil {
+			return ParentError(b.ParentHash())
+		}
+		if _, err := state.New(parent.Root(), self.chainDb); err != nil {
+			return ParentError(b.ParentHash())
+		}
+		if _, err := state.New(b.Root(), self.chainDb); err != nil {
+			return fmt.Errorf("missing state for block=#%d [%x]", b.NumberU64(), b.Hash())
+		}
+
+		return nil
+	}
+
+	// Since we're using absent state to decide that a full block check isn't required,
+	// we need to be sure that an absent state isn't actually a db corruption/inconsistency.
+	// Check parent block and confirm that there is NOT any state available for that block, either.
+	fastBlockCheck := func(b *types.Block) error {
+		pi := b.NumberU64() - 1
+		cb := self.GetBlockByNumber(pi)
+		if cb == nil {
+			return fmt.Errorf("preceding nil block=#%d, while checking block=#%d health", pi, b.NumberU64())
+		}
+		if cb.Header() == nil {
+			return fmt.Errorf("preceding nil header block=#%d, while checking block=#%d health", pi, b.NumberU64())
+		}
+		if self.HasBlockAndState(cb.Hash()) {
+			return fmt.Errorf("checking block=%d without state, found nonabsent state for block #%d", b.NumberU64(), pi)
+		}
+		// No problems found with this fast block; skip full block check.
+		return nil
+	}
+
+	// Use shared block check. The only thing this doesn't check is state.
+	if e := sharedBlockCheck(b); e != nil {
+		return e
+	}
+
+	// Separate checks for fast/full blocks.
+	//
+	// Assume state is not missing.
+	// Fast block.
+	if !self.HasBlockAndState(b.Hash()) {
+		glog.V(logger.Info).Infof("Validating recovery FAST block #%d", b.Number())
+		return fastBlockCheck(b)
+	}
+
+	// Full block.
+	glog.V(logger.Info).Infof("Validating recovery FULL block #%d", b.Number())
+
+	if e := fullBlockCheck(b); e != nil {
+		return e
+	}
+	// Skip checking random younger blocks because if the chain was initially synced with FastSync,
+	// then not all younger blocks will have state available.
 	return nil
 }
 
@@ -280,6 +421,10 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 		return i - int(ri)
 	}
 
+	if from > 1 {
+		checkpoint = uint64(from)
+	}
+
 	// Hold setting if should randomize incrementing.
 	shouldRandomizeIncrement := increment > 1
 	// Always base randomization off of original increment,
@@ -299,14 +444,6 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 			glog.V(logger.Info).Infof("Recovered checkpoint at block #%d", checkpoint)
 		}
 	}()
-
-	// Set genesis as currentBlock foundation.
-	// Genesis should never be nil.
-	if g := self.Genesis(); g != nil {
-		self.currentBlock = g
-		self.currentFastBlock = g
-		self.hc.SetCurrentHeader(g.Header())
-	}
 
 	// Step next block.
 	var checkpointBlockNext = self.Genesis()
@@ -342,8 +479,7 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 			self.currentFastBlock = checkpointBlockNext
 
 			// If state information is available for block, it is a full block.
-			// == self.HasBlockAndState()
-			if _, err := state.New(checkpointBlockNext.Root(), self.chainDb); err == nil {
+			if self.HasBlockAndState(checkpointBlockNext.Hash()) {
 				self.currentBlock = checkpointBlockNext
 			}
 
@@ -379,26 +515,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 			glog.V(logger.Warn).Infoln("WARNING: No recoverable data found, resetting to genesis.")
 			return self.Reset()
 		}
-		//glog.V(logger.Warn).Infof("WARNING: Found recoverable blockchain data, setting head to #%d", recoveredHeight)
-		//return self.SetHead(recoveredHeight)
-
-		var blocks types.Blocks
-		for i := 1; i <= int(recoveredHeight); i++ {
-			block := self.GetBlockByNumber(uint64(i))
-			if block == nil {
-				break
-			}
-			blocks = append(blocks, block)
-
-			// Insert every 2048 or remainder as a batch
-			if i == int(recoveredHeight) || i % 2048 == 0 {
-				if _, err := self.InsertChain(blocks); err != nil {
-					glog.Fatalf("i=%d, recoveredHeight=%d, err=%v", i, recoveredHeight, err)
-				}
-				blocks = types.Blocks{}
-			}
-		}
-		return self.LoadLastState(false)
+		return self.SetHead(recoveredHeight)
 	}
 
 	// Restore the last known head block
@@ -425,24 +542,28 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		return errors.New("nil currentBlock")
 	}
 
-	// Ensure head block is valid by blockchain validator.
-	if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
-		if !dryrun {
-			glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), validateErr)
-			return recoverOrReset()
+	// If currentBlock (fullblock) is not genesis, check that it is valid
+	// and that it has a state associated with it.
+	if currentBlock.Number().Cmp(new(big.Int)) > 0 {
+		glog.V(logger.Info).Infof("Validating currentBlock: %v", currentBlock.Number())
+		// Ensure head block is valid by blockchain validator.
+		if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
+			if !dryrun {
+				glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), validateErr)
+				return recoverOrReset()
+			}
+			return fmt.Errorf("invalid currentBlock: %v", validateErr)
 		}
-		return fmt.Errorf("invalid currentBlock: %v", validateErr)
-	}
-
-	// Make sure the state associated with the block is available.
-	// Similar to check in block_validator#ValidateBlock.
-	if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
-		// Dangling block without a state associated
-		if !dryrun {
-			glog.V(logger.Warn).Infof("WARNING: Head state missing, attempting chain reset with recovery; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
-			return recoverOrReset()
+		// Make sure the state associated with the full block is available.
+		// Similar to check in block_validator#ValidateBlock.
+		if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
+			// Dangling block without a state associated
+			if !dryrun {
+				glog.V(logger.Warn).Infof("WARNING: Head state missing, attempting chain reset with recovery; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
+				return recoverOrReset()
+			}
+			return errors.New("no state for currentBlock")
 		}
-		return errors.New("no state for currentBlock")
 	}
 
 	// Everything seems to be fine, set as the head block
@@ -468,7 +589,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 
 	self.hc.SetCurrentHeader(currentHeader)
 
-	// Restore the last known head fast block
+	// Restore the last known head fast block from placeholder
 	self.currentFastBlock = self.currentBlock
 	if head := GetHeadFastBlockHash(self.chainDb); head != (common.Hash{}) {
 		if block := self.GetBlock(head); block != nil {
@@ -496,35 +617,38 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		return nil
 	}
 
-	// Get highest known block number, whether fast or full block.
-	highestCurrentBlockFastOrFull := self.currentBlock.Number().Uint64()
-	if fastBlockNum := self.currentFastBlock.Number().Uint64(); fastBlockNum > highestCurrentBlockFastOrFull {
-		highestCurrentBlockFastOrFull = fastBlockNum
-	}
-	if b := self.GetBlockByNumber(highestCurrentBlockFastOrFull + 2048); b != nil && self.blockIsUnhealthy(b) == nil {
-		glog.V(logger.Warn).Infof("WARNING: Found block data beyond apparent head block (head=%d, found=%d)", highestCurrentBlockFastOrFull, highestCurrentBlockFastOrFull+2048)
+	// Use highest known header number to check for invisible block data beyond.
+	highestApparentHead := self.hc.CurrentHeader().Number.Uint64()
+	aboveHighestApparentHead := highestApparentHead + 2048
+
+	if b := self.GetBlockByNumber(aboveHighestApparentHead); b != nil {
+		glog.V(logger.Warn).Infof("WARNING: Found block data beyond apparent head (head=%d, found=%d)", highestApparentHead, aboveHighestApparentHead)
 		return recoverOrReset()
 	}
 
-	// Check head block number::hash.
+	// Check head block number congruent to hash.
 	if b := self.GetBlockByNumber(self.currentBlock.NumberU64()); b != nil && b.Header() != nil && b.Header().Hash() != self.currentBlock.Hash() {
 		glog.V(logger.Error).Infof("WARNING: Found head block number and hash mismatch: number=%d, hash=%x", self.currentBlock.NumberU64(), self.currentBlock.Hash())
 		return recoverOrReset()
 	}
 
-	// Check head header number::hash.
+	// Check head header number congruent to hash.
 	if h := self.hc.GetHeaderByNumber(self.hc.CurrentHeader().Number.Uint64()); h != nil && self.hc.GetHeader(h.Hash()) != h {
 		glog.V(logger.Error).Infof("WARNING: Found head header number and hash mismatch: number=%d, hash=%x", self.hc.CurrentHeader().Number.Uint64(), self.hc.CurrentHeader().Hash())
 		return recoverOrReset()
 	}
 
-	//// Case: current header below fast or full block.
-	////
-	//// If the current header is behind head block OR fast block, we should reset to the height of last OK header.
-	//if self.hc.CurrentHeader().Number.Cmp(self.currentBlock.Number()) < 0 || self.hc.CurrentHeader().Number.Cmp(self.currentFastBlock.Number()) < 0 {
-	//	glog.V(logger.Warn).Infof("WARNING: Found header height below block height, resetting to header height...")
-	//	return recoverOrReset()
-	//}
+	// Case: current header below fast or full block.
+	//
+	highestCurrentBlockFastOrFull := self.currentBlock.Number()
+	if self.currentFastBlock.Number().Cmp(highestCurrentBlockFastOrFull) > 0 {
+		highestCurrentBlockFastOrFull = self.currentFastBlock.Number()
+	}
+	// If the current header is behind head full block OR fast block, we should reset to the height of last OK header.
+	if self.hc.CurrentHeader().Number.Cmp(highestCurrentBlockFastOrFull) < 0 {
+		glog.V(logger.Warn).Infof("WARNING: Found header height below block height, attempting reset with recovery...")
+		return recoverOrReset()
+	}
 
 	// Initialize a statedb cache to ensure singleton account bloom filter generation
 	statedb, err := state.New(self.currentBlock.Root(), self.chainDb)
