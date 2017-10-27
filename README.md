@@ -1,18 +1,15 @@
 ## Ethereum Go (Ellaism Blockchain)
 
+[![Build Status](https://travis-ci.org/ellaism/go-ellaism.svg?branch=v4.0.0)](https://travis-ci.org/ellaism/go-ellaism)
+[![Build status](https://ci.appveyor.com/api/projects/status/nex44mcbumitbw79?svg=true)](https://ci.appveyor.com/project/ellaismer/go-ellaism)
+
+
 Official Go language implementation of the Ethereum protocol supporting the Ellaism chain.
 
 ## Install
 
-### :rocket: From a release binary (not yet supported)
-The simplest way to get started running a node is to visit our [Releases page](https://github.com/ellaism/go-ellaism/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ellaism/go-ellaism/wiki/Home#Developers).
-
-CLI one-liner for Darwin:
-```bash
-$ curl -L -o ~/Downloads/geth-classic-3.5.zip https://github.com/ellaism/go-ellaism/releases/download/v3.5.0/geth-classic-osx-v3.5.0.zip; unzip ~/Downloads/geth-classic-3.5.zip -d $HOME/bin/
-
-$ geth help
-```
+### :rocket: From a release binary
+The simplest way to get started running a node is to visit our [Releases page](https://github.com/ellaism/go-ellaism/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working.
 
 ### :hammer: Building the source
 
