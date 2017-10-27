@@ -15,7 +15,6 @@ script:
 - go env
 - go test ./...
 - go build ./cmd/geth
-- bats cmd/geth
 before_deploy:
 - sh .ci/deploy.sh
 deploy:
