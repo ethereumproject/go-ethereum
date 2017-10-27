@@ -176,8 +176,8 @@ func TestGetChainIdentityValue(t *testing.T) {
 		want  string
 	}{
 		// Known (defaulty) chain values.
-		{[]string{"--chain", "morden"}, "morden"},
-		{[]string{"--chain", "testnet"}, "morden"},
+		{[]string{"--chain", "morden"}, "testnet"},
+		{[]string{"--chain", "testnet"}, "testnet"},
 		{[]string{"--chain", "main"}, "mainnet"},
 		{[]string{"--chain", "mainnet"}, "mainnet"},
 
