@@ -15,8 +15,8 @@ build_script:
   - go test ./...
   - go build ./cmd/geth
   - 7z a geth-ellaism-win64.zip geth.exe
+  - ps: Get-FileHash geth-ellaism-win64.zip -Algorithm SHA256
   - ps: Get-FileHash geth-ellaism-win64.zip -Algorithm SHA256 | Out-File geth-ellaism-win64.zip.sha256
-  - cat geth-ellaism-win64.zip.sha256
 artifacts:
   - path: '*.zip'
     name: geth
