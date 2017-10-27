@@ -574,7 +574,9 @@ func rollback(ctx *cli.Context) error {
 
 	glog.Warning("Rolling back blockchain...")
 
-	bc.SetHead(blockIndex)
+	if err := bc.SetHead(blockIndex); err != nil {
+		glog.V(logger.Warn).Infof("error setting head: %v", err)
+	}
 
 	// Check if *neither* block nor fastblock numbers match desired head number
 	nowCurrentHead := bc.CurrentBlock().Number().Uint64()

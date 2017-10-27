@@ -246,6 +246,18 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 		if td := b.Difficulty(); td == nil || b.Difficulty().Sign() < 1 {
 			return fmt.Errorf("invalid TD=%v for block #%d", td, b.NumberU64())
 		}
+
+		pHash := b.ParentHash()
+		if pHash == (common.Hash{}) {
+			return ParentError(pHash)
+		}
+		pHeader := self.hc.GetHeader(pHash)
+		if pHeader == nil {
+			return fmt.Errorf("nil parent header for hash: %x", pHash)
+		}
+		if err := self.Validator().ValidateHeader(b.Header(), pHeader, true); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -330,7 +342,8 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 			self.currentFastBlock = checkpointBlockNext
 
 			// If state information is available for block, it is a full block.
-			if _, err := state.New(self.currentBlock.Root(), self.chainDb); err == nil {
+			// == self.HasBlockAndState()
+			if _, err := state.New(checkpointBlockNext.Root(), self.chainDb); err == nil {
 				self.currentBlock = checkpointBlockNext
 			}
 
@@ -361,7 +374,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	// is set to last available safe checkpoint.
 	recoverOrReset := func() error {
 		glog.V(logger.Warn).Infoln("Checking database for recoverable block data...")
-		recoveredHeight := self.Recovery(1, 2048)
+		recoveredHeight := self.Recovery(1, 100)
 		if recoveredHeight == 0 {
 			glog.V(logger.Warn).Infoln("WARNING: No recoverable data found, resetting to genesis.")
 			return self.Reset()
@@ -393,8 +406,8 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	if head == (common.Hash{}) {
 		// Corrupt or empty database, init from scratch
 		if !dryrun {
-			glog.V(logger.Warn).Infoln("WARNING: Empty database, resetting chain.")
-			return self.Reset()
+			glog.V(logger.Warn).Infoln("WARNING: Empty database, attempting chain reset with recovery.")
+			return recoverOrReset()
 		}
 		return errors.New("empty HeadBlockHash")
 	}
@@ -406,7 +419,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		if !dryrun {
-			glog.V(logger.Warn).Infof("WARNING: Head block missing, hash: %x", head)
+			glog.V(logger.Warn).Infof("WARNING: Head block missing, hash: %x\nAttempting chain reset with recovery.", head)
 			return recoverOrReset()
 		}
 		return errors.New("nil currentBlock")
@@ -415,7 +428,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	// Ensure head block is valid by blockchain validator.
 	if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
 		if !dryrun {
-			glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery...", currentBlock.Number(), currentBlock.Hash(), validateErr)
+			glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), validateErr)
 			return recoverOrReset()
 		}
 		return fmt.Errorf("invalid currentBlock: %v", validateErr)
@@ -426,7 +439,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
 		// Dangling block without a state associated
 		if !dryrun {
-			glog.V(logger.Warn).Infof("WARNING: Head state missing, resetting chain; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
+			glog.V(logger.Warn).Infof("WARNING: Head state missing, attempting chain reset with recovery; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
 			return recoverOrReset()
 		}
 		return errors.New("no state for currentBlock")
