@@ -59,19 +59,17 @@ Within this parent directory, geth will use a __/subdirectory__ to hold data for
 
 __You can specify this subdirectory__ with `--chain=mycustomnet`.
 
-> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/ellaism/go-ellaism/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ellaism/go-ellaism/wiki/Release-3.4.0-Notes).
-
 ### Full node on the main Ethereum network
 
 ```
 $ geth
 ```
 
-It's that easy! This will establish an ETC blockchain node and download ("sync") the full blocks for the entirety of the ETC blockchain. __However__, before you go ahead with plain ol' `geth`, we would encourage reviewing the following section...
+It's that easy! This will establish an Ellaism blockchain node and download ("sync") the full blocks for the entirety of the Ellaism blockchain. __However__, before you go ahead with plain ol' `geth`, we would encourage reviewing the following section...
 
 #### :speedboat: `--fast`
 
-The most common scenario is users wanting to simply interact with the Ethereum Classic network: create accounts; transfer funds; deploy and interact with contracts, and mine. For this particular use-case the user doesn't care about years-old historical data, so we can _fast-sync_ to the current state of the network. To do so:
+The most common scenario is users wanting to simply interact with the Ellaism network: create accounts; transfer funds; deploy and interact with contracts, and mine. For this particular use-case the user doesn't care about years-old historical data, so we can _fast-sync_ to the current state of the network. To do so:
 
 ```
 $ geth --fast
@@ -198,7 +196,7 @@ The external chain configuration file specifies valid settings for the following
 | JSON Key | Notes |
 | --- | --- |
 | `chainID` |  Chain identity. Determines local __/subdir__ for chain data, with required `chain.json` located in it. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in _EIP-155_; that is configured as a protocal upgrade within `forks.features`. |
-| `name` | _Optional_. Human readable name, ie _Ethereum Classic Mainnet_, _Morden Testnet._ |
+| `name` | _Optional_. Human readable name, ie _Ellaism Mainnet_, _Morden Testnet._ |
 | `state.startingNonce` | _Optional_. Initialize state db with a custom nonce. |
 | `network` | Determines Network ID to identify valid peers. |
 | `consensus` | _Optional_. Proof of work algorithm to use, either "ethash" or "ethast-test" (for development) |
