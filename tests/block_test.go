@@ -51,13 +51,6 @@ func TestBcForkBlockTests(t *testing.T) {
 	}
 }
 
-func TestBcForkStress(t *testing.T) {
-	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcForkStressTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestBcTotalDifficulty(t *testing.T) {
 	// skip because these will fail due to selfish mining fix
 	t.Skip()
