@@ -11,8 +11,8 @@ import (
 
 	"github.com/ellaism/go-ellaism/accounts"
 	"github.com/ellaism/go-ellaism/common"
-	"gopkg.in/urfave/cli.v1"
 	"github.com/ellaism/go-ellaism/core"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var ogHome string  // placeholder
@@ -120,19 +120,18 @@ func TestMustMakeChainDataDir(t *testing.T) {
 		{[]string{"--datadir", tmpDir}, filepath.Join(tmpDir, "mainnet"), nil},
 		{[]string{"--data-dir", tmpDir}, filepath.Join(tmpDir, "mainnet"), nil},
 
-		{[]string{"--testnet", "--data-dir", tmpDir}, filepath.Join(tmpDir, "morden"), nil},
-		{[]string{"--testnet"}, filepath.Join(dd, "morden"), nil},
+		{[]string{"--testnet", "--data-dir", tmpDir}, filepath.Join(tmpDir, "testnet"), nil},
+		{[]string{"--testnet"}, filepath.Join(dd, "testnet"), nil},
 
 		{[]string{"--chain"}, "", ErrInvalidFlag},
 		{[]string{"--chain", "main"}, filepath.Join(dd, "mainnet"), nil},
-		{[]string{"--chain", "morden"}, filepath.Join(dd, "morden"), nil},
-		{[]string{"--chain", "testnet"}, filepath.Join(dd, "morden"), nil},
+		{[]string{"--chain", "morden"}, filepath.Join(dd, "testnet"), nil},
+		{[]string{"--chain", "testnet"}, filepath.Join(dd, "testnet"), nil},
 		{[]string{"--chain", "kitty"}, filepath.Join(dd, "kitty"), nil},
 
 		// Passed when  run individually, but fails when run as go test. This is not a code problem.
 		{[]string{"--chain", "kitty/cat"}, filepath.Join(dd, funkyName), ErrInvalidChainID},
 		{[]string{"--chain", funkyName}, filepath.Join(dd, funkyName), nil},
-
 	}
 
 	for _, c := range cases {
@@ -189,20 +188,20 @@ func TestGetChainIdentityValue(t *testing.T) {
 		{[]string{"--chain", "chaindata"}, ""},
 		{[]string{"--chain", "dapp"}, ""},
 
-		 // Invalid.
-		 // These pass when test is run individually, but go test doesn't like error out.
+		// Invalid.
+		// These pass when test is run individually, but go test doesn't like error out.
 		{[]string{"--chain", "kitty/cat"}, ""},
 	}
 
 	for _, c := range cases {
 		// Unset cache.
 		cacheChainIdentity = ""
-		
+
 		if c.want == "" {
 			t.Log("skipping test for erroring use case (will pass, but go test doesn't like glog)")
 			continue
 		}
-		
+
 		setupFlags(t)
 
 		if e := set.Parse(c.flags); e != nil {
@@ -323,4 +322,3 @@ func TestMakeAddress(t *testing.T) {
 		t.Fatalf("want: %v, got: %v", wantAccount, gotAccount)
 	}
 }
-
