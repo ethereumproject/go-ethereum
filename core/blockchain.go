@@ -346,16 +346,20 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 	// fullBlockCheck ensures state exists for parent and current blocks.
 	fullBlockCheck := func(b *types.Block) error {
 		parent := self.GetBlock(b.ParentHash())
+		// == self.HasBlock
 		if parent == nil {
 			return ParentError(b.ParentHash())
 		}
-		if _, err := state.New(parent.Root(), self.chainDb); err != nil {
-			return ParentError(b.ParentHash())
+		// Parent does not have state; this is only a corruption if it's the not the point where fast
+		// sync was disabled and full states started to be synced.
+		if !self.HasBlockAndState(parent.Hash()) {
+			grandparent := self.GetBlock(parent.ParentHash())
+			// If grandparent DOES have state, then so should parent.
+			// If grandparent doesn't have state, then assume that it was the first full block synced.
+			if self.HasBlockAndState(grandparent.Hash()) {
+				return ParentError(b.ParentHash())
+			}
 		}
-		if _, err := state.New(b.Root(), self.chainDb); err != nil {
-			return fmt.Errorf("missing state for block=#%d [%x]", b.NumberU64(), b.Hash())
-		}
-
 		return nil
 	}
 
