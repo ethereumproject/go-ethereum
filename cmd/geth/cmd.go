@@ -1007,11 +1007,13 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 // then press enter. It has fuzzy matching, so "y", "Y", "yes", "YES", and "Yes" all count as
 // confirmations. If the input is not recognized, it will ask again. The function does not return
 // until it gets a valid response from the user.
+//
+// Use 'error' verbosity for logging since this is user-critical and required feedback.
 func askForConfirmation(s string) bool {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Printf("%s [y/n]: ", s)
+		glog.V(logger.Error).Infof("%s [y/n]: ", s)
 
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -1025,7 +1027,9 @@ func askForConfirmation(s string) bool {
 		} else if response == "n" || response == "no" {
 			return false
 		} else {
-			fmt.Println("* INVALID RESPONSE: Please respond with [y|yes] or [n|no], or use CTRL-C to abort.")
+			glog.V(logger.Error).Infoln(glog.Separator("*"))
+			glog.V(logger.Error).Infoln("* INVALID RESPONSE: Please respond with [y|yes] or [n|no], or use CTRL-C to abort.")
+			glog.V(logger.Error).Infoln(glog.Separator("*"))
 		}
 	}
 }
@@ -1035,15 +1039,15 @@ func askForConfirmation(s string) bool {
 func resetChaindata(ctx *cli.Context) error {
 	dir := MustMakeChainDataDir(ctx)
 	dir = filepath.Join(dir, "chaindata")
-	prompt := fmt.Sprintf("\nThis will remove the directory='%s' and all of it's contents.\n** Are you sure you want to remove ALL chain data?", dir)
+	prompt := fmt.Sprintf("\n\nThis will remove the directory='%s' and all of it's contents.\n** Are you sure you want to remove ALL chain data?", dir)
 	c := askForConfirmation(prompt)
 	if c {
 		if err := os.RemoveAll(dir); err != nil {
 			return err
 		}
-		fmt.Printf("Successfully removed chaindata directory: '%s'\n", dir)
+		glog.V(logger.Error).Infof("Successfully removed chaindata directory: '%s'\n", dir)
 	} else {
-		fmt.Println("Leaving chaindata untouched. As you were.")
+		glog.V(logger.Error).Infoln("Leaving chaindata untouched. As you were.")
 	}
 	return nil
 }
