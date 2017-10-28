@@ -1,4 +1,5 @@
-// Copyright 2015 The go-ethereum Authors
+// Copyright 2017 (c) ETCDEV Team
+
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,21 +15,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package runtime_test
+package vm
 
-import (
-	"fmt"
+import "math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/vm/runtime"
-)
-
-func ExampleExecute() {
-	ret, _, err := runtime.Execute(common.Hex2Bytes("6060604052600a8060106000396000f360606040526008565b00"), nil, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(ret)
-	// Output:
-	// [96 96 96 64 82 96 8 86 91 0]
+// RuleSet is an interface that defines the current rule set during the
+// execution of the EVM instructions (e.g. whether it's homestead)
+type RuleSet interface {
+	IsHomestead(*big.Int) bool
+	// GasTable returns the gas prices for this phase, which is based on
+	// block number passed in.
+	GasTable(*big.Int) *GasTable
 }

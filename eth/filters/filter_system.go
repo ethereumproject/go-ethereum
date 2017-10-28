@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/event"
 )
 
@@ -71,7 +71,7 @@ func NewFilterSystem(mux *event.TypeMux) *FilterSystem {
 		core.RemovedLogsEvent{},
 		core.ChainEvent{},
 		core.TxPreEvent{},
-		vm.Logs(nil),
+		state.Logs(nil),
 	)
 	go fs.filterLoop()
 	return fs
@@ -160,7 +160,7 @@ func (fs *FilterSystem) filterLoop() {
 			}
 			fs.filterMu.RUnlock()
 
-		case vm.Logs:
+		case state.Logs:
 			fs.filterMu.RLock()
 			for _, filter := range fs.logFilters {
 				if filter.LogCallback != nil && !filter.created.After(event.Time) {

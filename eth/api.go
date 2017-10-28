@@ -37,7 +37,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
@@ -781,6 +780,7 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 
 	// Execute the call and return
 	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
+
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
 	res, requiredGas, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
@@ -1152,7 +1152,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 	}
 
 	if receipt.Logs == nil {
-		fields["logs"] = []vm.Logs{}
+		fields["logs"] = []state.Logs{}
 	}
 
 	// If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
@@ -1821,6 +1821,7 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 
 	// Execute the call and return
 	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
+
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
 	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
@@ -1852,7 +1853,7 @@ func (s *PublicDebugAPI) TraceTransaction(txHash common.Hash) (*ExecutionResult,
 }
 
 // computeTxEnv returns the execution environment of a certain transaction.
-func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, *core.VMEnv, error) {
+func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, *core.VmEnv, error) {
 
 	// Create the parent state.
 	block := s.eth.BlockChain().GetBlock(blockHash)
@@ -1894,12 +1895,13 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 		}
 
 		vmenv := core.NewEnv(statedb, s.eth.chainConfig, s.eth.BlockChain(), msg, block.Header())
+
 		if idx == txIndex {
 			return msg, vmenv, nil
 		}
 
 		gp := new(core.GasPool).AddGas(tx.Gas())
-		_, _, err := core.ApplyMessage(vmenv, msg, gp)
+		_, _, err = core.ApplyMessage(vmenv, msg, gp)
 		if err != nil {
 			return nil, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)
 		}

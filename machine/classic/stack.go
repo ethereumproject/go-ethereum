@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package vm
+package classic
 
 import (
 	"fmt"
@@ -67,7 +67,8 @@ func (st *stack) peek() *big.Int {
 
 func (st *stack) require(n int) error {
 	if st.len() < n {
-		return fmt.Errorf("stack underflow (%d <=> %d)", len(st.data), n)
+		err := fmt.Errorf("stack underflow (%d <=> %d)", len(st.data), n)
+		return err
 	}
 	return nil
 }
