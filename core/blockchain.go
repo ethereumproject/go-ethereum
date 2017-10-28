@@ -546,23 +546,12 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	// and that it has a state associated with it.
 	if currentBlock.Number().Cmp(new(big.Int)) > 0 {
 		glog.V(logger.Info).Infof("Validating currentBlock: %v", currentBlock.Number())
-		// Ensure head block is valid by blockchain validator.
-		if validateErr := self.Validator().ValidateBlock(currentBlock); validateErr != nil && !IsKnownBlockErr(validateErr) {
+		if e := self.blockIsUnhealthy(currentBlock); e != nil {
 			if !dryrun {
-				glog.V(logger.Warn).Infof("WARNING: Found invalid head block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), validateErr)
+				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head full block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), e)
 				return recoverOrReset()
 			}
-			return fmt.Errorf("invalid currentBlock: %v", validateErr)
-		}
-		// Make sure the state associated with the full block is available.
-		// Similar to check in block_validator#ValidateBlock.
-		if _, err := state.New(currentBlock.Root(), self.chainDb); err != nil {
-			// Dangling block without a state associated
-			if !dryrun {
-				glog.V(logger.Warn).Infof("WARNING: Head state missing, attempting chain reset with recovery; number: %v, hash: %v, err: %v", currentBlock.Number(), currentBlock.Hash(), err)
-				return recoverOrReset()
-			}
-			return errors.New("no state for currentBlock")
+			return fmt.Errorf("invalid currentBlock: %v", e)
 		}
 	}
 
@@ -597,6 +586,19 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		}
 	}
 
+	// If currentBlock (fullblock) is not genesis, check that it is valid
+	// and that it has a state associated with it.
+	if self.currentFastBlock.Number().Cmp(new(big.Int)) > 0 {
+		glog.V(logger.Info).Infof("Validating currentFastBlock: %v", self.currentFastBlock.Number())
+		if e := self.blockIsUnhealthy(self.currentFastBlock); e != nil {
+			if !dryrun {
+				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head fast block #%d (%x): %v \nAttempting chain reset with recovery.", self.currentFastBlock.Number(), self.currentFastBlock.Hash(), e)
+				return recoverOrReset()
+			}
+			return fmt.Errorf("invalid currentFastBlock: %v", e)
+		}
+	}
+
 	// Case: Head full block and fastblock, where there actually exist blocks beyond that
 	// in the chain, but last-h/b/fb key-vals (placeholders) are corrupted/wrong, causing it to appear
 	// as if the latest block is below the actual blockchain db head block.
@@ -617,7 +619,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		return nil
 	}
 
-	// Use highest known header number to check for invisible block data beyond.
+	// Use highest known header number to check for "invisible" block data beyond.
 	highestApparentHead := self.hc.CurrentHeader().Number.Uint64()
 	aboveHighestApparentHead := highestApparentHead + 2048
 
