@@ -163,7 +163,7 @@ var (
 	MLogFlag = cli.StringFlag{
 		Name:  "mlog",
 		Usage: "Set machine-readable log format: [plain|kv|json|off]",
-		Value: "kv",
+		Value: "off",
 	}
 	MLogDirFlag = DirectoryFlag{
 		Name:  "mlog-dir",
