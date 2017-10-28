@@ -371,8 +371,11 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 		if cb.Header() == nil {
 			return fmt.Errorf("preceding nil header block=#%d, while checking block=#%d health", pi, b.NumberU64())
 		}
-		if self.HasBlockAndState(cb.Hash()) {
-			return fmt.Errorf("checking block=%d without state, found nonabsent state for block #%d", b.NumberU64(), pi)
+		// Genesis will have state.
+		if pi > 1 {
+			if self.HasBlockAndState(cb.Hash()) {
+				return fmt.Errorf("checking block=%d without state, found nonabsent state for block #%d", b.NumberU64(), pi)
+			}
 		}
 		// No problems found with this fast block; skip full block check.
 		return nil
@@ -388,12 +391,12 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 	// Assume state is not missing.
 	// Fast block.
 	if !self.HasBlockAndState(b.Hash()) {
-		glog.V(logger.Info).Infof("Validating recovery FAST block #%d", b.Number())
+		glog.V(logger.Debug).Infof("Validating recovery FAST block #%d", b.Number())
 		return fastBlockCheck(b)
 	}
 
 	// Full block.
-	glog.V(logger.Info).Infof("Validating recovery FULL block #%d", b.Number())
+	glog.V(logger.Debug).Infof("Validating recovery FULL block #%d", b.Number())
 
 	if e := fullBlockCheck(b); e != nil {
 		return e
@@ -441,7 +444,7 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	defer ticker.Stop()
 	go func() {
 		for range ticker.C {
-			glog.V(logger.Info).Infof("Recovered checkpoint at block #%d", checkpoint)
+			glog.V(logger.Info).Infof("Recovered checkpoints through block #%d", checkpoint)
 		}
 	}()
 
