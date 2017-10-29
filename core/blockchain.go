@@ -1231,7 +1231,7 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err error) {
 
 	if logger.MlogEnabled() {
-		defer func(status WriteStatus, err error) {
+		defer func() {
 			mlogWriteStatus := "UNKNOWN"
 			switch status {
 			case NonStatTy:
@@ -1252,7 +1252,7 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 				block.Coinbase().Hex(),
 				block.Time(),
 			))
-		}(status, err)
+		}()
 	}
 
 	self.wg.Add(1)
