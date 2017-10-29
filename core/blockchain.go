@@ -222,8 +222,8 @@ func (self *BlockChain) blockIsGenesis(b *types.Block) bool {
 
 }
 
-// blockIsUnhealthy sanity checks for a block's health.
-func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
+// blockIsInvalid sanity checks for a block's health.
+func (self *BlockChain) blockIsInvalid(b *types.Block) error {
 
 	type testCases struct {
 		explanation string
@@ -271,12 +271,15 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 			},
 		},
 		{
-			// TODO: calculate expected td from chain config.
-			// Currently this disallows td=0, and would fail for a custom chain config with genesis td=0x0
 			"block has invalid td",
 			func(b *types.Block) error {
-				if td := b.Difficulty(); td == nil || b.Difficulty().Sign() < 1 {
+				if td := b.Difficulty(); td == nil {
 					return fmt.Errorf("invalid TD=%v for block #%d", td, b.NumberU64())
+				}
+				pTd := self.GetTd(b.ParentHash())
+				externTd := new(big.Int).Add(pTd, b.Difficulty())
+				if gotTd := self.GetTd(b.Hash()); gotTd != nil && externTd.Cmp(gotTd) != 0 {
+					return fmt.Errorf("invalid TD=%v (want=%v) for block #%d", b.Difficulty(), gotTd, b.NumberU64())
 				}
 				return nil
 			},
@@ -381,7 +384,6 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 				return fmt.Errorf("checking block=%d without state, found nonabsent state for block #%d", b.NumberU64(), pi)
 			}
 		}
-		// No problems found with this fast block; skip full block check.
 		return nil
 	}
 
@@ -401,13 +403,7 @@ func (self *BlockChain) blockIsUnhealthy(b *types.Block) error {
 
 	// Full block.
 	glog.V(logger.Debug).Infof("Validating recovery FULL block #%d", b.Number())
-
-	if e := fullBlockCheck(b); e != nil {
-		return e
-	}
-	// Skip checking random younger blocks because if the chain was initially synced with FastSync,
-	// then not all younger blocks will have state available.
-	return nil
+	return fullBlockCheck(b)
 }
 
 // Soft resets should only be called in case of probable corrupted or invalid stored data.
@@ -473,9 +469,9 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 			break
 		}
 
-		// blockIsUnhealthy runs various block sanity checks, over and above Validator efforts to ensure
+		// blockIsInvalid runs various block sanity checks, over and above Validator efforts to ensure
 		// no known block strangenesses.
-		ee := self.blockIsUnhealthy(checkpointBlockNext)
+		ee := self.blockIsInvalid(checkpointBlockNext)
 		if ee == nil {
 			// Everything seems to be fine, set as the head block
 			glog.V(logger.Debug).Infof("Found OK later block #%d", checkpointBlockNext.NumberU64())
@@ -553,7 +549,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	// and that it has a state associated with it.
 	if currentBlock.Number().Cmp(new(big.Int)) > 0 {
 		glog.V(logger.Info).Infof("Validating currentBlock: %v", currentBlock.Number())
-		if e := self.blockIsUnhealthy(currentBlock); e != nil {
+		if e := self.blockIsInvalid(currentBlock); e != nil {
 			if !dryrun {
 				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head full block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), e)
 				return recoverOrReset()
@@ -597,7 +593,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	// and that it has a state associated with it.
 	if self.currentFastBlock.Number().Cmp(new(big.Int)) > 0 {
 		glog.V(logger.Info).Infof("Validating currentFastBlock: %v", self.currentFastBlock.Number())
-		if e := self.blockIsUnhealthy(self.currentFastBlock); e != nil {
+		if e := self.blockIsInvalid(self.currentFastBlock); e != nil {
 			if !dryrun {
 				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head fast block #%d (%x): %v \nAttempting chain reset with recovery.", self.currentFastBlock.Number(), self.currentFastBlock.Hash(), e)
 				return recoverOrReset()
