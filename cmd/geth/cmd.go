@@ -948,6 +948,9 @@ func stringInSlice(s string, sl []string) bool {
 	return false
 }
 
+// makeMLogDocumentation creates markdown documentation text for, eg. wiki
+// That's why it uses 'fmt' instead of glog or log; output with prefixes (glog and log)
+// will break markdown.
 func makeMLogDocumentation(ctx *cli.Context) error {
 	wantComponents := ctx.Args()
 
@@ -1026,7 +1029,7 @@ func recoverChaindata(ctx *cli.Context) error {
 	}
 
 	if blockchainLoadError := bc.LoadLastState(true); blockchainLoadError != nil {
-		fmt.Printf("! Found error while loading blockchain: %v", blockchainLoadError)
+		glog.V(logger.Error).Infof("! Found error while loading blockchain: %v", blockchainLoadError)
 		// but do not return
 	}
 
@@ -1036,32 +1039,32 @@ func recoverChaindata(ctx *cli.Context) error {
 
 	fmt.Println("Current status (before recovery attempt):")
 	if header != nil {
-		fmt.Printf("Last header: #%d\n", header.Number.Uint64())
+		glog.V(logger.Error).Infof("Last header: #%d\n", header.Number.Uint64())
 		if currentBlock != nil {
-			fmt.Printf("Last block: #%d\n", currentBlock.Number())
+			glog.V(logger.Error).Infof("Last block: #%d\n", currentBlock.Number())
 		} else {
-			fmt.Println("! Last block: nil")
+			glog.V(logger.Error).Infoln("! Last block: nil")
 		}
 		if currentFastBlock != nil {
-			fmt.Printf("Last fast block: #%d\n", currentFastBlock.Number())
+			glog.V(logger.Error).Infof("Last fast block: #%d\n", currentFastBlock.Number())
 		} else {
-			fmt.Println("! Last fast block: nil")
+			glog.V(logger.Error).Infoln("! Last fast block: nil")
 		}
 	} else {
-		fmt.Println("! Last header: nil")
+		glog.V(logger.Error).Infoln("! Last header: nil")
 	}
 
-	fmt.Println(glog.Separator("-"))
+	glog.V(logger.Error).Infoln(glog.Separator("-"))
 
-	fmt.Println("Checking db validity and recoverable data...")
+	glog.V(logger.Error).Infoln("Checking db validity and recoverable data...")
 	checkpoint := bc.Recovery(1, 2048)
-	fmt.Printf("Found last recoverable checkpoint=#%d\n", checkpoint)
+	glog.V(logger.Error).Infof("Found last recoverable checkpoint=#%d\n", checkpoint)
 
-	fmt.Println(glog.Separator("-"))
+	glog.V(logger.Error).Infoln(glog.Separator("-"))
 
-	fmt.Println("Setting blockchain db head to last safe checkpoint...")
+	glog.V(logger.Error).Infoln("Setting blockchain db head to last safe checkpoint...")
 	if setHeadErr := bc.SetHead(checkpoint); setHeadErr != nil {
-		fmt.Printf("Error setting head: %v\n", setHeadErr)
+		glog.V(logger.Error).Infof("Error setting head: %v\n", setHeadErr)
 		return setHeadErr
 	}
 	return nil
