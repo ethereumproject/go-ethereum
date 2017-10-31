@@ -11,8 +11,16 @@ teardown() {
 	rm -fr $DATA_DIR
 }
 
-@test "account list blanko" {
+@test "account <no command> yields help/usage" {
 	run $GETH_CMD --datadir $DATA_DIR account
+	echo "$output"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"USAGE"* ]]
+}
+
+@test "account list yields <blank> (no accounts)" {
+	run $GETH_CMD --datadir $DATA_DIR account list
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -26,7 +34,7 @@ teardown() {
 	run $GETH_CMD --data-dir $DATA_DIR --index-accounts account index
 	[ "$status" -eq 0 ]
 
-	run $GETH_CMD --datadir $DATA_DIR --index-accounts account
+	run $GETH_CMD --datadir $DATA_DIR --index-accounts account list
 	echo "$output"
 
 	[ "$status" -eq 0 ]
