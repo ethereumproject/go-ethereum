@@ -1037,7 +1037,7 @@ func recoverChaindata(ctx *cli.Context) error {
 	currentBlock := bc.CurrentBlock()
 	currentFastBlock := bc.CurrentFastBlock()
 
-	fmt.Println("Current status (before recovery attempt):")
+	glog.V(logger.Error).Infoln("Current status (before recovery attempt):")
 	if header != nil {
 		glog.V(logger.Error).Infof("Last header: #%d\n", header.Number.Uint64())
 		if currentBlock != nil {

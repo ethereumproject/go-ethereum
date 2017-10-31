@@ -203,7 +203,7 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 			glog.V(logger.Error).Infoln("Chain rewind was successful, resuming normal operation")
 		}
 	}
-	// Take ownership of this particular state
+	// // Take ownership of this particular state
 	//go bc.update()
 	return bc, nil
 }
@@ -231,7 +231,8 @@ func (self *BlockChain) blockIsInvalid(b *types.Block) error {
 	}
 
 	blockAgnosticCases := []testCases{
-		{"block is nil",
+		{
+			"block is nil",
 			func(b *types.Block) error {
 				if b == nil {
 					return errNilBlock
@@ -239,7 +240,8 @@ func (self *BlockChain) blockIsInvalid(b *types.Block) error {
 				return nil
 			},
 		},
-		{"block has nil header",
+		{
+			"block has nil header",
 			func(b *types.Block) error {
 				if b.Header() == nil {
 					return errNilHeader
@@ -247,7 +249,8 @@ func (self *BlockChain) blockIsInvalid(b *types.Block) error {
 				return nil
 			},
 		},
-		{"block has nil body",
+		{
+			"block has nil body",
 			func(b *types.Block) error {
 				if b.Body() == nil {
 					return errors.New("nil body")
@@ -406,8 +409,10 @@ func (self *BlockChain) blockIsInvalid(b *types.Block) error {
 	return fullBlockCheck(b)
 }
 
-// Soft resets should only be called in case of probable corrupted or invalid stored data.
-// The blockchain state should be loaded so that cached head values are available, eg CurrentBlock(), etc.
+// Recovery progressively validates the health of stored blockchain data.
+// Soft resets should only be called in case of probable corrupted or invalid stored data,
+// and which are invalid for known or expected reasons.
+// It requires that the blockchain state be loaded so that cached head values are available, eg CurrentBlock(), etc.
 func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 
 	// Function for random dynamic incremental stepping through recoverable blocks.
@@ -449,13 +454,14 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	}()
 
 	// Step next block.
+	// Genesis is used only as a shorthand memory placeholder at a *types.Block; it will be replaced
+	// or never returned.
 	var checkpointBlockNext = self.Genesis()
 
-	// In order for this number to be available at the time this function is called, the number
+	// In order for this number to be available at the time this function is called, the number (eg. `from`)
 	// may need to be persisted locally from the last connection.
 	for i := from; i > 0 && checkpointBlockNext != nil; i += dynamicalIncrement {
 
-		// func (r *Rand) Int63n(n int64) int64
 		checkpointBlockNext = self.GetBlockByNumber(uint64(i))
 
 		// If block does not exist in db.
@@ -482,6 +488,7 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 			self.currentFastBlock = checkpointBlockNext
 
 			// If state information is available for block, it is a full block.
+			// State validity has been confirmed by `blockIsInvalid == nil`
 			if self.HasBlockAndState(checkpointBlockNext.Hash()) {
 				self.currentBlock = checkpointBlockNext
 			}
