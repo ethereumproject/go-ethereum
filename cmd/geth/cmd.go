@@ -701,7 +701,7 @@ func makedag(ctx *cli.Context) error {
 			if err != nil {
 				glog.Fatal("Can't find dir")
 			}
-			fmt.Println("making DAG, this could take awhile...")
+			glog.V(logger.Info).Infoln("making DAG, this could take awhile...")
 			ethash.MakeDAG(blockNum, dir)
 		}
 	default:

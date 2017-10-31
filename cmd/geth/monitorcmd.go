@@ -57,10 +57,10 @@ var (
 		Name:   "monitor",
 		Usage:  `Geth Monitor: node metrics monitoring and visualization`,
 		Description: `
-The Geth monitor is a tool to collect and visualize various internal metrics
-gathered by the node, supporting different chart types as well as the capacity
-to display multiple metrics simultaneously.
-`,
+	The Geth monitor is a tool to collect and visualize various internal metrics
+	gathered by the node, supporting different chart types as well as the capacity
+	to display multiple metrics simultaneously.
+		`,
 		Flags: []cli.Flag{
 			monitorCommandAttachFlag,
 			monitorCommandRowsFlag,
