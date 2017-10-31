@@ -355,7 +355,7 @@ func accountImport(ctx *cli.Context) error {
 	}
 	key, err := crypto.LoadECDSA(keyfile)
 	if err != nil {
-		log.Fatal("keyfile must be given as argument")
+		log.Fatalf("unable to decode keyfile '%s': %v", keyfile, err)
 	}
 	accman := MakeAccountManager(ctx)
 	passphrase := getPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, MakePasswordList(ctx))
