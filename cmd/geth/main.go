@@ -69,11 +69,11 @@ func makeCLIApp() (app *cli.App) {
 			Aliases: []string{"makedag"},
 			Usage:   "Generate ethash dag (for testing)",
 			Description: `
-The makedag command generates an ethash DAG in /tmp/dag.
+	The makedag command generates an ethash DAG in /tmp/dag.
 
-This command exists to support the system testing project.
-Regular users do not need to execute it.
-`,
+	This command exists to support the system testing project.
+	Regular users do not need to execute it.
+			`,
 		},
 		{
 			Action:  gpuinfo,
@@ -81,8 +81,8 @@ Regular users do not need to execute it.
 			Aliases: []string{"gpuinfo"},
 			Usage:   "GPU info",
 			Description: `
-Prints OpenCL device info for all found GPUs.
-`,
+	Prints OpenCL device info for all found GPUs.
+			`,
 		},
 		{
 			Action:  gpubench,
@@ -90,28 +90,28 @@ Prints OpenCL device info for all found GPUs.
 			Aliases: []string{"gpubench"},
 			Usage:   "Benchmark GPU",
 			Description: `
-Runs quick benchmark on first GPU found.
-`,
+	Runs quick benchmark on first GPU found.
+			`,
 		},
 		{
 			Action: version,
 			Name:   "version",
 			Usage:  "Print ethereum version numbers",
 			Description: `
-The output of this command is supposed to be machine-readable.
-`,
+	The output of this command is supposed to be machine-readable.
+			`,
 		},
 		{
 			Action: makeMLogDocumentation,
 			Name:   "mdoc",
 			Usage:  "Generate mlog documentation",
 			Description: `
-Auto-generates documentation for all available mlog lines.
-Use -md switch to toggle markdown output (eg. for wiki).
-Arguments may be used to specify exclusive candidate components;
-so 'geth mdoc -md discover' will generate markdown documentation only
-for the 'discover' component.
-`,
+	Auto-generates documentation for all available mlog lines.
+	Use -md switch to toggle markdown output (eg. for wiki).
+	Arguments may be used to specify exclusive candidate components;
+	so 'geth mdoc -md discover' will generate markdown documentation only
+	for the 'discover' component.
+			`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name: "md",
