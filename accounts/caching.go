@@ -19,11 +19,11 @@
 package accounts
 
 import (
-	"time"
-	"github.com/ethereumproject/go-ethereum/common"
 	"fmt"
+	"github.com/ethereumproject/go-ethereum/common"
 	"os"
 	"strings"
+	"time"
 )
 
 // Minimum amount of time between cache reloads. This limit applies if the platform does
@@ -74,7 +74,6 @@ type caching interface {
 
 	close()
 }
-
 
 func skipKeyFile(fi os.FileInfo) bool {
 	// Skip editor backups and UNIX-style hidden files.

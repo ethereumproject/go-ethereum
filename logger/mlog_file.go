@@ -20,9 +20,11 @@ package logger
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"math/big"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -30,13 +32,12 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"encoding/json"
-	"math/big"
 )
 
 type mlogFormat uint
+
 const (
-	mLOGPlain         mlogFormat = iota + 1
+	mLOGPlain mlogFormat = iota + 1
 	mLOGKV
 	MLOGJSON
 )
@@ -44,11 +45,11 @@ const (
 var (
 	// If non-empty, overrides the choice of directory in which to write logs.
 	// See createLogDirs for the full list of possible destinations.
-	mLogDir    *string     = new(string)
+	mLogDir    *string    = new(string)
 	mLogFormat mlogFormat = mLOGKV
 
 	errMLogComponentUnavailable = errors.New("provided component name is unavailable")
-	ErrUnkownMLogFormat = errors.New("unknown mlog format")
+	ErrUnkownMLogFormat         = errors.New("unknown mlog format")
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
 	// with MLogRegisterAvailable.
@@ -59,12 +60,12 @@ var (
 
 	// Abstract literals (for documentation examples, labels)
 	mlogInterfaceExamples = map[string]interface{}{
-		"INT": int(0),
-		"BIGINT": new(big.Int),
-		"STRING": "string",
-		"QUOTEDSTRING": "string with spaces",
+		"INT":            int(0),
+		"BIGINT":         new(big.Int),
+		"STRING":         "string",
+		"QUOTEDSTRING":   "string with spaces",
 		"STRING_OR_NULL": nil,
-		"DURATION": time.Minute + time.Second * 3 + time.Millisecond * 42,
+		"DURATION":       time.Minute + time.Second*3 + time.Millisecond*42,
 	}
 
 	MLogStringToFormat = map[string]mlogFormat{
@@ -125,7 +126,7 @@ func init() {
 }
 
 // Getters.
-func SetMlogEnabled(b bool) (bool) {
+func SetMlogEnabled(b bool) bool {
 	isMlogEnabled = b
 	return isMlogEnabled
 }
@@ -189,7 +190,7 @@ func (l *Logger) SendFormatted(format mlogFormat, level LogLevel, msg MLogT) {
 	case mLOGPlain:
 		l.Sendln(level, string(msg.FormatPlain()))
 	//case MLOGDocumentation:
-		// don't handle this because this is just for one-off help/usage printing documentation
+	// don't handle this because this is just for one-off help/usage printing documentation
 	default:
 		glog.Fatalf("Unknown mlog format: %v", format)
 	}
@@ -360,8 +361,8 @@ func (m *MLogT) FormatUsage() (out string) {
 func (m *MLogT) FormatJSONExample() []byte {
 	mm := &MLogT{
 		Receiver: m.Receiver,
-		Verb: m.Verb,
-		Subject: m.Subject,
+		Verb:     m.Verb,
+		Subject:  m.Subject,
 	}
 	var dets []MLogDetailT
 	for _, d := range m.Details {
@@ -372,7 +373,7 @@ func (m *MLogT) FormatJSONExample() []byte {
 		}
 		dets = append(dets, MLogDetailT{
 			Owner: d.Owner,
-			Key: d.Key,
+			Key:   d.Key,
 			Value: ex,
 		})
 	}
@@ -411,19 +412,19 @@ func (m *MLogT) FormatDocumentation(cmp mlogComponent) (out string) {
 %s
 
 __Key value__:
-` + "```" + `
+`+"```"+`
 %s %s %s
-` + "```" + `
+`+"```"+`
 
 __JSON__:
-` + "```json" + `
+`+"```json"+`
 %s
-` + "```" + `
+`+"```"+`
 
 __Plain__:
-` + "```" + `
+`+"```"+`
 %s %s %s
-` + "```" + `
+`+"```"+`
 
 _%d detail values_:
 
@@ -453,7 +454,7 @@ func (m *MLogT) EventName() string {
 	r := strings.ToLower(m.Receiver)
 	v := strings.ToLower(m.Verb)
 	s := strings.ToLower(m.Subject)
-	return strings.Join([]string{r,v,s}, ".")
+	return strings.Join([]string{r, v, s}, ".")
 }
 
 func (m *MLogDetailT) EventName() string {

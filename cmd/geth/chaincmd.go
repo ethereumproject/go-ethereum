@@ -17,14 +17,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 	"strings"
-	"bufio"
+	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
@@ -104,12 +104,23 @@ var (
 	}
 	resetCommand = cli.Command{
 		Action: resetChaindata,
-		Name: "reset",
-		Usage: "Reset the chain database",
+		Name:   "reset",
+		Usage:  "Reset the chain database",
 		Description: `
 		Reset does a hard reset of the entire chain database.
 		This is a drastic and irreversible command, and should be used with caution.
 		The command will require user confirmation before any action is taken.
+		`,
+	}
+	recoverCommand = cli.Command{
+		Action: recoverChaindata,
+		Name:   "recover",
+		Usage:  "Attempt blockchain data recovery in case of data corruption",
+		Description: `
+		Recover scans and health-checks all available blockchain data in order
+		to recover all consistent and healthy block data. It will remove invalid or
+		corrupt block data that may have been caused by hard killing, system failure,
+		space limitations, or attack.
 		`,
 	}
 )
@@ -287,7 +298,7 @@ func dump(ctx *cli.Context) error {
 			if sorted {
 				err = state.SortedDump(addresses, prefix, indent, out)
 			} else {
-				err = state.UnsortedDump(addresses,prefix,indent,out)
+				err = state.UnsortedDump(addresses, prefix, indent, out)
 			}
 
 			if err != nil {

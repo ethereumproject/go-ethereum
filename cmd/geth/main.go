@@ -54,6 +54,7 @@ func makeCLIApp() (app *cli.App) {
 		removedbCommand,
 		dumpCommand,
 		rollbackCommand,
+		recoverCommand,
 		resetCommand,
 		monitorCommand,
 		accountCommand,
@@ -114,7 +115,7 @@ func makeCLIApp() (app *cli.App) {
 			`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name: "md",
+					Name:  "md",
 					Usage: "Toggle markdown formatting",
 				},
 			},

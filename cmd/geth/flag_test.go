@@ -11,8 +11,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
-	"gopkg.in/urfave/cli.v1"
 	"github.com/ethereumproject/go-ethereum/core"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var ogHome string  // placeholder
@@ -132,7 +132,6 @@ func TestMustMakeChainDataDir(t *testing.T) {
 		// Passed when  run individually, but fails when run as go test. This is not a code problem.
 		{[]string{"--chain", "kitty/cat"}, filepath.Join(dd, funkyName), ErrInvalidChainID},
 		{[]string{"--chain", funkyName}, filepath.Join(dd, funkyName), nil},
-
 	}
 
 	for _, c := range cases {
@@ -189,20 +188,20 @@ func TestGetChainIdentityValue(t *testing.T) {
 		{[]string{"--chain", "chaindata"}, ""},
 		{[]string{"--chain", "dapp"}, ""},
 
-		 // Invalid.
-		 // These pass when test is run individually, but go test doesn't like error out.
+		// Invalid.
+		// These pass when test is run individually, but go test doesn't like error out.
 		{[]string{"--chain", "kitty/cat"}, ""},
 	}
 
 	for _, c := range cases {
 		// Unset cache.
 		cacheChainIdentity = ""
-		
+
 		if c.want == "" {
 			t.Log("skipping test for erroring use case (will pass, but go test doesn't like glog)")
 			continue
 		}
-		
+
 		setupFlags(t)
 
 		if e := set.Parse(c.flags); e != nil {
@@ -323,4 +322,3 @@ func TestMakeAddress(t *testing.T) {
 		t.Fatalf("want: %v, got: %v", wantAccount, gotAccount)
 	}
 }
-

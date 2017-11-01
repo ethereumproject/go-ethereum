@@ -578,8 +578,8 @@ func HandleIpBetween(t *testing.T, from string, to string, test string, assert b
 }
 
 func TestIsReserved(t *testing.T) {
-	table := []struct{
-		ip string
+	table := []struct {
+		ip       string
 		reserved bool
 	}{
 		{"0.1.1.1", true},

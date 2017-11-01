@@ -17,13 +17,13 @@
 package state
 
 import (
-	"bytes"
-	"sync"
-	"sort"
 	"bufio"
-	"io"
-	"encoding/json"
+	"bytes"
 	"compress/zlib"
+	"encoding/json"
+	"io"
+	"sort"
+	"sync"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/rlp"
@@ -97,13 +97,13 @@ func (self *StateDB) RawDump(addresses []common.Address) Dump {
 	return dump
 }
 
-const ZipperBlockLength = 1*1024*1024
-const ZipperPieceLength = 64*1024
+const ZipperBlockLength = 1 * 1024 * 1024
+const ZipperPieceLength = 64 * 1024
 
 type Zipper struct {
 	MemBrk int
-	Mem []byte
-	Bf bytes.Buffer
+	Mem    []byte
+	Bf     bytes.Buffer
 }
 
 type AddressedRawAccount struct {
@@ -112,14 +112,14 @@ type AddressedRawAccount struct {
 }
 
 type EncodedAccount struct {
-	Addr string
-	Json []byte
+	Addr  string
+	Json  []byte
 	Error error
 }
 
 func (self *Zipper) ZipBytes(data []byte) (result []byte, err error) {
 	self.Bf.Reset()
-	wr, err := zlib.NewWriterLevel(&self.Bf,zlib.DefaultCompression)
+	wr, err := zlib.NewWriterLevel(&self.Bf, zlib.DefaultCompression)
 	if err != nil {
 		panic(err)
 	}
@@ -135,14 +135,14 @@ func (self *Zipper) ZipBytes(data []byte) (result []byte, err error) {
 		result = self.Bf.Bytes()
 		self.Bf = bytes.Buffer{}
 	} else {
-		if n + self.MemBrk > ZipperBlockLength || self.Mem == nil {
-			self.Mem = make([]byte,ZipperBlockLength)
+		if n+self.MemBrk > ZipperBlockLength || self.Mem == nil {
+			self.Mem = make([]byte, ZipperBlockLength)
 			self.MemBrk = 0
 		}
-		result = self.Mem[self.MemBrk:self.MemBrk+n]
+		result = self.Mem[self.MemBrk : self.MemBrk+n]
 		self.MemBrk = self.MemBrk + n
 	}
-	copy(result,self.Bf.Bytes())
+	copy(result, self.Bf.Bytes())
 	return
 }
 
@@ -158,7 +158,7 @@ func (self *Zipper) UnZipBytes(data []byte) (result []byte, err error) {
 	return
 }
 
-func iterator (sdb *StateDB, addresses []common.Address, c chan *AddressedRawAccount) {
+func iterator(sdb *StateDB, addresses []common.Address, c chan *AddressedRawAccount) {
 	it := sdb.trie.Iterator()
 	for it.Next() {
 		addr := sdb.trie.GetKey(it.Key)
@@ -186,7 +186,7 @@ func iterator (sdb *StateDB, addresses []common.Address, c chan *AddressedRawAcc
 				CodeHash: common.Bytes2Hex(data.CodeHash),
 				Code:     common.Bytes2Hex(obj.Code(sdb.db)),
 				Storage:  make(map[string]string)},
-			Addr:     common.Bytes2Hex(addr),
+			Addr: common.Bytes2Hex(addr),
 		}
 		storageIt := obj.getTrie(sdb.db).Iterator()
 		for storageIt.Next() {
@@ -197,7 +197,7 @@ func iterator (sdb *StateDB, addresses []common.Address, c chan *AddressedRawAcc
 	close(c)
 }
 
-func compressor (c chan *AddressedRawAccount, cN chan EncodedAccount, wg *sync.WaitGroup) {
+func compressor(c chan *AddressedRawAccount, cN chan EncodedAccount, wg *sync.WaitGroup) {
 	var zipper Zipper
 	defer wg.Done()
 	for {
@@ -207,11 +207,11 @@ func compressor (c chan *AddressedRawAccount, cN chan EncodedAccount, wg *sync.W
 				return
 			}
 			if val, err := json.Marshal(account.DumpAccount); err != nil {
-				cN <- EncodedAccount{"",nil,err}
+				cN <- EncodedAccount{"", nil, err}
 				return
 			} else {
 				data, err := zipper.ZipBytes(val)
-				cN <- EncodedAccount{account.Addr,data, err}
+				cN <- EncodedAccount{account.Addr, data, err}
 				if err != nil {
 					return
 				}
@@ -220,7 +220,7 @@ func compressor (c chan *AddressedRawAccount, cN chan EncodedAccount, wg *sync.W
 	}
 }
 
-func encoder (c chan *AddressedRawAccount, cN chan EncodedAccount, wg *sync.WaitGroup) {
+func encoder(c chan *AddressedRawAccount, cN chan EncodedAccount, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
@@ -229,10 +229,10 @@ func encoder (c chan *AddressedRawAccount, cN chan EncodedAccount, wg *sync.Wait
 				return
 			}
 			if val, err := json.Marshal(account.DumpAccount); err != nil {
-				cN <- EncodedAccount{"",nil,err}
+				cN <- EncodedAccount{"", nil, err}
 				return
 			} else {
-				cN <- EncodedAccount{account.Addr,val, nil}
+				cN <- EncodedAccount{account.Addr, val, nil}
 				if err != nil {
 					return
 				}
@@ -241,21 +241,21 @@ func encoder (c chan *AddressedRawAccount, cN chan EncodedAccount, wg *sync.Wait
 	}
 }
 
-func (self *StateDB) LoadEncodedAccounts(addresses []common.Address) ( accounts map[string][]byte, err error ) {
+func (self *StateDB) LoadEncodedAccounts(addresses []common.Address) (accounts map[string][]byte, err error) {
 
 	accounts = make(map[string][]byte)
 
 	var wg sync.WaitGroup
-	c1 := make(chan *AddressedRawAccount,10)
-	c2 := make(chan EncodedAccount,10)
+	c1 := make(chan *AddressedRawAccount, 10)
+	c2 := make(chan EncodedAccount, 10)
 	c3 := make(chan error)
 
 	for i := 0; i < 2; i++ {
 		wg.Add(1)
-		go compressor(c1,c2,&wg)
+		go compressor(c1, c2, &wg)
 	}
 
-	go iterator(self,addresses,c1)
+	go iterator(self, addresses, c1)
 
 	go func() {
 		for {
@@ -290,8 +290,8 @@ func writer(root string, zipped bool, prefix string, indent string, out io.Write
 		indent3 := indent2 + indent
 
 		var (
-			js   []byte
-			bf   bytes.Buffer
+			js []byte
+			bf bytes.Buffer
 		)
 
 		wr := bufio.NewWriter(out)
@@ -312,7 +312,8 @@ func writer(root string, zipped bool, prefix string, indent string, out io.Write
 		wr.WriteString("\"accounts\": {\n")
 		nl := false
 
-		loop: for {
+	loop:
+		for {
 			select {
 			case acc, ok := <-c:
 
@@ -370,22 +371,22 @@ func writer(root string, zipped bool, prefix string, indent string, out io.Write
 func (self *StateDB) UnsortedRawDump(addresses []common.Address, fwr func(chan EncodedAccount, chan error)) (err error) {
 
 	var wg sync.WaitGroup
-	c1 := make(chan *AddressedRawAccount,10)
-	c2 := make(chan EncodedAccount,10)
+	c1 := make(chan *AddressedRawAccount, 10)
+	c2 := make(chan EncodedAccount, 10)
 	c3 := make(chan error)
-	go iterator(self,addresses,c1)
+	go iterator(self, addresses, c1)
 	for i := 0; i < 2; i++ {
 		wg.Add(1)
-		go encoder(c1,c2,&wg)
+		go encoder(c1, c2, &wg)
 	}
-	go fwr(c2,c3)
+	go fwr(c2, c3)
 	wg.Wait()
 	close(c2)
 	err = <-c3
 	return
 }
 
-func (self *StateDB) SortedDump(addresses []common.Address, prefix string, indent string, out io.Writer) (err error){
+func (self *StateDB) SortedDump(addresses []common.Address, prefix string, indent string, out io.Writer) (err error) {
 
 	var accounts map[string][]byte
 
@@ -394,23 +395,23 @@ func (self *StateDB) SortedDump(addresses []common.Address, prefix string, inden
 		return
 	}
 
-	fwr := writer(common.Bytes2Hex(self.trie.Root()),true,prefix,indent,out)
+	fwr := writer(common.Bytes2Hex(self.trie.Root()), true, prefix, indent, out)
 
-	keys := make([]string,0,len(accounts))
+	keys := make([]string, 0, len(accounts))
 	for k := range accounts {
-		keys = append(keys,k)
+		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
-	c1 := make(chan EncodedAccount,1)
-	c2 := make(chan error,1)
+	c1 := make(chan EncodedAccount, 1)
+	c2 := make(chan error, 1)
 
-	go fwr(c1,c2)
+	go fwr(c1, c2)
 
 	go func() {
 		for _, addr := range keys {
 			data := accounts[addr]
-			c1 <- EncodedAccount{addr, data, nil }
+			c1 <- EncodedAccount{addr, data, nil}
 		}
 		close(c1)
 	}()
@@ -420,13 +421,13 @@ func (self *StateDB) SortedDump(addresses []common.Address, prefix string, inden
 }
 
 func (self *StateDB) UnsortedDump(addresses []common.Address, prefix string, indent string, out io.Writer) (err error) {
-	fwr := writer(common.Bytes2Hex(self.trie.Root()),false,prefix,indent,out)
-	return self.UnsortedRawDump(addresses,fwr)
+	fwr := writer(common.Bytes2Hex(self.trie.Root()), false, prefix, indent, out)
+	return self.UnsortedRawDump(addresses, fwr)
 }
 
 func (self *StateDB) Dump(addresses []common.Address) []byte {
 	var bf bytes.Buffer
-	err := self.SortedDump(addresses,"","    ",&bf)
+	err := self.SortedDump(addresses, "", "    ", &bf)
 	if err != nil {
 		return nil
 	}
