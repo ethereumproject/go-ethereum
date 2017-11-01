@@ -102,6 +102,16 @@ var (
 	Show the status of the current configuration.
 		`,
 	}
+	resetCommand = cli.Command{
+		Action: resetChaindata,
+		Name: "reset",
+		Usage: "Reset the chain database",
+		Description: `
+		Reset does a hard reset of the entire chain database.
+		This is a drastic and irreversible command, and should be used with caution.
+		The command will require user confirmation before any action is taken.
+		`,
+	}
 )
 
 func importChain(ctx *cli.Context) error {
