@@ -31,7 +31,7 @@ import (
 
 var (
 	AccountsIndexFlag = cli.BoolFlag{
-		Name: "index-accounts,indexaccounts",
+		Name:  "index-accounts,indexaccounts",
 		Usage: "Enable key-value db store for indexing large amounts of key files",
 	}
 	walletCommand = cli.Command{

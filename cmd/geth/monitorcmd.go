@@ -26,13 +26,13 @@ import (
 
 	"sort"
 
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"github.com/gizak/termui"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/common"
 	"path/filepath"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"regexp"
 )
 
@@ -268,7 +268,7 @@ func flattenToFloat(rawMets map[string]interface{}) map[string]float64 {
 		if vi, ok := v.(map[string]interface{}); ok {
 			for vk, vv := range vi {
 				if f, fok := vv.(float64); fok {
-					mets[k + "/" + vk] = f
+					mets[k+"/"+vk] = f
 				}
 			}
 		}

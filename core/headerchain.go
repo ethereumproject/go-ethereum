@@ -178,7 +178,7 @@ func (hc *HeaderChain) WriteHeader(header *types.Header) (status WriteStatus, er
 		if err := WriteHeadHeaderHash(hc.chainDb, hash); err != nil {
 			glog.Fatalf("failed to insert head header hash: %v", err)
 		}
-		
+
 		hc.currentHeaderHash, hc.currentHeader = hash, types.CopyHeader(header)
 
 		status = CanonStatTy
