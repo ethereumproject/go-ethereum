@@ -22,9 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-
 	"strings"
-
 	"errors"
 	"io/ioutil"
 	"math/big"
@@ -32,7 +30,6 @@ import (
 	"strconv"
 	"syscall"
 	"time"
-
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -44,6 +41,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
+	"bufio"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/event"
 )
@@ -705,7 +703,7 @@ func makedag(ctx *cli.Context) error {
 			if err != nil {
 				glog.Fatal("Can't find dir")
 			}
-			fmt.Println("making DAG, this could take awhile...")
+			glog.V(logger.Info).Infoln("making DAG, this could take awhile...")
 			ethash.MakeDAG(blockNum, dir)
 		}
 	default:
@@ -1066,6 +1064,56 @@ func recoverChaindata(ctx *cli.Context) error {
 	if setHeadErr := bc.SetHead(checkpoint); setHeadErr != nil {
 		glog.V(logger.Error).Infof("Error setting head: %v\n", setHeadErr)
 		return setHeadErr
+	}
+	return nil
+}
+
+// https://gist.github.com/r0l1/3dcbb0c8f6cfe9c66ab8008f55f8f28b
+// askForConfirmation asks the user for confirmation. A user must type in "yes" or "no" and
+// then press enter. It has fuzzy matching, so "y", "Y", "yes", "YES", and "Yes" all count as
+// confirmations. If the input is not recognized, it will ask again. The function does not return
+// until it gets a valid response from the user.
+//
+// Use 'error' verbosity for logging since this is user-critical and required feedback.
+func askForConfirmation(s string) bool {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		glog.V(logger.Error).Infof("%s [y/n]: ", s)
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			glog.Fatalln(err)
+		}
+
+		response = strings.ToLower(strings.TrimSpace(response))
+
+		if response == "y" || response == "yes" {
+			return true
+		} else if response == "n" || response == "no" {
+			return false
+		} else {
+			glog.V(logger.Error).Infoln(glog.Separator("*"))
+			glog.V(logger.Error).Infoln("* INVALID RESPONSE: Please respond with [y|yes] or [n|no], or use CTRL-C to abort.")
+			glog.V(logger.Error).Infoln(glog.Separator("*"))
+		}
+	}
+}
+
+// resetChaindata removes (rm -rf's) the /chaindata directory, ensuring
+// eradication of any corrupted chain data.
+func resetChaindata(ctx *cli.Context) error {
+	dir := MustMakeChainDataDir(ctx)
+	dir = filepath.Join(dir, "chaindata")
+	prompt := fmt.Sprintf("\n\nThis will remove the directory='%s' and all of it's contents.\n** Are you sure you want to remove ALL chain data?", dir)
+	c := askForConfirmation(prompt)
+	if c {
+		if err := os.RemoveAll(dir); err != nil {
+			return err
+		}
+		glog.V(logger.Error).Infof("Successfully removed chaindata directory: '%s'\n", dir)
+	} else {
+		glog.V(logger.Error).Infoln("Leaving chaindata untouched. As you were.")
 	}
 	return nil
 }
