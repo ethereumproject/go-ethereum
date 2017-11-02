@@ -1503,6 +1503,8 @@ func TestEIP155Transition(t *testing.T) {
 }
 
 func TestBlockChain_BlockIsGenesis(t *testing.T) {
+	MinGasLimit = big.NewInt(5000)
+
 	// Make chain starting from genesis
 	_, blockchain, err := newCanonical(testChainConfig(), 10, false)
 	if err != nil {
