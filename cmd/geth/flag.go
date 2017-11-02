@@ -811,7 +811,7 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
 	glog.V(logger.Info).Infof("Starting Geth Ellaism \x1b[32m%s\x1b[39m", ctx.App.Version)
-	glog.V(logger.Info).Infof("Geth is configured to use ETC blockchain: \x1b[32m%v\x1b[39m", config.Name)
+	glog.V(logger.Info).Infof("Geth is configured to use blockchain: \x1b[32m%v\x1b[39m", config.Name)
 	glog.V(logger.Info).Infof("Using chain database at: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata")
 
 	glog.V(logger.Info).Infof("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks))
