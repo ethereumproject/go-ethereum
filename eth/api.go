@@ -30,7 +30,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereumproject/ethash"
 	"github.com/ellaism/go-ellaism/accounts"
 	"github.com/ellaism/go-ellaism/common"
 	"github.com/ellaism/go-ellaism/common/compiler"
@@ -43,11 +42,12 @@ import (
 	"github.com/ellaism/go-ellaism/event"
 	"github.com/ellaism/go-ellaism/logger"
 	"github.com/ellaism/go-ellaism/logger/glog"
+	ethMetrics "github.com/ellaism/go-ellaism/metrics"
 	"github.com/ellaism/go-ellaism/miner"
 	"github.com/ellaism/go-ellaism/p2p"
 	"github.com/ellaism/go-ellaism/rlp"
 	"github.com/ellaism/go-ellaism/rpc"
-	ethMetrics "github.com/ellaism/go-ellaism/metrics"
+	"github.com/ethereumproject/ethash"
 )
 
 const defaultGas = uint64(90000)
@@ -1744,6 +1744,34 @@ func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
 	return out, nil
 }
 
+// Verbosity implements api method debug_verbosity, enabling setting
+// global logging verbosity on the fly.
+// Note that it will NOT allow setting verbosity '0', which is effectively 'off'.
+// In place of ability to receive 0 as a functional parameter, debug.verbosity() -> debug.verbosity(0) -> glog.GetVerbosity().
+// creates a shorthand/convenience method as a "getter" function returning the current value
+// of the verbosity setting.
+func (api *PublicDebugAPI) Verbosity(n uint64) (int, error) {
+	nint := int(n)
+	if nint == 0 {
+		return int(*glog.GetVerbosity()), nil
+	}
+	if nint <= logger.Detail || nint == logger.Ridiculousness {
+		glog.SetV(nint)
+		return int(*glog.GetVerbosity()), nil
+	}
+	return -1, errors.New("invalid logging level")
+}
+
+// Vmodule implements api method debug_vmodule, enabling setting
+// glog per-module verbosity settings on the fly.
+func (api *PublicDebugAPI) Vmodule(s string) (string, error) {
+	if s == "" {
+		return glog.GetVModule().String(), nil
+	}
+	err := glog.GetVModule().Set(s)
+	return glog.GetVModule().String(), err
+}
+
 // ExecutionResult groups all structured logs emitted by the EVM
 // while replaying a transaction in debug mode as well as the amount of
 // gas used and the return value
@@ -1818,7 +1846,7 @@ func (s *PublicDebugAPI) TraceTransaction(txHash common.Hash) (*ExecutionResult,
 	gp := new(core.GasPool).AddGas(tx.Gas())
 	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
 	return &ExecutionResult{
-		Gas: gas,
+		Gas:         gas,
 		ReturnValue: fmt.Sprintf("%x", ret),
 	}, nil
 }
@@ -1857,12 +1885,12 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 		}
 
 		msg := callmsg{
-			from: from,
-			to: tx.To(),
-			gas: tx.Gas(),
+			from:     from,
+			to:       tx.To(),
+			gas:      tx.Gas(),
 			gasPrice: tx.GasPrice(),
-			value: tx.Value(),
-			data: tx.Data(),
+			value:    tx.Value(),
+			data:     tx.Data(),
 		}
 
 		vmenv := core.NewEnv(statedb, s.eth.chainConfig, s.eth.BlockChain(), msg, block.Header())

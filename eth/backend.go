@@ -219,7 +219,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	// load the genesis block or write a new one if no genesis
-	// block is prenent in the database.
+	// block is present in the database.
 	genesis := core.GetBlock(chainDb, core.GetCanonicalHash(chainDb, 0))
 	if genesis == nil {
 		genesis, err = core.WriteGenesisBlock(chainDb, core.DefaultConfigMainnet.Genesis)

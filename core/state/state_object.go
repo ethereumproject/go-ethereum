@@ -234,7 +234,7 @@ func (c *StateObject) AddBalance(amount *big.Int) {
 			amount,
 		))
 	}
-	if glog.V(logger.Debug) {
+	if glog.V(logger.Detail) {
 		glog.Infof("%x: #%d %v (+ %v)\n", c.Address(), c.Nonce(), c.Balance(), amount)
 	}
 }
@@ -252,7 +252,7 @@ func (c *StateObject) SubBalance(amount *big.Int) {
 			amount,
 		))
 	}
-	if glog.V(logger.Core) {
+	if glog.V(logger.Detail) {
 		glog.Infof("%x: #%d %v (- %v)\n", c.Address(), c.Nonce(), c.Balance(), amount)
 	}
 }

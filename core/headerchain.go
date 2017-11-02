@@ -162,7 +162,9 @@ func (hc *HeaderChain) WriteHeader(header *types.Header) (status WriteStatus, er
 			headNumber = headHeader.Number.Uint64()
 		)
 		for GetCanonicalHash(hc.chainDb, headNumber) != headHash {
-			WriteCanonicalHash(hc.chainDb, headHash, headNumber)
+			if err := WriteCanonicalHash(hc.chainDb, headHash, headNumber); err != nil {
+				glog.Fatalf("failed to insert header number: %v", err)
+			}
 
 			headHash = headHeader.ParentHash
 			headHeader = hc.GetHeader(headHash)

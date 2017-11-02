@@ -56,8 +56,8 @@ func MakeDiehardChainConfig() *ChainConfig {
 	return &ChainConfig{
 		Forks: []*Fork{
 			{
-				Name:   "Diehard",
-				Block:  big.NewInt(0),
+				Name:  "Diehard",
+				Block: big.NewInt(0),
 				Features: []*ForkFeature{
 					{
 						ID: "eip155",
@@ -66,15 +66,15 @@ func MakeDiehardChainConfig() *ChainConfig {
 						},
 					},
 					{ // ecip1010 bomb delay
-						ID:    "gastable",
+						ID: "gastable",
 						Options: ChainFeatureConfigOptions{
 							"type": "eip160",
 						},
 					},
 					{ // ecip1010 bomb delay
-						ID:    "difficulty",
+						ID: "difficulty",
 						Options: ChainFeatureConfigOptions{
-							"type": "ecip1010",
+							"type":   "ecip1010",
 							"length": 2000000,
 						},
 					},

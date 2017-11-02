@@ -106,7 +106,7 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 	}
 	// Figure out whether to allow fast sync or not
 	if fastSync && blockchain.CurrentBlock().NumberU64() > 0 {
-		glog.V(logger.Warn).Infof("Fast sync: disabled: blockchain not empty")
+		glog.V(logger.Warn).Infof("WARNING: Blockchain not empty, fast sync disabled")
 		fastSync = false
 	}
 	if fastSync {
@@ -287,7 +287,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		if !fork.RequiredHash.IsEmpty() {
 			// Request the peer's fork block header for extra-dat
 			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
-				glog.V(logger.Warn).Infof("%v: error requesting headers by number ", p)
+				glog.V(logger.Debug).Infof("%v: error requesting headers by number ", p)
 				return err
 			}
 			// Start a timer to disconnect if the peer doesn't reply in time

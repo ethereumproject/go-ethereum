@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-
 // This file 'mlog' is home to the 'discover' package implementation of mlog.
 // All available mlog lines should be established here as variables and documented.
 // For each instance of an mlog call, the respective MLogT variable SetDetailValues()
@@ -48,9 +47,9 @@ var mLogLines = []logger.MLogT{
 // mlogPingHandleFrom is called once for each ping request from a node FROM
 var mlogPingHandleFrom = logger.MLogT{
 	Description: "Called once for each received PING request from peer FROM.",
-	Receiver: "PING",
-	Verb: "HANDLE",
-	Subject: "FROM",
+	Receiver:    "PING",
+	Verb:        "HANDLE",
+	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
 		{"FROM", "UDP_ADDRESS", "STRING"},
 		{"FROM", "ID", "STRING"},
@@ -60,9 +59,9 @@ var mlogPingHandleFrom = logger.MLogT{
 
 var mlogPingSendTo = logger.MLogT{
 	Description: "Called once for each outgoing PING request to peer TO.",
-	Receiver: "PING",
-	Verb: "SEND",
-	Subject: "TO",
+	Receiver:    "PING",
+	Verb:        "SEND",
+	Subject:     "TO",
 	Details: []logger.MLogDetailT{
 		{"TO", "UDP_ADDRESS", "STRING"},
 		{"PING", "BYTES_TRANSFERRED", "INT"},
@@ -73,9 +72,9 @@ var mlogPingSendTo = logger.MLogT{
 // mlogPongHandleFrom is called once for each pong request from a node FROM
 var mlogPongHandleFrom = logger.MLogT{
 	Description: "Called once for each received PONG request from peer FROM.",
-	Receiver: "PONG",
-	Verb: "HANDLE",
-	Subject: "FROM",
+	Receiver:    "PONG",
+	Verb:        "HANDLE",
+	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
 		{"FROM", "UDP_ADDRESS", "STRING"},
 		{"FROM", "ID", "STRING"},
@@ -86,9 +85,9 @@ var mlogPongHandleFrom = logger.MLogT{
 // mlogPingHandleFrom is called once for each ping request from a node FROM
 var mlogPongSendTo = logger.MLogT{
 	Description: "Called once for each outgoing PONG request to peer TO.",
-	Receiver: "PONG",
-	Verb: "SEND",
-	Subject: "TO",
+	Receiver:    "PONG",
+	Verb:        "SEND",
+	Subject:     "TO",
 	Details: []logger.MLogDetailT{
 		{"TO", "UDP_ADDRESS", "STRING"},
 		{"PONG", "BYTES_TRANSFERRED", "INT"},
@@ -99,9 +98,9 @@ var mlogPongSendTo = logger.MLogT{
 // mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
 var mlogFindNodeHandleFrom = logger.MLogT{
 	Description: "Called once for each received FIND_NODE request from peer FROM.",
-	Receiver: "FINDNODE",
-	Verb: "HANDLE",
-	Subject: "FROM",
+	Receiver:    "FINDNODE",
+	Verb:        "HANDLE",
+	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
 		{"FROM", "UDP_ADDRESS", "STRING"},
 		{"FROM", "ID", "STRING"},
@@ -112,9 +111,9 @@ var mlogFindNodeHandleFrom = logger.MLogT{
 // mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
 var mlogFindNodeSendTo = logger.MLogT{
 	Description: "Called once for each received FIND_NODE request from peer FROM.",
-	Receiver: "FINDNODE",
-	Verb: "SEND",
-	Subject: "TO",
+	Receiver:    "FINDNODE",
+	Verb:        "SEND",
+	Subject:     "TO",
 	Details: []logger.MLogDetailT{
 		{"TO", "UDP_ADDRESS", "STRING"},
 		{"FINDNODE", "BYTES_TRANSFERRED", "INT"},
@@ -125,9 +124,9 @@ var mlogFindNodeSendTo = logger.MLogT{
 // mlogNeighborsHandleFrom is called once for each neighbors request from a node FROM
 var mlogNeighborsHandleFrom = logger.MLogT{
 	Description: `Called once for each received NEIGHBORS request from peer FROM.`,
-	Receiver: "NEIGHBORS",
-	Verb: "HANDLE",
-	Subject: "FROM",
+	Receiver:    "NEIGHBORS",
+	Verb:        "HANDLE",
+	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
 		{"FROM", "UDP_ADDRESS", "STRING"},
 		{"FROM", "ID", "STRING"},
@@ -138,9 +137,9 @@ var mlogNeighborsHandleFrom = logger.MLogT{
 // mlogFindNodeSendNeighbors is called once for each sent NEIGHBORS request
 var mlogNeighborsSendTo = logger.MLogT{
 	Description: `Called once for each outgoing NEIGHBORS request to peer TO.`,
-	Receiver: "NEIGHBORS",
-	Verb: "SEND",
-	Subject: "TO",
+	Receiver:    "NEIGHBORS",
+	Verb:        "SEND",
+	Subject:     "TO",
 	Details: []logger.MLogDetailT{
 		{"TO", "UDP_ADDRESS", "STRING"},
 		{"NEIGHBORS", "BYTES_TRANSFERRED", "INT"},

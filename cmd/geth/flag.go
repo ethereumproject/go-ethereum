@@ -106,7 +106,7 @@ var (
 	devModeDataDirPath = filepath.Join(os.TempDir(), "/ethereum_dev_mode")
 
 	cacheChainIdentity string
-	cacheChainConfig *core.SufficientChainConfig
+	cacheChainConfig   *core.SufficientChainConfig
 )
 
 // chainIsMorden allows either
@@ -151,7 +151,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 	if cacheChainIdentity != "" {
 		return cacheChainIdentity
 	}
-	defer func () {
+	defer func() {
 		cacheChainIdentity = identity
 	}()
 

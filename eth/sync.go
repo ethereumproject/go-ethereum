@@ -170,6 +170,10 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 	// Make sure the peer's TD is higher than our own
 	currentBlock := pm.blockchain.CurrentBlock()
 	td := pm.blockchain.GetTd(currentBlock.Hash())
+	// Stored block's td should never be nil or non-positive.
+	if td == nil || td.Sign() < 1 {
+		glog.Fatalf("Found invalid TD=%v for current block in database. Exiting.\nCheck available disk space and restart to attempt database recovery.", td)
+	}
 	pHead, pTd := peer.Head()
 	if pTd.Cmp(td) <= 0 {
 		return

@@ -26,13 +26,13 @@ import (
 
 	"sort"
 
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"github.com/ellaism/go-ellaism/node"
 	"github.com/ellaism/go-ellaism/rpc"
 	"github.com/gizak/termui"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ellaism/go-ellaism/common"
 	"path/filepath"
-	"github.com/ellaism/go-ellaism/logger/glog"
 	"regexp"
 )
 
@@ -57,10 +57,10 @@ var (
 		Name:   "monitor",
 		Usage:  `Geth Monitor: node metrics monitoring and visualization`,
 		Description: `
-The Geth monitor is a tool to collect and visualize various internal metrics
-gathered by the node, supporting different chart types as well as the capacity
-to display multiple metrics simultaneously.
-`,
+	The Geth monitor is a tool to collect and visualize various internal metrics
+	gathered by the node, supporting different chart types as well as the capacity
+	to display multiple metrics simultaneously.
+		`,
 		Flags: []cli.Flag{
 			monitorCommandAttachFlag,
 			monitorCommandRowsFlag,
@@ -268,7 +268,7 @@ func flattenToFloat(rawMets map[string]interface{}) map[string]float64 {
 		if vi, ok := v.(map[string]interface{}); ok {
 			for vk, vv := range vi {
 				if f, fok := vv.(float64); fok {
-					mets[k + "/" + vk] = f
+					mets[k+"/"+vk] = f
 				}
 			}
 		}

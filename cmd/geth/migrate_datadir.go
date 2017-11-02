@@ -17,16 +17,16 @@
 package main
 
 import (
-	"path/filepath"
-	"os"
+	"fmt"
 	"github.com/ellaism/go-ellaism/common"
 	"github.com/ellaism/go-ellaism/core"
-	"github.com/ellaism/go-ellaism/logger/glog"
-	"github.com/ellaism/go-ellaism/logger"
 	"github.com/ellaism/go-ellaism/ethdb"
-	"math/big"
-	"fmt"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"gopkg.in/urfave/cli.v1"
+	"math/big"
+	"os"
+	"path/filepath"
 )
 
 // migrateExistingDirToClassicNamingScheme renames default base data directory ".../Ethereum" to ".../EthereumClassic", pending os customs, etc... ;-)

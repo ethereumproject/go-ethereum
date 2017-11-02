@@ -322,6 +322,7 @@ func WriteBlock(db ethdb.Database, block *types.Block) error {
 	if err := WriteBody(db, block.Hash(), block.Body()); err != nil {
 		return err
 	}
+
 	// Store the header too, signaling full block ownership
 	if err := WriteHeader(db, block.Header()); err != nil {
 		return err

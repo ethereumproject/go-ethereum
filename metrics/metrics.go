@@ -24,9 +24,9 @@ import (
 	"runtime"
 	"time"
 
+	"bytes"
 	"github.com/ellaism/go-ellaism/logger/glog"
 	"github.com/rcrowley/go-metrics"
-	"bytes"
 )
 
 // Reg is the metrics destination.

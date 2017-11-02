@@ -31,7 +31,7 @@ import (
 
 var (
 	AccountsIndexFlag = cli.BoolFlag{
-		Name: "index-accounts,indexaccounts",
+		Name:  "index-accounts,indexaccounts",
 		Usage: "Enable key-value db store for indexing large amounts of key files",
 	}
 	walletCommand = cli.Command{
@@ -46,53 +46,62 @@ var (
 		},
 		Description: `
 
-    get wallet import /path/to/my/presale.wallet
+geth wallet import /path/to/my/presale.wallet
 
-will prompt for your password and imports your ether presale account.
-It can be used non-interactively with the --password option taking a
-passwordfile as argument containing the wallet password in plaintext.
+	Will prompt for your password and imports your ether presale account.
+	It can be used non-interactively with the --password option taking a
+	passwordfile as argument containing the wallet password in plaintext.
 
-`}
+	`}
 	accountCommand = cli.Command{
-		Action: accountList,
+		Action: accountMan,
 		Name:   "account",
 		Usage:  "Manage accounts",
 		Description: `
 
-Manage accounts lets you create new accounts, list all existing accounts,
-import a private key into a new account.
+	Manage accounts lets you create new accounts, list all existing accounts,
+	import a private key into a new account.
 
-'            help' shows a list of subcommands or help for one subcommand.
+	'$ geth account <command> --help' shows help for any subcommand.
 
-It supports interactive mode, when you are prompted for password as well as
-non-interactive mode where passwords are supplied via a given password file.
-Non-interactive mode is only meant for scripted use on test networks or known
-safe environments.
+	It supports interactive mode, when you are prompted for password as well as
+	non-interactive mode where passwords are supplied via a given password file.
+	Non-interactive mode is only meant for scripted use on test networks or known
+	safe environments.
 
-Make sure you remember the password you gave when creating a new account (with
-either new or import). Without it you are not able to unlock your account.
+	Make sure you remember the password you gave when creating a new account (with
+	either new or import). Without it you are not able to unlock your account.
 
-Note that exporting your key in unencrypted format is NOT supported.
+	Note that exporting your key in unencrypted format is NOT supported.
 
-Keys are stored under <DATADIR>/keystore.
-It is safe to transfer the entire directory or the individual keys therein
-between ethereum nodes by simply copying.
-Make sure you backup your keys regularly.
+	Keys are stored under <DATADIR>/<CHAINDIR>/keystore.
+	It is safe to transfer the entire directory or the individual keys therein
+	between ethereum nodes by simply copying.
+	Make sure you backup your keys regularly.
 
-In order to use your account to send transactions, you need to unlock them using
-the '--unlock' option. The argument is a space separated list of addresses or
-indexes. If used non-interactively with a passwordfile, the file should contain
-the respective passwords one per line. If you unlock n accounts and the password
-file contains less than n entries, then the last password is meant to apply to
-all remaining accounts.
+	In order to use your account to send transactions, you need to unlock them using
+	the '--unlock' option. The argument is a space separated list of addresses or
+	indexes. If used non-interactively with a passwordfile, the file should contain
+	the respective passwords one per line. If you unlock n accounts and the password
+	file contains less than n entries, then the last password is meant to apply to
+	all remaining accounts.
 
-And finally. DO NOT FORGET YOUR PASSWORD.
-`,
+	And finally. DO NOT FORGET YOUR PASSWORD.
+		`,
 		Subcommands: []cli.Command{
 			{
 				Action: accountList,
 				Name:   "list",
 				Usage:  "Print account addresses",
+				Description: `
+geth account list
+
+	Lists all accounts found in geth's keystore.
+	Accounts are listed as below:
+
+		Account #0: {7fa65f0395f5ee0bcbae969d711823ab4353beae} /Users/ia/Library/EthereumClassic/mainnet/keystore/UTC--2017-10-31T13-53-59.993482857Z--7fa65f0395f5ee0bcbae969d711823ab4353beae
+		Account #1: {b5c694a4cdbc1820ba4ee8fd6f5ab71a25782534} /Users/ia/Library/EthereumClassic/mainnet/keystore/my_other_key
+				`,
 			},
 			{
 				Action: accountCreate,
@@ -100,21 +109,20 @@ And finally. DO NOT FORGET YOUR PASSWORD.
 				Usage:  "Create a new account",
 				Description: `
 
-    geth account new
+geth account new
 
-Creates a new account. Prints the address.
+	Creates a new account. Prints the address.
+	The account is saved in encrypted format, you are prompted for a passphrase.
 
-The account is saved in encrypted format, you are prompted for a passphrase.
+	You must remember this passphrase to unlock your account in the future.
 
-You must remember this passphrase to unlock your account in the future.
+	For non-interactive use the passphrase can be specified with the --password flag:
 
-For non-interactive use the passphrase can be specified with the --password flag:
+		geth --password <passwordfile> account new
 
-    ethereum --password <passwordfile> account new
-
-Note, this is meant to be used for testing only, it is a bad idea to save your
-password to file or expose in any other way.
-					`,
+	Note, this is meant to be used for testing only, it is a bad idea to save your
+	password to file or expose in any other way.
+				`,
 			},
 			{
 				Action: accountUpdate,
@@ -122,23 +130,21 @@ password to file or expose in any other way.
 				Usage:  "Update an existing account",
 				Description: `
 
-    geth account update <address>
+geth account update <address>
 
-Update an existing account.
+	Update an existing account.
+	The account is saved in the newest version in encrypted format, you are prompted
+	for a passphrase to unlock the account and another to save the updated file.
+	This same command can therefore be used to migrate an account of a deprecated
+	format to the newest format or change the password for an account.
 
-The account is saved in the newest version in encrypted format, you are prompted
-for a passphrase to unlock the account and another to save the updated file.
+	For non-interactive use the passphrase can be specified with the --password flag:
 
-This same command can therefore be used to migrate an account of a deprecated
-format to the newest format or change the password for an account.
+		geth --password <passwordfile> account update <address>
 
-For non-interactive use the passphrase can be specified with the --password flag:
-
-    geth --password <passwordfile> account update <address>
-
-Since only one password can be given, only format update can be performed,
-changing your password is only possible interactively.
-					`,
+	Since only one password can be given, only format update can be performed,
+	changing your password is only possible interactively.
+				`,
 			},
 			{
 				Action: accountImport,
@@ -146,26 +152,25 @@ changing your password is only possible interactively.
 				Usage:  "Import a private key into a new account",
 				Description: `
 
-    geth account import <keyfile>
+geth account import <keyfile>
 
-Imports an unencrypted private key from <keyfile> and creates a new account.
-Prints the address.
+	Imports an unencrypted private key from <keyfile> and creates a new account.
+	Prints the address.
 
-The keyfile is assumed to contain an unencrypted private key in hexadecimal format.
+	The keyfile is assumed to contain an unencrypted private key in hexadecimal format.
+	The account is saved in encrypted format, you are prompted for a passphrase.
 
-The account is saved in encrypted format, you are prompted for a passphrase.
+	You must remember this passphrase to unlock your account in the future.
 
-You must remember this passphrase to unlock your account in the future.
+	For non-interactive use the passphrase can be specified with the -password flag:
 
-For non-interactive use the passphrase can be specified with the -password flag:
+		geth --password <passwordfile> account import <keyfile>
 
-    geth --password <passwordfile> account import <keyfile>
-
-Note:
-As you can directly copy your encrypted accounts to another ethereum instance,
-this import mechanism is not needed when you transfer an account between
-nodes.
-					`,
+	Note:
+	As you can directly copy your encrypted accounts to another ethereum instance,
+	this import mechanism is not needed when you transfer an account between
+	nodes.
+				`,
 			},
 			{
 				Action: accountIndex,
@@ -173,17 +178,17 @@ nodes.
 				Usage:  "Build persistent account index",
 				Description: `
 
-    geth --index-accounts account index
+geth --index-accounts account index
 
-Create keystore directory index cache database (keystore/accounts.db). Relevant for use with large amounts of key files (>10,000).
+	Create keystore directory index cache database (keystore/accounts.db),
+	which is relevant for use with large amounts of key files (>10,000).
 
-While idempotent, this command is only designed to segregate work and setup time for initial index creation.
+	While idempotent, this command is only intended to handle the work of initial index creation.
+	Therefore, it is only useful to run once, when it's your first time using '--index-accounts' flag option,
+	and MUST be run in conjunction with that flag.
 
-It is only useful to run once when it's your first time using '--index-accounts' flag option, and MUST be run in conjunction
-with that option.
-
-It indexes all key files from keystore/* (non-recursively).
-					`,
+	It non-recursively indexes all valid key files from keystore/*
+		`,
 			},
 		},
 	}
@@ -204,6 +209,10 @@ func accountIndex(ctx *cli.Context) error {
 		}
 	}
 	return nil
+}
+
+func accountMan(ctx *cli.Context) error {
+	return cli.ShowSubcommandHelp(ctx)
 }
 
 func accountList(ctx *cli.Context) error {
@@ -355,7 +364,7 @@ func accountImport(ctx *cli.Context) error {
 	}
 	key, err := crypto.LoadECDSA(keyfile)
 	if err != nil {
-		log.Fatal("keyfile must be given as argument")
+		log.Fatalf("unable to decode keyfile '%s': %v", keyfile, err)
 	}
 	accman := MakeAccountManager(ctx)
 	passphrase := getPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, MakePasswordList(ctx))
