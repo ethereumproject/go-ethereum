@@ -155,6 +155,12 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 		cacheChainIdentity = identity
 	}()
 
+	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" && strings.HasSuffix(chainFlagVal, "/") || strings.HasSuffix(chainFlagVal, "\\") {
+		suff := string(chainFlagVal[len(chainFlagVal)-1])
+		chainFlagVal = strings.Replace(chainFlagVal, suff, "", 1)
+		ctx.GlobalSet(aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
+	}
+
 	if chainIsMorden(ctx) {
 		identity = core.DefaultConfigMorden.Identity // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
 		return identity
