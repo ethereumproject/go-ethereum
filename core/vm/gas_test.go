@@ -1,8 +1,8 @@
 package vm
 
 import (
-	"testing"
 	"math/big"
+	"testing"
 )
 
 func TestGasIsEmpty(t *testing.T) {

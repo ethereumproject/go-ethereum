@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"fmt"
 )
 
 var (
@@ -219,6 +219,7 @@ func TestGetBlockWinnerRewardForUnclesByEra(t *testing.T) {
 // expectedEraForTesting is a 1-indexed version of era number,
 // used exclusively for testing.
 type expectedEraForTesting int
+
 const (
 	era1 expectedEraForTesting = iota + 1
 	era2
@@ -227,6 +228,7 @@ const (
 )
 
 type expectedRewards map[common.Address]*big.Int
+
 func calculateExpectedEraRewards(era expectedEraForTesting, numUncles int) expectedRewards {
 	wr := new(big.Int)
 	wur := new(big.Int)
@@ -280,6 +282,7 @@ type expectedRewardCase struct {
 func (r expectedRewards) String() string {
 	return fmt.Sprintf("w: %d, u1: %d, u2: %d", r[WinnerCoinbase], r[Uncle1Coinbase], r[Uncle2Coinbase])
 }
+
 // String implements stringer interface for expectedRewardCase --
 // useful for double-checking test cases with t.Log
 // to visually ensure getting all desired test cases.
@@ -325,8 +328,8 @@ func makeExpectedRewardCasesForConfig(c *ChainConfig, numUncles int, t *testing.
 	// Include trivial initial early block values.
 	for _, i := range []*big.Int{big.NewInt(2), big.NewInt(13)} {
 		cases = append(cases, expectedRewardCase{
-			eraNum: era1,
-			block: i,
+			eraNum:  era1,
+			block:   i,
 			rewards: calculateExpectedEraRewards(era1, numUncles),
 		})
 	}
@@ -360,8 +363,8 @@ func makeExpectedRewardCasesForConfig(c *ChainConfig, numUncles int, t *testing.
 			}
 			era := expectedEraFromBlockNumber(bn, eraLen, t)
 			cases = append(cases, expectedRewardCase{
-				eraNum: era,
-				block: bn,
+				eraNum:  era,
+				block:   bn,
 				rewards: calculateExpectedEraRewards(era, numUncles),
 			})
 		}
@@ -391,7 +394,7 @@ func TestAccumulateRewards1(t *testing.T) {
 				ID: "reward",
 				Options: ChainFeatureConfigOptions{
 					"type": "ecip1017",
-					"era": 5000000, // for mainnet will be 5m
+					"era":  5000000, // for mainnet will be 5m
 				},
 			})
 			feat, _, exists = config.HasFeature("reward")
@@ -472,7 +475,7 @@ func TestAccumulateRewards1(t *testing.T) {
 			AccumulateRewards(config, stateDB, header, uncles)
 
 			// Check balances.
-			 t.Logf("config=%d block=%d era=%d w:%d u1:%d u2:%d", i, bn, new(big.Int).Add(era, big.NewInt(1)), winnerB, unclesB[0], unclesB[1])
+			t.Logf("config=%d block=%d era=%d w:%d u1:%d u2:%d", i, bn, new(big.Int).Add(era, big.NewInt(1)), winnerB, unclesB[0], unclesB[1])
 			if wb := stateDB.GetBalance(header.Coinbase); wb.Cmp(winnerB) != 0 {
 				t.Errorf("winner balance @ %v, want: %v, got: %v (config: %v)", bn, winnerB, wb, i)
 			}

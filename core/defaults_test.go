@@ -1,8 +1,8 @@
 package core
 
 import (
-	"testing"
 	"math/big"
+	"testing"
 )
 
 // Implement chain config defaults tests, ensure all existing
@@ -70,17 +70,17 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 	if fork := DefaultConfigMorden.ChainConfig.ForkByName("Gotham"); fork.Block.Cmp(big.NewInt(2000000)) != 0 {
 		t.Errorf("Unexpected fork: %v", fork)
 	}
-	
-	checks := []struct{
-		Config *SufficientChainConfig
-		Block *big.Int
-		Name string
+
+	checks := []struct {
+		Config   *SufficientChainConfig
+		Block    *big.Int
+		Name     string
 		Features []*ForkFeature
 	}{
 		{
 			Config: DefaultConfigMorden,
-			Block: big.NewInt(494000),
-			Name: "Homestead",
+			Block:  big.NewInt(494000),
+			Name:   "Homestead",
 			Features: []*ForkFeature{
 				{
 					ID: "difficulty",
@@ -98,8 +98,8 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 		},
 		{
 			Config: DefaultConfigMainnet,
-			Block: big.NewInt(1150000),
-			Name: "Homestead",
+			Block:  big.NewInt(1150000),
+			Name:   "Homestead",
 			Features: []*ForkFeature{
 				{
 					ID: "difficulty",
@@ -117,18 +117,18 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 		},
 		{
 			Config: DefaultConfigMorden,
-			Block: big.NewInt(1885000),
-			Name: "The DAO Hard Fork",
+			Block:  big.NewInt(1885000),
+			Name:   "The DAO Hard Fork",
 		},
 		{
 			Config: DefaultConfigMainnet,
-			Block: big.NewInt(1920000),
-			Name: "The DAO Hard Fork",
+			Block:  big.NewInt(1920000),
+			Name:   "The DAO Hard Fork",
 		},
 		{
 			Config: DefaultConfigMorden,
-			Block: big.NewInt(1783000),
-			Name: "GasReprice",
+			Block:  big.NewInt(1783000),
+			Name:   "GasReprice",
 			Features: []*ForkFeature{
 				{
 					ID: "gastable",
@@ -140,8 +140,8 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 		},
 		{
 			Config: DefaultConfigMainnet,
-			Block: big.NewInt(2500000),
-			Name: "GasReprice",
+			Block:  big.NewInt(2500000),
+			Name:   "GasReprice",
 			Features: []*ForkFeature{
 				{
 					ID: "gastable",
@@ -153,8 +153,8 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 		},
 		{
 			Config: DefaultConfigMorden,
-			Block: big.NewInt(1915000),
-			Name: "Diehard",
+			Block:  big.NewInt(1915000),
+			Name:   "Diehard",
 			Features: []*ForkFeature{
 				{
 					ID: "gastable",
@@ -172,15 +172,15 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 					ID: "difficulty",
 					Options: ChainFeatureConfigOptions{
 						"length": big.NewInt(2000000),
-						"type": "ecip1010",
+						"type":   "ecip1010",
 					},
 				},
 			},
 		},
 		{
 			Config: DefaultConfigMainnet,
-			Block: big.NewInt(3000000),
-			Name: "Diehard",
+			Block:  big.NewInt(3000000),
+			Name:   "Diehard",
 			Features: []*ForkFeature{
 				{
 					ID: "gastable",
@@ -198,20 +198,20 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 					ID: "difficulty",
 					Options: ChainFeatureConfigOptions{
 						"length": big.NewInt(2000000),
-						"type": "ecip1010",
+						"type":   "ecip1010",
 					},
 				},
 			},
 		},
 		{
 			Config: DefaultConfigMorden,
-			Block: big.NewInt(2000000),
-			Name: "Gotham",
+			Block:  big.NewInt(2000000),
+			Name:   "Gotham",
 			Features: []*ForkFeature{
 				{
 					ID: "reward",
 					Options: ChainFeatureConfigOptions{
-						"era": big.NewInt(2000000),
+						"era":  big.NewInt(2000000),
 						"type": "ecip1017",
 					},
 				},
@@ -219,13 +219,13 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 		},
 		{
 			Config: DefaultConfigMainnet,
-			Block: big.NewInt(5000000),
-			Name: "Gotham",
+			Block:  big.NewInt(5000000),
+			Name:   "Gotham",
 			Features: []*ForkFeature{
 				{
 					ID: "reward",
 					Options: ChainFeatureConfigOptions{
-						"era": big.NewInt(5000000),
+						"era":  big.NewInt(5000000),
 						"type": "ecip1017",
 					},
 				},

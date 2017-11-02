@@ -47,6 +47,7 @@ type Validator interface {
 	HeaderValidator
 	ValidateBlock(block *types.Block) error
 	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error
+	VerifyUncles(block, parent *types.Block) error
 }
 
 // HeaderValidator is an interface for validating headers only

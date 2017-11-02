@@ -38,8 +38,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
-	"strings"
 	"io"
+	"strings"
 )
 
 var (
@@ -55,9 +55,9 @@ type SufficientChainConfig struct {
 	ID              string           `json:"id,omitempty"` // deprecated in favor of 'Identity', method decoding should id -> identity
 	Identity        string           `json:"identity"`
 	Name            string           `json:"name,omitempty"`
-	State           *StateConfig     `json:"state"`   // don't omitempty for clarity of potential custom options
-	Network         int              `json:"network"` // eth.NetworkId (mainnet=1, morden=2)
-	Consensus       string           `json:"consensus"`     // pow type (ethash OR ethash-test)
+	State           *StateConfig     `json:"state"`     // don't omitempty for clarity of potential custom options
+	Network         int              `json:"network"`   // eth.NetworkId (mainnet=1, morden=2)
+	Consensus       string           `json:"consensus"` // pow type (ethash OR ethash-test)
 	Genesis         *GenesisDump     `json:"genesis"`
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
@@ -617,9 +617,9 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	}
 	header.Root = root
 
-	block := types.NewBlock(header, nil, nil, nil)
+	gblock := types.NewBlock(header, nil, nil, nil)
 
-	if block := GetBlock(chainDb, block.Hash()); block != nil {
+	if block := GetBlock(chainDb, gblock.Hash()); block != nil {
 		glog.V(logger.Debug).Infof("Genesis block %s already exists in chain -- writing canonical number", block.Hash().Hex())
 		err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64())
 		if err != nil {
@@ -631,23 +631,23 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	if err := stateBatch.Write(); err != nil {
 		return nil, fmt.Errorf("cannot write state: %v", err)
 	}
-	if err := WriteTd(chainDb, block.Hash(), header.Difficulty); err != nil {
+	if err := WriteTd(chainDb, gblock.Hash(), header.Difficulty); err != nil {
 		return nil, err
 	}
-	if err := WriteBlock(chainDb, block); err != nil {
+	if err := WriteBlock(chainDb, gblock); err != nil {
 		return nil, err
 	}
-	if err := WriteBlockReceipts(chainDb, block.Hash(), nil); err != nil {
+	if err := WriteBlockReceipts(chainDb, gblock.Hash(), nil); err != nil {
 		return nil, err
 	}
-	if err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64()); err != nil {
+	if err := WriteCanonicalHash(chainDb, gblock.Hash(), gblock.NumberU64()); err != nil {
 		return nil, err
 	}
-	if err := WriteHeadBlockHash(chainDb, block.Hash()); err != nil {
+	if err := WriteHeadBlockHash(chainDb, gblock.Hash()); err != nil {
 		return nil, err
 	}
 
-	return block, nil
+	return gblock, nil
 }
 
 func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) *types.Block {

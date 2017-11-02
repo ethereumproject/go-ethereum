@@ -29,7 +29,6 @@ const (
 	DefaultWSPort    = 8546        // Default TCP port for the websocket RPC server
 )
 
-
 func defaultDataDirParent() string {
 	// Try to place the data folder in the user's home dir
 	home := HomeDir()

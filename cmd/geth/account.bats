@@ -11,8 +11,16 @@ teardown() {
 	rm -fr $DATA_DIR
 }
 
-@test "account list blanko" {
+@test "account <no command> yields help/usage" {
 	run $GETH_CMD --datadir $DATA_DIR account
+	echo "$output"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"USAGE"* ]]
+}
+
+@test "account list yields <blank> (no accounts)" {
+	run $GETH_CMD --datadir $DATA_DIR account list
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -22,7 +30,7 @@ teardown() {
 @test "account list testdata keystore" {
 	cp -R $BATS_TEST_DIRNAME/../../accounts/testdata/keystore $DATA_DIR/mainnet
 
-	run $GETH_CMD --datadir $DATA_DIR account
+	run $GETH_CMD --datadir $DATA_DIR account list
 	echo "$output"
 
 	[ "$status" -eq 0 ]
