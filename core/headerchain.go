@@ -427,7 +427,7 @@ func (hc *HeaderChain) PurgeAbove(n uint64, delFn DeleteCallback) {
 	}()
 
 	lastFoundHeaderN := n
-	for head := hc.GetHeaderByNumber(n); head != nil || lastFoundHeaderN > n - 2048; n++ {
+	for head := hc.GetHeaderByNumber(n); head != nil || n < lastFoundHeaderN + 2048; n++ {
 		if head != nil {
 			lastFoundHeaderN = n
 
