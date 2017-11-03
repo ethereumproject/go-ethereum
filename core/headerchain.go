@@ -413,6 +413,46 @@ func (hc *HeaderChain) SetCurrentHeader(head *types.Header) {
 // each header is deleted.
 type DeleteCallback func(common.Hash)
 
+func (hc *HeaderChain) PurgeAbove(n uint64, delFn DeleteCallback) {
+
+	// Search for any existing headers within n+reach
+	scanAfter := func(n uint64, reach uint64) bool {
+		var anyExistingFound bool
+		defer func() {
+			glog.V(logger.Debug).Infof("scanAfter n=%d bound=%d found=%v", n, n+reach, anyExistingFound)
+		}()
+		for i := n; i < n + reach; i++ {
+			if hc.GetHeaderByNumber(i) != nil {
+				anyExistingFound = true
+				return anyExistingFound
+			}
+		}
+		return anyExistingFound
+	}
+
+	increment := uint64(2048)
+	// As long as there are any existing headers above the last check upper bound scope,
+	// remove them.
+	for scanAfter(n, increment) {
+		bound := n + increment
+		glog.V(logger.Debug).Infof("purging n=%d bound=%d", n, bound,)
+		for i := n; i < bound; i++ {
+			head := hc.GetHeaderByNumber(i)
+			if head != nil {
+				glog.V(logger.Debug).Infof("    delete header/hash/td headn=%d", head.Number.Uint64())
+				hash := head.Hash()
+				if delFn != nil {
+					delFn(hash)
+				}
+				DeleteHeader(hc.chainDb, hash)
+				DeleteTd(hc.chainDb, hash)
+			}
+			DeleteCanonicalHash(hc.chainDb, n)
+		}
+		n = bound
+	}
+}
+
 // SetHead rewinds the local chain to a new head. Everything above the new head
 // will be deleted and the new one set.
 func (hc *HeaderChain) SetHead(head uint64, delFn DeleteCallback) {

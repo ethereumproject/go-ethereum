@@ -515,6 +515,8 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 func (self *BlockChain) LoadLastState(dryrun bool) error {
 
 	self.mu.Lock()
+
+	//var currentBlock *types.Block
 	// recoverOrReset checks for recoverable block data.
 	// If no recoverable block data is found, plain Reset() is called.
 	// If safe blockchain data exists (so head block was wrong/invalid), blockchain db head
@@ -527,6 +529,17 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 			glog.V(logger.Warn).Infoln("WARNING: No recoverable data found, resetting to genesis.")
 			return self.Reset()
 		}
+		// look for highest possible height (possibly higher than recovered checkpoint, in case
+		// recovery found missing block/state
+		// should set bc.currentBlock as that highest height because then SetHead will remove all between
+		// bc.currentHBlock and recoveredHeight
+		//searchHeadUp()
+
+		// Set currentBlock stored var val currentBlock, which should be "original" currentBlock (before checkpoints/recovery)
+		//if currentBlock != nil && currentBlock.NumberU64() > recoveredHeight {
+		//	self.currentBlock = currentBlock
+		//}
+		self.PurgeAbove(recoveredHeight + 1)
 		return self.SetHead(recoveredHeight)
 	}
 
@@ -686,6 +699,18 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 
 	self.mu.Unlock()
 	return nil
+}
+
+// PurgeAbove works like SetHead, but instead of rm'ing head <-> bc.currentBlock,
+// it removes all stored blockchain data n -> *anyexistingblockdata*
+func (bc *BlockChain) PurgeAbove(n uint64) {
+	bc.mu.Lock()
+
+	delFn := func(hash common.Hash) {
+		DeleteBody(bc.chainDb, hash)
+	}
+	bc.hc.PurgeAbove(n, delFn)
+	bc.mu.Unlock()
 }
 
 // SetHead rewinds the local chain to a new head. In the case of headers, everything
