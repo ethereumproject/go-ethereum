@@ -239,18 +239,6 @@ teardown() {
 	[ -d $DATA_DIR/morden/chaindata ]
 }
 
-@test "--chain='morden\' | exit 0" {
-	# windows path separator == \, i guess
-	run $GETH_CMD --data-dir $DATA_DIR --chain='morden\' --exec='eth.getBlock(0).hash' console
-        echo "$output"
-    	[ "$status" -eq 0 ]
-    	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
-
-    	# Ensure we're using the --chain named subdirectory under main $DATA_DIR.
-    	[ -d $DATA_DIR/morden ]
-    	[ -d $DATA_DIR/morden/chaindata ]
-}
-
 ## load /testdata
 
 # Test loading customnet chain configuration from testdata/ JSON file.

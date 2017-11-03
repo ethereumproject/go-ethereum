@@ -155,10 +155,8 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 		cacheChainIdentity = identity
 	}()
 
-	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" && strings.HasSuffix(chainFlagVal, "/") || strings.HasSuffix(chainFlagVal, "\\") {
-		suff := string(chainFlagVal[len(chainFlagVal)-1])
-		chainFlagVal = strings.Replace(chainFlagVal, suff, "", 1)
-		ctx.GlobalSet(aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
+	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
+		ctx.GlobalSet(aliasableName(ChainIdentityFlag.Name, ctx), filepath.Clean(chainFlagVal))
 	}
 
 	if chainIsMorden(ctx) {
