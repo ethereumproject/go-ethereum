@@ -528,7 +528,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 			return self.Reset()
 		}
 		// Remove all block header and canonical data above recoveredHeight
-		self.PurgeAbove(recoveredHeight + 1, 2048)
+		self.PurgeAbove(recoveredHeight + 1)
 		return self.SetHead(recoveredHeight)
 	}
 
@@ -686,20 +686,19 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	glog.V(logger.Info).Infof("Last block: #%d [%x…] TD=%v", self.currentBlock.Number(), self.currentBlock.Hash().Bytes()[:4], blockTd)
 	glog.V(logger.Info).Infof("Fast block: #%d [%x…] TD=%v", self.currentFastBlock.Number(), self.currentFastBlock.Hash().Bytes()[:4], fastTd)
 
-	self.mu.Unlock()
 	return nil
 }
 
 // PurgeAbove works like SetHead, but instead of rm'ing head <-> bc.currentBlock,
 // it removes all stored blockchain data n -> *anyexistingblockdata*, where
 // scanHeight is how far beyond n should be checked for existing data, ie n+scanHeight recursively
-func (bc *BlockChain) PurgeAbove(n uint64, scanHeight uint64) {
+func (bc *BlockChain) PurgeAbove(n uint64) {
 	bc.mu.Lock()
 
 	delFn := func(hash common.Hash) {
 		DeleteBody(bc.chainDb, hash)
 	}
-	bc.hc.PurgeAbove(n, scanHeight, delFn)
+	bc.hc.PurgeAbove(n, delFn)
 	bc.mu.Unlock()
 }
 
