@@ -413,7 +413,18 @@ func (hc *HeaderChain) SetCurrentHeader(head *types.Header) {
 // each header is deleted.
 type DeleteCallback func(common.Hash)
 
-func (hc *HeaderChain) PurgeAbove(n uint64, delFn DeleteCallback) {
+func (hc *HeaderChain) PurgeAbove(n uint64, scanHeight uint64, delFn DeleteCallback) {
+
+	glog.V(logger.Warn).Infof("Purging block data above #%d", n)
+
+	// Set up logging for block purge progress.
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+	go func() {
+		for range ticker.C {
+			glog.V(logger.Warn).Infof("Removed data through #%d", n)
+		}
+	}()
 
 	// Search for any existing headers within n+reach
 	scanAfter := func(n uint64, reach uint64) bool {
@@ -430,16 +441,15 @@ func (hc *HeaderChain) PurgeAbove(n uint64, delFn DeleteCallback) {
 		return anyExistingFound
 	}
 
-	increment := uint64(2048)
 	// As long as there are any existing headers above the last check upper bound scope,
 	// remove them.
-	for scanAfter(n, increment) {
-		bound := n + increment
-		glog.V(logger.Debug).Infof("purging n=%d bound=%d", n, bound,)
+	for scanAfter(n, scanHeight) {
+		bound := n + scanHeight
+		glog.V(logger.Detail).Infof("purging n=%d bound=%d", n, bound, )
 		for i := n; i < bound; i++ {
 			head := hc.GetHeaderByNumber(i)
 			if head != nil {
-				glog.V(logger.Debug).Infof("    delete header/hash/td headn=%d", head.Number.Uint64())
+				glog.V(logger.Detail).Infof("    delete header/hash/td headn=%d", head.Number.Uint64())
 				hash := head.Hash()
 				if delFn != nil {
 					delFn(hash)
