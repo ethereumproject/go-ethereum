@@ -515,14 +515,20 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 func (self *BlockChain) LoadLastState(dryrun bool) error {
 
 	self.mu.Lock()
+	defer self.mu.Unlock()
+
 	// recoverOrReset checks for recoverable block data.
 	// If no recoverable block data is found, plain Reset() is called.
 	// If safe blockchain data exists (so head block was wrong/invalid), blockchain db head
 	// is set to last available safe checkpoint.
 	recoverOrReset := func() error {
 		glog.V(logger.Warn).Infoln("Checking database for recoverable block data...")
+
 		recoveredHeight := self.Recovery(1, 100)
+
 		self.mu.Unlock()
+		defer self.mu.Lock()
+
 		if recoveredHeight == 0 {
 			glog.V(logger.Warn).Infoln("WARNING: No recoverable data found, resetting to genesis.")
 			return self.Reset()
@@ -540,7 +546,6 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 			glog.V(logger.Warn).Infoln("WARNING: Empty database, attempting chain reset with recovery.")
 			return recoverOrReset()
 		}
-		self.mu.Unlock()
 		return errors.New("empty HeadBlockHash")
 	}
 
@@ -554,7 +559,6 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 			glog.V(logger.Warn).Infof("WARNING: Head block missing, hash: %x\nAttempting chain reset with recovery.", head)
 			return recoverOrReset()
 		}
-		self.mu.Unlock()
 		return errors.New("nil currentBlock")
 	}
 
@@ -567,7 +571,6 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head full block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), e)
 				return recoverOrReset()
 			}
-			self.mu.Unlock()
 			return fmt.Errorf("invalid currentBlock: %v", e)
 		}
 	}
@@ -612,7 +615,6 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head fast block #%d (%x): %v \nAttempting chain reset with recovery.", self.currentFastBlock.Number(), self.currentFastBlock.Hash(), e)
 				return recoverOrReset()
 			}
-			self.mu.Unlock()
 			return fmt.Errorf("invalid currentFastBlock: %v", e)
 		}
 	}
