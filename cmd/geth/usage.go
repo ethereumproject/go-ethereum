@@ -29,7 +29,7 @@ var AppHelpTemplate = `NAME:
    {{.App.Name}} - {{.App.Usage}}
 
 USAGE:
-   {{.App.HelpName}} [options]{{if .App.Commands}} command [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
+   {{.App.HelpName}} [options]{{if .App.Commands}} <command> [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
 VERSION:
    {{.App.Version}}{{if .App.Commands}}
 COMMANDS:

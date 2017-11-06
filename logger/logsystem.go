@@ -42,8 +42,8 @@ func NewMLogSystem(writer io.Writer, flags int, level LogLevel, withTimestamp bo
 }
 
 type MLogSystem struct {
-	logger *log.Logger
-	level uint32
+	logger        *log.Logger
+	level         uint32
 	withTimestamp bool
 }
 
