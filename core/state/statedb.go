@@ -432,7 +432,7 @@ func (self *StateDB) createObject(addr common.Address) (newobj, prev *StateObjec
 				prev,
 			))
 		}
-		if glog.V(logger.Debug) {
+		if glog.V(logger.Detail) {
 			glog.Infof("(+) %x\n", addr)
 		}
 		self.journal = append(self.journal, createObjectChange{account: &addr})

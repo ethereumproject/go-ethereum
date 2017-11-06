@@ -447,7 +447,8 @@ func (bproc) ValidateHeader(*types.Header, *types.Header, bool) error { return n
 func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
 	return nil
 }
-func (bproc) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, state.Logs, *big.Int, error) {
+func (bproc) VerifyUncles(block, parent *types.Block) error { return nil }
+func (bproc) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, vm.Logs, *big.Int, error) {
 	return nil, nil, nil, nil
 }
 
@@ -1497,5 +1498,20 @@ func TestEIP155Transition(t *testing.T) {
 		t.Error("expected transaction chain id error")
 	} else if err.Error() != errExp {
 		t.Error("expected:", errExp, "got:", err)
+	}
+}
+
+func TestBlockChain_BlockIsGenesis(t *testing.T) {
+	// Make chain starting from genesis
+	_, blockchain, err := newCanonical(testChainConfig(), 10, false)
+	if err != nil {
+		t.Fatalf("failed to make new canonical chain: %v", err)
+	}
+
+	if !blockchain.blockIsGenesis(blockchain.GetBlockByNumber(0)) {
+		t.Errorf("expected: is genesis block")
+	}
+	if blockchain.blockIsGenesis(blockchain.GetBlockByNumber(1)) {
+		t.Errorf("expected: is not genesis block")
 	}
 }

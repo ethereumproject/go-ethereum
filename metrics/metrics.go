@@ -24,9 +24,9 @@ import (
 	"runtime"
 	"time"
 
+	"bytes"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/rcrowley/go-metrics"
-	"bytes"
 )
 
 // Reg is the metrics destination.

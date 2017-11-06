@@ -17,14 +17,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 	"strings"
-	"bufio"
+	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
@@ -46,10 +46,10 @@ var (
 		Name:   "export",
 		Usage:  `Export blockchain into file`,
 		Description: `
-Requires a first argument of the file to write to.
-Optional second and third arguments control the first and
-last block to write. In this mode, the file will be appended
-if already existing.
+	Requires a first argument of the file to write to.
+	Optional second and third arguments control the first and
+	last block to write. In this mode, the file will be appended
+	if already existing.
 		`,
 	}
 	upgradedbCommand = cli.Command{
@@ -69,9 +69,9 @@ if already existing.
 		Name:   "dump",
 		Usage:  `Dump a specific block from storage`,
 		Description: `
-The arguments are interpreted as block numbers or hashes.
-Use "ethereum dump 0" to dump the genesis block.
-`,
+	The arguments are interpreted as block numbers or hashes.
+	Use "$ geth dump 0" to dump the genesis block.
+		`,
 	}
 	dumpChainConfigCommand = cli.Command{
 		Action:  dumpChainConfig,
@@ -79,8 +79,8 @@ Use "ethereum dump 0" to dump the genesis block.
 		Aliases: []string{"dumpchainconfig"},
 		Usage:   "Dump current chain configuration to JSON file [REQUIRED argument: filepath.json]",
 		Description: `
-		The dump external configuration command writes a JSON file containing pertinent configuration data for
-		the configuration of a chain database. It includes genesis block data as well as chain fork settings.
+	The dump external configuration command writes a JSON file containing pertinent configuration data for
+	the configuration of a chain database. It includes genesis block data as well as chain fork settings.
 		`,
 	}
 	rollbackCommand = cli.Command{
@@ -89,9 +89,9 @@ Use "ethereum dump 0" to dump the genesis block.
 		Aliases: []string{"roll-back", "set-head", "sethead"},
 		Usage:   "Set current head for blockchain, purging antecedent blocks",
 		Description: `
-		Rollback set the current head block for block chain already in the database.
-		This is a destructive action, purging any block more recent than the index specified.
-		Syncing will require downloading contemporary block information from the index onwards.
+	Rollback set the current head block for block chain already in the database.
+	This is a destructive action, purging any block more recent than the index specified.
+	Syncing will require downloading contemporary block information from the index onwards.
 		`,
 	}
 	statusCommand = cli.Command{
@@ -99,7 +99,28 @@ Use "ethereum dump 0" to dump the genesis block.
 		Name:   "status",
 		Usage:  "Display the status of the current node",
 		Description: `
-		Show the status of the current configuration.
+	Show the status of the current configuration.
+		`,
+	}
+	resetCommand = cli.Command{
+		Action: resetChaindata,
+		Name:   "reset",
+		Usage:  "Reset the chain database",
+		Description: `
+		Reset does a hard reset of the entire chain database.
+		This is a drastic and irreversible command, and should be used with caution.
+		The command will require user confirmation before any action is taken.
+		`,
+	}
+	recoverCommand = cli.Command{
+		Action: recoverChaindata,
+		Name:   "recover",
+		Usage:  "Attempt blockchain data recovery in case of data corruption",
+		Description: `
+		Recover scans and health-checks all available blockchain data in order
+		to recover all consistent and healthy block data. It will remove invalid or
+		corrupt block data that may have been caused by hard killing, system failure,
+		space limitations, or attack.
 		`,
 	}
 )
@@ -277,7 +298,7 @@ func dump(ctx *cli.Context) error {
 			if sorted {
 				err = state.SortedDump(addresses, prefix, indent, out)
 			} else {
-				err = state.UnsortedDump(addresses,prefix,indent,out)
+				err = state.UnsortedDump(addresses, prefix, indent, out)
 			}
 
 			if err != nil {
