@@ -120,7 +120,9 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// calculate the new memory size and gas price for the current executing opcode
 		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
 		if err != nil {
-			return nil, fmt.Errorf("at (PC:%v, OP:%v) : %v\n", pc, op.String(), err.Error())
+			e := fmt.Errorf("at (PC:%v, OP:%v) : %v\n", pc, op.String(), err.Error())
+			glog.V(logger.Debug).Info(e)
+			return nil, e
 		}
 
 		// Use the calculated gas. When insufficient gas is present, use all gas and return an

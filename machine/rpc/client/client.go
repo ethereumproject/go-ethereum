@@ -56,7 +56,7 @@ const VmSvc = "vm"
 const VmSvcPfx = VmSvc + "_"
 
 type Err struct {
-	Text string
+	Text string	`json:text`
 }
 
 func (self *Err) Error() string {
@@ -115,9 +115,9 @@ func (self *machine) doCall(method string, ctx uint64, params []interface{}, res
 }
 
 type OnCallResult struct {
-	Context uint64
-	Status  vm.Status
-	Err     *Err
+	Context uint64		`json:context`
+	Status  vm.Status	`json:status`
+	Err     *Err		`json:error`
 }
 
 func (self *machine) Call(caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (vm.Context, error) {
@@ -178,8 +178,8 @@ type context struct {
 }
 
 type OnCommitResult struct {
-	Status vm.Status
-	Err    *Err
+	Status vm.Status	`json:status`
+	Err    *Err			`json:error`
 }
 
 func (self *context) doCommit(method string, args []interface{}) (err error) {
@@ -220,8 +220,8 @@ func (self *context) CommitValue(address common.Address, key common.Hash, value 
 }
 
 type OnFinishResult struct {
-	Status vm.Status
-	Err    *Err
+	Status vm.Status	`json:status`
+	Err    *Err			`json:error`
 }
 
 func (self *context) Finish() (err error) {
@@ -238,14 +238,14 @@ func (self *context) Finish() (err error) {
 }
 
 type Account struct {
-	Address_  common.Address
-	Nonce_    uint64
-	Balance_  *big.Int
-	Suicided_ bool
-	Newborn_  bool
-	Code_     []byte
-	Hash_     common.Hash
-	Value_    map[string]common.Hash
+	Address_  common.Address			`json:address`
+	Nonce_    uint64					`json:nonce`
+	Balance_  *big.Int					`json:balance`
+	Suicided_ bool						`json:suicided`
+	Newborn_  bool						`json:newborn`
+	Code_     []byte					`json:code`
+	Hash_     common.Hash				`json:hash`
+	Value_    map[string]common.Hash	`json:value`
 }
 
 func (self *Account) Address() common.Address { return self.Address_ }
@@ -271,9 +271,9 @@ func (self *Account) Code() (common.Hash, []byte) {
 }
 
 type OnAccountsResult struct {
-	Accounts []*Account
-	Status   vm.Status
-	Err      *Err
+	Accounts []*Account	`json:accounts`
+	Status   vm.Status	`json:status`
+	Err      *Err		`json:error`
 }
 
 func (self *context) Accounts() (accounts []vm.Account, err error) {
@@ -296,9 +296,9 @@ func (self *context) Accounts() (accounts []vm.Account, err error) {
 }
 
 type OnAddressResult struct {
-	Address common.Address
-	Status  vm.Status
-	Err     *Err
+	Address common.Address	`json:address`
+	Status  vm.Status		`json:status`
+	Err     *Err			`json:error`
 }
 
 func (self *context) Address() (address common.Address, err error) {
@@ -316,11 +316,11 @@ func (self *context) Address() (address common.Address, err error) {
 }
 
 type OnOutResult struct {
-	Out    []byte
-	Gas    *big.Int
-	Refund *big.Int
-	Status vm.Status
-	Err    *Err
+	Out    []byte		`json:"out"`
+	Gas    *big.Int		`json:"gas"`
+	Refund *big.Int		`json:"refund"`
+	Status vm.Status	`json:"status"`
+	Err    *Err			`json:"error"`
 }
 
 func (self *context) Out() ([]byte, *big.Int, *big.Int, error) {
@@ -338,14 +338,14 @@ func (self *context) Out() ([]byte, *big.Int, *big.Int, error) {
 }
 
 type Log struct {
-	Address     common.Address
-	Topics      []common.Hash
-	Data        []byte
-	BlockNumber *big.Int
-	TxHash      common.Hash
-	TxIndex     uint
-	BlockHash   common.Hash
-	Index       uint
+	Address     common.Address	`json:"address"`
+	Topics      []common.Hash	`json:"topics"`
+	Data        []byte			`json:"data"`
+	BlockNumber *big.Int		`json:"number"`
+	TxHash      common.Hash		`json:"txhash"`
+	TxIndex     uint			`json:"txindex"`
+	BlockHash   common.Hash		`json:"hash"`
+	Index       uint			`json:"index"`
 }
 
 type OnLogsResult struct {
@@ -387,7 +387,7 @@ func (self *context) Status() vm.Status {
 }
 
 type OnErrResult struct {
-	Err *Err
+	Err *Err	`json:"error"`
 }
 
 func (self *context) Err() (err error) {
@@ -401,9 +401,9 @@ func (self *context) Err() (err error) {
 }
 
 type OnFireResult struct {
-	Require *vm.Require
-	Status  vm.Status
-	Err     *Err
+	Require *vm.Require	`json:"require"`
+	Status  vm.Status	`json:"status"`
+	Err     *Err		`json:"error"`
 }
 
 func (self *context) Fire() (r *vm.Require) {

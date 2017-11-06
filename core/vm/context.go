@@ -224,10 +224,10 @@ func (id RequireID) String() string {
 }
 
 type Require struct {
-	ID      RequireID
-	Address common.Address
-	Hash    common.Hash
-	Number  uint64
+	ID      RequireID		`json:"id"`
+	Address common.Address	`json:"address"`
+	Hash    common.Hash		`json:"hash"`
+	Number  uint64			`json:"number"`
 }
 
 type Context interface {
