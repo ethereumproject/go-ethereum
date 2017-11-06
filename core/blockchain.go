@@ -692,8 +692,8 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 }
 
 // PurgeAbove works like SetHead, but instead of rm'ing head <-> bc.currentBlock,
-// it removes all stored blockchain data n -> *anyexistingblockdata*, where
-// scanHeight is how far beyond n should be checked for existing data, ie n+scanHeight recursively
+// it removes all stored blockchain data n -> *anyexistingblockdata*
+// TODO: possibly replace with kv database iterator
 func (bc *BlockChain) PurgeAbove(n uint64) {
 	bc.mu.Lock()
 

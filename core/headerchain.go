@@ -413,6 +413,10 @@ func (hc *HeaderChain) SetCurrentHeader(head *types.Header) {
 // each header is deleted.
 type DeleteCallback func(common.Hash)
 
+// PurgeAbove remove blockchain data above given head 'n'.
+// Similar to hc.SetHead, but uses hardcoded 2048 scan range to check
+// for existing blockchain above last found existing head.
+// TODO: possibly replace with kv database iterator
 func (hc *HeaderChain) PurgeAbove(n uint64, delFn DeleteCallback) {
 
 	glog.V(logger.Warn).Infof("Purging block data above #%d", n)
