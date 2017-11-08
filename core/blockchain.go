@@ -514,17 +514,27 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 // assumes that the chain manager mutex is held.
 func (self *BlockChain) LoadLastState(dryrun bool) error {
 
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
 	// recoverOrReset checks for recoverable block data.
 	// If no recoverable block data is found, plain Reset() is called.
 	// If safe blockchain data exists (so head block was wrong/invalid), blockchain db head
 	// is set to last available safe checkpoint.
 	recoverOrReset := func() error {
 		glog.V(logger.Warn).Infoln("Checking database for recoverable block data...")
+
 		recoveredHeight := self.Recovery(1, 100)
+
+		self.mu.Unlock()
+		defer self.mu.Lock()
+
 		if recoveredHeight == 0 {
 			glog.V(logger.Warn).Infoln("WARNING: No recoverable data found, resetting to genesis.")
 			return self.Reset()
 		}
+		// Remove all block header and canonical data above recoveredHeight
+		self.PurgeAbove(recoveredHeight + 1)
 		return self.SetHead(recoveredHeight)
 	}
 
@@ -681,6 +691,19 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	return nil
 }
 
+// PurgeAbove works like SetHead, but instead of rm'ing head <-> bc.currentBlock,
+// it removes all stored blockchain data n -> *anyexistingblockdata*
+// TODO: possibly replace with kv database iterator
+func (bc *BlockChain) PurgeAbove(n uint64) {
+	bc.mu.Lock()
+
+	delFn := func(hash common.Hash) {
+		DeleteBody(bc.chainDb, hash)
+	}
+	bc.hc.PurgeAbove(n, delFn)
+	bc.mu.Unlock()
+}
+
 // SetHead rewinds the local chain to a new head. In the case of headers, everything
 // above the new head will be deleted and the new one set. In the case of blocks
 // though, the head may be further rewound if block bodies are missing (non-archive
@@ -689,7 +712,6 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	glog.V(logger.Warn).Infof("Setting blockchain head, target: %v", head)
 
 	bc.mu.Lock()
-	defer bc.mu.Unlock()
 
 	delFn := func(hash common.Hash) {
 		DeleteBody(bc.chainDb, hash)
@@ -731,6 +753,8 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	if err := WriteHeadFastBlockHash(bc.chainDb, bc.currentFastBlock.Hash()); err != nil {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
 	}
+
+	bc.mu.Unlock()
 	return bc.LoadLastState(false)
 }
 

@@ -155,8 +155,13 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 		cacheChainIdentity = identity
 	}()
 
+	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
+		ctx.GlobalSet(aliasableName(ChainIdentityFlag.Name, ctx), filepath.Clean(chainFlagVal))
+	}
+
 	if chainIsMorden(ctx) {
-		identity = core.DefaultConfigMorden.Identity // this makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
+		// This makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
+		identity = core.DefaultConfigMorden.Identity
 		return identity
 	}
 	// If --chain is in use.
@@ -165,7 +170,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 			identity = core.DefaultConfigMainnet.Identity
 			return identity
 		}
-		// Check for unallowed values.
+		// Check for disallowed values.
 		if chainIdentitiesBlacklist[chainFlagVal] {
 			glog.Fatalf(`%v: %v: reserved word
 					reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes',

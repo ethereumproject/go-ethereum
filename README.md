@@ -75,7 +75,7 @@ The most common scenario is users wanting to simply interact with the Ellaism ne
 $ geth --fast
 ```
 
-Using geth in fast sync mode causes it to download only block _state_ data -- leaving out bulky transaction records -- which avoids a lot of CPU and memory intensive processing. 
+Using geth in fast sync mode causes it to download only block _state_ data -- leaving out bulky transaction records -- which avoids a lot of CPU and memory intensive processing.
 
 Fast sync will be automatically __disabled__ (and full sync enabled) when:
 - your chain database contains *any* full blocks
@@ -140,7 +140,7 @@ Specifying the `--chain=morden` flag will reconfigure your Geth instance a bit:
  -  As mentioned above, Geth will host its testnet data in a `morden` subfolder (`~/.ethereum-classic/morden`).
  - Instead of connecting the main Ethereum network, the client will connect to the test network, which uses different P2P bootnodes, different network IDs and genesis states.
 
-You may also optionally use `--testnet` or `--chain=testnet` to enable this configuration. 
+You may also optionally use `--testnet` or `--chain=testnet` to enable this configuration.
 
 > *Note: Although there are some internal protective measures to prevent transactions from crossing over between the main network and test network (different starting nonces), you should make sure to always use separate accounts for play-money and real-money. Unless you manually move accounts, Geth
 will by default correctly separate the two networks and will not make any accounts available between them.*
@@ -258,7 +258,7 @@ Thank you for considering to help out with the source code!
 
 The core values of democratic engagement, transparency, and integrity run deep with us. We welcome contributions from everyone, and are grateful for even the smallest of fixes.  :clap:
 
-This project is migrated from the now hard-forked [Ethereum (ETHF) Github project](https://github.com/ethereum), and we will need to incrementally migrate pieces of the infrastructure required to maintain the project. 
+This project is migrated from the now hard-forked [Ethereum (ETHF) Github project](https://github.com/ethereum), and we will need to incrementally migrate pieces of the infrastructure required to maintain the project.
 
 If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes, please check up with the core devs first on [our Slack channel (#development)](http://ethereumclassic.herokuapp.com/) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
 

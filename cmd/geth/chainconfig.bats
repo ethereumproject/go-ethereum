@@ -218,12 +218,25 @@ teardown() {
 
 	# Ensure we're using the --chain named subdirectory under main $DATA_DIR.
 	[ -d $DATA_DIR/morden ]
-	[ -d $DATA_DIR/morden ]
 	[ -d $DATA_DIR/morden/chaindata ]
 	[ -f $DATA_DIR/morden/chaindata/CURRENT ]
 	[ -f $DATA_DIR/morden/chaindata/LOCK ]
 	[ -f $DATA_DIR/morden/chaindata/LOG ]
 	[ -d $DATA_DIR/morden/keystore ]
+}
+
+# prove that trailing slashes in chain=val/ get removed harmlessly
+@test "--chain='morden/' | exit 0" {
+
+    # *nix path separator == /
+    run $GETH_CMD --data-dir $DATA_DIR --chain=morden/ --exec 'eth.getBlock(0).hash' console
+    echo "$output"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303"* ]]
+
+	# Ensure we're using the --chain named subdirectory under main $DATA_DIR.
+	[ -d $DATA_DIR/morden ]
+	[ -d $DATA_DIR/morden/chaindata ]
 }
 
 ## load /testdata
