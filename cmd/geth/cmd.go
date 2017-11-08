@@ -554,7 +554,26 @@ func status(ctx *cli.Context) error {
 	return nil
 }
 
+func rollbackFast(ctx *cli.Context) error {
+	bc, chainDB := MakeChain(ctx)
+
+	err := core.WriteHeadBlockHash(chainDB, bc.Genesis().Hash())
+	chainDB.Close()
+	if err != nil {
+		return err
+	}
+
+	// Reload, lazy way of showing new chain head vals.
+	bc, chainDB = MakeChain(ctx)
+	chainDB.Close()
+	return nil
+}
+
 func rollback(ctx *cli.Context) error {
+	if ctx.Bool("fast") {
+		return rollbackFast(ctx)
+	}
+
 	index := ctx.Args().First()
 	if len(index) == 0 {
 		glog.Fatal("missing argument: use `rollback 12345` to specify required block number to roll back to")
