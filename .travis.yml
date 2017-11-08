@@ -14,7 +14,7 @@ script:
 - go version
 - go env
 - go test ./...
-- go build ./cmd/geth
+- if [ -n "TRAVIS_TAG" ]; then go build -ldflags "-X main.Version=$TRAVIS_TAG" ./cmd/geth; else go build ./cmd/geth; fi
 before_deploy:
 - sh .ci/deploy.sh
 deploy:
