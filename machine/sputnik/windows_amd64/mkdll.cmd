@@ -1,0 +1,1 @@
+gcc -shared -xc -o sputnikvm.dll ../unimplemented.cx -Wl,--out-implib,libsputnikvm.a

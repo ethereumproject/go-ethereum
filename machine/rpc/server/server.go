@@ -18,9 +18,9 @@
 package server
 
 import (
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/machine/classic"
 	"github.com/ethereumproject/go-ethereum/machine/rpc/client"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"net"
@@ -33,13 +33,13 @@ type Server struct {
 	cStop   chan struct{}
 }
 
-func NewServer() *Server {
+func NewServer(machine vm.Machine) (*Server, error) {
 	handler := rpc.NewServer()
-	svc := &MachineSvc{Machine: classic.NewMachine()}
+	svc := &MachineSvc{Machine: machine}
 	if err := handler.RegisterName("vm", svc); err != nil {
-		panic(err) // should not occur, but for sure
+		return nil, err
 	}
-	return &Server{handler, nil, false, make(chan struct{})}
+	return &Server{handler, nil, false, make(chan struct{})}, nil
 }
 
 func (self *Server) ServeConnection(conn net.Conn) {

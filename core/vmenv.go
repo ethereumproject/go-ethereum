@@ -33,6 +33,7 @@ import (
 	"os"
 	"strings"
 	"unicode"
+	"github.com/ethereumproject/go-ethereum/machine/sputnik"
 )
 
 type VmEnv struct {
@@ -252,6 +253,7 @@ func NewEnvWithMachine(machine vm.Machine, db *state.StateDB, chainConfig *Chain
 		machine.(*classic.RawMachine).Bind(db, vmenv.Hashfn)
 		// be aware, commitInfo should be called before Fire
 	}
+	glog.V(logger.Debug).Infof("VM: %s/%s\n",machine.Type(),machine.Name())
 	return vmenv
 }
 
@@ -309,6 +311,9 @@ func (self *vmManager) EnvConfig() {
 	case "RAWCLASSIC":
 		self.SwitchToRawClassicVm()
 		return
+	case "SPUTNIK":
+		self.SwitchToSputnikVm()
+		return
 	case "IPC":
 		connName := vm.DefaultVmIpc
 		manageVm := ""
@@ -365,6 +370,14 @@ func (self *vmManager) SwitchToClassicVm() {
 	self.WriteConfigToLog()
 }
 
+func (self *vmManager) SwitchToSputnikVm() {
+	self.autoConfig()
+	self.useVmType = vm.SputnikVm
+	self.useVmConnection = vm.InprocVm
+	self.isConfigured = true
+	self.WriteConfigToLog()
+}
+
 func (self *vmManager) WriteConfigToLog() {
 	glog.V(logger.Debug).Infof("use virtual machine %s/%s (%s)\n", self.useVmType.String(), self.useVmConnection.String(), self.useVmManagment.String())
 	switch self.useVmConnection {
@@ -400,6 +413,12 @@ func (self *vmManager) ConnectMachine() (vm.Machine, error) {
 			return classic.NewMachine(), nil
 		case vm.ClassicRawVm:
 			return classic.NewRawMachine(), nil
+		case vm.SputnikVm:
+			if m := sputnik.NewMachine(); m != nil {
+				return m, nil
+			} else {
+				return nil, errors.New("Sputnik VM is unimplemented yet")
+			}
 		default:
 			return nil, BadVmUsageError
 		}

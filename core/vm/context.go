@@ -24,6 +24,7 @@ import (
 	"errors"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
+	"fmt"
 )
 
 const UnknwonStringValue = "-"
@@ -228,6 +229,19 @@ type Require struct {
 	Address common.Address	`json:"address"`
 	Hash    common.Hash		`json:"hash"`
 	Number  uint64			`json:"number"`
+}
+
+func (self Require) String() string {
+	hashStr := "0x0"
+	if self.Hash != (common.Hash{}) {
+		hashStr = self.Hash.Hex()
+	}
+	addrStr := "0x0"
+	if self.Address != (common.Address{}) {
+		addrStr = self.Address.Hex()
+	}
+	return fmt.Sprintf("vm.Require{ID:%v,Address:%v,Hash:%v,Number:%v}",
+		self.ID,addrStr,hashStr,self.Number)
 }
 
 type Context interface {
