@@ -21,7 +21,11 @@ install:
   - go version
   - go env
   - go get golang.org/x/sys/windows
+  # Get compiler for JSON resources.
+  - go get github.com/omeid/go-resources/cmd/resources
 build_script:
+  # Compile JSON chain config resources to Go.
+  - resources -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json
   - go test ./...
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
