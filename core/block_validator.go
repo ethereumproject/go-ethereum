@@ -281,8 +281,8 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		name = ""
 	} // will fall to default panic
 	switch name {
-	case "diffused":
-		return calcDifficultyDiffused(time, parentTime, parentNumber, parentDiff)
+	case "defused":
+		return calcDifficultyDefused(time, parentTime, parentNumber, parentDiff)
 	case "ecip1010":
 		if length, ok := f.GetBigInt("length"); ok {
 			explosionBlock := big.NewInt(0).Add(fork.Block, length)
@@ -405,12 +405,12 @@ func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *
 	return x
 }
 
-func calcDifficultyDiffused(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+func calcDifficultyDefused(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.mediawiki
 	// algorithm:
 	// diff = (parent_diff +
 	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
-	//        ) + 2^(periodCount - 2)
+	//        )
 
 	bigTime := new(big.Int).SetUint64(time)
 	bigParentTime := new(big.Int).SetUint64(parentTime)
