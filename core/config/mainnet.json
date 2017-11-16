@@ -26774,6 +26774,18 @@
                         }
                     }
                 ]
+            },
+            {
+                "name": "Paradise",
+                "block": 5452163,
+                "features": [
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "type": "defused"
+                        }
+                    }
+                ]
             }
         ],
         "badHashes": [
