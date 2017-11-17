@@ -38,6 +38,10 @@ A STATUS of NONE means it was written _without_ any abnormal chain event, such a
 		{"BLOCK", "GAS_USED", "BIGINT"},
 		{"BLOCK", "COINBASE", "STRING"},
 		{"BLOCK", "TIME", "BIGINT"},
+		{"BLOCK", "DIFFICULTY", "BIGINT"},
+		{"BLOCK", "UNCLES", "INT"},
+		{"BLOCK", "RECEIVED_AT", "BIGINT"},
+		{"BLOCK", "DIFF_PARENT_TIME", "BIGINT"},
 	},
 }
 
@@ -55,6 +59,19 @@ var mlogBlockchainInsertBlocks = logger.MLogT{
 		{"BLOCKS", "FIRST_HASH", "STRING"},
 		{"BLOCKS", "LAST_HASH", "STRING"},
 		{"INSERT", "TIME", "DURATION"},
+	},
+}
+
+var mlogBlockchainReorgBlocks = logger.MLogT{
+	Description: "Called when a chain split is detected and a subset of blocks are reoganized.",
+	Receiver: "BLOCKCHAIN",
+	Verb: "REORG",
+	Subject: "BLOCKS",
+	Details: []logger.MLogDetailT{
+		{"REORG", "LAST_COMMON_HASH", "STRING"},
+		{"REORG", "SPLIT_NUMBER", "BIGINT"},
+		{"BLOCKS", "OLD_START_HASH", "STRING"},
+		{"BLOCKS", "NEW_START_HASH", "STRING"},
 	},
 }
 

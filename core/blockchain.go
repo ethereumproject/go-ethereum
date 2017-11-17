@@ -150,7 +150,7 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
 	for i := range config.BadHashes {
 		if header := bc.GetHeader(config.BadHashes[i].Hash); header != nil && header.Number.Cmp(config.BadHashes[i].Block) == 0 {
-			glog.V(logger.Error).Infof("Found bad hash, rewinding chain to block #%d [%x…]", header.Number, header.ParentHash[:4])
+			glog.V(logger.Error).Infof("Found bad hash, rewinding chain to block #%d [%s]", header.Number, header.ParentHash.Hex())
 			bc.SetHead(header.Number.Uint64() - 1)
 			glog.V(logger.Error).Infoln("Chain rewind was successful, resuming normal operation")
 		}
@@ -198,7 +198,7 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
 	for i := range config.BadHashes {
 		if header := bc.GetHeader(config.BadHashes[i].Hash); header != nil && header.Number.Cmp(config.BadHashes[i].Block) == 0 {
-			glog.V(logger.Error).Infof("Found bad hash, rewinding chain to block #%d [%x…]", header.Number, header.ParentHash[:4])
+			glog.V(logger.Error).Infof("Found bad hash, rewinding chain to block #%d [%s]", header.Number, header.ParentHash.Hex())
 			bc.SetHead(header.Number.Uint64() - 1)
 			glog.V(logger.Error).Infoln("Chain rewind was successful, resuming normal operation")
 		}
@@ -612,7 +612,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		glog.V(logger.Info).Infof("Validating currentFastBlock: %v", self.currentFastBlock.Number())
 		if e := self.blockIsInvalid(self.currentFastBlock); e != nil {
 			if !dryrun {
-				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head fast block #%d (%x): %v \nAttempting chain reset with recovery.", self.currentFastBlock.Number(), self.currentFastBlock.Hash(), e)
+				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head fast block #%d [%x]: %v \nAttempting chain reset with recovery.", self.currentFastBlock.Number(), self.currentFastBlock.Hash(), e)
 				return recoverOrReset()
 			}
 			return fmt.Errorf("invalid currentFastBlock: %v", e)
@@ -1082,7 +1082,6 @@ type WriteStatus byte
 const (
 	NonStatTy WriteStatus = iota
 	CanonStatTy
-	SplitStatTy
 	SideStatTy
 )
 
@@ -1272,6 +1271,11 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 			case SideStatTy:
 				mlogWriteStatus = "SIDE"
 			}
+			parent := self.GetBlock(block.ParentHash())
+			parentTimeDiff := new(big.Int)
+			if parent != nil {
+				parentTimeDiff = new(big.Int).Sub(block.Time(), parent.Time())
+			}
 			mlogBlockchain.Send(mlogBlockchainWriteBlock.SetDetailValues(
 				mlogWriteStatus,
 				err,
@@ -1282,6 +1286,10 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 				block.GasUsed(),
 				block.Coinbase().Hex(),
 				block.Time(),
+				block.Difficulty(),
+				len(block.Uncles()),
+				block.ReceivedAt,
+				parentTimeDiff,
 			))
 		}()
 	}
@@ -1302,9 +1310,21 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
 	// If the total difficulty is higher than our known, add it to the canonical chain
-	// Second clause in the if statement reduces the vulnerability to selfish mining.
-	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
-	if externTd.Cmp(localTd) > 0 || (externTd.Cmp(localTd) == 0 && mrand.Float64() < 0.5) {
+	// Compare local vs external difficulties
+	tdCompare := externTd.Cmp(localTd)
+
+	// Initialize reorg if incoming td is greater than local.
+	reorg := tdCompare > 0
+
+	// If difficulties are the same, check block numbers.
+	if tdCompare == 0 {
+		nCompare := block.Number().Cmp(self.currentBlock.Number())
+		// Prefer earlier block number or randomize.
+		// Second clause in the statement reduces the vulnerability to selfish mining.
+		// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
+		reorg = nCompare < 0 || (nCompare == 0 && mrand.Float64() < 0.5)
+	}
+	if reorg {
 		// Reorganise the chain if the parent is not the head block
 		if block.ParentHash() != self.currentBlock.Hash() {
 			if err := self.reorg(self.currentBlock, block); err != nil {
@@ -1468,7 +1488,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 		switch status {
 		case CanonStatTy:
 			if glog.V(logger.Debug) {
-				glog.Infof("[%v] inserted block #%d (%d TXs %v G %d UNCs) (%x...). Took %v\n", time.Now().UnixNano(), block.Number(), len(block.Transactions()), block.GasUsed(), len(block.Uncles()), block.Hash().Bytes()[0:4], time.Since(bstart))
+				glog.Infof("[%v] inserted block #%d (%d TXs %v G %d UNCs) [%s]. Took %v\n", time.Now().UnixNano(), block.Number(), len(block.Transactions()), block.GasUsed(), len(block.Uncles()), block.Hash().Hex(), time.Since(bstart))
 			}
 			events = append(events, ChainEvent{block, block.Hash(), logs})
 
@@ -1486,12 +1506,9 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			}
 		case SideStatTy:
 			if glog.V(logger.Detail) {
-				glog.Infof("inserted forked block #%d (TD=%v) (%d TXs %d UNCs) (%x...). Took %v\n", block.Number(), block.Difficulty(), len(block.Transactions()), len(block.Uncles()), block.Hash().Bytes()[0:4], time.Since(bstart))
+				glog.Infof("inserted forked block #%d (TD=%v) (%d TXs %d UNCs) [%s]. Took %v\n", block.Number(), block.Difficulty(), len(block.Transactions()), len(block.Uncles()), block.Hash().Hex(), time.Since(bstart))
 			}
 			events = append(events, ChainSideEvent{block, logs})
-
-		case SplitStatTy:
-			events = append(events, ChainSplitEvent{block, logs})
 		}
 		stats.processed++
 	}
@@ -1511,15 +1528,15 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 				tend,
 			))
 		}
-		glog.V(logger.Info).Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%x / %x]\n",
+		glog.V(logger.Info).Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%s / %s]\n",
 			stats.processed,
 			stats.queued,
 			stats.ignored,
 			txcount,
 			tend,
 			end.Number(),
-			start.Hash().Bytes()[:4],
-			end.Hash().Bytes()[:4])
+			start.Hash().Hex(),
+			end.Hash().Hex())
 	}
 	go self.postChainEvents(events, coalescedLogs)
 
@@ -1596,9 +1613,17 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		}
 	}
 
+	commonHash := commonBlock.Hash()
 	if glog.V(logger.Debug) {
-		commonHash := commonBlock.Hash()
-		glog.Infof("Chain split detected @ %x. Reorganising chain from #%v %x to %x", commonHash[:4], numSplit, oldStart.Hash().Bytes()[:4], newStart.Hash().Bytes()[:4])
+		glog.Infof("Chain split detected @ [%s]. Reorganising chain from #%v %s to %s", commonHash.Hex(), numSplit, oldStart.Hash().Hex(), newStart.Hash().Hex())
+	}
+	if logger.MlogEnabled() {
+		mlogBlockchain.Send(mlogBlockchainReorgBlocks.SetDetailValues(
+			commonHash.Hex(),
+			numSplit,
+			oldStart.Hash().Hex(),
+			newStart.Hash().Hex(),
+		))
 	}
 
 	var addedTxs types.Transactions
@@ -1689,7 +1714,7 @@ func (chain *BlockChain) update() {
 		if len(blocks) > 0 {
 			types.BlockBy(types.Number).Sort(blocks)
 			if i, err := chain.InsertChain(blocks); err != nil {
-				log.Printf("periodic future chain update on block #%d (%x):  %s", blocks[i].Number(), blocks[i].Hash(), err)
+				log.Printf("periodic future chain update on block #%d [%s]:  %s", blocks[i].Number(), blocks[i].Hash().Hex(), err)
 			}
 		}
 	}
