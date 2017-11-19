@@ -345,17 +345,17 @@ func TestCalcDifficulty1Mainnet(t *testing.T) {
 	}
 
 	// Paradise
-	paradiseBlock := config.ForkByName("Paradise").Block
-	if paradiseBlock == nil {
-		t.Error("missing Paradise fork block")
+	defuseBlock := config.ForkByName("Defuse Difficulty Bomb").Block
+	if defuseBlock == nil {
+		t.Error("missing Defuse Difficulty Bomb fork block")
 	}
 
-	paradiseFeat, _, paradiseConfigured := config.GetFeature(paradiseBlock, "difficulty")
-	if !paradiseConfigured {
-		t.Errorf("difficulty not configured for diehard block: %v", dhB)
+	defuseFeat, _, defuseConfigured := config.GetFeature(defuseBlock, "difficulty")
+	if !defuseConfigured {
+		t.Errorf("difficulty not configured for Defuse Difficulty Bomb block: %v", dhB)
 	}
-	if val, ok := paradiseFeat.GetString("type"); !ok || val != "defused" {
-		t.Errorf("diffusion not configured as difficulty for paradise block: %v", dhB)
+	if val, ok := defuseFeat.GetString("type"); !ok || val != "defused" {
+		t.Errorf("diffusion not configured as difficulty for Defuse Difficulty Bomb block: %v", dhB)
 	}
 
 
@@ -388,9 +388,9 @@ func TestCalcDifficulty1Mainnet(t *testing.T) {
 		big.NewInt(0).Add(dhB, delay):  calcDifficultyExplosion(time, parentTime, big.NewInt(0).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock),  // 5000000
 		big.NewInt(1).Add(dhB, delay):  calcDifficultyExplosion(time, parentTime, big.NewInt(1).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock),  // 5000001
 
-		new(big.Int).Add(paradiseBlock, big.NewInt(-1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(paradiseBlock, big.NewInt(-1)), parentDiff),
-		new(big.Int).Add(paradiseBlock, big.NewInt(0)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(paradiseBlock, big.NewInt(0)), parentDiff),
-		new(big.Int).Add(paradiseBlock, big.NewInt(1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(paradiseBlock, big.NewInt(1)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(-1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(-1)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(0)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(0)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(1)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(1)), parentDiff),
 		
 		big.NewInt(10000000): calcDifficultyDefused(time, parentTime, big.NewInt(10000000), parentDiff),
 	}
@@ -425,17 +425,17 @@ func TestCalcDifficulty1Morden(t *testing.T) {
 	}
 
 	// Paradise
-	paradiseBlock := config.ForkByName("Paradise").Block
-	if paradiseBlock == nil {
-		t.Error("missing Paradise fork block")
+	defuseBlock := config.ForkByName("Defuse Difficulty Bomb").Block
+	if defuseBlock == nil {
+		t.Error("missing Defuse Difficulty Bomb fork block")
 	}
 
-	paradiseFeat, _, paradiseConfigured := config.GetFeature(paradiseBlock, "difficulty")
-	if !paradiseConfigured {
-		t.Errorf("difficulty not configured for diehard block: %v", dhB)
+	defuseFeat, _, defuseConfigured := config.GetFeature(defuseBlock, "difficulty")
+	if !defuseConfigured {
+		t.Errorf("difficulty not configured for Defuse Difficulty Bomb block: %v", dhB)
 	}
-	if val, ok := paradiseFeat.GetString("type"); !ok || val != "defused" {
-		t.Errorf("diffusion not configured as difficulty for paradise block: %v", dhB)
+	if val, ok := defuseFeat.GetString("type"); !ok || val != "defused" {
+		t.Errorf("diffusion not configured as difficulty for Defuse Difficulty Bomb block: %v", dhB)
 	}
 
 	//parentBlocks to compare with expected equality
@@ -460,9 +460,9 @@ func TestCalcDifficulty1Morden(t *testing.T) {
 		big.NewInt(0).Add(dhB, big.NewInt(0)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000000
 		big.NewInt(0).Add(dhB, big.NewInt(1)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000001
 
-		new(big.Int).Add(paradiseBlock, big.NewInt(-1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(paradiseBlock, big.NewInt(-1)), parentDiff),
-		new(big.Int).Add(paradiseBlock, big.NewInt(0)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(paradiseBlock, big.NewInt(0)), parentDiff),
-		new(big.Int).Add(paradiseBlock, big.NewInt(1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(paradiseBlock, big.NewInt(1)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(-1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(-1)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(0)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(0)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(1)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(1)), parentDiff),
 
 		big.NewInt(10000000): calcDifficultyDefused(time, parentTime, big.NewInt(10000000), parentDiff),
 	}
