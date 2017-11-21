@@ -116,7 +116,6 @@ func (b *SimulatedBackend) ContractCall(contract common.Address, data []byte, pe
 		value:    new(big.Int),
 		data:     data,
 	}
-
 	// Execute the call and return
 	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
@@ -167,7 +166,6 @@ func (b *SimulatedBackend) EstimateGasLimit(sender common.Address, contract *com
 		value:    value,
 		data:     data,
 	}
-
 	// Execute the call and return
 	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
