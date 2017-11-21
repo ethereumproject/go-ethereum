@@ -67,7 +67,6 @@ func Create(env Environment, caller ContractRef, code []byte, gas, gasPrice, val
 func exec(env Environment, caller ContractRef, address, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value *big.Int) (ret []byte, addr common.Address, err error) {
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
-
 	if env.Depth() > callCreateDepthMax {
 		caller.ReturnGas(gas, gasPrice)
 
@@ -114,7 +113,6 @@ func exec(env Environment, caller ContractRef, address, codeAddr *common.Address
 	defer contract.Finalise()
 
 	ret, err = env.(EVMRunner).Run(contract, input)
-
 	// if the contract creation ran successfully and no errors were returned
 	// calculate the gas required to store the code. If the code could not
 	// be stored due to not enough gas set an error and let it be handled
@@ -135,6 +133,7 @@ func exec(env Environment, caller ContractRef, address, codeAddr *common.Address
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != CodeStoreOutOfGasError) {
 		contract.UseGas(contract.Gas)
+
 		env.RevertToSnapshot(snapshotPreTransfer)
 	}
 	/*if err != nil {
