@@ -152,7 +152,6 @@ type KnownBlockError struct {
 func (self *KnownBlockError) Error() string {
 	return fmt.Sprintf("block %v already known (%x)", self.number, self.hash[0:4])
 }
-
 func IsKnownBlockErr(e error) bool {
 	_, ok := e.(*KnownBlockError)
 	return ok
