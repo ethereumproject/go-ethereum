@@ -4,8 +4,12 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 type MultiVmFactory interface {
@@ -13,11 +17,12 @@ type MultiVmFactory interface {
 }
 
 type MultiVm interface {
-	CommitAccount(address common.Address, nonce uint64, balance *big.Int) error
-	CommitAccountCode(address common.Address, code []byte) error
-	CommitAccountStorage(address common.Address, key *big.Int, value *big.Int) error
-	CommitBlockhash(number uint64, hash common.Hash) error
-	Fire() Require
+	CommitAccount(address common.Address, code []byte, nonce uint64, balance *big.Int)
+	CommitAccountNonexist(address common.Address)
+	CommitAccountCode(address common.Address, code []byte)
+	CommitAccountStorage(address common.Address, key *big.Int, value *big.Int)
+	CommitBlockhash(number uint64, hash common.Hash)
+	Fire() *Require
 	Status() byte
 	Accounts() []AccountChange
 	Logs() []vm.Logs
@@ -86,3 +91,84 @@ const (
 	StatusExitedNotSupported
 	StatusRunning
 )
+
+func ApplyMultiVmTransaction(factory *MultiVmFactory, config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction) (*types.Receipt, vm.Logs, *big.Int, error) {
+	tx.SetSigner(config.GetSigner(header.Number))
+
+	vm := (*factory).Create(config, header, tx)
+	for {
+		ret := vm.Fire()
+		if ret == nil {
+			break
+		}
+		switch ret.Type {
+		case RequireRequireAccount:
+			value := ret.Value.(RequireAccount)
+			if statedb.Exist(value.Address) {
+				vm.CommitAccount(value.Address, statedb.GetCode(value.Address),
+					statedb.GetNonce(value.Address), statedb.GetBalance(value.Address))
+			} else {
+				vm.CommitAccountNonexist(value.Address)
+			}
+		case RequireRequireAccountCode:
+			value := ret.Value.(RequireAccount)
+			if statedb.Exist(value.Address) {
+				vm.CommitAccountCode(value.Address, statedb.GetCode(value.Address))
+			} else {
+				vm.CommitAccountNonexist(value.Address)
+			}
+		case RequireRequireAccountStorage:
+			value := ret.Value.(RequireAccountStorage)
+			if statedb.Exist(value.Address) {
+				// TODO: figure out how to get storage.
+			} else {
+				vm.CommitAccountNonexist(value.Address)
+			}
+		case RequireRequireBlockhash:
+			// value := ret.Value.(RequireBlockhash)
+			// TODO: figure out how to get blockhash.
+		}
+	}
+
+	// VM execution is finished at this point. We apply changes to the statedb.
+
+	for _, account := range vm.Accounts() {
+		switch account.Type {
+		case AccountChangeIncreaseBalance:
+			value := account.Value.(IncreaseBalance)
+			statedb.AddBalance(value.Address, value.Balance)
+		case AccountChangeDecreaseBalance:
+			value := account.Value.(DecreaseBalance)
+			balance := new(big.Int).Sub(statedb.GetBalance(value.Address), value.Balance)
+			statedb.SetBalance(value.Address, balance)
+		case AccountChangeRemoved:
+			value := account.Value.(common.Address)
+			statedb.Suicide(value)
+		case AccountChangeAccount:
+			value := account.Value.(Account)
+			statedb.SetBalance(value.Address, value.Balance)
+			statedb.SetNonce(value.Address, value.Nonce)
+			statedb.SetCode(value.Address, value.Code)
+		}
+	}
+	for _, _ = range vm.Logs() {
+		// TODO: figure out how to write statedb.AddLog(&log)
+	}
+	usedGas := vm.GasUsed()
+
+	receipt := types.NewReceipt(statedb.IntermediateRoot().Bytes(), usedGas)
+	receipt.TxHash = tx.Hash()
+	receipt.GasUsed = new(big.Int).Set(usedGas)
+	if MessageCreatesContract(tx) {
+		from, _ := tx.From()
+		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
+	}
+
+	logs := statedb.GetLogs(tx.Hash())
+	receipt.Logs = logs
+	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+
+	glog.V(logger.Debug).Infoln(receipt)
+
+	return receipt, logs, usedGas, nil
+}

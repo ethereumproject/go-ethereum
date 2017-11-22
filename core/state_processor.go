@@ -43,7 +43,7 @@ var (
 // StateProcessor is a basic Processor, which takes care of transitioning
 // state from one point to another.
 //
-// StateProcessor implements Processor.
+// StateProcessor implements Processor.`
 type StateProcessor struct {
 	config *ChainConfig
 	bc     *BlockChain
@@ -85,12 +85,24 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 			}
 		}
 		statedb.StartRecord(tx.Hash(), block.Hash(), i)
-		receipt, logs, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
-		if err != nil {
-			return nil, nil, totalUsedGas, err
+		if true {
+			receipt, logs, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
+			if err != nil {
+				return nil, nil, totalUsedGas, err
+			}
+			receipts = append(receipts, receipt)
+			allLogs = append(allLogs, logs...)
+		} else {
+			// TODO: assume we've got a multivm factory initialized
+			// from the config file. Replace the first parameter.
+			receipt, logs, _, err := ApplyMultiVmTransaction(nil, p.config, p.bc, gp, statedb, header, tx)
+			if err != nil {
+				return nil, nil, totalUsedGas, err
+			}
+			receipts = append(receipts, receipt)
+			allLogs = append(allLogs, logs...)
 		}
-		receipts = append(receipts, receipt)
-		allLogs = append(allLogs, logs...)
+
 	}
 	AccumulateRewards(p.config, statedb, header, block.Uncles())
 
