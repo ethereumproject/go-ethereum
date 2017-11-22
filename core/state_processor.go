@@ -43,7 +43,7 @@ var (
 // StateProcessor is a basic Processor, which takes care of transitioning
 // state from one point to another.
 //
-// StateProcessor implements Processor.`
+// StateProcessor implements Processor.
 type StateProcessor struct {
 	config *ChainConfig
 	bc     *BlockChain
