@@ -12,6 +12,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
+var CurrentMultiVmFactory *MultiVmFactory = nil
+
 type MultiVmFactory interface {
 	Create(config *ChainConfig, header *types.Header, tx *types.Transaction) MultiVm
 }
