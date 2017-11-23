@@ -25,7 +25,7 @@ type MultiVm interface {
 	Fire() *Require
 	Status() byte
 	Accounts() []AccountChange
-	Logs() []vm.Logs
+	Logs() vm.Logs
 	GasUsed() *big.Int
 }
 
@@ -150,10 +150,13 @@ func ApplyMultiVmTransaction(factory *MultiVmFactory, config *ChainConfig, bc *B
 			statedb.SetBalance(value.Address, value.Balance)
 			statedb.SetNonce(value.Address, value.Nonce)
 			statedb.SetCode(value.Address, value.Code)
+			for storageKey, storageValue := range value.Storage {
+				statedb.SetState(value.Address, storageKey, storageValue)
+			}
 		}
 	}
-	for _, _ = range vm.Logs() {
-		// TODO: figure out how to write statedb.AddLog(&log)
+	for _, log := range vm.Logs() {
+		statedb.AddLog(log)
 	}
 	usedGas := vm.GasUsed()
 
