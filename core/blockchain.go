@@ -1270,6 +1270,8 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 				mlogWriteStatus = "CANON"
 			case SideStatTy:
 				mlogWriteStatus = "SIDE"
+			case SplitStatTy:
+				mlogWriteStatus = "SPLIT"
 			}
 			parent := self.GetBlock(block.ParentHash())
 			parentTimeDiff := new(big.Int)
