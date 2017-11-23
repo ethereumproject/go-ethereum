@@ -126,8 +126,9 @@ func ApplyMultiVmTransaction(factory *MultiVmFactory, config *ChainConfig, bc *B
 				vm.CommitAccountNonexist(value.Address)
 			}
 		case RequireRequireBlockhash:
-			// value := ret.Value.(RequireBlockhash)
-			// TODO: figure out how to get blockhash.
+			value := ret.Value.(RequireBlockhash)
+			block := bc.GetBlockByNumber(value.Number)
+			vm.CommitBlockhash(value.Number, block.Header().Hash())
 		}
 	}
 
