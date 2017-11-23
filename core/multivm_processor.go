@@ -20,7 +20,7 @@ type MultiVm interface {
 	CommitAccount(address common.Address, code []byte, nonce uint64, balance *big.Int)
 	CommitAccountNonexist(address common.Address)
 	CommitAccountCode(address common.Address, code []byte)
-	CommitAccountStorage(address common.Address, key *big.Int, value *big.Int)
+	CommitAccountStorage(address common.Address, key common.Hash, value common.Hash)
 	CommitBlockhash(number uint64, hash common.Hash)
 	Fire() *Require
 	Status() byte
@@ -44,7 +44,7 @@ type Account struct {
 	Nonce uint64
 	Balance *big.Int
 	Code []byte
-	Storage map[*big.Int]*big.Int
+	Storage map[common.Hash]common.Hash
 	IsFullStorage bool
 }
 
@@ -66,7 +66,7 @@ type RequireAccount struct {
 
 type RequireAccountStorage struct {
 	Address common.Address
-	Key *big.Int
+	Key common.Hash
 }
 
 type RequireBlockhash struct {
@@ -120,7 +120,8 @@ func ApplyMultiVmTransaction(factory *MultiVmFactory, config *ChainConfig, bc *B
 		case RequireRequireAccountStorage:
 			value := ret.Value.(RequireAccountStorage)
 			if statedb.Exist(value.Address) {
-				// TODO: figure out how to get storage.
+				storageValue := statedb.GetState(value.Address, value.Key)
+				vm.CommitAccountStorage(value.Address, value.Key, storageValue)
 			} else {
 				vm.CommitAccountNonexist(value.Address)
 			}
