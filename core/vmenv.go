@@ -34,6 +34,7 @@ import (
 	"strings"
 	"unicode"
 	"github.com/ethereumproject/go-ethereum/machine/sputnik"
+	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
 type VmEnv struct {
@@ -49,29 +50,24 @@ type VmEnv struct {
 	Machine     vm.Machine
 }
 
-func (self *VmEnv) do(callOrCreate func(*VmEnv) (vm.Context, error)) ([]byte, common.Address, *big.Int, error) {
+func (self *VmEnv) do(callOrCreate func(*VmEnv) (vm.Context, error)) ([]byte, *big.Int, error) {
 	for {
 		var (
 			context vm.Context
 			err     error
 			out     []byte
-			address common.Address
-			pa      *common.Address
 			gas     *big.Int
 		)
 		context, err = callOrCreate(self)
 		if err == nil {
-			out, pa, gas, err = self.execute(context)
-			if pa != nil {
-				address = *pa
-			}
+			out, gas, err = self.execute(context)
 			context.Finish()
 		}
 		if gas == nil {
 			gas = big.NewInt(0)
 		}
 		if err != vm.BrokenError {
-			return out, address, gas, err
+			return out, gas, err
 		} else {
 			// ?? mybe will better to switch to the classic vm and try again before ??
 			panic(err)
@@ -80,7 +76,7 @@ func (self *VmEnv) do(callOrCreate func(*VmEnv) (vm.Context, error)) ([]byte, co
 }
 
 func (self *VmEnv) Call(sender common.Address, to common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	out, _, gasRefund, err := self.do(func(e *VmEnv) (vm.Context, error) {
+	out, gasRefund, err := self.do(func(e *VmEnv) (vm.Context, error) {
 		return e.Machine.Call(sender, to, data, gas, price, value)
 	})
 	gas.Set(gasRefund)
@@ -88,18 +84,19 @@ func (self *VmEnv) Call(sender common.Address, to common.Address, data []byte, g
 }
 
 func (self *VmEnv) Create(caller state.AccountObject, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
-	out, addr, gasRefund, err := self.do(func(e *VmEnv) (vm.Context, error) {
+	addr := crypto.CreateAddress(caller.Address(), caller.Nonce())
+	out, gasRefund, err := self.do(func(e *VmEnv) (vm.Context, error) {
 		return e.Machine.Create(caller.Address(), data, gas, price, value)
 	})
 	gas.Set(gasRefund)
 	return out, addr, err
 }
 
-func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, error) {
+func (self *VmEnv) execute(ctx vm.Context) ([]byte, *big.Int, error) {
 	if err := ctx.CommitInfo(self.BlockNumber.Uint64(), self.Coinbase,
 		self.RuleSet.GasTable(self.BlockNumber), self.Fork,
 		self.Difficulty, self.GasLimit, self.Time); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	for {
 		req := ctx.Fire()
@@ -142,45 +139,49 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 			case vm.ExitedOk, vm.OutOfGasErr, vm.ExitedErr:
 				out, gas, gasRefund, err := ctx.Out()
 				if err != nil {
-					return nil, nil, nil, err
-				}
-
-				address, err := ctx.Address()
-				if err != nil {
-					return nil, nil, nil, err
+					return nil, nil, err
 				}
 
 				logs, _ := ctx.Logs()
 				if err != nil {
-					return nil, nil, nil, err
+					return nil, nil, err
 				}
 
 				accounts, err := ctx.Accounts()
 				if err != nil {
-					return nil, nil, nil, err
+					return nil, nil, err
 				}
 
 				self.Db.AddRefund(gasRefund)
+
 				for _, a := range accounts {
 					address := a.Address()
 					var o state.AccountObject
-					if a.IsNewborn() {
-						o = self.Db.CreateAccount(address)
-					} else {
-						o = self.Db.GetOrNewStateObject(address)
-					}
-					o.SetBalance(a.Balance())
-					o.SetNonce(a.Nonce())
-					a.Store(func(key, value common.Hash) error {
-						self.Db.SetState(a.Address(), key, value)
-						return nil
-					})
-					if a.IsSuicided() {
+					change := a.ChangeLevel()
+					if change == vm.SuicideAccount {
 						self.Db.Suicide(address)
 					} else {
-						hash, code := a.Code()
-						if code != nil {
-							o.SetCode(hash, code)
+						if a.ChangeLevel() == vm.CreateAccount {
+							o = self.Db.CreateAccount(address)
+							hash, code := a.Code()
+							if code != nil {
+								o.SetCode(hash, code)
+							}
+						} else {
+							o = self.Db.GetOrNewStateObject(address)
+						}
+
+						if change == vm.AddBalanceAccount {
+							o.AddBalance(a.Balance())
+						} else if change == vm.SubBalanceAccount {
+							o.SubBalance(a.Balance())
+						} else {
+							o.SetBalance(a.Balance())
+							o.SetNonce(a.Nonce())
+							a.Store(func(key, value common.Hash) error {
+								self.Db.SetState(a.Address(), key, value)
+								return nil
+							})
 						}
 					}
 					//fmt.Printf("account: %v balance: %v nonce: %v\n",o.Address().Hex(), o.Balance().Int64(), o.Nonce())
@@ -191,17 +192,17 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *common.Address, *big.Int, e
 					self.Db.AddLog(l)
 				}
 				if st == vm.OutOfGasErr {
-					return nil, nil, gas, OutOfGasError
+					return nil, gas, OutOfGasError
 				} else if st == vm.ExitedErr {
-					return nil, nil, gas, ctx.Err()
+					return nil, gas, ctx.Err()
 				} else {
-					return out, &address, gas, nil
+					return out, gas, nil
 				}
 			case vm.TransferErr:
 				_, gas, _, _ := ctx.Out()
-				return nil, nil, gas, InvalidTxError(ctx.Err())
+				return nil, gas, InvalidTxError(ctx.Err())
 			case vm.Broken:
-				return nil, nil, nil, vm.BrokenError
+				return nil, nil, vm.BrokenError
 			default:
 				// ?? unsupported VM implementaion ??
 				// should we panic or use known VM instead?

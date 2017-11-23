@@ -758,10 +758,6 @@ func (self *context) Fire() *vm.Require {
 	return rq
 }
 
-func (self *context) Address() (common.Address, error) {
-	return self.env.address, nil
-}
-
 func (self *context) Code(addr common.Address) (common.Hash, []byte, error) {
 	if c, exists := self.env.code[addr]; exists {
 		switch c.Level() {
@@ -777,11 +773,17 @@ type account struct {
 	env *vmEnv
 }
 
+func (self *account) ChangeLevel() vm.AccountChangeLevel {
+
+	change := self.acc.Level()
+	if change ==  Suicided { return vm.SuicideAccount }
+	if self.acc.IsNewborn() { return vm.CreateAccount }
+	return vm.UpdateAccount
+}
+
 func (self *account) Address() common.Address { return self.acc.address }
 func (self *account) Nonce() uint64           { return self.acc.Nonce() }
 func (self *account) Balance() *big.Int       { return self.acc.Balance() }
-func (self *account) IsSuicided() bool        { return self.acc.Level() == Suicided }
-func (self *account) IsNewborn() bool         { return self.acc.IsNewborn() }
 func (self *account) Code() (common.Hash, []byte) {
 	address := self.acc.address
 	if code, exists := self.env.code[address]; exists && code.Level() == Modified {

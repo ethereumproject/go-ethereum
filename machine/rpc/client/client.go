@@ -241,8 +241,7 @@ type Account struct {
 	Address_  common.Address			`json:address`
 	Nonce_    uint64					`json:nonce`
 	Balance_  *big.Int					`json:balance`
-	Suicided_ bool						`json:suicided`
-	Newborn_  bool						`json:newborn`
+	Change_   vm.AccountChangeLevel		`json:change`
 	Code_     []byte					`json:code`
 	Hash_     common.Hash				`json:hash`
 	Value_    map[string]common.Hash	`json:value`
@@ -251,8 +250,7 @@ type Account struct {
 func (self *Account) Address() common.Address { return self.Address_ }
 func (self *Account) Nonce() uint64           { return self.Nonce_ }
 func (self *Account) Balance() *big.Int       { return self.Balance_ }
-func (self *Account) IsSuicided() bool        { return self.Suicided_ }
-func (self *Account) IsNewborn() bool         { return self.Newborn_ }
+func (self *Account) ChangeLevel() vm.AccountChangeLevel { return self.Change_ }
 
 func (self *Account) Store(f func(common.Hash, common.Hash) error) error {
 	for k, v := range self.Value_ {

@@ -22,9 +22,9 @@ import (
 	"reflect"
 
 	"errors"
+	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"fmt"
 )
 
 const UnknwonStringValue = "-"
@@ -187,12 +187,38 @@ func (fork Fork) String() string {
 	}
 }
 
+type AccountChangeLevel byte
+
+const (
+	UpdateAccount AccountChangeLevel = iota
+	CreateAccount
+	SuicideAccount
+	AddBalanceAccount
+	SubBalanceAccount
+)
+
+func (change AccountChangeLevel) String() string {
+	switch change {
+	case UpdateAccount:
+		return "UpdateAccount"
+	case CreateAccount:
+		return "CreateAccount"
+	case SuicideAccount:
+		return "SuicideAccount"
+	case AddBalanceAccount:
+		return "AddBalanceAccount"
+	case SubBalanceAccount:
+		return "SubBalanceAccount"
+	default:
+		return UnknwonStringValue
+	}
+}
+
 type Account interface {
+	ChangeLevel() AccountChangeLevel
 	Address() common.Address
 	Nonce() uint64
 	Balance() *big.Int
-	IsSuicided() bool
-	IsNewborn() bool
 	Code() (common.Hash, []byte)
 	Store(func(common.Hash, common.Hash) error) error
 }
@@ -225,10 +251,10 @@ func (id RequireID) String() string {
 }
 
 type Require struct {
-	ID      RequireID		`json:"id"`
-	Address common.Address	`json:"address"`
-	Hash    common.Hash		`json:"hash"`
-	Number  uint64			`json:"number"`
+	ID      RequireID      `json:"id"`
+	Address common.Address `json:"address"`
+	Hash    common.Hash    `json:"hash"`
+	Number  uint64         `json:"number"`
 }
 
 func (self Require) String() string {
@@ -241,7 +267,7 @@ func (self Require) String() string {
 		addrStr = self.Address.Hex()
 	}
 	return fmt.Sprintf("vm.Require{ID:%v,Address:%v,Hash:%v,Number:%v}",
-		self.ID,addrStr,hashStr,self.Number)
+		self.ID, addrStr, hashStr, self.Number)
 }
 
 type Context interface {
@@ -259,8 +285,6 @@ type Context interface {
 	Finish() error
 	// Returns the changed accounts information
 	Accounts() ([]Account, error)
-	// Returns new contract address on Create and called contract address on Call
-	Address() (common.Address, error)
 	// Returns the out value and gas remaining/refunded if any
 	Out() ([]byte, *big.Int, *big.Int, error)
 	// Returns logs to be appended to the current block if the user

@@ -163,8 +163,7 @@ func (self *MachineSvc) Accounts() (res client.OnAccountsResult) {
 				a.Address(),
 				a.Nonce(),
 				a.Balance(),
-				a.IsSuicided(),
-				a.IsNewborn(),
+				a.ChangeLevel(),
 				code,
 				hash,
 				make(map[string]common.Hash),
@@ -187,18 +186,6 @@ func (self *MachineSvc) Accounts() (res client.OnAccountsResult) {
 	}
 	res.Status = self.context.Status()
 	glog.V(logger.Debug).Infof("vmsvc.Accounts => %s\n", self.StringifyState())
-	return
-}
-
-func (self *MachineSvc) Address() (res client.OnAddressResult) {
-	if address, err := self.context.Address(); err != nil {
-		res.Err = &client.Err{err.Error()}
-	} else {
-		res.Address = address
-	}
-	res.Status = self.context.Status()
-	glog.V(logger.Debug).Infof("vmsvc.Address : %s => %s\n",
-		res.Address.Hex(), self.StringifyState())
 	return
 }
 

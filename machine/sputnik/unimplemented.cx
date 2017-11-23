@@ -13,7 +13,7 @@ __attribute__((noreturn)) void fatal(const char *text) {
 
 UNIMPL(int sputnikvm_fire(void* ctx))
 
-UNIMPL(const void* sputnikvm_context(
+UNIMPL(void* sputnikvm_context(
     int32_t     callOrCreate,
     const char *gas,
     const char *price,
@@ -34,3 +34,31 @@ UNIMPL(const char* sputnikvm_req_hash(void *ctx))
 UNIMPL(uint64_t sputnikvm_req_blocknum(void *ctx))
 UNIMPL(void sputnikvm_commit_account(void *ctx,const char *address,uint64_t nonce,const char *balance,const void *bytes,size_t bytes_len))
 UNIMPL(void sputnikvm_commit_code(void *ctx,const char *address,const void *bytes,size_t bytes_len))
+UNIMPL(void sputnikvm_commit_value(void *ctx, const char *addressPtr, const char *keyPtr, const char *valuePtr))
+UNIMPL(void sputnikvm_commit_blockhash(void *ctx, uint64_t number, const char *hashPtr))
+UNIMPL(const void* sputnikvm_out(void *ctx))
+UNIMPL(size_t sputnikvm_out_len(void *ctx))
+UNIMPL(const char* sputnikvm_gas(void *ctx))
+UNIMPL(const char* sputnikvm_refund(void *ctx))
+UNIMPL(const char* sputnikvm_error(void *ctx))
+UNIMPL(int32_t sputnikvm_status(void *ctx))
+UNIMPL(void sputnikvm_terminate(void *ctx))
+UNIMPL(void* sputnikvm_first_account(void *ctx))
+UNIMPL(void* sputnikvm_next_account(void *ctx))
+UNIMPL(const char* sputnikvm_acc_address(void *acc))
+UNIMPL(const char* sputnikvm_acc_balance(void *acc))
+UNIMPL(int32_t sputnikvm_acc_change(void *acc))
+UNIMPL(uint64_t sputnikvm_acc_nonce(void *acc))
+UNIMPL(const void* sputnikvm_acc_code(void *acc))
+UNIMPL(size_t sputnikvm_acc_code_len(void *acc))
+UNIMPL(const char* sputnikvm_acc_first_key(void *acc))
+UNIMPL(const char* sputnikvm_acc_next_key(void *acc))
+UNIMPL(const char* sputnikvm_acc_value(void *acc,const char *key))
+UNIMPL(const char* sputnikvm_first_suicided(void *ctx))
+UNIMPL(const char* sputnikvm_next_suicided(void *ctx))
+UNIMPL(void* sputnikvm_first_log(void *ctx))
+UNIMPL(void* sputnikvm_next_log(void *ctx))
+UNIMPL(const char* sputnikvm_log_address(void *log))
+UNIMPL(const char* sputnikvm_log_topics(void *log))
+UNIMPL(const void* sputnikvm_log_data(void *log))
+UNIMPL(size_t sputnikvm_log_data_len(void *log))

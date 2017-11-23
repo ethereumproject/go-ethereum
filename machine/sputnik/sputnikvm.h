@@ -8,19 +8,23 @@
 extern int32_t sputnikvm_is_implemented(void);
 
 enum {
-   SPUTNIK_VM_CALL = 0,
-   SPUTNIK_VM_CREATE = 1,
+    SPUTNIK_VM_CALL = 0,
+    SPUTNIK_VM_CREATE = 1,
 
-   SPUTNIK_VM_EXITED = 0,
-   SPUTNIK_VM_REQUIRE_ACCOUNT = 2,
-   SPUTNIK_VM_REQUIRE_CODE = 3,
-   SPUTNIK_VM_REQUIRE_HASH = 4,
-   SPUTNIK_VM_REQUIRE_VALUE = 5,
+    SPUTNIK_VM_EXITED_OK = 0,
+    SPUTNIK_VM_EXITED_ERR = 1,
+    SPUTNIK_VM_RUNNING = 2,
+    SPUTNIK_VM_UNSUPPORTED_ERR = 3,
+
+    SPUTNIK_VM_REQUIRE_ACCOUNT = 2,
+    SPUTNIK_VM_REQUIRE_CODE = 3,
+    SPUTNIK_VM_REQUIRE_HASH = 4,
+    SPUTNIK_VM_REQUIRE_VALUE = 5,
 };
 
 extern int32_t sputnikvm_fire(void *ctx);
 
-extern const void* sputnikvm_context(
+extern void* sputnikvm_context(
     int32_t     callOrCreate,
     const char *gas,
     const char *price,
@@ -46,3 +50,35 @@ extern void sputnikvm_commit_account(
 
 extern void sputnikvm_commit_code(
     void *ctx,const char *address,const void *bytes,size_t bytes_len);
+
+extern void sputnikvm_commit_value(
+    void *ctx, const char *addressPtr, const char *keyPtr, const char *valuePtr);
+
+extern void sputnikvm_commit_blockhash(void *ctx, uint64_t number, const char *hashPtr);
+
+extern const void* sputnikvm_out(void *ctx);
+extern size_t sputnikvm_out_len(void *ctx);
+extern const char* sputnikvm_gas(void *ctx);
+extern const char* sputnikvm_refund(void *ctx);
+extern const char* sputnikvm_error(void *ctx);
+extern int32_t sputnikvm_status(void *ctx);
+extern void sputnikvm_terminate(void *ctx);
+extern void* sputnikvm_first_account(void *ctx);
+extern void* sputnikvm_next_account(void *ctx);
+extern const char* sputnikvm_acc_address(void *acc);
+extern const char* sputnikvm_acc_balance(void *acc);
+extern int32_t sputnikvm_acc_change(void *acc);
+extern uint64_t sputnikvm_acc_nonce(void *acc);
+extern const void* sputnikvm_acc_code(void *acc);
+extern size_t sputnikvm_acc_code_len(void *acc);
+extern const char* sputnikvm_acc_first_key(void *acc);
+extern const char* sputnikvm_acc_next_key(void *acc);
+extern const char* sputnikvm_acc_value(void *acc,const char *key);
+extern const char* sputnikvm_first_suicided(void *ctx);
+extern const char* sputnikvm_next_suicided(void *ctx);
+extern void* sputnikvm_first_log(void *ctx);
+extern void* sputnikvm_next_log(void *ctx);
+extern const char* sputnikvm_log_address(void *log);
+extern const char* sputnikvm_log_topics(void *log);
+extern const void* sputnikvm_log_data(void *log);
+extern size_t sputnikvm_log_data_len(void *log);
