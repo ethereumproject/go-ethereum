@@ -1271,6 +1271,8 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 				mlogWriteStatus = "CANON"
 			case SideStatTy:
 				mlogWriteStatus = "SIDE"
+			case SplitStatTy:
+				mlogWriteStatus = "SPLIT"
 			}
 			mlogBlockchain.Send(mlogBlockchainWriteBlock.SetDetailValues(
 				mlogWriteStatus,
@@ -1302,9 +1304,21 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
 	// If the total difficulty is higher than our known, add it to the canonical chain
-	// Second clause in the if statement reduces the vulnerability to selfish mining.
-	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
-	if externTd.Cmp(localTd) > 0 || (externTd.Cmp(localTd) == 0 && mrand.Float64() < 0.5) {
+	// Compare local vs external difficulties
+	tdCompare := externTd.Cmp(localTd)
+
+	// Initialize reorg if incoming td is greater than local.
+	reorg := tdCompare > 0
+
+	// If difficulties are the same, check block numbers.
+	if tdCompare == 0 {
+		nCompare := block.Number().Cmp(self.currentBlock.Number())
+		// Prefer earlier block number or randomize.
+		// Second clause in the statement reduces the vulnerability to selfish mining.
+		// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
+		reorg = nCompare < 0 || (nCompare == 0 && mrand.Float64() < 0.5)
+	}
+	if reorg {
 		// Reorganise the chain if the parent is not the head block
 		if block.ParentHash() != self.currentBlock.Hash() {
 			if err := self.reorg(self.currentBlock, block); err != nil {
