@@ -212,7 +212,7 @@ func (self *context) Accounts() (accounts []vm.Account, err error) {
 	for ptr := C.sputnikvm_first_account(ctx); ptr != nil; ptr = C.sputnikvm_next_account(ctx) {
 		switch vm.AccountChangeLevel(C.sputnikvm_acc_change(ptr)) {
 		case vm.UpdateAccount, vm.CreateAccount, vm.AddBalanceAccount, vm.SubBalanceAccount :
-			accounts = append(accounts,&account{ptr})
+			accounts = append(accounts,&account{ctx, ptr})
 		}
 	}
 
@@ -238,9 +238,9 @@ func (self *context) Logs() (logs state.Logs, err error) {
 	ctx := self.Context()
 	for ptr := C.sputnikvm_first_log(ctx); ptr != nil; ptr = C.sputnikvm_next_log(ctx) {
 		logs = append(logs, &state.Log{
-			Address:common.HexToAddress(C.GoString(C.sputnikvm_log_address(ptr))),
-			Topics:logTopics(C.GoString(C.sputnikvm_log_topics(ptr))),
-			Data:C.GoBytes(C.sputnikvm_log_data(ptr),C.int(C.sputnikvm_log_data_len(ptr))),
+			Address:common.HexToAddress(C.GoString(C.sputnikvm_log_address(ctx,ptr))),
+			Topics:logTopics(C.GoString(C.sputnikvm_log_topics(ctx,ptr))),
+			Data:C.GoBytes(C.sputnikvm_log_data(ctx,ptr),C.int(C.sputnikvm_log_data_len(ptr))),
 			BlockNumber:self.blockNumber,
 			})
 	}
@@ -377,6 +377,7 @@ func (self *context) Fire() (*vm.Require) {
 }
 
 type account struct {
+	ctx unsafe.Pointer
 	ptr unsafe.Pointer
 }
 
@@ -385,7 +386,7 @@ func (self *account) ChangeLevel() vm.AccountChangeLevel {
 }
 
 func (self *account) Address() common.Address {
-	return common.HexToAddress(C.GoString(C.sputnikvm_acc_address(self.ptr)))
+	return common.HexToAddress(C.GoString(C.sputnikvm_acc_address(self.ctx,self.ptr)))
 }
 
 func (self *account) Nonce() uint64 {
@@ -393,20 +394,20 @@ func (self *account) Nonce() uint64 {
 }
 
 func (self *account) Balance() *big.Int {
-	balance, _ := new(big.Int).SetString(C.GoString(C.sputnikvm_acc_balance(self.ptr)),16)
+	balance, _ := new(big.Int).SetString(C.GoString(C.sputnikvm_acc_balance(self.ctx,self.ptr)),16)
 	return balance
 }
 
 func (self *account) Code() (common.Hash, []byte) {
 	code_len := C.int(C.sputnikvm_acc_code_len(self.ptr))
-	code := C.GoBytes(C.sputnikvm_acc_code(self.ptr),code_len)
+	code := C.GoBytes(C.sputnikvm_acc_code(self.ctx,self.ptr),code_len)
 	hash := crypto.Keccak256Hash(code)
 	return hash, code
 }
 
 func (self *account) Store(f func(common.Hash, common.Hash) error) error {
-	for key := C.sputnikvm_acc_first_key(self.ptr); key != nil; key = C.sputnikvm_acc_next_key(self.ptr) {
-		val := C.sputnikvm_acc_value(self.ptr,key)
+	for key := C.sputnikvm_acc_first_key(self.ctx,self.ptr); key != nil; key = C.sputnikvm_acc_next_key(self.ctx,self.ptr) {
+		val := C.sputnikvm_acc_value(self.ctx,self.ptr,key)
 		if err := f(common.HexToHash(C.GoString(key)),common.HexToHash(C.GoString(val))); err != nil {
 			return err
 		}
