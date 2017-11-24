@@ -634,29 +634,6 @@ func (f *Fetcher) enqueue(peer string, block *types.Block) {
 		f.forgetHash(hash)
 		return
 	}
-	// Discard any past or too distant blocks
-	// eg1; AHEAD (next blocks)
-	// block.Number = 16
-	// blockchain.Height = 15
-	//   16 - 15 = 1; 1 < -7 (FALSE) || 1 > 32 (FALSE)
-	// eg2
-	// block.Number = 55
-	// blockchain.Height = 15
-	//   55 - 15 = 40; 40 < -7 (FALSE) || 40 > 32 (TRUE) --> discard, drop, and forget
-
-	// eg1; SAME (same head height)
-	// block.Number = 15
-	// blockchain.Height = 15
-	//    15 - 15 = 0; 0 < -7 (FALSE) || 0 > 32 (FALSE)
-
-	// eg1; BEHIND (past blocks)
-	// block.Number = 14
-	// blockchain.Height = 15
-	//    14 - 15 = -1; -1 < -7 (FALSE) || -1 > 32 (FALSE)
-	// eg2
-	// block.Number = 5
-	// blockchain.Height = 15
-	//    5 - 15 = -10; -10 < -6 (TRUE) || -10 > 32 (FALSE)
 	if dist := int64(block.NumberU64()) - int64(f.chainHeight()); dist < -maxUncleDist || dist > maxQueueDist {
 		if logger.MlogEnabled() {
 			mlogFetcher.Send(mlogFetcherDiscardAnnouncement.SetDetailValues(
