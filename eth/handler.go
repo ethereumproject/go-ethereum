@@ -432,7 +432,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if len(headers) > 0 || !filter {
 			err := pm.downloader.DeliverHeaders(p.id, headers)
 			if err != nil {
-				glog.V(logger.Debug).Infoln(err)
+				glog.V(logger.Debug).Infoln("peer", p.id, err)
 			}
 		}
 

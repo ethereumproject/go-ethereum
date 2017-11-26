@@ -246,6 +246,13 @@ func (d *Downloader) Progress() (uint64, uint64, uint64, uint64, uint64) {
 	return d.syncStatsChainOrigin, current, d.syncStatsChainHeight, d.syncStatsStateDone, d.syncStatsStateDone + pendingStates
 }
 
+func (d *Downloader) Qos() (rtt time.Duration, ttl time.Duration, conf float64) {
+	rtt = d.requestRTT()
+	ttl = d.requestTTL()
+	conf = float64(d.rttConfidence)/1000000.0
+	return
+}
+
 // Synchronising returns whether the downloader is currently retrieving blocks.
 func (d *Downloader) Synchronising() bool {
 	return atomic.LoadInt32(&d.synchronising) > 0

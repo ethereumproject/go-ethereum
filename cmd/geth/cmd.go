@@ -885,7 +885,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			var mGasPerSecond = new(big.Int)
 
 			if numBlocksDiff > 0 && numBlocksDiff != current {
-				for i := lastLoggedBlockNumber; i <= current; i++ {
+				for i := lastLoggedBlockNumber+1; i <= current; i++ {
 					b := blockchain.GetBlockByNumber(i)
 					if b != nil {
 						numTxsDiff += b.Transactions().Len()
@@ -927,7 +927,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			if !importMode {
 				blocksprocesseddisplay = fmt.Sprintf("%4d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
 			} else {
-				blocksprocesseddisplay = fmt.Sprintf("  + %4d/%4d/%2d blks/txs/mgas", numBlocksDiff, numTxsDiff, mGas.Uint64())
+				blocksprocesseddisplay = fmt.Sprintf("+( blks=%4d txs=%4d mgas=%2d )", numBlocksDiff, numTxsDiff, mGas.Uint64())
 			}
 
 			// Log to ERROR.
