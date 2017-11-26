@@ -927,7 +927,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			if !importMode {
 				blocksprocesseddisplay = fmt.Sprintf("%4d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
 			} else {
-				blocksprocesseddisplay = fmt.Sprintf("+%4d blks +%4d txs +%8d mgas ", numBlocksDiff, numTxsDiff, mGas.Uint64())
+				blocksprocesseddisplay = fmt.Sprintf("+%4d blks  %4d txs %8d mgas  ", numBlocksDiff, numTxsDiff, mGas.Uint64())
 			}
 
 			// Log to ERROR.
