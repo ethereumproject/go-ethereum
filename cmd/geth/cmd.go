@@ -905,6 +905,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			// Don't show initial current / per second val
 			if lastLoggedBlockNumber == 0 {
 				numBlocksDiffPerSecond = 0
+				numBlocksDiff = 0
 			}
 
 			// Divide by interval to yield per-second stats

@@ -636,13 +636,20 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 	buf.tmp[14] = '.'
 	buf.nDigits(6, 15, now.Nanosecond()/1000, '0')
 	buf.tmp[21] = ' '
-	buf.Write(buf.tmp[:22])
-	buf.WriteString(file)
-	buf.tmp[0] = ':'
-	n := buf.someDigits(1, line)
-	buf.tmp[n+1] = ']'
-	buf.tmp[n+2] = ' '
-	buf.Write(buf.tmp[:n+3])
+	if int(s) > 0 {
+		buf.Write(buf.tmp[:22])
+		buf.WriteString(file)
+		buf.tmp[0] = ':'
+		n := buf.someDigits(1, line)
+		buf.tmp[n+1] = ']'
+		buf.tmp[n+2] = ' '
+		buf.Write(buf.tmp[:n+3])
+	} else {
+		buf.tmp[0] = ']'
+		buf.tmp[1] = ' '
+		buf.Write(buf.tmp[:2])
+	}
+
 	return buf
 }
 
