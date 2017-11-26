@@ -154,7 +154,7 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 	manager.downloader = downloader.New(chaindb, manager.eventMux, blockchain.HasHeader, blockchain.HasBlockAndState, blockchain.GetHeader,
 		blockchain.GetBlock, blockchain.CurrentHeader, blockchain.CurrentBlock, blockchain.CurrentFastBlock, blockchain.FastSyncCommitHead,
 		blockchain.GetTd, blockchain.InsertHeaderChain, manager.insertChain, blockchain.InsertReceiptChain, blockchain.Rollback,
-		manager.removePeer)
+		manager.removePeer, manager.isSynced)
 
 	validator := func(block *types.Block, parent *types.Block) error {
 		return core.ValidateHeader(config, pow, block.Header(), parent.Header(), true, false)
@@ -181,6 +181,10 @@ func (pm *ProtocolManager) insertChain(blocks types.Blocks) (i int, err error) {
 		go sendBadBlockReport(blocks[i], err)
 	}
 	return i, err
+}
+
+func (pm *ProtocolManager) isSynced() bool {
+	return pm.synced > 0
 }
 
 func (pm *ProtocolManager) removePeer(id string) {
@@ -651,6 +655,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			currentBlock := pm.blockchain.CurrentBlock()
 			if localTd := pm.blockchain.GetTd(currentBlock.Hash()); trueTD.Cmp(localTd) > 0 {
 				glog.V(logger.Debug).Infof("Peer %s: localTD=%v (<) peerTrueTD=%v, synchronising", p.id, localTd, trueTD)
+
+				// TODO: async sync
 				go pm.synchronise(p)
 			} else {
 				glog.V(logger.Detail).Infof("Peer %s: localTD=%v (>=) peerTrueTD=%v, NOT synchronising", p.id, localTd, trueTD)
