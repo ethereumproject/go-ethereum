@@ -588,7 +588,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	} else {
 		// Just demonstrative code.
 		if b := logger.SetMlogEnabled(false); b == false && logger.MlogEnabled() == false {
-			glog.V(logger.Warn).Infof("Machine logs: disabled")
+			glog.V(logger.Warn).Warnf("Machine logs: disabled")
 		}
 	}
 

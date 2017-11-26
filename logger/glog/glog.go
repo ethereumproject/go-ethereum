@@ -590,7 +590,7 @@ where the fields are defined as follows:
 	line             The line number
 	msg              The user-supplied message
 */
-func (l *loggingT) header(s severity, depth int) (*buffer, string, int) {
+func (l *loggingT) header(s severity, depth int, wantTrace bool) (*buffer, string, int) {
 	_, file, line, ok := runtime.Caller(3 + depth)
 	if !ok {
 		file = "???"
@@ -605,11 +605,11 @@ func (l *loggingT) header(s severity, depth int) (*buffer, string, int) {
 		}
 		file = file[1:] // drop '/'
 	}
-	return l.formatHeader(s, file, line), file, line
+	return l.formatHeader(s, file, line,wantTrace), file, line
 }
 
 // formatHeader formats a log header using the provided file name and line number.
-func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
+func (l *loggingT) formatHeader(s severity, file string, line int, wantTrace bool) *buffer {
 	now := timeNow()
 	if line < 0 {
 		line = 0 // not a real line number, but acceptable to someDigits
@@ -637,7 +637,7 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 	buf.nDigits(6, 15, now.Nanosecond()/1000, '0')
 	buf.tmp[21] = ' '
 	buf.Write(buf.tmp[:22])
-	if int(s) > 0 {
+	if wantTrace {
 		buf.WriteString(file)
 		buf.tmp[0] = ':'
 		n := buf.someDigits(1, line)
@@ -645,9 +645,8 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 		buf.tmp[n+2] = ' '
 		buf.Write(buf.tmp[:n+3])
 	} else {
-		buf.tmp[0] = ']'
-		buf.tmp[1] = ' '
-		buf.Write(buf.tmp[:2])
+		buf.tmp[0] = ' '
+		buf.Write(buf.tmp[:1])
 	}
 
 	return buf
@@ -695,7 +694,7 @@ func (buf *buffer) someDigits(i, d int) int {
 }
 
 func (l *loggingT) println(s severity, args ...interface{}) {
-	buf, file, line := l.header(s, 0)
+	buf, file, line := l.header(s, 0, true)
 	fmt.Fprintln(buf, args...)
 	l.output(s, buf, file, line, false)
 }
@@ -705,7 +704,7 @@ func (l *loggingT) print(s severity, args ...interface{}) {
 }
 
 func (l *loggingT) printDepth(s severity, depth int, args ...interface{}) {
-	buf, file, line := l.header(s, depth)
+	buf, file, line := l.header(s, depth, true)
 	fmt.Fprint(buf, args...)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
@@ -714,7 +713,7 @@ func (l *loggingT) printDepth(s severity, depth int, args ...interface{}) {
 }
 
 func (l *loggingT) printfmt(s severity, format string, args ...interface{}) {
-	buf, file, line := l.header(s, 0)
+	buf, file, line := l.header(s, 0, true)
 	fmt.Fprintf(buf, format, args...)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
@@ -722,11 +721,11 @@ func (l *loggingT) printfmt(s severity, format string, args ...interface{}) {
 	l.output(s, buf, file, line, false)
 }
 
-// printWithFileLine behaves like print but uses the provided file and line number.  If
+// printWithOptionalFileLine behaves like print but uses the provided file and line number.  If
 // alsoLogToStderr is true, the log message always appears on standard error; it
 // will also appear in the log file unless --logtostderr is set.
-func (l *loggingT) printWithFileLine(s severity, file string, line int, alsoToStderr bool, args ...interface{}) {
-	buf := l.formatHeader(s, file, line)
+func (l *loggingT) printWithOptionalFileLine(s severity, file string, line int, alsoToStderr bool, wantTrace bool, args ...interface{}) {
+	buf := l.formatHeader(s, file, line, wantTrace)
 	fmt.Fprint(buf, args...)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
@@ -1010,9 +1009,10 @@ func (lb logBridge) Write(b []byte) (n int, err error) {
 			line = 1
 		}
 	}
-	// printWithFileLine with alsoToStderr=true, so standard log messages
+	// printWithOptionalFileLine with alsoToStderr=true, so standard log messages
 	// always appear on standard error.
-	logging.printWithFileLine(severity(lb), file, line, true, text)
+
+	logging.printWithOptionalFileLine(severity(lb), file, line, true, int(logging.verbosity) > 4, text)
 	return len(b), nil
 }
 
@@ -1083,6 +1083,7 @@ func V(level Level) Verbose {
 	return Verbose(false)
 }
 
+// INFO
 // Info is equivalent to the global Info function, guarded by the value of v.
 // See the documentation of V for usage.
 func (v Verbose) Info(args ...interface{}) {
@@ -1106,6 +1107,33 @@ func (v Verbose) Infof(format string, args ...interface{}) {
 		logging.printfmt(infoLog, format, args...)
 	}
 }
+
+// WARN
+// Warn is equivalent to the global Warn function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warn(args ...interface{}) {
+	if v {
+		logging.print(warningLog, args...)
+	}
+}
+
+// Warnln is equivalent to the global Warnln function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warnln(args ...interface{}) {
+	if v {
+		logging.println(warningLog, args...)
+	}
+}
+
+// Warnf is equivalent to the global Warnf function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warnf(format string, args ...interface{}) {
+	if v {
+		logging.printfmt(warningLog, format, args...)
+	}
+}
+
+
 
 // Separator creates a line, ie ---------------------------------
 func Separator(iterable string) string {
