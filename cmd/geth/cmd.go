@@ -864,7 +864,8 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 					currentBlockHex = blockchain.CurrentFastBlock().Hash().Hex()
 				}
 			}
-			if current == height && !(current == 0 && height == 0) {
+			importMode := current >= height && !(current == 0 && height == 0)
+			if importMode {
 				fMode = "Import  " // with spaces to make same length as Discover, FastSync, FullSync
 				fOfHeight = strings.Repeat(" ", 12)
 				fHeightRatio = strings.Repeat(" ", 7)
@@ -922,7 +923,12 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			blockprogress := fmt.Sprintf("#%7d%s", current, fOfHeight)
 			cbhexdisplay := fmt.Sprintf("%s…%s", cbhexstart, cbhexend)
 			peersdisplay := fmt.Sprintf("%2d/%2d peers", lenPeers, maxPeers)
-			blocksprocesseddisplay := fmt.Sprintf("%4d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
+			var blocksprocesseddisplay string
+			if !importMode {
+				blocksprocesseddisplay = fmt.Sprintf("%4d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
+			} else {
+				blocksprocesseddisplay = fmt.Sprintf("  + %4d/%4d/%2d blks/txs/mgas", numBlocksDiff, numTxsDiff, mGas.Uint64())
+			}
 
 			// Log to ERROR.
 			// This allows maximum user optionality for desired integration with rest of event-based logging.
