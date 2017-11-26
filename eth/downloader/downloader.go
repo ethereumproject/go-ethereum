@@ -54,7 +54,7 @@ const (
 
 var (
 	rttMinEstimate   = 2 * time.Second  // Minimum round-trip time to target for download requests
-	rttMaxEstimate   = 20 * time.Second // Maximum rount-trip time to target for download requests
+	rttMaxEstimate   = 20 * time.Second // Maximum round-trip time to target for download requests
 	rttMinConfidence = 0.1              // Worse confidence factor in our estimated RTT value
 	ttlScaling       = 3                // Constant scaling factor for RTT -> TTL conversion
 	ttlLimit         = time.Minute      // Maximum TTL allowance to prevent reaching crazy timeouts
@@ -72,7 +72,7 @@ var (
 	fsHeaderForceVerify    = 24   // Number of headers to verify before and after the pivot to accept it
 	fsPivotInterval        = 512  // Number of headers out of which to randomize the pivot point
 	fsMinFullBlocks        = 1024 // Number of blocks to retrieve fully even in fast sync
-	fsCriticalTrials       = 10   // Number of times to retry in the cricical section before bailing
+	fsCriticalTrials       = 10   // Number of times to retry in the critical section before bailing
 )
 
 var (
@@ -144,6 +144,7 @@ type Downloader struct {
 	insertReceipts   receiptChainInsertFn     // Injects a batch of blocks and their receipts into the chain
 	rollback         chainRollbackFn          // Removes a batch of recently added chain links
 	dropPeer         peerDropFn               // Drops a peer for misbehaving
+	pmSynced         pmSyncedFn // Checks if pm has completed initial sync
 
 	// Status
 	synchroniseMock func(id string, hash common.Hash) error // Replacement for synchronise during testing
@@ -180,7 +181,7 @@ type Downloader struct {
 func New(stateDb ethdb.Database, mux *event.TypeMux, hasHeader headerCheckFn, hasBlockAndState blockAndStateCheckFn,
 	getHeader headerRetrievalFn, getBlock blockRetrievalFn, headHeader headHeaderRetrievalFn, headBlock headBlockRetrievalFn,
 	headFastBlock headFastBlockRetrievalFn, commitHeadBlock headBlockCommitterFn, getTd tdRetrievalFn, insertHeaders headerChainInsertFn,
-	insertBlocks blockChainInsertFn, insertReceipts receiptChainInsertFn, rollback chainRollbackFn, dropPeer peerDropFn) *Downloader {
+	insertBlocks blockChainInsertFn, insertReceipts receiptChainInsertFn, rollback chainRollbackFn, dropPeer peerDropFn, pmIsSynced pmSyncedFn) *Downloader {
 
 	dl := &Downloader{
 		mode:             FullSync,
@@ -203,6 +204,7 @@ func New(stateDb ethdb.Database, mux *event.TypeMux, hasHeader headerCheckFn, ha
 		insertReceipts:   insertReceipts,
 		rollback:         rollback,
 		dropPeer:         dropPeer,
+		pmSynced:         pmIsSynced,
 		newPeerCh:        make(chan *peer, 1),
 		headerCh:         make(chan dataPack, 1),
 		bodyCh:           make(chan dataPack, 1),
@@ -330,6 +332,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 	switch err {
 	case nil:
 		log.Printf("peer %q sync complete", id)
+		ttlScaling = 1 // Modify timeout scaling, shrinking it because now we can be less patient
 		return true
 
 	case errBusy:
