@@ -81,7 +81,7 @@ func StartNode(stack *node.Node) {
 		signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 		defer signal.Stop(sigc)
 		sig := <-sigc
-		glog.Infof("Got %v, shutting down...", sig)
+		glog.V(logger.Error).Warnf("Got %v, shutting down...", sig)
 
 		fails := make(chan error, 1)
 		go func(fs chan error) {
