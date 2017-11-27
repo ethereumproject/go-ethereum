@@ -144,7 +144,6 @@ type Downloader struct {
 	insertReceipts   receiptChainInsertFn     // Injects a batch of blocks and their receipts into the chain
 	rollback         chainRollbackFn          // Removes a batch of recently added chain links
 	dropPeer         peerDropFn               // Drops a peer for misbehaving
-	pmSynced         pmSyncedFn // Checks if pm has completed initial sync
 
 	// Status
 	synchroniseMock func(id string, hash common.Hash) error // Replacement for synchronise during testing
@@ -181,7 +180,7 @@ type Downloader struct {
 func New(stateDb ethdb.Database, mux *event.TypeMux, hasHeader headerCheckFn, hasBlockAndState blockAndStateCheckFn,
 	getHeader headerRetrievalFn, getBlock blockRetrievalFn, headHeader headHeaderRetrievalFn, headBlock headBlockRetrievalFn,
 	headFastBlock headFastBlockRetrievalFn, commitHeadBlock headBlockCommitterFn, getTd tdRetrievalFn, insertHeaders headerChainInsertFn,
-	insertBlocks blockChainInsertFn, insertReceipts receiptChainInsertFn, rollback chainRollbackFn, dropPeer peerDropFn, pmIsSynced pmSyncedFn) *Downloader {
+	insertBlocks blockChainInsertFn, insertReceipts receiptChainInsertFn, rollback chainRollbackFn, dropPeer peerDropFn) *Downloader {
 
 	dl := &Downloader{
 		mode:             FullSync,
@@ -204,7 +203,6 @@ func New(stateDb ethdb.Database, mux *event.TypeMux, hasHeader headerCheckFn, ha
 		insertReceipts:   insertReceipts,
 		rollback:         rollback,
 		dropPeer:         dropPeer,
-		pmSynced:         pmIsSynced,
 		newPeerCh:        make(chan *peer, 1),
 		headerCh:         make(chan dataPack, 1),
 		bodyCh:           make(chan dataPack, 1),
