@@ -956,9 +956,6 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			peersdisplay := fmt.Sprintf("%2d/%2d peers", lenPeers, maxPeers)
 			var blocksprocesseddisplay string
 			if lsMode != lsModeImport {
-				//I1127 09:44:29.125596  STATUS SYNC Discover #4911173                     24e…31a    0/   0/ 0 blks/txs/mgas sec  0/25 peers
-				//I1127 09:44:14.122299  STATUS SYNC Import   #4911173                     24e…31a +   0 blks     0 txs        0 mgas    1/25 peers
-				//I1127 09:44:29.125596  STATUS SYNC Discover #4911173                     24e…31a ~   0 blks     0 txs  0 mgas    /s    0/25 peers
 				blocksprocesseddisplay = fmt.Sprintf("~%4d blks %4d txs %2d mgas  /sec ", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
 			} else {
 				blocksprocesseddisplay = fmt.Sprintf("+%4d blks %4d txs %8d mgas ", numBlocksDiff, numTxsDiff, mGas.Uint64())
