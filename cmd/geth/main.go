@@ -171,6 +171,7 @@ func makeCLIApp() (app *cli.App) {
 		TestNetFlag,
 		NetworkIdFlag,
 		RPCCORSDomainFlag,
+		PrettyFlag,
 		VerbosityFlag,
 		VModuleFlag,
 		VerbosityTraceFloorFlag,
@@ -238,6 +239,23 @@ func makeCLIApp() (app *cli.App) {
 			glog.SetToStderr(true)
 		}
 
+		if ctx.GlobalBool(PrettyFlag.Name) {
+			// Allow manual overrides
+			if !ctx.GlobalIsSet(LogStatusFlag.Name) {
+				ctx.Set(LogStatusFlag.Name, "sync=15") // set log-status interval
+			}
+			if !ctx.GlobalIsSet(VerbosityTraceFloorFlag.Name) {
+				glog.SetVTraceThreshold(5)
+			}
+			if !ctx.GlobalIsSet(VerbosityFlag.Name) {
+				glog.SetV(1)
+			}
+			if !ctx.GlobalIsSet(VModuleFlag.Name) {
+				if err := glog.GetVModule().Set("cmd/geth/*=3"); err != nil {
+					glog.Fatalf("could not set vmodule", err)
+				}
+			}
+		}
 		if ctx.GlobalIsSet(VerbosityTraceFloorFlag.Name) {
 			val := ctx.GlobalInt(VerbosityTraceFloorFlag.Name)
 			log.Println("--verbosity-trace-floor", "val", val)
@@ -302,7 +320,7 @@ func geth(ctx *cli.Context) error {
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
 
-	if ctx.GlobalString(LogStatusFlag.Name) != "" {
+	if ctx.GlobalBool(PrettyFlag.Name) || (ctx.GlobalIsSet(LogStatusFlag.Name) && ctx.GlobalString(LogStatusFlag.Name) != "") {
 		dispatchStatusLogs(ctx, ethe)
 	}
 

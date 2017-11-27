@@ -471,12 +471,10 @@ func init() {
 	// Default stderrThreshold is ERROR.
 	logging.stderrThreshold = errorLog
 	// Establish defaults for trace thresholds.
-	logging.verbosityTraceThreshold.set(5)
+	logging.verbosityTraceThreshold.set(0)
 	logging.severityTraceThreshold.set(2)
 	// Default for verbosity.
-	logging.setVState(2, nil, false)
-	// Default for vmodule.
-	logging.vmodule.Set("cmd/geth/*=3")
+	logging.setVState(3, nil, false)
 	go logging.flushDaemon()
 }
 
