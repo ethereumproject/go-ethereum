@@ -648,6 +648,7 @@ func (f *Fetcher) enqueue(peer string, block *types.Block) {
 		f.forgetHash(hash)
 		return
 	}
+	// Don't queue block if we already have it.
 	if f.getBlock(hash) != nil {
 		glog.V(logger.Debug).Infof("Peer %s: discarded block #%d [%s], already have", peer, block.NumberU64(), hash.Hex())
 		metrics.FetchBroadcastDrops.Mark(1)
