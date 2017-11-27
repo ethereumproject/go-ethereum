@@ -45,6 +45,7 @@ import (
 	"errors"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"strings"
+	"math/bits"
 )
 
 type machine struct {
@@ -53,21 +54,21 @@ type machine struct {
 type context struct {
 	machine *machine
 
-	gas    string
-	price  string
-	value  string
-	caller string
-	target string
+	gas    *big.Int
+	price  *big.Int
+	value  *big.Int
+	caller common.Address
+	target *common.Address
 	data   []byte
 
 	st     vm.Status
 
-	gasLimit 	string
-	coinbase 	string
+	gasLimit 	*big.Int
+	coinbase 	common.Address
 	fork     	vm.Fork
 	blockNumber uint64
 	time       	uint64
-	difficulty 	string
+	difficulty 	*big.Int
 
 	ctxPtr  unsafe.Pointer
 
@@ -87,11 +88,11 @@ func NewMachine() vm.Machine {
 func (self *machine) Call(caller common.Address, to common.Address, data []byte, gas, price, value *big.Int) (vm.Context, error) {
 	ctx := &context{machine: self, st: vm.Inactive}
 
-	ctx.gas = gas.Text(16)
-	ctx.price = price.Text(16)
-	ctx.value = value.Text(16)
-	ctx.caller = caller.Hex()
-	ctx.target = to.Hex()
+	ctx.gas = gas
+	ctx.price = price
+	ctx.value = value
+	ctx.caller = caller
+	ctx.target = &to
 	ctx.data = data
 
 	return ctx, nil
@@ -101,10 +102,10 @@ func (self *machine) Call(caller common.Address, to common.Address, data []byte,
 func (self *machine) Create(caller common.Address, code []byte, gas, price, value *big.Int) (vm.Context, error) {
 	ctx := &context{machine: self, st: vm.Inactive}
 
-	ctx.gas = gas.Text(16)
-	ctx.price = price.Text(16)
-	ctx.value = value.Text(16)
-	ctx.caller = caller.Hex()
+	ctx.gas = gas
+	ctx.price = price
+	ctx.value = value
+	ctx.caller = caller
 	ctx.data = code
 
 	return ctx, nil
@@ -120,27 +121,57 @@ func (self *machine) Name() string {
 	return "SPUTNIK VM"
 }
 
+func fillBintBytes(bint *big.Int, bytes []byte) {
+	if bint != nil {
+		b := bint.Bits()
+		if len(b) > 256/bits.UintSize {
+			panic("Oh, very big balance!")
+		}
+		if b != nil {
+			for i := 0; i < len(b); i++ {
+				n := i * bits.UintSize/8
+				w := b[i]
+				for j := 0; j < bits.UintSize/8; j++ {
+					bytes[n+j] = byte(w)
+					w >>= 8
+				}
+			}
+		}
+	}
+}
+
+func getBintBytes(bint *big.Int) []byte {
+	var b = make([]byte,32)
+	fillBintBytes(bint,b)
+	return b
+}
+
 // Commit an account information
 func (self *context) CommitAccount(address common.Address, nonce uint64, balance *big.Int) (err error) {
-	addressPtr := C.CString(address.Hex())
-	defer C.free(unsafe.Pointer(addressPtr))
-	balancePtr := C.CString(balance.Text(16))
-	defer C.free(unsafe.Pointer(balancePtr))
+	fmt.Fprintf(os.Stderr,"COMMIT %v, %v, %v\n",address.Hex(),nonce,balance)
 	var codePtr unsafe.Pointer = nil
 	if self.subCode != nil {
-		codePtr = C.CBytes(self.subCode)
-		defer C.free(codePtr)
+		codePtr = unsafe.Pointer(&self.subCode[0])
 	}
-	C.sputnikvm_commit_account(self.Context(), addressPtr, C.uint64_t(nonce), balancePtr, codePtr, C.size_t(len(self.subCode)))
+	var bitsPtr unsafe.Pointer = nil
+	var bits [32]byte
+	if balance != nil {
+		fillBintBytes(balance,bits[:])
+		bitsPtr = unsafe.Pointer(&bits[0])
+	}
+	C.sputnikvm_commit_account(
+		self.Context(),
+		unsafe.Pointer(&address[0]),
+		C.uint64_t(nonce),
+		bitsPtr,
+		codePtr, C.size_t(len(self.subCode)))
 	self.subCode = nil
 	return
 }
 
 // Commit a block hash
 func (self *context) CommitBlockhash(number uint64, hash common.Hash) (err error) {
-	hashPtr := C.CString(hash.Hex())
-	defer C.free(unsafe.Pointer(hashPtr))
-	C.sputnikvm_commit_blockhash(self.Context(),C.uint64_t(number),hashPtr)
+	C.sputnikvm_commit_blockhash(self.Context(),C.uint64_t(number),unsafe.Pointer(&hash[0]))
 	return
 }
 
@@ -149,38 +180,34 @@ func (self *context) CommitCode(address common.Address, hash common.Hash, code [
 	if self.subRequire != nil {
 		self.subCode = code
 	} else {
-		addressPtr := C.CString(address.Hex())
-		defer C.free(unsafe.Pointer(addressPtr))
 		var codePtr unsafe.Pointer = nil
 		if code != nil {
-			codePtr = C.CBytes(code)
-			defer C.free(codePtr)
+			codePtr = unsafe.Pointer(&code[0])
 		}
-		C.sputnikvm_commit_code(self.Context(), addressPtr, codePtr, C.size_t(len(code)))
+		C.sputnikvm_commit_code(self.Context(),
+			unsafe.Pointer(&address[0]), codePtr, C.size_t(len(code)))
 	}
 	return
 }
 
 // Commit an info
 func (self *context) CommitInfo(blockNumber uint64, coinbase common.Address, table *vm.GasTable, fork vm.Fork, difficulty, gasLimit, time *big.Int) (err error) {
-	self.gasLimit = gasLimit.Text(16)
-	self.coinbase = coinbase.Hex()
+	self.gasLimit = gasLimit
+	self.coinbase = coinbase
 	self.fork = fork
 	self.blockNumber = blockNumber
 	self.time = time.Uint64()
-	self.difficulty = difficulty.Text(16)
+	self.difficulty = difficulty
 	return
 }
 
 // Commit a state
 func (self *context) CommitValue(address common.Address, key common.Hash, value common.Hash) (err error) {
-	addressPtr := C.CString(address.Hex())
-	defer C.free(unsafe.Pointer(addressPtr))
-	keyPtr := C.CString(key.Hex())
-	defer C.free(unsafe.Pointer(keyPtr))
-	valuePtr := C.CString(value.Hex())
-	defer C.free(unsafe.Pointer(valuePtr))
-	C.sputnikvm_commit_value(self.Context(),addressPtr,keyPtr,valuePtr)
+	C.sputnikvm_commit_value(
+		self.Context(),
+		unsafe.Pointer(&address[0]),
+		unsafe.Pointer(&key[0]),
+		unsafe.Pointer(&value[0]))
 	return
 }
 
@@ -196,11 +223,18 @@ func (self *context) Finish() (err error) {
 // Returns the out value and gas remaining/refunded if any
 func (self *context) Out() (out []byte, gas *big.Int, refund *big.Int, err error) {
 	ctx := self.Context()
-	out_ptr := C.sputnikvm_out(ctx)
 	out_len := C.sputnikvm_out_len(ctx)
-	out = C.GoBytes(out_ptr,C.int(out_len))
-	gas, _ = new(big.Int).SetString(C.GoString(C.sputnikvm_gas(ctx)),16)
-	refund, _ = new(big.Int).SetString(C.GoString(C.sputnikvm_refund(ctx)),16)
+	if out_len > 0 {
+		out = make([]byte, out_len)
+		C.sputnikvm_out_copy(ctx, unsafe.Pointer(&out[0]))
+	}
+	var b []big.Word
+	b = make([]big.Word,256/bits.UintSize)
+	C.sputnikvm_gas_copy(ctx,unsafe.Pointer(&b[0]))
+	gas = new(big.Int).SetBits(b)
+	b = make([]big.Word,256/bits.UintSize)
+	C.sputnikvm_refund_copy(ctx,unsafe.Pointer(&b[0]))
+	refund = new(big.Int).SetBits(b)
 	return
 }
 
@@ -212,12 +246,23 @@ func (self *context) Accounts() (accounts []vm.Account, err error) {
 	for ptr := C.sputnikvm_first_account(ctx); ptr != nil; ptr = C.sputnikvm_next_account(ctx) {
 		switch vm.AccountChangeLevel(C.sputnikvm_acc_change(ptr)) {
 		case vm.UpdateAccount, vm.CreateAccount, vm.AddBalanceAccount, vm.SubBalanceAccount :
-			accounts = append(accounts,&account{ctx, ptr})
+			acc := &account{ctx, ptr}
+			if acc.Address() != self.coinbase {
+				accounts = append(accounts,acc)
+			}
 		}
 	}
 
-	for ptr := C.sputnikvm_first_suicided(ctx); ptr != nil; C.sputnikvm_next_suicided(ctx) {
-		accounts = append(accounts,&suicided{common.HexToAddress(C.GoString(ptr))})
+	suicidesCount := int(C.sputnikvm_suicides_count(ctx))
+
+	for i := 0; i < suicidesCount; i += 1 {
+		var suicide = &suicided{}
+		C.sputnikvm_suicide_copy(ctx,C.size_t(i),unsafe.Pointer(&suicide.address[0]))
+		accounts = append(accounts,suicide)
+	}
+
+	for _, a := range accounts {
+		fmt.Fprintf(os.Stderr, "%s : 0x%s, %v\n",a.Address().Hex(), a.Balance().Text(16), a.Nonce())
 	}
 
 	return
@@ -236,13 +281,31 @@ func logTopics(s string) (topics []common.Hash){
 // decided to accept the running status of this VM
 func (self *context) Logs() (logs state.Logs, err error) {
 	ctx := self.Context()
-	for ptr := C.sputnikvm_first_log(ctx); ptr != nil; ptr = C.sputnikvm_next_log(ctx) {
-		logs = append(logs, &state.Log{
-			Address:common.HexToAddress(C.GoString(C.sputnikvm_log_address(ctx,ptr))),
-			Topics:logTopics(C.GoString(C.sputnikvm_log_topics(ctx,ptr))),
-			Data:C.GoBytes(C.sputnikvm_log_data(ctx,ptr),C.int(C.sputnikvm_log_data_len(ptr))),
+	logsCount := int(C.sputnikvm_logs_count(ctx))
+	logs = make(state.Logs,logsCount)
+	for logNo := 0; logNo < logsCount; logNo += 1 {
+
+		ptr := C.sputnikvm_log(ctx,C.size_t(logNo))
+
+		dataLen := C.sputnikvm_log_data_len(ptr)
+		data := make([]byte,dataLen)
+		C.sputnikvm_log_data_copy(ptr,unsafe.Pointer(&data[0]))
+
+		topicsCount := int(C.sputnikvm_log_topics_count(ptr))
+		topics := make([]common.Hash,topicsCount)
+
+		for i := 0; i < topicsCount; i += 1 {
+			C.sputnikvm_log_topic_copy(ptr,C.size_t(i),unsafe.Pointer(&topics[i][0]))
+		}
+
+		var address common.Address
+		C.sputnikvm_log_address_copy(ptr,unsafe.Pointer(&address[0]))
+		logs[logNo] = &state.Log{
+			Address:address,
+			Topics:topics,
+			Data:data,
 			BlockNumber:self.blockNumber,
-			})
+			}
 	}
 	return
 }
@@ -285,41 +348,31 @@ func (self *context) Context() unsafe.Pointer {
 			op = C.SPUTNIK_VM_CREATE
 		}
 
-		gas := C.CString(self.gas)
-		defer C.free(unsafe.Pointer(gas))
-		price := C.CString(self.price)
-		defer C.free(unsafe.Pointer(price))
-		value := C.CString(self.value)
-		defer C.free(unsafe.Pointer(value))
-		caller := C.CString(self.caller)
-		defer C.free(unsafe.Pointer(caller))
-		target := C.CString(self.target)
-		defer C.free(unsafe.Pointer(target))
-		data := C.CBytes(self.data)
-		defer C.free(data)
-		gasLimit := C.CString(self.gasLimit)
-		defer C.free(unsafe.Pointer(gasLimit))
-		coinbase := C.CString(self.coinbase)
-		defer C.free(unsafe.Pointer(coinbase))
-		difficulty := C.CString(self.difficulty)
-		defer C.free(unsafe.Pointer(difficulty))
-		blocknum := C.CString(new(big.Int).SetUint64(self.blockNumber).Text(16))
+		gas := getBintBytes(self.gas)
+		price := getBintBytes(self.price)
+		value := getBintBytes(self.value)
+		var target unsafe.Pointer = nil
+		if self.target != nil { target = unsafe.Pointer(&self.target[0]) }
+		gasLimit := getBintBytes(self.gasLimit)
+		difficulty := getBintBytes(self.difficulty)
+		var data unsafe.Pointer = nil
+		if self.data != nil { data = unsafe.Pointer(&self.data[0])}
 
 		self.ctxPtr = C.sputnikvm_context(
 			op,
-			gas,
-			price,
-			value,
-			caller,
+			unsafe.Pointer(&gas[0]),
+			unsafe.Pointer(&price[0]),
+			unsafe.Pointer(&value[0]),
+			unsafe.Pointer(&self.caller[0]),
 			target,
 			data,
 			C.size_t(len(self.data)),
-			gasLimit,
-			coinbase,
+			unsafe.Pointer(&gasLimit[0]),
+			unsafe.Pointer(&self.coinbase[0]),
 			C.int32_t(self.fork),
-			blocknum,
+			C.uint64_t(self.blockNumber),
 			C.uint64_t(self.time),
-			difficulty)
+			unsafe.Pointer(&difficulty[0]))
 
 	}
 
@@ -329,7 +382,7 @@ func (self *context) Context() unsafe.Pointer {
 // Run instructions until it reaches a `RequireErr` or exits
 func (self *context) Fire() (*vm.Require) {
 
-	if len(self.gasLimit) == 0 {
+	if self.gasLimit == nil {
 		self.st = vm.RequireErr
 		req := &vm.Require{ID: vm.RequireInfo}
 		glog.V(logger.Debug).Infof("Fire => %v\n",*req)
@@ -345,35 +398,26 @@ func (self *context) Fire() (*vm.Require) {
 
 	ctx := self.Context()
 	r := C.sputnikvm_fire(ctx)
-
-	fmt.Fprintf(os.Stderr,"fire => %v\n", r)
-
+	var req *vm.Require = nil
 	switch r {
 	case C.SPUTNIK_VM_REQUIRE_ACCOUNT:
-		address := C.GoString(C.sputnikvm_req_address(ctx))
-		self.subRequire = &vm.Require{ID: vm.RequireAccount, Address: common.HexToAddress(address) }
-		req := &vm.Require{ID: vm.RequireCode, Address: common.HexToAddress(address) }
-		glog.V(logger.Debug).Infof("Fire => %v\n",*req)
-		return req
+		req = &vm.Require{ID: vm.RequireCode}
+		C.sputnikvm_req_address_copy(ctx,unsafe.Pointer(&req.Address[0]))
+		self.subRequire = &vm.Require{ID: vm.RequireAccount, Address: req.Address}
 	case C.SPUTNIK_VM_REQUIRE_CODE:
-		address := C.GoString(C.sputnikvm_req_address(ctx))
-		req := &vm.Require{ID: vm.RequireCode, Address: common.HexToAddress(address) }
-		glog.V(logger.Debug).Infof("Fire => %v\n",*req)
-		return req
+		req = &vm.Require{ID: vm.RequireCode}
+		C.sputnikvm_req_address_copy(ctx,unsafe.Pointer(&req.Address[0]))
 	case C.SPUTNIK_VM_REQUIRE_HASH:
-		blocknum := uint64(C.sputnikvm_req_blocknum(ctx))
-		req := &vm.Require{ID: vm.RequireHash, Number: blocknum}
-		glog.V(logger.Debug).Infof("Fire => %v\n",*req)
-		return req
+		req = &vm.Require{ID: vm.RequireHash}
+		req.Number = uint64(C.sputnikvm_req_blocknum(ctx))
 	case C.SPUTNIK_VM_REQUIRE_VALUE:
-		address := C.GoString(C.sputnikvm_req_address(ctx))
-		key := C.GoString(C.sputnikvm_req_hash(ctx))
-		req := &vm.Require{ID: vm.RequireValue, Address: common.HexToAddress(address), Hash: common.HexToHash(key) }
-		glog.V(logger.Debug).Infof("Fire => %v\n",*req)
-		return req
+		req = &vm.Require{ID: vm.RequireValue}
+		C.sputnikvm_req_address_copy(ctx,unsafe.Pointer(&req.Address[0]))
+		C.sputnikvm_req_hash_copy(ctx,unsafe.Pointer(&req.Hash[0]))
 	}
-
-	return nil
+	glog.V(logger.Debug).Infof("Fire => %*v\n",req)
+	fmt.Fprintf(os.Stderr,"fire => %+v\n", req)
+	return req
 }
 
 type account struct {
@@ -385,8 +429,9 @@ func (self *account) ChangeLevel() vm.AccountChangeLevel {
 	return vm.AccountChangeLevel(C.sputnikvm_acc_change(self.ptr))
 }
 
-func (self *account) Address() common.Address {
-	return common.HexToAddress(C.GoString(C.sputnikvm_acc_address(self.ctx,self.ptr)))
+func (self *account) Address() (address common.Address) {
+	C.sputnikvm_acc_address_copy(self.ptr,unsafe.Pointer(&address[0]))
+	return
 }
 
 func (self *account) Nonce() uint64 {
@@ -394,24 +439,41 @@ func (self *account) Nonce() uint64 {
 }
 
 func (self *account) Balance() *big.Int {
-	balance, _ := new(big.Int).SetString(C.GoString(C.sputnikvm_acc_balance(self.ctx,self.ptr)),16)
-	return balance
+	bits := make([]big.Word,256/bits.UintSize)
+	C.sputnikvm_acc_balance_copy(self.ptr,unsafe.Pointer(&bits[0]))
+	return new(big.Int).SetBits(bits)
 }
 
 func (self *account) Code() (common.Hash, []byte) {
 	code_len := C.int(C.sputnikvm_acc_code_len(self.ptr))
-	code := C.GoBytes(C.sputnikvm_acc_code(self.ctx,self.ptr),code_len)
-	hash := crypto.Keccak256Hash(code)
-	return hash, code
+	if code_len > 0 {
+		code := make([]byte, code_len)
+		C.sputnikvm_acc_code_copy(self.ptr, unsafe.Pointer(&code[0]))
+		hash := crypto.Keccak256Hash(code)
+		return hash, code
+	}
+	return common.Hash{}, nil
 }
 
 func (self *account) Store(f func(common.Hash, common.Hash) error) error {
-	for key := C.sputnikvm_acc_first_key(self.ctx,self.ptr); key != nil; key = C.sputnikvm_acc_next_key(self.ctx,self.ptr) {
-		val := C.sputnikvm_acc_value(self.ctx,self.ptr,key)
-		if err := f(common.HexToHash(C.GoString(key)),common.HexToHash(C.GoString(val))); err != nil {
+
+	var key common.Hash
+	var val common.Hash
+
+	keyPtr := unsafe.Pointer(&key[0])
+	valPtr := unsafe.Pointer(&val[0])
+
+	for ok := C.sputnikvm_acc_first_kv_copy(self.ctx,self.ptr,keyPtr,valPtr);
+		ok != 0;
+		ok = C.sputnikvm_acc_next_kv_copy(self.ctx,keyPtr,valPtr) {
+
+		fmt.Fprintf(os.Stderr,"STORE %s => %s\n",key.Hex(),val.Hex())
+
+		if err := f(key,val); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 

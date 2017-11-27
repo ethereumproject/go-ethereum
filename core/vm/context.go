@@ -99,7 +99,7 @@ func (tp ConnectionType) String() string {
 }
 
 const (
-	DefaultVm      = ClassicVm
+	DefaultVm      = SputnikVm //ClassicVm
 	DefaultVmProto = InprocVm
 	DefaultVmUsage = UseVm
 	DefaultVmPort  = 30301
@@ -171,6 +171,7 @@ type Fork byte
 const (
 	Frontier Fork = iota
 	Homestead
+	GasReprice
 	Diehard
 )
 
@@ -180,6 +181,8 @@ func (fork Fork) String() string {
 		return "Frontier"
 	case Homestead:
 		return "Homestead"
+	case GasReprice:
+		return "GasReprice"
 	case Diehard:
 		return "Diehard"
 	default:

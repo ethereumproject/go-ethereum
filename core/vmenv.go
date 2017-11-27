@@ -152,6 +152,7 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *big.Int, error) {
 					return nil, nil, err
 				}
 
+				fmt.Printf("gas: %v refund: %v\n", gas.Text(16), gasRefund.Text(16))
 				self.Db.AddRefund(gasRefund)
 
 				for _, a := range accounts {
@@ -184,9 +185,9 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *big.Int, error) {
 							})
 						}
 					}
-					//fmt.Printf("account: %v balance: %v nonce: %v\n",o.Address().Hex(), o.Balance().Int64(), o.Nonce())
-					//fmt.Printf("\t hash: %v codesize: %v\n",self.Db.GetCodeHash(o.Address()).Hex(),len(self.Db.GetCode(o.Address())))
-					//fmt.Printf("\t suicided: %v\n",self.Db.HasSuicided(o.Address()))
+					fmt.Printf("account: %v balance: %v nonce: %v\n",o.Address().Hex(), o.Balance().Text(16), o.Nonce())
+					fmt.Printf("\t hash: %v codesize: %v\n",self.Db.GetCodeHash(o.Address()).Hex(),len(self.Db.GetCode(o.Address())))
+					fmt.Printf("\t suicided: %v\n",self.Db.HasSuicided(o.Address()))
 				}
 				for _, l := range logs {
 					self.Db.AddLog(l)
@@ -356,11 +357,12 @@ func (self *vmManager) SwitchToIpc(connName string, manageVm string) {
 }
 
 func (self *vmManager) SwitchToRawClassicVm() {
-	self.autoConfig()
+	/*self.autoConfig()
 	self.useVmType = vm.ClassicRawVm
 	self.useVmConnection = vm.InprocVm
 	self.isConfigured = true
-	self.WriteConfigToLog()
+	self.WriteConfigToLog()*/
+	self.SwitchToClassicVm()
 }
 
 func (self *vmManager) SwitchToClassicVm() {
