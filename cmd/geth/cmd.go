@@ -765,6 +765,21 @@ var availableLogStatusFeatures = map[string]LogStatusFeatAvailability{
 	"sync": StatusFeatAvailable,
 }
 
+type lsMode int
+const (
+	lsModeDiscover lsMode = iota
+	lsModeFullSync
+	lsModeFastSync
+	lsModeImport
+)
+
+var lsModeName = []string{
+	"Discover",
+	"FullSync",
+	"FastSync",
+	"Import  ",
+}
+
 // dispatchStatusLogs handle parsing --log-status=argument and toggling appropriate goroutine status feature logging.
 func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 	flagName := aliasableName(LogStatusFlag.Name, ctx)
@@ -827,6 +842,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 	ticker := time.NewTicker(tickerInterval)
 
 	var lastLoggedBlockNumber uint64
+	var lsMode = lsModeDiscover // init
 	var sigc = make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigc)
@@ -846,8 +862,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			// Discover -> not synchronising (searching for peers)
 			// FullSync/FastSync -> synchronising
 			// Import -> synchronising, at full height
-			fMode := "Discover"
-			fOfHeight := fmt.Sprintf(" of #%7d", height)
+			fOfHeight := fmt.Sprintf(" / %7d", height)
 
 			// Calculate and format percent sync of known height
 			heightRatio := float64(current) / float64(height)
@@ -855,18 +870,19 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			fHeightRatio := fmt.Sprintf("(%4.2f%%)", heightRatio)
 
 			// Wait until syncing because real dl mode will not be engaged until then
+			lsMode = lsModeDiscover
 			if e.Downloader().Synchronising() {
 				switch mode {
 				case downloader.FullSync:
-					fMode = "FullSync"
+					lsMode = lsModeFullSync
 				case downloader.FastSync:
-					fMode = "FastSync"
+					lsMode = lsModeFastSync
 					currentBlockHex = blockchain.CurrentFastBlock().Hash().Hex()
 				}
 			}
-			importMode := current >= height && !(current == 0 && height == 0)
+			importMode := lenPeers > 0 && lsMode == lsModeDiscover && current >= height && !(current == 0 && height == 0)
 			if importMode {
-				fMode = "Import  " // with spaces to make same length as Discover, FastSync, FullSync
+				lsMode = lsModeImport
 				fOfHeight = strings.Repeat(" ", 12)
 				fHeightRatio = strings.Repeat(" ", 7)
 			}
@@ -925,15 +941,18 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			cbhexdisplay := fmt.Sprintf("%s…%s", cbhexstart, cbhexend)
 			peersdisplay := fmt.Sprintf("%2d/%2d peers", lenPeers, maxPeers)
 			var blocksprocesseddisplay string
-			if !importMode {
-				blocksprocesseddisplay = fmt.Sprintf("%4d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
+			if lsMode != lsModeImport {
+				//I1127 09:44:29.125596  STATUS SYNC Discover #4911173                     24e…31a    0/   0/ 0 blks/txs/mgas sec  0/25 peers
+				//I1127 09:44:14.122299  STATUS SYNC Import   #4911173                     24e…31a +   0 blks     0 txs        0 mgas    1/25 peers
+				//I1127 09:44:29.125596  STATUS SYNC Discover #4911173                     24e…31a ~   0 blks     0 txs  0 mgas    /s    0/25 peers
+				blocksprocesseddisplay = fmt.Sprintf("~%4d blks %4d txs %2d mgas  /sec ", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
 			} else {
-				blocksprocesseddisplay = fmt.Sprintf("+%4d blks  %4d txs %8d mgas  ", numBlocksDiff, numTxsDiff, mGas.Uint64())
+				blocksprocesseddisplay = fmt.Sprintf("+%4d blks %4d txs %8d mgas ", numBlocksDiff, numTxsDiff, mGas.Uint64())
 			}
 
 			// Log to ERROR.
 			// This allows maximum user optionality for desired integration with rest of event-based logging.
-			glog.V(logger.Error).Infof("STATUS SYNC %s %s %s %s %s %s", fMode, blockprogress, fHeightRatio, cbhexdisplay, blocksprocesseddisplay, peersdisplay)
+			glog.V(logger.Error).Infof("STATUS SYNC %s %s %s %s %s %s", lsModeName[lsMode], blockprogress, fHeightRatio, cbhexdisplay, blocksprocesseddisplay, peersdisplay)
 
 		case <-sigc:
 			// Listen for interrupt
