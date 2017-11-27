@@ -173,6 +173,7 @@ func makeCLIApp() (app *cli.App) {
 		RPCCORSDomainFlag,
 		VerbosityFlag,
 		VModuleFlag,
+		VerbosityTraceFloorFlag,
 		LogDirFlag,
 		LogStatusFlag,
 		MLogFlag,
@@ -235,6 +236,12 @@ func makeCLIApp() (app *cli.App) {
 			}
 		} else {
 			glog.SetToStderr(true)
+		}
+
+		if ctx.GlobalIsSet(VerbosityTraceFloorFlag.Name) {
+			val := ctx.GlobalInt(VerbosityTraceFloorFlag.Name)
+			log.Println("--verbosity-trace-floor", "val", val)
+			glog.SetVTraceThreshold(val)
 		}
 
 		if s := ctx.String("metrics"); s != "" {

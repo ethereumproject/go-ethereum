@@ -138,6 +138,7 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			VerbosityFlag,
 			VModuleFlag,
+			VerbosityTraceFloorFlag,
 			LogDirFlag,
 			LogStatusFlag,
 			MLogFlag,

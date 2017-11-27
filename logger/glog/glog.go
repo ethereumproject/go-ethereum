@@ -97,6 +97,9 @@ import (
 // the flag.Value interface. The -stderrthreshold flag is of type severity and
 // should be modified only through the flag.Value interface. The values match
 // the corresponding constants in C++.
+// Severity is determined by the method called upon receiver Verbose,
+// eg. glog.V(logger.Debug).Warnf("this log's severity is %v", warningLog)
+// eg. glog.V(logger.Error).Infof("This log's severity is %v", infoLog)
 type severity int32 // sync/atomic int32
 
 // These constants identify the log levels in order of increasing severity.
@@ -127,12 +130,6 @@ var severityName = []string{
 var trimPrefixes = []string{
 	"/github.com/ethereumproject/go-ethereum",
 	"/github.com/ethereumproject/ethash",
-}
-
-// traceThreshhold determines the arbitrary level for log lines to be printed
-// with caller trace information in the header.
-func traceThreshhold(s severity, l *loggingT) bool {
-	return int(s) > 1 || l.verbosity > 4
 }
 
 func trimToImportPath(file string) string {
@@ -473,7 +470,12 @@ func init() {
 
 	// Default stderrThreshold is ERROR.
 	logging.stderrThreshold = errorLog
+	// Establish defaults for trace thresholds.
+	logging.verbosityTraceThreshold.set(5)
+	logging.severityTraceThreshold.set(2)
+	// Default for verbosity.
 	logging.setVState(2, nil, false)
+	// Default for vmodule.
 	logging.vmodule.Set("cmd/geth/*=3")
 	go logging.flushDaemon()
 }
@@ -521,6 +523,20 @@ type loggingT struct {
 	// safely using atomic.LoadInt32.
 	vmodule   moduleSpec // The state of the -vmodule flag.
 	verbosity Level      // V logging level, the value of the -v flag/
+
+	// severityTraceThreshold determines the minimum severity at which
+	// file traces will be logged in the header. See severity const iota above.
+	// Only severities at or above this number will be logged with a trace,
+	// eg. at severityTraceThreshold = 1, then only severities errorLog and fatalLog
+	// will log with traces.
+	severityTraceThreshold severity
+
+	// verbosityTraceThreshold determines the minimum verbosity at which
+	// file traces will be logged in the header.
+	// Only levels at or above this number will be logged with a trace,
+	// eg. at verbosityTraceThreshold = 5, then only verbosities Debug, Detail, and Ridiculousness
+	// will log with traces.
+	verbosityTraceThreshold Level
 }
 
 // buffer holds a byte Buffer for reuse. The zero value is ready for use.
@@ -531,6 +547,28 @@ type buffer struct {
 }
 
 var logging loggingT
+
+// traceThreshold determines the arbitrary level for log lines to be printed
+// with caller trace information in the header.
+func (l *loggingT) traceThreshold(s severity) bool {
+	return s >= logging.severityTraceThreshold || l.verbosity >= l.verbosityTraceThreshold
+}
+
+// GetVTraceThreshold gets the current verbosity trace threshold for logging.
+func GetVTraceThreshold() *Level {
+	return &logging.verbosityTraceThreshold
+}
+
+// SetVTraceThreshold sets the current verbosity trace threshold for logging.
+func SetVTraceThreshold(v int) {
+	logging.mu.Lock()
+	defer logging.mu.Unlock()
+
+	l := logging.verbosity.get()
+	logging.verbosity.set(0)
+	logging.verbosityTraceThreshold.set(Level(v))
+	logging.verbosity.set(l)
+}
 
 // setVState sets a consistent state for V logging.
 // l.mu is held.
@@ -651,7 +689,7 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 	buf.tmp[21] = ' '
 	buf.Write(buf.tmp[:22])
 	buf.WriteString(severityColorReset)
-	if traceThreshhold(s, l) {
+	if l.traceThreshold(s) {
 		buf.WriteString(file)
 		buf.tmp[0] = ':'
 		n := buf.someDigits(1, line)
