@@ -684,9 +684,8 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 	buf.twoDigits(12, second)
 	buf.tmp[14] = '.'
 	buf.nDigits(6, 15, now.Nanosecond()/1000, '0')
-	buf.tmp[21] = ' '
-	buf.Write(buf.tmp[:22])
-	buf.WriteString(severityColorReset)
+	buf.Write(buf.tmp[:21])
+	buf.WriteString(severityColorReset + " ")
 	if l.traceThreshold(s) {
 		buf.WriteString(file)
 		buf.tmp[0] = ':'
@@ -694,10 +693,11 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 		buf.tmp[n+1] = ']'
 		buf.tmp[n+2] = ' '
 		buf.Write(buf.tmp[:n+3])
-	} else {
-		buf.tmp[0] = ' '
-		buf.Write(buf.tmp[:1])
 	}
+	//else {
+	//	buf.tmp[0] = ' '
+	//	buf.Write(buf.tmp[:1])
+	//}
 
 	return buf
 }

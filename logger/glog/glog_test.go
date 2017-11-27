@@ -109,13 +109,14 @@ func TestInfoDepth(t *testing.T) {
 	InfoDepth(0, "depth-test0")
 	f()
 
+
 	msgs := strings.Split(strings.TrimSuffix(contents(infoLog), "\n"), "\n")
 	if len(msgs) != 2 {
 		t.Fatalf("Got %d lines, expected 2", len(msgs))
 	}
 
 	for i, m := range msgs {
-		if !strings.HasPrefix(m, "I") {
+		if !strings.HasPrefix(m, severityColor[infoLog] + "I") {
 			t.Errorf("InfoDepth[%d] has wrong character: %q", i, m)
 		}
 		w := fmt.Sprintf("depth-test%d", i)
@@ -170,7 +171,7 @@ func TestStandardLog(t *testing.T) {
 }
 
 // Test that the header has the correct format.
-func TestHeader(t *testing.T) {
+func TestHeader1ErrorLog(t *testing.T) {
 	setFlags()
 	defer logging.swap(logging.newBuffers())
 	defer func(previous func() time.Time) { timeNow = previous }(timeNow)
@@ -178,16 +179,42 @@ func TestHeader(t *testing.T) {
 		return time.Date(2006, 1, 2, 15, 4, 5, .067890e9, time.Local)
 	}
 	pid = 1234
-	Info("test")
+	Error("test")
 	var line int
-	format := "I0102 15:04:05.067890 logger/glog/glog_test.go:%d] test\n"
-	n, err := fmt.Sscanf(contents(infoLog), format, &line)
+	format := severityColor[errorLog] + "E0102 15:04:05.067890" + severityColorReset + " logger/glog/glog_test.go:%d] test\n"
+	n, err := fmt.Sscanf(contents(errorLog), format, &line)
 	if n != 1 || err != nil {
-		t.Errorf("log format error: %d elements, error %s:\n%s", n, err, contents(infoLog))
+		t.Errorf("log format error: %d elements, error %s:\n%s", n, err, contents(errorLog))
 	}
 	// Scanf treats multiple spaces as equivalent to a single space,
 	// so check for correct space-padding also.
 	want := fmt.Sprintf(format, line)
+	if contents(errorLog) != want {
+		t.Errorf("log format error: got:\n\t%q\nwant:\t%q", contents(errorLog), want)
+	}
+}
+
+// Test that the header has the correct format.
+func TestHeader2InfoLog(t *testing.T) {
+	setFlags()
+	defer logging.swap(logging.newBuffers())
+	defer func(previous func() time.Time) { timeNow = previous }(timeNow)
+	timeNow = func() time.Time {
+		return time.Date(2006, 1, 2, 15, 4, 5, .067890e9, time.Local)
+	}
+	s := logging.verbosityTraceThreshold.get()
+	logging.verbosityTraceThreshold.set(5) // Use app flag defaults
+	defer logging.verbosityTraceThreshold.set(s)
+	pid = 1234
+	Info("test")
+	format := severityColor[infoLog] + "I0102 15:04:05.067890" + severityColorReset + " test\n"
+	n, err := fmt.Sscanf(contents(infoLog), format)
+	if err != nil {
+		t.Errorf("log format error: %d elements, error %s:\n%s", n, err, contents(infoLog))
+	}
+	// Scanf treats multiple spaces as equivalent to a single space,
+	// so check for correct space-padding also.
+	want := fmt.Sprintf(format)
 	if contents(infoLog) != want {
 		t.Errorf("log format error: got:\n\t%q\nwant:\t%q", contents(infoLog), want)
 	}
