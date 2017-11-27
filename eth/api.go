@@ -1772,6 +1772,18 @@ func (api *PublicDebugAPI) Vmodule(s string) (string, error) {
 	return glog.GetVModule().String(), err
 }
 
+func (api *PublicDebugAPI) VerbosityTraceFloor(n uint64) (int, error) {
+	nint := int(n)
+	if nint == 0 {
+		return int(*glog.GetVTraceThreshold()), nil
+	}
+	if nint <= logger.Detail || nint == logger.Ridiculousness {
+		glog.SetVTraceThreshold(nint)
+		return int(*glog.GetVTraceThreshold()), nil
+	}
+	return -1, errors.New("invalid logging level")
+}
+
 // ExecutionResult groups all structured logs emitted by the EVM
 // while replaying a transaction in debug mode as well as the amount of
 // gas used and the return value

@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-
 : ${GETH_CMD:=$GOPATH/bin/geth}
 
 setup() {

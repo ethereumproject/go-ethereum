@@ -21,7 +21,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"math/big"
 	"strings"
@@ -246,6 +245,13 @@ func (d *Downloader) Progress() (uint64, uint64, uint64, uint64, uint64) {
 	return d.syncStatsChainOrigin, current, d.syncStatsChainHeight, d.syncStatsStateDone, d.syncStatsStateDone + pendingStates
 }
 
+func (d *Downloader) Qos() (rtt time.Duration, ttl time.Duration, conf float64) {
+	rtt = d.requestRTT()
+	ttl = d.requestTTL()
+	conf = float64(d.rttConfidence)/1000000.0
+	return
+}
+
 // Synchronising returns whether the downloader is currently retrieving blocks.
 func (d *Downloader) Synchronising() bool {
 	return atomic.LoadInt32(&d.synchronising) > 0
@@ -305,22 +311,22 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 	err := d.synchronise(id, head, td, mode)
 	switch err {
 	case nil:
-		log.Printf("peer %q sync complete", id)
+		glog.V(logger.Core).Infof("Peer %s: sync complete", id)
 		return true
 
 	case errBusy:
-		glog.V(logger.Debug).Info("sync busy")
+		glog.V(logger.Debug).Warnln("sync busy")
 
 	case errTimeout, errBadPeer, errStallingPeer, errEmptyHashSet,
 		errEmptyHeaderSet, errPeersUnavailable, errTooOld,
 		errInvalidAncestor, errInvalidChain:
-		log.Printf("peer %q drop: %s", id, err)
+		glog.V(logger.Core).Warnf("Peer %s: drop: %s", id, err)
 		d.dropPeer(id)
 
 	case errCancelBlockFetch, errCancelHeaderFetch, errCancelBodyFetch, errCancelReceiptFetch, errCancelStateFetch, errCancelHeaderProcessing, errCancelContentProcessing:
 
 	default:
-		log.Printf("peer %q sync: %s", id, err)
+		glog.V(logger.Core).Warnf("Peer %s: sync: %s", id, err)
 	}
 
 	return false
@@ -685,7 +691,7 @@ func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 	// If the head fetch already found an ancestor, return
 	if !common.EmptyHash(hash) {
 		if int64(number) <= floor {
-			glog.V(logger.Warn).Infof("%v: potential rewrite attack: #%d [%x…] <= #%d limit", p, number, hash[:4], floor)
+			glog.V(logger.Warn).Warnf("%v: potential rewrite attack: #%d [%x…] <= #%d limit", p, number, hash[:4], floor)
 			return 0, errInvalidAncestor
 		}
 		glog.V(logger.Debug).Infof("%v: common ancestor: #%d [%x…]", p, number, hash[:4])
@@ -748,7 +754,7 @@ func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 	}
 	// Ensure valid ancestry and return
 	if int64(start) <= floor {
-		glog.V(logger.Warn).Infof("%v: potential rewrite attack: #%d [%x…] <= #%d limit", p, start, hash[:4], floor)
+		glog.V(logger.Warn).Warnf("%v: potential rewrite attack: #%d [%x…] <= #%d limit", p, start, hash[:4], floor)
 		return 0, errInvalidAncestor
 	}
 	glog.V(logger.Debug).Infof("%v: common ancestor: #%d [%x…]", p, start, hash[:4])

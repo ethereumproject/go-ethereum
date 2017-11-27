@@ -140,6 +140,10 @@ var (
 	}
 
 	// logging and debug settings
+	PrettyFlag = cli.BoolFlag{
+		Name: "pretty",
+		Usage: "Use pretty defaults for logging (verbosity=1,vmodule='cmd/geth/*=3',verbosity-trace-floor=5,log-status='sync=15')",
+	}
 	VerbosityFlag = cli.GenericFlag{
 		Name:  "verbosity",
 		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=core, 5=debug, 6=detail",
@@ -150,6 +154,11 @@ var (
 		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
 		Value: glog.GetVModule(),
 	}
+	VerbosityTraceFloorFlag = cli.IntFlag{
+		Name: "verbosity-trace-floor",
+		Usage: "Floor verbosity level at which to include file traces on log lines.",
+		Value: 0,
+	}
 	LogDirFlag = DirectoryFlag{
 		Name:  "log-dir,logdir",
 		Usage: "Directory in which to write log files.",
@@ -158,7 +167,7 @@ var (
 	LogStatusFlag = cli.StringFlag{
 		Name:  "log-status",
 		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
-		Value: "sync=60",
+		Value: "sync=15",
 	}
 	MLogFlag = cli.StringFlag{
 		Name:  "mlog",

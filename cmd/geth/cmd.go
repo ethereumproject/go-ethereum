@@ -81,7 +81,7 @@ func StartNode(stack *node.Node) {
 		signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 		defer signal.Stop(sigc)
 		sig := <-sigc
-		glog.Infof("Got %v, shutting down...", sig)
+		glog.V(logger.Error).Warnf("Got %v, shutting down...", sig)
 
 		fails := make(chan error, 1)
 		go func(fs chan error) {
@@ -765,6 +765,21 @@ var availableLogStatusFeatures = map[string]LogStatusFeatAvailability{
 	"sync": StatusFeatAvailable,
 }
 
+type lsMode int
+const (
+	lsModeDiscover lsMode = iota
+	lsModeFullSync
+	lsModeFastSync
+	lsModeImport
+)
+
+var lsModeName = []string{
+	"Discover",
+	"FullSync",
+	"FastSync",
+	"Import  ",
+}
+
 // dispatchStatusLogs handle parsing --log-status=argument and toggling appropriate goroutine status feature logging.
 func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 	flagName := aliasableName(LogStatusFlag.Name, ctx)
@@ -827,6 +842,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 	ticker := time.NewTicker(tickerInterval)
 
 	var lastLoggedBlockNumber uint64
+	var lsMode = lsModeDiscover // init
 	var sigc = make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigc)
@@ -846,8 +862,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			// Discover -> not synchronising (searching for peers)
 			// FullSync/FastSync -> synchronising
 			// Import -> synchronising, at full height
-			fMode := "Discover"
-			fOfHeight := fmt.Sprintf(" of #%7d", height)
+			fOfHeight := fmt.Sprintf(" / %7d", height)
 
 			// Calculate and format percent sync of known height
 			heightRatio := float64(current) / float64(height)
@@ -855,17 +870,19 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			fHeightRatio := fmt.Sprintf("(%4.2f%%)", heightRatio)
 
 			// Wait until syncing because real dl mode will not be engaged until then
+			lsMode = lsModeDiscover
 			if e.Downloader().Synchronising() {
 				switch mode {
 				case downloader.FullSync:
-					fMode = "FullSync"
+					lsMode = lsModeFullSync
 				case downloader.FastSync:
-					fMode = "FastSync"
+					lsMode = lsModeFastSync
 					currentBlockHex = blockchain.CurrentFastBlock().Hash().Hex()
 				}
 			}
-			if current == height && !(current == 0 && height == 0) {
-				fMode = "Import  " // with spaces to make same length as Discover, FastSync, FullSync
+			importMode := lenPeers > 0 && lsMode == lsModeDiscover && current >= height && !(current == 0 && height == 0)
+			if importMode {
+				lsMode = lsModeImport
 				fOfHeight = strings.Repeat(" ", 12)
 				fHeightRatio = strings.Repeat(" ", 7)
 			}
@@ -883,15 +900,29 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			var numTxsDiffPerSecond int
 			var mGasPerSecond = new(big.Int)
 
+			// 🁣🁤🁥🁦🁭🁴🁻🁼🂃🂄🂋🂌🂓
+			var dominoes = []string{"🁣", "🁤", "🁥", "🁦", "🁭", "🁴", "🁻", "🁼", "🂃", "🂄", "🂋", "🂌", "🂓"} // len 13
+			var dominoGraph = "\x1b[32m" // set color
 			if numBlocksDiff > 0 && numBlocksDiff != current {
-				for i := lastLoggedBlockNumber; i <= current; i++ {
+				for i := lastLoggedBlockNumber+1; i <= current; i++ {
 					b := blockchain.GetBlockByNumber(i)
 					if b != nil {
-						numTxsDiff += b.Transactions().Len()
+						txLen := b.Transactions().Len()
+						// Add to tallies
+						numTxsDiff += txLen
 						mGas = new(big.Int).Add(mGas, b.GasUsed())
+						// Domino effect
+						if lsMode == lsModeImport {
+							if txLen > len(dominoes)-1 {
+								// prevent slice out of bounds
+								txLen = len(dominoes)-1
+							}
+							dominoGraph += dominoes[txLen]
+						}
 					}
 				}
 			}
+			dominoGraph += "\x1b[33m" // reset color
 
 			// Convert to per-second stats
 			// FIXME(?): Some degree of rounding will happen.
@@ -904,6 +935,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			// Don't show initial current / per second val
 			if lastLoggedBlockNumber == 0 {
 				numBlocksDiffPerSecond = 0
+				numBlocksDiff = 0
 			}
 
 			// Divide by interval to yield per-second stats
@@ -922,11 +954,16 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			blockprogress := fmt.Sprintf("#%7d%s", current, fOfHeight)
 			cbhexdisplay := fmt.Sprintf("%s…%s", cbhexstart, cbhexend)
 			peersdisplay := fmt.Sprintf("%2d/%2d peers", lenPeers, maxPeers)
-			blocksprocesseddisplay := fmt.Sprintf("%4d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
+			var blocksprocesseddisplay string
+			if lsMode != lsModeImport {
+				blocksprocesseddisplay = fmt.Sprintf("~%4d blks %4d txs %2d mgas  /sec ", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
+			} else {
+				blocksprocesseddisplay = fmt.Sprintf("+%4d blks %4d txs %8d mgas ", numBlocksDiff, numTxsDiff, mGas.Uint64())
+			}
 
 			// Log to ERROR.
 			// This allows maximum user optionality for desired integration with rest of event-based logging.
-			glog.V(logger.Error).Infof("STATUS SYNC %s %s %s %s %s %s", fMode, blockprogress, fHeightRatio, cbhexdisplay, blocksprocesseddisplay, peersdisplay)
+			glog.V(logger.Error).Infof("STATUS SYNC %s %s %s %s %s %s %s", lsModeName[lsMode], blockprogress, fHeightRatio, cbhexdisplay, blocksprocesseddisplay, peersdisplay, dominoGraph)
 
 		case <-sigc:
 			// Listen for interrupt
