@@ -900,15 +900,29 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 			var numTxsDiffPerSecond int
 			var mGasPerSecond = new(big.Int)
 
+			// 🁣🁤🁥🁦🁭🁴🁻🁼🂃🂄🂋🂌🂓
+			var dominoes = []string{"🁣", "🁤", "🁥", "🁦", "🁭", "🁴", "🁻", "🁼", "🂃", "🂄", "🂋", "🂌", "🂓"} // len 13
+			var dominoGraph = "\x1b[32m" // set color
 			if numBlocksDiff > 0 && numBlocksDiff != current {
 				for i := lastLoggedBlockNumber+1; i <= current; i++ {
 					b := blockchain.GetBlockByNumber(i)
 					if b != nil {
-						numTxsDiff += b.Transactions().Len()
+						txLen := b.Transactions().Len()
+						// Add to tallies
+						numTxsDiff += txLen
 						mGas = new(big.Int).Add(mGas, b.GasUsed())
+						// Domino effect
+						if lsMode == lsModeImport {
+							if txLen > len(dominoes)-1 {
+								// prevent slice out of bounds
+								txLen = len(dominoes)-1
+							}
+							dominoGraph += dominoes[txLen]
+						}
 					}
 				}
 			}
+			dominoGraph += "\x1b[33m" // reset color
 
 			// Convert to per-second stats
 			// FIXME(?): Some degree of rounding will happen.
@@ -952,7 +966,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 
 			// Log to ERROR.
 			// This allows maximum user optionality for desired integration with rest of event-based logging.
-			glog.V(logger.Error).Infof("STATUS SYNC %s %s %s %s %s %s", lsModeName[lsMode], blockprogress, fHeightRatio, cbhexdisplay, blocksprocesseddisplay, peersdisplay)
+			glog.V(logger.Error).Infof("STATUS SYNC %s %s %s %s %s %s %s", lsModeName[lsMode], blockprogress, fHeightRatio, cbhexdisplay, blocksprocesseddisplay, peersdisplay, dominoGraph)
 
 		case <-sigc:
 			// Listen for interrupt
