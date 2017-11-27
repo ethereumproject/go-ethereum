@@ -21,7 +21,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"math/big"
 	"strings"
@@ -312,22 +311,22 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 	err := d.synchronise(id, head, td, mode)
 	switch err {
 	case nil:
-		log.Printf("peer %q sync complete", id)
+		glog.V(logger.Core).Infof("Peer %s: sync complete", id)
 		return true
 
 	case errBusy:
-		glog.V(logger.Debug).Info("sync busy")
+		glog.V(logger.Debug).Warnln("sync busy")
 
 	case errTimeout, errBadPeer, errStallingPeer, errEmptyHashSet,
 		errEmptyHeaderSet, errPeersUnavailable, errTooOld,
 		errInvalidAncestor, errInvalidChain:
-		log.Printf("peer %q drop: %s", id, err)
+		glog.V(logger.Core).Warnf("Peer %s: drop: %s", id, err)
 		d.dropPeer(id)
 
 	case errCancelBlockFetch, errCancelHeaderFetch, errCancelBodyFetch, errCancelReceiptFetch, errCancelStateFetch, errCancelHeaderProcessing, errCancelContentProcessing:
 
 	default:
-		log.Printf("peer %q sync: %s", id, err)
+		glog.V(logger.Core).Warnf("Peer %s: sync: %s", id, err)
 	}
 
 	return false
