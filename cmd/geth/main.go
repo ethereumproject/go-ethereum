@@ -295,7 +295,7 @@ func geth(ctx *cli.Context) error {
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
 
-	if ctx.GlobalIsSet(LogStatusFlag.Name) {
+	if ctx.GlobalString(LogStatusFlag.Name) != "" {
 		dispatchStatusLogs(ctx, ethe)
 	}
 

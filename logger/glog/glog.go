@@ -473,7 +473,8 @@ func init() {
 
 	// Default stderrThreshold is ERROR.
 	logging.stderrThreshold = errorLog
-	logging.setVState(3, nil, false)
+	logging.setVState(2, nil, false)
+	logging.vmodule.Set("cmd/geth/*=3")
 	go logging.flushDaemon()
 }
 
