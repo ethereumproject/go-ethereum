@@ -261,7 +261,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// Register the peer locally
 	glog.V(logger.Detail).Infof("%v: adding peer", p)
 	if err := pm.peers.Register(p); err != nil {
-		glog.V(logger.Error).Infof("%v: addition failed: %v", p, err)
+		glog.V(logger.Error).Errorf("%v: addition failed: %v", p, err)
 		return err
 	}
 	defer pm.removePeer(p.id)
