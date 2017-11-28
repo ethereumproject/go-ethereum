@@ -1313,7 +1313,7 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	// Compare local vs external difficulties
 	tdCompare := externTd.Cmp(localTd)
 
-	// Initialize reorg if incoming td is greater than local.
+	// Initialize reorg if incoming TD is greater than local.
 	reorg := tdCompare > 0
 
 	// If TDs are the same, randomize.
