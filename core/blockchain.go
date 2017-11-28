@@ -1316,13 +1316,11 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	// Initialize reorg if incoming td is greater than local.
 	reorg := tdCompare > 0
 
-	// If difficulties are the same, check block numbers.
+	// If TDs are the same, randomize.
 	if tdCompare == 0 {
-		nCompare := block.Number().Cmp(self.currentBlock.Number())
-		// Prefer earlier block number or randomize.
-		// Second clause in the statement reduces the vulnerability to selfish mining.
+		// Reduces the vulnerability to selfish mining.
 		// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
-		reorg = nCompare < 0 || (nCompare == 0 && mrand.Float64() < 0.5)
+		reorg = mrand.Float64() < 0.5
 	}
 	if reorg {
 		// Reorganise the chain if the parent is not the head block
