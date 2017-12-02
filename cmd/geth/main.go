@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"gopkg.in/urfave/cli.v1"
 
@@ -222,6 +223,13 @@ func makeCLIApp() (app *cli.App) {
 		}
 
 		runtime.GOMAXPROCS(runtime.NumCPU())
+
+		glog.MaxSize = 10 * 1024 * 1024
+		glog.MinSize = 1 * 1024 * 1024
+		glog.MaxTotalSize = 100 * 1024 * 1024
+		glog.Compress = true
+		glog.RotationInterval = glog.Hourly
+		glog.MaxAge = 24 * time.Hour
 
 		glog.CopyStandardLogTo("INFO")
 

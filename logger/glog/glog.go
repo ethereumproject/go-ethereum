@@ -1,6 +1,7 @@
 // Go support for leveled logs, analogous to https://code.google.com/p/google-glog/
 //
 // Copyright 2013 Google Inc. All Rights Reserved.
+// Modifications copyright 2017 ETC Dev Team. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,19 +67,44 @@
 //		where pattern is a literal file name or "glob" pattern matching
 //		and N is a V level. For instance,
 //
-//			-vmodule=gopher.go=3
+//	-vmodule=gopher.go=3
 //		sets the V level to 3 in all Go files named "gopher.go".
 //
-//			-vmodule=foo=3
+//	-vmodule=foo=3
 //		sets V to 3 in all files of any packages whose import path ends in "foo".
 //
-//			-vmodule=foo/*=3
+//	-vmodule=foo/*=3
 //		sets V to 3 in all files of any packages whose import path contains "foo".
+//
+// This fork of original golang/glog adds log rotation functionality.
+// Logs are rotated after reaching file size limit or age limit. Additionally
+// limiting total amount of logs is supported (also by both size and age).
+// To keep it simple, log-rotation is configured with package-level variables:
+//  - MaxSize - maximum file size (in bytes) - default value: 1024 * 1024 * 1800
+//  - MinSize - minimum file size (in bytes) - default 0 (even empty file can be rotated)
+//  - MaxTotalSize - maximum size of all files (in bytes) - default 0 (do not remove old files)
+//  - RotationInterval - how often log should be rotated - default Never
+//  - MaxAge - maximum age (time.Duration) of log file - default 0 (do not remove old files)
+//  - Compress - whether to GZIP compress rotated logs - default - false
+//
+// Default values provide backward-compatibility with golang/glog. If compression is used,
+// all files except the current one are compressed with GZIP.
+//
+// Rotation works like this:
+//  - if MaxSize or RotaitonInterval is reached, and file size is > MinSize,
+//    current file became old file, and new file is created as a current log file
+//  - all log files older than MaxAge are removed
+//  - if compression is enabled, the old file is compressed
+//  - size of all log files in log_dir is recalculated (to handle external removals of files, etc)
+//  - oldest log files are removed until total size of log files doesn't exceed  MaxTotalSize-MaxSize
+// For sanity, this action is executed only when current file is needs to be rotated
+//
 package glog
 
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -92,6 +118,35 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+// MinSize is a minimum file size qualifying for rotation. This variable can be used
+// to avoid rotation of empty or almost emtpy files.
+var MinSize uint64
+
+// MaxTotalSize is a maximum size of all log files.
+var MaxTotalSize uint64
+
+// Interval is a type for rotation interval specification
+type Interval uint8
+
+// These constants identify the interval for log rotation.
+const (
+	Never Interval = iota
+	Hourly
+	Daily
+	Weekly
+	Monthly
+)
+
+// RotationInterval determines how often log rotation should take place
+var RotationInterval = Never
+
+// MaxAge defines the maximum age of the oldest log file. All log files older
+// than MaxAge will be removed.
+var MaxAge time.Duration
+
+// Compress determines whether to compress rotated logs with GZIP or not.
+var Compress bool
 
 // severity identifies the sort of log: info, warning etc. It also implements
 // the flag.Value interface. The -stderrthreshold flag is of type severity and
@@ -860,6 +915,7 @@ type syncBuffer struct {
 	logger *loggingT
 	*bufio.Writer
 	file   *os.File
+	time   time.Time
 	sev    severity
 	nbytes uint64 // The number of bytes written to this file
 }
@@ -869,10 +925,12 @@ func (sb *syncBuffer) Sync() error {
 }
 
 func (sb *syncBuffer) Write(p []byte) (n int, err error) {
-	if sb.nbytes+uint64(len(p)) >= MaxSize {
-		if err := sb.rotateFile(time.Now()); err != nil {
+	now := time.Now()
+	if sb.shouldRotate(len(p), now) {
+		if err := sb.rotateCurrent(now); err != nil {
 			sb.logger.exit(err)
 		}
+		go sb.rotateOld(now)
 	}
 	n, err = sb.Writer.Write(p)
 	sb.nbytes += uint64(n)
@@ -882,15 +940,45 @@ func (sb *syncBuffer) Write(p []byte) (n int, err error) {
 	return
 }
 
-// rotateFile closes the syncBuffer's file and starts a new one.
-func (sb *syncBuffer) rotateFile(now time.Time) error {
+// shouldRotate checks if we need to rotate the current log file
+func (sb *syncBuffer) shouldRotate(len int, now time.Time) bool {
+	newLen := sb.nbytes + uint64(len)
+	if newLen <= MinSize {
+		return false
+	} else if newLen >= MaxSize {
+		return true
+	}
+
+	switch RotationInterval {
+	case Never:
+		return false
+	case Hourly:
+		return sb.time.Hour() != now.Hour()
+	case Daily:
+		return sb.time.Day() != now.Day()
+	case Weekly:
+		yearLog, weekLog := sb.time.ISOWeek()
+		yearNow, weekNow := now.ISOWeek()
+		return !(yearLog == yearNow && weekLog == weekNow)
+	case Monthly:
+		return sb.time.Month() != now.Month()
+	}
+	return false
+}
+
+// rotateCurrent closes the syncBuffer's file and starts a new one.
+func (sb *syncBuffer) rotateCurrent(now time.Time) error {
 	if sb.file != nil {
 		sb.Flush()
 		sb.file.Close()
+		if Compress {
+			gzipFile(sb.file.Name())
+		}
 	}
 	var err error
 	sb.file, _, err = create(severityName[sb.sev], now)
 	sb.nbytes = 0
+	sb.time = time.Now()
 	if err != nil {
 		return err
 	}
@@ -906,6 +994,105 @@ func (sb *syncBuffer) rotateFile(now time.Time) error {
 	n, err := sb.file.Write(buf.Bytes())
 	sb.nbytes += uint64(n)
 	return err
+}
+
+// converts plain log file to gzipped log file. New file is created
+func gzipFile(name string) error {
+	gzipped, err := os.Create(name + ".gz")
+	defer gzipped.Close()
+	if err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(gzipped)
+	gzipWriter := gzip.NewWriter(writer)
+
+	plain, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	reader := bufio.NewReader(plain)
+
+	// copy from plain text file to gzipped output
+	_, err = io.Copy(gzipWriter, reader)
+	_ = plain.Close()
+	if err != nil {
+		return err
+	}
+	if err = gzipWriter.Flush(); err != nil {
+		return err
+	}
+	if err = gzipWriter.Close(); err != nil {
+		return err
+	}
+	if err = gzipped.Close(); err != nil {
+		return err
+	}
+
+	return os.Remove(name)
+}
+
+// TODO(tzdybal)
+func (sb *syncBuffer) rotateOld(now time.Time) {
+	if MaxTotalSize <= MaxSize {
+		return
+	}
+
+	logs, err := getLogFiles()
+	if err != nil {
+		sb.logger.exit(err)
+	}
+
+	logs, err = removeOutdated(logs, now)
+	if err != nil {
+		sb.logger.exit(err)
+	}
+
+	logs, err = compressOrphans(logs)
+	if err != nil {
+		sb.logger.exit(err)
+	}
+
+	totalSize := getTotalSize(logs)
+	for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
+		err := os.Remove(logs[i].name)
+		if err != nil {
+			sb.logger.exit(err)
+		}
+		totalSize -= logs[i].size
+	}
+}
+
+type logFile struct {
+	name string
+	size uint64
+}
+
+func getLogFiles() ([]logFile, error) {
+	return nil, nil
+}
+
+func removeOutdated(logs []logFile, now time.Time) ([]logFile, error) {
+	return logs, nil
+}
+
+// compress all uncompressed log files, except the currently used log file
+func compressOrphans(logs []logFile) ([]logFile, error) {
+	for _, log := range logs {
+		if !strings.HasSuffix(log.name, ".gz") {
+			if err := gzipFile(log.name); err != nil {
+				return nil, err
+			}
+			log.name += ".gz"
+		}
+	}
+	return logs, nil
+}
+
+func getTotalSize(logs []logFile) (size uint64) {
+	for _, log := range logs {
+		size += log.size
+	}
+	return
 }
 
 // bufferSize sizes the buffer associated with each log file. It's large
@@ -924,7 +1111,7 @@ func (l *loggingT) createFiles(sev severity) error {
 			logger: l,
 			sev:    s,
 		}
-		if err := sb.rotateFile(now); err != nil {
+		if err := sb.rotateCurrent(now); err != nil {
 			return err
 		}
 		l.file[s] = sb
