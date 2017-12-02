@@ -19,18 +19,37 @@ package secp256k1
 // TODO: set USE_SCALAR_4X64 depending on platform?
 
 /*
+#cgo amd64,windows amd64,linux CFLAGS: -DSPUTNIK_VM_IMPLEMENTED
+#cgo amd64,windows LDFLAGS: -L${SRCDIR}/../../machine/sputnik/windows_amd64 -lsputnikvm
 #cgo CFLAGS: -I./libsecp256k1
 #cgo CFLAGS: -I./libsecp256k1/src/
-#define USE_NUM_NONE
-#define USE_FIELD_10X26
-#define USE_FIELD_INV_BUILTIN
-#define USE_SCALAR_8X32
-#define USE_SCALAR_INV_BUILTIN
+
+#define USE_NUM_NONE 1
+#define USE_FIELD_10X26 1
+#define USE_FIELD_INV_BUILTIN 1
+#define USE_SCALAR_8X32 1
+#define USE_SCALAR_INV_BUILTIN 1
+#define USE_ENDOMORPHISM 1
+#define ENABLE_MODULE_ECDH 1
+#define ENABLE_MODULE_SCHNORR 1
+#define ENABLE_MODULE_RECOVERY 1
 #define NDEBUG
+
+#ifndef SPUTNIK_VM_IMPLEMENTED
 #include "./libsecp256k1/src/secp256k1.c"
 #include "./libsecp256k1/src/modules/recovery/main_impl.h"
-#include "pubkey_scalar_mul.h"
+#else
+#include "./libsecp256k1/include/secp256k1.h"
+#include "./libsecp256k1/include/secp256k1_ecdh.h"
+#include "./libsecp256k1/include/secp256k1_recovery.h"
+#include "./libsecp256k1/src/util.h"
+#include "./libsecp256k1/src/field_impl.h"
+#include "./libsecp256k1/src/group_impl.h"
+#include "./libsecp256k1/src/scalar_impl.h"
+#include "./libsecp256k1/src/ecmult_const_impl.h"
+#endif
 
+#include "pubkey_scalar_mul.h"
 typedef void (*callbackFunc) (const char* msg, void* data);
 extern void secp256k1GoPanicIllegal(const char* msg, void* data);
 extern void secp256k1GoPanicError(const char* msg, void* data);
@@ -67,7 +86,7 @@ func init() {
 	HalfN, _ = new(big.Int).SetString("7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0", 16)
 
 	// around 20 ms on a modern CPU.
-	context = C.secp256k1_context_create(3) // SECP256K1_START_SIGN | SECP256K1_START_VERIFY
+	context = C.secp256k1_context_create(C.SECP256K1_CONTEXT_SIGN|C.SECP256K1_CONTEXT_VERIFY)
 	C.secp256k1_context_set_illegal_callback(context, C.callbackFunc(C.secp256k1GoPanicIllegal), nil)
 	C.secp256k1_context_set_error_callback(context, C.callbackFunc(C.secp256k1GoPanicError), nil)
 }
