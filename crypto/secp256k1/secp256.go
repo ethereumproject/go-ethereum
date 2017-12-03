@@ -1,4 +1,6 @@
 // Copyright 2015 The go-ethereum Authors
+// Copyright 2017 ETCDEV Team
+//
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -19,10 +21,13 @@ package secp256k1
 // TODO: set USE_SCALAR_4X64 depending on platform?
 
 /*
-#cgo amd64,windows amd64,linux CFLAGS: -DSPUTNIK_VM_IMPLEMENTED
-#cgo amd64,windows LDFLAGS: -L${SRCDIR}/../../machine/sputnik/windows_amd64 -lsputnikvm
+
 #cgo CFLAGS: -I./libsecp256k1
 #cgo CFLAGS: -I./libsecp256k1/src/
+
+// for platforms where SPUTNIK VM is supported the module uses secp256k1 from libsputnikvm
+#cgo amd64,windows amd64,linux CFLAGS: -DSPUTNIK_VM_IMPLEMENTED
+#cgo amd64,windows LDFLAGS: -L${SRCDIR}/../../machine/sputnik/windows_amd64 -lsputnikvm
 
 #define USE_NUM_NONE 1
 #define USE_FIELD_10X26 1
@@ -35,21 +40,17 @@ package secp256k1
 #define ENABLE_MODULE_RECOVERY 1
 #define NDEBUG
 
-#ifndef SPUTNIK_VM_IMPLEMENTED
-#include "./libsecp256k1/src/secp256k1.c"
-#include "./libsecp256k1/src/modules/recovery/main_impl.h"
-#else
+#ifdef SPUTNIK_VM_IMPLEMENTED
 #include "./libsecp256k1/include/secp256k1.h"
 #include "./libsecp256k1/include/secp256k1_ecdh.h"
 #include "./libsecp256k1/include/secp256k1_recovery.h"
-#include "./libsecp256k1/src/util.h"
-#include "./libsecp256k1/src/field_impl.h"
-#include "./libsecp256k1/src/group_impl.h"
-#include "./libsecp256k1/src/scalar_impl.h"
-#include "./libsecp256k1/src/ecmult_const_impl.h"
+int secp256k1_pubkey_scalar_mul(const secp256k1_context* ctx, unsigned char *point, const unsigned char *scalar);
+#else
+#include "./libsecp256k1/src/secp256k1.c"
+#include "./libsecp256k1/src/modules/recovery/main_impl.h"
+#include "pubkey_scalar_mul.h"
 #endif
 
-#include "pubkey_scalar_mul.h"
 typedef void (*callbackFunc) (const char* msg, void* data);
 extern void secp256k1GoPanicIllegal(const char* msg, void* data);
 extern void secp256k1GoPanicError(const char* msg, void* data);
@@ -63,8 +64,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/crypto/randentropy"
 )
-
-//#define USE_FIELD_5X64
 
 /*
    TODO:
@@ -122,7 +121,7 @@ func GenerateKeyPair() ([]byte, []byte) {
 		pubkey65_ptr,
 		&output_len,
 		pubkey64_ptr,
-		0, // SECP256K1_EC_COMPRESSED
+		C.SECP256K1_EC_UNCOMPRESSED,
 	)
 
 	return pubkey65, seckey
@@ -261,7 +260,7 @@ func RecoverPubkey(msg []byte, sig []byte) ([]byte, error) {
 		serialized_pubkey_ptr,
 		&output_len,
 		pubkey_ptr,
-		0, // SECP256K1_EC_COMPRESSED
+		C.SECP256K1_EC_UNCOMPRESSED,
 	)
 	return bytes65, nil
 }

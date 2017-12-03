@@ -1,5 +1,5 @@
 // Copyright 2017 (c) ETCDEV Team
-
+//
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@ package sputnik
 
 /*
 
-#cgo amd64,windows LDFLAGS: -L${SRCDIR}/windows_amd64 -lsputnikvm
+#cgo amd64,windows LDFLAGS: -L${SRCDIR}/windows_amd64 -lsputnikvm -lws2_32 -luserenv
 #cgo amd64,linux LDFLAGS: -L${SRCDIR}/linux_amd64 -lsputnikvm
 #cgo amd64,windows amd64,linux CFLAGS: -DSPUTNIK_VM_IMPLEMENTED
 
@@ -243,26 +243,30 @@ func (self *context) Accounts() (accounts []vm.Account, err error) {
 
 	ctx := self.Context()
 
+	suicides := make(map[common.Address]vm.Account)
+	suicidesCount := int(C.sputnikvm_suicides_count(ctx))
+	for i := 0; i < suicidesCount; i++ {
+		suicide := &suicided{}
+		C.sputnikvm_suicide_copy(ctx,C.size_t(i),unsafe.Pointer(&suicide.address[0]))
+		suicides[suicide.address] = suicide
+	}
+
 	for ptr := C.sputnikvm_first_account(ctx); ptr != nil; ptr = C.sputnikvm_next_account(ctx) {
 		switch vm.AccountChangeLevel(C.sputnikvm_acc_change(ptr)) {
 		case vm.UpdateAccount, vm.CreateAccount, vm.AddBalanceAccount, vm.SubBalanceAccount :
 			acc := &account{ctx, ptr}
-			if acc.Address() != self.coinbase {
-				accounts = append(accounts,acc)
-			}
+			//if acc.Address() != self.coinbase {
+				if suicide,exists := suicides[acc.Address()]; exists {
+					accounts = append(accounts, suicide)
+				} else {
+					accounts = append(accounts, acc)
+				}
+			//}
 		}
 	}
 
-	suicidesCount := int(C.sputnikvm_suicides_count(ctx))
-
-	for i := 0; i < suicidesCount; i += 1 {
-		var suicide = &suicided{}
-		C.sputnikvm_suicide_copy(ctx,C.size_t(i),unsafe.Pointer(&suicide.address[0]))
-		accounts = append(accounts,suicide)
-	}
-
 	for _, a := range accounts {
-		fmt.Fprintf(os.Stderr, "%s : 0x%s, %v\n",a.Address().Hex(), a.Balance().Text(16), a.Nonce())
+		fmt.Fprintf(os.Stderr, "++ %s : 0x%s, %v, %v\n",a.Address().Hex(), a.Balance().Text(16), a.Nonce(), a.ChangeLevel())
 	}
 
 	return
@@ -288,8 +292,10 @@ func (self *context) Logs() (logs state.Logs, err error) {
 		ptr := C.sputnikvm_log(ctx,C.size_t(logNo))
 
 		dataLen := C.sputnikvm_log_data_len(ptr)
-		data := make([]byte,dataLen)
-		C.sputnikvm_log_data_copy(ptr,unsafe.Pointer(&data[0]))
+		data := make([]byte, dataLen)
+		if dataLen > 0 {
+			C.sputnikvm_log_data_copy(ptr, unsafe.Pointer(&data[0]))
+		}
 
 		topicsCount := int(C.sputnikvm_log_topics_count(ptr))
 		topics := make([]common.Hash,topicsCount)
@@ -343,11 +349,6 @@ func (self *context) Err() (err error) {
 func (self *context) Context() unsafe.Pointer {
 	if self.ctxPtr == nil {
 
-		var op C.int32_t = C.SPUTNIK_VM_CALL
-		if len(self.target) == 0 {
-			op = C.SPUTNIK_VM_CREATE
-		}
-
 		gas := getBintBytes(self.gas)
 		price := getBintBytes(self.price)
 		value := getBintBytes(self.value)
@@ -359,7 +360,6 @@ func (self *context) Context() unsafe.Pointer {
 		if self.data != nil { data = unsafe.Pointer(&self.data[0])}
 
 		self.ctxPtr = C.sputnikvm_context(
-			op,
 			unsafe.Pointer(&gas[0]),
 			unsafe.Pointer(&price[0]),
 			unsafe.Pointer(&value[0]),
@@ -439,9 +439,9 @@ func (self *account) Nonce() uint64 {
 }
 
 func (self *account) Balance() *big.Int {
-	bits := make([]big.Word,256/bits.UintSize)
-	C.sputnikvm_acc_balance_copy(self.ptr,unsafe.Pointer(&bits[0]))
-	return new(big.Int).SetBits(bits)
+	b := make([]big.Word,256/bits.UintSize)
+	C.sputnikvm_acc_balance_copy(self.ptr,unsafe.Pointer(&b[0]))
+	return new(big.Int).SetBits(b)
 }
 
 func (self *account) Code() (common.Hash, []byte) {

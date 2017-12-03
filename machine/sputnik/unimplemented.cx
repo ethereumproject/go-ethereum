@@ -1,3 +1,19 @@
+// Copyright 2017 (c) ETCDEV Team
+//
+// This file is part of the go-ethereum library.
+//
+// The go-ethereum library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The go-ethereum library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 #include "sputnikvm.h"
 
@@ -14,7 +30,6 @@ __attribute__((noreturn)) void fatal(const char *text) {
 UNIMPL(int sputnikvm_fire(void* ctx))
 
 UNIMPL(void* sputnikvm_context(
-    int32_t     callOrCreate,
     const void *gas,
     const void *price,
     const void *value,

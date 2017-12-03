@@ -49,7 +49,7 @@ func init() {
 		glog.SetV(logger.Debug)
 	}
 
-	//restrtInRawCalssicVm = !useRawVmByDefault && len(os.Getenv("RESTART_TESTS")) > 0
+	restrtInRawCalssicVm = !useRawVmByDefault && len(os.Getenv("RESTART_TESTS")) > 0
 	SetTestVmConfig()
 
 	go func() {

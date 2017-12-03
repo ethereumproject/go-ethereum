@@ -1,5 +1,5 @@
 // Copyright 2017 (c) ETCDEV Team
-
+//
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -156,10 +156,11 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *big.Int, error) {
 				self.Db.AddRefund(gasRefund)
 
 				for _, a := range accounts {
-					address := a.Address()
 					var o state.AccountObject
+					address := a.Address()
 					change := a.ChangeLevel()
 					if change == vm.SuicideAccount {
+						o = self.Db.GetOrNewStateObject(address)
 						self.Db.Suicide(address)
 					} else {
 						if a.ChangeLevel() == vm.CreateAccount {
@@ -185,6 +186,8 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *big.Int, error) {
 							})
 						}
 					}
+					fmt.Fprintf(os.Stderr,"*account: %v\n",a)
+					fmt.Fprintf(os.Stderr,"*account address: %v\n",a.Address())
 					fmt.Printf("account: %v balance: %v nonce: %v\n",o.Address().Hex(), o.Balance().Text(16), o.Nonce())
 					fmt.Printf("\t hash: %v codesize: %v\n",self.Db.GetCodeHash(o.Address()).Hex(),len(self.Db.GetCode(o.Address())))
 					fmt.Printf("\t suicided: %v\n",self.Db.HasSuicided(o.Address()))
