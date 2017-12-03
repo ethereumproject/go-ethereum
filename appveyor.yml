@@ -35,7 +35,7 @@ before_deploy:
 # Deploy on APPVEYOR_REPO_BRANCH=master or APPVEYOR_REPO_TAG=true
 deploy_script:
   - ps: >-
-      If (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG)) {
+      If (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true')) {
         janus.exe deploy -to="builds.etcdevteam.com/go-ethereum/$env:VERSION_BASE/" -files="./*.zip" -key="./.gcloud.json"
       }
 
