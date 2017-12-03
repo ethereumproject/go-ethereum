@@ -31,10 +31,16 @@ script:
 # Run bats integration tests.
 - bats cmd/geth
 
+# Deploy on either branch=master or tags=true. Identical process, different conditions.
+# https://github.com/travis-ci/travis-ci/issues/7780#issuecomment-302389370
 deploy:
-  skip_cleanup: true
-  provider: script
-  script: ./deploy.sh
-  on:
-    branch: master
-  tags: true
+  - provider: script
+    skip_cleanup: true
+    script: ./deploy.sh
+    on:
+      branch: master
+  - provider: script
+    skip_cleanup: true
+    script: ./deploy.sh
+    on:
+      tags: true

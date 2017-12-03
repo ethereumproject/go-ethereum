@@ -32,9 +32,10 @@ before_deploy:
   # Set up GCP upload.
   - nuget install secure-file -ExcludeVersion
   - secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret %GCP_PASSWD% -out .gcloud.json
+# Deploy on APPVEYOR_REPO_BRANCH=master or APPVEYOR_REPO_TAG=true
 deploy_script:
   - ps: >-
-      If ($env:APPVEYOR_REPO_BRANCH -eq 'master') {
+      If (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG)) {
         janus.exe deploy -to="builds.etcdevteam.com/go-ethereum/$env:VERSION_BASE/" -files="./*.zip" -key="./.gcloud.json"
       }
 
