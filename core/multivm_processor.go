@@ -111,11 +111,23 @@ Loop:
 		case sputnikvm.AccountChangeRemoved:
 			address := account.Address()
 			statedb.Suicide(address)
-		case sputnikvm.AccountChangeFull, sputnikvm.AccountChangeCreate:
+		case sputnikvm.AccountChangeFull:
 			address := account.Address()
 			code := account.Code()
 			nonce := account.Nonce()
 			balance := account.Balance()
+			statedb.SetBalance(address, balance)
+			statedb.SetNonce(address, nonce.Uint64())
+			statedb.SetCode(address, code)
+			for _, item := range account.ChangedStorage() {
+				statedb.SetState(address, common.BigToHash(item.Key), common.BigToHash(item.Value))
+			}
+		case sputnikvm.AccountChangeCreate:
+			address := account.Address()
+			code := account.Code()
+			nonce := account.Nonce()
+			balance := account.Balance()
+			statedb.Suicide(address)
 			statedb.SetBalance(address, balance)
 			statedb.SetNonce(address, nonce.Uint64())
 			statedb.SetCode(address, code)
