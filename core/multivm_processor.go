@@ -3,165 +3,117 @@ package core
 import (
 	"math/big"
 
+	"github.com/ethereumproject/sputnikvm-ffi/go/sputnikvm"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	evm "github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
-var CurrentMultiVmFactory *MultiVmFactory = nil
-
-type MultiVmFactory interface {
-	Create(config *ChainConfig, header *types.Header, tx *types.Transaction) MultiVm
-}
-
-type MultiVm interface {
-	CommitAccount(address common.Address, code []byte, nonce uint64, balance *big.Int)
-	CommitAccountNonexist(address common.Address)
-	CommitAccountCode(address common.Address, code []byte)
-	CommitAccountStorage(address common.Address, key common.Hash, value common.Hash)
-	CommitBlockhash(number uint64, hash common.Hash)
-	Fire() *Require
-	Status() byte
-	Accounts() []AccountChange
-	Logs() vm.Logs
-	GasUsed() *big.Int
-}
-
-type IncreaseBalance struct {
-	Address common.Address
-	Balance *big.Int
-}
-
-type DecreaseBalance struct {
-	Address common.Address
-	Balance *big.Int
-}
-
-type Account struct {
-	Address common.Address
-	Nonce uint64
-	Balance *big.Int
-	Code []byte
-	Storage map[common.Hash]common.Hash
-	IsFullStorage bool
-}
-
-const (
-	AccountChangeIncreaseBalance = iota
-	AccountChangeDecreaseBalance
-	AccountChangeAccount
-	AccountChangeRemoved
+var (
+	UseSputnikVM = false
 )
 
-type AccountChange struct {
-	Type byte
-	Value interface{}
-}
-
-type RequireAccount struct {
-	Address common.Address
-}
-
-type RequireAccountStorage struct {
-	Address common.Address
-	Key common.Hash
-}
-
-type RequireBlockhash struct {
-	Number uint64
-}
-
-const (
-	RequireRequireAccount = iota
-	RequireRequireAccountCode
-	RequireRequireAccountStorage
-	RequireRequireBlockhash
-)
-
-type Require struct {
-	Type byte
-	Value interface{}
-}
-
-const (
-	StatusExitedOk = iota
-	StatusExitedErr
-	StatusExitedNotSupported
-	StatusRunning
-)
-
-func ApplyMultiVmTransaction(factory *MultiVmFactory, config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction) (*types.Receipt, vm.Logs, *big.Int, error) {
+func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction) (*types.Receipt, evm.Logs, *big.Int, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
 
-	vm := (*factory).Create(config, header, tx)
+	from, err := tx.From()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	vmtx := sputnikvm.Transaction {
+		Caller: from,
+		GasPrice: tx.GasPrice(),
+		GasLimit: tx.Gas(),
+		Address: tx.To(),
+		Value: tx.Value(),
+		Input: tx.Data(),
+		Nonce: new(big.Int).SetUint64(tx.Nonce()),
+	}
+	vmheader := sputnikvm.HeaderParams {
+		Beneficiary: header.Coinbase,
+		Timestamp: header.Time.Uint64(),
+		Number: header.Number,
+		Difficulty: header.Difficulty,
+		GasLimit: header.GasLimit,
+	}
+	// TODO: use ChainConfig to choose the correct patch.
+	vm := sputnikvm.NewFrontier(&vmtx, &vmheader)
+Loop:
 	for {
 		ret := vm.Fire()
-		if ret == nil {
-			break
-		}
-		switch ret.Type {
-		case RequireRequireAccount:
-			value := ret.Value.(RequireAccount)
-			if statedb.Exist(value.Address) {
-				vm.CommitAccount(value.Address, statedb.GetCode(value.Address),
-					statedb.GetNonce(value.Address), statedb.GetBalance(value.Address))
+		switch ret.Typ() {
+		case sputnikvm.RequireNone:
+			break Loop
+		case sputnikvm.RequireAccount:
+			address := ret.Address()
+			if statedb.Exist(address) {
+				vm.CommitAccount(address, new(big.Int).SetUint64(statedb.GetNonce(address)),
+					statedb.GetBalance(address), statedb.GetCode(address))
 			} else {
-				vm.CommitAccountNonexist(value.Address)
+				vm.CommitNonexist(address)
 			}
-		case RequireRequireAccountCode:
-			value := ret.Value.(RequireAccount)
-			if statedb.Exist(value.Address) {
-				vm.CommitAccountCode(value.Address, statedb.GetCode(value.Address))
+		case sputnikvm.RequireAccountCode:
+			address := ret.Address()
+			if statedb.Exist(address) {
+				vm.CommitAccountCode(address, statedb.GetCode(address))
 			} else {
-				vm.CommitAccountNonexist(value.Address)
+				vm.CommitNonexist(address)
 			}
-		case RequireRequireAccountStorage:
-			value := ret.Value.(RequireAccountStorage)
-			if statedb.Exist(value.Address) {
-				storageValue := statedb.GetState(value.Address, value.Key)
-				vm.CommitAccountStorage(value.Address, value.Key, storageValue)
+		case sputnikvm.RequireAccountStorage:
+			address := ret.Address()
+			key := common.BigToHash(ret.StorageKey())
+			if statedb.Exist(address) {
+				value := statedb.GetState(address, key).Big()
+				key := ret.StorageKey()
+				vm.CommitAccountStorage(address, key, value)
 			} else {
-				vm.CommitAccountNonexist(value.Address)
+				vm.CommitNonexist(address)
 			}
-		case RequireRequireBlockhash:
-			value := ret.Value.(RequireBlockhash)
-			block := bc.GetBlockByNumber(value.Number)
-			vm.CommitBlockhash(value.Number, block.Header().Hash())
+		case sputnikvm.RequireBlockhash:
+			number := ret.BlockNumber()
+			hash := bc.GetBlockByNumber(number.Uint64()).Hash()
+			vm.CommitBlockhash(number, hash)
 		}
 	}
 
 	// VM execution is finished at this point. We apply changes to the statedb.
 
-	for _, account := range vm.Accounts() {
-		switch account.Type {
-		case AccountChangeIncreaseBalance:
-			value := account.Value.(IncreaseBalance)
-			statedb.AddBalance(value.Address, value.Balance)
-		case AccountChangeDecreaseBalance:
-			value := account.Value.(DecreaseBalance)
-			balance := new(big.Int).Sub(statedb.GetBalance(value.Address), value.Balance)
-			statedb.SetBalance(value.Address, balance)
-		case AccountChangeRemoved:
-			value := account.Value.(common.Address)
-			statedb.Suicide(value)
-		case AccountChangeAccount:
-			value := account.Value.(Account)
-			statedb.SetBalance(value.Address, value.Balance)
-			statedb.SetNonce(value.Address, value.Nonce)
-			statedb.SetCode(value.Address, value.Code)
-			for storageKey, storageValue := range value.Storage {
-				statedb.SetState(value.Address, storageKey, storageValue)
+	for _, account := range vm.AccountChanges() {
+		switch account.Typ() {
+		case sputnikvm.AccountChangeIncreaseBalance:
+			address := account.Address()
+			amount := account.ChangedAmount()
+			statedb.AddBalance(address, amount)
+		case sputnikvm.AccountChangeDecreaseBalance:
+			address := account.Address()
+			amount := account.ChangedAmount()
+			balance := new(big.Int).Sub(statedb.GetBalance(address), amount)
+			statedb.SetBalance(address, balance)
+		case sputnikvm.AccountChangeRemoved:
+			address := account.Address()
+			statedb.Suicide(address)
+		case sputnikvm.AccountChangeFull, sputnikvm.AccountChangeCreate:
+			address := account.Address()
+			code := account.Code()
+			nonce := account.Nonce()
+			balance := account.Balance()
+			statedb.SetBalance(address, balance)
+			statedb.SetNonce(address, nonce.Uint64())
+			statedb.SetCode(address, code)
+			for _, item := range account.Storage() {
+				statedb.SetState(address, common.BigToHash(item.Key), common.BigToHash(item.Value))
 			}
 		}
 	}
 	for _, log := range vm.Logs() {
-		statedb.AddLog(log)
+		statelog := evm.NewLog(log.Address, log.Topics, log.Data, header.Number.Uint64())
+		statedb.AddLog(statelog)
 	}
-	usedGas := vm.GasUsed()
+	usedGas := vm.UsedGas()
 
 	receipt := types.NewReceipt(statedb.IntermediateRoot().Bytes(), usedGas)
 	receipt.TxHash = tx.Hash()

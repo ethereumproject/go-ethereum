@@ -85,7 +85,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 			}
 		}
 		statedb.StartRecord(tx.Hash(), block.Hash(), i)
-		if CurrentMultiVmFactory == nil {
+		if UseSputnikVM == false {
 			receipt, logs, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
 			if err != nil {
 				return nil, nil, totalUsedGas, err
@@ -93,7 +93,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 			receipts = append(receipts, receipt)
 			allLogs = append(allLogs, logs...)
 		} else {
-			receipt, logs, _, err := ApplyMultiVmTransaction(CurrentMultiVmFactory, p.config, p.bc, gp, statedb, header, tx)
+			receipt, logs, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx)
 			if err != nil {
 				return nil, nil, totalUsedGas, err
 			}
