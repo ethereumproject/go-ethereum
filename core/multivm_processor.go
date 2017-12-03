@@ -40,8 +40,23 @@ func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, s
 		Difficulty: header.Difficulty,
 		GasLimit: header.GasLimit,
 	}
-	// TODO: use ChainConfig to choose the correct patch.
-	vm := sputnikvm.NewFrontier(&vmtx, &vmheader)
+
+	current_number := header.Number
+	homestead_fork := c.ForkByName("Homestead")
+	eip150_fork := c.ForkByName("GasReprice")
+	eip160_fork := c.ForkByName("Diehard")
+
+	vm := nil
+	if eip160_fork.Block != nil && current_number.cmp(eip160_fork.Block) >= 0 {
+		vm := sputnikvm.NewEIP160(&vmtx, &vmheader)
+	} else if eip150_fork.Block != nil && current_number.cmp(eip150_fork.Block) >= 0 {
+		vm := sputnikvm.NewEIP150(&vmtx, &vmheader)
+	} else if homestead_fork.Block != nil && current_number.cmp(homestead_fork.Block) >= 0 {
+		vm := sputnikvm.NewHomestead(&vmtx, &vmheader)
+	} else {
+		vm := sputnikvm.NewFrontier(&vmtx, &vmheader)
+	}
+
 Loop:
 	for {
 		ret := vm.Fire()
