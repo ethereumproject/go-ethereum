@@ -221,6 +221,11 @@ func makeCLIApp() (app *cli.App) {
 			}
 		}
 
+		if ctx.IsSet(SputnikVMFlag.Name) {
+			log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation ...")
+			core.UseSputnikVM = true
+		}
+
 		runtime.GOMAXPROCS(runtime.NumCPU())
 
 		glog.CopyStandardLogTo("INFO")
