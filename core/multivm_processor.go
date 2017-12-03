@@ -127,13 +127,14 @@ Loop:
 			code := account.Code()
 			nonce := account.Nonce()
 			balance := account.Balance()
-			statedb.Suicide(address)
 			statedb.SetBalance(address, balance)
 			statedb.SetNonce(address, nonce.Uint64())
 			statedb.SetCode(address, code)
 			for _, item := range account.Storage() {
 				statedb.SetState(address, common.BigToHash(item.Key), common.BigToHash(item.Value))
 			}
+		default:
+			panic("unreachable")
 		}
 	}
 	for _, log := range vm.Logs() {
@@ -143,9 +144,9 @@ Loop:
 	usedGas := vm.UsedGas()
 	totalUsedGas.Add(totalUsedGas, usedGas)
 
-	receipt := types.NewReceipt(statedb.IntermediateRoot().Bytes(), usedGas)
+	receipt := types.NewReceipt(statedb.IntermediateRoot().Bytes(), totalUsedGas)
 	receipt.TxHash = tx.Hash()
-	receipt.GasUsed = new(big.Int).Set(usedGas)
+	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
 	if MessageCreatesContract(tx) {
 		from, _ := tx.From()
 		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
@@ -157,5 +158,5 @@ Loop:
 
 	glog.V(logger.Debug).Infoln(receipt)
 
-	return receipt, logs, usedGas, nil
+	return receipt, logs, totalUsedGas, nil
 }
