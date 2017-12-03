@@ -158,5 +158,6 @@ Loop:
 
 	glog.V(logger.Debug).Infoln(receipt)
 
+	vm.Free()
 	return receipt, logs, totalUsedGas, nil
 }
