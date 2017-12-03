@@ -54,8 +54,8 @@ $ go install -ldflags "-X main.Version="`git describe --tags` ./cmd/...
 ```
 
 #### Using release source code tarball
-Because of strict Go directory structure, tarball needs to be extracted into proper subdirectory under `$GOPATH`.
-Following commands are example of building the v4.1.1 release:
+Because of strict Go directory structure, the tarball needs to be extracted into proper subdirectory under `$GOPATH`.
+The following commands are an example of building the v4.1.1 release:
 ```
 $ mkdir -p $GOPATH/src/github.com/ethereumproject
 $ cd $GOPATH/src/github.com/ethereumproject
