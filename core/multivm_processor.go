@@ -17,7 +17,7 @@ var (
 	UseSputnikVM = false
 )
 
-func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction) (*types.Receipt, evm.Logs, *big.Int, error) {
+func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas *big.Int) (*types.Receipt, evm.Logs, *big.Int, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
 
 	from, err := tx.From()
@@ -141,6 +141,7 @@ Loop:
 		statedb.AddLog(statelog)
 	}
 	usedGas := vm.UsedGas()
+	totalUsedGas.Add(totalUsedGas, usedGas)
 
 	receipt := types.NewReceipt(statedb.IntermediateRoot().Bytes(), usedGas)
 	receipt.TxHash = tx.Hash()

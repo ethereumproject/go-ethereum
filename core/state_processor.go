@@ -93,7 +93,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 			receipts = append(receipts, receipt)
 			allLogs = append(allLogs, logs...)
 		} else {
-			receipt, logs, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx)
+			receipt, logs, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
 			if err != nil {
 				return nil, nil, totalUsedGas, err
 			}
