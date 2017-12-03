@@ -123,6 +123,7 @@ func makeCLIApp() (app *cli.App) {
 	}
 
 	app.Flags = []cli.Flag{
+		SputnikVMFlag,
 		NodeNameFlag,
 		UnlockedAccountFlag,
 		PasswordFileFlag,
