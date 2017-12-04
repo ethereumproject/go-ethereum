@@ -148,7 +148,6 @@ Loop:
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
 	if MessageCreatesContract(tx) {
-		from, _ := tx.From()
 		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 	}
 
