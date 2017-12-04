@@ -15,6 +15,18 @@ install:
   - ps: $env:VERSION_BASE = "$(janus.exe version -format='v%M.%m.x')"
   - ps: $env:VERSION = "$(janus.exe version -format='TAG_OR_NIGHTLY')"
 
+  # Install Rust.
+  - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
+  - rustup-init -yv --default-toolchain beta --default-host x86_64-pc-windows-msvc
+  - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
+  - rustup update
+
+  - cd c:\gopath\src\github.com\ethereumproject
+  - git clone https://github.com/ethereumproject/sputnikvm-ffi
+  - cd c:\gopath\src\github.com\ethereumproject\sputnikvm-ffi\c
+  - make build
+  - set CGO_LDFLAGS="c:\gopath\src\github.com\ethereumproject\sputnikvm-ffi\c\libsputnikvm.a -ldl"
+
   - echo %VERSION_BASE% %VERSION%
   - echo %PATH%
   - echo %GOPATH%
