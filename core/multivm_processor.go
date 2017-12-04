@@ -13,9 +13,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
-var (
-	UseSputnikVM = false
-)
+var UseSputnikVM = false
 
 func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas *big.Int) (*types.Receipt, evm.Logs, *big.Int, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
