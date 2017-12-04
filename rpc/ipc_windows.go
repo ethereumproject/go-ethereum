@@ -26,12 +26,12 @@ import (
 )
 
 // ipcListen will create a named pipe on the given endpoint.
-func ipcListen(endpoint string) (net.Listener, error) {
+func IpcListen(endpoint string) (net.Listener, error) {
 	return winio.ListenPipe(endpoint, &winio.PipeConfig{})
 }
 
 // newIPCConnection will connect to a named pipe with the given endpoint as name.
-func newIPCConnection(endpoint string) (net.Conn, error) {
+func NewIPCConnection(endpoint string) (net.Conn, error) {
 	timeout := 5 * time.Second
 	return winio.DialPipe(endpoint, &timeout)
 }

@@ -23,7 +23,7 @@ import (
 
 // CreateIPCListener creates an listener, on Unix platforms this is a unix socket, on Windows this is a named pipe
 func CreateIPCListener(endpoint string) (net.Listener, error) {
-	return ipcListen(endpoint)
+	return IpcListen(endpoint)
 }
 
 // ipcClient represent an IPC RPC client. It will connect to a given endpoint and tries to communicate with a node using
@@ -39,7 +39,7 @@ type ipcClient struct {
 // On Unix it assumes the endpoint is the full path to a unix socket, and Windows the endpoint is an identifier for a
 // named pipe.
 func newIPCClient(endpoint string) (Client, error) {
-	conn, err := newIPCConnection(endpoint)
+	conn, err := NewIPCConnection(endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (client *ipcClient) Send(msg interface{}) error {
 	// retry once
 	client.conn.Close()
 
-	conn, err := newIPCConnection(client.endpoint)
+	conn, err := NewIPCConnection(client.endpoint)
 	if err != nil {
 		return err
 	}

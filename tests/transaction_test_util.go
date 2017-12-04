@@ -111,7 +111,20 @@ func runTransactionTests(tests map[string]TransactionTest, skipTests []string) e
 	return nil
 }
 
-func runTransactionTest(txTest TransactionTest) (err error) {
+func runTransactionTest(txTest TransactionTest) error {
+	var err error
+	if err = runTransactionTest_(txTest); err != nil {
+		fmt.Printf("error occured %v\n", err)
+		if SetBackupVmConfig() {
+			fmt.Println("\trestarting with raw VM\n")
+			err = runTransactionTest_(txTest)
+			SetTestVmConfig()
+		}
+	}
+	return err
+}
+
+func runTransactionTest_(txTest TransactionTest) (err error) {
 	tx := new(types.Transaction)
 	err = rlp.DecodeBytes(mustConvertBytes(txTest.Rlp), tx)
 

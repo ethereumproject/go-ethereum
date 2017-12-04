@@ -30,8 +30,8 @@ int secp256k1_pubkey_scalar_mul(const secp256k1_context* ctx, unsigned char *poi
     secp256k1_gej res;
     secp256k1_ge ge;
     secp256k1_scalar s;
-    ARG_CHECK(point != NULL);
-    ARG_CHECK(scalar != NULL);
+    //ARG_CHECK(point != NULL);
+    //ARG_CHECK(scalar != NULL);
     (void)ctx;
 
     secp256k1_fe_set_b32(&feX, point);

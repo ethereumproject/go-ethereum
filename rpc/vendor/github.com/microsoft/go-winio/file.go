@@ -239,6 +239,7 @@ func (f *win32File) Read(b []byte) (int, error) {
 
 // Write writes to a file handle.
 func (f *win32File) Write(b []byte) (int, error) {
+
 	c, err := f.prepareIo()
 	if err != nil {
 		return 0, err

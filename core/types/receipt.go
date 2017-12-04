@@ -22,7 +22,7 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
@@ -32,7 +32,7 @@ type Receipt struct {
 	PostState         []byte
 	CumulativeGasUsed *big.Int
 	Bloom             Bloom
-	Logs              vm.Logs
+	Logs              state.Logs
 
 	// Implementation fields
 	TxHash          common.Hash
@@ -58,7 +58,7 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 		PostState         []byte
 		CumulativeGasUsed *big.Int
 		Bloom             Bloom
-		Logs              vm.Logs
+		Logs              state.Logs
 	}
 	if err := s.Decode(&receipt); err != nil {
 		return err
@@ -88,9 +88,9 @@ type ReceiptForStorage Receipt
 // EncodeRLP implements rlp.Encoder, and flattens all content fields of a receipt
 // into an RLP stream.
 func (r *ReceiptForStorage) EncodeRLP(w io.Writer) error {
-	logs := make([]*vm.LogForStorage, len(r.Logs))
+	logs := make([]*state.LogForStorage, len(r.Logs))
 	for i, log := range r.Logs {
-		logs[i] = (*vm.LogForStorage)(log)
+		logs[i] = (*state.LogForStorage)(log)
 	}
 	return rlp.Encode(w, []interface{}{r.PostState, r.CumulativeGasUsed, r.Bloom, r.TxHash, r.ContractAddress, logs, r.GasUsed})
 }
@@ -104,7 +104,7 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 		Bloom             Bloom
 		TxHash            common.Hash
 		ContractAddress   common.Address
-		Logs              []*vm.LogForStorage
+		Logs              []*state.LogForStorage
 		GasUsed           *big.Int
 	}
 	if err := s.Decode(&receipt); err != nil {
@@ -112,9 +112,9 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	}
 	// Assign the consensus fields
 	r.PostState, r.CumulativeGasUsed, r.Bloom = receipt.PostState, receipt.CumulativeGasUsed, receipt.Bloom
-	r.Logs = make(vm.Logs, len(receipt.Logs))
+	r.Logs = make(state.Logs, len(receipt.Logs))
 	for i, log := range receipt.Logs {
-		r.Logs[i] = (*vm.Log)(log)
+		r.Logs[i] = (*state.Log)(log)
 	}
 	// Assign the implementation fields
 	r.TxHash, r.ContractAddress, r.GasUsed = receipt.TxHash, receipt.ContractAddress, receipt.GasUsed

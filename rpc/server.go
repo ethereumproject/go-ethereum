@@ -176,9 +176,8 @@ func (s *Server) serveRequest(codec ServerCodec, singleShot bool, options CodecO
 		if err != nil {
 			glog.V(logger.Debug).Infof("%v\n", err)
 			codec.Write(codec.CreateErrorResponse(nil, err))
-			return nil
+			return err
 		}
-
 		// check if server is ordered to shutdown and return an error
 		// telling the client that his request failed.
 		if atomic.LoadInt32(&s.run) != 1 {
@@ -192,15 +191,13 @@ func (s *Server) serveRequest(codec ServerCodec, singleShot bool, options CodecO
 			} else {
 				codec.Write(codec.CreateErrorResponse(&reqs[0].id, err))
 			}
-			return nil
+			return err
 		}
 
 		if singleShot && batch {
 			s.execBatch(ctx, codec, reqs)
-			return nil
 		} else if singleShot && !batch {
 			s.exec(ctx, codec, reqs[0])
-			return nil
 		} else if !singleShot && batch {
 			go s.execBatch(ctx, codec, reqs)
 		} else {
@@ -222,8 +219,8 @@ func (s *Server) ServeCodec(codec ServerCodec, options CodecOption) {
 // ServeSingleRequest reads and processes a single RPC request from the given codec. It will not
 // close the codec unless a non-recoverable error has occurred. Note, this method will return after
 // a single request has been processed!
-func (s *Server) ServeSingleRequest(codec ServerCodec, options CodecOption) {
-	s.serveRequest(codec, true, options)
+func (s *Server) ServeSingleRequest(codec ServerCodec, options CodecOption) error {
+	return s.serveRequest(codec, true, options)
 }
 
 // Stop will stop reading new requests, wait for stopPendingRequestTimeout to allow pending requests to finish,
@@ -331,6 +328,11 @@ func (s *Server) exec(ctx context.Context, codec ServerCodec, req *serverRequest
 	var response interface{}
 	var callback func()
 	if req.err != nil {
+		name := "unknwon"
+		if req.callb != nil {
+			name = req.callb.method.Name
+		}
+		glog.V(logger.Debug).Infof("request error %v, on call %v\n", req.err, name)
 		response = codec.CreateErrorResponse(&req.id, req.err)
 	} else {
 		response, callback = s.handle(ctx, codec, req)

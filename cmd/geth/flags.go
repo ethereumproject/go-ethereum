@@ -357,6 +357,11 @@ var (
 		Name:  "oppose-dao-fork",
 		Usage: "Use classic blockchain (always set, flag is unused and exists for compatibility only)",
 	}
+	// Virtual Machine settings
+	UseVmFlag = cli.StringFlag {
+		Name:  "vm",
+		Usage: "Select virtual machine. Possible values: classic, sputnik, original, ipc[:name]",
+	}
 )
 
 // aliasableName check global vars for aliases flag and directoryFlag names.

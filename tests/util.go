@@ -29,14 +29,58 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/machine/classic"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
 )
 
+const useOriginalVmByDefault = false
+var restartOriginalVm = true
+
 func init() {
-	glog.SetV(0)
+
+	if len(os.Getenv("DEBUG_TESTS")) > 0 {
+		glog.SetToStderr(true)
+		glog.SetV(logger.Debug)
+	}
+
+	restartOriginalVm = !useOriginalVmByDefault && len(os.Getenv("RESTART_TESTS")) > 0
+	SetTestVmConfig()
+
+	go func() {
+		sigc := make(chan os.Signal, 1)
+		signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM, syscall.Signal(21))
+		<-sigc
+		signal.Stop(sigc)
+		buf := make([]byte, 64*1024)
+		stacklen := runtime.Stack(buf, true)
+		glog.Errorf("=== TERMINATED ===\n*** goroutine dump...\n%s\n*** end\n", buf[:stacklen])
+		os.Exit(-1)
+	}()
+
 }
 
-func checkLogs(tlog []Log, logs vm.Logs) error {
+func SetTestVmConfig() {
+	if useOriginalVmByDefault {
+		core.VmManager.SwitchToOriginalVm()
+	} else {
+		core.VmManager.EnvConfig()
+	}
+}
+
+func SetBackupVmConfig() bool {
+	if restartOriginalVm {
+		core.VmManager.SwitchToOriginalVm()
+		return true
+	}
+	return false
+}
+
+func checkLogs(tlog []Log, logs state.Logs) error {
 
 	if len(tlog) != len(logs) {
 		return fmt.Errorf("log length mismatch. Expected %d, got %d", len(tlog), len(logs))
@@ -59,7 +103,7 @@ func checkLogs(tlog []Log, logs vm.Logs) error {
 					}
 				}
 			}
-			genBloom := common.LeftPadBytes(types.LogsBloom(vm.Logs{logs[i]}).Bytes(), 256)
+			genBloom := common.LeftPadBytes(types.LogsBloom(state.Logs{logs[i]}).Bytes(), 256)
 
 			if !bytes.Equal(genBloom, common.Hex2Bytes(log.BloomF)) {
 				return fmt.Errorf("bloom mismatch")
@@ -194,148 +238,57 @@ func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	}
 }
 
-type Env struct {
-	ruleSet      RuleSet
-	depth        int
-	state        *state.StateDB
-	skipTransfer bool
-	initial      bool
-	Gas          *big.Int
+func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]string, exeValues map[string]string) *core.VmEnv {
 
-	origin   common.Address
-	parent   common.Hash
-	coinbase common.Address
-
-	number     *big.Int
-	time       *big.Int
-	difficulty *big.Int
-	gasLimit   *big.Int
-
-	vmTest bool
-
-	evm *vm.EVM
-}
-
-func NewEnv(ruleSet RuleSet, state *state.StateDB) *Env {
-	env := &Env{
-		ruleSet: ruleSet,
-		state:   state,
-	}
-	return env
-}
-
-func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]string, exeValues map[string]string) *Env {
-	env := NewEnv(ruleSet, state)
-
-	env.origin = common.HexToAddress(exeValues["caller"])
-	env.parent = common.HexToHash(envValues["previousHash"])
-	env.coinbase = common.HexToAddress(envValues["currentCoinbase"])
-	env.number, _ = new(big.Int).SetString(envValues["currentNumber"], 0)
-	if env.number == nil {
+	number, _ := new(big.Int).SetString(envValues["currentNumber"], 0)
+	if number == nil {
 		panic("malformed current number")
 	}
-	env.time, _ = new(big.Int).SetString(envValues["currentTimestamp"], 0)
-	if env.time == nil {
+	time, _ := new(big.Int).SetString(envValues["currentTimestamp"], 0)
+	if time == nil {
 		panic("malformed current timestamp")
 	}
-	env.difficulty, _ = new(big.Int).SetString(envValues["currentDifficulty"], 0)
-	if env.difficulty == nil {
+	difficulty, _ := new(big.Int).SetString(envValues["currentDifficulty"], 0)
+	if difficulty == nil {
 		panic("malformed current difficulty")
 	}
-	env.gasLimit, _ = new(big.Int).SetString(envValues["currentGasLimit"], 0)
-	if env.gasLimit == nil {
+	gasLimit, _ := new(big.Int).SetString(envValues["currentGasLimit"], 0)
+	if gasLimit == nil {
 		panic("malformed current gas limit")
 	}
-	env.Gas = new(big.Int)
 
-	env.evm = vm.New(env)
+	fork := vm.Frontier
+	if ruleSet.IsHomestead(number) {
+		fork = vm.Homestead
+	}
+
+	hashFn := func(n uint64) common.Hash {
+		return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
+	}
+
+	machine, err := core.VmManager.ConnectMachine()
+	if machine == nil {
+		panic(fmt.Sprintf("could not connect machine: %v", err))
+	}
+
+	env := &core.VmEnv{
+		common.HexToAddress(envValues["currentCoinbase"]),
+		number,
+		difficulty,
+		gasLimit,
+		time,
+		db,
+		hashFn,
+		fork,
+		ruleSet,
+		machine,
+	}
+
+	if machine.Type() == vm.OriginalVm {
+		machine.(*classic.RawMachine).Bind(db, hashFn)
+	}
 
 	return env
-}
-
-func (self *Env) RuleSet() vm.RuleSet      { return self.ruleSet }
-func (self *Env) Vm() vm.Vm                { return self.evm }
-func (self *Env) Origin() common.Address   { return self.origin }
-func (self *Env) BlockNumber() *big.Int    { return self.number }
-func (self *Env) Coinbase() common.Address { return self.coinbase }
-func (self *Env) Time() *big.Int           { return self.time }
-func (self *Env) Difficulty() *big.Int     { return self.difficulty }
-func (self *Env) Db() vm.Database          { return self.state }
-func (self *Env) GasLimit() *big.Int       { return self.gasLimit }
-func (self *Env) VmType() vm.Type          { return vm.StdVmTy }
-func (self *Env) GetHash(n uint64) common.Hash {
-	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
-}
-func (self *Env) AddLog(log *vm.Log) {
-	self.state.AddLog(log)
-}
-func (self *Env) Depth() int     { return self.depth }
-func (self *Env) SetDepth(i int) { self.depth = i }
-func (self *Env) CanTransfer(from common.Address, balance *big.Int) bool {
-	if self.skipTransfer {
-		if self.initial {
-			self.initial = false
-			return true
-		}
-	}
-
-	return self.state.GetBalance(from).Cmp(balance) >= 0
-}
-func (self *Env) SnapshotDatabase() int {
-	return self.state.Snapshot()
-}
-func (self *Env) RevertToSnapshot(snapshot int) {
-	self.state.RevertToSnapshot(snapshot)
-}
-
-func (self *Env) Transfer(from, to vm.Account, amount *big.Int) {
-	if self.skipTransfer {
-		return
-	}
-	core.Transfer(from, to, amount)
-}
-
-func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	if self.vmTest && self.depth > 0 {
-		caller.ReturnGas(gas, price)
-
-		return nil, nil
-	}
-	ret, err := core.Call(self, caller, addr, data, gas, price, value)
-	self.Gas = gas
-
-	return ret, err
-
-}
-func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	if self.vmTest && self.depth > 0 {
-		caller.ReturnGas(gas, price)
-
-		return nil, nil
-	}
-	return core.CallCode(self, caller, addr, data, gas, price, value)
-}
-
-func (self *Env) DelegateCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
-	if self.vmTest && self.depth > 0 {
-		caller.ReturnGas(gas, price)
-
-		return nil, nil
-	}
-	return core.DelegateCall(self, caller, addr, data, gas, price)
-}
-
-func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
-	if self.vmTest {
-		caller.ReturnGas(gas, price)
-
-		nonce := self.state.GetNonce(caller.Address())
-		obj := self.state.GetOrNewStateObject(crypto.CreateAddress(caller.Address(), nonce))
-
-		return nil, obj.Address(), nil
-	} else {
-		return core.Create(self, caller, data, gas, price, value)
-	}
 }
 
 type Message struct {

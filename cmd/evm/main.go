@@ -29,13 +29,13 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/machine/classic"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -206,7 +206,7 @@ type VMEnv struct {
 	Gas   *big.Int
 	time  *big.Int
 
-	evm *vm.EVM
+	evm *classic.EVM
 }
 
 func NewEnv(state *state.StateDB, transactor common.Address, value *big.Int) *VMEnv {
@@ -217,7 +217,7 @@ func NewEnv(state *state.StateDB, transactor common.Address, value *big.Int) *VM
 		time:       big.NewInt(time.Now().Unix()),
 	}
 
-	env.evm = vm.New(env)
+	env.evm = classic.NewVM(env)
 	return env
 }
 
@@ -240,8 +240,7 @@ func (ruleSet) GasTable(*big.Int) *vm.GasTable {
 }
 
 func (self *VMEnv) RuleSet() vm.RuleSet       { return ruleSet{} }
-func (self *VMEnv) Vm() vm.Vm                 { return self.evm }
-func (self *VMEnv) Db() vm.Database           { return self.state }
+func (self *VMEnv) Db() classic.Database      { return self.state }
 func (self *VMEnv) SnapshotDatabase() int     { return self.state.Snapshot() }
 func (self *VMEnv) RevertToSnapshot(snap int) { self.state.RevertToSnapshot(snap) }
 func (self *VMEnv) Origin() common.Address    { return *self.transactor }
@@ -252,7 +251,7 @@ func (self *VMEnv) Difficulty() *big.Int      { return common.Big1 }
 func (self *VMEnv) BlockHash() []byte         { return make([]byte, 32) }
 func (self *VMEnv) Value() *big.Int           { return self.value }
 func (self *VMEnv) GasLimit() *big.Int        { return big.NewInt(1000000000) }
-func (self *VMEnv) VmType() vm.Type           { return vm.StdVmTy }
+func (self *VMEnv) VmType() vm.Type           { return vm.ClassicVm }
 func (self *VMEnv) Depth() int                { return 0 }
 func (self *VMEnv) SetDepth(i int)            { self.depth = i }
 func (self *VMEnv) GetHash(n uint64) common.Hash {
@@ -261,29 +260,33 @@ func (self *VMEnv) GetHash(n uint64) common.Hash {
 	}
 	return common.Hash{}
 }
-func (self *VMEnv) AddLog(log *vm.Log) {
+func (self *VMEnv) AddLog(log *state.Log) {
 	self.state.AddLog(log)
 }
 func (self *VMEnv) CanTransfer(from common.Address, balance *big.Int) bool {
 	return self.state.GetBalance(from).Cmp(balance) >= 0
 }
-func (self *VMEnv) Transfer(from, to vm.Account, amount *big.Int) {
-	core.Transfer(from, to, amount)
+func (self *VMEnv) Transfer(from, to state.AccountObject, amount *big.Int) {
+	classic.Transfer(from, to, amount)
 }
 
-func (self *VMEnv) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *VMEnv) Call(caller classic.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	self.Gas = gas
-	return core.Call(self, caller, addr, data, gas, price, value)
+	return classic.Call(self, caller, addr, data, gas, price, value)
 }
 
-func (self *VMEnv) CallCode(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	return core.CallCode(self, caller, addr, data, gas, price, value)
+func (self *VMEnv) CallCode(caller classic.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	return classic.CallCode(self, caller, addr, data, gas, price, value)
 }
 
-func (self *VMEnv) DelegateCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
-	return core.DelegateCall(self, caller, addr, data, gas, price)
+func (self *VMEnv) DelegateCall(caller classic.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return classic.DelegateCall(self, caller.(*classic.Contract), addr, data, gas, price)
 }
 
-func (self *VMEnv) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
-	return core.Create(self, caller, data, gas, price, value)
+func (self *VMEnv) Create(caller classic.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+	return classic.Create(self, caller, data, gas, price, value)
+}
+
+func (self *VMEnv) Run(contract *classic.Contract, input []byte) (ret []byte, err error) {
+	return self.evm.Run(contract, input)
 }

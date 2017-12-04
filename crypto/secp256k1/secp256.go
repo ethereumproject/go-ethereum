@@ -1,4 +1,6 @@
 // Copyright 2015 The go-ethereum Authors
+// Copyright 2017 ETCDEV Team
+//
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -19,17 +21,36 @@ package secp256k1
 // TODO: set USE_SCALAR_4X64 depending on platform?
 
 /*
+
 #cgo CFLAGS: -I./libsecp256k1
 #cgo CFLAGS: -I./libsecp256k1/src/
-#define USE_NUM_NONE
-#define USE_FIELD_10X26
-#define USE_FIELD_INV_BUILTIN
-#define USE_SCALAR_8X32
-#define USE_SCALAR_INV_BUILTIN
+
+// for platforms where SPUTNIK VM is supported the module uses secp256k1 from libsputnikvm
+#cgo amd64,windows amd64,linux CFLAGS: -DSPUTNIK_VM_IMPLEMENTED
+#cgo amd64,windows LDFLAGS: -L${SRCDIR}/../../machine/sputnik/windows_amd64 -lsputnikvm
+#cgo amd64,linux LDFLAGS: -L${SRCDIR}/../../machine/sputnik/linux_amd64 -lsputnikvm -ldl
+
+#define USE_NUM_NONE 1
+#define USE_FIELD_10X26 1
+#define USE_FIELD_INV_BUILTIN 1
+#define USE_SCALAR_8X32 1
+#define USE_SCALAR_INV_BUILTIN 1
+#define USE_ENDOMORPHISM 1
+#define ENABLE_MODULE_ECDH 1
+#define ENABLE_MODULE_SCHNORR 1
+#define ENABLE_MODULE_RECOVERY 1
 #define NDEBUG
+
+#ifdef SPUTNIK_VM_IMPLEMENTED
+#include "./libsecp256k1/include/secp256k1.h"
+#include "./libsecp256k1/include/secp256k1_ecdh.h"
+#include "./libsecp256k1/include/secp256k1_recovery.h"
+int secp256k1_pubkey_scalar_mul(const secp256k1_context* ctx, unsigned char *point, const unsigned char *scalar);
+#else
 #include "./libsecp256k1/src/secp256k1.c"
 #include "./libsecp256k1/src/modules/recovery/main_impl.h"
 #include "pubkey_scalar_mul.h"
+#endif
 
 typedef void (*callbackFunc) (const char* msg, void* data);
 extern void secp256k1GoPanicIllegal(const char* msg, void* data);
@@ -44,8 +65,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/crypto/randentropy"
 )
-
-//#define USE_FIELD_5X64
 
 /*
    TODO:
@@ -67,7 +86,7 @@ func init() {
 	HalfN, _ = new(big.Int).SetString("7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0", 16)
 
 	// around 20 ms on a modern CPU.
-	context = C.secp256k1_context_create(3) // SECP256K1_START_SIGN | SECP256K1_START_VERIFY
+	context = C.secp256k1_context_create(C.SECP256K1_CONTEXT_SIGN|C.SECP256K1_CONTEXT_VERIFY)
 	C.secp256k1_context_set_illegal_callback(context, C.callbackFunc(C.secp256k1GoPanicIllegal), nil)
 	C.secp256k1_context_set_error_callback(context, C.callbackFunc(C.secp256k1GoPanicError), nil)
 }
@@ -96,14 +115,14 @@ func GenerateKeyPair() ([]byte, []byte) {
 		return GenerateKeyPair() // invalid secret, try again
 	}
 
-	var output_len C.size_t
+	var output_len C.size_t = 65
 
 	C.secp256k1_ec_pubkey_serialize( // always returns 1
 		context,
 		pubkey65_ptr,
 		&output_len,
 		pubkey64_ptr,
-		0, // SECP256K1_EC_COMPRESSED
+		C.SECP256K1_EC_UNCOMPRESSED,
 	)
 
 	return pubkey65, seckey
@@ -236,13 +255,13 @@ func RecoverPubkey(msg []byte, sig []byte) ([]byte, error) {
 	}
 
 	serialized_pubkey_ptr := (*C.uchar)(unsafe.Pointer(&bytes65[0]))
-	var output_len C.size_t
+	var output_len C.size_t = 65
 	C.secp256k1_ec_pubkey_serialize( // always returns 1
 		context,
 		serialized_pubkey_ptr,
 		&output_len,
 		pubkey_ptr,
-		0, // SECP256K1_EC_COMPRESSED
+		C.SECP256K1_EC_UNCOMPRESSED,
 	)
 	return bytes65, nil
 }
