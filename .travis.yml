@@ -17,7 +17,7 @@ before_install:
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install bats; fi
 
 # Install Rust and C binding
-- curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable
+- curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
 - git clone https://github.com/ethereumproject/sputnikvm-ffi $HOME/sputnikvm-ffi
 - cd $HOME/sputnikvm-ffi/c && make build
 - export CGO_LDFLAGS="$HOME/sputnikvm-ffi/c/libsputnikvm.a -ldl"
