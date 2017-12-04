@@ -44,6 +44,27 @@ To install...
 
 Executables built from source will, by default, be installed in `$GOPATH/bin/`.
 
+#### Building specific release
+All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following:
+```
+$ go get -d github.com/ethereumproject/go-ethereum/...
+$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+$ git checkout <TAG OR REVISION>
+$ go install -ldflags "-X main.Version="`git describe --tags` ./cmd/...
+```
+
+#### Using release source code tarball
+Because of strict Go directory structure, the tarball needs to be extracted into proper subdirectory under `$GOPATH`.
+The following commands are an example of building the v4.1.1 release:
+```
+$ mkdir -p $GOPATH/src/github.com/ethereumproject
+$ cd $GOPATH/src/github.com/ethereumproject
+$ tar xzf /path/to/go-ethereum-4.1.1.tar.gz
+$ mv go-ethereum-4.1.1 go-ethereum
+$ cd go-ethereum
+$ go install -ldflags "-X main.Version=v4.1.1" ./cmd/...
+```
+
 ## Executables
 
 This repository includes several wrappers/executables found in the `cmd` directory.
