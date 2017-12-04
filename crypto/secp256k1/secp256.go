@@ -28,7 +28,7 @@ package secp256k1
 // for platforms where SPUTNIK VM is supported the module uses secp256k1 from libsputnikvm
 #cgo amd64,windows amd64,linux CFLAGS: -DSPUTNIK_VM_IMPLEMENTED
 #cgo amd64,windows LDFLAGS: -L${SRCDIR}/../../machine/sputnik/windows_amd64 -lsputnikvm
-#cgo amd64,linux LDFLAGS: -L${SRCDIR}/../../machine/sputnik/linux_amd64 -lsputnikvm
+#cgo amd64,linux LDFLAGS: -L${SRCDIR}/../../machine/sputnik/linux_amd64 -lsputnikvm -ldl
 
 #define USE_NUM_NONE 1
 #define USE_FIELD_10X26 1

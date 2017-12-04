@@ -20,7 +20,7 @@ package sputnik
 /*
 
 #cgo amd64,windows LDFLAGS: -L${SRCDIR}/windows_amd64 -lsputnikvm -lws2_32 -luserenv
-#cgo amd64,linux LDFLAGS: -L${SRCDIR}/linux_amd64 -lsputnikvm
+#cgo amd64,linux LDFLAGS: -L${SRCDIR}/linux_amd64 -lsputnikvm -ldl -lm
 #cgo amd64,windows amd64,linux CFLAGS: -DSPUTNIK_VM_IMPLEMENTED
 
 #include "sputnikvm.h"
