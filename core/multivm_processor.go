@@ -68,16 +68,16 @@ Loop:
 			if statedb.Exist(address) {
 				vm.CommitAccount(address, new(big.Int).SetUint64(statedb.GetNonce(address)),
 					statedb.GetBalance(address), statedb.GetCode(address))
-			} else {
-				vm.CommitNonexist(address)
+				break
 			}
+			vm.CommitNonexist(address)
 		case sputnikvm.RequireAccountCode:
 			address := ret.Address()
 			if statedb.Exist(address) {
 				vm.CommitAccountCode(address, statedb.GetCode(address))
-			} else {
-				vm.CommitNonexist(address)
+				break
 			}
+			vm.CommitNonexist(address)
 		case sputnikvm.RequireAccountStorage:
 			address := ret.Address()
 			key := common.BigToHash(ret.StorageKey())
@@ -85,9 +85,9 @@ Loop:
 				value := statedb.GetState(address, key).Big()
 				key := ret.StorageKey()
 				vm.CommitAccountStorage(address, key, value)
-			} else {
-				vm.CommitNonexist(address)
+				break
 			}
+			vm.CommitNonexist(address)
 		case sputnikvm.RequireBlockhash:
 			number := ret.BlockNumber()
 			hash := bc.GetBlockByNumber(number.Uint64()).Hash()

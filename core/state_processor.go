@@ -85,21 +85,21 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 			}
 		}
 		statedb.StartRecord(tx.Hash(), block.Hash(), i)
-		if UseSputnikVM == false {
+		if !UseSputnikVM {
 			receipt, logs, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
 			if err != nil {
 				return nil, nil, totalUsedGas, err
 			}
 			receipts = append(receipts, receipt)
 			allLogs = append(allLogs, logs...)
-		} else {
-			receipt, logs, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
-			if err != nil {
-				return nil, nil, totalUsedGas, err
-			}
-			receipts = append(receipts, receipt)
-			allLogs = append(allLogs, logs...)
+			continue
 		}
+		receipt, logs, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
+		if err != nil {
+			return nil, nil, totalUsedGas, err
+		}
+		receipts = append(receipts, receipt)
+		allLogs = append(allLogs, logs...)
 	}
 	AccumulateRewards(p.config, statedb, header, block.Uncles())
 
