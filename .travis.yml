@@ -16,24 +16,24 @@ before_install:
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install bats; fi
 
+# Install Rust and C binding
+- curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable
+- git clone https://github.com/ethereumproject/sputnikvm-ffi $HOME/sputnikvm-ffi
+- cd $HOME/sputnikvm-ffi/c && make build
+- export CGO_LDFLAGS="$HOME/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+
 script:
 # Install Janus
 - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
 # Add Janus to PATH.
 - export PATH=$PATH:$PWD/janusbin
-# Install Rust
-- curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable
-
-- rustc --version
-- cd $GOPATH/src/github.com/ethereumproject && git clone https://github.com/ethereumproject/sputnikvm-ffi
-- cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c && make build
 
 - go version
 - go env
 # Run go tests.
-- CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go test ./...
+- go test ./...
 # Build for integration tests.
-- CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go build -ldflags "-X main.Version="`janus version -format TAG_OR_NIGHTLY` ./cmd/geth
+- go build -ldflags "-X main.Version="`janus version -format TAG_OR_NIGHTLY` ./cmd/geth
 # Run bats integration tests.
 - bats cmd/geth
 
