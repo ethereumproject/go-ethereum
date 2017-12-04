@@ -25,7 +25,8 @@ install:
   - git clone https://github.com/ethereumproject/sputnikvm-ffi
   - cd c:\gopath\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi
   - cargo build --release
-  - set CGO_LDFLAGS="c:\gopath\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi\target\release\libsputnikvm.lib -ldl"
+  - copy c:\gopath\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi\target\release\libsputnikvm_ffi.lib c:\gopath\src\github.com\ethereumproject\sputnikvm-ffi\c\libsputnikvm.a
+  - set CGO_LDFLAGS="c:\gopath\src\github.com\ethereumproject\sputnikvm-ffi\c\libsputnikvm.a -ldl"
   - cd c:\gopath\src\github.com\ethereumproject\go-ethereum
 
   - echo %VERSION_BASE% %VERSION%
