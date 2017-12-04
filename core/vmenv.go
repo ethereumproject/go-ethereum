@@ -152,7 +152,7 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *big.Int, error) {
 					return nil, nil, err
 				}
 
-				fmt.Printf("gas: %v refund: %v\n", gas.Text(16), gasRefund.Text(16))
+				//fmt.Printf("gas: %v refund: %v\n", gas.Text(16), gasRefund.Text(16))
 				self.Db.AddRefund(gasRefund)
 
 				for _, a := range accounts {
@@ -186,11 +186,11 @@ func (self *VmEnv) execute(ctx vm.Context) ([]byte, *big.Int, error) {
 							})
 						}
 					}
-					fmt.Fprintf(os.Stderr,"*account: %v\n",a)
-					fmt.Fprintf(os.Stderr,"*account address: %v\n",a.Address())
-					fmt.Printf("account: %v balance: %v nonce: %v\n",o.Address().Hex(), o.Balance().Text(16), o.Nonce())
-					fmt.Printf("\t hash: %v codesize: %v\n",self.Db.GetCodeHash(o.Address()).Hex(),len(self.Db.GetCode(o.Address())))
-					fmt.Printf("\t suicided: %v\n",self.Db.HasSuicided(o.Address()))
+					//fmt.Fprintf(os.Stderr,"*account: %v\n",a)
+					//fmt.Fprintf(os.Stderr,"*account address: %v\n",a.Address())
+					//fmt.Printf("account: %v balance: %v nonce: %v\n",o.Address().Hex(), o.Balance().Text(16), o.Nonce())
+					//fmt.Printf("\t hash: %v codesize: %v\n",self.Db.GetCodeHash(o.Address()).Hex(),len(self.Db.GetCode(o.Address())))
+					//fmt.Printf("\t suicided: %v\n",self.Db.HasSuicided(o.Address()))
 				}
 				for _, l := range logs {
 					self.Db.AddLog(l)
@@ -305,20 +305,26 @@ func (self *vmManager) autoConfig() {
 	self.useVmIpcName = vm.DefaultVmIpc
 }
 
-func (self *vmManager) EnvConfig() {
+func (self *vmManager) GetVmName() string {
+	c := ""
+	switch self.useVmConnection {
+	case vm.IpcVm, vm.LocalVm:
+		c = ":"+self.useVmIpcName
+	case vm.RpcVm:
+		c = fmt.Sprintf("%s:%d", self.useVmRemoteHost, self.useVmRemotePort)
+	}
+	return fmt.Sprintf("%s/%s%s", self.useVmType.String(), self.useVmConnection.String(), c)
+}
 
-	vmSelector := os.Getenv("USE_GETH_VM")
+func (self *vmManager) SwitchTo(vmSelector string) (err error) {
 	vmOpt := strings.Split(vmSelector, ":")
 	switch tp := strings.ToUpper(vmOpt[0]); tp {
+	case "ORIGINAL":
+		self.SwitchToRawClassicVm()
 	case "CLASSIC":
 		self.SwitchToClassicVm()
-		return
-	case "RAWCLASSIC":
-		self.SwitchToRawClassicVm()
-		return
 	case "SPUTNIK":
 		self.SwitchToSputnikVm()
-		return
 	case "IPC":
 		connName := vm.DefaultVmIpc
 		manageVm := ""
@@ -339,9 +345,19 @@ func (self *vmManager) EnvConfig() {
 	case "":
 		self.Autoconfig()
 	default:
-		glog.Error("found unknown virtual machine usage in environment variable USE_GETH_VM")
 		self.Autoconfig()
+		err = errors.New("unknown virtual machine " + vmSelector)
 	}
+	return
+}
+
+func (self *vmManager) EnvConfig() error {
+	vmSelector := os.Getenv("USE_GETH_VM")
+	err := self.SwitchTo(vmSelector)
+	if err != nil {
+		glog.Error("environment variable USE_GETH_VM contains invalid vm "+vmSelector)
+	}
+	return err
 }
 
 func (self *vmManager) Autoconfig() {
