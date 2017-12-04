@@ -28,6 +28,7 @@ package secp256k1
 // for platforms where SPUTNIK VM is supported the module uses secp256k1 from libsputnikvm
 #cgo amd64,windows amd64,linux CFLAGS: -DSPUTNIK_VM_IMPLEMENTED
 #cgo amd64,windows LDFLAGS: -L${SRCDIR}/../../machine/sputnik/windows_amd64 -lsputnikvm
+#cgo amd64,linux LDFLAGS: -L${SRCDIR}/../../machine/sputnik/linux_amd64 -lsputnikvm
 
 #define USE_NUM_NONE 1
 #define USE_FIELD_10X26 1
@@ -114,7 +115,7 @@ func GenerateKeyPair() ([]byte, []byte) {
 		return GenerateKeyPair() // invalid secret, try again
 	}
 
-	var output_len C.size_t
+	var output_len C.size_t = 65
 
 	C.secp256k1_ec_pubkey_serialize( // always returns 1
 		context,
@@ -254,7 +255,7 @@ func RecoverPubkey(msg []byte, sig []byte) ([]byte, error) {
 	}
 
 	serialized_pubkey_ptr := (*C.uchar)(unsafe.Pointer(&bytes65[0]))
-	var output_len C.size_t
+	var output_len C.size_t = 65
 	C.secp256k1_ec_pubkey_serialize( // always returns 1
 		context,
 		serialized_pubkey_ptr,
