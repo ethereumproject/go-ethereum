@@ -190,6 +190,7 @@ func makeCLIApp() (app *cli.App) {
 		GpobaseCorrectionFactorFlag,
 		ExtraDataFlag,
 		Unused1,
+		UseVmFlag,
 	}
 
 	app.Before = func(ctx *cli.Context) error {
@@ -207,6 +208,15 @@ func makeCLIApp() (app *cli.App) {
 				if e := cli.ShowCommandHelp(ctx, ctx.Args().First()); e != nil {
 					return e
 				}
+			}
+		}
+
+		if ctx.IsSet(UseVmFlag.Name) {
+			if err := core.VmManager.SwitchTo(ctx.GlobalString(UseVmFlag.Name)); err != nil {
+				log.Printf("Error: %s", err.Error())
+				os.Exit(1)
+			} else {
+				log.Printf("Using VM %s",core.VmManager.GetVmName())
 			}
 		}
 
