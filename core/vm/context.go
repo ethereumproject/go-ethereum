@@ -33,18 +33,18 @@ const UnknwonStringValue = "-"
 type Type byte
 
 const (
-	ClassicVm    Type = iota // classic VM (legacy implementation from ethereum)
-	ClassicRawVm             // classic VM with direct usage (w/o RequireErr)
-	SputnikVm                // modern embedded VM
-	OtherVm                  // other external VM connected through RPC/IPC
+	ClassicVm  Type = iota // classic VM (legacy implementation from ethereum)
+	OriginalVm             // classic VM with direct usage (w/o RequireErr)
+	SputnikVm              // modern embedded VM
+	OtherVm                // other external VM connected through RPC/IPC
 )
 
 func (tp Type) String() string {
 	switch tp {
 	case ClassicVm:
 		return "ClassicVm"
-	case ClassicRawVm:
-		return "ClassicRawVm"
+	case OriginalVm:
+		return "OriginalVm"
 	case SputnikVm:
 		return "SputnikVm"
 	case OtherVm:
@@ -99,7 +99,7 @@ func (tp ConnectionType) String() string {
 }
 
 const (
-	DefaultVm      = SputnikVm //ClassicVm
+	DefaultVm      = ClassicVm
 	DefaultVmProto = InprocVm
 	DefaultVmUsage = UseVm
 	DefaultVmPort  = 30301

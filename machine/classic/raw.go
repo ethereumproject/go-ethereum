@@ -98,7 +98,7 @@ func (self *RawMachine) Create(caller common.Address, code []byte, gas, price, v
 	return &self.RawContext, nil
 }
 
-func (*RawMachine) Type() vm.Type { return vm.ClassicRawVm }
+func (*RawMachine) Type() vm.Type { return vm.OriginalVm }
 func (*RawMachine) Name() string  { return "RAW CLASSIC VM" }
 
 func (*RawContext) CommitAccount(address common.Address, nonce uint64, balance *big.Int) error {
@@ -180,7 +180,7 @@ func (self *RawContext) Time() *big.Int           { return self.Time_ }
 func (self *RawContext) Difficulty() *big.Int     { return self.Difficulty_ }
 func (self *RawContext) Db() Database             { return self.State_ }
 func (self *RawContext) GasLimit() *big.Int       { return self.GasLimit_ }
-func (self *RawContext) VmType() vm.Type          { return vm.ClassicRawVm }
+func (self *RawContext) VmType() vm.Type          { return vm.OriginalVm }
 func (self *RawContext) AddLog(log *state.Log)    { self.State_.AddLog(log) }
 func (self *RawContext) Depth() int               { return self.depth }
 func (self *RawContext) SetDepth(i int)           { self.depth = i }

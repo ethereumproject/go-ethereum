@@ -38,9 +38,8 @@ import (
 	"syscall"
 )
 
-const useRawVmByDefault = false
-
-var restrtInRawCalssicVm = true
+const useOriginalVmByDefault = false
+var restartOriginalVm = true
 
 func init() {
 
@@ -49,7 +48,7 @@ func init() {
 		glog.SetV(logger.Debug)
 	}
 
-	restrtInRawCalssicVm = !useRawVmByDefault && len(os.Getenv("RESTART_TESTS")) > 0
+	restartOriginalVm = !useOriginalVmByDefault && len(os.Getenv("RESTART_TESTS")) > 0
 	SetTestVmConfig()
 
 	go func() {
@@ -66,16 +65,16 @@ func init() {
 }
 
 func SetTestVmConfig() {
-	if useRawVmByDefault {
-		core.VmManager.SwitchToRawClassicVm()
+	if useOriginalVmByDefault {
+		core.VmManager.SwitchToOriginalVm()
 	} else {
 		core.VmManager.EnvConfig()
 	}
 }
 
 func SetBackupVmConfig() bool {
-	if restrtInRawCalssicVm {
-		core.VmManager.SwitchToRawClassicVm()
+	if restartOriginalVm {
+		core.VmManager.SwitchToOriginalVm()
 		return true
 	}
 	return false
@@ -285,7 +284,7 @@ func NewEnvFromMap(ruleSet RuleSet, db *state.StateDB, envValues map[string]stri
 		machine,
 	}
 
-	if machine.Type() == vm.ClassicRawVm {
+	if machine.Type() == vm.OriginalVm {
 		machine.(*classic.RawMachine).Bind(db, hashFn)
 	}
 

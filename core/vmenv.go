@@ -254,7 +254,7 @@ func NewEnvWithMachine(machine vm.Machine, db *state.StateDB, chainConfig *Chain
 		chainConfig,
 		machine,
 	}
-	if machine.Type() == vm.ClassicRawVm {
+	if machine.Type() == vm.OriginalVm {
 		machine.(*classic.RawMachine).Bind(db, vmenv.Hashfn)
 		// be aware, commitInfo should be called before Fire
 	}
@@ -320,7 +320,7 @@ func (self *vmManager) SwitchTo(vmSelector string) (err error) {
 	vmOpt := strings.Split(vmSelector, ":")
 	switch tp := strings.ToUpper(vmOpt[0]); tp {
 	case "ORIGINAL":
-		self.SwitchToRawClassicVm()
+		self.SwitchToOriginalVm()
 	case "CLASSIC":
 		self.SwitchToClassicVm()
 	case "SPUTNIK":
@@ -375,13 +375,12 @@ func (self *vmManager) SwitchToIpc(connName string, manageVm string) {
 	self.WriteConfigToLog()
 }
 
-func (self *vmManager) SwitchToRawClassicVm() {
-	/*self.autoConfig()
-	self.useVmType = vm.ClassicRawVm
+func (self *vmManager) SwitchToOriginalVm() {
+	self.autoConfig()
+	self.useVmType = vm.OriginalVm
 	self.useVmConnection = vm.InprocVm
 	self.isConfigured = true
-	self.WriteConfigToLog()*/
-	self.SwitchToClassicVm()
+	self.WriteConfigToLog()
 }
 
 func (self *vmManager) SwitchToClassicVm() {
@@ -433,7 +432,7 @@ func (self *vmManager) ConnectMachine() (vm.Machine, error) {
 		switch self.useVmType {
 		case vm.ClassicVm:
 			return classic.NewMachine(), nil
-		case vm.ClassicRawVm:
+		case vm.OriginalVm:
 			return classic.NewRawMachine(), nil
 		case vm.SputnikVm:
 			if m := sputnik.NewMachine(); m != nil {

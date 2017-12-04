@@ -99,7 +99,7 @@ func getUsage(newMachine func() (vm.Machine, error)) (string, error) {
 	switch tp {
 	case vm.ClassicVm:
 		return "Classic Virtual Machine", nil
-	case vm.ClassicRawVm:
+	case vm.OriginalVm:
 		return "Classic Virtual Machine (RAW)", nil
 	case vm.SputnikVm:
 		return "Sputnik Virtual Machine", nil
