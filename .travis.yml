@@ -22,6 +22,7 @@ before_install:
 - git clone https://github.com/ethereumproject/sputnikvm-ffi $HOME/sputnikvm-ffi
 - cd $HOME/sputnikvm-ffi/c && make build
 - export CGO_LDFLAGS="$HOME/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+- cd $HOME/gopath/src/github.com/ethereumproject/go-ethereum
 
 script:
 # Install Janus
