@@ -21,13 +21,19 @@ script:
 - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
 # Add Janus to PATH.
 - export PATH=$PATH:$PWD/janusbin
+# Install Rust
+- curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable
+
+- rustc --version
+- cd $GOPATH/src/github.com/ethereumproject && git clone https://github.com/ethereumproject/sputnikvm-ffi
+- cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c && make build
 
 - go version
 - go env
 # Run go tests.
-- go test ./...
+- CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go test ./...
 # Build for integration tests.
-- go build -ldflags "-X main.Version="`janus version -format TAG_OR_NIGHTLY` ./cmd/geth
+- CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go build -ldflags "-X main.Version="`janus version -format TAG_OR_NIGHTLY` ./cmd/geth
 # Run bats integration tests.
 - bats cmd/geth
 
