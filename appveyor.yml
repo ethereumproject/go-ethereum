@@ -17,7 +17,7 @@ install:
 
   # Install Rust.
   - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
-  - rustup-init -yv --default-toolchain beta --default-host x86_64-pc-windows-gnu
+  - rustup-init -yv --default-toolchain stable --default-host x86_64-pc-windows-gnu
   - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
   - rustup update
 

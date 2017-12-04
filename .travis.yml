@@ -20,8 +20,10 @@ before_install:
 - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
 - export PATH=$HOME/.cargo/bin:$PATH
 - git clone https://github.com/ethereumproject/sputnikvm-ffi $HOME/sputnikvm-ffi
-- cd $HOME/sputnikvm-ffi/c && make build
-- export CGO_LDFLAGS="$HOME/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+- cd $HOME/sputnikvm-ffi/c/ffi && cargo build --release
+- cp $HOME/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $HOME/sputnikvm-ffi/c/libsputnikvm.a
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CGO_LDFLAGS="$HOME/sputnikvm-ffi/c/libsputnikvm.a -ldl"; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CGO_LDFLAGS="$HOME/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv"; fi
 - cd $HOME/gopath/src/github.com/ethereumproject/go-ethereum
 
 script:
