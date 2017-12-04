@@ -39,17 +39,17 @@ func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, s
 		GasLimit: header.GasLimit,
 	}
 
-	current_number := header.Number
-	homestead_fork := config.ForkByName("Homestead")
-	eip150_fork := config.ForkByName("GasReprice")
-	eip160_fork := config.ForkByName("Diehard")
+	currentNumber := header.Number
+	homesteadFork := config.ForkByName("Homestead")
+	eip150Fork := config.ForkByName("GasReprice")
+	eip160Fork := config.ForkByName("Diehard")
 
 	var vm *sputnikvm.VM
-	if eip160_fork.Block != nil && current_number.Cmp(eip160_fork.Block) >= 0 {
+	if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
 		vm = sputnikvm.NewEIP160(&vmtx, &vmheader)
-	} else if eip150_fork.Block != nil && current_number.Cmp(eip150_fork.Block) >= 0 {
+	} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
 		vm = sputnikvm.NewEIP150(&vmtx, &vmheader)
-	} else if homestead_fork.Block != nil && current_number.Cmp(homestead_fork.Block) >= 0 {
+	} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
 		vm = sputnikvm.NewHomestead(&vmtx, &vmheader)
 	} else {
 		vm = sputnikvm.NewFrontier(&vmtx, &vmheader)
