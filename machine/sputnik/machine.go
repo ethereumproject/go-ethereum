@@ -38,8 +38,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"math/big"
 	"unsafe"
-	"fmt"
-	"os"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"errors"
@@ -148,7 +146,6 @@ func getBintBytes(bint *big.Int) []byte {
 
 // Commit an account information
 func (self *context) CommitAccount(address common.Address, nonce uint64, balance *big.Int) (err error) {
-	fmt.Fprintf(os.Stderr,"COMMIT %v, %v, %v\n",address.Hex(),nonce,balance)
 	var codePtr unsafe.Pointer = nil
 	if self.subCode != nil {
 		codePtr = unsafe.Pointer(&self.subCode[0])
@@ -243,30 +240,19 @@ func (self *context) Accounts() (accounts []vm.Account, err error) {
 
 	ctx := self.Context()
 
-	suicides := make(map[common.Address]vm.Account)
-	suicidesCount := int(C.sputnikvm_suicides_count(ctx))
-	for i := 0; i < suicidesCount; i++ {
-		suicide := &suicided{}
-		C.sputnikvm_suicide_copy(ctx,C.size_t(i),unsafe.Pointer(&suicide.address[0]))
-		suicides[suicide.address] = suicide
-	}
-
 	for ptr := C.sputnikvm_first_account(ctx); ptr != nil; ptr = C.sputnikvm_next_account(ctx) {
 		switch vm.AccountChangeLevel(C.sputnikvm_acc_change(ptr)) {
 		case vm.UpdateAccount, vm.CreateAccount, vm.AddBalanceAccount, vm.SubBalanceAccount :
 			acc := &account{ctx, ptr}
-			//if acc.Address() != self.coinbase {
-				if suicide,exists := suicides[acc.Address()]; exists {
-					accounts = append(accounts, suicide)
-				} else {
-					accounts = append(accounts, acc)
-				}
-			//}
+			accounts = append(accounts, acc)
 		}
 	}
 
-	for _, a := range accounts {
-		fmt.Fprintf(os.Stderr, "++ %s : 0x%s, %v, %v\n",a.Address().Hex(), a.Balance().Text(16), a.Nonce(), a.ChangeLevel())
+	suicidesCount := int(C.sputnikvm_suicides_count(ctx))
+	for i := 0; i < suicidesCount; i++ {
+		suicide := &suicided{}
+		C.sputnikvm_suicide_copy(ctx,C.size_t(i),unsafe.Pointer(&suicide.address[0]))
+		accounts = append(accounts,suicide)
 	}
 
 	return
@@ -357,7 +343,7 @@ func (self *context) Context() unsafe.Pointer {
 		gasLimit := getBintBytes(self.gasLimit)
 		difficulty := getBintBytes(self.difficulty)
 		var data unsafe.Pointer = nil
-		if self.data != nil { data = unsafe.Pointer(&self.data[0])}
+		if self.data != nil && len(self.data) > 0 { data = unsafe.Pointer(&self.data[0])}
 
 		self.ctxPtr = C.sputnikvm_context(
 			unsafe.Pointer(&gas[0]),
@@ -416,7 +402,6 @@ func (self *context) Fire() (*vm.Require) {
 		C.sputnikvm_req_hash_copy(ctx,unsafe.Pointer(&req.Hash[0]))
 	}
 	glog.V(logger.Debug).Infof("Fire => %*v\n",req)
-	fmt.Fprintf(os.Stderr,"fire => %+v\n", req)
 	return req
 }
 
@@ -466,9 +451,6 @@ func (self *account) Store(f func(common.Hash, common.Hash) error) error {
 	for ok := C.sputnikvm_acc_first_kv_copy(self.ctx,self.ptr,keyPtr,valPtr);
 		ok != 0;
 		ok = C.sputnikvm_acc_next_kv_copy(self.ctx,keyPtr,valPtr) {
-
-		fmt.Fprintf(os.Stderr,"STORE %s => %s\n",key.Hex(),val.Hex())
-
 		if err := f(key,val); err != nil {
 			return err
 		}
