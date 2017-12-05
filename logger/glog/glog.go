@@ -108,10 +108,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	stdLog "log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -945,7 +948,7 @@ func (sb *syncBuffer) shouldRotate(len int, now time.Time) bool {
 	newLen := sb.nbytes + uint64(len)
 	if newLen <= MinSize {
 		return false
-	} else if newLen >= MaxSize {
+	} else if MaxSize > 0 && newLen >= MaxSize {
 		return true
 	}
 
@@ -1042,6 +1045,8 @@ func (sb *syncBuffer) rotateOld(now time.Time) {
 		sb.logger.exit(err)
 	}
 
+	logs = excludeActive(logs)
+
 	logs, err = removeOutdated(logs, now)
 	if err != nil {
 		sb.logger.exit(err)
@@ -1054,7 +1059,7 @@ func (sb *syncBuffer) rotateOld(now time.Time) {
 
 	totalSize := getTotalSize(logs)
 	for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
-		err := os.Remove(logs[i].name)
+		err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
 		if err != nil {
 			sb.logger.exit(err)
 		}
@@ -1063,23 +1068,125 @@ func (sb *syncBuffer) rotateOld(now time.Time) {
 }
 
 type logFile struct {
-	name string
-	size uint64
+	dir       string
+	name      string
+	size      uint64
+	timestamp string
 }
 
-func getLogFiles() ([]logFile, error) {
-	return nil, nil
+// getLogFiles returns log files, ordered from oldest to newest
+func getLogFiles() (logFiles []logFile, err error) {
+	preffix := fmt.Sprintf("%s.%s.%s.log.", program, host, userName)
+	for _, logDir := range logDirs {
+		files, err := ioutil.ReadDir(logDir)
+		if err == nil {
+			files = filterLogFiles(files, preffix)
+			for _, file := range files {
+				logFiles = append(logFiles, logFile{
+					dir:       logDir,
+					name:      file.Name(),
+					size:      uint64(file.Size()),
+					timestamp: extractTimestamp(file.Name(), preffix),
+				})
+			}
+			sort.Slice(logFiles, func(i, j int) bool {
+				return logFiles[i].timestamp < logFiles[j].timestamp
+			})
+			return logFiles, nil
+		}
+	}
+	return nil, errors.New("log: no log dirs")
+}
+
+func excludeActive(logs []logFile) []logFile {
+	filtered := logs[:0]
+	current := getCurrentLogs()
+	for _, log := range logs {
+		active := false
+		fullName := filepath.Join(log.dir, log.name)
+		for _, latest := range current {
+			if fullName == latest {
+				active = true
+			}
+		}
+		if !active {
+			filtered = append(filtered, log)
+		}
+	}
+	return filtered
+}
+
+// getCurrentLogs returns list of log files pointed by symlinks
+func getCurrentLogs() (logs []string) {
+	for _, logDir := range logDirs {
+		files, err := ioutil.ReadDir(logDir)
+		if err == nil {
+			for _, file := range files {
+				if file.Mode()&os.ModeSymlink != 0 {
+					target, err := os.Readlink(filepath.Join(logDir, file.Name()))
+					if err == nil {
+						logs = append(logs, filepath.Join(logDir, target))
+					}
+				}
+			}
+			break
+		}
+	}
+	return logs
+}
+
+func extractTimestamp(logFile, preffix string) string {
+	if len(logFile) <= len(preffix) {
+		return ""
+	}
+	splits := strings.SplitN(logFile[len(preffix):], ".", 3)
+	if len(splits) == 3 {
+		return splits[1]
+	} else {
+		return ""
+	}
+}
+
+func filterLogFiles(files []os.FileInfo, preffix string) []os.FileInfo {
+	filtered := files[:0]
+	for _, file := range files {
+		if !file.IsDir() && strings.HasPrefix(file.Name(), preffix) {
+			filtered = append(filtered, file)
+		}
+	}
+	return filtered
 }
 
 func removeOutdated(logs []logFile, now time.Time) ([]logFile, error) {
-	return logs, nil
+	t := now.Add(-1 * MaxAge)
+	timestamp := fmt.Sprintf("%04d%02d%02d-%02d%02d%02d",
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		t.Hour(),
+		t.Minute(),
+		t.Second(),
+	)
+
+	remaining := logs[:0]
+	for _, log := range logs {
+		if log.size > MinSize && log.timestamp <= timestamp {
+			if err := os.Remove(filepath.Join(log.dir, log.name)); err != nil {
+				return nil, err
+			}
+		} else {
+			remaining = append(remaining, log)
+		}
+	}
+	return remaining, nil
 }
 
 // compress all uncompressed log files, except the currently used log file
 func compressOrphans(logs []logFile) ([]logFile, error) {
 	for _, log := range logs {
+		fullName := filepath.Join(log.dir, log.name)
 		if !strings.HasSuffix(log.name, ".gz") {
-			if err := gzipFile(log.name); err != nil {
+			if err := gzipFile(fullName); err != nil {
 				return nil, err
 			}
 			log.name += ".gz"

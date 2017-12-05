@@ -1,6 +1,7 @@
 // Go support for leveled logs, analogous to https://code.google.com/p/google-glog/
 //
 // Copyright 2013 Google Inc. All Rights Reserved.
+// Modifications copyright 2017 ETC Dev Team. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -425,6 +426,75 @@ func TestLogBacktraceAt(t *testing.T) {
 		// We could be more precise but that would require knowing the details
 		// of the traceback format, which may not be dependable.
 		t.Fatal("got no trace back; log is ", contents(infoLog))
+	}
+}
+
+func TestExtractTimestamp(t *testing.T) {
+	preffix := fmt.Sprintf("%s.%s.%s.log.", "geth_test", "sampleHost", "sampleUser")
+	cases := []struct {
+		name     string
+		fileName string
+		expected string
+	}{
+		{"valid INFO", preffix + "INFO.20171202-132113.2841", "20171202-132113"},
+		{"valid WARNIG", preffix + "WARNING.20171202-210922.13848", "20171202-210922"},
+		{"valid gzipped", preffix + "WARNING.20171202-210922.13848.gz", "20171202-210922"},
+		{"extra long filename", preffix + "WARNING.20171202-210922.13848.gz.bak", "20171202-210922"},
+		{"to short filename", preffix + "WARNING.20171202-21092", ""},
+		{"no preffix", "WARNING.20171202-21092", ""},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			actual := extractTimestamp(test.fileName, preffix)
+			if test.expected != actual {
+				t.Errorf("Expected: '%s', actual: '%s'", test.expected, actual)
+			}
+		})
+	}
+}
+
+func TestShouldRotate(t *testing.T) {
+	// fixed date, to make tests stable, 04.12.2017 is Monday
+	start := time.Date(2017, time.December, 4, 0, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name     string
+		nbytes   uint64
+		len      int
+		now      time.Time
+		minSize  uint64
+		maxSize  uint64
+		interval Interval
+		expected bool
+	}{
+		{"empty log no rotation", 0, 123, start, 0, 0, Never, false},
+		{"empty log with hourly rotation", 0, 123, start, 0, 0, Hourly, false},
+		{"empty log with size rotation", 0, 123, start, 0, 1024 * 1024, Never, false},
+		{"log with hourly rotation after less than hour", 1234, 123, start.Add(45 * time.Minute), 0, 0, Hourly, false},
+		{"log with hourly rotation after more than hour", 1234, 123, start.Add(65 * time.Minute), 0, 0, Hourly, true},
+		{"log with size rotation below MinSize", 1024, 123, start, 512 * 1024, 1024 * 1024, Never, false},
+		{"log with size rotation between MinSize and MaxSize", 765 * 1024, 123, start, 512 * 1024, 1024 * 1024, Never, false},
+		{"log with size rotation above MaxSize", 1024*1024 - 100, 123, start, 512 * 1024, 1024 * 1024, Never, true},
+		{"log with daily rotation after less than day", 1234, 123, start.Add(23 * time.Hour), 0, 0, Daily, false},
+		{"log with daily rotation after more than day", 1234, 123, start.Add(25 * time.Hour), 0, 0, Daily, true},
+		{"log with weekly rotation after less than week", 1234, 123, start.Add((6*24 + 23) * time.Hour), 0, 0, Weekly, false},
+		{"log with weekly rotation after more than week", 1234, 123, start.Add((7*24 + 1) * time.Hour), 0, 0, Weekly, true},
+		{"log with monthly rotation after less than month", 1234, 123, start.Add(14 * 24 * time.Hour), 0, 0, Monthly, false},
+		{"log with monthly rotation after more than month", 1234, 123, start.Add(30 * 24 * time.Hour), 0, 0, Monthly, true},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			sb := &syncBuffer{nbytes: test.nbytes, time: start}
+			MinSize = test.minSize
+			MaxSize = test.maxSize
+			RotationInterval = test.interval
+			actual := sb.shouldRotate(test.len, test.now)
+			if test.expected != actual {
+				t.Errorf("Expected: '%v', actual: '%v'", test.expected, actual)
+			}
+		})
 	}
 }
 
