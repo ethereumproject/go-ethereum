@@ -19,8 +19,11 @@ package glog
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io/ioutil"
 	stdLog "log"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -495,6 +498,60 @@ func TestShouldRotate(t *testing.T) {
 				t.Errorf("Expected: '%v', actual: '%v'", test.expected, actual)
 			}
 		})
+	}
+}
+
+func TestGzipFile(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.RemoveAll(dir)
+
+	file := filepath.Join(dir, "sample.log")
+	data := strings.Repeat("lorem ipsum dolor sit amet", 4096)
+	ioutil.WriteFile(file, []byte(data), 0600)
+
+	err = gzipFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gzipped := file + ".gz"
+
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(files) != 1 {
+		t.Errorf("expected 1 file in directory, found %d", len(files))
+	}
+	if files[0].Size() == 0 || files[0].Size() >= int64(len(data)) {
+		t.Errorf("expected: 0 < file size < %d [bytes], actual: %d [bytes]", len(data), files[0].Size())
+	}
+	if filepath.Join(dir, files[0].Name()) != gzipped {
+		t.Fatalf("expected filename: %s; actual filename: %s", gzipped, files[0].Name())
+	}
+
+	input, err := os.Open(gzipped)
+	if input == nil || err != nil {
+		t.Error(err)
+	}
+	defer input.Close()
+
+	reader, err := gzip.NewReader(input)
+	if err != nil {
+		t.Error(err)
+	}
+	defer reader.Close()
+
+	result, err := ioutil.ReadAll(reader)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(result) != data {
+		t.Errorf("contents of gzip file are invalid")
 	}
 }
 

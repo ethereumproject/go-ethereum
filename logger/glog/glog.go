@@ -1021,10 +1021,10 @@ func gzipFile(name string) error {
 	if err != nil {
 		return err
 	}
-	if err = gzipWriter.Flush(); err != nil {
+	if err = gzipWriter.Close(); err != nil {
 		return err
 	}
-	if err = gzipWriter.Close(); err != nil {
+	if err = writer.Flush(); err != nil {
 		return err
 	}
 	if err = gzipped.Close(); err != nil {
@@ -1034,7 +1034,6 @@ func gzipFile(name string) error {
 	return os.Remove(name)
 }
 
-// TODO(tzdybal)
 func (sb *syncBuffer) rotateOld(now time.Time) {
 	if MaxTotalSize <= MaxSize {
 		return
