@@ -97,6 +97,9 @@ import (
 // the flag.Value interface. The -stderrthreshold flag is of type severity and
 // should be modified only through the flag.Value interface. The values match
 // the corresponding constants in C++.
+// Severity is determined by the method called upon receiver Verbose,
+// eg. glog.V(logger.Debug).Warnf("this log's severity is %v", warningLog)
+// eg. glog.V(logger.Error).Infof("This log's severity is %v", infoLog)
 type severity int32 // sync/atomic int32
 
 // These constants identify the log levels in order of increasing severity.
@@ -111,6 +114,9 @@ const (
 )
 
 const severityChar = "IWEF"
+
+const severityColorReset = "\x1b[0m"                                        // reset both foreground and background
+var severityColor = []string{"\x1b[2m", "\x1b[33m", "\x1b[31m", "\x1b[35m"} // info:dim warn:yellow, error:red, fatal:magenta
 
 var severityName = []string{
 	infoLog:    "INFO",
@@ -136,6 +142,10 @@ func trimToImportPath(file string) string {
 // SetV sets the global verbosity level
 func SetV(v int) {
 	logging.verbosity.set(Level(v))
+}
+
+func SetD(v int) {
+	display.verbosity.set(Level(v))
 }
 
 // SetToStderr sets the global output style
@@ -166,6 +176,10 @@ func GetVModule() *moduleSpec {
 // GetVerbosity returns the global verbosity level flag.
 func GetVerbosity() *Level {
 	return &logging.verbosity
+}
+
+func GetDisplayable() *Level {
+	return &display.verbosity
 }
 
 // get returns the value of the severity.
@@ -454,27 +468,16 @@ type flushSyncWriter interface {
 	io.Writer
 }
 
-func init() {
-	//flag.BoolVar(&logging.toStderr, "logtostderr", false, "log to standard error instead of files")
-	//flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", false, "log to standard error as well as files")
-	//flag.Var(&logging.verbosity, "v", "log level for V logs")
-	//flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this threshold go to stderr")
-	//flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
-	//flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
+type logTName string
 
-	// Default stderrThreshold is ERROR.
-	logging.stderrThreshold = errorLog
-	logging.setVState(3, nil, false)
-	go logging.flushDaemon()
-}
-
-// Flush flushes all pending log I/O.
-func Flush() {
-	logging.lockAndFlushAll()
-}
+const (
+	fileLog    logTName = "file"
+	displayLog logTName = "display"
+)
 
 // loggingT collects all the global state of the logging setup.
 type loggingT struct {
+	logTName
 	// Boolean flags. Not handled atomically because the flag.Value interface
 	// does not let us avoid the =true, and that shorthand is necessary for
 	// compatibility. TODO: does this matter enough to fix? Seems unlikely.
@@ -511,6 +514,20 @@ type loggingT struct {
 	// safely using atomic.LoadInt32.
 	vmodule   moduleSpec // The state of the -vmodule flag.
 	verbosity Level      // V logging level, the value of the -v flag/
+
+	// severityTraceThreshold determines the minimum severity at which
+	// file traces will be logged in the header. See severity const iota above.
+	// Only severities at or above this number will be logged with a trace,
+	// eg. at severityTraceThreshold = 1, then only severities errorLog and fatalLog
+	// will log with traces.
+	severityTraceThreshold severity
+
+	// verbosityTraceThreshold determines the minimum verbosity at which
+	// file traces will be logged in the header.
+	// Only levels at or above this number will be logged with a trace,
+	// eg. at verbosityTraceThreshold = 5, then only verbosities Debug, Detail, and Ridiculousness
+	// will log with traces.
+	verbosityTraceThreshold Level
 }
 
 // buffer holds a byte Buffer for reuse. The zero value is ready for use.
@@ -521,25 +538,97 @@ type buffer struct {
 }
 
 var logging loggingT
+var display loggingT
+
+func init() {
+	//flag.BoolVar(&logging.toStderr, "logtostderr", false, "log to standard error instead of files")
+	//flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", false, "log to standard error as well as files")
+	//flag.Var(&logging.verbosity, "v", "log level for V logs")
+	//flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this threshold go to stderr")
+	//flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
+	//flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
+
+	logging.logTName = fileLog
+	// Default stderrThreshold is ERROR.
+	// This makes V(logger.Error) logs print ALSO to stderr.
+	logging.stderrThreshold = errorLog
+
+	// Establish defaults for trace thresholds.
+	logging.verbosityTraceThreshold.set(0)
+	logging.severityTraceThreshold.set(2)
+
+	// Default for verbosity.
+	logging.setVState(5, nil, false)
+	go logging.flushDaemon()
+
+	display.logTName = displayLog
+	// Renders anything at or below (Warn...) level Info to stderr, which
+	// is set by default anyway.
+	display.stderrThreshold = infoLog
+
+	// toStderr makes it ONLY print to stderr, not to file
+	display.toStderr = true
+
+	// Should never reach... unless we get real fancy with D(levels)
+	display.verbosityTraceThreshold.set(5)
+	// Only includes traces for severity=fatal logs for dispaly.
+	// This should never be reached; fatal logs should ALWAYS be logged to file,
+	// and they will also be written to stderr (anything Error and above is).
+	display.severityTraceThreshold.set(3)
+	// Set display verbosity default Info. So it will render
+	// all Fatal, Error, Warn, and Info log levels.
+	// Please don't use Fatal for display; again, Fatal logs should only go through file logging
+	// (they will be printed to stderr anyway).
+	display.setVState(2, nil, false)
+	go display.flushDaemon()
+}
+
+// Flush flushes all pending log I/O.
+func Flush() {
+	logging.lockAndFlushAll()
+	display.lockAndFlushAll()
+}
+
+// traceThreshold determines the arbitrary level for log lines to be printed
+// with caller trace information in the header.
+func (l *loggingT) traceThreshold(s severity) bool {
+	return s >= l.severityTraceThreshold || l.verbosity >= l.verbosityTraceThreshold
+}
+
+// GetVTraceThreshold gets the current verbosity trace threshold for logging.
+func GetVTraceThreshold() *Level {
+	return &logging.verbosityTraceThreshold
+}
+
+// SetVTraceThreshold sets the current verbosity trace threshold for logging.
+func SetVTraceThreshold(v int) {
+	logging.mu.Lock()
+	defer logging.mu.Unlock()
+
+	l := logging.verbosity.get()
+	logging.verbosity.set(0)
+	logging.verbosityTraceThreshold.set(Level(v))
+	logging.verbosity.set(l)
+}
 
 // setVState sets a consistent state for V logging.
 // l.mu is held.
 func (l *loggingT) setVState(verbosity Level, filter []modulePat, setFilter bool) {
 	// Turn verbosity off so V will not fire while we are in transition.
-	logging.verbosity.set(0)
+	l.verbosity.set(0)
 	// Ditto for filter length.
-	atomic.StoreInt32(&logging.filterLength, 0)
+	atomic.StoreInt32(&l.filterLength, 0)
 
 	// Set the new filters and wipe the pc->Level map if the filter has changed.
 	if setFilter {
-		logging.vmodule.filter = filter
-		logging.vmap = make(map[uintptr]Level)
+		l.vmodule.filter = filter
+		l.vmap = make(map[uintptr]Level)
 	}
 
 	// Things are consistent now, so enable filtering and verbosity.
 	// They are enabled in order opposite to that in V.
-	atomic.StoreInt32(&logging.filterLength, int32(len(filter)))
-	logging.verbosity.set(verbosity)
+	atomic.StoreInt32(&l.filterLength, int32(len(filter)))
+	l.verbosity.set(verbosity)
 }
 
 // getBuffer returns a new, ready-to-use buffer.
@@ -624,25 +713,49 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 	_, month, day := now.Date()
 	hour, minute, second := now.Clock()
 	// Lmmdd hh:mm:ss.uuuuuu threadid file:line]
+
+	//buf.nDigits(8, 0, severityColor[s],'')
+	buf.WriteString(severityColor[s])
 	buf.tmp[0] = severityChar[s]
-	buf.twoDigits(1, int(month))
-	buf.twoDigits(3, day)
-	buf.tmp[5] = ' '
-	buf.twoDigits(6, hour)
-	buf.tmp[8] = ':'
-	buf.twoDigits(9, minute)
-	buf.tmp[11] = ':'
-	buf.twoDigits(12, second)
-	buf.tmp[14] = '.'
-	buf.nDigits(6, 15, now.Nanosecond()/1000, '0')
-	buf.tmp[21] = ' '
-	buf.Write(buf.tmp[:22])
-	buf.WriteString(file)
-	buf.tmp[0] = ':'
-	n := buf.someDigits(1, line)
-	buf.tmp[n+1] = ']'
-	buf.tmp[n+2] = ' '
-	buf.Write(buf.tmp[:n+3])
+	buf.Write(buf.tmp[:1])
+	if l.logTName == displayLog {
+		buf.WriteString(severityColorReset)
+		// Write dim for rest of line, eg. date and time
+		buf.WriteString(severityColor[infoLog])
+	} else {
+		buf.WriteString(severityColorReset)
+	}
+	buf.twoDigits(0, int(month))
+	buf.twoDigits(2, day)
+	buf.tmp[4] = ' '
+	buf.twoDigits(5, hour)
+	buf.tmp[7] = ':'
+	buf.twoDigits(8, minute)
+	buf.tmp[10] = ':'
+	buf.twoDigits(11, second)
+	// Only keep nanoseconds for file logs
+	if l.logTName == fileLog {
+		buf.tmp[13] = '.'
+		buf.nDigits(6, 14, now.Nanosecond()/1000, '0')
+		buf.Write(buf.tmp[:20])
+	} else {
+		buf.Write(buf.tmp[:13])
+		buf.WriteString(severityColorReset)
+	}
+	buf.WriteString(" ")
+	if l.traceThreshold(s) {
+		buf.WriteString(file)
+		buf.tmp[0] = ':'
+		n := buf.someDigits(1, line)
+		buf.tmp[n+1] = ']'
+		buf.tmp[n+2] = ' '
+		buf.Write(buf.tmp[:n+3])
+	}
+	//else {
+	//	buf.tmp[0] = ' '
+	//	buf.Write(buf.tmp[:1])
+	//}
+
 	return buf
 }
 
@@ -955,6 +1068,12 @@ func (l *loggingT) flushAll() {
 	for s := fatalLog; s >= infoLog; s-- {
 		file := l.file[s]
 		if file != nil {
+			// if e := file.Flush(); e != nil {
+			// 	stdLog.Fatalln(e)
+			// }
+			// if e := file.Sync(); e != nil {
+			// 	stdLog.Fatalln(e)
+			// }
 			file.Flush() // ignore error
 			file.Sync()  // ignore error
 		}
@@ -1005,6 +1124,7 @@ func (lb logBridge) Write(b []byte) (n int, err error) {
 	}
 	// printWithFileLine with alsoToStderr=true, so standard log messages
 	// always appear on standard error.
+
 	logging.printWithFileLine(severity(lb), file, line, true, text)
 	return len(b), nil
 }
@@ -1032,6 +1152,7 @@ func (l *loggingT) setV(pc uintptr) Level {
 // Verbose is a boolean type that implements Infof (like Printf) etc.
 // See the documentation of V for more information.
 type Verbose bool
+type Displayable bool
 
 // V reports whether verbosity at the call site is at least the requested level.
 // The returned value is a boolean of type Verbose, which implements Info, Infoln
@@ -1055,7 +1176,6 @@ func V(level Level) Verbose {
 	if logging.verbosity.get() >= level {
 		return Verbose(true)
 	}
-
 	// It's off globally but it vmodule may still be set.
 	// Here is another cheap but safe test to see if vmodule is enabled.
 	if atomic.LoadInt32(&logging.filterLength) > 0 {
@@ -1076,6 +1196,71 @@ func V(level Level) Verbose {
 	return Verbose(false)
 }
 
+func D(level Level) Displayable {
+	// This function tries hard to be cheap unless there's work to do.
+	// The fast path is two atomic loads and compares.
+
+	// Here is a cheap but safe test to see if V logging is enabled globally.
+	if display.verbosity.get() >= level {
+		return Displayable(true)
+	}
+	// It's off globally but it vmodule may still be set.
+	// Here is another cheap but safe test to see if vmodule is enabled.
+	if atomic.LoadInt32(&display.filterLength) > 0 {
+		// Now we need a proper lock to use the logging structure. The pcs field
+		// is shared so we must lock before accessing it. This is fairly expensive,
+		// but if V logging is enabled we're slow anyway.
+		display.mu.Lock()
+		defer display.mu.Unlock()
+		if runtime.Callers(2, display.pcs[:]) == 0 {
+			return Displayable(false)
+		}
+		v, ok := display.vmap[logging.pcs[0]]
+		if !ok {
+			v = display.setV(logging.pcs[0])
+		}
+		return Displayable(v >= level)
+	}
+	return Displayable(false)
+}
+
+func (d Displayable) Infoln(args ...interface{}) {
+	if d {
+		display.println(infoLog, args...)
+	}
+}
+
+func (d Displayable) Infof(format string, args ...interface{}) {
+	if d {
+		display.printfmt(infoLog, format, args...)
+	}
+}
+
+func (d Displayable) Warnln(args ...interface{}) {
+	if d {
+		display.println(warningLog, args...)
+	}
+}
+
+func (d Displayable) Warnf(format string, args ...interface{}) {
+	if d {
+		display.printfmt(warningLog, format, args...)
+	}
+}
+
+func (d Displayable) Errorln(args ...interface{}) {
+	if d {
+		display.println(errorLog, args...)
+	}
+}
+
+func (d Displayable) Errorf(format string, args ...interface{}) {
+	if d {
+		display.printfmt(errorLog, format, args...)
+	}
+}
+
+// INFO
 // Info is equivalent to the global Info function, guarded by the value of v.
 // See the documentation of V for usage.
 func (v Verbose) Info(args ...interface{}) {
@@ -1097,6 +1282,56 @@ func (v Verbose) Infoln(args ...interface{}) {
 func (v Verbose) Infof(format string, args ...interface{}) {
 	if v {
 		logging.printfmt(infoLog, format, args...)
+	}
+}
+
+// WARN
+// Warn is equivalent to the global Warn function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warn(args ...interface{}) {
+	if v {
+		logging.print(warningLog, args...)
+	}
+}
+
+// Warnln is equivalent to the global Warnln function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warnln(args ...interface{}) {
+	if v {
+		logging.println(warningLog, args...)
+	}
+}
+
+// Warnf is equivalent to the global Warnf function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warnf(format string, args ...interface{}) {
+	if v {
+		logging.printfmt(warningLog, format, args...)
+	}
+}
+
+// ERROR
+// Error is equivalent to the global Error function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Error(args ...interface{}) {
+	if v {
+		logging.print(errorLog, args...)
+	}
+}
+
+// Errorln is equivalent to the global Errorln function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Errorln(args ...interface{}) {
+	if v {
+		logging.println(errorLog, args...)
+	}
+}
+
+// Errorf is equivalent to the global Errorf function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Errorf(format string, args ...interface{}) {
+	if v {
+		logging.printfmt(errorLog, format, args...)
 	}
 }
 
