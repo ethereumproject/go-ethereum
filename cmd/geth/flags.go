@@ -140,25 +140,39 @@ var (
 	}
 
 	// logging and debug settings
+	NeckbeardFlag = cli.BoolFlag{
+		Name:  "neckbeard",
+		Usage: "Use verbose->stderr defaults for logging (verbosity=5,log-status='sync=60')",
+	}
 	VerbosityFlag = cli.GenericFlag{
 		Name:  "verbosity",
 		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=core, 5=debug, 6=detail",
 		Value: glog.GetVerbosity(),
+	}
+	DisplayFlag = cli.IntFlag{
+		Name:  "display",
+		Usage: "Display verbosity: 0=silent, 1=basics, 2=status, 3=events",
+		Value: 2,
 	}
 	VModuleFlag = cli.GenericFlag{
 		Name:  "vmodule",
 		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
 		Value: glog.GetVModule(),
 	}
+	VerbosityTraceFloorFlag = cli.IntFlag{
+		Name:  "verbosity-trace-floor",
+		Usage: "Floor verbosity level at which to include file traces on log lines.",
+		Value: 0,
+	}
 	LogDirFlag = DirectoryFlag{
 		Name:  "log-dir,logdir",
 		Usage: "Directory in which to write log files.",
-		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
+		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mainnet", "log")},
 	}
 	LogStatusFlag = cli.StringFlag{
 		Name:  "log-status",
-		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
-		Value: "sync=60",
+		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>. Use 'off' to disable entirely.'`,
+		Value: "sync=30",
 	}
 	MLogFlag = cli.StringFlag{
 		Name:  "mlog",
@@ -168,8 +182,7 @@ var (
 	MLogDirFlag = DirectoryFlag{
 		Name:  "mlog-dir",
 		Usage: "Directory in which to write machine log files",
-		// TODO: move to chain-subdir?
-		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mlogs")},
+		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mainnet", "mlogs")},
 	}
 	MLogComponentsFlag = cli.StringFlag{
 		Name:  "mlog-components",

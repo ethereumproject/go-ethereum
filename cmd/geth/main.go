@@ -171,8 +171,11 @@ func makeCLIApp() (app *cli.App) {
 		TestNetFlag,
 		NetworkIdFlag,
 		RPCCORSDomainFlag,
+		NeckbeardFlag,
 		VerbosityFlag,
+		DisplayFlag,
 		VModuleFlag,
+		VerbosityTraceFloorFlag,
 		LogDirFlag,
 		LogStatusFlag,
 		MLogFlag,
@@ -225,16 +228,60 @@ func makeCLIApp() (app *cli.App) {
 
 		glog.CopyStandardLogTo("INFO")
 
+		// log.Println("Writing logs to ", logDir)
+		// Turn on only file logging, disabling logging(T).toStderr and logging(T).alsoToStdErr
+		glog.SetToStderr(false)
+		glog.SetAlsoToStderr(false)
+
+		// Set up file logging.
+		logDir := filepath.Join(MustMakeChainDataDir(ctx), "log")
 		if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
-			if p := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx)); p != "" {
-				if e := os.MkdirAll(p, os.ModePerm); e != nil {
-					return e
-				}
-				glog.SetLogDir(p)
-				glog.SetAlsoToStderr(true)
+			ld := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx))
+			ldAbs, err := filepath.Abs(ld)
+			if err != nil {
+				glog.Fatalln(err)
 			}
-		} else {
-			glog.SetToStderr(true)
+			logDir = ldAbs
+		}
+		// Ensure mkdir -p
+		if e := os.MkdirAll(logDir, os.ModePerm); e != nil {
+			return e
+		}
+		// Set log dir.
+		// GOTCHA: There may be NO glog.V logs called before this is set.
+		//   Otherwise everything will get all fucked and there will be no logs.
+		glog.SetLogDir(logDir)
+
+		if ctx.GlobalIsSet(DisplayFlag.Name) {
+			i := ctx.GlobalInt(DisplayFlag.Name)
+			if i > 3 {
+				return fmt.Errorf("Error: --%s level must be 0 <= i <= 3, got: %d", DisplayFlag.Name, i)
+			}
+			glog.SetD(i)
+		}
+
+		if ctx.GlobalBool(NeckbeardFlag.Name) {
+			glog.SetD(0)
+			// Allow manual overrides
+			if !ctx.GlobalIsSet(LogStatusFlag.Name) {
+				ctx.Set(LogStatusFlag.Name, "sync=60") // set log-status interval
+			}
+			if !ctx.GlobalIsSet(VerbosityTraceFloorFlag.Name) {
+				glog.SetVTraceThreshold(0)
+			}
+			if !ctx.GlobalIsSet(VerbosityFlag.Name) {
+				glog.SetV(5)
+			}
+			glog.SetAlsoToStderr(true)
+		}
+		// If --log-status not set, set default 60s interval
+		if !ctx.GlobalIsSet(LogStatusFlag.Name) {
+			ctx.Set(LogStatusFlag.Name, "sync=30")
+		}
+		if ctx.GlobalIsSet(VerbosityTraceFloorFlag.Name) {
+			val := ctx.GlobalInt(VerbosityTraceFloorFlag.Name)
+			log.Println("--verbosity-trace-floor", "val", val)
+			glog.SetVTraceThreshold(val)
 		}
 
 		if s := ctx.String("metrics"); s != "" {
@@ -295,7 +342,7 @@ func geth(ctx *cli.Context) error {
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
 
-	if ctx.GlobalIsSet(LogStatusFlag.Name) {
+	if ctx.GlobalString(LogStatusFlag.Name) != "off" {
 		dispatchStatusLogs(ctx, ethe)
 	}
 
