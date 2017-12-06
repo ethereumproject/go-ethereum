@@ -526,11 +526,11 @@ func status(ctx *cli.Context) error {
 			s += v
 		}
 	}
-	glog.D(logger.Info).Infoln(s)
+	glog.D(logger.Warn).Infoln(s)
 
 	// Return here if database has not been initialized.
 	if !shouldUseExisting {
-		glog.D(logger.Info).Infoln("Geth has not been initialized; no database information available yet.")
+		glog.D(logger.Warn).Warnln("Geth has not been initialized; no database information available yet.")
 		return nil
 	}
 
@@ -543,7 +543,7 @@ func status(ctx *cli.Context) error {
 	for _, v := range formatChainDataPretty(datadir, chaindata) {
 		s += v
 	}
-	glog.D(logger.Info).Infoln(s)
+	glog.D(logger.Warn).Infoln(s)
 
 	return nil
 }

@@ -86,7 +86,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
 	chainDB, err := ethdb.NewLDBDatabase(ethChainDBPath, 0, 0)
 	if err != nil {
-		glog.V(logger.Error).Errorf(`Failed to check blockchain compatibility for existing Ethereum chaindata database at: %v
+		glog.V(logger.Debug).Warnf(`Failed to check blockchain compatibility for existing Ethereum chaindata database at: %v
 		 	Using default data directory at: %v`,
 			err, etcDataDirPath)
 		return nil

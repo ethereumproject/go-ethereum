@@ -435,6 +435,7 @@ func MakeEtherbase(accman *accounts.Manager, ctx *cli.Context) common.Address {
 	accounts := accman.Accounts()
 	if !ctx.GlobalIsSet(aliasableName(EtherbaseFlag.Name, ctx)) && len(accounts) == 0 {
 		glog.V(logger.Warn).Warnf("WARNING: No etherbase set and no accounts found as default")
+		glog.D(logger.Warn).Warnf("No etherbase set and no accounts found as default")
 		return common.Address{}
 	}
 	etherbase := ctx.GlobalString(aliasableName(EtherbaseFlag.Name, ctx))
@@ -824,7 +825,7 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	glog.D(logger.Warn).Infof("Geth Classic version: %s", logger.ColorGreen(ctx.App.Version))
 
 	glog.V(logger.Info).Infof("Geth is configured to use ETC blockchain: %v", config.Name)
-	glog.D(logger.Warn).Infof("ETC blockchain: %s", logger.ColorGreen(config.Name))
+	glog.D(logger.Warn).Infof("Blockchain: %s", logger.ColorGreen(config.Name))
 
 	chaindataDirName := MustMakeChainDataDir(ctx) + "/chaindata"
 	glog.V(logger.Info).Infof("Using chain database at: %s", chaindataDirName)
