@@ -531,18 +531,18 @@ func TestGzipFile(t *testing.T) {
 		t.Errorf("expected: 0 < file size < %d [bytes], actual: %d [bytes]", len(data), files[0].Size())
 	}
 	if filepath.Join(dir, files[0].Name()) != gzipped {
-		t.Fatalf("expected filename: %s; actual filename: %s", gzipped, files[0].Name())
+		t.Errorf("expected filename: %s; actual filename: %s", gzipped, files[0].Name())
 	}
 
-	input, err := os.Open(gzipped)
-	if input == nil || err != nil {
+	input, err := os.Open(filepath.Join(dir, files[0].Name()))
+	if err != nil {
 		t.Error(err)
 	}
 	defer input.Close()
 
 	reader, err := gzip.NewReader(input)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	defer reader.Close()
 
@@ -552,6 +552,69 @@ func TestGzipFile(t *testing.T) {
 	}
 	if string(result) != data {
 		t.Errorf("contents of gzip file are invalid")
+	}
+}
+
+// there are always 10 interesting files, 10*1024b each
+// some of them are gzipped
+// there are WARN and INFO logs
+// there are also 3 other files, that shoudn't be touched
+// there are 2 "current files" (pointed by symlinks)
+// global configuration options should be applied
+// after running rotation, assertions about resulting data are checked
+func testRotation(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.RemoveAll(dir)
+
+	start := time.Date(2017, time.December, 06, 0, 0, 0, 0, time.UTC)
+
+	// generate files
+	// TODO(tzdybal)
+
+	// prepare environment
+	*logDir = dir
+	createLogDirs()
+
+	// execute rotation
+	sb := &syncBuffer{}
+	sb.rotateOld(start)
+
+	// make assertions
+	// TODO(tzdybal)
+	t.Error("TODO(tzdybal)")
+}
+
+func TestRotateOldFiles(t *testing.T) {
+	MinSize = 0
+	MaxSize = 1024
+	RotationInterval = Never
+
+	cases := []struct {
+		name         string
+		maxAge       time.Duration
+		maxTotalSize uint64
+		compress     bool
+	}{
+		{"no limits", 0, 0, false},
+		{"no limits with compression", 0, 0, true},
+		{"with age limit", 24 * time.Hour, 0, false},
+		{"with size limit", 0, 5 * 1024, false},
+		{"with both limits", 4 * 24 * time.Hour, 5 * 1024, false},
+		{"with age limit and compression", 24 * time.Hour, 0, true},
+		{"with size limit and compression", 0, 5 * 1024, true},
+		{"with both limits and compression", 4 * 24 * time.Hour, 5 * 1024, true},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			MaxAge = test.maxAge
+			MaxTotalSize = test.maxTotalSize
+			Compress = test.compress
+			testRotation(t)
+		})
 	}
 }
 
