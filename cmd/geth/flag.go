@@ -539,24 +539,6 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		miner.HeaderExtra = []byte(s)
 	}
 
-	// Data migrations if should.
-	if shouldAttemptDirMigration(ctx) {
-		// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
-		// Only do this if --datadir flag is not specified AND <home>/<EthereumClassic> does NOT already exist (only migrate once and only for defaulty).
-		// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
-		// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
-		if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
-			glog.Fatalf("%v: failed to migrate existing Classic database: %v", ErrDirectoryStructure, migrationError)
-		}
-
-		// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
-		// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
-		// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
-		if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
-			glog.Fatalf("%v: failed to migrate existing data to chain-specific subdir: %v", ErrDirectoryStructure, subdirMigrateErr)
-		}
-	}
-
 	// Makes sufficient configuration from JSON file or DB pending flags.
 	// Delegates flag usage.
 	config := mustMakeSufficientChainConfig(ctx)
