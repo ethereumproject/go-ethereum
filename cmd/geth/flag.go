@@ -131,7 +131,7 @@ func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePat
 		return e
 	}
 
-	glog.V(logger.Debug).Infof("Copying %v to %v/chain.json", configFilePath, identityDirPath)
+	// glog.V(logger.Debug).Infof("Copying %v to %v/chain.json", configFilePath, identityDirPath)
 	b, e := ioutil.ReadFile(configFilePath)
 	if e != nil {
 		return e
@@ -184,7 +184,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 			glog.V(logger.Debug).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
 			c, configurationError := core.ReadExternalChainConfigFromFile(filepath.Clean(chainFlagVal))
 			if configurationError == nil {
-				glog.V(logger.Debug).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
+				// glog.V(logger.Debug).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
 					glog.Fatalf("Could not copy chain configuration: %v", e)
 				}
@@ -201,7 +201,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 			glog.Fatalf("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
 				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, configurationError)
 		}
-		glog.V(logger.Debug).Infof("No existing file at --%v: '%v'. Using literal chain identity.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
+		// glog.V(logger.Debug).Infof("No existing file at --%v: '%v'. Using literal chain identity.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
 		identity = chainFlagVal
 		return identity
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
@@ -357,11 +357,11 @@ func MakeWSRpcHost(ctx *cli.Context) string {
 // for Geth and returns half of the allowance to assign to the database.
 func MakeDatabaseHandles() int {
 	if err := raiseFdLimit(2048); err != nil {
-		glog.V(logger.Warn).Info("Failed to raise file descriptor allowance: ", err)
+		glog.V(logger.Warn).Errorf("Failed to raise file descriptor allowance: ", err)
 	}
 	limit, err := getFdLimit()
 	if err != nil {
-		glog.V(logger.Warn).Info("Failed to retrieve file descriptor allowance: ", err)
+		glog.V(logger.Warn).Errorf("Failed to retrieve file descriptor allowance: ", err)
 	}
 	if limit > 2048 { // cap database file descriptors even if more is available
 		limit = 2048
@@ -385,7 +385,7 @@ func MakeAccountManager(ctx *cli.Context) *accounts.Manager {
 	if path := ctx.GlobalString(aliasableName(KeyStoreDirFlag.Name, ctx)); path != "" {
 		af, e := filepath.Abs(path)
 		if e != nil {
-			glog.V(logger.Error).Infof("keydir path could not be made absolute: %v: %v", path, e)
+			glog.V(logger.Error).Errorf("keydir path could not be made absolute: %v: %v", path, e)
 		} else {
 			keydir = af
 		}
@@ -418,7 +418,7 @@ func MakeAddress(accman *accounts.Manager, account string) (accounts.Account, er
 func MakeEtherbase(accman *accounts.Manager, ctx *cli.Context) common.Address {
 	accounts := accman.Accounts()
 	if !ctx.GlobalIsSet(aliasableName(EtherbaseFlag.Name, ctx)) && len(accounts) == 0 {
-		glog.V(logger.Warn).Infoln("WARNING: No etherbase set and no accounts found as default")
+		glog.V(logger.Warn).Warnf("WARNING: No etherbase set and no accounts found as default")
 		return common.Address{}
 	}
 	etherbase := ctx.GlobalString(aliasableName(EtherbaseFlag.Name, ctx))
@@ -507,8 +507,8 @@ func mustRegisterMLogsFromContext(ctx *cli.Context) {
 		for k := range logger.MLogRegistryAvailable {
 			components = append(components, string(k))
 		}
-		glog.V(logger.Error).Infof("Error: %s", e)
-		glog.V(logger.Error).Infof("Available machine log components: %v", components)
+		glog.V(logger.Error).Errorf("Error: %s", e)
+		glog.V(logger.Error).Errorf("Available machine log components: %v", components)
 		os.Exit(1)
 	}
 	// Set the global logger mlog format from context
@@ -520,6 +520,7 @@ func mustRegisterMLogsFromContext(ctx *cli.Context) {
 		glog.Fatalf("Failed to start machine log: %v", e)
 	}
 	glog.V(logger.Info).Infof("Machine logs file: %v", fname)
+	glog.D(logger.Info).Infof("Machine logs (mlog) file: %v", logger.ColorGreen(fname))
 }
 
 // MakeSystemNode sets up a local node, configures the services to launch and
@@ -588,12 +589,13 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	} else {
 		// Just demonstrative code.
 		if b := logger.SetMlogEnabled(false); b == false && logger.MlogEnabled() == false {
-			glog.V(logger.Warn).Infof("Machine logs: disabled")
+			glog.V(logger.Warn).Warnf("Machine logs: disabled")
+			glog.D(logger.Info).Warnf("Machine logs disabled.")
 		}
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {
-		glog.V(logger.Info).Infoln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
+		glog.V(logger.Warn).Warnln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
 	}
 
 	return stack
@@ -737,11 +739,13 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		}
 		if ctx.GlobalIsSet(aliasableName(BootnodesFlag.Name, ctx)) {
 			config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
-			glog.V(logger.Warn).Infof(`WARNING: overwriting external bootnodes configuration with those from --%s flag. Value set from flag: %v`, aliasableName(BootnodesFlag.Name, ctx), config.ParsedBootstrap)
+			glog.V(logger.Warn).Warnf(`Overwriting external bootnodes configuration with those from --%s flag. Value set from flag: %v`, aliasableName(BootnodesFlag.Name, ctx), config.ParsedBootstrap)
+			glog.D(logger.Warn).Warnf(`Overwriting external bootnodes configuration with those from --%s flag. Value set from flag: %v`, aliasableName(BootnodesFlag.Name, ctx), config.ParsedBootstrap)
 		}
 		if ctx.GlobalIsSet(aliasableName(NetworkIdFlag.Name, ctx)) {
 			i := ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx))
-			glog.V(logger.Warn).Infof(`WARNING: overwriting external network id configuration with that from --%s flag. Value set from flag: %d`, aliasableName(NetworkIdFlag.Name, ctx), i)
+			glog.V(logger.Warn).Warnf(`Overwriting external network id configuration with that from --%s flag. Value set from flag: %d`, aliasableName(NetworkIdFlag.Name, ctx), i)
+			glog.D(logger.Warn).Warnf(`Overwriting external network id configuration with that from --%s flag. Value set from flag: %d`, aliasableName(NetworkIdFlag.Name, ctx), i)
 			if i < 1 {
 				glog.Fatalf("Network ID cannot be less than 1. Got: %d", i)
 			}
@@ -806,26 +810,38 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 }
 
 func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
-
 	chainIdentity := mustMakeChainIdentity(ctx)
 	chainIsCustom := !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity])
+
+	// File logs.
+	// TODO: uglify V logs? provide more detail for debugging? normal users won't see this.
 	if chainIsCustom {
-		glog.V(logger.Info).Infof("Using custom chain configuration: \x1b[32m%s\x1b[39m", chainIdentity)
+		glog.V(logger.Info).Infof("Using custom chain configuration: %s", chainIdentity)
+		glog.D(logger.Warn).Infof("Custom chain config: %s", logger.ColorGreen(chainIdentity))
 	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
-	glog.V(logger.Info).Infof("Starting Geth Classic \x1b[32m%s\x1b[39m", ctx.App.Version)
-	glog.V(logger.Info).Infof("Geth is configured to use ETC blockchain: \x1b[32m%v\x1b[39m", config.Name)
-	glog.V(logger.Info).Infof("Using chain database at: \x1b[32m%s\x1b[39m", MustMakeChainDataDir(ctx)+"/chaindata")
+	glog.V(logger.Info).Infof("Starting Geth Classic %s", ctx.App.Version)
+	glog.D(logger.Warn).Infof("Geth Classic version: %s", logger.ColorGreen(ctx.App.Version))
+
+	glog.V(logger.Info).Infof("Geth is configured to use ETC blockchain: %v", config.Name)
+	glog.D(logger.Warn).Infof("ETC blockchain: %s", logger.ColorGreen(config.Name))
+
+	chaindataDirName := MustMakeChainDataDir(ctx) + "/chaindata"
+	glog.V(logger.Info).Infof("Using chain database at: %s", chaindataDirName)
+	glog.D(logger.Warn).Infof("Chain database: %s", logger.ColorGreen(chaindataDirName))
 
 	glog.V(logger.Info).Infof("%v blockchain upgrades associated with this configuration:", len(config.ChainConfig.Forks))
+	glog.D(logger.Warn).Infof("Blockchain upgrades configured: %s", logger.ColorGreen(strconv.Itoa(len(config.ChainConfig.Forks))))
 
 	for i := range config.ChainConfig.Forks {
-		glog.V(logger.Info).Infof(" %7v %v", config.ChainConfig.Forks[i].Block, config.ChainConfig.Forks[i].Name)
+		f := fmt.Sprintf(" %7v %v", config.ChainConfig.Forks[i].Block, config.ChainConfig.Forks[i].Name)
 		if !config.ChainConfig.Forks[i].RequiredHash.IsEmpty() {
-			glog.V(logger.Info).Infof("         with block %v", config.ChainConfig.Forks[i].RequiredHash.Hex())
+			f += fmt.Sprintf(" (%v)", config.ChainConfig.Forks[i].RequiredHash.Hex())
 		}
+		glog.V(logger.Info).Infoln(f)
+		glog.D(logger.Warn).Infoln(f)
 		for _, feat := range config.ChainConfig.Forks[i].Features {
 			glog.V(logger.Debug).Infof("    id: %v", feat.ID)
 			for k, v := range feat.Options {
@@ -835,7 +851,9 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	}
 
 	if chainIsCustom {
-		glog.V(logger.Info).Infof("State starting nonce: %v", colorGreen(state.StartingNonce))
+		sn := strconv.Itoa(int(state.StartingNonce))
+		glog.V(logger.Info).Infof("State starting nonce: %s", logger.ColorGreen(sn))
+		glog.D(logger.Warn).Infof("State starting nonce: %s", logger.ColorGreen(sn))
 	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
@@ -875,7 +893,8 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
 		pow = ethash.New()
 	} else {
-		glog.V(logger.Info).Info("Consensus: fake")
+		glog.V(logger.Info).Infoln("Consensus: fake")
+		glog.D(logger.Warn).Warnln("Consensus: fake")
 	}
 
 	chain, err = core.NewBlockChain(chainDb, sconf.ChainConfig, pow, new(event.TypeMux))

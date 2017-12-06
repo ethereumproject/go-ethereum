@@ -60,7 +60,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// NOTE: Since ETH stores chaindata by default in Ethereum/geth/..., this path
 	// will not exist if the existing data belongs to ETH, so it works as a valid check for us as well.
 	if _, err := os.Stat(ethChainDBPath); os.IsNotExist(err) {
-		glog.V(logger.Debug).Infof(`No existing default chaindata dir found at: %v
+		glog.V(logger.Debug).Warnf(`No existing default chaindata dir found at: %v
 		  	Using default data directory at: %v`,
 			ethChainDBPath, etcDataDirPath)
 		return nil
@@ -71,7 +71,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	for _, f := range requiredFiles {
 		p := filepath.Join(ethChainDBPath, f)
 		if _, err := os.Stat(p); os.IsNotExist(err) {
-			glog.V(logger.Debug).Infof(`No existing default file found at: %v
+			glog.V(logger.Debug).Warnf(`No existing default file found at: %v
 		  	Using default data directory at: %v`,
 				p, etcDataDirPath)
 		} else {
@@ -86,7 +86,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 	// check if there is existing etf blockchain data in unclassic default dir (ie /<home>/Ethereum)
 	chainDB, err := ethdb.NewLDBDatabase(ethChainDBPath, 0, 0)
 	if err != nil {
-		glog.V(logger.Error).Info(`Failed to check blockchain compatibility for existing Ethereum chaindata database at: %v
+		glog.V(logger.Error).Errorf(`Failed to check blockchain compatibility for existing Ethereum chaindata database at: %v
 		 	Using default data directory at: %v`,
 			err, etcDataDirPath)
 		return nil
@@ -101,7 +101,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 		hh = core.GetHeadFastBlockHash(chainDB)
 	}
 	if hh.IsEmpty() {
-		glog.V(logger.Debug).Info("There was no head block for the old database. It could be very young.")
+		glog.V(logger.Debug).Warnln("There was no head block for the old database. It could be very young.")
 	}
 
 	hasRequiredForkIfSufficientHeight := true
@@ -120,13 +120,13 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 		hf := conf.ForkByName("The DAO Hard Fork")
 		if hf == nil || hf.Block == nil || new(big.Int).Cmp(hf.Block) == 0 || hf.RequiredHash.IsEmpty() {
-			glog.V(logger.Debug).Info("DAO Hard Fork required hash not configured for database chain. Not migrating.")
+			glog.V(logger.Debug).Warnln("DAO Hard Fork required hash not configured for database chain. Not migrating.")
 			return nil
 		}
 
 		b := core.GetBlock(chainDB, hh)
 		if b == nil {
-			glog.V(logger.Debug).Info("There was a problem checking the head block of old-namespaced database. The head hash was: %v", hh.Hex())
+			glog.V(logger.Debug).Warnf("There was a problem checking the head block of old-namespaced database. The head hash was: %v", hh.Hex())
 			return nil
 		}
 
@@ -152,7 +152,7 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 
 	if hasRequiredForkIfSufficientHeight {
 		// if any of the LOG, LOCK, or CURRENT files are missing from old chaindata/, don't migrate
-		glog.V(logger.Info).Infof(`Found existing data directory named 'Ethereum' with default ETC chaindata.
+		glog.V(logger.Warn).Warnf(`Found existing data directory named 'Ethereum' with default ETC chaindata.
 		  	Moving it from: %v, to: %v
 		  	To specify a different data directory use the '--datadir' flag.`,
 			ethDataDirPath, etcDataDirPath)
