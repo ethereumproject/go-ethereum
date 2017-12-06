@@ -113,7 +113,21 @@ var (
 // '--testnet' (legacy), or
 // '--chain=morden|testnet'
 func chainIsMorden(ctx *cli.Context) bool {
-	return ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || chainIdentitiesMorden[ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx))]
+	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
+		return true
+	}
+	if _, ok := chainIdentitiesMorden[cacheChainIdentity]; ok {
+		return ok
+	}
+	if _, ok := chainIdentitiesMorden[ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx))]; ok {
+		return ok
+	}
+	if cacheChainConfig != nil {
+		if _, ok := chainIdentitiesMorden[cacheChainConfig.Identity]; ok {
+			return ok
+		}
+	}
+	return false
 }
 
 // if argument to --chain is a path and is a valid configuration file, copy it to
