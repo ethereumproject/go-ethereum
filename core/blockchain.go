@@ -134,7 +134,7 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error
-	bc.hc, err = NewHeaderChain(chainDb, config, gv, bc.getProcInterrupt)
+	bc.hc, err = NewHeaderChain(chainDb, config, mux, gv, bc.getProcInterrupt)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error
-	bc.hc, err = NewHeaderChain(chainDb, config, gv, bc.getProcInterrupt)
+	bc.hc, err = NewHeaderChain(chainDb, config, mux, gv, bc.getProcInterrupt)
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +206,10 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 	// // Take ownership of this particular state
 	//go bc.update()
 	return bc, nil
+}
+
+func (self *BlockChain) GetEventMux() *event.TypeMux {
+	return self.eventMux
 }
 
 func (self *BlockChain) getProcInterrupt() bool {
@@ -1386,6 +1390,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 	defer close(nonceAbort)
 
 	txcount := 0
+	var latestBlockTime time.Time
 	for i, block := range chain {
 		if atomic.LoadInt32(&self.procInterrupt) == 1 {
 			glog.V(logger.Debug).Infoln("Premature abort during block chain processing")
@@ -1482,6 +1487,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 		if err != nil {
 			return i, err
 		}
+		latestBlockTime = time.Unix(block.Time().Int64(), 0)
 
 		switch status {
 		case CanonStatTy:
@@ -1511,9 +1517,19 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 		stats.processed++
 	}
 
-	if (stats.queued > 0 || stats.processed > 0 || stats.ignored > 0) && bool(glog.V(logger.Info)) {
+	if stats.queued > 0 || stats.processed > 0 || stats.ignored > 0 {
 		tend := time.Since(tstart)
 		start, end := chain[0], chain[len(chain)-1]
+		events = append(events, ChainInsertEvent{
+			stats.processed,
+			stats.queued,
+			stats.ignored,
+			txcount,
+			end.NumberU64(),
+			end.Hash(),
+			tend,
+			latestBlockTime,
+		})
 		if logger.MlogEnabled() {
 			mlogBlockchain.Send(mlogBlockchainInsertBlocks.SetDetailValues(
 				stats.processed,
