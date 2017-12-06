@@ -113,11 +113,6 @@ var (
 // '--testnet' (legacy), or
 // '--chain=morden|testnet'
 func chainIsMorden(ctx *cli.Context) bool {
-	if ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) && ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
-		glog.Fatalf(`%v: used redundant/conflicting flags: %v, %v
-		Please use one or the other, but not both.`, ErrInvalidFlag, aliasableName(TestNetFlag.Name, ctx), aliasableName(ChainIdentityFlag.Name, ctx))
-		return false
-	}
 	return ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) || chainIdentitiesMorden[ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx))]
 }
 
@@ -151,6 +146,13 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 	if cacheChainIdentity != "" {
 		return cacheChainIdentity
 	}
+
+	if ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) && ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
+		glog.Fatalf(`%v: used redundant/conflicting flags: --%v, --%v
+		Please use one or the other, but not both.`, ErrInvalidFlag, aliasableName(TestNetFlag.Name, ctx), aliasableName(ChainIdentityFlag.Name, ctx))
+		return ""
+	}
+
 	defer func() {
 		cacheChainIdentity = identity
 	}()

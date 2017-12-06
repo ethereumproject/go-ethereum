@@ -581,7 +581,7 @@ func rollback(ctx *cli.Context) error {
 }
 
 // dumpChainConfig exports chain configuration based on context to JSON file.
-// It is not compatible with --chain-config flag; it is intended to move from flags -> file,
+// It is not compatible with --chain flag; it is intended to move from default configs -> file,
 // and not the other way around.
 func dumpChainConfig(ctx *cli.Context) error {
 
