@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/trie"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var (
@@ -45,6 +46,9 @@ var (
 
 // Reduce some of the parameters to make the tester faster.
 func init() {
+	glog.SetV(0)
+	glog.SetD(0)
+
 	blockCacheLimit = 1024
 
 	var err error

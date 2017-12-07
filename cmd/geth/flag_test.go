@@ -13,6 +13,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"gopkg.in/urfave/cli.v1"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var ogHome string  // placeholder
@@ -32,6 +33,11 @@ type flags []struct {
 }
 
 var gFlags flags
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 func makeTmpDataDir(t *testing.T) {
 	ogHome = common.HomeDir()
