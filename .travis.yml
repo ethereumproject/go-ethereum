@@ -19,12 +19,13 @@ before_install:
 # Install Rust and C binding
 - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
 - export PATH=$HOME/.cargo/bin:$PATH
-- git clone https://github.com/ethereumproject/sputnikvm-ffi $HOME/sputnikvm-ffi
-- cd $HOME/sputnikvm-ffi/c/ffi && cargo build --release
-- cp $HOME/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $HOME/sputnikvm-ffi/c/libsputnikvm.a
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CGO_LDFLAGS="$HOME/sputnikvm-ffi/c/libsputnikvm.a -ldl"; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CGO_LDFLAGS="$HOME/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv"; fi
-- cd $HOME/gopath/src/github.com/ethereumproject/go-ethereum
+- mkdir -p $GOPATH/src/github.com/ethereumproject
+- git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
+- cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
+- cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv"; fi
+- cd $GOPATH/src/github.com/ethereumproject/go-ethereum
 
 script:
 # Install Janus
