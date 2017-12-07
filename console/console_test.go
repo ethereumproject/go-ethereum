@@ -32,12 +32,18 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 const (
 	testInstance = "console-tester"
 	testAddress  = "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 // hookedPrompter implements UserPrompter to simulate use input via channels.
 type hookedPrompter struct {
