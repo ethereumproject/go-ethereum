@@ -1035,10 +1035,6 @@ func gzipFile(name string) error {
 }
 
 func (sb *syncBuffer) rotateOld(now time.Time) {
-	if MaxTotalSize <= MaxSize {
-		return
-	}
-
 	logs, err := getLogFiles()
 	if err != nil {
 		sb.logger.exit(err)
@@ -1169,7 +1165,7 @@ func removeOutdated(logs []logFile, now time.Time) ([]logFile, error) {
 
 	remaining := logs[:0]
 	for _, log := range logs {
-		if log.size > MinSize && log.timestamp <= timestamp {
+		if log.timestamp <= timestamp {
 			if err := os.Remove(filepath.Join(log.dir, log.name)); err != nil {
 				return nil, err
 			}
@@ -1182,13 +1178,13 @@ func removeOutdated(logs []logFile, now time.Time) ([]logFile, error) {
 
 // compress all uncompressed log files, except the currently used log file
 func compressOrphans(logs []logFile) ([]logFile, error) {
-	for _, log := range logs {
+	for i, log := range logs {
 		fullName := filepath.Join(log.dir, log.name)
 		if !strings.HasSuffix(log.name, ".gz") {
 			if err := gzipFile(fullName); err != nil {
 				return nil, err
 			}
-			log.name += ".gz"
+			logs[i].name += ".gz"
 		}
 	}
 	return logs, nil

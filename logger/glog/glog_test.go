@@ -571,20 +571,105 @@ func testRotation(t *testing.T) {
 
 	start := time.Date(2017, time.December, 06, 0, 0, 0, 0, time.UTC)
 
+	data := []byte(strings.Repeat(".", 10*1024))
+	logDate := start
 	// generate files
-	// TODO(tzdybal)
+	for i := 0; i < 5; i++ {
+		infoF, infoL := logName("INFO", logDate.Add(1*time.Second))
+		warnF, warnL := logName("WARNING", logDate.Add(10*time.Second).Add(1*time.Second))
+
+		ioutil.WriteFile(filepath.Join(dir, infoF), data, 0600)
+		ioutil.WriteFile(filepath.Join(dir, warnF), data, 0600)
+
+		infoSL := filepath.Join(dir, infoL)
+		os.Remove(infoSL)                             // ignore err
+		os.Symlink(filepath.Join(dir, infoF), infoSL) // ignore err
+
+		warnSL := filepath.Join(dir, warnL)
+		os.Remove(warnSL)                             // ignore err
+		os.Symlink(filepath.Join(dir, warnF), warnSL) // ignore err
+
+		logDate = logDate.Add(24 * time.Hour)
+	}
+	dummy1 := "and_now_for_something_completely_different.log"
+	ioutil.WriteFile(filepath.Join(dir, dummy1), data, 0600)
+	dummy2, _ := logName("ERROR", start.Add(-10*24*time.Hour))
+	dummy2 = "keep." + dummy2
+	ioutil.WriteFile(filepath.Join(dir, dummy2), data, 0600)
+	dummy3, _ := logName("INFO", start.Add(+10*24*time.Hour))
+	dummy3 = strings.Replace(dummy3, userName, "differentUser", 1)
+	ioutil.WriteFile(filepath.Join(dir, dummy3), data, 0600)
 
 	// prepare environment
-	*logDir = dir
+	logDirs = nil
+	SetLogDir(dir)
 	createLogDirs()
 
 	// execute rotation
 	sb := &syncBuffer{}
-	sb.rotateOld(start)
+	sb.rotateOld(logDate)
 
 	// make assertions
-	// TODO(tzdybal)
-	t.Error("TODO(tzdybal)")
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ensure that 3rd party files are intact
+	dummy1ok := false
+	dummy2ok := false
+	dummy3ok := false
+	totalSize := uint64(0)
+	nGzipped := 0
+	preffix := fmt.Sprintf("%s.%s.%s.log.", program, host, userName)
+	maxTimestamp := ""
+	if MaxAge > 0 {
+		t := logDate.Add(-1 * MaxAge)
+		maxTimestamp = fmt.Sprintf("%04d%02d%02d-%02d%02d%02d",
+			t.Year(),
+			t.Month(),
+			t.Day(),
+			t.Hour(),
+			t.Minute(),
+			t.Second(),
+		)
+	}
+	for _, file := range files {
+		sameSize := file.Size() == int64(len(data))
+		switch file.Name() {
+		case dummy1:
+			dummy1ok = sameSize
+		case dummy2:
+			dummy2ok = sameSize
+		case dummy3:
+			dummy3ok = sameSize
+		default:
+			totalSize += uint64(file.Size())
+			if maxTimestamp != "" && file.Mode().IsRegular() {
+				timestamp := extractTimestamp(file.Name(), preffix)
+				if strings.Compare(timestamp, maxTimestamp) < 0 {
+					t.Errorf("Old file not removed properly: %s\n", file.Name())
+				}
+			}
+		}
+		if strings.HasSuffix(file.Name(), ".gz") {
+			nGzipped++
+		}
+
+	}
+
+	if !dummy1ok || !dummy2ok || !dummy3ok {
+		t.Error("Some 3rd party files removed or modified!")
+	}
+
+	if MaxTotalSize > 0 && totalSize >= MaxTotalSize {
+		t.Error("MaxTotalSize constraint violated!")
+	}
+
+	// 3 x 3rd-party files, 2 x symlink, 2 x current log files
+	if Compress && nGzipped == len(files)-3-2-2 {
+		t.Error("Some files not compressed!")
+	}
 }
 
 func TestRotateOldFiles(t *testing.T) {
@@ -600,10 +685,10 @@ func TestRotateOldFiles(t *testing.T) {
 	}{
 		{"no limits", 0, 0, false},
 		{"no limits with compression", 0, 0, true},
-		{"with age limit", 24 * time.Hour, 0, false},
+		{"with age limit", 2 * 24 * time.Hour, 0, false},
 		{"with size limit", 0, 5 * 1024, false},
 		{"with both limits", 4 * 24 * time.Hour, 5 * 1024, false},
-		{"with age limit and compression", 24 * time.Hour, 0, true},
+		{"with age limit and compression", 2 * 24 * time.Hour, 0, true},
 		{"with size limit and compression", 0, 5 * 1024, true},
 		{"with both limits and compression", 4 * 24 * time.Hour, 5 * 1024, true},
 	}
