@@ -15,6 +15,10 @@ import (
 
 var UseSputnikVM = false
 
+// Apply a transaction using the SputnikVM processor with the given
+// chain config and state. Note that we use the name of the chain
+// config to determine which hard fork to use so ClassicVM's gas table
+// would not be used.
 func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas *big.Int) (*types.Receipt, evm.Logs, *big.Int, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
 
