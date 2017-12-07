@@ -1,3 +1,5 @@
+// +build sputnikvm
+
 package core
 
 import (
