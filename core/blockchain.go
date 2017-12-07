@@ -697,15 +697,15 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	glog.D(logger.Warn).Infof("Local head header:     #%s [%s…] TD=%s",
 		logger.ColorGreen(strconv.Itoa(int(self.hc.CurrentHeader().Number.Uint64()))),
 		logger.ColorGreen(self.hc.CurrentHeader().Hash().Hex()[:8]),
-		logger.ColorGreen(strconv.Itoa(int(headerTd.Uint64()))))
+		logger.ColorGreen(fmt.Sprintf("%v", headerTd)))
 	glog.D(logger.Warn).Infof("Local head full block: #%s [%s…] TD=%s",
 		logger.ColorGreen(strconv.Itoa(int(self.currentBlock.Number().Uint64()))),
 		logger.ColorGreen(self.currentBlock.Hash().Hex()[:8]),
-		logger.ColorGreen(strconv.Itoa(int(blockTd.Uint64()))))
+		logger.ColorGreen(fmt.Sprintf("%v", blockTd)))
 	glog.D(logger.Warn).Infof("Local head fast block: #%s [%s…] TD=%s",
 		logger.ColorGreen(strconv.Itoa(int(self.currentFastBlock.Number().Uint64()))),
 		logger.ColorGreen(self.currentFastBlock.Hash().Hex()[:8]),
-		logger.ColorGreen(strconv.Itoa(int(fastTd.Uint64()))))
+		logger.ColorGreen(fmt.Sprintf("%v", fastTd)))
 
 	return nil
 }
