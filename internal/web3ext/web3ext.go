@@ -192,12 +192,6 @@ web3._extend({
 			inputFormatter: [web3._extend.formatters.inputOptionalNumberFormatter]
 		}),
 		new web3._extend.Method({
-			name: 'verbosityTraceFloor',
-			call: 'debug_verbosityTraceFloor',
-			params: 1,
-			inputFormatter: [web3._extend.formatters.inputOptionalNumberFormatter]
-		}),
-		new web3._extend.Method({
 			name: 'vmodule',
 			call: 'debug_vmodule',
 			params: 1,

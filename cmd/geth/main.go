@@ -175,7 +175,6 @@ func makeCLIApp() (app *cli.App) {
 		VerbosityFlag,
 		DisplayFlag,
 		VModuleFlag,
-		VerbosityTraceFloorFlag,
 		LogDirFlag,
 		LogStatusFlag,
 		MLogFlag,
@@ -290,9 +289,6 @@ func makeCLIApp() (app *cli.App) {
 			if !ctx.GlobalIsSet(LogStatusFlag.Name) {
 				ctx.Set(LogStatusFlag.Name, "sync=60") // set log-status interval
 			}
-			if !ctx.GlobalIsSet(VerbosityTraceFloorFlag.Name) {
-				glog.SetVTraceThreshold(0)
-			}
 			if !ctx.GlobalIsSet(VerbosityFlag.Name) {
 				glog.SetV(5)
 			}
@@ -301,11 +297,6 @@ func makeCLIApp() (app *cli.App) {
 		// If --log-status not set, set default 60s interval
 		if !ctx.GlobalIsSet(LogStatusFlag.Name) {
 			ctx.Set(LogStatusFlag.Name, "sync=30")
-		}
-		if ctx.GlobalIsSet(VerbosityTraceFloorFlag.Name) {
-			val := ctx.GlobalInt(VerbosityTraceFloorFlag.Name)
-			log.Println("--verbosity-trace-floor", "val", val)
-			glog.SetVTraceThreshold(val)
 		}
 
 		if s := ctx.String("metrics"); s != "" {

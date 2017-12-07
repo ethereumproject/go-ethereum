@@ -159,11 +159,6 @@ var (
 		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
 		Value: glog.GetVModule(),
 	}
-	VerbosityTraceFloorFlag = cli.IntFlag{
-		Name:  "verbosity-trace-floor",
-		Usage: "Floor verbosity level at which to include file traces on log lines.",
-		Value: 0,
-	}
 	LogDirFlag = DirectoryFlag{
 		Name:  "log-dir,logdir",
 		Usage: "Directory in which to write log files.",
