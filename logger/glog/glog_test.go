@@ -703,6 +703,38 @@ func TestRotateOldFiles(t *testing.T) {
 	}
 }
 
+func TestParseInterval(t *testing.T) {
+	cases := []struct {
+		value    string
+		expected Interval
+		err      bool
+	}{
+		{"never", Never, false},
+		{"NeVeR", Never, false},
+		{"daily", Daily, false},
+		{"Daily", Daily, false},
+		{"weekly", Weekly, false},
+		{"weekLY", Weekly, false},
+		{"monthly", Monthly, false},
+		{"mONThLy", Monthly, false},
+		{"invalid", Never, true},
+		{"daily weekly", Never, true},
+		{"none", Never, true},
+	}
+
+	for _, test := range cases {
+		t.Run(test.value, func(t *testing.T) {
+			interval, err := ParseInterval(test.value)
+			if test.expected != interval {
+				t.Error("Invalid interval value")
+			}
+			if test.err != (err != nil) {
+				t.Error("Invalid error value")
+			}
+		})
+	}
+}
+
 func BenchmarkHeader(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf, _, _ := logging.header(infoLog, 0)

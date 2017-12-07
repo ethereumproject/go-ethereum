@@ -141,6 +141,22 @@ const (
 	Monthly
 )
 
+func ParseInterval(str string) (Interval, error) {
+	mapping := map[string]Interval{
+		"never":   Never,
+		"hourly":  Hourly,
+		"daily":   Daily,
+		"weekly":  Weekly,
+		"monthly": Monthly,
+	}
+
+	interval, ok := mapping[strings.ToLower(str)]
+	if !ok {
+		return Never, fmt.Errorf("invalid interval value '%s'", str)
+	}
+	return interval, nil
+}
+
 // RotationInterval determines how often log rotation should take place
 var RotationInterval = Never
 
