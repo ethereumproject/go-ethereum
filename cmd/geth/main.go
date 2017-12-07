@@ -223,8 +223,12 @@ func makeCLIApp() (app *cli.App) {
 		}
 
 		if ctx.IsSet(SputnikVMFlag.Name) {
-			log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation ...")
-			core.UseSputnikVM = true
+			if core.SputnikVMExists {
+				log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation ...")
+				core.UseSputnikVM = true
+			} else {
+				log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
+			}
 		}
 
 		runtime.GOMAXPROCS(runtime.NumCPU())

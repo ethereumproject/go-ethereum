@@ -15,6 +15,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
+const SputnikVMExists = true
 var UseSputnikVM = false
 
 // Apply a transaction using the SputnikVM processor with the given
