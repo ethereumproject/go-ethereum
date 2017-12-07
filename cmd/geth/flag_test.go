@@ -136,7 +136,6 @@ func TestMustMakeChainDataDir(t *testing.T) {
 		{[]string{"--chain", "testnet"}, filepath.Join(dd, "morden"), nil},
 		{[]string{"--chain", "kitty"}, filepath.Join(dd, "kitty"), nil},
 
-		// Passed when  run individually, but fails when run as go test. This is not a code problem.
 		{[]string{"--chain", "kitty/cat"}, filepath.Join(dd, "kitty", "cat"), nil},
 		{[]string{"--chain", funkyName}, filepath.Join(dd, funkyName), nil},
 	}
@@ -186,7 +185,7 @@ func TestGetChainIdentityValue(t *testing.T) {
 
 		// Custom.
 		{[]string{"--chain", "kitty"}, "kitty"},
-		{[]string{"--chain", "kitty/cat"}, "kitty/cat"},
+		{[]string{"--chain", "kitty/cat"}, filepath.Join("kitty", "cat")},
 
 		// Blacklisted.
 		{[]string{"--chain", "chaindata"}, ""},
