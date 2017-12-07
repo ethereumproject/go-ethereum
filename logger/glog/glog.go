@@ -1053,26 +1053,26 @@ func gzipFile(name string) error {
 func (sb *syncBuffer) rotateOld(now time.Time) {
 	logs, err := getLogFiles()
 	if err != nil {
-		sb.logger.exit(err)
+		Fatal(err)
 	}
 
 	logs = excludeActive(logs)
 
 	logs, err = removeOutdated(logs, now)
 	if err != nil {
-		sb.logger.exit(err)
+		Fatal(err)
 	}
 
 	logs, err = compressOrphans(logs)
 	if err != nil {
-		sb.logger.exit(err)
+		Fatal(err)
 	}
 
 	totalSize := getTotalSize(logs)
 	for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
 		err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
 		if err != nil {
-			sb.logger.exit(err)
+			Fatal(err)
 		}
 		totalSize -= logs[i].size
 	}
@@ -1087,17 +1087,17 @@ type logFile struct {
 
 // getLogFiles returns log files, ordered from oldest to newest
 func getLogFiles() (logFiles []logFile, err error) {
-	preffix := fmt.Sprintf("%s.%s.%s.log.", program, host, userName)
+	prefix := fmt.Sprintf("%s.%s.%s.log.", program, host, userName)
 	for _, logDir := range logDirs {
 		files, err := ioutil.ReadDir(logDir)
 		if err == nil {
-			files = filterLogFiles(files, preffix)
+			files = filterLogFiles(files, prefix)
 			for _, file := range files {
 				logFiles = append(logFiles, logFile{
 					dir:       logDir,
 					name:      file.Name(),
 					size:      uint64(file.Size()),
-					timestamp: extractTimestamp(file.Name(), preffix),
+					timestamp: extractTimestamp(file.Name(), prefix),
 				})
 			}
 			sort.Slice(logFiles, func(i, j int) bool {
@@ -1146,11 +1146,11 @@ func getCurrentLogs() (logs []string) {
 	return logs
 }
 
-func extractTimestamp(logFile, preffix string) string {
-	if len(logFile) <= len(preffix) {
+func extractTimestamp(logFile, prefix string) string {
+	if len(logFile) <= len(prefix) {
 		return ""
 	}
-	splits := strings.SplitN(logFile[len(preffix):], ".", 3)
+	splits := strings.SplitN(logFile[len(prefix):], ".", 3)
 	if len(splits) == 3 {
 		return splits[1]
 	} else {
@@ -1158,10 +1158,10 @@ func extractTimestamp(logFile, preffix string) string {
 	}
 }
 
-func filterLogFiles(files []os.FileInfo, preffix string) []os.FileInfo {
+func filterLogFiles(files []os.FileInfo, prefix string) []os.FileInfo {
 	filtered := files[:0]
 	for _, file := range files {
-		if !file.IsDir() && strings.HasPrefix(file.Name(), preffix) {
+		if !file.IsDir() && strings.HasPrefix(file.Name(), prefix) {
 			filtered = append(filtered, file)
 		}
 	}

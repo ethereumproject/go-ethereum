@@ -443,7 +443,7 @@ func TestExtractTimestamp(t *testing.T) {
 		{"valid WARNIG", preffix + "WARNING.20171202-210922.13848", "20171202-210922"},
 		{"valid gzipped", preffix + "WARNING.20171202-210922.13848.gz", "20171202-210922"},
 		{"extra long filename", preffix + "WARNING.20171202-210922.13848.gz.bak", "20171202-210922"},
-		{"to short filename", preffix + "WARNING.20171202-21092", ""},
+		{"too short filename", preffix + "WARNING.20171202-21092", ""},
 		{"no preffix", "WARNING.20171202-21092", ""},
 	}
 

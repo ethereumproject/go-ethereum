@@ -171,7 +171,7 @@ var (
 		Value: 0,
 	}
 	LogIntervalFlag = cli.StringFlag{
-		Name:  "log-interval",
+		Name:  "log-rotation-interval",
 		Usage: "Log rotation interval, one of values: never, hourly, daily, weekly, monthly",
 		Value: "never",
 	}
