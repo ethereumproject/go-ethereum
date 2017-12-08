@@ -32,6 +32,7 @@ Building geth requires both Go >=1.8 and a C compiler.
 #### Installing command executables
 
 To install...
+
 - the full suite of utilities: `$ go install github.com/ethereumproject/go-ethereum/cmd/...`
 - just __geth__: `$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
 
@@ -47,7 +48,7 @@ $ go install -ldflags "-X main.Version="`git describe --tags` ./cmd/...
 ```
 
 #### Using release source code tarball
-Because of strict Go directory structure, the tarball needs to be extracted into proper subdirectory under `$GOPATH`.
+Because of strict Go directory structure, the tarball needs to be extracted into the proper subdirectory under `$GOPATH`.
 The following commands are an example of building the v4.1.1 release:
 ```
 $ mkdir -p $GOPATH/src/github.com/ethereumproject
@@ -61,7 +62,7 @@ $ go install -ldflags "-X main.Version=v4.1.1" ./cmd/...
 #### Building with [SputnikVM](https://github.com/ethereumproject/sputnikvm)
 Have Rust (>= 1.21) and Golang (>= 1.9) installed.
 
-> For __Non-Windows__:
+> For __Linux__ and __macOS__:
 
 ```
 cd $GOPATH/src/github.com/ethereumproject
@@ -71,17 +72,22 @@ cargo build --release
 cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
 ```
 And then build geth with CGO_LDFLAGS:
+
+- In Linux:
+
 ```
 cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
 CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go build -tags=sputnikvm .
 ```
-In macOS:
+
+- In macOS:
+
 ```
 cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
 CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv" go build -tags=sputnikvm .
 ```
 
-> And for __Windows__:
+> For __Windows__:
 
 ```
 cd %GOPATH%\src\github.com\ethereumproject
