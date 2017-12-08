@@ -80,10 +80,14 @@ cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
 CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go build -tags=sputnikvm .
 ```
 In macOS:
-
 ```
 cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
 CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv" go build -tags=sputnikvm .
+```
+And in Windows:
+```
+set CGO_LDFLAGS=-Wl,--allow-multiple-definition %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
+go build -tags=sputnikvm ./cmd/geth
 ```
 
 ## Executables
