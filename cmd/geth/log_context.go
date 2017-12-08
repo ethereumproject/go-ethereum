@@ -13,24 +13,21 @@ import (
 )
 
 func setupLogRotation(ctx *cli.Context) error {
-	// log-rotation options
-	maxSize := ctx.GlobalInt(aliasableName(LogMaxSizeFlag.Name, ctx))
-	if maxSize < 0 {
-		maxSize = 0
+	var err error
+	glog.MaxSize, err = getSizeFlagValue(&LogMaxSizeFlag, ctx)
+	if err != nil {
+		return err
 	}
-	glog.MaxSize = uint64(maxSize)
 
-	minSize := ctx.GlobalInt(aliasableName(LogMinSizeFlag.Name, ctx))
-	if minSize < 0 {
-		minSize = 0
+	glog.MinSize, err = getSizeFlagValue(&LogMinSizeFlag, ctx)
+	if err != nil {
+		return err
 	}
-	glog.MinSize = uint64(minSize)
 
-	maxTotalSize := ctx.GlobalInt(aliasableName(LogMaxTotalSizeFlag.Name, ctx))
-	if maxTotalSize < 0 {
-		maxTotalSize = 0
+	glog.MaxTotalSize, err = getSizeFlagValue(&LogMaxTotalSizeFlag, ctx)
+	if err != nil {
+		return err
 	}
-	glog.MaxTotalSize = uint64(maxTotalSize)
 
 	glog.Compress = ctx.GlobalBool(aliasableName(LogCompressFlag.Name, ctx))
 
@@ -40,14 +37,22 @@ func setupLogRotation(ctx *cli.Context) error {
 	}
 	glog.RotationInterval = interval
 
-	maxAgeString := ctx.GlobalString(aliasableName(LogMaxAgeFlag.Name, ctx))
-	maxAge, err := parseDuration(maxAgeString)
+	maxAge, err := parseDuration(ctx.GlobalString(aliasableName(LogMaxAgeFlag.Name, ctx)))
 	if err != nil {
 		return fmt.Errorf("error parsing log max age: %v", err)
 	}
 	glog.MaxAge = maxAge
 
 	return nil
+}
+
+func getSizeFlagValue(flag *cli.StringFlag, ctx *cli.Context) (uint64, error) {
+	strVal := ctx.GlobalString(aliasableName(flag.Name, ctx))
+	size, err := parseSize(strVal)
+	if err != nil {
+		return 0, fmt.Errorf("%s: invalid value '%s': %v", flag.Name, strVal, err)
+	}
+	return size, nil
 }
 
 func parseDuration(str string) (time.Duration, error) {
@@ -76,28 +81,37 @@ func parseSize(str string) (uint64, error) {
 }
 
 func parseWithSuffix(str string, mapping map[rune]uint64) (uint64, error) {
-	trim := " \t"
-	number := strings.ToLower(strings.TrimLeft(str, trim))
+	number := strings.ToLower(strings.TrimLeftFunc(str, unicode.IsSpace))
 
+	trim := ""
 	for k, _ := range mapping {
-		trim += string(k)
+		if k != 0 {
+			trim += string(k)
+		}
 	}
 	suffix := rune(0)
 	number = strings.TrimRightFunc(number, func(r rune) bool {
 		if unicode.IsSpace(r) {
 			return true
 		}
-		if suffix == 0 && strings.ContainsRune(trim, r) {
+		if unicode.IsDigit(r) {
+			return false
+		}
+		if suffix == 0 {
 			suffix = r
 			return true
 		}
 		return false
 	})
 
+	if suffix != 0 && !strings.ContainsRune(trim, suffix) {
+		return 0, fmt.Errorf("invalid suffix '%v', expected one of %v", string(suffix), strings.Split(trim, ""))
+	}
+
 	value, err := strconv.ParseUint(number, 10, 64)
 
 	if err != nil {
-		return 0, fmt.Errorf("invalid value: '%v', natural number expected", number)
+		return 0, fmt.Errorf("invalid value '%v': natural number expected", number)
 	}
 
 	return value * mapping[suffix], nil

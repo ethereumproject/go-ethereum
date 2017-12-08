@@ -1068,6 +1068,10 @@ func (sb *syncBuffer) rotateOld(now time.Time) {
 		Fatal(err)
 	}
 
+	if MaxTotalSize < MaxSize {
+		return
+	}
+
 	totalSize := getTotalSize(logs)
 	for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
 		err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
@@ -1169,6 +1173,9 @@ func filterLogFiles(files []os.FileInfo, prefix string) []os.FileInfo {
 }
 
 func removeOutdated(logs []logFile, now time.Time) ([]logFile, error) {
+	if MaxAge == 0 {
+		return logs, nil
+	}
 	t := now.Add(-1 * MaxAge)
 	timestamp := fmt.Sprintf("%04d%02d%02d-%02d%02d%02d",
 		t.Year(),
