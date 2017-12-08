@@ -67,6 +67,7 @@ $ go install -ldflags "-X main.Version=v4.1.1" ./cmd/...
 
 #### Building with [SputnikVM](https://github.com/ethereumproject/sputnikvm)
 Have Rust (>= 1.21) and Golang (>= 1.9) installed.
+> For __Non-Windows__:
 ```
 cd $GOPATH/src/github.com/ethereumproject
 git clone https://github.com/ethereumproject/sputnikvm-ffi
@@ -84,10 +85,19 @@ In macOS:
 cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
 CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv" go build -tags=sputnikvm .
 ```
-And in Windows:
+
+> And for __Windows__:
+```
+cd $GOPATH\src\github.com/ethereumproject
+git clone https://github.com/ethereumproject/sputnikvm-ffi
+cd sputnikvm-ffi\c\ffi
+cargo build --release
+cp $GOPATH\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi\target\release\sputnikvm.lib $GOPATH\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib
+```
+And then build geth with CGO_LDFLAGS:
 ```
 set CGO_LDFLAGS=-Wl,--allow-multiple-definition %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
-go build -tags=sputnikvm ./cmd/geth
+go build -tags=sputnikvm .\cmd\geth
 ```
 
 ## Executables
