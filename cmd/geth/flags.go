@@ -166,7 +166,7 @@ var (
 		Value: 0,
 	}
 	LogMaxTotalSizeFlag = cli.IntFlag{
-		Name:  "log-max-total-size,log-maxtotalsize",
+		Name:  "log-total-max-size,log-totalmaxsize",
 		Usage: "Maximum total size of all (current and archived) log files (in bytes)",
 		Value: 0,
 	}
