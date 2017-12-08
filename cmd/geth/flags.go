@@ -177,7 +177,7 @@ var (
 	}
 	LogMaxAgeFlag = cli.StringFlag{
 		Name:  "log-max-age,log-maxage",
-		Usage: "Maximum age of the oldest log file, valid time units: 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'",
+		Usage: "Maximum age of the oldest log file, valid time units: h, d, w (hours, days, weeks)",
 		Value: "0",
 	}
 	LogCompressFlag = cli.BoolFlag{
