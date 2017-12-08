@@ -14,13 +14,6 @@ _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and power
 ### :rocket: From a release binary
 The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Home#Developers).
 
-CLI one-liner:
-```bash
-# Download and unzip archive from github releases page,
-# then move unzipped 'geth' executable to $HOME/bin/geth
-$ curl -L -o ~/Downloads/geth-classic-4.1.zip https://github.com/ethereumproject/go-ethereum/releases/download/v4.1.0/geth-classic-osx-v4.1.0.zip; unzip ~/Downloads/geth-classic-4.1.zip -d $HOME/bin/
-```
-
 #### :beers: Using Homebrew (OSX only)
 ```
 $ brew install ethereumproject/classic/geth
