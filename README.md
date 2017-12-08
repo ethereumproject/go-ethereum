@@ -99,8 +99,9 @@ copy %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi\target\release\
 ```
 And then build geth with CGO_LDFLAGS:
 ```
+cd %GOPATH%\src\github.com\ethereumproject\go-ethereum\cmd\geth
 set CGO_LDFLAGS=-Wl,--allow-multiple-definition %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
-go build -tags=sputnikvm .\cmd\geth
+go build -tags=sputnikvm .
 ```
 
 ## Executables
