@@ -65,6 +65,27 @@ $ cd go-ethereum
 $ go install -ldflags "-X main.Version=v4.1.1" ./cmd/...
 ```
 
+#### Building with [SputnikVM](https://github.com/ethereumproject/sputnikvm)
+Have Rust (>= 1.21) and Golang (>= 1.9) installed.
+```
+cd $GOPATH/src/github.com/ethereumproject
+git clone https://github.com/ethereumproject/sputnikvm-ffi
+cd sputnikvm-ffi/c/ffi
+cargo build --release
+cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+```
+And then build geth with CGO_LDFLAGS:
+```
+cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
+CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go build -tags=sputnikvm .
+```
+In macOS:
+
+```
+cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
+CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv" go build -tags=sputnikvm .
+```
+
 ## Executables
 
 This repository includes several wrappers/executables found in the `cmd` directory.
