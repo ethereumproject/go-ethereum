@@ -209,7 +209,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 	header := be.bc.CurrentBlock().Header()
 	vmenv := core.NewEnv(statedb, be.config, be.bc, msg, header)
 	gp := new(core.GasPool).AddGas(common.MaxBig)
-	res, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	res, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 
 	return common.ToHex(res), gas.String(), err
 }
