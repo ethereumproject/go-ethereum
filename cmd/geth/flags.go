@@ -26,6 +26,10 @@ import (
 
 var (
 	// General settings
+	SputnikVMFlag = cli.BoolFlag{
+		Name:  "sputnikvm",
+		Usage: "Use SputnikVM Ethereum Virtual Machine implementation",
+	}
 	DataDirFlag = DirectoryFlag{
 		Name:  "data-dir,datadir",
 		Usage: "Data directory for the databases and keystore",
