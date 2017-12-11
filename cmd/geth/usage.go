@@ -65,6 +65,7 @@ var AppHelpFlagGroups = []flagGroup{
 			LightKDFFlag,
 			CacheFlag,
 			BlockchainVersionFlag,
+			SputnikVMFlag,
 		},
 	},
 	{

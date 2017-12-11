@@ -123,6 +123,7 @@ func makeCLIApp() (app *cli.App) {
 	}
 
 	app.Flags = []cli.Flag{
+		SputnikVMFlag,
 		NodeNameFlag,
 		UnlockedAccountFlag,
 		PasswordFileFlag,
@@ -218,6 +219,15 @@ func makeCLIApp() (app *cli.App) {
 				cli.ShowCommandHelp(ctx, consoleCommand.Name)
 				cli.ShowCommandHelp(ctx, attachCommand.Name)
 				os.Exit(1)
+			}
+		}
+
+		if ctx.IsSet(SputnikVMFlag.Name) {
+			if core.SputnikVMExists {
+				log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation ...")
+				core.UseSputnikVM = true
+			} else {
+				log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
 			}
 		}
 
