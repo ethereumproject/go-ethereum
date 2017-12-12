@@ -45,6 +45,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
 	"github.com/hashicorp/golang-lru"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 var (
@@ -931,6 +932,10 @@ func (self *BlockChain) ExportN(w io.Writer, first uint64, last uint64) error {
 
 	glog.V(logger.Info).Infof("exporting %d blocks...\n", last-first+1)
 
+
+	bar := pb.New(int(last))
+	//bar.Format("[=>-]")
+	bar.Start()
 	for nr := first; nr <= last; nr++ {
 		block := self.GetBlockByNumber(nr)
 		if block == nil {
@@ -940,7 +945,9 @@ func (self *BlockChain) ExportN(w io.Writer, first uint64, last uint64) error {
 		if err := block.EncodeRLP(w); err != nil {
 			return err
 		}
+		bar.Increment()
 	}
+	bar.Finish()
 
 	return nil
 }
