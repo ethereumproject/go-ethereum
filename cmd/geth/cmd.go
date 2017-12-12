@@ -116,7 +116,7 @@ func StartNode(stack *node.Node) {
 	}()
 }
 
-// ImportChain imports a blockchain.
+// Chain imports a blockchain.
 func ImportChain(chain *core.BlockChain, fn string) error {
 	// Watch for Ctrl-C while the import is running.
 	// If a signal is received, the import will stop at the next batch.

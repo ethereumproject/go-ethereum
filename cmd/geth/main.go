@@ -123,6 +123,7 @@ func makeCLIApp() (app *cli.App) {
 	}
 
 	app.Flags = []cli.Flag{
+		SputnikVMFlag,
 		NodeNameFlag,
 		UnlockedAccountFlag,
 		PasswordFileFlag,
@@ -176,6 +177,12 @@ func makeCLIApp() (app *cli.App) {
 		DisplayFlag,
 		VModuleFlag,
 		LogDirFlag,
+		LogMaxSizeFlag,
+		LogMinSizeFlag,
+		LogMaxTotalSizeFlag,
+		LogIntervalFlag,
+		LogMaxAgeFlag,
+		LogCompressFlag,
 		LogStatusFlag,
 		MLogFlag,
 		MLogDirFlag,
@@ -223,7 +230,21 @@ func makeCLIApp() (app *cli.App) {
 			}
 		}
 
+		if ctx.IsSet(SputnikVMFlag.Name) {
+			if core.SputnikVMExists {
+				log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation ...")
+				core.UseSputnikVM = true
+			} else {
+				log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
+			}
+		}
+
 		runtime.GOMAXPROCS(runtime.NumCPU())
+
+		err := setupLogRotation(ctx)
+		if err != nil {
+			return err
+		}
 
 		glog.CopyStandardLogTo("INFO")
 

@@ -19,8 +19,11 @@ package glog
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io/ioutil"
 	stdLog "log"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -519,6 +522,309 @@ func TestLogBacktraceAt(t *testing.T) {
 		// We could be more precise but that would require knowing the details
 		// of the traceback format, which may not be dependable.
 		t.Fatal("got no trace back; log is ", loggingContents(infoLog))
+	}
+}
+
+func TestExtractTimestamp(t *testing.T) {
+	preffix := fmt.Sprintf("%s.%s.%s.log.", "geth_test", "sampleHost", "sampleUser")
+	cases := []struct {
+		name     string
+		fileName string
+		expected string
+	}{
+		{"valid INFO", preffix + "INFO.20171202-132113.2841", "20171202-132113"},
+		{"valid WARNIG", preffix + "WARNING.20171202-210922.13848", "20171202-210922"},
+		{"valid gzipped", preffix + "WARNING.20171202-210922.13848.gz", "20171202-210922"},
+		{"extra long filename", preffix + "WARNING.20171202-210922.13848.gz.bak", "20171202-210922"},
+		{"too short filename", preffix + "WARNING.20171202-21092", ""},
+		{"no preffix", "WARNING.20171202-21092", ""},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			actual := extractTimestamp(test.fileName, preffix)
+			if test.expected != actual {
+				t.Errorf("Expected: '%s', actual: '%s'", test.expected, actual)
+			}
+		})
+	}
+}
+
+func TestShouldRotate(t *testing.T) {
+	// fixed date, to make tests stable, 04.12.2017 is Monday
+	start := time.Date(2017, time.December, 4, 0, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name     string
+		nbytes   uint64
+		len      int
+		now      time.Time
+		minSize  uint64
+		maxSize  uint64
+		interval Interval
+		expected bool
+	}{
+		{"empty log no rotation", 0, 123, start, 0, 0, Never, false},
+		{"empty log with hourly rotation", 0, 123, start, 0, 0, Hourly, false},
+		{"empty log with size rotation", 0, 123, start, 0, 1024 * 1024, Never, false},
+		{"log with hourly rotation after less than hour", 1234, 123, start.Add(45 * time.Minute), 0, 0, Hourly, false},
+		{"log with hourly rotation after more than hour", 1234, 123, start.Add(65 * time.Minute), 0, 0, Hourly, true},
+		{"log with size rotation below MinSize", 1024, 123, start, 512 * 1024, 1024 * 1024, Never, false},
+		{"log with size rotation between MinSize and MaxSize", 765 * 1024, 123, start, 512 * 1024, 1024 * 1024, Never, false},
+		{"log with size rotation above MaxSize", 1024*1024 - 100, 123, start, 512 * 1024, 1024 * 1024, Never, true},
+		{"log with daily rotation after less than day", 1234, 123, start.Add(23 * time.Hour), 0, 0, Daily, false},
+		{"log with daily rotation after more than day", 1234, 123, start.Add(25 * time.Hour), 0, 0, Daily, true},
+		{"log with weekly rotation after less than week", 1234, 123, start.Add((6*24 + 23) * time.Hour), 0, 0, Weekly, false},
+		{"log with weekly rotation after more than week", 1234, 123, start.Add((7*24 + 1) * time.Hour), 0, 0, Weekly, true},
+		{"log with monthly rotation after less than month", 1234, 123, start.Add(14 * 24 * time.Hour), 0, 0, Monthly, false},
+		{"log with monthly rotation after more than month", 1234, 123, start.Add(30 * 24 * time.Hour), 0, 0, Monthly, true},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			sb := &syncBuffer{nbytes: test.nbytes, time: start}
+			MinSize = test.minSize
+			MaxSize = test.maxSize
+			RotationInterval = test.interval
+			actual := sb.shouldRotate(test.len, test.now)
+			if test.expected != actual {
+				t.Errorf("Expected: '%v', actual: '%v'", test.expected, actual)
+			}
+		})
+	}
+}
+
+func TestGzipFile(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.RemoveAll(dir)
+
+	file := filepath.Join(dir, "sample.log")
+	data := strings.Repeat("lorem ipsum dolor sit amet", 4096)
+	ioutil.WriteFile(file, []byte(data), 0600)
+
+	err = gzipFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gzipped := file + ".gz"
+
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(files) != 1 {
+		t.Errorf("expected 1 file in directory, found %d", len(files))
+	}
+	if files[0].Size() == 0 || files[0].Size() >= int64(len(data)) {
+		t.Errorf("expected: 0 < file size < %d [bytes], actual: %d [bytes]", len(data), files[0].Size())
+	}
+	if filepath.Join(dir, files[0].Name()) != gzipped {
+		t.Errorf("expected filename: %s; actual filename: %s", gzipped, files[0].Name())
+	}
+
+	input, err := os.Open(filepath.Join(dir, files[0].Name()))
+	if err != nil {
+		t.Error(err)
+	}
+	defer input.Close()
+
+	reader, err := gzip.NewReader(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	result, err := ioutil.ReadAll(reader)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(result) != data {
+		t.Errorf("contents of gzip file are invalid")
+	}
+}
+
+// there are always 10 interesting files, 10*1024b each
+// some of them are gzipped
+// there are WARN and INFO logs
+// there are also 3 other files, that shoudn't be touched
+// there are 2 "current files" (pointed by symlinks)
+// global configuration options should be applied
+// after running rotation, assertions about resulting data are checked
+func testRotation(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.RemoveAll(dir)
+
+	start := time.Date(2017, time.December, 06, 0, 0, 0, 0, time.UTC)
+
+	data := []byte(strings.Repeat(".", 10*1024))
+	logDate := start
+	// generate files
+	for i := 0; i < 5; i++ {
+		infoF, infoL := logName("INFO", logDate.Add(1*time.Second))
+		warnF, warnL := logName("WARNING", logDate.Add(10*time.Second).Add(1*time.Second))
+
+		ioutil.WriteFile(filepath.Join(dir, infoF), data, 0600)
+		ioutil.WriteFile(filepath.Join(dir, warnF), data, 0600)
+
+		infoSL := filepath.Join(dir, infoL)
+		os.Remove(infoSL)                             // ignore err
+		os.Symlink(filepath.Join(dir, infoF), infoSL) // ignore err
+
+		warnSL := filepath.Join(dir, warnL)
+		os.Remove(warnSL)                             // ignore err
+		os.Symlink(filepath.Join(dir, warnF), warnSL) // ignore err
+
+		logDate = logDate.Add(24 * time.Hour)
+	}
+	dummy1 := "and_now_for_something_completely_different.log"
+	ioutil.WriteFile(filepath.Join(dir, dummy1), data, 0600)
+	dummy2, _ := logName("ERROR", start.Add(-10*24*time.Hour))
+	dummy2 = "keep." + dummy2
+	ioutil.WriteFile(filepath.Join(dir, dummy2), data, 0600)
+	dummy3, _ := logName("INFO", start.Add(+10*24*time.Hour))
+	dummy3 = strings.Replace(dummy3, userName, "differentUser", 1)
+	ioutil.WriteFile(filepath.Join(dir, dummy3), data, 0600)
+
+	// prepare environment
+	logDirs = nil
+	SetLogDir(dir)
+	createLogDirs()
+
+	// execute rotation
+	sb := &syncBuffer{}
+	sb.rotateOld(logDate)
+
+	// make assertions
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ensure that 3rd party files are intact
+	dummy1ok := false
+	dummy2ok := false
+	dummy3ok := false
+	totalSize := uint64(0)
+	nGzipped := 0
+	preffix := fmt.Sprintf("%s.%s.%s.log.", program, host, userName)
+	maxTimestamp := ""
+	if MaxAge > 0 {
+		t := logDate.Add(-1 * MaxAge)
+		maxTimestamp = fmt.Sprintf("%04d%02d%02d-%02d%02d%02d",
+			t.Year(),
+			t.Month(),
+			t.Day(),
+			t.Hour(),
+			t.Minute(),
+			t.Second(),
+		)
+	}
+	for _, file := range files {
+		sameSize := file.Size() == int64(len(data))
+		switch file.Name() {
+		case dummy1:
+			dummy1ok = sameSize
+		case dummy2:
+			dummy2ok = sameSize
+		case dummy3:
+			dummy3ok = sameSize
+		default:
+			totalSize += uint64(file.Size())
+			if maxTimestamp != "" && file.Mode().IsRegular() {
+				timestamp := extractTimestamp(file.Name(), preffix)
+				if strings.Compare(timestamp, maxTimestamp) < 0 {
+					t.Errorf("Old file not removed properly: %s\n", file.Name())
+				}
+			}
+		}
+		if strings.HasSuffix(file.Name(), ".gz") {
+			nGzipped++
+		}
+
+	}
+
+	if !dummy1ok || !dummy2ok || !dummy3ok {
+		t.Error("Some 3rd party files removed or modified!")
+	}
+
+	if MaxTotalSize > 0 && totalSize >= MaxTotalSize {
+		t.Error("MaxTotalSize constraint violated!")
+	}
+
+	// 3 x 3rd-party files, 2 x symlink, 2 x current log files
+	if Compress && nGzipped == len(files)-3-2-2 {
+		t.Error("Some files not compressed!")
+	}
+}
+
+func TestRotateOldFiles(t *testing.T) {
+	MinSize = 0
+	MaxSize = 1024
+	RotationInterval = Never
+
+	cases := []struct {
+		name         string
+		maxAge       time.Duration
+		maxTotalSize uint64
+		compress     bool
+	}{
+		{"no limits", 0, 0, false},
+		{"no limits with compression", 0, 0, true},
+		{"with age limit", 2 * 24 * time.Hour, 0, false},
+		{"with size limit", 0, 5 * 1024, false},
+		{"with both limits", 4 * 24 * time.Hour, 5 * 1024, false},
+		{"with age limit and compression", 2 * 24 * time.Hour, 0, true},
+		{"with size limit and compression", 0, 5 * 1024, true},
+		{"with both limits and compression", 4 * 24 * time.Hour, 5 * 1024, true},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			MaxAge = test.maxAge
+			MaxTotalSize = test.maxTotalSize
+			Compress = test.compress
+			testRotation(t)
+		})
+	}
+}
+
+func TestParseInterval(t *testing.T) {
+	cases := []struct {
+		value    string
+		expected Interval
+		err      bool
+	}{
+		{"never", Never, false},
+		{"NeVeR", Never, false},
+		{"daily", Daily, false},
+		{"Daily", Daily, false},
+		{"weekly", Weekly, false},
+		{"weekLY", Weekly, false},
+		{"monthly", Monthly, false},
+		{"mONThLy", Monthly, false},
+		{"invalid", Never, true},
+		{"daily weekly", Never, true},
+		{"none", Never, true},
+	}
+
+	for _, test := range cases {
+		t.Run(test.value, func(t *testing.T) {
+			interval, err := ParseInterval(test.value)
+			if test.expected != interval {
+				t.Error("Invalid interval value")
+			}
+			if test.err != (err != nil) {
+				t.Error("Invalid error value")
+			}
+		})
 	}
 }
 
