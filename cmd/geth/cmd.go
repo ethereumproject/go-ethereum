@@ -202,7 +202,7 @@ func hasAllBlocks(chain *core.BlockChain, bs []*types.Block) bool {
 }
 
 func ExportChain(blockchain *core.BlockChain, fn string) error {
-	glog.D(logger.Warn).Infoln("Exporting blockchain to ", fn)
+	glog.D(logger.Warn).Infoln("Exporting blockchain to", fn, "(this may take a while)...")
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
