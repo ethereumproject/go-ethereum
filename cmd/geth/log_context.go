@@ -14,6 +14,9 @@ import (
 	"os"
 )
 
+const defaultStatusLog = "sync=30"
+var isToFileLoggingEnabled = true
+
 // setupLogging sets default
 func setupLogging(ctx *cli.Context) error {
 	glog.CopyStandardLogTo("INFO")
@@ -118,6 +121,8 @@ func getSizeFlagValue(flag *cli.StringFlag, ctx *cli.Context) (uint64, error) {
 func parseDuration(str string) (time.Duration, error) {
 	mapping := map[rune]uint64{
 		0:   uint64(time.Second), // no-suffix means value in seconds
+		's': uint64(time.Second),
+		'm': uint64(time.Minute),
 		'h': uint64(time.Hour),
 		'd': uint64(24 * time.Hour),
 		'w': uint64(7 * 24 * time.Hour),

@@ -49,7 +49,6 @@ import (
 
 const (
 	importBatchSize = 2500
-	defaultStatusLog = "sync=30"
 )
 
 // Fatalf formats a message to standard error and exits the program.
@@ -746,18 +745,10 @@ func version(ctx *cli.Context) error {
 	return nil
 }
 
-// LogStatusFeatAvailability is used to register and track use of available status logging features, eg. "STATUS SYNC"
-type LogStatusFeatAvailability int
-
-const (
-	StatusFeatAvailable LogStatusFeatAvailability = iota
-	StatusFeatRegistered
-)
-
 // availableLogStatusFeatures stores state of implemented log STATUS features.
 // New features should be registered here, and their status updates by dispatchStatusLogs if in use (to avoid dupe goroutine logging).
-var availableLogStatusFeatures = map[string]LogStatusFeatAvailability{
-	"sync": StatusFeatAvailable,
+var availableLogStatusFeatures = map[string]time.Duration{
+	"sync": time.Duration(0),
 }
 
 type lsMode int
@@ -791,6 +782,19 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 		glog.Fatalf("%v: %v", flagName, ErrInvalidFlag)
 	}
 
+	parseStatusInterval := func(statusModule string, interval string) (tickerInterval time.Duration) {
+		upcaseModuleName := strings.ToUpper(statusModule)
+		if interval != "" {
+			if ti, err := parseDuration(interval); err != nil {
+				glog.Fatalf("%s %v: could not parse argument: %v", upcaseModuleName, err, interval)
+			} else {
+				tickerInterval = ti
+			}
+		}
+		//glog.V(logger.Info).Infof("Rolling %s log interval set: %v", upcaseModuleName, tickerInterval)
+		return tickerInterval
+	}
+
 	for _, p := range strings.Split(v, ",") {
 		// Ignore hanging or double commas
 		if p == "" {
@@ -808,7 +812,7 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 		if status, ok := availableLogStatusFeatures[eqs[0]]; !ok {
 			glog.Errorf("%v: %v: unavailable status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
 			os.Exit(1)
-		} else if status == StatusFeatRegistered {
+		} else if status.Seconds() != 0 {
 			glog.Errorf("%v: %v: duplicate status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
 			os.Exit(1)
 		}
@@ -817,10 +821,13 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 		if len(eqs) == 1 {
 			eqs = append(eqs, "")
 		}
+
+		d := parseStatusInterval(eqs[0], eqs[1])
+
 		switch eqs[0] {
 		case "sync":
-			availableLogStatusFeatures["sync"] = StatusFeatRegistered
-			go runStatusSyncLogs(ctx, ethe, eqs[1], ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
+			availableLogStatusFeatures["sync"] = d
+			go runStatusSyncLogs(ctx, ethe, d, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 		}
 	}
 }
@@ -828,34 +835,9 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 // runStatusSyncLogs starts STATUS SYNC logging at a given interval.
 // It should be run as a goroutine.
 // eg. --log-status="sync=42" logs SYNC information every 42 seconds
-func runStatusSyncLogs(ctx *cli.Context, e *eth.Ethereum, interval string, maxPeers int) {
-	// Establish default interval and parse desired interval from context.
-	// Includes convenience notifications for UI/UX.
-	intervalI := 60
-	if interval != "" {
-		i, e := strconv.Atoi(interval)
-		if e != nil {
-			glog.Fatalf("SYNC %v: could not parse argument: %v", e, interval)
-		}
-		if i < 1 {
-			glog.Fatalf("SYNC interval value must be a positive integer, got: %d", i)
-		}
-		intervalI = i
-	}
-	glog.V(logger.Info).Infof("Rolling SYNC log interval set: %d seconds", intervalI)
-
-	// Only use severity=warn if --log-status not in use (ie using defaults)
-	statIntervalNotice := fmt.Sprintf("Rolling SYNC status logs set to every %d seconds. ", intervalI)
-	if !ctx.GlobalIsSet(LogStatusFlag.Name) {
-		statIntervalNotice += fmt.Sprintf("You can adjust this with the --%s flag.", LogStatusFlag.Name)
-		glog.D(logger.Error).Warnln(statIntervalNotice)
-		// statIntervalNoticeFn = glog.D(logger.Error).Warnf
-	} else {
-		glog.D(logger.Error).Infoln(statIntervalNotice)
-	}
+func runStatusSyncLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Duration, maxPeers int) {
 
 	// Set up ticker based on established interval.
-	tickerInterval := time.Second * time.Duration(int32(intervalI))
 	ticker := time.NewTicker(tickerInterval)
 	var chainEventLastSent time.Time
 
@@ -1051,7 +1033,7 @@ func runStatusSyncLogs(ctx *cli.Context, e *eth.Ethereum, interval string, maxPe
 		// stats will show '0' blocks/second. Looks a little strange; but on the other hand,
 		// precision costs visual space, and normally just looks weird when starting up sync or
 		// syncing slowly.
-		numBlocksDiffPerSecond = numBlocksDiff / uint64(intervalI)
+		numBlocksDiffPerSecond = numBlocksDiff / uint64(tickerInterval.Seconds())
 
 		// Don't show initial current / per second val
 		if lastLoggedBlockNumber == 0 {
@@ -1060,8 +1042,8 @@ func runStatusSyncLogs(ctx *cli.Context, e *eth.Ethereum, interval string, maxPe
 		}
 
 		// Divide by interval to yield per-second stats
-		numTxsDiffPerSecond = numTxsDiff / intervalI
-		mGasPerSecond = new(big.Int).Div(mGas, big.NewInt(int64(intervalI)))
+		numTxsDiffPerSecond = numTxsDiff / int(tickerInterval.Seconds())
+		mGasPerSecond = new(big.Int).Div(mGas, big.NewInt(int64(tickerInterval.Seconds())))
 		mGasPerSecond = new(big.Int).Div(mGasPerSecond, big.NewInt(1000000))
 		mGasPerSecondI := mGasPerSecond.Int64()
 
@@ -1108,7 +1090,7 @@ func runStatusSyncLogs(ctx *cli.Context, e *eth.Ethereum, interval string, maxPe
 	for {
 		select {
 		case <-ticker.C:
-			if time.Since(chainEventLastSent) > time.Duration(time.Second*time.Duration(int32(intervalI/2))) {
+			if time.Since(chainEventLastSent) > time.Duration(time.Second*time.Duration(int32(tickerInterval.Seconds()/2))) {
 				printIntervalStatusLog()
 			}
 		case <-sigc:
