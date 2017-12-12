@@ -104,7 +104,8 @@ func NewHeaderChain(chainDb ethdb.Database, config *ChainConfig, mux *event.Type
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infof("WARNING: Wrote default ethereum %v genesis block", genname)
+		glog.V(logger.Info).Infof("Wrote default ethereum %v genesis block", genname)
+		glog.D(logger.Info).Infof("Wrote default ethereum %v genesis block", logger.ColorGreen(genname))
 		hc.genesisHeader = genesisBlock.Header()
 	}
 

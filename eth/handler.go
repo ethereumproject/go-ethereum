@@ -106,7 +106,7 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 	}
 	// Figure out whether to allow fast sync or not
 	if fastSync && blockchain.CurrentBlock().NumberU64() > 0 {
-		glog.V(logger.Warn).Infoln("WARNING: Blockchain not empty, fast sync disabled")
+		glog.V(logger.Warn).Infoln("Blockchain not empty, fast sync disabled")
 		glog.D(logger.Warn).Warnln("Blockchain not empty. Fast sync disabled.")
 		fastSync = false
 	}

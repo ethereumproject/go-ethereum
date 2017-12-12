@@ -538,7 +538,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		defer self.mu.Lock()
 
 		if recoveredHeight == 0 {
-			glog.V(logger.Error).Errorln("WARNING: No recoverable data found, resetting to genesis.")
+			glog.V(logger.Error).Errorln("No recoverable data found, resetting to genesis.")
 			return self.Reset()
 		}
 		// Remove all block header and canonical data above recoveredHeight
@@ -551,7 +551,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	if head == (common.Hash{}) {
 		// Corrupt or empty database, init from scratch
 		if !dryrun {
-			glog.V(logger.Warn).Errorln("WARNING: Empty database, attempting chain reset with recovery.")
+			glog.V(logger.Warn).Errorln("Empty database, attempting chain reset with recovery.")
 			return recoverOrReset()
 		}
 		return errors.New("empty HeadBlockHash")
@@ -564,7 +564,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		if !dryrun {
-			glog.V(logger.Warn).Errorf("WARNING: Head block missing, hash: %x\nAttempting chain reset with recovery.", head)
+			glog.V(logger.Warn).Errorf("Head block missing, hash: %x\nAttempting chain reset with recovery.", head)
 			return recoverOrReset()
 		}
 		return errors.New("nil currentBlock")
