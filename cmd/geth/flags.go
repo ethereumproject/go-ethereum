@@ -148,25 +148,25 @@ var (
 		Name:  "neckbeard",
 		Usage: "Use verbose->stderr defaults for logging (verbosity=5,log-status='sync=60')",
 	}
-	VerbosityFlag = cli.GenericFlag{
+	VerbosityFlag = cli.IntFlag{
 		Name:  "verbosity",
 		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=core, 5=debug, 6=detail",
-		Value: glog.GetVerbosity(),
+		Value: glog.DefaultVerbosity,
 	}
 	DisplayFlag = cli.IntFlag{
 		Name:  "display",
 		Usage: "Display verbosity: 0=silent, 1=basics, 2=status, 3=status+events",
-		Value: 3,
+		Value: glog.DefaultDisplay,
 	}
-	VModuleFlag = cli.GenericFlag{
+	VModuleFlag = cli.StringFlag{
 		Name:  "vmodule",
 		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
-		Value: glog.GetVModule(),
+		Value: "",
 	}
-	LogDirFlag = DirectoryFlag{
+	LogDirFlag = cli.StringFlag{
 		Name:  "log-dir,logdir",
 		Usage: "Directory in which to write log files",
-		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "<chain>", "logs")},
+		Value: filepath.Join(common.DefaultDataDir(), "<chain>", glog.DefaultLogDirName),
 	}
 	LogMaxSizeFlag = cli.StringFlag{
 		Name:  "log-max-size,log-maxsize",

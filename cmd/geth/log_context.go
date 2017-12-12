@@ -28,26 +28,49 @@ func setupLogging(ctx *cli.Context) error {
 	glog.SetV(glog.DefaultVerbosity)
 
 	// Set up file logging.
-	logDir := filepath.Join(MustMakeChainDataDir(ctx), glog.DefaultLogDirName)
+	logDir := ""
+	isToFileLoggingEnabled = toFileLoggingEnabled(ctx)
 
 	// If '--log-dir' flag is in use, override the default.
 	if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
 		ld := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx))
-		ldAbs, err := filepath.Abs(ld)
-		if err != nil {
-			return err
+		if ld == "" {
+			return fmt.Errorf("--%s cannot be empty", LogDirFlag.Name)
 		}
-		logDir = ldAbs
-	}
-	// Ensure log dir exists; mkdir -p <logdir>
-	if e := os.MkdirAll(logDir, os.ModePerm); e != nil {
-		return e
+		if isToFileLoggingEnabled {
+			ldAbs, err := filepath.Abs(ld)
+			if err != nil {
+				return err
+			}
+			logDir = ldAbs
+		} else {
+			glog.SetD(0)
+			glog.SetToStderr(true)
+		}
+	} else {
+		logDir = filepath.Join(MustMakeChainDataDir(ctx), glog.DefaultLogDirName)
 	}
 
-	// Before glog.SetLogDir is called, logs are saved to system-default temporary directory.
-	// If logging is started before this call, the new logDir will be used after file rotation
-	// (by default after 1800MB of data per file).
-	glog.SetLogDir(logDir)
+	// Allow to-file logging to be disabled
+	if logDir != "" {
+		// Ensure log dir exists; mkdir -p <logdir>
+		if e := os.MkdirAll(logDir, os.ModePerm); e != nil {
+			return e
+		}
+
+		// Before glog.SetLogDir is called, logs are saved to system-default temporary directory.
+		// If logging is started before this call, the new logDir will be used after file rotation
+		// (by default after 1800MB of data per file).
+		glog.SetLogDir(logDir)
+	}
+
+
+	// Handle --neckbeard config overrides if set.
+	if ctx.GlobalBool(NeckbeardFlag.Name) {
+		glog.SetD(0)
+		glog.SetV(5)
+		glog.SetAlsoToStderr(true)
+	}
 
 	// Handle display level configuration.
 	if ctx.GlobalIsSet(DisplayFlag.Name) {
@@ -58,20 +81,26 @@ func setupLogging(ctx *cli.Context) error {
 		glog.SetD(i)
 	}
 
-	// Handle --neckbeard config overrides if set.
-	if ctx.GlobalBool(NeckbeardFlag.Name) {
-		glog.SetD(0)
-		// Allow manual overrides
-		if !ctx.GlobalIsSet(VerbosityFlag.Name) {
-			glog.SetV(5)
+	// Manual context configs
+	// Global V verbosity
+	if ctx.GlobalIsSet(VerbosityFlag.Name) {
+		nint := ctx.GlobalInt(VerbosityFlag.Name)
+		if nint <= logger.Detail || nint == logger.Ridiculousness {
+			glog.SetV(nint)
 		}
-		glog.SetAlsoToStderr(true)
+	}
+
+	// Global Vmodule
+	if ctx.GlobalIsSet(VModuleFlag.Name) {
+		v := ctx.GlobalString(VModuleFlag.Name)
+		glog.GetVModule().Set(v)
 	}
 
 	// If --log-status not set, set default 60s interval
 	if !ctx.GlobalIsSet(LogStatusFlag.Name) {
 		ctx.Set(LogStatusFlag.Name, defaultStatusLog)
 	}
+
 	return nil
 }
 
