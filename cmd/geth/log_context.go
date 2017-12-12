@@ -10,7 +10,67 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"path/filepath"
+	"os"
 )
+
+// setupLogging sets default
+func setupLogging(ctx *cli.Context) error {
+	glog.CopyStandardLogTo("INFO")
+
+	// Turn on only file logging, disabling logging(T).toStderr and logging(T).alsoToStdErr
+	glog.SetToStderr(glog.DefaultToStdErr)
+	glog.SetAlsoToStderr(glog.DefaultAlsoToStdErr)
+
+	glog.SetV(glog.DefaultVerbosity)
+
+	// Set up file logging.
+	logDir := filepath.Join(MustMakeChainDataDir(ctx), glog.DefaultLogDirName)
+
+	// If '--log-dir' flag is in use, override the default.
+	if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
+		ld := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx))
+		ldAbs, err := filepath.Abs(ld)
+		if err != nil {
+			return err
+		}
+		logDir = ldAbs
+	}
+	// Ensure log dir exists; mkdir -p <logdir>
+	if e := os.MkdirAll(logDir, os.ModePerm); e != nil {
+		return e
+	}
+
+	// Before glog.SetLogDir is called, logs are saved to system-default temporary directory.
+	// If logging is started before this call, the new logDir will be used after file rotation
+	// (by default after 1800MB of data per file).
+	glog.SetLogDir(logDir)
+
+	// Handle display level configuration.
+	if ctx.GlobalIsSet(DisplayFlag.Name) {
+		i := ctx.GlobalInt(DisplayFlag.Name)
+		if i > 3 {
+			return fmt.Errorf("--%s level must be 0 <= i <= 3, got: %d", DisplayFlag.Name, i)
+		}
+		glog.SetD(i)
+	}
+
+	// Handle --neckbeard config overrides if set.
+	if ctx.GlobalBool(NeckbeardFlag.Name) {
+		glog.SetD(0)
+		// Allow manual overrides
+		if !ctx.GlobalIsSet(VerbosityFlag.Name) {
+			glog.SetV(5)
+		}
+		glog.SetAlsoToStderr(true)
+	}
+
+	// If --log-status not set, set default 60s interval
+	if !ctx.GlobalIsSet(LogStatusFlag.Name) {
+		ctx.Set(LogStatusFlag.Name, defaultStatusLog)
+	}
+	return nil
+}
 
 func setupLogRotation(ctx *cli.Context) error {
 	var err error

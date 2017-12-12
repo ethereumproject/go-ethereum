@@ -155,8 +155,8 @@ var (
 	}
 	DisplayFlag = cli.IntFlag{
 		Name:  "display",
-		Usage: "Display verbosity: 0=silent, 1=basics, 2=status, 3=events",
-		Value: 2,
+		Usage: "Display verbosity: 0=silent, 1=basics, 2=status, 3=status+events",
+		Value: 3,
 	}
 	VModuleFlag = cli.GenericFlag{
 		Name:  "vmodule",
@@ -200,7 +200,7 @@ var (
 	LogStatusFlag = cli.StringFlag{
 		Name:  "log-status",
 		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>. Use 'off' to disable entirely.'`,
-		Value: "sync=30",
+		Value: defaultStatusLog,
 	}
 	MLogFlag = cli.StringFlag{
 		Name:  "mlog",

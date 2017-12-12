@@ -29,6 +29,41 @@ import (
 	"path/filepath"
 )
 
+// handleIfDataDirSchemaMigrations is a handler for the conditional logic around
+// data/chain dir migrations from geth versions < 3.4 and in consideration of EF geth schemas used for ETC.
+func handleIfDataDirSchemaMigrations(ctx *cli.Context) error {
+
+	origV := int(*glog.GetVerbosity())
+	if origV == 0 {
+		origV = glog.DefaultVerbosity
+	}
+
+	// Turn verbosity down for migration check. If migration happens, it will print to Warn.
+	// Otherwise logs are just debuggers.
+	glog.SetToStderr(true)
+	glog.SetV(3)
+
+	if shouldAttemptDirMigration(ctx) {
+		// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
+		// Only do this if --datadir flag is not specified AND <home>/<EthereumClassic> does NOT already exist (only migrate once and only for defaulty).
+		// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
+		// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
+		if err := migrateExistingDirToClassicNamingScheme(ctx); err != nil {
+			return err
+		}
+
+		// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
+		// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
+		// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
+		if err := migrateToChainSubdirIfNecessary(ctx); err != nil {
+			return err
+		}
+	}
+	// (Re)set default debug verbosity level.
+	glog.SetV(origV)
+	return nil
+}
+
 // migrateExistingDirToClassicNamingScheme renames default base data directory ".../Ethereum" to ".../EthereumClassic", pending os customs, etc... ;-)
 ///
 // Check for preexisting **Un-classic** data directory, ie "/home/path/to/Ethereum".

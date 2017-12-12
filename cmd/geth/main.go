@@ -30,7 +30,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 )
 
@@ -241,83 +240,19 @@ func makeCLIApp() (app *cli.App) {
 
 		runtime.GOMAXPROCS(runtime.NumCPU())
 
-		err := setupLogRotation(ctx)
-		if err != nil {
+		// Check for migrations and handle if conditionals are met.
+		if err := handleIfDataDirSchemaMigrations(ctx); err != nil {
 			return err
 		}
 
-		glog.CopyStandardLogTo("INFO")
-
-		// Data migrations if should.
-		glog.SetToStderr(true)
-		// Turn verbosity down for migration check. If migration happens, it will print to Warn.
-		// Otherwise logs are just debuggers.
-		glog.SetV(3)
-		if shouldAttemptDirMigration(ctx) {
-			// Rename existing default datadir <home>/<Ethereum>/ to <home>/<EthereumClassic>.
-			// Only do this if --datadir flag is not specified AND <home>/<EthereumClassic> does NOT already exist (only migrate once and only for defaulty).
-			// If it finds an 'Ethereum' directory, it will check if it contains default ETC or ETHF chain data.
-			// If it contains ETC data, it will rename the dir. If ETHF data, if will do nothing.
-			if migrationError := migrateExistingDirToClassicNamingScheme(ctx); migrationError != nil {
-				glog.Fatalf("%v: failed to migrate existing Classic database: %v", ErrDirectoryStructure, migrationError)
-			}
-
-			// Move existing mainnet data to pertinent chain-named subdir scheme (ie ethereum-classic/mainnet).
-			// This should only happen if the given (newly defined in this protocol) subdir doesn't exist,
-			// and the dirs&files (nodekey, dapp, keystore, chaindata, nodes) do exist,
-			if subdirMigrateErr := migrateToChainSubdirIfNecessary(ctx); subdirMigrateErr != nil {
-				glog.Fatalf("%v: failed to migrate existing data to chain-specific subdir: %v", ErrDirectoryStructure, subdirMigrateErr)
-			}
-		}
-		// Set default debug verbosity level.
-		glog.SetV(5)
-
-		// log.Println("Writing logs to ", logDir)
-		// Turn on only file logging, disabling logging(T).toStderr and logging(T).alsoToStdErr
-		glog.SetToStderr(false)
-		glog.SetAlsoToStderr(false)
-
-		// Set up file logging.
-		logDir := filepath.Join(MustMakeChainDataDir(ctx), "log")
-		if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
-			ld := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx))
-			ldAbs, err := filepath.Abs(ld)
-			if err != nil {
-				glog.Fatalln(err)
-			}
-			logDir = ldAbs
-		}
-		// Ensure mkdir -p
-		if e := os.MkdirAll(logDir, os.ModePerm); e != nil {
-			return e
-		}
-		// Set log dir.
-		// GOTCHA: There may be NO glog.V logs called before this is set.
-		//   Otherwise everything will get all fucked and there will be no logs.
-		glog.SetLogDir(logDir)
-
-		if ctx.GlobalIsSet(DisplayFlag.Name) {
-			i := ctx.GlobalInt(DisplayFlag.Name)
-			if i > 3 {
-				return fmt.Errorf("Error: --%s level must be 0 <= i <= 3, got: %d", DisplayFlag.Name, i)
-			}
-			glog.SetD(i)
+		// Handle parsing and applying log verbosity, severities, and default configurations from context.
+		if err := setupLogging(ctx); err != nil {
+			return err
 		}
 
-		if ctx.GlobalBool(NeckbeardFlag.Name) {
-			glog.SetD(0)
-			// Allow manual overrides
-			if !ctx.GlobalIsSet(LogStatusFlag.Name) {
-				ctx.Set(LogStatusFlag.Name, "sync=60") // set log-status interval
-			}
-			if !ctx.GlobalIsSet(VerbosityFlag.Name) {
-				glog.SetV(5)
-			}
-			glog.SetAlsoToStderr(true)
-		}
-		// If --log-status not set, set default 60s interval
-		if !ctx.GlobalIsSet(LogStatusFlag.Name) {
-			ctx.Set(LogStatusFlag.Name, "sync=30")
+		// Handle parsing and applying log rotation configs from context.
+		if err := setupLogRotation(ctx); err != nil {
+			return err
 		}
 
 		if s := ctx.String("metrics"); s != "" {
@@ -334,14 +269,14 @@ func makeCLIApp() (app *cli.App) {
 		// > The output of this command is supposed to be machine-readable.
 		gasLimit := ctx.GlobalString(aliasableName(TargetGasLimitFlag.Name, ctx))
 		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
-			log.Fatalf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
+			return fmt.Errorf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
 		}
 
 		// Set morden chain by default for dev mode.
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 			if !ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 				if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), "morden"); e != nil {
-					log.Fatalf("failed to set chain value: %v", e)
+					return fmt.Errorf("failed to set chain value: %v", e)
 				}
 			}
 		}

@@ -122,6 +122,25 @@ import (
 	"time"
 )
 
+
+// DefaultVerbosity establishes the default verbosity Level for
+// to-file (debug) logging.
+var DefaultVerbosity = 5
+
+// DefaultToStdErr establishes the default bool toggling whether logging
+// should be directed ONLY to stderr.
+var DefaultToStdErr = false
+
+// DefaultAlsoToStdErr establishes the default bool toggling whether logging
+// should be written to BOTH file and stderr.
+var DefaultAlsoToStdErr = false
+
+// DefaultLogDirName establishes the default directory name for debug (V) logs.
+// Log files will be written inside this dir.
+// By default, this directory will be created if it does not exist within the context's chain directory, eg.
+// <datadir>/<chain>/log/.
+var DefaultLogDirName = "log"
+
 // MinSize is a minimum file size qualifying for rotation. This variable can be used
 // to avoid rotation of empty or almost emtpy files.
 var MinSize uint64

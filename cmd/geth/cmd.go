@@ -49,6 +49,7 @@ import (
 
 const (
 	importBatchSize = 2500
+	defaultStatusLog = "sync=30"
 )
 
 // Fatalf formats a message to standard error and exits the program.
