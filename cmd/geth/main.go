@@ -316,6 +316,7 @@ func geth(ctx *cli.Context) error {
 	if ctx.GlobalString(LogStatusFlag.Name) != "off" {
 		dispatchStatusLogs(ctx, ethe)
 	}
+	logLoggingConfiguration(ctx)
 
 	n.Wait()
 

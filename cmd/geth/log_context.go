@@ -12,6 +12,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"path/filepath"
 	"os"
+	"github.com/ethereumproject/go-ethereum/logger"
 )
 
 const defaultStatusLog = "sync=30"
@@ -209,4 +210,121 @@ func parseWithSuffix(str string, mapping map[rune]uint64) (uint64, error) {
 	}
 
 	return value * mapping[suffix], nil
+}
+
+func toFileLoggingEnabled(ctx *cli.Context) bool {
+	if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
+		ld := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx))
+		if ld == "off" || ld == "disable" || ld == "disabled" {
+			return false
+		}
+	}
+	return true
+}
+
+func mustMakeMLogDir(ctx *cli.Context) string {
+	if ctx.GlobalIsSet(MLogDirFlag.Name) {
+		p := ctx.GlobalString(MLogDirFlag.Name)
+		if p == "" {
+			glog.Fatalf("Flag %v requires a non-empty argument", MLogDirFlag.Name)
+			return ""
+		}
+		if filepath.IsAbs(p) {
+			return p
+		}
+		ap, e := filepath.Abs(p)
+		if e != nil {
+			glog.Fatalf("could not establish absolute path for mlog dir: %v", e)
+		}
+		return ap
+	}
+
+	return filepath.Join(MustMakeChainDataDir(ctx), "mlogs")
+}
+
+func makeMLogFileLogger(ctx *cli.Context) (string, error) {
+	now := time.Now()
+
+	mlogdir := mustMakeMLogDir(ctx)
+	logger.SetMLogDir(mlogdir)
+
+	_, filename, err := logger.CreateMLogFile(now)
+	if err != nil {
+		return "", err
+	}
+	// withTs toggles custom timestamp ISO8601 prefix
+	// logger print without timestamp header prefix if json
+	withTs := true
+	if f := ctx.GlobalString(MLogFlag.Name); logger.MLogStringToFormat[f] == logger.MLOGJSON {
+		withTs = false
+	}
+	logger.BuildNewMLogSystem(mlogdir, filename, 1, 0, withTs) // flags: 0 disables automatic log package time prefix
+	return filename, nil
+}
+
+func mustRegisterMLogsFromContext(ctx *cli.Context) {
+	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalString(MLogComponentsFlag.Name)); e != nil {
+		// print documentation if user enters unavailable mlog component
+		var components []string
+		for k := range logger.MLogRegistryAvailable {
+			components = append(components, string(k))
+		}
+		glog.V(logger.Error).Errorf("Error: %s", e)
+		glog.V(logger.Error).Errorf("Available machine log components: %v", components)
+		os.Exit(1)
+	}
+	// Set the global logger mlog format from context
+	if e := logger.SetMLogFormatFromString(ctx.GlobalString(MLogFlag.Name)); e != nil {
+		glog.Fatalf("Error setting mlog format: %v, value was: %v", e, ctx.GlobalString(MLogFlag.Name))
+	}
+	_, e := makeMLogFileLogger(ctx)
+	if e != nil {
+		glog.Fatalf("Failed to start machine log: %v", e)
+	}
+	logger.SetMlogEnabled(true)
+}
+
+func logLoggingConfiguration(ctx *cli.Context) {
+	v := glog.GetVerbosity().String()
+	logdir := "off"
+	if isToFileLoggingEnabled {
+		logdir = glog.GetLogDir()
+	}
+	vmodule := glog.GetVModule().String()
+	// An empty string looks unused, so show * instead, which is equivalent.
+	if vmodule == "" {
+		vmodule= "*"
+	}
+	d := glog.GetDisplayable().String()
+
+	statusFeats := []string{}
+	for k, v := range availableLogStatusFeatures {
+		if v.Seconds() == 0 {
+			continue
+		}
+		statusFeats = append(statusFeats, logger.ColorGreen(fmt.Sprintf("%s=%v", k, v)))
+	}
+	statusLine := strings.Join(statusFeats, ",")
+
+	glog.V(logger.Warn).Infoln("Debug log configuration", "v=", v, "logdir=", logdir, "vmodule=", vmodule)
+	glog.D(logger.Warn).Infof("Debug log config: verbosity=%s log-dir=%s vmodule=%s",
+		logger.ColorGreen(v),
+		logger.ColorGreen(logdir),
+		logger.ColorGreen(vmodule),
+	)
+
+	glog.V(logger.Warn).Infoln("Display log configuration", "d=", d, "status=", statusLine)
+	glog.D(logger.Warn).Infof("Display log config: display=%s status=%s",
+		logger.ColorGreen(d),
+		statusLine,
+	)
+
+	if logger.MlogEnabled() {
+		glog.V(logger.Warn).Warnf("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())
+		glog.D(logger.Warn).Infof("Machine log config: mlog=%s mlog-dir=%s", logger.ColorGreen(logger.GetMLogFormat().String()), logger.ColorGreen(logger.GetMLogDir()))
+	} else {
+		glog.V(logger.Warn).Warnf("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())
+		glog.D(logger.Warn).Warnf("Machine log config: mlog=%s", logger.ColorYellow("off"))
+	}
+
 }

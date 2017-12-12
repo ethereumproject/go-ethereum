@@ -127,6 +127,10 @@ import (
 // to-file (debug) logging.
 var DefaultVerbosity = 5
 
+// DefaultDisplay establishes the default verbosity Level for
+// display (stderr) logging.
+var DefaultDisplay = 3
+
 // DefaultToStdErr establishes the default bool toggling whether logging
 // should be directed ONLY to stderr.
 var DefaultToStdErr = false
@@ -651,7 +655,7 @@ func init() {
 	logging.severityTraceThreshold.set(2)
 
 	// Default for verbosity.
-	logging.setVState(5, nil, false)
+	logging.setVState(Level(DefaultVerbosity), nil, false)
 	go logging.flushDaemon()
 
 	display.logTName = displayLog
@@ -672,7 +676,7 @@ func init() {
 	// all Fatal, Error, Warn, and Info log levels.
 	// Please don't use Fatal for display; again, Fatal logs should only go through file logging
 	// (they will be printed to stderr anyway).
-	display.setVState(3, nil, false)
+	display.setVState(Level(DefaultDisplay), nil, false)
 	go display.flushDaemon()
 }
 
