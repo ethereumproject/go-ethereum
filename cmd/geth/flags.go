@@ -156,8 +156,37 @@ var (
 	}
 	LogDirFlag = DirectoryFlag{
 		Name:  "log-dir,logdir",
-		Usage: "Directory in which to write log files.",
-		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
+		Usage: "Directory in which to write log files",
+		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "<chain>", "logs")},
+	}
+	LogMaxSizeFlag = cli.StringFlag{
+		Name:  "log-max-size,log-maxsize",
+		Usage: "Maximum size of a single log file (in bytes)",
+		Value: "30M",
+	}
+	LogMinSizeFlag = cli.StringFlag{
+		Name:  "log-min-size,log-minsize",
+		Usage: "Minimum size of a log file, to be considered for log-rotation (in bytes)",
+		Value: "0",
+	}
+	LogMaxTotalSizeFlag = cli.StringFlag{
+		Name:  "log-total-max-size,log-totalmaxsize",
+		Usage: "Maximum total size of all (current and archived) log files (in bytes)",
+		Value: "0",
+	}
+	LogIntervalFlag = cli.StringFlag{
+		Name:  "log-rotation-interval",
+		Usage: "Log rotation interval, one of values: never, hourly, daily, weekly, monthly",
+		Value: "hourly",
+	}
+	LogMaxAgeFlag = cli.StringFlag{
+		Name:  "log-max-age,log-maxage",
+		Usage: "Maximum age of the oldest log file, valid time units: h, d, w (hours, days, weeks)",
+		Value: "0",
+	}
+	LogCompressFlag = cli.BoolTFlag{
+		Name:  "log-compress,log-gzip",
+		Usage: "Enable/disable GZIP compression of archived log files (enabled by default)",
 	}
 	LogStatusFlag = cli.StringFlag{
 		Name:  "log-status",

@@ -1,6 +1,7 @@
 // Go support for leveled logs, analogous to https://code.google.com/p/google-glog/
 //
 // Copyright 2013 Google Inc. All Rights Reserved.
+// Modifications copyright 2017 ETC Dev Team. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,32 +67,105 @@
 //		where pattern is a literal file name or "glob" pattern matching
 //		and N is a V level. For instance,
 //
-//			-vmodule=gopher.go=3
+//	-vmodule=gopher.go=3
 //		sets the V level to 3 in all Go files named "gopher.go".
 //
-//			-vmodule=foo=3
+//	-vmodule=foo=3
 //		sets V to 3 in all files of any packages whose import path ends in "foo".
 //
-//			-vmodule=foo/*=3
+//	-vmodule=foo/*=3
 //		sets V to 3 in all files of any packages whose import path contains "foo".
+//
+// This fork of original golang/glog adds log rotation functionality.
+// Logs are rotated after reaching file size limit or age limit. Additionally
+// limiting total amount of logs is supported (also by both size and age).
+// To keep it simple, log-rotation is configured with package-level variables:
+//  - MaxSize - maximum file size (in bytes) - default value: 1024 * 1024 * 1800
+//  - MinSize - minimum file size (in bytes) - default 0 (even empty file can be rotated)
+//  - MaxTotalSize - maximum size of all files (in bytes) - default 0 (do not remove old files)
+//  - RotationInterval - how often log should be rotated - default Never
+//  - MaxAge - maximum age (time.Duration) of log file - default 0 (do not remove old files)
+//  - Compress - whether to GZIP compress rotated logs - default - false
+//
+// Default values provide backward-compatibility with golang/glog. If compression is used,
+// all files except the current one are compressed with GZIP.
+//
+// Rotation works like this:
+//  - if MaxSize or RotaitonInterval is reached, and file size is > MinSize,
+//    current file became old file, and new file is created as a current log file
+//  - all log files older than MaxAge are removed
+//  - if compression is enabled, the old file is compressed
+//  - size of all log files in log_dir is recalculated (to handle external removals of files, etc)
+//  - oldest log files are removed until total size of log files doesn't exceed  MaxTotalSize-MaxSize
+// For sanity, this action is executed only when current file is needs to be rotated
+//
 package glog
 
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	stdLog "log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+// MinSize is a minimum file size qualifying for rotation. This variable can be used
+// to avoid rotation of empty or almost emtpy files.
+var MinSize uint64
+
+// MaxTotalSize is a maximum size of all log files.
+var MaxTotalSize uint64
+
+// Interval is a type for rotation interval specification
+type Interval uint8
+
+// These constants identify the interval for log rotation.
+const (
+	Never Interval = iota
+	Hourly
+	Daily
+	Weekly
+	Monthly
+)
+
+func ParseInterval(str string) (Interval, error) {
+	mapping := map[string]Interval{
+		"never":   Never,
+		"hourly":  Hourly,
+		"daily":   Daily,
+		"weekly":  Weekly,
+		"monthly": Monthly,
+	}
+
+	interval, ok := mapping[strings.ToLower(str)]
+	if !ok {
+		return Never, fmt.Errorf("invalid interval value '%s'", str)
+	}
+	return interval, nil
+}
+
+// RotationInterval determines how often log rotation should take place
+var RotationInterval = Never
+
+// MaxAge defines the maximum age of the oldest log file. All log files older
+// than MaxAge will be removed.
+var MaxAge time.Duration
+
+// Compress determines whether to compress rotated logs with GZIP or not.
+var Compress bool
 
 // severity identifies the sort of log: info, warning etc. It also implements
 // the flag.Value interface. The -stderrthreshold flag is of type severity and
@@ -860,6 +934,7 @@ type syncBuffer struct {
 	logger *loggingT
 	*bufio.Writer
 	file   *os.File
+	time   time.Time
 	sev    severity
 	nbytes uint64 // The number of bytes written to this file
 }
@@ -869,10 +944,12 @@ func (sb *syncBuffer) Sync() error {
 }
 
 func (sb *syncBuffer) Write(p []byte) (n int, err error) {
-	if sb.nbytes+uint64(len(p)) >= MaxSize {
-		if err := sb.rotateFile(time.Now()); err != nil {
+	now := time.Now()
+	if sb.shouldRotate(len(p), now) {
+		if err := sb.rotateCurrent(now); err != nil {
 			sb.logger.exit(err)
 		}
+		go sb.rotateOld(now)
 	}
 	n, err = sb.Writer.Write(p)
 	sb.nbytes += uint64(n)
@@ -882,15 +959,45 @@ func (sb *syncBuffer) Write(p []byte) (n int, err error) {
 	return
 }
 
-// rotateFile closes the syncBuffer's file and starts a new one.
-func (sb *syncBuffer) rotateFile(now time.Time) error {
+// shouldRotate checks if we need to rotate the current log file
+func (sb *syncBuffer) shouldRotate(len int, now time.Time) bool {
+	newLen := sb.nbytes + uint64(len)
+	if newLen <= MinSize {
+		return false
+	} else if MaxSize > 0 && newLen >= MaxSize {
+		return true
+	}
+
+	switch RotationInterval {
+	case Never:
+		return false
+	case Hourly:
+		return sb.time.Hour() != now.Hour()
+	case Daily:
+		return sb.time.Day() != now.Day()
+	case Weekly:
+		yearLog, weekLog := sb.time.ISOWeek()
+		yearNow, weekNow := now.ISOWeek()
+		return !(yearLog == yearNow && weekLog == weekNow)
+	case Monthly:
+		return sb.time.Month() != now.Month()
+	}
+	return false
+}
+
+// rotateCurrent closes the syncBuffer's file and starts a new one.
+func (sb *syncBuffer) rotateCurrent(now time.Time) error {
 	if sb.file != nil {
 		sb.Flush()
 		sb.file.Close()
+		if Compress {
+			gzipFile(sb.file.Name())
+		}
 	}
 	var err error
 	sb.file, _, err = create(severityName[sb.sev], now)
 	sb.nbytes = 0
+	sb.time = time.Now()
 	if err != nil {
 		return err
 	}
@@ -906,6 +1013,211 @@ func (sb *syncBuffer) rotateFile(now time.Time) error {
 	n, err := sb.file.Write(buf.Bytes())
 	sb.nbytes += uint64(n)
 	return err
+}
+
+// converts plain log file to gzipped log file. New file is created
+func gzipFile(name string) error {
+	gzipped, err := os.Create(name + ".gz")
+	defer gzipped.Close()
+	if err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(gzipped)
+	gzipWriter := gzip.NewWriter(writer)
+
+	plain, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	reader := bufio.NewReader(plain)
+
+	// copy from plain text file to gzipped output
+	_, err = io.Copy(gzipWriter, reader)
+	_ = plain.Close()
+	if err != nil {
+		return err
+	}
+	if err = gzipWriter.Close(); err != nil {
+		return err
+	}
+	if err = writer.Flush(); err != nil {
+		return err
+	}
+	if err = gzipped.Close(); err != nil {
+		return err
+	}
+
+	return os.Remove(name)
+}
+
+func (sb *syncBuffer) rotateOld(now time.Time) {
+	logs, err := getLogFiles()
+	if err != nil {
+		Fatal(err)
+	}
+
+	logs = excludeActive(logs)
+
+	logs, err = removeOutdated(logs, now)
+	if err != nil {
+		Fatal(err)
+	}
+
+	logs, err = compressOrphans(logs)
+	if err != nil {
+		Fatal(err)
+	}
+
+	if MaxTotalSize < MaxSize {
+		return
+	}
+
+	totalSize := getTotalSize(logs)
+	for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
+		err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
+		if err != nil {
+			Fatal(err)
+		}
+		totalSize -= logs[i].size
+	}
+}
+
+type logFile struct {
+	dir       string
+	name      string
+	size      uint64
+	timestamp string
+}
+
+// getLogFiles returns log files, ordered from oldest to newest
+func getLogFiles() (logFiles []logFile, err error) {
+	prefix := fmt.Sprintf("%s.%s.%s.log.", program, host, userName)
+	for _, logDir := range logDirs {
+		files, err := ioutil.ReadDir(logDir)
+		if err == nil {
+			files = filterLogFiles(files, prefix)
+			for _, file := range files {
+				logFiles = append(logFiles, logFile{
+					dir:       logDir,
+					name:      file.Name(),
+					size:      uint64(file.Size()),
+					timestamp: extractTimestamp(file.Name(), prefix),
+				})
+			}
+			sort.Slice(logFiles, func(i, j int) bool {
+				return logFiles[i].timestamp < logFiles[j].timestamp
+			})
+			return logFiles, nil
+		}
+	}
+	return nil, errors.New("log: no log dirs")
+}
+
+func excludeActive(logs []logFile) []logFile {
+	filtered := logs[:0]
+	current := getCurrentLogs()
+	for _, log := range logs {
+		active := false
+		fullName := filepath.Join(log.dir, log.name)
+		for _, latest := range current {
+			if fullName == latest {
+				active = true
+			}
+		}
+		if !active {
+			filtered = append(filtered, log)
+		}
+	}
+	return filtered
+}
+
+// getCurrentLogs returns list of log files pointed by symlinks
+func getCurrentLogs() (logs []string) {
+	for _, logDir := range logDirs {
+		files, err := ioutil.ReadDir(logDir)
+		if err == nil {
+			for _, file := range files {
+				if file.Mode()&os.ModeSymlink != 0 {
+					target, err := os.Readlink(filepath.Join(logDir, file.Name()))
+					if err == nil {
+						logs = append(logs, filepath.Join(logDir, target))
+					}
+				}
+			}
+			break
+		}
+	}
+	return logs
+}
+
+func extractTimestamp(logFile, prefix string) string {
+	if len(logFile) <= len(prefix) {
+		return ""
+	}
+	splits := strings.SplitN(logFile[len(prefix):], ".", 3)
+	if len(splits) == 3 {
+		return splits[1]
+	} else {
+		return ""
+	}
+}
+
+func filterLogFiles(files []os.FileInfo, prefix string) []os.FileInfo {
+	filtered := files[:0]
+	for _, file := range files {
+		if !file.IsDir() && strings.HasPrefix(file.Name(), prefix) {
+			filtered = append(filtered, file)
+		}
+	}
+	return filtered
+}
+
+func removeOutdated(logs []logFile, now time.Time) ([]logFile, error) {
+	if MaxAge == 0 {
+		return logs, nil
+	}
+	t := now.Add(-1 * MaxAge)
+	timestamp := fmt.Sprintf("%04d%02d%02d-%02d%02d%02d",
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		t.Hour(),
+		t.Minute(),
+		t.Second(),
+	)
+
+	remaining := logs[:0]
+	for _, log := range logs {
+		if log.timestamp <= timestamp {
+			if err := os.Remove(filepath.Join(log.dir, log.name)); err != nil {
+				return nil, err
+			}
+		} else {
+			remaining = append(remaining, log)
+		}
+	}
+	return remaining, nil
+}
+
+// compress all uncompressed log files, except the currently used log file
+func compressOrphans(logs []logFile) ([]logFile, error) {
+	for i, log := range logs {
+		fullName := filepath.Join(log.dir, log.name)
+		if !strings.HasSuffix(log.name, ".gz") {
+			if err := gzipFile(fullName); err != nil {
+				return nil, err
+			}
+			logs[i].name += ".gz"
+		}
+	}
+	return logs, nil
+}
+
+func getTotalSize(logs []logFile) (size uint64) {
+	for _, log := range logs {
+		size += log.size
+	}
+	return
 }
 
 // bufferSize sizes the buffer associated with each log file. It's large
@@ -924,7 +1236,7 @@ func (l *loggingT) createFiles(sev severity) error {
 			logger: l,
 			sev:    s,
 		}
-		if err := sb.rotateFile(now); err != nil {
+		if err := sb.rotateCurrent(now); err != nil {
 			return err
 		}
 		l.file[s] = sb

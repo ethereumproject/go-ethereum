@@ -175,6 +175,12 @@ func makeCLIApp() (app *cli.App) {
 		VerbosityFlag,
 		VModuleFlag,
 		LogDirFlag,
+		LogMaxSizeFlag,
+		LogMinSizeFlag,
+		LogMaxTotalSizeFlag,
+		LogIntervalFlag,
+		LogMaxAgeFlag,
+		LogCompressFlag,
 		LogStatusFlag,
 		MLogFlag,
 		MLogDirFlag,
@@ -232,6 +238,11 @@ func makeCLIApp() (app *cli.App) {
 		}
 
 		runtime.GOMAXPROCS(runtime.NumCPU())
+
+		err := setupLogRotation(ctx)
+		if err != nil {
+			return err
+		}
 
 		glog.CopyStandardLogTo("INFO")
 
