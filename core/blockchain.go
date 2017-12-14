@@ -695,15 +695,15 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	glog.V(logger.Warn).Infof("Last block: #%d [%x…] TD=%v", self.currentBlock.Number(), self.currentBlock.Hash().Bytes()[:4], blockTd)
 	glog.V(logger.Warn).Infof("Fast block: #%d [%x…] TD=%v", self.currentFastBlock.Number(), self.currentFastBlock.Hash().Bytes()[:4], fastTd)
 	glog.D(logger.Warn).Infof("Local head header:     #%s [%s…] TD=%s",
-		logger.ColorGreen(strconv.Itoa(int(self.hc.CurrentHeader().Number.Uint64()))),
+		logger.ColorGreen(strconv.FormatUint(self.hc.CurrentHeader().Number.Uint64(), 10)),
 		logger.ColorGreen(self.hc.CurrentHeader().Hash().Hex()[:8]),
 		logger.ColorGreen(fmt.Sprintf("%v", headerTd)))
 	glog.D(logger.Warn).Infof("Local head full block: #%s [%s…] TD=%s",
-		logger.ColorGreen(strconv.Itoa(int(self.currentBlock.Number().Uint64()))),
+		logger.ColorGreen(strconv.FormatUint(self.currentBlock.Number().Uint64(), 10)),
 		logger.ColorGreen(self.currentBlock.Hash().Hex()[:8]),
 		logger.ColorGreen(fmt.Sprintf("%v", blockTd)))
 	glog.D(logger.Warn).Infof("Local head fast block: #%s [%s…] TD=%s",
-		logger.ColorGreen(strconv.Itoa(int(self.currentFastBlock.Number().Uint64()))),
+		logger.ColorGreen(strconv.FormatUint(self.currentFastBlock.Number().Uint64(), 10)),
 		logger.ColorGreen(self.currentFastBlock.Hash().Hex()[:8]),
 		logger.ColorGreen(fmt.Sprintf("%v", fastTd)))
 

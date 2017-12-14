@@ -779,7 +779,7 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	}
 
 	if chainIsCustom {
-		sn := strconv.Itoa(int(state.StartingNonce))
+		sn := strconv.FormatUint(state.StartingNonce, 10)
 		glog.V(logger.Info).Infof("State starting nonce: %s", logger.ColorGreen(sn))
 		glog.D(logger.Warn).Infof("State starting nonce: %s", logger.ColorGreen(sn))
 	}
