@@ -223,6 +223,7 @@ func SetToStderr(toStderr bool) {
 // for logging to both FS and stderr.
 func SetAlsoToStderr(to bool) {
 	logging.mu.Lock()
+
 	logging.alsoToStderr = to
 	logging.mu.Unlock()
 }
@@ -1050,7 +1051,12 @@ func gzipFile(name string) error {
 	return os.Remove(name)
 }
 
+var rotationMutex sync.Mutex
+
 func (sb *syncBuffer) rotateOld(now time.Time) {
+	rotationMutex.Lock()
+	defer rotationMutex.Unlock()
+
 	logs, err := getLogFiles()
 	if err != nil {
 		Fatal(err)
