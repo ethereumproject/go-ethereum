@@ -35,6 +35,8 @@ const (
 )
 
 // Global bookmark vars.
+// These are accessible globally to allow inter-communication between display system event handlers.
+// TODO: ensure handler cooperation; ie use a mutex, atomic, or something
 var currentMode = lsModeDiscover
 var currentBlockNumber uint64
 var chainEventLastSent time.Time
@@ -68,9 +70,16 @@ func redParenify(s string) string {
 	return logger.ColorRed("⟪") + s + logger.ColorRed("⟫")
 }
 
+// displayEventHandlerFn is a function that gets called when something happens; where that 'something'
+// is decided by the displayEventHandler the fn belongs to. It's type accepts a standard interface signature and
+// returns nothing. evData can be nil, and will be, particularly, when the handler is the "INTERVAL" callee.
 type displayEventHandlerFn func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration)
 type displayEventHandlerFns []displayEventHandlerFn
 
+// displayEventHandler is a unit of "listening" that can be added to the display system handlers to configure
+// what is listened for and how to respond to the given event. 'ev' is an event as received from the Ethereum Mux subscription,
+// or nil in the case of INTERVAL. Note, as exemplified below, that in order to make use of the ev data it's required
+// to use a (hacky) single switch to .(type) the event data
 type displayEventHandler struct {
 	eventName string      // used for labeling events and matching to the switch statement
 	ev        interface{} // which event to handle. if nil, will run on the ticker.
@@ -79,6 +88,7 @@ type displayEventHandler struct {
 }
 type displayEventHandlers []displayEventHandler
 
+// getByName looks up a handler by name to see if it's "registered" for a given display system.
 func (hs displayEventHandlers) getByName(name string) (*displayEventHandler, bool) {
 	for _, h := range hs {
 		if h.eventName == name {
@@ -88,10 +98,38 @@ func (hs displayEventHandlers) getByName(name string) (*displayEventHandler, boo
 	return nil, false
 }
 
+// runAllIfAny runs all configured fns for a given event, if registered.
+func (hs *displayEventHandlers) runAllIfAny(ctx *cli.Context, e *eth.Ethereum, d interface{}, tickerInterval time.Duration, name string) {
+	if h, ok := hs.getByName(name); ok {
+		for _, handler := range h.handlers {
+			handler(ctx, e, d, tickerInterval)
+		}
+	}
+}
+
+// updateLogStatusModeHandler is a convenience fn to update the global 'currentMode' var.
+// Typically it should be called from downloader events, and uses the 'getLogStatusMode' logic.
 func updateLogStatusModeHandler(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 	currentMode = getLogStatusMode(e)
 }
 
+// basicDisplaySystem is the basic display system spec'd in #127.
+// ---
+//2017-02-03 16:44:00  Discover                                                              0/25 peers
+//2017-02-03 16:45:00  Discover                                                              1/25 peers
+//2017-02-03 16:46:00  Fast   #2481951 of #3124363    79.4%   1211/  554    blk/mgas sec     6/25 peers
+//2017-02-03 16:47:00  Fast   #2689911 of #3124363    86.1%    611/  981    blk/mgas sec     6/25 peers
+//2017-02-03 16:48:00  Fast   #2875913 of #3124363    92.0%    502/  760    blk/mgas sec     4/25 peers
+//2017-02-03 16:49:00  Sync   #3124227 of #3124363 c76c34e7   77/ 242/ 7 blk/tx/mgas sec     4/25 peers
+//2017-02-03 16:50:00  Sync   #3124247 of #3124363 75e48eff   51/  51/ 5 blk/tx/mgas sec     4/25 peers
+//2017-02-03 16:51:00  Sync   #3124567 of #3124363 9af334ae  117/ 129/11 blk/tx/mgas sec     5/25 peers
+//2017-02-03 16:52:00  Sync   #3124787 of #3124363 1e3a8351    9/   6/ 1 blk/tx/mgas sec     7/25 peers
+//2017-02-03 16:52:05  Import #3124788             84e11ff4        15/ 7 tx/mgas            10/25 peers
+//2017-02-03 16:52:25  Import #3124789             9e45a241         5/ 1 tx/mgas            12/25 peers
+//2017-02-03 16:52:45  Import #3124790             d819f71c         0/ 0 tx/mgas            18/25 peers
+//
+// FIXME: '16:52:45  Import #3124790                ' aligns right instead of left
+// FIXME: date unit (via glog, likely)
 var basicDisplaySystem = displayEventHandlers{
 	{
 		eventName: "CHAIN_INSERT",
@@ -137,6 +175,7 @@ var basicDisplaySystem = displayEventHandlers{
 	},
 }
 
+// greenDisplaySystem is "spec'd" in PR #423 and is a little fancier/more detailed and colorful than basic.
 var greenDisplaySystem = displayEventHandlers{
 	{
 		eventName: "CHAIN_INSERT",
@@ -260,6 +299,8 @@ var greenDisplaySystem = displayEventHandlers{
 	},
 }
 
+// getLogStatusMode gets the "mode" for the ethereum node at any given time.
+// It is used to set the global bookmark variable, and influences formatting logic.
 func getLogStatusMode(e *eth.Ethereum) lsMode {
 	if e.Downloader().Synchronising() {
 		switch e.Downloader().GetMode() {
@@ -339,14 +380,6 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 	}
 }
 
-func (hs *displayEventHandlers) runAllIfAny(ctx *cli.Context, e *eth.Ethereum, d interface{}, tickerInterval time.Duration, name string) {
-	if h, ok := hs.getByName(name); ok {
-		for _, handler := range h.handlers {
-			handler(ctx, e, d, tickerInterval)
-		}
-	}
-}
-
 // runDisplayLogs starts STATUS SYNC logging at a given interval.
 // It should be run as a goroutine.
 // eg. --log-status="sync=42" logs SYNC information every 42 seconds
@@ -407,20 +440,6 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 		}
 	}
 }
-
-// Spec:
-//2017-02-03 16:44:00  Discover                                                              0/25 peers
-//2017-02-03 16:45:00  Discover                                                              1/25 peers
-//2017-02-03 16:46:00  Fast   #2481951 of #3124363    79.4%   1211/  554    blk/mgas sec     6/25 peers
-//2017-02-03 16:47:00  Fast   #2689911 of #3124363    86.1%    611/  981    blk/mgas sec     6/25 peers
-//2017-02-03 16:48:00  Fast   #2875913 of #3124363    92.0%    502/  760    blk/mgas sec     4/25 peers
-//2017-02-03 16:49:00  Sync   #3124227 of #3124363 c76c34e7   77/ 242/ 7 blk/tx/mgas sec     4/25 peers
-//2017-02-03 16:50:00  Sync   #3124247 of #3124363 75e48eff   51/  51/ 5 blk/tx/mgas sec     4/25 peers
-//2017-02-03 16:51:00  Sync   #3124567 of #3124363 9af334ae  117/ 129/11 blk/tx/mgas sec     5/25 peers
-//2017-02-03 16:52:00  Sync   #3124787 of #3124363 1e3a8351    9/   6/ 1 blk/tx/mgas sec     7/25 peers
-//2017-02-03 16:52:05  Import #3124788             84e11ff4        15/ 7 tx/mgas            10/25 peers
-//2017-02-03 16:52:25  Import #3124789             9e45a241         5/ 1 tx/mgas            12/25 peers
-//2017-02-03 16:52:45  Import #3124790             d819f71c         0/ 0 tx/mgas            18/25 peers
 
 func formatBlockNumber(i uint64) string {
 	return "#" + strconv.FormatUint(i, 10)
@@ -574,6 +593,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 	return current
 }
 
+// PrintStatusGreen implements the displayStatusPrinter interface
 var PrintStatusGreen = func(e *eth.Ethereum, tickerInterval time.Duration, maxPeers int) uint64 {
 	lenPeers := e.Downloader().GetPeers().Len()
 
