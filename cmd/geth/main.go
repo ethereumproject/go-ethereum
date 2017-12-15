@@ -237,10 +237,6 @@ func makeCLIApp() (app *cli.App) {
 			}
 		}
 
-		if os.Getenv("GOMAXPROCS") == "" {
-			runtime.GOMAXPROCS(runtime.NumCPU())
-		}
-
 		err := setupLogRotation(ctx)
 		if err != nil {
 			return err
