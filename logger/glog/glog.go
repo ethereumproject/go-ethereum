@@ -1054,42 +1054,42 @@ func gzipFile(name string) error {
 var rotationTime int64
 
 func (sb *syncBuffer) rotateOld(now time.Time) {
-	nanos := now.UnixNano()
-	if atomic.CompareAndSwapInt64(&rotationTime, 0, nanos) {
-		logs, err := getLogFiles()
-		if err != nil {
-			Fatal(err)
-		}
-
-		logs = excludeActive(logs)
-
-		logs, err = removeOutdated(logs, now)
-		if err != nil {
-			Fatal(err)
-		}
-
-		logs, err = compressOrphans(logs)
-		if err != nil {
-			Fatal(err)
-		}
-
-		if MaxTotalSize > MaxSize {
-			totalSize := getTotalSize(logs)
-			for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
-				err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
-				if err != nil {
-					Fatal(err)
-				}
-				totalSize -= logs[i].size
-			}
-		}
-
-		if current := atomic.SwapInt64(&rotationTime, 0); current > nanos {
-			go sb.rotateOld(time.Unix(0, current))
-		}
-	} else {
-		atomic.StoreInt64(&rotationTime, nanos)
+	//nanos := now.UnixNano()
+	//if atomic.CompareAndSwapInt64(&rotationTime, 0, nanos) {
+	logs, err := getLogFiles()
+	if err != nil {
+		Fatal(err)
 	}
+
+	logs = excludeActive(logs)
+
+	logs, err = removeOutdated(logs, now)
+	if err != nil {
+		Fatal(err)
+	}
+
+	logs, err = compressOrphans(logs)
+	if err != nil {
+		Fatal(err)
+	}
+
+	if MaxTotalSize > MaxSize {
+		totalSize := getTotalSize(logs)
+		for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
+			err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
+			if err != nil {
+				Fatal(err)
+			}
+			totalSize -= logs[i].size
+		}
+	}
+
+	//	if current := atomic.SwapInt64(&rotationTime, 0); current > nanos {
+	//		go sb.rotateOld(time.Unix(0, current))
+	//	}
+	//} else {
+	//	atomic.StoreInt64(&rotationTime, nanos)
+	//}
 }
 
 type logFile struct {

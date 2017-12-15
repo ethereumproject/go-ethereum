@@ -23,13 +23,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	stdLog "log"
-	//"math/rand"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	//"sync"
+	"sync"
 	"testing"
 	"time"
 )
@@ -744,13 +744,8 @@ const (
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
 
-/*
-// Following code is commented-out because the test depends very strongly on
-// time and performance. On my (tzdybal) machine currently hardcoded parameters
-// was used to reproduce the problem with parallel execution of rotateOld.
-
 // See: https://stackoverflow.com/a/31832326/3474438
-func RandStringBytesMaskImprSrc(n int, src rand.Source) []byte {
+func randStringBytesMaskImprSrc(n int, src rand.Source) []byte {
 	b := make([]byte, n)
 	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
 	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
@@ -776,15 +771,15 @@ func TestLongRunningRotateOld(t *testing.T) {
 
 	start := time.Date(2017, time.December, 06, 0, 0, 0, 0, time.UTC)
 
-	fileSize := 100 * 1024 * 1024
+	fileSize := 512 * 1024
 
 	logDate := start
 	// generate files
 	var src = rand.NewSource(time.Now().UnixNano())
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 64; i++ {
 		infoF, infoL := logName("INFO", logDate.Add(1*time.Second))
 
-		ioutil.WriteFile(filepath.Join(dir, infoF), RandStringBytesMaskImprSrc(fileSize, src), 0600)
+		ioutil.WriteFile(filepath.Join(dir, infoF), randStringBytesMaskImprSrc(fileSize, src), 0600)
 
 		infoSL := filepath.Join(dir, infoL)
 		os.Remove(infoSL)                             // ignore err
@@ -806,16 +801,17 @@ func TestLongRunningRotateOld(t *testing.T) {
 	run := func() {
 		wg.Add(1)
 		defer wg.Done()
-		sb.rotateOld(logDate)
+		sb.rotateOld(time.Now())
 	}
 
 	go run()
-	time.Sleep(5 * time.Second)
-	go run()
+	for i := 0; i < 64; i++ {
+		time.Sleep(32 * time.Millisecond)
+		go run()
+	}
 
 	wg.Wait()
 }
-*/
 
 func BenchmarkHeader(b *testing.B) {
 	for i := 0; i < b.N; i++ {
