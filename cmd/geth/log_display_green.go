@@ -38,8 +38,8 @@ func redParenify(s string) string {
 // greenDisplaySystem is "spec'd" in PR #423 and is a little fancier/more detailed and colorful than basic.
 var greenDisplaySystem = displayEventHandlers{
 	{
-		eventName: "CHAIN_INSERT",
-		ev:        core.ChainInsertEvent{},
+		eventT: logEventChainInsert,
+		ev:     core.ChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
@@ -57,8 +57,8 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventName: "CHAIN_SIDE",
-		ev:        core.ChainSideEvent{},
+		eventT: logEventChainInsertSide,
+		ev:     core.ChainSideEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
@@ -69,8 +69,8 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventName: "HEADERCHAIN_INSERT",
-		ev:        core.HeaderChainInsertEvent{},
+		eventT: logEventHeaderChainInsert,
+		ev:     core.HeaderChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
@@ -88,8 +88,8 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventName: "MINED_BLOCK",
-		ev:        core.NewMinedBlockEvent{},
+		eventT: logEventMinedBlock,
+		ev:     core.NewMinedBlockEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
@@ -106,8 +106,8 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventName: "DOWNLOADER_START",
-		ev:        downloader.StartEvent{},
+		eventT: logEventDownloaderStart,
+		ev:     downloader.StartEvent{},
 		handlers: displayEventHandlerFns{
 			updateLogStatusModeHandler,
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
@@ -120,8 +120,8 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventName: "DOWNLOADER_DONE",
-		ev:        downloader.DoneEvent{},
+		eventT: logEventDownloaderDone,
+		ev:     downloader.DoneEvent{},
 		handlers: displayEventHandlerFns{
 			updateLogStatusModeHandler,
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
@@ -134,8 +134,8 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventName: "DOWNLOADER_FAILED",
-		ev:        downloader.FailedEvent{},
+		eventT: logEventDownloaderFailed,
+		ev:     downloader.FailedEvent{},
 		handlers: displayEventHandlerFns{
 			updateLogStatusModeHandler,
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
@@ -148,7 +148,7 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventName: "INTERVAL",
+		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				if time.Since(chainEventLastSent) > time.Duration(time.Second*time.Duration(int32(tickerInterval.Seconds()/2))) {

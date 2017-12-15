@@ -5,6 +5,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"fmt"
 )
 
 var lsModeName = []string{
@@ -12,6 +13,22 @@ var lsModeName = []string{
 	"Sync",
 	"Fast",
 	"Import",
+}
+
+type logEventType int
+const (
+	logEventChainInsert       logEventType = iota
+	logEventChainInsertSide
+	logEventHeaderChainInsert
+	logEventMinedBlock
+	logEventDownloaderStart
+	logEventDownloaderDone
+	logEventDownloaderFailed
+	logEventInterval
+)
+
+func (e logEventType) String() string {
+	return fmt.Sprintf("%s", e)
 }
 
 // Global bookmark vars.

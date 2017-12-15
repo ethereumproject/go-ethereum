@@ -34,8 +34,8 @@ import (
 // FIXME: date unit (via glog, likely)
 var basicDisplaySystem = displayEventHandlers{
 	{
-		eventName: "CHAIN_INSERT",
-		ev:        core.ChainInsertEvent{},
+		eventT: logEventChainInsert,
+		ev:     core.ChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				if currentMode == lsModeImport {
@@ -45,28 +45,28 @@ var basicDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventName: "DOWNLOADER_START",
-		ev:        downloader.StartEvent{},
+		eventT: logEventDownloaderStart,
+		ev:     downloader.StartEvent{},
 		handlers: displayEventHandlerFns{
 			updateLogStatusModeHandler,
 		},
 	},
 	{
-		eventName: "DOWNLOADER_DONE",
-		ev:        downloader.DoneEvent{},
+		eventT: logEventDownloaderDone,
+		ev:     downloader.DoneEvent{},
 		handlers: displayEventHandlerFns{
 			updateLogStatusModeHandler,
 		},
 	},
 	{
-		eventName: "DOWNLOADER_FAILED",
-		ev:        downloader.FailedEvent{},
+		eventT: logEventDownloaderFailed,
+		ev:     downloader.FailedEvent{},
 		handlers: displayEventHandlerFns{
 			updateLogStatusModeHandler,
 		},
 	},
 	{
-		eventName: "INTERVAL",
+		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				if currentMode != lsModeImport {

@@ -41,17 +41,17 @@ type displayEventHandlerFns []displayEventHandlerFn
 // or nil in the case of INTERVAL. Note, as exemplified below, that in order to make use of the ev data it's required
 // to use a (hacky) single switch to .(type) the event data
 type displayEventHandler struct {
-	eventName string      // used for labeling events and matching to the switch statement
-	ev        interface{} // which event to handle. if nil, will run on the ticker.
+	eventT logEventType // used for labeling events and matching to the switch statement
+	ev     interface{}  // which event to handle. if nil, will run on the ticker.
 	// (ctx *cli.Context, e *eth.Ethereum, evData interface{}, mode *lsMode, tickerInterval time.Duration, n *uint64)
 	handlers displayEventHandlerFns
 }
 type displayEventHandlers []displayEventHandler
 
 // getByName looks up a handler by name to see if it's "registered" for a given display system.
-func (hs displayEventHandlers) getByName(name string) (*displayEventHandler, bool) {
+func (hs displayEventHandlers) getByName(eventType logEventType) (*displayEventHandler, bool) {
 	for _, h := range hs {
-		if h.eventName == name {
+		if h.eventT == eventType {
 			return &h, true
 		}
 	}
@@ -59,8 +59,8 @@ func (hs displayEventHandlers) getByName(name string) (*displayEventHandler, boo
 }
 
 // runAllIfAny runs all configured fns for a given event, if registered.
-func (hs *displayEventHandlers) runAllIfAny(ctx *cli.Context, e *eth.Ethereum, d interface{}, tickerInterval time.Duration, name string) {
-	if h, ok := hs.getByName(name); ok {
+func (hs *displayEventHandlers) runAllIfAny(ctx *cli.Context, e *eth.Ethereum, d interface{}, tickerInterval time.Duration, eventType logEventType) {
+	if h, ok := hs.getByName(eventType); ok {
 		for _, handler := range h.handlers {
 			handler(ctx, e, d, tickerInterval)
 		}
@@ -153,11 +153,11 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 	handleDownloaderEvent := func(d interface{}) {
 		switch d.(type) {
 		case downloader.StartEvent:
-			handles.runAllIfAny(ctx, e, d, tickerInterval, "DOWNLOADER_START")
+			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderStart)
 		case downloader.DoneEvent:
-			handles.runAllIfAny(ctx, e, d, tickerInterval, "DOWNLOADER_DONE")
+			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderDone)
 		case downloader.FailedEvent:
-			handles.runAllIfAny(ctx, e, d, tickerInterval, "DOWNLOADER_FAILED")
+			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderFailed)
 		}
 	}
 
@@ -165,13 +165,13 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 		for ev := range ethEvents.Chan() {
 			switch d := ev.Data.(type) {
 			case core.ChainInsertEvent:
-				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, "CHAIN_INSERT")
+				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsert)
 			case core.ChainSideEvent:
-				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, "CHAIN_SIDE")
+				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsertSide)
 			case core.HeaderChainInsertEvent:
-				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, "HEADERCHAIN_INSERT")
+				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventHeaderChainInsert)
 			case core.NewMinedBlockEvent:
-				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, "MINED_BLOCK")
+				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventMinedBlock)
 			default:
 				handleDownloaderEvent(d)
 			}
@@ -181,7 +181,7 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 	for {
 		select {
 		case <-ticker.C:
-			handles.runAllIfAny(ctx, e, nil, tickerInterval, "INTERVAL")
+			handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventInterval)
 		case <-sigc:
 			// Listen for interrupt
 			ticker.Stop()
