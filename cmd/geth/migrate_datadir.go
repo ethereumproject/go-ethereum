@@ -29,7 +29,7 @@ import (
 	"path/filepath"
 )
 
-// handleIfDataDirSchemaMigrations is a handler for the conditional logic around
+// handleIfDataDirSchemaMigrations is a handlers for the conditional logic around
 // data/chain dir migrations from geth versions < 3.4 and in consideration of EF geth schemas used for ETC.
 func handleIfDataDirSchemaMigrations(ctx *cli.Context) error {
 
