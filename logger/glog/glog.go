@@ -91,7 +91,7 @@
 // all files except the current one are compressed with GZIP.
 //
 // Rotation works like this:
-//  - if MaxSize or RotaitonInterval is reached, and file size is > MinSize,
+//  - if MaxSize or RotationInterval is reached, and file size is > MinSize,
 //    current file became old file, and new file is created as a current log file
 //  - all log files older than MaxAge are removed
 //  - if compression is enabled, the old file is compressed
@@ -1054,42 +1054,42 @@ func gzipFile(name string) error {
 var rotationTime int64
 
 func (sb *syncBuffer) rotateOld(now time.Time) {
-	//nanos := now.UnixNano()
-	//if atomic.CompareAndSwapInt64(&rotationTime, 0, nanos) {
-	logs, err := getLogFiles()
-	if err != nil {
-		Fatal(err)
-	}
-
-	logs = excludeActive(logs)
-
-	logs, err = removeOutdated(logs, now)
-	if err != nil {
-		Fatal(err)
-	}
-
-	logs, err = compressOrphans(logs)
-	if err != nil {
-		Fatal(err)
-	}
-
-	if MaxTotalSize > MaxSize {
-		totalSize := getTotalSize(logs)
-		for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
-			err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
-			if err != nil {
-				Fatal(err)
-			}
-			totalSize -= logs[i].size
+	nanos := now.UnixNano()
+	if atomic.CompareAndSwapInt64(&rotationTime, 0, nanos) {
+		logs, err := getLogFiles()
+		if err != nil {
+			Fatal(err)
 		}
-	}
 
-	//	if current := atomic.SwapInt64(&rotationTime, 0); current > nanos {
-	//		go sb.rotateOld(time.Unix(0, current))
-	//	}
-	//} else {
-	//	atomic.StoreInt64(&rotationTime, nanos)
-	//}
+		logs = excludeActive(logs)
+
+		logs, err = removeOutdated(logs, now)
+		if err != nil {
+			Fatal(err)
+		}
+
+		logs, err = compressOrphans(logs)
+		if err != nil {
+			Fatal(err)
+		}
+
+		if MaxTotalSize > MaxSize {
+			totalSize := getTotalSize(logs)
+			for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
+				err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
+				if err != nil {
+					Fatal(err)
+				}
+				totalSize -= logs[i].size
+			}
+		}
+
+		if current := atomic.SwapInt64(&rotationTime, 0); current > nanos {
+			go sb.rotateOld(time.Unix(0, current))
+		}
+	} else {
+		atomic.StoreInt64(&rotationTime, nanos)
+	}
 }
 
 type logFile struct {
