@@ -161,6 +161,7 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			WhisperEnabledFlag,
 			NatspecEnabledFlag,
+			DisplayFormatFlag,
 		},
 	},
 	{

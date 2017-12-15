@@ -174,6 +174,7 @@ func makeCLIApp() (app *cli.App) {
 		NeckbeardFlag,
 		VerbosityFlag,
 		DisplayFlag,
+		DisplayFormatFlag,
 		VModuleFlag,
 		LogDirFlag,
 		LogMaxSizeFlag,

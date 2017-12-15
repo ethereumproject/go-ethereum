@@ -223,7 +223,6 @@ var greenDisplaySystem = displayEventHandlers{
 	{
 		eventName: "DOWNLOADER_DONE",
 		ev:        downloader.DoneEvent{},
-		//s +=
 		handlers: displayEventHandlerFns{
 			updateLogStatusModeHandler,
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
@@ -327,10 +326,15 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 
 		d := parseStatusInterval(eqs[0], eqs[1])
 
+		displaySystem := basicDisplaySystem
+		displayFmt := ctx.GlobalString(DisplayFormatFlag.Name)
+		if displayFmt == "green" {
+			displaySystem = greenDisplaySystem
+		}
 		switch eqs[0] {
 		case "sync":
 			availableLogStatusFeatures["sync"] = d
-			go runDisplayLogs(ctx, ethe, d, greenDisplaySystem)
+			go runDisplayLogs(ctx, ethe, d, displaySystem)
 		}
 	}
 }
@@ -560,7 +564,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 		progressRateD.value = formatProgressRateD(blks/int(tickerInterval.Seconds()), txs/int(tickerInterval.Seconds()), mgas/int(tickerInterval.Seconds()))
 		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, false), "blk/txs/mgas sec")
 	case lsModeImport:
-		localOfMaxD.value = formatLocalOfMaxD(localHead.NumberU64(), chainSyncHeight)
+		localOfMaxD.value = fmt.Sprintf(strScanLenOf(xlocalOfMaxD, true), formatBlockNumber(localHead.NumberU64()))
 		percentOrHash.value = formatBlockHashD(localHead)
 		progressRateD.value = fmt.Sprintf(strScanLenOf(xprogressRateD, false), formatProgressRateD(-1, txs, mgas))
 		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, false), "    txs/mgas    ")

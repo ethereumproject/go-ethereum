@@ -158,6 +158,11 @@ var (
 		Usage: "Display verbosity: 0=silent, 1=basics, 2=status, 3=status+events",
 		Value: glog.DefaultDisplay,
 	}
+	DisplayFormatFlag = cli.StringFlag{
+		Name:  "display-fmt",
+		Usage: "Display format",
+		Value: "basic",
+	}
 	VModuleFlag = cli.StringFlag{
 		Name:  "vmodule",
 		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
