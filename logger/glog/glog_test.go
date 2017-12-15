@@ -23,11 +23,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	stdLog "log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -733,6 +735,82 @@ func TestParseInterval(t *testing.T) {
 			}
 		})
 	}
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const (
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+)
+
+// See: https://stackoverflow.com/a/31832326/3474438
+func randStringBytesMaskImprSrc(n int, src rand.Source) []byte {
+	b := make([]byte, n)
+	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
+	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = src.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+	return b
+}
+
+func TestLongRunningRotateOld(t *testing.T) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.RemoveAll(dir)
+
+	start := time.Date(2017, time.December, 06, 0, 0, 0, 0, time.UTC)
+
+	fileSize := 512 * 1024
+
+	logDate := start
+	// generate files
+	var src = rand.NewSource(time.Now().UnixNano())
+	for i := 0; i < 64; i++ {
+		infoF, infoL := logName("INFO", logDate.Add(1*time.Second))
+
+		ioutil.WriteFile(filepath.Join(dir, infoF), randStringBytesMaskImprSrc(fileSize, src), 0600)
+
+		infoSL := filepath.Join(dir, infoL)
+		os.Remove(infoSL)                             // ignore err
+		os.Symlink(filepath.Join(dir, infoF), infoSL) // ignore err
+
+		logDate = logDate.Add(24 * time.Hour)
+	}
+
+	// prepare environment
+	logDirs = nil
+	SetLogDir(dir)
+	createLogDirs()
+
+	// execute rotation
+	sb := &syncBuffer{}
+
+	wg := sync.WaitGroup{}
+
+	run := func() {
+		wg.Add(1)
+		defer wg.Done()
+		sb.rotateOld(time.Now())
+	}
+
+	go run()
+	for i := 0; i < 64; i++ {
+		time.Sleep(32 * time.Millisecond)
+		go run()
+	}
+
+	wg.Wait()
 }
 
 func BenchmarkHeader(b *testing.B) {
