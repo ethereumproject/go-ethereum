@@ -25,6 +25,8 @@ const (
 	logEventDownloaderDone
 	logEventDownloaderFailed
 	logEventInterval
+	logEventBefore
+	logEventAfter
 )
 
 func (e logEventType) String() string {

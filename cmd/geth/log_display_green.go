@@ -109,7 +109,6 @@ var greenDisplaySystem = displayEventHandlers{
 		eventT: logEventDownloaderStart,
 		ev:     downloader.StartEvent{},
 		handlers: displayEventHandlerFns{
-			updateLogStatusModeHandler,
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.StartEvent:
@@ -123,7 +122,6 @@ var greenDisplaySystem = displayEventHandlers{
 		eventT: logEventDownloaderDone,
 		ev:     downloader.DoneEvent{},
 		handlers: displayEventHandlerFns{
-			updateLogStatusModeHandler,
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.DoneEvent:
@@ -137,7 +135,6 @@ var greenDisplaySystem = displayEventHandlers{
 		eventT: logEventDownloaderFailed,
 		ev:     downloader.FailedEvent{},
 		handlers: displayEventHandlerFns{
-			updateLogStatusModeHandler,
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.FailedEvent:

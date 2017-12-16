@@ -10,7 +10,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
-	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -122,6 +122,9 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 		if displayFmt == "green" {
 			displaySystem = greenDisplaySystem
 		}
+		if displayFmt == "dash" {
+			displaySystem = dashDisplaySystem
+		}
 		switch eqs[0] {
 		case "sync":
 			availableLogStatusFeatures["sync"] = d
@@ -137,18 +140,23 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 
 	// Set up ticker based on established interval.
 	ticker := time.NewTicker(tickerInterval)
+	defer ticker.Stop()
 
 	var sigc = make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigc)
 
-	//// Should listen for events.
-	//// Proof of concept create event subscription
+	// Listen for events.
 	var handledEvents []interface{}
 	for _, h := range handles {
-		handledEvents = append(handledEvents, h.ev)
+		if h.ev != nil {
+			handledEvents = append(handledEvents, h.ev)
+		}
 	}
-	ethEvents := e.EventMux().Subscribe(handledEvents...)
+	var ethEvents event.Subscription
+	if len(handledEvents) > 0 {
+		ethEvents = e.EventMux().Subscribe(handledEvents...)
+	}
 
 	handleDownloaderEvent := func(d interface{}) {
 		switch d.(type) {
@@ -161,31 +169,36 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 		}
 	}
 
-	go func() {
-		for ev := range ethEvents.Chan() {
-			switch d := ev.Data.(type) {
-			case core.ChainInsertEvent:
-				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsert)
-			case core.ChainSideEvent:
-				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsertSide)
-			case core.HeaderChainInsertEvent:
-				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventHeaderChainInsert)
-			case core.NewMinedBlockEvent:
-				handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventMinedBlock)
-			default:
-				handleDownloaderEvent(d)
-			}
-		}
-	}()
+	// Run any "setup" if configured
+	handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventBefore)
 
+	if len(handledEvents) > 0 {
+		go func() {
+			for ev := range ethEvents.Chan() {
+				updateLogStatusModeHandler(ctx, e, nil, tickerInterval)
+				switch ev.Data.(type) {
+				case core.ChainInsertEvent:
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsert)
+				case core.ChainSideEvent:
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsertSide)
+				case core.HeaderChainInsertEvent:
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventHeaderChainInsert)
+				case core.NewMinedBlockEvent:
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventMinedBlock)
+				default:
+					handleDownloaderEvent(ev.Data)
+				}
+			}
+		}()
+	}
 	for {
 		select {
 		case <-ticker.C:
+			updateLogStatusModeHandler(ctx, e, nil, tickerInterval)
 			handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventInterval)
 		case <-sigc:
 			// Listen for interrupt
-			ticker.Stop()
-			glog.D(logger.Warn).Warnln("SYNC Stopping.")
+			handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventAfter)
 			return
 		}
 	}

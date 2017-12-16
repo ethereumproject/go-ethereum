@@ -47,23 +47,14 @@ var basicDisplaySystem = displayEventHandlers{
 	{
 		eventT: logEventDownloaderStart,
 		ev:     downloader.StartEvent{},
-		handlers: displayEventHandlerFns{
-			updateLogStatusModeHandler,
-		},
 	},
 	{
 		eventT: logEventDownloaderDone,
 		ev:     downloader.DoneEvent{},
-		handlers: displayEventHandlerFns{
-			updateLogStatusModeHandler,
-		},
 	},
 	{
 		eventT: logEventDownloaderFailed,
 		ev:     downloader.FailedEvent{},
-		handlers: displayEventHandlerFns{
-			updateLogStatusModeHandler,
-		},
 	},
 	{
 		eventT: logEventInterval,
@@ -125,6 +116,11 @@ func calcBlockDiff(e *eth.Ethereum, lastLoggedBlockN uint64, localHead *types.Bl
 	return blks, txs, int(mGas.Int64())
 }
 
+func calcPercent(quotient, divisor uint64) float64 {
+	out := float64(quotient) / float64(divisor)
+	return out * 100
+}
+
 // PrintStatusBasic implements the displayEventHandlerFn interface
 var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPeers int) uint64 {
 
@@ -146,9 +142,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 
 	formatPercentD := func(localheight, syncheight uint64) string {
 		// Calculate and format percent sync of known height
-		heightRatio := float64(localheight) / float64(syncheight)
-		heightRatio = heightRatio * 100
-		fHeightRatio := fmt.Sprintf("%4.2f%%", heightRatio)
+		fHeightRatio := fmt.Sprintf("%4.2f%%", calcPercent(localheight, syncheight))
 		return fmt.Sprintf(strScanLenOf(xlocalHeadHashD, false), fHeightRatio)
 	}
 

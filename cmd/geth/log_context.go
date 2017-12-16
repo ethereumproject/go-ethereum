@@ -77,7 +77,7 @@ func setupLogging(ctx *cli.Context) error {
 	// Handle display level configuration.
 	if ctx.GlobalIsSet(DisplayFlag.Name) {
 		i := ctx.GlobalInt(DisplayFlag.Name)
-		if i > 3 {
+		if i > 5 {
 			return fmt.Errorf("--%s level must be 0 <= i <= 3, got: %d", DisplayFlag.Name, i)
 		}
 		glog.SetD(i)
