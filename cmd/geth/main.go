@@ -22,8 +22,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
-
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/console"
