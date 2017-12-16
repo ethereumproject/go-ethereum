@@ -22,8 +22,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
-
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/console"
@@ -236,8 +234,6 @@ func makeCLIApp() (app *cli.App) {
 				log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
 			}
 		}
-
-		runtime.GOMAXPROCS(runtime.NumCPU())
 
 		err := setupLogRotation(ctx)
 		if err != nil {
