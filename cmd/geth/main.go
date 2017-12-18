@@ -22,8 +22,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
-
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/console"
@@ -239,10 +237,12 @@ func makeCLIApp() (app *cli.App) {
 			}
 		}
 
-		runtime.GOMAXPROCS(runtime.NumCPU())
-
 		// Check for migrations and handle if conditionals are met.
 		if err := handleIfDataDirSchemaMigrations(ctx); err != nil {
+			return err
+		}
+
+		if err := setupLogRotation(ctx); err != nil {
 			return err
 		}
 
