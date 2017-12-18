@@ -668,9 +668,11 @@ func init() {
 
 	// Should never reach... unless we get real fancy with D(levels)
 	display.verbosityTraceThreshold.set(5)
-	// Only includes traces for severity=fatal logs for dispaly.
+	// Only includes traces for severity=fatal logs for display.
 	// This should never be reached; fatal logs should ALWAYS be logged to file,
 	// and they will also be written to stderr (anything Error and above is).
+	// Keep in mind severities are "upside-down" from verbosities; so here 3=error, 4=fatal, and 0=info
+	// and that here severity>=3 will meet the threshold. 
 	display.severityTraceThreshold.set(3)
 	// Set display verbosity default Info. So it will render
 	// all Fatal, Error, Warn, and Info log levels.
@@ -807,51 +809,66 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 
 	// Avoid Fprintf, for speed. The format is so simple that we can do it quickly by hand.
 	// It's worth about 3X. Fprintf is hard.
-	_, month, day := now.Date()
+	year, month, day := now.Date()
 	hour, minute, second := now.Clock()
 	// Lmmdd hh:mm:ss.uuuuuu threadid file:line]
 
 	//buf.nDigits(8, 0, severityColor[s],'')
-	buf.WriteString(severityColor[s])
-	buf.tmp[0] = severityChar[s]
-	buf.Write(buf.tmp[:1])
-	if l.logTName == displayLog {
-		buf.WriteString(severityColorReset)
-		// Write dim for rest of line, eg. date and time
-		buf.WriteString(severityColor[infoLog])
-	} else {
-		buf.WriteString(severityColorReset)
-	}
-	buf.twoDigits(0, int(month))
-	buf.twoDigits(2, day)
-	buf.tmp[4] = ' '
-	buf.twoDigits(5, hour)
-	buf.tmp[7] = ':'
-	buf.twoDigits(8, minute)
-	buf.tmp[10] = ':'
-	buf.twoDigits(11, second)
-	// Only keep nanoseconds for file logs
+
+	// If to-file (debuggable) logs.
 	if l.logTName == fileLog {
+		buf.tmp[0] = severityChar[s]
+		buf.Write(buf.tmp[:1])
+		buf.twoDigits(0, int(month))
+		buf.twoDigits(2, day)
+		buf.tmp[4] = ' '
+		buf.twoDigits(5, hour)
+		buf.tmp[7] = ':'
+		buf.twoDigits(8, minute)
+		buf.tmp[10] = ':'
+		buf.twoDigits(11, second)
+		// Only keep nanoseconds for file logs
 		buf.tmp[13] = '.'
 		buf.nDigits(6, 14, now.Nanosecond()/1000, '0')
 		buf.Write(buf.tmp[:20])
+		buf.WriteString(" ")
+
+		if l.traceThreshold(s) {
+			buf.WriteString(file)
+			buf.tmp[0] = ':'
+			n := buf.someDigits(1, line)
+			buf.tmp[n+1] = ']'
+			buf.tmp[n+2] = ' '
+			buf.Write(buf.tmp[:n+3])
+		}
 	} else {
-		buf.Write(buf.tmp[:13])
-		buf.WriteString(severityColorReset)
+		// Write dim.
+		buf.WriteString(severityColor[infoLog])
+
+		buf.nDigits(4, 0, year, '_')
+		buf.nDigits(4, 0, year, '_')
+		buf.tmp[4] = '-'
+		buf.twoDigits(5, int(month))
+		buf.tmp[7] = '-'
+		buf.twoDigits(8, day)
+		buf.tmp[10] = ' '
+		buf.twoDigits(11, hour)
+		buf.tmp[13] = ':'
+		buf.twoDigits(14, minute)
+		buf.tmp[16] = ':'
+		buf.twoDigits(17, second)
+		buf.Write(buf.tmp[:19])
+
+		buf.WriteString(severityColorReset + " ")
+		if l.traceThreshold(s) {
+			buf.WriteString(severityColor[s])
+			buf.Write([]byte{'['})
+			buf.WriteString(severityName[s])
+			buf.Write([]byte{']'})
+			buf.WriteString(severityColorReset)
+			buf.Write([]byte{' '})
+		}
 	}
-	buf.WriteString(" ")
-	if l.traceThreshold(s) {
-		buf.WriteString(file)
-		buf.tmp[0] = ':'
-		n := buf.someDigits(1, line)
-		buf.tmp[n+1] = ']'
-		buf.tmp[n+2] = ' '
-		buf.Write(buf.tmp[:n+3])
-	}
-	//else {
-	//	buf.tmp[0] = ' '
-	//	buf.Write(buf.tmp[:1])
-	//}
 
 	return buf
 }
