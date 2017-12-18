@@ -9,13 +9,14 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"path/filepath"
-	"os"
 	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"os"
+	"path/filepath"
 )
 
 const defaultStatusLog = "sync=30"
+
 var isToFileLoggingEnabled = true
 
 // setupLogging sets default
@@ -39,6 +40,7 @@ func setupLogging(ctx *cli.Context) error {
 			return fmt.Errorf("--%s cannot be empty", LogDirFlag.Name)
 		}
 		if isToFileLoggingEnabled {
+			ld = expandPath(ld)
 			ldAbs, err := filepath.Abs(ld)
 			if err != nil {
 				return err
@@ -64,7 +66,6 @@ func setupLogging(ctx *cli.Context) error {
 		// (by default after 1800MB of data per file).
 		glog.SetLogDir(logDir)
 	}
-
 
 	// Handle --neckbeard config overrides if set.
 	if ctx.GlobalBool(NeckbeardFlag.Name) {
@@ -293,7 +294,7 @@ func logLoggingConfiguration(ctx *cli.Context) {
 	vmodule := glog.GetVModule().String()
 	// An empty string looks unused, so show * instead, which is equivalent.
 	if vmodule == "" {
-		vmodule= "*"
+		vmodule = "*"
 	}
 	d := glog.GetDisplayable().String()
 
