@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 )
 
-const defaultStatusLog = "sync=30"
+const defaultStatusLog = "sync=60s"
 
 var isToFileLoggingEnabled = true
 
@@ -301,6 +301,7 @@ func logLoggingConfiguration(ctx *cli.Context) {
 	statusFeats := []string{}
 	for k, v := range availableLogStatusFeatures {
 		if v.Seconds() == 0 {
+			statusFeats = append(statusFeats, logger.ColorGreen(fmt.Sprintf("%s=%s", k, logger.ColorYellow("off"))))
 			continue
 		}
 		statusFeats = append(statusFeats, logger.ColorGreen(fmt.Sprintf("%s=%v", k, v)))
