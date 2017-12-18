@@ -61,7 +61,7 @@ var basicDisplaySystem = displayEventHandlers{
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				// If not in import mode, OR if we haven't yet logged a chain event.
-				if currentMode != lsModeImport || chainEventLastSent.IsZero() {
+				if currentMode != lsModeImport || time.Since(chainEventLastSent) > tickerInterval {
 					currentBlockNumber = PrintStatusBasic(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 				}
 			},
