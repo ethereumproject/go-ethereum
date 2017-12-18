@@ -523,7 +523,7 @@ func (t *TraceLocation) Get() interface{} {
 	return nil
 }
 
-var errTraceSyntax = errors.New("syntax error: expect file.go:234")
+var errTraceSyntax = errors.New("syntax error: expect 'file.go:234'")
 
 // Syntax: -log_backtrace_at=gopherflakes.go:234
 // Note that unlike vmodule the file extension is included here.
@@ -616,7 +616,7 @@ type loggingT struct {
 	// severityTraceThreshold determines the minimum severity at which
 	// file traces will be logged in the header. See severity const iota above.
 	// Only severities at or above this number will be logged with a trace,
-	// eg. at severityTraceThreshold = 1, then only severities errorLog and fatalLog
+	// eg. at severityTraceThreshold = 2, then only severities errorLog and fatalLog
 	// will log with traces.
 	severityTraceThreshold severity
 
@@ -674,7 +674,7 @@ func init() {
 	// and they will also be written to stderr (anything Error and above is).
 	// Keep in mind severities are "upside-down" from verbosities; so here 3=error, 4=fatal, and 0=info
 	// and that here severity>=3 will meet the threshold.
-	display.severityTraceThreshold.set(3)
+	display.severityTraceThreshold.set(2)
 	// Set display verbosity default Info. So it will render
 	// all Fatal, Error, Warn, and Info log levels.
 	// Please don't use Fatal for display; again, Fatal logs should only go through file logging
