@@ -31,7 +31,6 @@ import (
 //2017-02-03 16:52:45  Import #3124790             d819f71c         0/ 0 tx/mgas            18/25 peers
 //
 // FIXME: '16:52:45  Import #3124790                ' aligns right instead of left
-// FIXME: date unit (via glog, likely)
 var basicDisplaySystem = displayEventHandlers{
 	{
 		eventT: logEventChainInsert,
@@ -40,6 +39,7 @@ var basicDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				if currentMode == lsModeImport {
 					currentBlockNumber = PrintStatusBasic(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
+					chainEventLastSent = time.Now()
 				}
 			},
 		},
@@ -60,7 +60,8 @@ var basicDisplaySystem = displayEventHandlers{
 		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
-				if currentMode != lsModeImport {
+				// If not in import mode, OR if we haven't yet logged a chain event.
+				if currentMode != lsModeImport || chainEventLastSent.IsZero() {
 					currentBlockNumber = PrintStatusBasic(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 				}
 			},
