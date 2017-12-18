@@ -69,6 +69,24 @@ func (hs displayEventHandlers) getByName(eventType logEventType) (*displayEventH
 	return nil, false
 }
 
+// mustGetDisplaySystemFromName parses the flag --display-fmt from context and returns an associated
+// displayEventHandlers set. This can be considered a temporary solve for handling "registering" or
+// "delegating" log interface systems.
+func mustGetDisplaySystemFromName(s string) displayEventHandlers {
+	displaySystem := basicDisplaySystem
+	switch s {
+	case "green":
+		displaySystem = greenDisplaySystem
+	case "dash":
+		displaySystem = dashDisplaySystem
+	case "basic":
+		// already set as default
+	default:
+		glog.Fatalln("%v: --%v", ErrInvalidFlag, DisplayFormatFlag.Name)
+	}
+	return displaySystem
+}
+
 // runAllIfAny runs all configured fns for a given event, if registered.
 func (hs *displayEventHandlers) runAllIfAny(ctx *cli.Context, e *eth.Ethereum, d interface{}, tickerInterval time.Duration, eventType logEventType) {
 	if h, ok := hs.getByName(eventType); ok {
@@ -117,7 +135,7 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 			}
 		}
 		if len(eqs) < 2 {
-			glog.Errorf("Invalid log status value: %v. Must be comma-separated pairs of module=interval.", eqs)
+			glog.Errorf("%v: %v. Must be comma-separated pairs of module=interval.", ErrInvalidFlag, eqs)
 			os.Exit(1)
 		}
 
@@ -135,20 +153,13 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 			eqs = append(eqs, "")
 		}
 
+		// Parse interval from flag value.
 		d := parseStatusInterval(eqs[0], eqs[1])
-
-		displaySystem := basicDisplaySystem
-		displayFmt := ctx.GlobalString(DisplayFormatFlag.Name)
-		if displayFmt == "green" {
-			displaySystem = greenDisplaySystem
-		}
-		if displayFmt == "dash" {
-			displaySystem = dashDisplaySystem
-		}
 		switch eqs[0] {
 		case "sync":
 			availableLogStatusFeatures["sync"] = d
-			go runDisplayLogs(ctx, ethe, d, displaySystem)
+			dsys := mustGetDisplaySystemFromName(ctx.GlobalString(DisplayFormatFlag.Name))
+			go runDisplayLogs(ctx, ethe, d, dsys)
 		}
 	}
 }
@@ -157,21 +168,6 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 // It should be run as a goroutine.
 // eg. --log-status="sync=42" logs SYNC information every 42 seconds
 func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Duration, handles displayEventHandlers) {
-
-	// Set up ticker based on established interval.
-	var ticker *time.Ticker
-	if tickerInterval.Seconds() > 0 {
-		ticker = time.NewTicker(tickerInterval)
-		defer ticker.Stop()
-	} else {
-		ticker = time.NewTicker(1)
-		ticker.Stop()
-	}
-
-	var sigc = make(chan os.Signal, 1)
-	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(sigc)
-
 	// Listen for events.
 	var handledEvents []interface{}
 	for _, h := range handles {
@@ -199,6 +195,7 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 	handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventBefore)
 
 	if len(handledEvents) > 0 {
+		//glog.D(logger.Error).Errorf("handling %d events", len(handledEvents))
 		go func() {
 			for ev := range ethEvents.Chan() {
 				updateLogStatusModeHandler(ctx, e, nil, tickerInterval)
@@ -217,11 +214,28 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 			}
 		}()
 	}
+
+	// Set up ticker based on established interval.
+	if tickerInterval.Seconds() > 0 {
+		ticker := time.NewTicker(tickerInterval)
+		defer ticker.Stop()
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					updateLogStatusModeHandler(ctx, e, nil, tickerInterval)
+					//glog.D(logger.Error).Errorf("tick tock  mode= %v", currentMode)
+					handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventInterval)
+				}
+			}
+		}()
+	}
+
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigc)
 	for {
 		select {
-		case <-ticker.C:
-			updateLogStatusModeHandler(ctx, e, nil, tickerInterval)
-			handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventInterval)
 		case <-sigc:
 			// Listen for interrupt
 			handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventAfter)
