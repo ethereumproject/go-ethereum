@@ -672,7 +672,7 @@ func init() {
 	// This should never be reached; fatal logs should ALWAYS be logged to file,
 	// and they will also be written to stderr (anything Error and above is).
 	// Keep in mind severities are "upside-down" from verbosities; so here 3=error, 4=fatal, and 0=info
-	// and that here severity>=3 will meet the threshold. 
+	// and that here severity>=3 will meet the threshold.
 	display.severityTraceThreshold.set(3)
 	// Set display verbosity default Info. So it will render
 	// all Fatal, Error, Warn, and Info log levels.

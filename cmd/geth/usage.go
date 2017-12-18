@@ -147,7 +147,6 @@ var AppHelpFlagGroups = []flagGroup{
 			LogMaxAgeFlag,
 			LogCompressFlag,
 			LogStatusFlag,
-			NeckbeardFlag,
 			MLogFlag,
 			MLogDirFlag,
 			MLogComponentsFlag,
@@ -161,7 +160,9 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			WhisperEnabledFlag,
 			NatspecEnabledFlag,
+			DisplayFlag,
 			DisplayFormatFlag,
+			NeckbeardFlag,
 		},
 	},
 	{
