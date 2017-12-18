@@ -301,10 +301,10 @@ func logLoggingConfiguration(ctx *cli.Context) {
 	statusFeats := []string{}
 	for k, v := range availableLogStatusFeatures {
 		if v.Seconds() == 0 {
-			statusFeats = append(statusFeats, logger.ColorGreen(fmt.Sprintf("%s=%s", k, logger.ColorYellow("off"))))
+			statusFeats = append(statusFeats, fmt.Sprintf("%s=%s", k, "off"))
 			continue
 		}
-		statusFeats = append(statusFeats, logger.ColorGreen(fmt.Sprintf("%s=%v", k, v)))
+		statusFeats = append(statusFeats, fmt.Sprintf("%s=%v", k, v))
 	}
 	statusLine := strings.Join(statusFeats, ",")
 
@@ -318,7 +318,7 @@ func logLoggingConfiguration(ctx *cli.Context) {
 	glog.V(logger.Warn).Infoln("Display log configuration", "d=", d, "status=", statusLine)
 	glog.D(logger.Warn).Infof("Display log config: display=%s status=%s",
 		logger.ColorGreen(d),
-		statusLine,
+		logger.ColorGreen(statusLine),
 	)
 
 	if logger.MlogEnabled() {
