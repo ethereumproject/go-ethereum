@@ -142,7 +142,6 @@ var (
 		Usage: "Password file to use for non-inteactive password input",
 		Value: "",
 	}
-
 	// logging and debug settings
 	NeckbeardFlag = cli.BoolFlag{
 		Name:  "neckbeard",
@@ -204,7 +203,7 @@ var (
 	}
 	LogStatusFlag = cli.StringFlag{
 		Name:  "log-status",
-		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>. Use 'off' to disable entirely.'`,
+		Usage: `Configure interval-based status logs: comma-separated list of <pattern>=<interval>. Use 'off' or '0' to disable.`,
 		Value: defaultStatusLog,
 	}
 	MLogFlag = cli.StringFlag{

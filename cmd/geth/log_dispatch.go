@@ -96,6 +96,15 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 
 		// If possible, split sync=60 into ["sync", "60"], otherwise yields ["sync"], ["60"], or ["someothernonsense"]
 		eqs := strings.Split(p, "=")
+
+		// If just given, eg. --log-status=60s, assume as default intended sync=60s, at least until
+		// there is another status module interval added.
+		if len(eqs) == 1 {
+			dur := eqs[0]
+			if _, err := parseDuration(dur); err == nil {
+				eqs = append([]string{"sync"}, dur)
+			}
+		}
 		if len(eqs) < 2 {
 			glog.Errorf("Invalid log status value: %v. Must be comma-separated pairs of module=interval.", eqs)
 			os.Exit(1)
@@ -139,8 +148,14 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Duration, handles displayEventHandlers) {
 
 	// Set up ticker based on established interval.
-	ticker := time.NewTicker(tickerInterval)
-	defer ticker.Stop()
+	var ticker *time.Ticker
+	if tickerInterval.Seconds() > 0 {
+		ticker = time.NewTicker(tickerInterval)
+		defer ticker.Stop()
+	} else {
+		ticker = time.NewTicker(1)
+		ticker.Stop()
+	}
 
 	var sigc = make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
