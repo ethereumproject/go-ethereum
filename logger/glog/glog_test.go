@@ -149,7 +149,7 @@ func TestInfoDepth(t *testing.T) {
 	}
 
 	for i, m := range msgs {
-		if !strings.HasPrefix(m, severityColor[infoLog]+"I") {
+		if !strings.HasPrefix(m, "I") {
 			t.Errorf("InfoDepth[%d] has wrong character: %q", i, m)
 		}
 		w := fmt.Sprintf("depth-test%d", i)
@@ -219,7 +219,7 @@ func TestHeader1ErrorLog(t *testing.T) {
 	pid = 1234
 	Error("test")
 	line := lineNumber() - 1 // the line directly above
-	format := severityColor[errorLog] + "E" + severityColorReset + "0102 15:04:05.067890 logger/glog/glog_test.go:%d] test\n"
+	format := "E" + "0102 15:04:05.067890 logger/glog/glog_test.go:%d] test\n"
 	n, err := fmt.Sscanf(loggingContents(errorLog), format, &line)
 	if n != 1 || err != nil {
 		t.Errorf("log format error: %d elements, error %s:\n%s", n, err, loggingContents(errorLog))
@@ -245,7 +245,7 @@ func TestHeader2InfoLog(t *testing.T) {
 	defer logging.verbosityTraceThreshold.set(s)
 	pid = 1234
 	Info("test")
-	format := severityColor[infoLog] + "I" + severityColorReset + "0102 15:04:05.067890 logger/glog/glog_test.go:"+strconv.Itoa(lineNumber()-1)+"] test\n"
+	format := "I" + "0102 15:04:05.067890 logger/glog/glog_test.go:"+strconv.Itoa(lineNumber()-1)+"] test\n"
 	n, err := fmt.Sscanf(loggingContents(infoLog), format)
 	if err != nil {
 		t.Errorf("log format error: %d elements, error %s:\n%s", n, err, loggingContents(infoLog))
@@ -306,8 +306,23 @@ func TestWarningDisplay(t *testing.T) {
 	display.verbosity.Set("3")
 	defer display.verbosity.Set("0")
 	D(2).Warnln("test")
-	if !displayContains(warningLog, "W", t) {
-		t.Errorf("Warning has wrong character: %q", displayContents(warningLog))
+	if !displayContains(warningLog, "test", t) {
+		t.Error("Warning failed")
+	}
+	str := displayContents(warningLog)
+	if !displayContains(infoLog, str, t) {
+		t.Error("Info failed")
+	}
+}
+
+func TestErrorDisplay(t *testing.T) {
+	setFlags()
+	defer display.swapDisplay(display.newDisplayBuffers())
+	display.verbosity.Set("3")
+	defer display.verbosity.Set("0")
+	D(2).Errorln("test")
+	if !displayContains(errorLog, "ERROR", t) {
+		t.Errorf("Error has wrong character: %q", displayContents(errorLog))
 	}
 	if !displayContains(warningLog, "test", t) {
 		t.Error("Warning failed")
@@ -340,7 +355,10 @@ func TestD(t *testing.T) {
 	display.verbosity.Set("2")
 	defer display.verbosity.Set("0")
 	D(2).Infoln("test")
-	if !displayContains(infoLog, "I", t) {
+	if !displayContains(infoLog, ":", t) {
+		t.Errorf("Info has wrong character: %q", displayContents(infoLog))
+	}
+	if displayContains(infoLog, "I", t) {
 		t.Errorf("Info has wrong character: %q", displayContents(infoLog))
 	}
 	if !displayContains(infoLog, "test", t) {
