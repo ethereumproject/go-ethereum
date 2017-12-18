@@ -8,13 +8,6 @@ import (
 	"fmt"
 )
 
-var lsModeName = []string{
-	"Discover",
-	"Sync",
-	"Fast",
-	"Import",
-}
-
 type logEventType int
 const (
 	logEventChainInsert       logEventType = iota

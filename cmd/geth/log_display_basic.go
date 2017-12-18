@@ -178,7 +178,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 	peersD.value = formatPeersD(e.Downloader().GetPeers().Len(), maxPeers)
 	defer func() {
 		glog.D(logger.Warn).Infof("%-8s "+formatOutputScanLn(localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD),
-			lsModeName[l], localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD)
+			l, localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD)
 
 	}()
 	if l == lsModeDiscover {

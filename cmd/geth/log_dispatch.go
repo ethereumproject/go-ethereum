@@ -30,6 +30,17 @@ const (
 	lsModeImport
 )
 
+var lsModeName = []string{
+	"Discover",
+	"Sync",
+	"Fast",
+	"Import",
+}
+
+func (m lsMode) String() string {
+	return lsModeName[m]
+}
+
 // displayEventHandlerFn is a function that gets called when something happens; where that 'something'
 // is decided by the displayEventHandler the fn belongs to. It's type accepts a standard interface signature and
 // returns nothing. evData can be nil, and will be, particularly, when the handler is the "INTERVAL" callee.

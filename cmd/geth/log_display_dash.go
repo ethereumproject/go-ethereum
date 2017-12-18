@@ -46,7 +46,7 @@ func tuiDrawDash(e *eth.Ethereum) {
 	}
 	if e != nil && e.IsListening() {
 		cb := e.BlockChain().GetBlockByNumber(currentBlockNumber)
-		syncheightGauge.BorderLabel = fmt.Sprintf("%s | local_head ◼ n=%d ⬡=%s txs=%d time=%v ago", lsModeName[currentMode], currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(), time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
+		syncheightGauge.BorderLabel = fmt.Sprintf("%s | local_head ◼ n=%d ⬡=%s txs=%d time=%v ago", currentMode, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(), time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
 	}
 	termui.Render(syncheightGauge, peerCountSparkHolder, peerList, blkMgasTxsSparkHolder)
 }

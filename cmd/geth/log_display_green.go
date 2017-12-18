@@ -287,6 +287,6 @@ var PrintStatusGreen = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 
 	// This allows maximum user optionality for desired integration with rest of event-based logging.
 	glog.D(logger.Warn).Infof("%s "+modeIcon+"%s %s "+logger.ColorGreen("✌︎︎︎")+"%s %s %s",
-		lsModeName[currentMode], headDisplay, blocksprocesseddisplay, peerDisplay, domOrHeight, qosDisplayable)
+		currentMode, headDisplay, blocksprocesseddisplay, peerDisplay, domOrHeight, qosDisplayable)
 	return current
 }
