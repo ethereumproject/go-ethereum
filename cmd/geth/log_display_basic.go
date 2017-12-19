@@ -85,11 +85,7 @@ var basicDisplaySystem = displayEventHandlers{
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				// If not in import mode OR if we haven't logged a chain event.
-				if time.Since(chainEventLastSent) > tickerInterval || currentMode != lsModeImport {
-					glog.D(logger.Error).Infoln("time.Since(chainEventLastSent) > tickerInterval", time.Since(chainEventLastSent) > tickerInterval,
-						"currentMode != lsModeImport", currentMode != lsModeImport,
-						currentMode, chainEventLastSent, tickerInterval,
-						)
+				if currentMode != lsModeImport || chainEventLastSent.IsZero() {
 					currentBlockNumber = PrintStatusBasic(e, tickerInterval, nil, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 				}
 			},
@@ -157,9 +153,6 @@ func calcPercent(quotient, divisor uint64) float64 {
 // PrintStatusBasic implements the displayEventHandlerFn interface
 var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, evB *types.Block, maxPeers int) uint64 {
 
-	l := currentMode
-	lastLoggedBlockN := currentBlockNumber
-
 	localOfMaxD := &printUnit{"", xlocalOfMaxD, true}
 	percentOrHash := &printUnit{"", xlocalHeadHashD, false}
 	progressRateD := &printUnit{"", xprogressRateD, false}           //  117/ 129/11
@@ -170,7 +163,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, evB *
 		if localheight < syncheight {
 			return fmt.Sprintf("%9s of %9s", formatBlockNumber(localheight), formatBlockNumber(syncheight))
 		}
-		return fmt.Sprintf("%9s", formatBlockNumber(localheight))
+		return fmt.Sprintf("%9s             ", formatBlockNumber(localheight))
 	}
 
 	formatPercentD := func(localheight, syncheight uint64) string {
@@ -200,11 +193,11 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, evB *
 	peersD.value = formatPeersD(e.Downloader().GetPeers().Len(), maxPeers)
 	defer func() {
 		glog.D(logger.Warn).Infof(basicScanLn,
-			l, localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD)
+			currentMode, localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD)
 
 	}()
-	if l == lsModeDiscover {
-		return lastLoggedBlockN
+	if currentMode == lsModeDiscover {
+		return currentBlockNumber
 	}
 
 	origin, current, chainSyncHeight, _, _ := e.Downloader().Progress() // origin, current, height, pulled, known
@@ -216,15 +209,17 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, evB *
 
 	// Calculate progress rates
 	var blks, txs, mgas int
-	if l == lsModeImport && evB != nil {
+	if currentMode == lsModeImport && evB != nil {
 		blks, txs, mgas = 1, evB.Transactions().Len(), int(new(big.Int).Div(evB.GasUsed(), big.NewInt(1000000)).Uint64())
-	} else if lastLoggedBlockN == 0 {
+	} else if currentBlockNumber == 0 && origin > 0 {
 		blks, txs, mgas = calcBlockDiff(e, origin, localHead)
+	} else if currentBlockNumber != 0 {
+		blks, txs, mgas = calcBlockDiff(e, currentBlockNumber, localHead)
 	} else {
-		blks, txs, mgas = calcBlockDiff(e, lastLoggedBlockN, localHead)
+		blks, txs, mgas = calcBlockDiff(e, localHead.NumberU64() - 1, localHead)
 	}
 
-	switch l {
+	switch currentMode {
 	case lsModeFastSync:
 		lh := localHead.NumberU64()
 		localOfMaxD.value = formatLocalOfMaxD(lh, chainSyncHeight)
@@ -237,7 +232,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, evB *
 		progressRateD.value = formatProgressRateD(blks/int(tickerInterval.Seconds()), txs/int(tickerInterval.Seconds()), mgas/int(tickerInterval.Seconds()))
 		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, true), "blk/txs/mgas sec")
 	case lsModeImport:
-		localOfMaxD.value = fmt.Sprintf(strScanLenOf(xlocalOfMaxD, true), formatBlockNumber(localHead.NumberU64()))
+		localOfMaxD.value = formatLocalOfMaxD(localHead.NumberU64(), chainSyncHeight)
 		percentOrHash.value = formatBlockHashD(localHead)
 		progressRateD.value = fmt.Sprintf(strScanLenOf(xprogressRateD, false), formatProgressRateD(-1, txs, mgas))
 		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, true), "txs/mgas")
