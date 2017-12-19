@@ -13,7 +13,6 @@
 //2017-02-03 16:52:45  Import #3124790             d819f71c         0/ 0 tx/mgas            18/25 peers
 //2017-02-03 16:52:46  Mined  #3124791             b719f31b         7/ 1 tx/mgas            18/25 peers
 // ---
-// FIXME: '16:52:45  Import #3124790                ' aligns right instead of left
 
 package main
 
@@ -28,7 +27,6 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"math/big"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -41,8 +39,31 @@ var basicDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				// Conditional prevents chain insert event logs during full/fast sync
 				if currentMode == lsModeImport {
-					currentBlockNumber = PrintStatusBasic(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
-					chainEventLastSent = time.Now()
+					switch d := evData.(type) {
+					case core.ChainInsertEvent:
+						currentBlockNumber = PrintStatusBasic(e, tickerInterval, e.BlockChain().GetBlockByNumber(d.LastNumber), ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
+						chainEventLastSent = time.Now()
+					}
+				}
+			},
+		},
+	},
+	{
+		eventT: logEventMinedBlock,
+		ev: core.NewMinedBlockEvent{},
+		handlers: displayEventHandlerFns{
+			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
+				switch d := evData.(type) {
+				case core.NewMinedBlockEvent:
+					glog.D(logger.Warn).Infof(basicScanLn,
+						"Mined",
+							formatBlockNumber(d.Block.NumberU64()),
+							d.Block.Hash().Hex()[2 : 2+len(xlocalHeadHashD)],
+							fmt.Sprintf("%3d/%2d", d.Block.Transactions().Len(), new(big.Int).Div(d.Block.GasUsed(), big.NewInt(1000000)).Int64()),
+							"txs/mgas",
+							fmt.Sprintf("%2d/%2d peers", e.Downloader().GetPeers().Len(), ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx))),
+					)
+					currentBlockNumber = d.Block.NumberU64()
 				}
 			},
 		},
@@ -63,9 +84,13 @@ var basicDisplaySystem = displayEventHandlers{
 		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
-				// If not in import mode OR if we haven't logged a chain event lately.
-				if currentMode != lsModeImport || time.Since(chainEventLastSent) > tickerInterval {
-					currentBlockNumber = PrintStatusBasic(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
+				// If not in import mode OR if we haven't logged a chain event.
+				if time.Since(chainEventLastSent) > tickerInterval || currentMode != lsModeImport {
+					glog.D(logger.Error).Infoln("time.Since(chainEventLastSent) > tickerInterval", time.Since(chainEventLastSent) > tickerInterval,
+						"currentMode != lsModeImport", currentMode != lsModeImport,
+						currentMode, chainEventLastSent, tickerInterval,
+						)
+					currentBlockNumber = PrintStatusBasic(e, tickerInterval, nil, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 				}
 			},
 		},
@@ -86,11 +111,13 @@ const (
 	xpeersD             = "18/25 peers"      //  18/25 peers
 )
 
+const basicScanLn = "%-8s %-22s %8s %13s %-16s %11s"
+
 func strScanLenOf(s string, leftAlign bool) string {
 	if leftAlign {
-		return "%" + strconv.Itoa(len(s)) + "s"
+		return "%-" + strconv.Itoa(len(s)) + "s"
 	}
-	return "%-" + strconv.Itoa(len(s)) + "s"
+	return "%" + strconv.Itoa(len(s)) + "s"
 }
 
 type printUnit struct {
@@ -128,7 +155,7 @@ func calcPercent(quotient, divisor uint64) float64 {
 }
 
 // PrintStatusBasic implements the displayEventHandlerFn interface
-var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPeers int) uint64 {
+var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, evB *types.Block, maxPeers int) uint64 {
 
 	l := currentMode
 	lastLoggedBlockN := currentBlockNumber
@@ -143,13 +170,13 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 		if localheight < syncheight {
 			return fmt.Sprintf("%9s of %9s", formatBlockNumber(localheight), formatBlockNumber(syncheight))
 		}
-		return fmt.Sprintf(strScanLenOf(xlocalOfMaxD, true), formatBlockNumber(localheight))
+		return fmt.Sprintf("%9s", formatBlockNumber(localheight))
 	}
 
 	formatPercentD := func(localheight, syncheight uint64) string {
 		// Calculate and format percent sync of known height
 		fHeightRatio := fmt.Sprintf("%4.2f%%", calcPercent(localheight, syncheight))
-		return fmt.Sprintf(strScanLenOf(xlocalHeadHashD, false), fHeightRatio)
+		return fmt.Sprintf("%s", fHeightRatio)
 	}
 
 	formatBlockHashD := func(b *types.Block) string {
@@ -158,10 +185,10 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 
 	formatProgressRateD := func(blksN, txsN, mgasN int) string {
 		if blksN < 0 {
-			return fmt.Sprintf("    %4d/%2d", txsN, mgasN)
+			return fmt.Sprintf("%4d/%2d", txsN, mgasN)
 		}
 		if txsN < 0 {
-			return fmt.Sprintf("%3d/    /%2d", blksN, mgasN)
+			return fmt.Sprintf("%3d/%2d", blksN, mgasN)
 		}
 		return fmt.Sprintf("%3d/%4d/%2d", blksN, txsN, mgasN)
 	}
@@ -170,20 +197,9 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 		return fmt.Sprintf("%2d/%2d peers", peersN, maxpeersN)
 	}
 
-	// formatOutputScanLn accepts printUnits and returns a scanln based on their example string length and
-	// printUnit configured alignment.
-	// eg. %12s %-8s %5s %15s
-	formatOutputScanLn := func(printunits ...*printUnit) string {
-		o := []string{}
-		for _, u := range printunits {
-			o = append(o, strScanLenOf(u.example, u.leftAlign))
-		}
-		return strings.Join(o, " ")
-	}
-
 	peersD.value = formatPeersD(e.Downloader().GetPeers().Len(), maxPeers)
 	defer func() {
-		glog.D(logger.Warn).Infof("%-8s "+formatOutputScanLn(localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD),
+		glog.D(logger.Warn).Infof(basicScanLn,
 			l, localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD)
 
 	}()
@@ -200,7 +216,9 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 
 	// Calculate progress rates
 	var blks, txs, mgas int
-	if lastLoggedBlockN == 0 {
+	if l == lsModeImport && evB != nil {
+		blks, txs, mgas = 1, evB.Transactions().Len(), int(new(big.Int).Div(evB.GasUsed(), big.NewInt(1000000)).Uint64())
+	} else if lastLoggedBlockN == 0 {
 		blks, txs, mgas = calcBlockDiff(e, origin, localHead)
 	} else {
 		blks, txs, mgas = calcBlockDiff(e, lastLoggedBlockN, localHead)
@@ -212,17 +230,17 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 		localOfMaxD.value = formatLocalOfMaxD(lh, chainSyncHeight)
 		percentOrHash.value = formatPercentD(lh, chainSyncHeight)
 		progressRateD.value = formatProgressRateD(blks/int(tickerInterval.Seconds()), -1, mgas/int(tickerInterval.Seconds()))
-		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, false), "blk/   /mgas sec")
+		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, true), "blk/mgas sec")
 	case lsModeFullSync:
 		localOfMaxD.value = formatLocalOfMaxD(localHead.NumberU64(), chainSyncHeight)
 		percentOrHash.value = formatBlockHashD(localHead)
 		progressRateD.value = formatProgressRateD(blks/int(tickerInterval.Seconds()), txs/int(tickerInterval.Seconds()), mgas/int(tickerInterval.Seconds()))
-		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, false), "blk/txs/mgas sec")
+		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, true), "blk/txs/mgas sec")
 	case lsModeImport:
 		localOfMaxD.value = fmt.Sprintf(strScanLenOf(xlocalOfMaxD, true), formatBlockNumber(localHead.NumberU64()))
 		percentOrHash.value = formatBlockHashD(localHead)
 		progressRateD.value = fmt.Sprintf(strScanLenOf(xprogressRateD, false), formatProgressRateD(-1, txs, mgas))
-		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, false), "    txs/mgas    ")
+		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, true), "txs/mgas")
 	default:
 		panic("unreachable")
 	}
