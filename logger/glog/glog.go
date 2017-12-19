@@ -1197,6 +1197,9 @@ func gzipFile(name string) error {
 	if err = writer.Flush(); err != nil {
 		return err
 	}
+	if err = gzipped.Sync(); err != nil {
+		return err
+	}
 	if err = gzipped.Close(); err != nil {
 		return err
 	}
