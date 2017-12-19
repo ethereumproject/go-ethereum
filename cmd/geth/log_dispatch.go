@@ -73,18 +73,17 @@ func (hs displayEventHandlers) getByName(eventType logEventType) (*displayEventH
 // displayEventHandlers set. This can be considered a temporary solve for handling "registering" or
 // "delegating" log interface systems.
 func mustGetDisplaySystemFromName(s string) displayEventHandlers {
-	displaySystem := basicDisplaySystem
 	switch s {
-	case "green":
-		displaySystem = greenDisplaySystem
-	case "dash":
-		displaySystem = dashDisplaySystem
 	case "basic":
-		// already set as default
+		return basicDisplaySystem
+	case "green":
+		return greenDisplaySystem
+	case "dash":
+		return dashDisplaySystem
 	default:
 		glog.Fatalln("%v: --%v", ErrInvalidFlag, DisplayFormatFlag.Name)
 	}
-	return displaySystem
+	return displayEventHandlers{}
 }
 
 // runAllIfAny runs all configured fns for a given event, if registered.
@@ -135,17 +134,14 @@ func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
 			}
 		}
 		if len(eqs) < 2 {
-			glog.Errorf("%v: %v. Must be comma-separated pairs of module=interval.", ErrInvalidFlag, eqs)
-			os.Exit(1)
+			glog.Fatalf("%v: %v. Must be comma-separated pairs of module=interval.", ErrInvalidFlag, eqs)
 		}
 
 		// Catch unavailable and duplicate status feature logs
 		if status, ok := availableLogStatusFeatures[eqs[0]]; !ok {
-			glog.Errorf("%v: %v: unavailable status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
-			os.Exit(1)
+			glog.Fatalf("%v: %v: unavailable status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
 		} else if status.Seconds() != 0 {
-			glog.Errorf("%v: %v: duplicate status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
-			os.Exit(1)
+			glog.Fatalf("%v: %v: duplicate status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
 		}
 
 		// If user just uses "sync" instead of "sync=42", append empty string and delegate to each status log function how to handle it
@@ -195,7 +191,6 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 	handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventBefore)
 
 	if len(handledEvents) > 0 {
-		//glog.D(logger.Error).Errorf("handling %d events", len(handledEvents))
 		go func() {
 			for ev := range ethEvents.Chan() {
 				updateLogStatusModeHandler(ctx, e, nil, tickerInterval)
@@ -224,20 +219,19 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 				select {
 				case <-ticker.C:
 					updateLogStatusModeHandler(ctx, e, nil, tickerInterval)
-					//glog.D(logger.Error).Errorf("tick tock  mode= %v", currentMode)
 					handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventInterval)
 				}
 			}
 		}()
 	}
 
+	// Listen for interrupt
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigc)
 	for {
 		select {
 		case <-sigc:
-			// Listen for interrupt
 			handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventAfter)
 			return
 		}

@@ -78,7 +78,7 @@ func setupLogging(ctx *cli.Context) error {
 	if ctx.GlobalIsSet(DisplayFlag.Name) {
 		i := ctx.GlobalInt(DisplayFlag.Name)
 		if i > 5 {
-			return fmt.Errorf("--%s level must be 0 <= i <= 3, got: %d", DisplayFlag.Name, i)
+			return fmt.Errorf("--%s level must be 0 <= i <= 5, got: %d", DisplayFlag.Name, i)
 		}
 		glog.SetD(i)
 	}
@@ -322,7 +322,7 @@ func logLoggingConfiguration(ctx *cli.Context) {
 	)
 
 	if logger.MlogEnabled() {
-		glog.V(logger.Warn).Warnf("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())
+		glog.V(logger.Warn).Infof("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())
 		glog.D(logger.Warn).Infof("Machine log config: mlog=%s mlog-dir=%s", logger.ColorGreen(logger.GetMLogFormat().String()), logger.ColorGreen(logger.GetMLogDir()))
 	} else {
 		glog.V(logger.Warn).Warnf("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())

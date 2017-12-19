@@ -1,3 +1,48 @@
+// ---
+//┌Import | local_head ◼ n=5047515 ⬡=0xfae68412… txs=18 time=37s ago─────────────────────────────────┐
+//│                                                                                                  │
+//└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+//┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+//│n=5047515] ∆ blks=1 (inserted_at=2017-12-19 09:22:37 -0600 CST took=31ms)                         │
+//│                                                                                                  │
+//│                                                                                                  │
+//│                                                                                                  │
+//│n=5047515] ∑ mgas= 0/   1blks                                                                     │
+//│                                                                                                  │
+//│                                                                                                  │
+//│                                                                                                  │
+//│n=5047515] ∑ txs= 18/   1blks                                                                     │
+//│                                                                                                  │
+//│                      ▅  ▆                 ▅    ▂                                                 │
+//│▂▂▂  ▅▃▄ ▇▂▃▃▁ ▂▂▂▃▆▁   ▁ ▁▄▁▁▄ ▂▁▁  ▁▂▁ ▁▃ ▁▄                                                    │
+//│                                                                                                  │
+//└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+//┌Peers (12 / 25)───────────────────────────────────────────────────────────────────────────────────┐
+//│                                                                                                  │
+//│                  ▁     ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▅▅▅▅▅ ▅▁▁▁▁▁▁▁▁▁▅▅▅                              │
+//│            ▃▃▃▃▆▆ ▆▆▆▆▆                                                                          │
+//│     ▁  ▇▇▇▇                                                                                      │
+//│▅▅▅▅▅ ▅▅                                                                                          │
+//│                                                                                                  │
+//
+//│Peer id=8310b1f98b9b7afe eth/63 [Parity/v1.7.0-unstable-5f2cabd-20170727/x86_64-linux-gnu/rustc1.…│
+//│Peer id=5fbfb426fbb46f8b eth/63 [Parity/v1.7.7-stable-eb7c648-20171015/x86_64-linux-gnu/rustc1.20…│
+//│Peer id=1922bfd2acc1e82f eth/63 [Parity/v1.8.2-beta-1b6588c-20171025/x86_64-linux-gnu/rustc1.21.0…│
+//│Peer id=8ed199326f981ae9 eth/63 [Parity/v1.8.0-beta-9882902-20171015/x86_64-linux-gnu/rustc1.20.0…│
+//│Peer id=c89d548e2a55d324 eth/63 [Parity/v1.8.2-beta-1b6588c-20171025/x86_64-linux-gnu/rustc1.21.0…│
+//│Peer id=13c960f1da9a6337 eth/63 [Parity/v1.8.4-beta-c74c8c1-20171211/x86_64-linux-gnu/rustc1.22.1…│
+//│Peer id=021eb56de4a7b725 eth/63 [Parity/v1.6.9-stable-d44b008-20170716/x86_64-linux-gnu/rustc1.18…│
+//│Peer id=5701cea16e32cb06 eth/63 [Parity/v1.7.9-stable-12940e4-20171113/x86_64-linux-gnu/rustc1.21…│
+//│Peer id=385ffdfb7f7cd2f5 eth/63 [Geth/v4.0.0/windows/go1.8] [hs 0.00/s, bs 0.15/s, rs 0.00/s, ss …│
+//│Peer id=d5a5d20cb8b77e14 eth/63 [Parity/v1.8.2-beta-1b6588c-20171025/x86_64-linux-gnu/rustc1.21.0…│
+//│Peer id=e7f3c98896581fee eth/63 [Parity/v1.7.9-unstable-12940e4-20171113/x86_64-linux-gnu/rustc1.…│
+//│Peer id=cb0e1d693f950573 eth/63 [Parity/v1.7.10-stable-3931713-20171211/x86_64-linux-gnu/rustc1.2…│
+//│                                                                                                  │
+//│                                                                                                  │
+//│                                                                                                  │
+//└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+// ---
+
 package main
 
 import (
@@ -117,7 +162,7 @@ func addDataWithLimit(sl []int, dataPoint int, maxLen int) []int {
 	return sl
 }
 
-// greenDisplaySystem is "spec'd" in PR #423 and is a little fancier/more detailed and colorful than basic.
+// dashDisplaySystem is an experimental display system intended as a proof of concept for the display dispatch system
 var dashDisplaySystem = displayEventHandlers{
 	{
 		eventT: logEventBefore,

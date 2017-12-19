@@ -1,3 +1,28 @@
+// ---
+//2017-12-19 08:55:03 Discover ➫⟪#      0 0xd4e5674…⟫ ~⟪   0 blks    0 txs  0 mgas  /sec⟫ ✌︎︎︎⟪ 1/25 peers⟫  qos=⟪rtt=18s ttl=1m0s conf=1.00⟫
+//2017-12-19 08:55:17 ◼⋯⋯⬇ Start ⟪Peer id=931f21921fcc7654 eth/63 [Parity/v1.8.3-beta-b49c44a-20171114/x86_64-linux-gnu/rustc1.21.0] [hs 0.00/s, bs 0.00/s, rs 0.00/s, ss 0.00/s, miss    0, rtt 20s]⟫ hash=⟪0xc5ea430…⟫ TD=⟪185549045030301150788⟫
+//2017-12-19 08:55:19 ◼⋯⋯❐ Insert headers=⟪processed=   0 ignored= 192⟫ ❐=⟪n=1836399 hash=0x1ecf991…⟫took=⟪73.546ms⟫
+//2017-12-19 08:55:20 ◼⋯⋯❐ Insert headers=⟪processed=   0 ignored= 192⟫ ❐=⟪n=1836591 hash=0xcff7c3c…⟫took=⟪275.686ms⟫
+//2017-12-19 08:57:25 ◼⋯⋯⬇ Fail  ⟪Peer id=931f21921fcc7654 eth/63 [Parity/v1.8.3-beta-b49c44a-20171114/x86_64-linux-gnu/rustc1.21.0] [hs 211.71/s, bs 124.20/s, rs 184.06/s, ss 735.50/s, miss    0, rtt 1.512187158s]⟫ err=⟪content processing canceled (requested)⟫
+//2017-12-19 09:00:43 ◼⋯⋯⬇ Start ⟪Peer id=f30acc4f9c1a4369 eth/63 [Parity/v1.8.4-beta-c74c8c1-20171211/x86_64-linux-gnu/rustc1.22.1] [hs 0.00/s, bs 0.00/s, rs 0.00/s, ss 0.00/s, miss    0, rtt 20s]⟫ hash=⟪0x26f9a91…⟫ TD=⟪185552382866154347587⟫
+//2017-12-19 09:00:46 Sync ︎◉⟪#5043160 0xed71bef…⟫ ~⟪   0 blks    0 txs  0 mgas  /sec⟫ ✌︎︎︎⟪ 5/25 peers⟫ height=⟪5047421 99.92%⟫ qos=⟪rtt=15.942s ttl=1m0s conf=0.70⟫
+//2017-12-19 09:00:51 ◼⋯⋯◼ Insert blocks=⟪processed=  48 queued=   0 ignored=   0 txs= 341⟫ ◼=⟪n= 5043208 hash=0x195123c… time=16h55m40.639s ago⟫ took=⟪5.692s⟫
+//2017-12-19 09:01:47 Sync ︎◉⟪#5044175 0xedb389d…⟫ ~⟪  16 blks  142 txs  3 mgas  /sec⟫ ✌︎︎︎⟪ 8/25 peers⟫ height=⟪5047421 99.94%⟫ qos=⟪rtt=9.585s ttl=36.603s conf=0.87⟫
+//2017-12-19 09:02:43 ◼⋯⋯◼ Insert blocks=⟪processed=2048 queued=   0 ignored=   0 txs=17899⟫ ◼=⟪n= 5045256 hash=0xcf3d3fb… time=8h49m5.014s ago⟫ took=⟪1m51.251s⟫
+//2017-12-19 09:03:47 Sync ︎◉⟪#5046394 0x8b10bdd…⟫ ~⟪  36 blks  306 txs  9 mgas  /sec⟫ ✌︎︎︎⟪11/25 peers⟫ height=⟪5047421 99.98%⟫ qos=⟪rtt=6.695s ttl=22.328s conf=1.00⟫
+//2017-12-19 09:04:43 ◼⋯⋯◼ Insert blocks=⟪processed=2048 queued=   0 ignored=   0 txs=18124⟫ ◼=⟪n= 5047304 hash=0xc0b4780… time=33m45.455s ago⟫ took=⟪2m0.462s⟫
+//2017-12-19 09:04:50 ◼⋯⋯⬇ Done  ⟪Peer id=f30acc4f9c1a4369 eth/63 [Parity/v1.8.4-beta-c74c8c1-20171211/x86_64-linux-gnu/rustc1.22.1] [hs 813.97/s, bs 295.27/s, rs 0.00/s, ss 0.00/s, miss    0, rtt 1.918361657s]⟫ hash=⟪0x26f9a91…⟫ TD=⟪185552382866154347587⟫
+//2017-12-19 09:04:50 ◼⋯⋯◼ Insert blocks=⟪processed= 118 queued=   0 ignored=   0 txs=1183⟫ ◼=⟪n= 5047422 hash=0xc47a4fc… time=4m24.711s ago⟫ took=⟪7.258s⟫
+//2017-12-19 09:04:51 ◼⋯⋯⬇ Start ⟪Peer id=f30acc4f9c1a4369 eth/63 [Parity/v1.8.4-beta-c74c8c1-20171211/x86_64-linux-gnu/rustc1.22.1] [hs 0.00/s, bs 0.00/s, rs 0.00/s, ss 0.00/s, miss    0, rtt 1.918361657s]⟫ hash=⟪0x249c344…⟫ TD=⟪185554240788446349916⟫
+//2017-12-19 09:04:52 ◼⋯⋯◼ Insert blocks=⟪processed=   4 queued=   0 ignored=   0 txs=  53⟫ ◼=⟪n= 5047426 hash=0x6aff1b9… time=3m21.897s ago⟫ took=⟪185ms⟫
+//2017-12-19 09:04:53 ◼⋯⋯⬇ Done  ⟪Peer id=f30acc4f9c1a4369 eth/63 [Parity/v1.8.4-beta-c74c8c1-20171211/x86_64-linux-gnu/rustc1.22.1] [hs 0.00/s, bs 1.18/s, rs 0.00/s, ss 0.00/s, miss    0, rtt 1.743539409s]⟫ hash=⟪0x249c344…⟫ TD=⟪185554240788446349916⟫
+//2017-12-19 09:04:53 ◼⋯⋯◼ Insert blocks=⟪processed=  11 queued=   0 ignored=   0 txs= 119⟫ ◼=⟪n= 5047437 hash=0x3950d3d… time=1m27.504s ago⟫ took=⟪735ms⟫
+//2017-12-19 09:09:53 ◼⋯⋯◼ Insert blocks=⟪processed=  13 queued=   0 ignored=   0 txs= 124⟫ ◼=⟪n= 5047453 hash=0xff69a28… time=19.599s ago⟫ took=⟪630ms⟫
+//2017-12-19 09:10:11 ◼⋯⋯◼ Insert blocks=⟪processed=   1 queued=   0 ignored=   0 txs=   1⟫ ◼=⟪n= 5047454 hash=0xd03268a… time=34.122s ago⟫ took=⟪8ms⟫
+//2017-12-19 09:10:18 ◼⋯⋯◼ Insert blocks=⟪processed=   1 queued=   0 ignored=   0 txs=   7⟫ ◼=⟪n= 5047455 hash=0x1364b57… time=13.649s ago⟫ took=⟪17ms⟫
+//2017-12-19 09:10:25 ◼⋯⋯◼ Insert blocks=⟪processed=   1 queued=   0 ignored=   0 txs=   6⟫ ◼=⟪n= 5047456 hash=0x00ee977… time=12.328s ago⟫ took=⟪23ms⟫
+// ---
+
 package main
 
 import (

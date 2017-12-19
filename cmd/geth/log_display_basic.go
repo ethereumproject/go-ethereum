@@ -1,21 +1,3 @@
-package main
-
-import (
-	"strings"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"fmt"
-	"math/big"
-	"time"
-	"strconv"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core"
-	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/eth/downloader"
-)
-
-// basicDisplaySystem is the basic display system spec'd in #127.
 // ---
 //2017-02-03 16:44:00  Discover                                                              0/25 peers
 //2017-02-03 16:45:00  Discover                                                              1/25 peers
@@ -29,14 +11,35 @@ import (
 //2017-02-03 16:52:05  Import #3124788             84e11ff4        15/ 7 tx/mgas            10/25 peers
 //2017-02-03 16:52:25  Import #3124789             9e45a241         5/ 1 tx/mgas            12/25 peers
 //2017-02-03 16:52:45  Import #3124790             d819f71c         0/ 0 tx/mgas            18/25 peers
-//
+//2017-02-03 16:52:46  Mined  #3124791             b719f31b         7/ 1 tx/mgas            18/25 peers
+// ---
 // FIXME: '16:52:45  Import #3124790                ' aligns right instead of left
+
+package main
+
+import (
+	"fmt"
+	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/eth"
+	"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"gopkg.in/urfave/cli.v1"
+	"math/big"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// basicDisplaySystem is the basic display system spec'd in #127.
 var basicDisplaySystem = displayEventHandlers{
 	{
 		eventT: logEventChainInsert,
 		ev:     core.ChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
+				// Conditional prevents chain insert event logs during full/fast sync
 				if currentMode == lsModeImport {
 					currentBlockNumber = PrintStatusBasic(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 					chainEventLastSent = time.Now()
@@ -60,7 +63,7 @@ var basicDisplaySystem = displayEventHandlers{
 		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
-				// If not in import mode, OR if we haven't yet logged a chain event.
+				// If not in import mode OR if we haven't logged a chain event lately.
 				if currentMode != lsModeImport || time.Since(chainEventLastSent) > tickerInterval {
 					currentBlockNumber = PrintStatusBasic(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 				}
@@ -74,12 +77,14 @@ func formatBlockNumber(i uint64) string {
 }
 
 // Examples of spec'd output.
-var xlocalOfMaxD = "#92481951 of #93124363" // #2481951 of #3124363
-//var xpercentD = "   92.0%"           //    92.0%
-var xlocalHeadHashD = "c76c34e7"             // c76c34e7
-var xprogressRateD = " 117/ 129/ 11"         //  117/ 129/11
-var xprogressRateUnitsD = "blk/txs/mgas sec" // blk/tx/mgas sec
-var xpeersD = "18/25 peers"                  //  18/25 peers
+const (
+	xlocalOfMaxD = "#92481951 of #93124363" // #2481951 of #3124363
+	// xpercentD = "   92.0%"                //    92.0% // commented because it is an item in the spec, but shorter than xLocalHeadHashD
+	xlocalHeadHashD     = "c76c34e7"         // c76c34e7
+	xprogressRateD      = " 117/ 129/ 11"    //  117/ 129/11
+	xprogressRateUnitsD = "blk/txs/mgas sec" // blk/tx/mgas sec
+	xpeersD             = "18/25 peers"      //  18/25 peers
+)
 
 func strScanLenOf(s string, leftAlign bool) string {
 	if leftAlign {
