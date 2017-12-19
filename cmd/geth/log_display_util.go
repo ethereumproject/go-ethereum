@@ -51,8 +51,11 @@ func getLogStatusMode(e *eth.Ethereum) lsMode {
 			return lsModeFastSync
 		}
 	}
+	if e.Downloader().GetPeers().Len() == 0 {
+		return lsModeDiscover
+	}
 	_, current, height, _, _ := e.Downloader().Progress() // origin, current, height, pulled, known
-	if e.Downloader().GetPeers().Len() > 0 && current >= height && !(current == 0 && height == 0) {
+	if height > 0 && height < current {
 		return lsModeImport
 	}
 	return lsModeDiscover
