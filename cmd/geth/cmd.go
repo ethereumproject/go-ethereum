@@ -107,7 +107,7 @@ func StartNode(stack *node.Node) {
 		for i := 10; i > 0; i-- {
 			<-sigc
 			if i > 1 {
-				glog.Infof("Already shutting down, interrupt %d more times for panic.", i-1)
+				glog.D(logger.Warn).Warnf("Already shutting down, interrupt %d more times for panic.", i-1)
 			}
 		}
 		glog.Fatal("boom")
