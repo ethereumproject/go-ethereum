@@ -475,15 +475,20 @@ func (m *MLogDetailT) AsDocumentation() *MLogDetailT {
 // Arguments MUST be provided in the order in which they should be applied to the
 // slice of existing details.
 func (m MLogT) SetDetailValues(detailVals ...interface{}) MLogT {
-
 	// Check for congruence between argument length and registered details.
 	if len(detailVals) != len(m.Details) {
-		glog.Fatal("mlog: wrong number of details set, want: ", len(m.Details), "got:", len(detailVals))
+		glog.Fatal(m.EventName(), "wrong number of details set, want: ", len(m.Details), "got:", len(detailVals))
 	}
 
+	// Use intermediate array to handle setting values, avoids data race conditions.
+	var tmpDetails = make([]MLogDetailT, len(m.Details))
+	copy(tmpDetails, m.Details)
+
 	for i, detailval := range detailVals {
-		m.Details[i].Value = detailval
+		tmpDetails[i].Value = detailval
 	}
+	m.Details = tmpDetails
+	tmpDetails = nil // garbage
 
 	return m
 }
