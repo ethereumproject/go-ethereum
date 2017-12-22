@@ -16,7 +16,7 @@
 
 // This file 'mlog' is home to the 'discover' package implementation of mlog.
 // All available mlog lines should be established here as variables and documented.
-// For each instance of an mlog call, the respective MLogT variable SetDetailValues()
+// For each instance of an mlog call, the respective MLogT variable AssignDetails()
 // method should be called with per-use instance details.
 
 package discover
@@ -31,21 +31,21 @@ var mlogDiscover = logger.MLogRegisterAvailable("discover", mLogLines)
 // May be used for automatic mlog docmentation generator, or
 // for API usage/display/documentation otherwise.
 var mLogLines = []logger.MLogT{
-	mlogPingHandleFrom,
-	mlogPingSendTo,
-	mlogPongHandleFrom,
-	mlogPongSendTo,
-	mlogFindNodeHandleFrom,
-	mlogFindNodeSendTo,
-	mlogNeighborsHandleFrom,
-	mlogNeighborsSendTo,
+	*mlogPingHandleFrom,
+	*mlogPingSendTo,
+	*mlogPongHandleFrom,
+	*mlogPongSendTo,
+	*mlogFindNodeHandleFrom,
+	*mlogFindNodeSendTo,
+	*mlogNeighborsHandleFrom,
+	*mlogNeighborsSendTo,
 }
 
 // Collect and document available mlog lines.
 
 // PING
 // mlogPingHandleFrom is called once for each ping request from a node FROM
-var mlogPingHandleFrom = logger.MLogT{
+var mlogPingHandleFrom = &logger.MLogT{
 	Description: "Called once for each received PING request from peer FROM.",
 	Receiver:    "PING",
 	Verb:        "HANDLE",
@@ -57,7 +57,7 @@ var mlogPingHandleFrom = logger.MLogT{
 	},
 }
 
-var mlogPingSendTo = logger.MLogT{
+var mlogPingSendTo = &logger.MLogT{
 	Description: "Called once for each outgoing PING request to peer TO.",
 	Receiver:    "PING",
 	Verb:        "SEND",
@@ -70,7 +70,7 @@ var mlogPingSendTo = logger.MLogT{
 
 // PONG
 // mlogPongHandleFrom is called once for each pong request from a node FROM
-var mlogPongHandleFrom = logger.MLogT{
+var mlogPongHandleFrom = &logger.MLogT{
 	Description: "Called once for each received PONG request from peer FROM.",
 	Receiver:    "PONG",
 	Verb:        "HANDLE",
@@ -83,7 +83,7 @@ var mlogPongHandleFrom = logger.MLogT{
 }
 
 // mlogPingHandleFrom is called once for each ping request from a node FROM
-var mlogPongSendTo = logger.MLogT{
+var mlogPongSendTo = &logger.MLogT{
 	Description: "Called once for each outgoing PONG request to peer TO.",
 	Receiver:    "PONG",
 	Verb:        "SEND",
@@ -96,7 +96,7 @@ var mlogPongSendTo = logger.MLogT{
 
 // FINDNODE
 // mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
-var mlogFindNodeHandleFrom = logger.MLogT{
+var mlogFindNodeHandleFrom = &logger.MLogT{
 	Description: "Called once for each received FIND_NODE request from peer FROM.",
 	Receiver:    "FINDNODE",
 	Verb:        "HANDLE",
@@ -109,7 +109,7 @@ var mlogFindNodeHandleFrom = logger.MLogT{
 }
 
 // mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
-var mlogFindNodeSendTo = logger.MLogT{
+var mlogFindNodeSendTo = &logger.MLogT{
 	Description: "Called once for each received FIND_NODE request from peer FROM.",
 	Receiver:    "FINDNODE",
 	Verb:        "SEND",
@@ -122,7 +122,7 @@ var mlogFindNodeSendTo = logger.MLogT{
 
 // NEIGHBORS
 // mlogNeighborsHandleFrom is called once for each neighbors request from a node FROM
-var mlogNeighborsHandleFrom = logger.MLogT{
+var mlogNeighborsHandleFrom = &logger.MLogT{
 	Description: `Called once for each received NEIGHBORS request from peer FROM.`,
 	Receiver:    "NEIGHBORS",
 	Verb:        "HANDLE",
@@ -135,7 +135,7 @@ var mlogNeighborsHandleFrom = logger.MLogT{
 }
 
 // mlogFindNodeSendNeighbors is called once for each sent NEIGHBORS request
-var mlogNeighborsSendTo = logger.MLogT{
+var mlogNeighborsSendTo = &logger.MLogT{
 	Description: `Called once for each outgoing NEIGHBORS request to peer TO.`,
 	Receiver:    "NEIGHBORS",
 	Verb:        "SEND",
