@@ -93,33 +93,33 @@ teardown() {
 @test "aliasing directory flags: --data-dir==--datadir, --ipc-path==--ipcpath" {
 
 	# keystore not hyphenated
-	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/keyhere console
+	run $GETH_CMD --datadir $DATA_DIR --keystore $DATA_DIR/keyhere --exec 'exit;' console
 	[ "$status" -eq 0 ]
 	[ -d $DATA_DIR/keyhere ]
 
 	# data-dir/datadir
-	run $GETH_CMD --datadir $DATA_DIR console
+	run $GETH_CMD --datadir $DATA_DIR --exec 'exit;' console
 	[ "$status" -eq 0 ]
 	[ -d $DATA_DIR ]
 
-	run $GETH_CMD --data-dir $DATA_DIR console
+	run $GETH_CMD --data-dir $DATA_DIR --exec 'exit;' console
 	[ "$status" -eq 0 ]
 	[ -d $DATA_DIR ]
 
 	# # ipc-path/ipcpath
-	run $GETH_CMD --data-dir $DATA_DIR --ipc-path abc.ipc console
+	run $GETH_CMD --data-dir $DATA_DIR --ipc-path abc.ipc --exec 'exit;' console
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc.ipc"* ]]
 
-	run $GETH_CMD --data-dir $DATA_DIR --ipcpath $DATA_DIR/mainnet/abc.ipc console
+	run $GETH_CMD --data-dir $DATA_DIR --ipcpath $DATA_DIR/mainnet/abc.ipc --exec 'exit;' console
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc.ipc"* ]]
 
-	run $GETH_CMD --data-dir $DATA_DIR --ipc-path $DATA_DIR/mainnet/abc console
+	run $GETH_CMD --data-dir $DATA_DIR --ipc-path $DATA_DIR/mainnet/abc --exec 'exit;' console
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc"* ]]
 
-	run $GETH_CMD --data-dir $DATA_DIR --ipcpath $DATA_DIR/mainnet/abc console
+	run $GETH_CMD --data-dir $DATA_DIR --ipcpath $DATA_DIR/mainnet/abc --exec 'exit;' console
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc"* ]]
 	
@@ -151,7 +151,7 @@ teardown() {
 }
 
 @test "--cache 16 | exit 0" {
-	run $GETH_CMD --data-dir $DATA_DIR --cache 17 console
+	run $GETH_CMD --data-dir $DATA_DIR --cache 17 --exec 'exit;' console
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Allotted 17MB cache"* ]]
 }
