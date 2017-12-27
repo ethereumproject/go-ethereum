@@ -144,15 +144,15 @@ var (
 	}
 
 	// logging and debug settings
-	VerbosityFlag = cli.GenericFlag{
+	VerbosityFlag = cli.IntFlag{
 		Name:  "verbosity",
 		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=core, 5=debug, 6=detail",
-		Value: glog.GetVerbosity(),
+		Value: 5,
 	}
-	VModuleFlag = cli.GenericFlag{
-		Name:  "vmodule",
+	VModuleFlag = cli.StringFlag{
+		Name:  "v-module,vmodule",
 		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
-		Value: glog.GetVModule(),
+		Value: "",
 	}
 	LogDirFlag = DirectoryFlag{
 		Name:  "log-dir,logdir",
