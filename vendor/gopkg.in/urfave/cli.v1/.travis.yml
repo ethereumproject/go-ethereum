@@ -1,27 +1,23 @@
 language: go
 sudo: false
-dist: trusty
-osx_image: xcode8.3
-go: 1.8.x
 
-os:
-- linux
-- osx
+go:
+- 1.1.2
+- 1.2.2
+- 1.3.3
+- 1.4
+- 1.5.4
+- 1.6.2
+- tip
 
-cache:
-  directories:
-  - node_modules
+matrix:
+  allow_failures:
+    - go: tip
 
 before_script:
-- go get github.com/urfave/gfmrun/... || true
-- go get golang.org/x/tools/cmd/goimports
-- if [ ! -f node_modules/.bin/markdown-toc ] ; then
-    npm install markdown-toc ;
-  fi
+- go get github.com/meatballhat/gfmxr/...
 
 script:
-- ./runtests gen
-- ./runtests vet
-- ./runtests test
-- ./runtests gfmrun
-- ./runtests toc
+- go vet ./...
+- go test -v ./...
+- gfmxr -c $(grep -c 'package main' README.md) -s README.md

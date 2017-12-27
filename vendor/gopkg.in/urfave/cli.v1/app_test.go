@@ -13,19 +13,6 @@ import (
 	"testing"
 )
 
-var (
-	lastExitCode = 0
-	fakeOsExiter = func(rc int) {
-		lastExitCode = rc
-	}
-	fakeErrWriter = &bytes.Buffer{}
-)
-
-func init() {
-	OsExiter = fakeOsExiter
-	ErrWriter = fakeErrWriter
-}
-
 type opCounts struct {
 	Total, BashComplete, OnUsageError, Before, CommandNotFound, Action, After, SubCommand int
 }
@@ -90,62 +77,7 @@ func ExampleApp_Run_subcommand() {
 	// Hello, Jeremy
 }
 
-func ExampleApp_Run_appHelp() {
-	// set args for examples sake
-	os.Args = []string{"greet", "help"}
-
-	app := NewApp()
-	app.Name = "greet"
-	app.Version = "0.1.0"
-	app.Description = "This is how we describe greet the app"
-	app.Authors = []Author{
-		{Name: "Harrison", Email: "harrison@lolwut.com"},
-		{Name: "Oliver Allen", Email: "oliver@toyshop.com"},
-	}
-	app.Flags = []Flag{
-		StringFlag{Name: "name", Value: "bob", Usage: "a name to say"},
-	}
-	app.Commands = []Command{
-		{
-			Name:        "describeit",
-			Aliases:     []string{"d"},
-			Usage:       "use it to see a description",
-			Description: "This is how we describe describeit the function",
-			Action: func(c *Context) error {
-				fmt.Printf("i like to describe things")
-				return nil
-			},
-		},
-	}
-	app.Run(os.Args)
-	// Output:
-	// NAME:
-	//    greet - A new cli application
-	//
-	// USAGE:
-	//    greet [global options] command [command options] [arguments...]
-	//
-	// VERSION:
-	//    0.1.0
-	//
-	// DESCRIPTION:
-	//    This is how we describe greet the app
-	//
-	// AUTHORS:
-	//    Harrison <harrison@lolwut.com>
-	//    Oliver Allen <oliver@toyshop.com>
-	//
-	// COMMANDS:
-	//      describeit, d  use it to see a description
-	//      help, h        Shows a list of commands or help for one command
-	//
-	// GLOBAL OPTIONS:
-	//    --name value   a name to say (default: "bob")
-	//    --help, -h     show help
-	//    --version, -v  print the version
-}
-
-func ExampleApp_Run_commandHelp() {
+func ExampleApp_Run_help() {
 	// set args for examples sake
 	os.Args = []string{"greet", "h", "describeit"}
 
@@ -176,49 +108,6 @@ func ExampleApp_Run_commandHelp() {
 	//
 	// DESCRIPTION:
 	//    This is how we describe describeit the function
-}
-
-func ExampleApp_Run_noAction() {
-	app := App{}
-	app.Name = "greet"
-	app.Run([]string{"greet"})
-	// Output:
-	// NAME:
-	//    greet
-	//
-	// USAGE:
-	//     [global options] command [command options] [arguments...]
-	//
-	// COMMANDS:
-	//      help, h  Shows a list of commands or help for one command
-	//
-	// GLOBAL OPTIONS:
-	//    --help, -h     show help
-	//    --version, -v  print the version
-}
-
-func ExampleApp_Run_subcommandNoAction() {
-	app := App{}
-	app.Name = "greet"
-	app.Commands = []Command{
-		{
-			Name:        "describeit",
-			Aliases:     []string{"d"},
-			Usage:       "use it to see a description",
-			Description: "This is how we describe describeit the function",
-		},
-	}
-	app.Run([]string{"greet", "describeit"})
-	// Output:
-	// NAME:
-	//     describeit - use it to see a description
-	//
-	// USAGE:
-	//     describeit [arguments...]
-	//
-	// DESCRIPTION:
-	//    This is how we describe describeit the function
-
 }
 
 func ExampleApp_Run_bashComplete() {
@@ -300,12 +189,6 @@ func TestApp_Command(t *testing.T) {
 	}
 }
 
-func TestApp_Setup_defaultsWriter(t *testing.T) {
-	app := &App{}
-	app.Setup()
-	expect(t, app.Writer, os.Stdout)
-}
-
 func TestApp_CommandWithArgBeforeFlags(t *testing.T) {
 	var parsedOption, firstArg string
 
@@ -354,23 +237,6 @@ func TestApp_RunAsSubcommandParseFlags(t *testing.T) {
 
 	expect(t, context.Args().Get(0), "abcd")
 	expect(t, context.String("lang"), "spanish")
-}
-
-func TestApp_RunAsSubCommandIncorrectUsage(t *testing.T) {
-	a := App{
-		Flags: []Flag{
-			StringFlag{Name: "--foo"},
-		},
-		Writer: bytes.NewBufferString(""),
-	}
-
-	set := flag.NewFlagSet("", flag.ContinueOnError)
-	set.Parse([]string{"", "---foo"})
-	c := &Context{flagSet: set}
-
-	err := a.RunAsSubcommand(c)
-
-	expect(t, err, errors.New("bad flag syntax: ---foo"))
 }
 
 func TestApp_CommandWithFlagBeforeTerminator(t *testing.T) {
@@ -1042,7 +908,6 @@ func TestApp_Run_CommandWithSubcommandHasHelpTopic(t *testing.T) {
 			Name:        "foo",
 			Description: "descriptive wall of text about how it does foo things",
 			Subcommands: []Command{subCmdBar, subCmdBaz},
-			Action:      func(c *Context) error { return nil },
 		}
 
 		app.Commands = []Command{cmd}
@@ -1260,7 +1125,6 @@ func TestApp_Run_Version(t *testing.T) {
 func TestApp_Run_Categories(t *testing.T) {
 	app := NewApp()
 	app.Name = "categories"
-	app.HideHelp = true
 	app.Commands = []Command{
 		{
 			Name:     "command1",
@@ -1310,7 +1174,6 @@ func TestApp_Run_Categories(t *testing.T) {
 func TestApp_VisibleCategories(t *testing.T) {
 	app := NewApp()
 	app.Name = "visible-categories"
-	app.HideHelp = true
 	app.Commands = []Command{
 		{
 			Name:     "command1",
@@ -1350,7 +1213,6 @@ func TestApp_VisibleCategories(t *testing.T) {
 
 	app = NewApp()
 	app.Name = "visible-categories"
-	app.HideHelp = true
 	app.Commands = []Command{
 		{
 			Name:     "command1",
@@ -1385,7 +1247,6 @@ func TestApp_VisibleCategories(t *testing.T) {
 
 	app = NewApp()
 	app.Name = "visible-categories"
-	app.HideHelp = true
 	app.Commands = []Command{
 		{
 			Name:     "command1",
@@ -1520,71 +1381,10 @@ func TestApp_OnUsageError_WithWrongFlagValue_ForSubcommand(t *testing.T) {
 	}
 }
 
-// A custom flag that conforms to the relevant interfaces, but has none of the
-// fields that the other flag types do.
-type customBoolFlag struct {
-	Nombre string
-}
-
-// Don't use the normal FlagStringer
-func (c *customBoolFlag) String() string {
-	return "***" + c.Nombre + "***"
-}
-
-func (c *customBoolFlag) GetName() string {
-	return c.Nombre
-}
-
-func (c *customBoolFlag) Apply(set *flag.FlagSet) {
-	set.String(c.Nombre, c.Nombre, "")
-}
-
-func TestCustomFlagsUnused(t *testing.T) {
-	app := NewApp()
-	app.Flags = []Flag{&customBoolFlag{"custom"}}
-
-	err := app.Run([]string{"foo"})
-	if err != nil {
-		t.Errorf("Run returned unexpected error: %v", err)
-	}
-}
-
-func TestCustomFlagsUsed(t *testing.T) {
-	app := NewApp()
-	app.Flags = []Flag{&customBoolFlag{"custom"}}
-
-	err := app.Run([]string{"foo", "--custom=bar"})
-	if err != nil {
-		t.Errorf("Run returned unexpected error: %v", err)
-	}
-}
-
-func TestCustomHelpVersionFlags(t *testing.T) {
-	app := NewApp()
-
-	// Be sure to reset the global flags
-	defer func(helpFlag Flag, versionFlag Flag) {
-		HelpFlag = helpFlag
-		VersionFlag = versionFlag
-	}(HelpFlag, VersionFlag)
-
-	HelpFlag = &customBoolFlag{"help-custom"}
-	VersionFlag = &customBoolFlag{"version-custom"}
-
-	err := app.Run([]string{"foo", "--help-custom=bar"})
-	if err != nil {
-		t.Errorf("Run returned unexpected error: %v", err)
-	}
-}
-
 func TestHandleAction_WithNonFuncAction(t *testing.T) {
 	app := NewApp()
 	app.Action = 42
-	fs, err := flagSet(app.Name, app.Flags)
-	if err != nil {
-		t.Errorf("error creating FlagSet: %s", err)
-	}
-	err = HandleAction(app.Action, NewContext(app, fs, nil))
+	err := HandleAction(app.Action, NewContext(app, flagSet(app.Name, app.Flags), nil))
 
 	if err == nil {
 		t.Fatalf("expected to receive error from Run, got none")
@@ -1596,7 +1396,7 @@ func TestHandleAction_WithNonFuncAction(t *testing.T) {
 		t.Fatalf("expected to receive a *ExitError")
 	}
 
-	if !strings.HasPrefix(exitErr.Error(), "ERROR invalid Action type.") {
+	if !strings.HasPrefix(exitErr.Error(), "ERROR invalid Action type") {
 		t.Fatalf("expected an unknown Action error, but got: %v", exitErr.Error())
 	}
 
@@ -1608,11 +1408,7 @@ func TestHandleAction_WithNonFuncAction(t *testing.T) {
 func TestHandleAction_WithInvalidFuncSignature(t *testing.T) {
 	app := NewApp()
 	app.Action = func() string { return "" }
-	fs, err := flagSet(app.Name, app.Flags)
-	if err != nil {
-		t.Errorf("error creating FlagSet: %s", err)
-	}
-	err = HandleAction(app.Action, NewContext(app, fs, nil))
+	err := HandleAction(app.Action, NewContext(app, flagSet(app.Name, app.Flags), nil))
 
 	if err == nil {
 		t.Fatalf("expected to receive error from Run, got none")
@@ -1624,7 +1420,7 @@ func TestHandleAction_WithInvalidFuncSignature(t *testing.T) {
 		t.Fatalf("expected to receive a *ExitError")
 	}
 
-	if !strings.HasPrefix(exitErr.Error(), "ERROR invalid Action type") {
+	if !strings.HasPrefix(exitErr.Error(), "ERROR unknown Action error") {
 		t.Fatalf("expected an unknown Action error, but got: %v", exitErr.Error())
 	}
 
@@ -1636,11 +1432,7 @@ func TestHandleAction_WithInvalidFuncSignature(t *testing.T) {
 func TestHandleAction_WithInvalidFuncReturnSignature(t *testing.T) {
 	app := NewApp()
 	app.Action = func(_ *Context) (int, error) { return 0, nil }
-	fs, err := flagSet(app.Name, app.Flags)
-	if err != nil {
-		t.Errorf("error creating FlagSet: %s", err)
-	}
-	err = HandleAction(app.Action, NewContext(app, fs, nil))
+	err := HandleAction(app.Action, NewContext(app, flagSet(app.Name, app.Flags), nil))
 
 	if err == nil {
 		t.Fatalf("expected to receive error from Run, got none")
@@ -1652,91 +1444,11 @@ func TestHandleAction_WithInvalidFuncReturnSignature(t *testing.T) {
 		t.Fatalf("expected to receive a *ExitError")
 	}
 
-	if !strings.HasPrefix(exitErr.Error(), "ERROR invalid Action type") {
+	if !strings.HasPrefix(exitErr.Error(), "ERROR invalid Action signature") {
 		t.Fatalf("expected an invalid Action signature error, but got: %v", exitErr.Error())
 	}
 
 	if exitErr.ExitCode() != 2 {
 		t.Fatalf("expected error exit code to be 2, but got: %v", exitErr.ExitCode())
-	}
-}
-
-func TestHandleAction_WithUnknownPanic(t *testing.T) {
-	defer func() { refute(t, recover(), nil) }()
-
-	var fn ActionFunc
-
-	app := NewApp()
-	app.Action = func(ctx *Context) error {
-		fn(ctx)
-		return nil
-	}
-	fs, err := flagSet(app.Name, app.Flags)
-	if err != nil {
-		t.Errorf("error creating FlagSet: %s", err)
-	}
-	HandleAction(app.Action, NewContext(app, fs, nil))
-}
-
-func TestShellCompletionForIncompleteFlags(t *testing.T) {
-	app := NewApp()
-	app.Flags = []Flag{
-		IntFlag{
-			Name: "test-completion",
-		},
-	}
-	app.EnableBashCompletion = true
-	app.BashComplete = func(ctx *Context) {
-		for _, command := range ctx.App.Commands {
-			if command.Hidden {
-				continue
-			}
-
-			for _, name := range command.Names() {
-				fmt.Fprintln(ctx.App.Writer, name)
-			}
-		}
-
-		for _, flag := range ctx.App.Flags {
-			for _, name := range strings.Split(flag.GetName(), ",") {
-				if name == BashCompletionFlag.GetName() {
-					continue
-				}
-
-				switch name = strings.TrimSpace(name); len(name) {
-				case 0:
-				case 1:
-					fmt.Fprintln(ctx.App.Writer, "-"+name)
-				default:
-					fmt.Fprintln(ctx.App.Writer, "--"+name)
-				}
-			}
-		}
-	}
-	app.Action = func(ctx *Context) error {
-		return fmt.Errorf("should not get here")
-	}
-	err := app.Run([]string{"", "--test-completion", "--" + BashCompletionFlag.GetName()})
-	if err != nil {
-		t.Errorf("app should not return an error: %s", err)
-	}
-}
-
-func TestHandleActionActuallyWorksWithActions(t *testing.T) {
-	var f ActionFunc
-	called := false
-	f = func(c *Context) error {
-		called = true
-		return nil
-	}
-
-	err := HandleAction(f, nil)
-
-	if err != nil {
-		t.Errorf("Should not have errored: %v", err)
-	}
-
-	if !called {
-		t.Errorf("Function was not called")
 	}
 }

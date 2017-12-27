@@ -111,4 +111,4 @@
 
 [[constraint]]
   name = "gopkg.in/urfave/cli.v1"
-  version = "1.20.0"
+  revision = "01857ac33766ce0c93856370626f9799281c14f4"
