@@ -247,6 +247,7 @@ func ListenUDP(priv *ecdsa.PrivateKey, laddr string, natm nat.Interface, nodeDBP
 		return nil, err
 	}
 	glog.V(logger.Info).Infoln("Listening,", tab.self)
+	glog.D(logger.Warn).Infoln("UDP listening. Client enode:", logger.ColorGreen(tab.self.String()))
 	return tab, nil
 }
 
@@ -338,9 +339,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		var okNodes []*Node
 		for _, n := range nodes {
 			if isReserved(n.IP) {
-				if glog.V(logger.Debug) {
-					glog.Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
-				}
+				glog.V(logger.Detail).Warnf("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
 				continue
 			}
 			okNodes = append(okNodes, n)

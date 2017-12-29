@@ -87,12 +87,13 @@ type peer struct {
 	getNodeData stateFetcherFn   // [eth/63] Method to retrieve a batch of state trie data
 
 	version int // Eth protocol version number to switch strategies
+	name    string
 	lock    sync.RWMutex
 }
 
 // newPeer create a new downloader peer, with specific hash and block retrieval
 // mechanisms.
-func newPeer(id string, version int, currentHead currentHeadRetrievalFn,
+func newPeer(id string, version int, name string, currentHead currentHeadRetrievalFn,
 	getRelHeaders relativeHeaderFetcherFn, getAbsHeaders absoluteHeaderFetcherFn, getBlockBodies blockBodyFetcherFn,
 	getReceipts receiptFetcherFn, getNodeData stateFetcherFn) *peer {
 	return &peer{
@@ -108,6 +109,7 @@ func newPeer(id string, version int, currentHead currentHeadRetrievalFn,
 		getNodeData: getNodeData,
 
 		version: version,
+		name:    name,
 	}
 }
 
@@ -337,7 +339,7 @@ func (p *peer) String() string {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	return fmt.Sprintf("Peer %s [%s]", p.id, strings.Join([]string{
+	return fmt.Sprintf("Peer id=%s eth/%d [%s] [%s]", p.id, p.version, p.name, strings.Join([]string{
 		fmt.Sprintf("hs %3.2f/s", p.headerThroughput),
 		fmt.Sprintf("bs %3.2f/s", p.blockThroughput),
 		fmt.Sprintf("rs %3.2f/s", p.receiptThroughput),

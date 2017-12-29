@@ -1757,9 +1757,15 @@ func (api *PublicDebugAPI) Verbosity(n uint64) (int, error) {
 	}
 	if nint <= logger.Detail || nint == logger.Ridiculousness {
 		glog.SetV(nint)
-		return int(*glog.GetVerbosity()), nil
+		i := int(*glog.GetVerbosity())
+		glog.V(logger.Warn).Infof("Set verbosity: %d", i)
+		glog.D(logger.Warn).Warnf("Set verbosity: %d", i)
+		return i, nil
 	}
-	return -1, errors.New("invalid logging level")
+	e := errors.New("invalid logging level")
+	glog.V(logger.Warn).Errorf("Set verbosity failed: %d (%v)", nint, e)
+	glog.D(logger.Error).Errorf("Set verbosity failed: %d (%v)", nint, e)
+	return -1, e
 }
 
 // Vmodule implements api method debug_vmodule, enabling setting
@@ -1769,7 +1775,15 @@ func (api *PublicDebugAPI) Vmodule(s string) (string, error) {
 		return glog.GetVModule().String(), nil
 	}
 	err := glog.GetVModule().Set(s)
-	return glog.GetVModule().String(), err
+	ns := glog.GetVModule().String()
+	if err != nil {
+		glog.V(logger.Warn).Infof("Set vmodule: '%s'", ns)
+		glog.D(logger.Warn).Warnf("Set vmodule: '%s'", ns)
+	} else {
+		glog.V(logger.Warn).Infof("Set vmodule failed: '%s' (%v)", ns, err)
+		glog.D(logger.Warn).Warnf("Set vmodule: '%s' (%v)", ns, err)
+	}
+	return ns, err
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM

@@ -15,8 +15,9 @@ teardown() {
 	run $GETH_CMD --datadir $DATA_DIR rollback 42
 	echo "$output"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Last block: #384"* ]] # original head
-	[[ "$output" == *"SUCCESS: Head block set to: 42"* ]]
+	[[ "$output" == *"Local head full block"* ]] # original head
+	[[ "$output" == *"384"* ]] # original head
+	[[ "$output" == *"Success. Head block set to: 42"* ]]
 
 
 	# Check that 'latest' block is 42.
@@ -37,5 +38,5 @@ teardown() {
 	run $GETH_CMD --datadir $DATA_DIR rollback 420
 	echo "$output"
 	[ "$status" -gt 0 ]
-	[[ "$output" == *'ERROR: Wanted rollback to set head to: 420, instead current head is: 384'* ]] # original head	
+	[[ "$output" == *'ERROR: Wanted rollback to set head to: 420, instead current head is: 384'* ]] # original head
 }

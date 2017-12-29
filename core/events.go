@@ -19,6 +19,8 @@ package core
 import (
 	"math/big"
 
+	"time"
+
 	"github.com/ellaism/go-ellaism/common"
 	"github.com/ellaism/go-ellaism/core/types"
 	"github.com/ellaism/go-ellaism/core/vm"
@@ -67,11 +69,32 @@ type ChainSideEvent struct {
 	Logs  vm.Logs
 }
 
+// TODO: no usages found in project files
 type PendingBlockEvent struct {
 	Block *types.Block
 	Logs  vm.Logs
 }
 
+type ChainInsertEvent struct {
+	Processed       int
+	Queued          int
+	Ignored         int
+	TxCount         int
+	LastNumber      uint64
+	LastHash        common.Hash
+	Elasped         time.Duration
+	LatestBlockTime time.Time
+}
+
+type HeaderChainInsertEvent struct {
+	Processed  int
+	Ignored    int
+	LastNumber uint64
+	LastHash   common.Hash
+	Elasped    time.Duration
+}
+
+// TODO: no usages found in project files
 type ChainUncleEvent struct {
 	Block *types.Block
 }
@@ -82,4 +105,4 @@ type GasPriceChanged struct{ Price *big.Int }
 
 // Mining operation events
 type StartMining struct{}
-type TopMining struct{}
+type StopMining struct{}

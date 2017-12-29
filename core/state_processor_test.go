@@ -476,7 +476,7 @@ func TestAccumulateRewards1(t *testing.T) {
 			AccumulateRewards(config, stateDB, header, uncles)
 
 			// Check balances.
-			t.Logf("config=%d block=%d era=%d w:%d u1:%d u2:%d", i, bn, new(big.Int).Add(era, big.NewInt(1)), winnerB, unclesB[0], unclesB[1])
+			//t.Logf("config=%d block=%d era=%d w:%d u1:%d u2:%d", i, bn, new(big.Int).Add(era, big.NewInt(1)), winnerB, unclesB[0], unclesB[1])
 			if wb := stateDB.GetBalance(header.Coinbase); wb.Cmp(winnerB) != 0 {
 				t.Errorf("winner balance @ %v, want: %v, got: %v (config: %v)", bn, winnerB, wb, i)
 			}

@@ -281,7 +281,7 @@ teardown() {
 	run $GETH_CMD --data-dir $DATA_DIR --chain kitty --bootnodes=enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303 console
 	echo "$output"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"WARNING"* ]]
+	[[ "$output" == *"Overwriting external bootnodes"* ]]
 }
 
 # Test fails to load invalid chain configuration from testdata/ JSON file.

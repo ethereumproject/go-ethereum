@@ -204,7 +204,7 @@ func accountIndex(ctx *cli.Context) error {
 	if len(errs) > 0 {
 		for _, e := range errs {
 			if e != nil {
-				glog.V(logger.Error).Infof("init cache db err: %v", e)
+				glog.V(logger.Error).Errorf("init cache db err: %v", e)
 			}
 		}
 	}
@@ -236,10 +236,12 @@ func unlockAccount(ctx *cli.Context, accman *accounts.Manager, address string, i
 		err = accman.Unlock(account, password)
 		if err == nil {
 			glog.V(logger.Info).Infof("Unlocked account %x", account.Address)
+			glog.D(logger.Error).Infof("Unlocked account %x", account.Address)
 			return account, password
 		}
 		if err, ok := err.(*accounts.AmbiguousAddrError); ok {
 			glog.V(logger.Info).Infof("Unlocked account %x", account.Address)
+			glog.D(logger.Error).Infof("Unlocked account %x", account.Address)
 			return ambiguousAddrRecovery(accman, err, password), password
 		}
 		if err != accounts.ErrDecrypt {

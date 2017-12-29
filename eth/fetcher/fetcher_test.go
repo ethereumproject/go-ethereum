@@ -32,6 +32,7 @@ import (
 	"github.com/ellaism/go-ellaism/core/types"
 	"github.com/ellaism/go-ellaism/crypto"
 	"github.com/ellaism/go-ellaism/ethdb"
+	"github.com/ellaism/go-ellaism/logger/glog"
 )
 
 var (
@@ -43,6 +44,9 @@ var (
 )
 
 func init() {
+	glog.SetV(0)
+	glog.SetD(0)
+
 	var err error
 	testKey, err = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	if err != nil {

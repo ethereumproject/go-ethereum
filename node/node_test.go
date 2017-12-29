@@ -27,11 +27,17 @@ import (
 	"github.com/ellaism/go-ellaism/crypto"
 	"github.com/ellaism/go-ellaism/p2p"
 	"github.com/ellaism/go-ellaism/rpc"
+	"github.com/ellaism/go-ellaism/logger/glog"
 )
 
 var (
 	testNodeKey, _ = crypto.GenerateKey()
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 func testNodeConfig() *Config {
 	return &Config{

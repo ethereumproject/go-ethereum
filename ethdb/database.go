@@ -19,6 +19,8 @@ package ethdb
 import (
 	"path/filepath"
 
+	"strconv"
+
 	"github.com/ellaism/go-ellaism/logger"
 	"github.com/ellaism/go-ellaism/logger/glog"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -61,6 +63,7 @@ func NewLDBDatabase(file string, cache int, handles int) (*LDBDatabase, error) {
 		handles = 16
 	}
 	glog.V(logger.Info).Infof("Allotted %dMB cache and %d file handles to %s", cache, handles, file)
+	glog.D(logger.Warn).Infof("Allotted %s cache and %s file handles to %s", logger.ColorGreen(strconv.Itoa(cache)+"MB"), logger.ColorGreen(strconv.Itoa(handles)), logger.ColorGreen(file))
 
 	// Open the db and recover any potential corruptions
 	db, err := leveldb.OpenFile(file, &opt.Options{
