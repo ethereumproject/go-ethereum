@@ -864,7 +864,7 @@ func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
 					currentBlockHex = blockchain.CurrentFastBlock().Hash().Hex()
 				}
 			}
-			if current == height && !(current == 0 && height == 0) {
+			if current >= height && !(current == 0 && height == 0) {
 				fMode = "Import  " // with spaces to make same length as Discover, FastSync, FullSync
 				fOfHeight = strings.Repeat(" ", 12)
 				fHeightRatio = strings.Repeat(" ", 7)

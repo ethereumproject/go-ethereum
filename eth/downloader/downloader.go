@@ -266,8 +266,20 @@ func (d *Downloader) RegisterPeer(id string, version int, currentHead currentHea
 	getRelHeaders relativeHeaderFetcherFn, getAbsHeaders absoluteHeaderFetcherFn, getBlockBodies blockBodyFetcherFn,
 	getReceipts receiptFetcherFn, getNodeData stateFetcherFn) error {
 
+	var err error
+	defer func() {
+		if logger.MlogEnabled() {
+			mlogDownloader.Send(mlogDownloaderRegisterPeer.SetDetailValues(
+				id,
+				version,
+				err,
+			))
+		}
+	}()
+
 	glog.V(logger.Detail).Infoln("Registering peer", id)
-	if err := d.peers.Register(newPeer(id, version, currentHead, getRelHeaders, getAbsHeaders, getBlockBodies, getReceipts, getNodeData)); err != nil {
+	err = d.peers.Register(newPeer(id, version, currentHead, getRelHeaders, getAbsHeaders, getBlockBodies, getReceipts, getNodeData))
+	if err != nil {
 		glog.V(logger.Error).Infoln("Register failed:", err)
 		return err
 	}
@@ -280,9 +292,21 @@ func (d *Downloader) RegisterPeer(id string, version int, currentHead currentHea
 // the specified peer. An effort is also made to return any pending fetches into
 // the queue.
 func (d *Downloader) UnregisterPeer(id string) error {
+
+	var err error
+	defer func() {
+		if logger.MlogEnabled() {
+			mlogDownloader.Send(mlogDownloaderUnregisterPeer.SetDetailValues(
+				id,
+				err,
+			))
+		}
+	}()
+
 	// Unregister the peer from the active peer set and revoke any fetch tasks
 	glog.V(logger.Detail).Infoln("Unregistering peer", id)
-	if err := d.peers.Unregister(id); err != nil {
+	err = d.peers.Unregister(id)
+	if err != nil {
 		glog.V(logger.Error).Infoln("Unregister failed:", err)
 		return err
 	}
@@ -685,10 +709,10 @@ func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 	// If the head fetch already found an ancestor, return
 	if !common.EmptyHash(hash) {
 		if int64(number) <= floor {
-			glog.V(logger.Warn).Infof("%v: potential rewrite attack: #%d [%x…] <= #%d limit", p, number, hash[:4], floor)
+			glog.V(logger.Warn).Infof("%v: potential rewrite attack: #%d [%x…] <= #%d limit", p, number, hash, floor)
 			return 0, errInvalidAncestor
 		}
-		glog.V(logger.Debug).Infof("%v: common ancestor: #%d [%x…]", p, number, hash[:4])
+		glog.V(logger.Debug).Infof("%v: common ancestor: #%d [%x…]", p, number, hash)
 		return number, nil
 	}
 	// Ancestor not found, we need to binary search over our chain
@@ -1479,7 +1503,16 @@ func (d *Downloader) qosTuner() {
 		atomic.StoreUint64(&d.rttConfidence, conf)
 
 		// Log the new QoS values and sleep until the next RTT
-		glog.V(logger.Debug).Infof("Quality of service: rtt %v, conf %.3f, ttl %v", rtt, float64(conf)/1000000.0, d.requestTTL())
+		ttl := d.requestTTL()
+		if logger.MlogEnabled() {
+			mlogDownloader.Send(mlogDownloaderTuneQOS.SetDetailValues(
+				rtt,
+				float64(conf)/1000000.0,
+				ttl,
+			))
+		}
+		glog.V(logger.Debug).Infof("Quality of service: rtt %v, conf %.3f, ttl %v", rtt, float64(conf)/1000000.0, ttl)
+
 		select {
 		case <-d.quitCh:
 			return

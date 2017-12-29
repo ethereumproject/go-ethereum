@@ -16,7 +16,7 @@ The simplest way to get started running a node is to visit our [Releases page](h
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
 #### Dependencies
-Building geth requires both Go >=1.8 and a C compiler.
+Building geth requires both Go >=1.9 and a C compiler.
 
 #### Get source and dependencies
 `$ go get -v github.com/ellaism/go-ellaism/...`
@@ -28,6 +28,27 @@ To install...
 - just __geth__: `$ go install github.com/ellaism/go-ellaism/cmd/geth`
 
 Executables built from source will, by default, be installed in `$GOPATH/bin/`.
+
+#### Building specific release
+All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following:
+```
+$ go get -d github.com/ellaism/go-ellaism/...
+$ cd $GOPATH/src/github.com/ellaism/go-ellaism
+$ git checkout <TAG OR REVISION>
+$ go install -ldflags "-X main.Version="`git describe --tags` ./cmd/...
+```
+
+#### Using release source code tarball
+Because of strict Go directory structure, the tarball needs to be extracted into proper subdirectory under `$GOPATH`.
+The following commands are an example of building the v4.1.1 release:
+```
+$ mkdir -p $GOPATH/src/github.com/ellaism
+$ cd $GOPATH/src/github.com/ellaism
+$ tar xzf /path/to/go-ellaism-4.1.1.tar.gz
+$ mv go-ellaism-4.1.1 go-ellaism
+$ cd go-ellaism
+$ go install -ldflags "-X main.Version=v4.1.1" ./cmd/...
+```
 
 ## Executables
 
