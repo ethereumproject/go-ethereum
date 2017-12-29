@@ -1,6 +1,6 @@
 language: go
 go_import_path: github.com/ellaism/go-ellaism
-go: 1.8
+go: 1.9.2
 os:
 - linux
 - osx
