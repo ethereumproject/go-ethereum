@@ -16,7 +16,7 @@ The simplest way to get started running a node is to visit our [Releases page](h
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
 #### Dependencies
-Building geth requires both Go >=1.8 and a C compiler.
+Building geth requires both Go >=1.9 and a C compiler.
 
 #### Get source and dependencies
 `$ go get -v github.com/ellaism/go-ellaism/...`
