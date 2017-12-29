@@ -22,7 +22,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"gopkg.in/urfave/cli.v1"
 
@@ -220,8 +219,6 @@ func makeCLIApp() (app *cli.App) {
 				os.Exit(1)
 			}
 		}
-
-		runtime.GOMAXPROCS(runtime.NumCPU())
 
 		glog.CopyStandardLogTo("INFO")
 
