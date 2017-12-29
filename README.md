@@ -32,8 +32,8 @@ Executables built from source will, by default, be installed in `$GOPATH/bin/`.
 #### Building specific release
 All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following:
 ```
-$ go get -d github.com/ethereumproject/go-ethereum/...
-$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+$ go get -d github.com/ellaism/go-ellaism/...
+$ cd $GOPATH/src/github.com/ellaism/go-ellaism
 $ git checkout <TAG OR REVISION>
 $ go install -ldflags "-X main.Version="`git describe --tags` ./cmd/...
 ```
@@ -42,11 +42,11 @@ $ go install -ldflags "-X main.Version="`git describe --tags` ./cmd/...
 Because of strict Go directory structure, the tarball needs to be extracted into proper subdirectory under `$GOPATH`.
 The following commands are an example of building the v4.1.1 release:
 ```
-$ mkdir -p $GOPATH/src/github.com/ethereumproject
-$ cd $GOPATH/src/github.com/ethereumproject
-$ tar xzf /path/to/go-ethereum-4.1.1.tar.gz
-$ mv go-ethereum-4.1.1 go-ethereum
-$ cd go-ethereum
+$ mkdir -p $GOPATH/src/github.com/ellaism
+$ cd $GOPATH/src/github.com/ellaism
+$ tar xzf /path/to/go-ellaism-4.1.1.tar.gz
+$ mv go-ellaism-4.1.1 go-ellaism
+$ cd go-ellaism
 $ go install -ldflags "-X main.Version=v4.1.1" ./cmd/...
 ```
 
