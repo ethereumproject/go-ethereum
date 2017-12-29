@@ -29,6 +29,7 @@ import (
 	"github.com/ellaism/go-ellaism/core"
 	"github.com/ellaism/go-ellaism/eth"
 	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"github.com/ellaism/go-ellaism/metrics"
 )
 
