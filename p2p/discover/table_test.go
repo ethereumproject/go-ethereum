@@ -256,9 +256,9 @@ func TestTable_Lookup(t *testing.T) {
 
 	results := tab.Lookup(lookupTestnet.target)
 	t.Logf("results:")
-	for _, e := range results {
-		t.Logf("  ld=%d, %x", logdist(lookupTestnet.targetSha, e.sha), e.sha[:])
-	}
+	//for _, e := range results {
+	//	t.Logf("  ld=%d, %x", logdist(lookupTestnet.targetSha, e.sha), e.sha[:])
+	//}
 	if len(results) != bucketSize {
 		t.Errorf("wrong number of results: got %d, want %d", len(results), bucketSize)
 	}

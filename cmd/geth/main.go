@@ -170,7 +170,10 @@ func makeCLIApp() (app *cli.App) {
 		TestNetFlag,
 		NetworkIdFlag,
 		RPCCORSDomainFlag,
+		NeckbeardFlag,
 		VerbosityFlag,
+		DisplayFlag,
+		DisplayFormatFlag,
 		VModuleFlag,
 		LogDirFlag,
 		LogStatusFlag,
@@ -234,6 +237,11 @@ func makeCLIApp() (app *cli.App) {
 			glog.SetToStderr(true)
 		}
 
+		// Handle parsing and applying log verbosity, severities, and default configurations from context.
+		if err := setupLogging(ctx); err != nil {
+			return err
+		}
+
 		if s := ctx.String("metrics"); s != "" {
 			go metrics.CollectToFile(s)
 		}
@@ -248,14 +256,14 @@ func makeCLIApp() (app *cli.App) {
 		// > The output of this command is supposed to be machine-readable.
 		gasLimit := ctx.GlobalString(aliasableName(TargetGasLimitFlag.Name, ctx))
 		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
-			log.Fatalf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
+			return fmt.Errorf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
 		}
 
 		// Set morden chain by default for dev mode.
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 			if !ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 				if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), "morden"); e != nil {
-					log.Fatalf("failed to set chain value: %v", e)
+					return fmt.Errorf("failed to set chain value: %v", e)
 				}
 			}
 		}
@@ -292,9 +300,10 @@ func geth(ctx *cli.Context) error {
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
 
-	if ctx.GlobalIsSet(LogStatusFlag.Name) {
+	if ctx.GlobalString(LogStatusFlag.Name) != "off" {
 		dispatchStatusLogs(ctx, ethe)
 	}
+	logLoggingConfiguration(ctx)
 
 	n.Wait()
 

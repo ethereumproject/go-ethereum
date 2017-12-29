@@ -293,6 +293,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 	}
 	go func() {
 		glog.V(logger.Info).Infof("IPC endpoint opened: %s", n.ipcEndpoint)
+		glog.D(logger.Warn).Infof("IPC endpoint opened: %s", logger.ColorGreen(n.ipcEndpoint))
 
 		for {
 			conn, err := listener.Accept()
@@ -325,6 +326,7 @@ func (n *Node) stopIPC() {
 		n.ipcListener = nil
 
 		glog.V(logger.Info).Infof("IPC endpoint closed: %s", n.ipcEndpoint)
+		glog.D(logger.Warn).Warnf("IPC endpoint closed: %s", n.ipcEndpoint)
 	}
 	if n.ipcHandler != nil {
 		n.ipcHandler.Stop()
@@ -363,6 +365,7 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, modules []string, cors
 	}
 	go rpc.NewHTTPServer(cors, handler).Serve(listener)
 	glog.V(logger.Info).Infof("HTTP endpoint opened: http://%s", endpoint)
+	glog.D(logger.Warn).Infof("HTTP endpoint: http://%s", logger.ColorGreen(endpoint))
 
 	// All listeners booted successfully
 	n.httpEndpoint = endpoint
@@ -380,6 +383,7 @@ func (n *Node) stopHTTP() {
 		n.httpListener = nil
 
 		glog.V(logger.Info).Infof("HTTP endpoint closed: http://%s", n.httpEndpoint)
+		glog.D(logger.Warn).Warnf("HTTP endpoint closed: http://%s", n.httpEndpoint)
 	}
 	if n.httpHandler != nil {
 		n.httpHandler.Stop()
@@ -418,6 +422,7 @@ func (n *Node) startWS(endpoint string, apis []rpc.API, modules []string, wsOrig
 	}
 	go rpc.NewWSServer(wsOrigins, handler).Serve(listener)
 	glog.V(logger.Info).Infof("WebSocket endpoint opened: ws://%s", endpoint)
+	glog.D(logger.Warn).Infof("WebSocket endpoint opened: ws://%s", logger.ColorGreen(endpoint))
 
 	// All listeners booted successfully
 	n.wsEndpoint = endpoint
@@ -435,6 +440,7 @@ func (n *Node) stopWS() {
 		n.wsListener = nil
 
 		glog.V(logger.Info).Infof("WebSocket endpoint closed: ws://%s", n.wsEndpoint)
+		glog.V(logger.Warn).Warnf("WebSocket endpoint closed: ws://%s", n.wsEndpoint)
 	}
 	if n.wsHandler != nil {
 		n.wsHandler.Stop()

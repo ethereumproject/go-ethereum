@@ -34,9 +34,15 @@ import (
 	"github.com/ellaism/go-ellaism/crypto"
 	"github.com/ellaism/go-ellaism/ethdb"
 	"github.com/ellaism/go-ellaism/event"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"github.com/ellaism/go-ellaism/rlp"
 	"github.com/hashicorp/golang-lru"
 )
+
+func init() {
+	// Disable any display logs for tests.
+	glog.SetD(0)
+}
 
 // GenesisBlockForTesting creates a block in which addr has the given wei balance.
 // The state trie of the block is written to db. the passed db needs to contain a state root
@@ -496,7 +502,7 @@ func chm(t testing.TB, genesis *types.Block, db ethdb.Database) *BlockChain {
 	}
 	valFn := func() HeaderValidator { return bc.Validator() }
 	var err error
-	bc.hc, err = NewHeaderChain(db, config, valFn, bc.getProcInterrupt)
+	bc.hc, err = NewHeaderChain(db, config, bc.eventMux, valFn, bc.getProcInterrupt)
 	if err != nil {
 		t.Fatal(err)
 	}

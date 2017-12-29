@@ -77,3 +77,28 @@ func NewJSONsystem(datadir string, logFile string) LogSystem {
 
 	return sys
 }
+
+const (
+	reset   = "\x1b[39m"
+	green   = "\x1b[32m"
+	blue    = "\x1b[36m"
+	yellow  = "\x1b[33m"
+	red     = "\x1b[31m"
+	magenta = "\x1b[35m"
+)
+
+func ColorGreen(s string) (coloredString string) {
+	return green + s + reset
+}
+func ColorRed(s string) (coloredString string) {
+	return red + s + reset
+}
+func ColorBlue(s string) (coloredString string) {
+	return blue + s + reset
+}
+func ColorYellow(s string) (coloredString string) {
+	return yellow + s + reset
+}
+func ColorMagenta(s string) (coloredString string) {
+	return magenta + s + reset
+}

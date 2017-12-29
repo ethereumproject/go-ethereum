@@ -28,7 +28,13 @@ import (
 	"github.com/ellaism/go-ellaism/core/vm"
 	"github.com/ellaism/go-ellaism/crypto"
 	"github.com/ellaism/go-ellaism/ethdb"
+	"github.com/ellaism/go-ellaism/logger/glog"
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 func makeReceipt(addr common.Address) *types.Receipt {
 	receipt := types.NewReceipt(nil, new(big.Int))

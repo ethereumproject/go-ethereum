@@ -153,6 +153,9 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			WhisperEnabledFlag,
 			NatspecEnabledFlag,
+			DisplayFlag,
+			DisplayFormatFlag,
+			NeckbeardFlag,
 		},
 	},
 	{
