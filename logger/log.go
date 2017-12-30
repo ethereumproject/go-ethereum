@@ -22,10 +22,8 @@ import (
 	"os"
 
 	"github.com/ellaism/go-ellaism/common"
-	"golang.org/x/crypto/ssh/terminal"
+	"github.com/fatih/color"
 )
-
-var isTerminal = terminal.IsTerminal(int(os.Stdout.Fd()))
 
 func openLogFile(datadir string, filename string) *os.File {
 	path := common.EnsurePathAbsoluteOrRelativeTo(datadir, filename)
@@ -91,37 +89,17 @@ const (
 )
 
 func ColorGreen(s string) (coloredString string) {
-	if isTerminal {
-		return green + s + reset
-	} else {
-		return s
-	}
+	return color.GreenString(s)
 }
 func ColorRed(s string) (coloredString string) {
-	if isTerminal {
-		return red + s + reset
-	} else {
-		return s
-	}
+	return color.RedString(s)
 }
 func ColorBlue(s string) (coloredString string) {
-	if isTerminal {
-		return blue + s + reset
-	} else {
-		return s
-	}
+	return color.BlueString(s)
 }
 func ColorYellow(s string) (coloredString string) {
-	if isTerminal {
-		return yellow + s + reset
-	} else {
-		return s
-	}
+	return color.YellowString(s)
 }
 func ColorMagenta(s string) (coloredString string) {
-	if isTerminal {
-		return magenta + s + reset
-	} else {
-		return s
-	}
+	return color.MagentaString(s)
 }
