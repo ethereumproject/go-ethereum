@@ -32,6 +32,7 @@ import (
 	"github.com/ellaism/go-ellaism/rpc"
 	"github.com/peterh/liner"
 	"github.com/robertkrimen/otto"
+	"github.com/fatih/color"
 )
 
 var (
@@ -80,7 +81,7 @@ func New(config Config) (*Console, error) {
 		config.Prompt = DefaultPrompt
 	}
 	if config.Printer == nil {
-		config.Printer = os.Stdout
+		config.Printer = color.Output
 	}
 	// Initialize the console and return
 	console := &Console{

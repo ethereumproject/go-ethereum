@@ -92,7 +92,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 )
 
 // DefaultVerbosity establishes the default verbosity Level for
@@ -149,7 +149,7 @@ var severityName = []string{
 	fatalLog:   "FATAL",
 }
 
-var displayStderr = colorable.NewColorableStderr()
+var displayStderr = color.StderrOutput
 
 // these path prefixes are trimmed for display, but not when
 // matching vmodule filters.
