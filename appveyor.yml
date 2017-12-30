@@ -10,7 +10,6 @@ install:
   - echo %GOPATH%
   - go version
   - go env
-  - go get golang.org/x/sys/windows
 build_script:
   - go test ./...
   - if defined APPVEYOR_REPO_TAG_NAME (go build -ldflags "-X main.Version=%APPVEYOR_REPO_TAG_NAME%" ./cmd/geth) else (go build ./cmd/geth)
