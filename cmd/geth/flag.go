@@ -520,7 +520,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {
-		glog.V(logger.Warn).Warnln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
+		glog.V(logger.Warn).Warnln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Ellaism and can be omitted", Unused1.Name))
 	}
 
 	return stack
@@ -744,8 +744,8 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
-	glog.V(logger.Info).Infof("Starting Geth Classic %s", ctx.App.Version)
-	glog.D(logger.Warn).Infof("Geth Classic version: %s", logger.ColorGreen(ctx.App.Version))
+	glog.V(logger.Info).Infof("Starting Geth Ellaism %s", ctx.App.Version)
+	glog.D(logger.Warn).Infof("Geth Ellaism version: %s", logger.ColorGreen(ctx.App.Version))
 
 	glog.V(logger.Info).Infof("Geth is configured to use ETC blockchain: %v", config.Name)
 	glog.D(logger.Warn).Infof("Blockchain: %s", logger.ColorGreen(config.Name))
