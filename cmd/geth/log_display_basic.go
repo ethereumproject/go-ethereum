@@ -165,7 +165,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 		}
 		// Show diff if imported more than one block.
 		if insertEvent != nil && insertEvent.Processed > 1 {
-			return fmt.Sprintf("%9s (+%2d)       ", formatBlockNumber(localheight), insertEvent.Processed)
+			return fmt.Sprintf("%9s (+%4d)     ", formatBlockNumber(localheight), insertEvent.Processed)
 		}
 		return fmt.Sprintf("%9s             ", formatBlockNumber(localheight))
 	}
