@@ -91,6 +91,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/mattn/go-colorable"
 )
 
 // DefaultVerbosity establishes the default verbosity Level for
@@ -146,6 +148,8 @@ var severityName = []string{
 	errorLog:   "ERROR",
 	fatalLog:   "FATAL",
 }
+
+var displayStderr = colorable.NewColorableStderr()
 
 // these path prefixes are trimmed for display, but not when
 // matching vmodule filters.
@@ -889,14 +893,14 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 	}
 	data := buf.Bytes()
 	if l.toStderr {
-		os.Stderr.Write(data)
+		displayStderr.Write(data)
 	} else {
 		if alsoToStderr || l.alsoToStderr || s >= l.stderrThreshold.get() {
-			os.Stderr.Write(data)
+			displayStderr.Write(data)
 		}
 		if l.file[s] == nil {
 			if err := l.createFiles(s); err != nil {
-				os.Stderr.Write(data) // Make sure the message appears somewhere.
+				displayStderr.Write(data) // Make sure the message appears somewhere.
 				l.exit(err)
 			}
 		}
