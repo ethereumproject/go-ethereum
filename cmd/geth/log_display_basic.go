@@ -200,17 +200,18 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 			currentMode, localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD)
 
 	}()
-	if currentMode == lsModeDiscover {
-		return currentBlockNumber
-	}
 
 	origin, current, chainSyncHeight, _, _ := e.Downloader().Progress() // origin, current, height, pulled, known
 	mode := e.Downloader().GetMode()
-	var localHead *types.Block
 	if mode == downloader.FastSync {
 		current = e.BlockChain().CurrentFastBlock().NumberU64()
 	}
 
+	if currentMode == lsModeDiscover {
+		return current
+	}
+
+	var localHead *types.Block
 	if insertEvent != nil {
 		if evB := e.BlockChain().GetBlock(insertEvent.LastHash); evB != nil && currentMode == lsModeImport {
 			localHead = evB
@@ -222,7 +223,9 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 	// Calculate progress rates
 	var blks, txs, mgas int
 	if currentMode == lsModeImport && insertEvent != nil && insertEvent.Processed == 1 {
-			blks, txs, mgas = 1, localHead.Transactions().Len(), int(new(big.Int).Div(localHead.GasUsed(), big.NewInt(1000000)).Uint64())
+		blks, txs, mgas = 1, localHead.Transactions().Len(), int(new(big.Int).Div(localHead.GasUsed(), big.NewInt(1000000)).Uint64())
+	} else if insertEvent != nil && insertEvent.Processed > 1 {
+		blks, txs, mgas = calcBlockDiff(e, localHead.NumberU64() - uint64(insertEvent.Processed), localHead)
 	} else if currentBlockNumber == 0 && origin > 0 {
 		blks, txs, mgas = calcBlockDiff(e, origin, localHead)
 	} else if currentBlockNumber != 0 && currentBlockNumber < localHead.NumberU64() {
