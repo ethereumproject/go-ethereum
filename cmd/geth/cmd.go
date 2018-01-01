@@ -20,22 +20,8 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/ethereumproject/ethash"
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/eth/downloader"
-	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/pow"
-	"github.com/ethereumproject/go-ethereum/rlp"
-	"gopkg.in/urfave/cli.v1"
 	"io"
 	"io/ioutil"
-	"math/big"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -44,6 +30,19 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/ethereumproject/ethash"
+	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/eth"
+	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/pow"
+	"github.com/ethereumproject/go-ethereum/rlp"
+	"gopkg.in/urfave/cli.v1"
 )
 
 const (
@@ -81,15 +80,15 @@ func StartNode(stack *node.Node) {
 		signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 		defer signal.Stop(sigc)
 		sig := <-sigc
-		glog.Infof("Got %v, shutting down...", sig)
-
+		glog.V(logger.Warn).Warnf("Got %v, shutting down...", sig)
+		glog.D(logger.Warn).Warnf("Got %v, shutting down...", sig)
 		fails := make(chan error, 1)
 		go func(fs chan error) {
 			for {
 				select {
 				case e := <-fs:
 					if e != nil {
-						glog.V(logger.Error).Infof("node stop failure: %v", e)
+						glog.V(logger.Error).Errorf("node stop failure: %v", e)
 					}
 				}
 			}
@@ -108,13 +107,14 @@ func StartNode(stack *node.Node) {
 		for i := 10; i > 0; i-- {
 			<-sigc
 			if i > 1 {
-				glog.Infof("Already shutting down, interrupt %d more times for panic.", i-1)
+				glog.D(logger.Warn).Warnf("Already shutting down, interrupt %d more times for panic.", i-1)
 			}
 		}
 		glog.Fatal("boom")
 	}()
 }
 
+// Chain imports a blockchain.
 func ImportChain(chain *core.BlockChain, fn string) error {
 	// Watch for Ctrl-C while the import is running.
 	// If a signal is received, the import will stop at the next batch.
@@ -125,7 +125,7 @@ func ImportChain(chain *core.BlockChain, fn string) error {
 	defer close(interrupt)
 	go func() {
 		if _, ok := <-interrupt; ok {
-			glog.Info("caught interrupt during import, will stop at next batch")
+			glog.D(logger.Warn).Warnln("caught interrupt during import, will stop at next batch")
 		}
 		close(stop)
 	}()
@@ -138,7 +138,7 @@ func ImportChain(chain *core.BlockChain, fn string) error {
 		}
 	}
 
-	glog.Infoln("Importing blockchain ", fn)
+	glog.D(logger.Error).Infoln("Importing blockchain ", fn)
 	fh, err := os.Open(fn)
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func ImportChain(chain *core.BlockChain, fn string) error {
 			return fmt.Errorf("interrupted")
 		}
 		if hasAllBlocks(chain, blocks[:i]) {
-			glog.Infof("skipping batch %d, all blocks present [%x / %x]",
+			glog.D(logger.Warn).Warnf("skipping batch %d, all blocks present [%x / %x]",
 				batch, blocks[0].Hash().Bytes()[:4], blocks[i-1].Hash().Bytes()[:4])
 			continue
 		}
@@ -200,7 +200,7 @@ func hasAllBlocks(chain *core.BlockChain, bs []*types.Block) bool {
 }
 
 func ExportChain(blockchain *core.BlockChain, fn string) error {
-	glog.Infoln("Exporting blockchain to ", fn)
+	glog.D(logger.Warn).Infoln("Exporting blockchain to", fn, "(this may take a while)...")
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
@@ -209,12 +209,12 @@ func ExportChain(blockchain *core.BlockChain, fn string) error {
 	if err := blockchain.Export(fh); err != nil {
 		return err
 	}
-	glog.Infoln("Exported blockchain to ", fn)
+	glog.D(logger.Error).Infoln("Exported blockchain to ", fn)
 	return nil
 }
 
 func ExportAppendChain(blockchain *core.BlockChain, fn string, first uint64, last uint64) error {
-	glog.Infoln("Exporting blockchain to ", fn)
+	glog.D(logger.Warn).Infoln("Exporting blockchain to ", fn)
 	// TODO verify mode perms
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	if err != nil {
@@ -224,7 +224,7 @@ func ExportAppendChain(blockchain *core.BlockChain, fn string, first uint64, las
 	if err := blockchain.ExportN(fh, first, last); err != nil {
 		return err
 	}
-	glog.Infoln("Exported blockchain to ", fn)
+	glog.D(logger.Error).Infoln("Exported blockchain to ", fn)
 	return nil
 }
 
@@ -232,32 +232,24 @@ func withLineBreak(s string) string {
 	return s + "\n"
 }
 
-func colorGreen(s interface{}) string {
-	return fmt.Sprintf("\x1b[32m%v\x1b[39m", s)
-}
-
-func colorBlue(s interface{}) string {
-	return fmt.Sprintf("\x1b[36m%v\x1b[39m", s)
-}
-
 func formatStatusKeyValue(prefix string, ss ...interface{}) (s string) {
 
 	s = ""
 	// Single arg; category? ie Forks?
 	if len(ss) == 1 {
-		s += colorBlue(ss[0])
+		s += logger.ColorBlue(fmt.Sprintf("%v", ss[0]))
 	}
 	if len(ss) == 2 {
 		if ss[0] == "" {
-			s += fmt.Sprintf("%v", colorGreen(ss[1]))
+			s += fmt.Sprintf("%v", logger.ColorGreen(fmt.Sprintf("%v", ss[1])))
 		} else {
-			s += fmt.Sprintf("%v: %v", ss[0], colorGreen(ss[1]))
+			s += fmt.Sprintf("%v: %v", ss[0], logger.ColorGreen(fmt.Sprintf("%v", ss[1])))
 		}
 	}
 	if len(ss) > 2 {
 		s += fmt.Sprintf("%v:", ss[0])
 		for i := 2; i < len(ss); i++ {
-			s += withLineBreak(fmt.Sprintf("    %v", colorGreen(ss[i])))
+			s += withLineBreak(fmt.Sprintf("    %v", logger.ColorGreen(fmt.Sprintf("%v", ss[i]))))
 		}
 	}
 
@@ -527,16 +519,16 @@ func status(ctx *cli.Context) error {
 	for _, p := range printme {
 		s += withLineBreak(sep)
 		// right align category title
-		s += withLineBreak(strings.Repeat(" ", len(sep)-len(p.title)) + colorBlue(p.title))
+		s += withLineBreak(strings.Repeat(" ", len(sep)-len(p.title)) + logger.ColorBlue(p.title))
 		for _, v := range p.keyVals {
 			s += v
 		}
 	}
-	glog.V(logger.Info).Info(s)
+	glog.D(logger.Warn).Infoln(s)
 
 	// Return here if database has not been initialized.
 	if !shouldUseExisting {
-		glog.V(logger.Info).Info("Geth has not been initialized; no database information available yet.")
+		glog.D(logger.Warn).Warnln("Geth has not been initialized; no database information available yet.")
 		return nil
 	}
 
@@ -545,11 +537,11 @@ func status(ctx *cli.Context) error {
 	s = "\n"
 	s += withLineBreak(sep)
 	title := "Chain database status"
-	s += withLineBreak(strings.Repeat(" ", len(sep)-len(title)) + colorBlue(title))
+	s += withLineBreak(strings.Repeat(" ", len(sep)-len(title)) + logger.ColorBlue(title))
 	for _, v := range formatChainDataPretty(datadir, chaindata) {
 		s += v
 	}
-	glog.V(logger.Info).Info(s)
+	glog.D(logger.Warn).Infoln(s)
 
 	return nil
 }
@@ -570,10 +562,10 @@ func rollback(ctx *cli.Context) error {
 	bc, chainDB := MakeChain(ctx)
 	defer chainDB.Close()
 
-	glog.Warning("Rolling back blockchain...")
+	glog.D(logger.Warn).Infoln("Rolling back blockchain...")
 
 	if err := bc.SetHead(blockIndex); err != nil {
-		glog.V(logger.Warn).Infof("error setting head: %v", err)
+		glog.D(logger.Error).Errorf("error setting head: %v", err)
 	}
 
 	// Check if *neither* block nor fastblock numbers match desired head number
@@ -582,12 +574,12 @@ func rollback(ctx *cli.Context) error {
 	if nowCurrentHead != blockIndex && nowCurrentFastHead != blockIndex {
 		glog.Fatalf("ERROR: Wanted rollback to set head to: %v, instead current head is: %v", blockIndex, nowCurrentHead)
 	}
-	glog.Infof("SUCCESS: Head block set to: %v", nowCurrentHead)
+	glog.D(logger.Error).Infof("Success. Head block set to: %v", nowCurrentHead)
 	return nil
 }
 
 // dumpChainConfig exports chain configuration based on context to JSON file.
-// It is not compatible with --chain-config flag; it is intended to move from flags -> file,
+// It is not compatible with --chain flag; it is intended to move from default configs -> file,
 // and not the other way around.
 func dumpChainConfig(ctx *cli.Context) error {
 
@@ -596,7 +588,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 		glog.Fatal("Dump config should only be used with default chain configurations (mainnet or morden).")
 	}
 
-	glog.V(logger.Info).Infof("Dumping configuration for: %v", chainIdentity)
+	glog.D(logger.Warn).Infof("Dumping configuration for: %v", chainIdentity)
 
 	chainConfigFilePath := ctx.Args().First()
 	chainConfigFilePath = filepath.Clean(chainConfigFilePath)
@@ -616,7 +608,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 			}
 			di, _ = os.Stat(fb) // update var with new dir info
 		} else {
-			glog.V(logger.Error).Infof("err: %v (at '%v')", de, fb)
+			glog.V(logger.Error).Errorf("err: %v (at '%v')", de, fb)
 		}
 	}
 	if !di.IsDir() {
@@ -656,7 +648,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 		return writeError
 	}
 
-	glog.V(logger.Info).Info(fmt.Sprintf("Wrote chain config file to \x1b[32m%s\x1b[39m.", chainConfigFilePath))
+	glog.D(logger.Error).Infoln(fmt.Sprintf("Wrote chain config file to \x1b[32m%s\x1b[39m.", chainConfigFilePath))
 	return nil
 }
 
@@ -704,6 +696,7 @@ func makedag(ctx *cli.Context) error {
 				glog.Fatal("Can't find dir")
 			}
 			glog.V(logger.Info).Infoln("making DAG, this could take awhile...")
+			glog.D(logger.Warn).Infoln("making DAG, this could take awhile...")
 			ethash.MakeDAG(blockNum, dir)
 		}
 	default:
@@ -748,193 +741,6 @@ func version(ctx *cli.Context) error {
 	fmt.Printf("GOROOT=%s\n", runtime.GOROOT())
 
 	return nil
-}
-
-// LogStatusFeatAvailability is used to register and track use of available status logging features, eg. "STATUS SYNC"
-type LogStatusFeatAvailability int
-
-const (
-	StatusFeatAvailable LogStatusFeatAvailability = iota
-	StatusFeatRegistered
-	StatusFeatNonexistent
-)
-
-// availableLogStatusFeatures stores state of implemented log STATUS features.
-// New features should be registered here, and their status updates by dispatchStatusLogs if in use (to avoid dupe goroutine logging).
-var availableLogStatusFeatures = map[string]LogStatusFeatAvailability{
-	"sync": StatusFeatAvailable,
-}
-
-// dispatchStatusLogs handle parsing --log-status=argument and toggling appropriate goroutine status feature logging.
-func dispatchStatusLogs(ctx *cli.Context, ethe *eth.Ethereum) {
-	flagName := aliasableName(LogStatusFlag.Name, ctx)
-	v := ctx.GlobalString(flagName)
-	if v == "" {
-		glog.Fatalf("%v: %v", flagName, ErrInvalidFlag)
-	}
-
-	for _, p := range strings.Split(v, ",") {
-		// Ignore hanging or double commas
-		if p == "" {
-			continue
-		}
-
-		// If possible, split sync=60 into ["sync", "60"], otherwise yields ["sync"], ["60"], or ["someothernonsense"]
-		eqs := strings.Split(p, "=")
-
-		// Catch unavailable and duplicate status feature logs
-		if availableLogStatusFeatures[eqs[0]] == StatusFeatNonexistent {
-			glog.Fatalf("%v: %v: unavailable status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
-		}
-		if availableLogStatusFeatures[eqs[0]] == StatusFeatRegistered {
-			glog.Fatalf("%v: %v: duplicate status feature by name of '%v'", flagName, ErrInvalidFlag, eqs[0])
-		}
-
-		// If user just uses "sync" instead of "sync=42", append empty string and delegate to each status log function how to handle it
-		if len(eqs) == 1 {
-			eqs = append(eqs, "")
-		}
-		switch eqs[0] {
-		case "sync":
-			availableLogStatusFeatures["sync"] = StatusFeatRegistered
-			go runStatusSyncLogs(ethe, eqs[1], ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
-		}
-	}
-}
-
-// runStatusSyncLogs starts STATUS SYNC logging at a given interval.
-// It should be run as a goroutine.
-// eg. --log-status="sync=42" logs SYNC information every 42 seconds
-func runStatusSyncLogs(e *eth.Ethereum, interval string, maxPeers int) {
-
-	// Establish default interval.
-	intervalI := 60
-
-	if interval != "" {
-		i, e := strconv.Atoi(interval)
-		if e != nil {
-			glog.Fatalf("STATUS SYNC %v: could not parse argument: %v", e, interval)
-		}
-		if i < 1 {
-			glog.Fatalf("STATUS SYNC interval value must be a positive integer, got: %d", i)
-		}
-		intervalI = i
-	}
-
-	glog.V(logger.Info).Infof("STATUS SYNC Log interval set: %d seconds", intervalI)
-
-	tickerInterval := time.Second * time.Duration(int32(intervalI))
-	ticker := time.NewTicker(tickerInterval)
-
-	var lastLoggedBlockNumber uint64
-	var sigc = make(chan os.Signal, 1)
-	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(sigc)
-
-	for {
-		select {
-		case <-ticker.C:
-			lenPeers := e.Downloader().GetPeers().Len()
-
-			_, current, height, _, _ := e.Downloader().Progress() // origin, current, height, pulled, known
-			mode := e.Downloader().GetMode()
-
-			// Get our head block
-			blockchain := e.BlockChain()
-			currentBlockHex := blockchain.CurrentBlock().Hash().Hex()
-
-			// Discover -> not synchronising (searching for peers)
-			// FullSync/FastSync -> synchronising
-			// Import -> synchronising, at full height
-			fMode := "Discover"
-			fOfHeight := fmt.Sprintf(" of #%7d", height)
-
-			// Calculate and format percent sync of known height
-			heightRatio := float64(current) / float64(height)
-			heightRatio = heightRatio * 100
-			fHeightRatio := fmt.Sprintf("(%4.2f%%)", heightRatio)
-
-			// Wait until syncing because real dl mode will not be engaged until then
-			if e.Downloader().Synchronising() {
-				switch mode {
-				case downloader.FullSync:
-					fMode = "FullSync"
-				case downloader.FastSync:
-					fMode = "FastSync"
-					currentBlockHex = blockchain.CurrentFastBlock().Hash().Hex()
-				}
-			}
-			if current >= height && !(current == 0 && height == 0) {
-				fMode = "Import  " // with spaces to make same length as Discover, FastSync, FullSync
-				fOfHeight = strings.Repeat(" ", 12)
-				fHeightRatio = strings.Repeat(" ", 7)
-			}
-			if height == 0 {
-				fOfHeight = strings.Repeat(" ", 12)
-				fHeightRatio = strings.Repeat(" ", 7)
-			}
-
-			// Calculate block stats for interval
-			numBlocksDiff := current - lastLoggedBlockNumber
-			numTxsDiff := 0
-			mGas := new(big.Int)
-
-			var numBlocksDiffPerSecond uint64
-			var numTxsDiffPerSecond int
-			var mGasPerSecond = new(big.Int)
-
-			if numBlocksDiff > 0 && numBlocksDiff != current {
-				for i := lastLoggedBlockNumber; i <= current; i++ {
-					b := blockchain.GetBlockByNumber(i)
-					if b != nil {
-						numTxsDiff += b.Transactions().Len()
-						mGas = new(big.Int).Add(mGas, b.GasUsed())
-					}
-				}
-			}
-
-			// Convert to per-second stats
-			// FIXME(?): Some degree of rounding will happen.
-			// For example, if interval is 10s and we get 6 blocks imported in that span,
-			// stats will show '0' blocks/second. Looks a little strange; but on the other hand,
-			// precision costs visual space, and normally just looks weird when starting up sync or
-			// syncing slowly.
-			numBlocksDiffPerSecond = numBlocksDiff / uint64(intervalI)
-
-			// Don't show initial current / per second val
-			if lastLoggedBlockNumber == 0 {
-				numBlocksDiffPerSecond = 0
-			}
-
-			// Divide by interval to yield per-second stats
-			numTxsDiffPerSecond = numTxsDiff / intervalI
-			mGasPerSecond = new(big.Int).Div(mGas, big.NewInt(int64(intervalI)))
-			mGasPerSecond = new(big.Int).Div(mGasPerSecond, big.NewInt(1000000))
-			mGasPerSecondI := mGasPerSecond.Int64()
-
-			// Update last logged current block number
-			lastLoggedBlockNumber = current
-
-			// Format head block hex for printing (eg. d4e…fa3)
-			cbhexstart := currentBlockHex[2:5] // trim off '0x' prefix
-			cbhexend := currentBlockHex[(len(currentBlockHex) - 3):]
-
-			blockprogress := fmt.Sprintf("#%7d%s", current, fOfHeight)
-			cbhexdisplay := fmt.Sprintf("%s…%s", cbhexstart, cbhexend)
-			peersdisplay := fmt.Sprintf("%2d/%2d peers", lenPeers, maxPeers)
-			blocksprocesseddisplay := fmt.Sprintf("%4d/%4d/%2d blks/txs/mgas sec", numBlocksDiffPerSecond, numTxsDiffPerSecond, mGasPerSecondI)
-
-			// Log to ERROR.
-			// This allows maximum user optionality for desired integration with rest of event-based logging.
-			glog.V(logger.Error).Infof("STATUS SYNC %s %s %s %s %s %s", fMode, blockprogress, fHeightRatio, cbhexdisplay, blocksprocesseddisplay, peersdisplay)
-
-		case <-sigc:
-			// Listen for interrupt
-			ticker.Stop()
-			glog.V(logger.Debug).Infoln("STATUS SYNC Stopping logging.")
-			return
-		}
-	}
 }
 
 func stringInSlice(s string, sl []string) bool {
@@ -1018,7 +824,7 @@ func recoverChaindata(ctx *cli.Context) error {
 	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
 		pow = ethash.New()
 	} else {
-		glog.V(logger.Info).Info("Consensus: fake")
+		glog.V(logger.Warn).Info("Consensus: fake")
 	}
 
 	bc, err := core.NewBlockChainDryrun(bcdb, sconf.ChainConfig, pow, new(event.TypeMux))
@@ -1027,7 +833,7 @@ func recoverChaindata(ctx *cli.Context) error {
 	}
 
 	if blockchainLoadError := bc.LoadLastState(true); blockchainLoadError != nil {
-		glog.V(logger.Error).Infof("! Found error while loading blockchain: %v", blockchainLoadError)
+		glog.V(logger.Error).Errorf("Error while loading blockchain: %v", blockchainLoadError)
 		// but do not return
 	}
 
@@ -1035,34 +841,34 @@ func recoverChaindata(ctx *cli.Context) error {
 	currentBlock := bc.CurrentBlock()
 	currentFastBlock := bc.CurrentFastBlock()
 
-	glog.V(logger.Error).Infoln("Current status (before recovery attempt):")
+	glog.D(logger.Error).Infoln("Current status (before recovery attempt):")
 	if header != nil {
-		glog.V(logger.Error).Infof("Last header: #%d\n", header.Number.Uint64())
+		glog.D(logger.Error).Infof("Last header: #%d\n", header.Number.Uint64())
 		if currentBlock != nil {
-			glog.V(logger.Error).Infof("Last block: #%d\n", currentBlock.Number())
+			glog.D(logger.Error).Infof("Last block: #%d\n", currentBlock.Number())
 		} else {
-			glog.V(logger.Error).Infoln("! Last block: nil")
+			glog.D(logger.Error).Errorf("! Last block: nil")
 		}
 		if currentFastBlock != nil {
-			glog.V(logger.Error).Infof("Last fast block: #%d\n", currentFastBlock.Number())
+			glog.D(logger.Error).Infof("Last fast block: #%d\n", currentFastBlock.Number())
 		} else {
-			glog.V(logger.Error).Infoln("! Last fast block: nil")
+			glog.D(logger.Error).Errorln("! Last fast block: nil")
 		}
 	} else {
-		glog.V(logger.Error).Infoln("! Last header: nil")
+		glog.D(logger.Error).Errorln("! Last header: nil")
 	}
 
-	glog.V(logger.Error).Infoln(glog.Separator("-"))
+	glog.D(logger.Error).Infoln(glog.Separator("-"))
 
-	glog.V(logger.Error).Infoln("Checking db validity and recoverable data...")
+	glog.D(logger.Error).Infoln("Checking db validity and recoverable data...")
 	checkpoint := bc.Recovery(1, 2048)
-	glog.V(logger.Error).Infof("Found last recoverable checkpoint=#%d\n", checkpoint)
+	glog.D(logger.Error).Infof("Found last recoverable checkpoint=#%d\n", checkpoint)
 
-	glog.V(logger.Error).Infoln(glog.Separator("-"))
+	glog.D(logger.Error).Infoln(glog.Separator("-"))
 
-	glog.V(logger.Error).Infoln("Setting blockchain db head to last safe checkpoint...")
+	glog.D(logger.Error).Infoln("Setting blockchain db head to last safe checkpoint...")
 	if setHeadErr := bc.SetHead(checkpoint); setHeadErr != nil {
-		glog.V(logger.Error).Infof("Error setting head: %v\n", setHeadErr)
+		glog.D(logger.Error).Errorf("Error setting head: %v\n", setHeadErr)
 		return setHeadErr
 	}
 	return nil
@@ -1079,7 +885,7 @@ func askForConfirmation(s string) bool {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		glog.V(logger.Error).Infof("%s [y/n]: ", s)
+		glog.D(logger.Error).Warnf("%s [y/n]: ", s)
 
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -1093,9 +899,9 @@ func askForConfirmation(s string) bool {
 		} else if response == "n" || response == "no" {
 			return false
 		} else {
-			glog.V(logger.Error).Infoln(glog.Separator("*"))
-			glog.V(logger.Error).Infoln("* INVALID RESPONSE: Please respond with [y|yes] or [n|no], or use CTRL-C to abort.")
-			glog.V(logger.Error).Infoln(glog.Separator("*"))
+			glog.D(logger.Error).Warnln(glog.Separator("*"))
+			glog.D(logger.Error).Errorln("* INVALID RESPONSE: Please respond with [y|yes] or [n|no], or use CTRL-C to abort.")
+			glog.D(logger.Error).Warnln(glog.Separator("*"))
 		}
 	}
 }
@@ -1111,9 +917,9 @@ func resetChaindata(ctx *cli.Context) error {
 		if err := os.RemoveAll(dir); err != nil {
 			return err
 		}
-		glog.V(logger.Error).Infof("Successfully removed chaindata directory: '%s'\n", dir)
+		glog.D(logger.Error).Infof("Successfully removed chaindata directory: '%s'\n", dir)
 	} else {
-		glog.V(logger.Error).Infoln("Leaving chaindata untouched. As you were.")
+		glog.D(logger.Error).Infoln("Leaving chaindata untouched. As you were.")
 	}
 	return nil
 }

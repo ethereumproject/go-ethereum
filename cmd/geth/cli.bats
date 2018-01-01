@@ -41,9 +41,9 @@ teardown() {
 	echo "$output"
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Starting"* ]]
-	[[ "$output" == *"Blockchain DB Version: "* ]]
-	[[ "$output" == *"Starting Server"* ]]
+	[[ "$output" == *"Blockchain"* ]]
+	[[ "$output" == *"Local head"* ]]
+	[[ "$output" == *"Starting server"* ]]
 }
 
 @test "displays help with invalid flag and valid command" {
@@ -75,7 +75,7 @@ teardown() {
 @test "custom testnet subdir --testnet --chain=morden2 | exit !=0" {
 	run $GETH_CMD --data-dir $DATA_DIR --testnet --chain=morden2 --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'exit' console
 	echo "$output"
-	[ "$status" -ne 0 ]	
+	[ "$status" -ne 0 ]
 	[[ "$output" == *"invalid flag "* ]]
 }
 
@@ -109,57 +109,67 @@ teardown() {
 	# # ipc-path/ipcpath
 	run $GETH_CMD --data-dir $DATA_DIR --ipc-path abc.ipc --exec 'exit;' console
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc.ipc"* ]]
+    echo "$output"
+	[[ "$output" == *"IPC endpoint opened"* ]]
+	[[ "$output" == *"$DATA_DIR/mainnet/abc.ipc"* ]]
 
 	run $GETH_CMD --data-dir $DATA_DIR --ipcpath $DATA_DIR/mainnet/abc.ipc --exec 'exit;' console
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc.ipc"* ]]
+    echo "$output"
+	[[ "$output" == *"IPC endpoint opened"* ]]
+	[[ "$output" == *"$DATA_DIR/mainnet/abc.ipc"* ]]
 
 	run $GETH_CMD --data-dir $DATA_DIR --ipc-path $DATA_DIR/mainnet/abc --exec 'exit;' console
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc"* ]]
+    echo "$output"
+	[[ "$output" == *"IPC endpoint opened"* ]]
+	[[ "$output" == *"$DATA_DIR/mainnet/abc"* ]]
 
 	run $GETH_CMD --data-dir $DATA_DIR --ipcpath $DATA_DIR/mainnet/abc --exec 'exit;' console
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"IPC endpoint opened: $DATA_DIR/mainnet/abc"* ]]
-	
+    echo "$output"
+	[[ "$output" == *"IPC endpoint opened"* ]]
+	[[ "$output" == *"$DATA_DIR/mainnet/abc"* ]]
+
 }
 
 # ... assuming that if two work, the rest will work.
 @test "aliasing hyphenated flags: --no-discover==--nodiscover, --ipc-disable==--ipcdisable | exit 0" {
-	old_command_names=(nodiscover ipcdisable) 
+	old_command_names=(nodiscover ipcdisable)
 	new_command_names=(no-discover ipc-disable)
-	
+
 	for var in "${old_command_names[@]}"
 	do
 		# hardcode --datadir/--data-dir
 		run $GETH_CMD --datadir $DATA_DIR --$var --exec 'exit' console
 		[ "$status" -eq 0 ]
-		[[ "$output" == *"Starting"* ]]
-		[[ "$output" == *"Blockchain DB Version: "* ]]
-		[[ "$output" == *"Starting Server"* ]]
+	    [[ "$output" == *"Blockchain"* ]]
+    	[[ "$output" == *"Local head"* ]]
+    	[[ "$output" == *"Starting server"* ]]
 	done
 
 	for var in "${new_command_names[@]}"
 	do
 		run $GETH_CMD --data-dir $DATA_DIR --$var --exec 'exit' console
 		[ "$status" -eq 0 ]
-		[[ "$output" == *"Starting"* ]]
-		[[ "$output" == *"Blockchain DB Version: "* ]]
-		[[ "$output" == *"Starting Server"* ]]
+	    [[ "$output" == *"Blockchain"* ]]
+    	[[ "$output" == *"Local head"* ]]
+    	[[ "$output" == *"Starting server"* ]]
 	done
 }
 
 @test "--cache 16 | exit 0" {
 	run $GETH_CMD --data-dir $DATA_DIR --cache 17 --exec 'exit;' console
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Allotted 17MB cache"* ]]
+	[[ "$output" == *"Allotted"* ]]
+	[[ "$output" == *"17MB"* ]]
+	[[ "$output" == *"cache"* ]]
 }
 
 # Test `dump` command.
 # All tests copy testdata/testdatadir to $DATA_DIR to ensure we're consistently testing against a not-only-init'ed chaindb.
 @test "dump [noargs] | exit >0" {
-	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/ 
+	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
 	run $GETH_CMD --data-dir $DATA_DIR dump
 	echo "$output"
 	[ "$status" -gt 0 ]
@@ -174,8 +184,8 @@ teardown() {
 	[[ "$output" == *"balance"* ]]
 	[[ "$output" == *"accounts"* ]]
 	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block state root
-	[[ "$output" == *"ffec0913c635baca2f5e57a37aa9fb7b6c9b6e26"* ]] # random hex address existing in genesis 
-	[[ "$output" == *"253319000000000000000"* ]] # random address balance existing in genesis 
+	[[ "$output" == *"ffec0913c635baca2f5e57a37aa9fb7b6c9b6e26"* ]] # random hex address existing in genesis
+	[[ "$output" == *"253319000000000000000"* ]] # random address balance existing in genesis
 }
 @test "dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181 | exit 0" {
 	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
@@ -198,7 +208,7 @@ teardown() {
 	[[ "$output" == *"balance"* ]]
 	[[ "$output" == *"accounts"* ]]
 	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block 0  state root
-	
+
 	[[ "$output" == *"fff7ac99c8e4feb60c9750054bdc14ce1857f181"* ]] # hex address
 	[[ "$output" == *"1000000000000000000000"* ]] # address balance
 
@@ -214,10 +224,10 @@ teardown() {
 	[[ "$output" == *"root"* ]] # block state root
 	[[ "$output" == *"balance"* ]]
 	[[ "$output" == *"accounts"* ]]
-	
+
 	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block 0  state root
 	[[ "$output" == *"d67e4d450343046425ae4271474353857ab860dbc0a1dde64b41b5cd3a532bf3"* ]] # block 1  state root
-	
+
 	[[ "$output" == *"fff7ac99c8e4feb60c9750054bdc14ce1857f181"* ]] # hex address
 	[[ "$output" == *"1000000000000000000000"* ]] # address balance
 
@@ -232,9 +242,9 @@ teardown() {
 	[[ "$output" == *"root"* ]] # block state root
 	[[ "$output" == *"balance"* ]]
 	[[ "$output" == *"accounts"* ]]
-	
+
 	[[ "$output" == *"d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"* ]] # block 0  state root
-	
+
 	[[ "$output" == *"fff7ac99c8e4feb60c9750054bdc14ce1857f181"* ]] # hex address
 	[[ "$output" == *"1000000000000000000000"* ]] # address balance
 
@@ -277,6 +287,7 @@ teardown() {
 	# When I tried using heredoc and other more elegant solutions than line-by-line checking.
 
 	# Chain Configuration Genesis
+    echo "$output"
 	[[ "$output" == *"mainnet"* ]]
 	[[ "$output" == *"Ethereum Classic Mainnet"* ]]
 	[[ "$output" == *"Genesis"* ]]
@@ -293,6 +304,7 @@ teardown() {
 	[ "$status" -eq 0 ]
 
 	# Chain database Genesis
+    echo "$output"
 	[[ "$output" == *"Genesis"* ]]
 	[[ "$output" == *"0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"* ]]
 	[[ "$output" == *"0x0000000000000000000000000000000000000000000000000000000000000000"* ]]

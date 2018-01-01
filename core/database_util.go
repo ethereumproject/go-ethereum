@@ -229,7 +229,7 @@ func GetReceipt(db ethdb.Database, txHash common.Hash) *types.Receipt {
 	var receipt types.ReceiptForStorage
 	err := rlp.DecodeBytes(data, &receipt)
 	if err != nil {
-		glog.V(logger.Core).Infoln("GetReceipt err:", err)
+		glog.V(logger.Core).Errorln("GetReceipt err:", err)
 	}
 	return (*types.Receipt)(&receipt)
 }
@@ -282,7 +282,7 @@ func WriteHeader(db ethdb.Database, header *types.Header) error {
 		glog.Fatalf("failed to store header into database: %v", err)
 		return err
 	}
-	glog.V(logger.Debug).Infof("stored header #%v [%x…]", header.Number, header.Hash().Bytes()[:4])
+	glog.V(logger.Detail).Infof("stored header #%v [%x…]", header.Number, header.Hash().Bytes()[:4])
 	return nil
 }
 
@@ -297,7 +297,7 @@ func WriteBody(db ethdb.Database, hash common.Hash, body *types.Body) error {
 		glog.Fatalf("failed to store block body into database: %v", err)
 		return err
 	}
-	glog.V(logger.Debug).Infof("stored block body [%x…]", hash.Bytes()[:4])
+	glog.V(logger.Detail).Infof("stored block body [%x…]", hash.Bytes()[:4])
 	return nil
 }
 
@@ -312,7 +312,7 @@ func WriteTd(db ethdb.Database, hash common.Hash, td *big.Int) error {
 		glog.Fatalf("failed to store block total difficulty into database: %v", err)
 		return err
 	}
-	glog.V(logger.Debug).Infof("stored block total difficulty [%x…]: %v", hash.Bytes()[:4], td)
+	glog.V(logger.Detail).Infof("stored block total difficulty [%x…]: %v", hash.Bytes()[:4], td)
 	return nil
 }
 
@@ -348,7 +348,7 @@ func WriteBlockReceipts(db ethdb.Database, hash common.Hash, receipts types.Rece
 		glog.Fatalf("failed to store block receipts into database: %v", err)
 		return err
 	}
-	glog.V(logger.Debug).Infof("stored block receipts [%x…]", hash.Bytes()[:4])
+	glog.V(logger.Detail).Infof("stored block receipts [%x…]", hash.Bytes()[:4])
 	return nil
 }
 
