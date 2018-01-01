@@ -60,6 +60,7 @@ var (
 	NodeNameFlag = cli.StringFlag{
 		Name:  "identity,name",
 		Usage: "Custom node name",
+		Value: "",
 	}
 	NatspecEnabledFlag = cli.BoolFlag{
 		Name:  "natspec",
@@ -107,6 +108,7 @@ var (
 	MiningGPUFlag = cli.StringFlag{
 		Name:  "miner-gpus,minergpus",
 		Usage: "List of GPUs to use for mining (e.g. '0,1' will use the first two GPUs found)",
+		Value: "",
 	}
 	TargetGasLimitFlag = cli.StringFlag{
 		Name:  "target-gas-limit,targetgaslimit",
@@ -235,6 +237,7 @@ var (
 	MetricsFlag = cli.StringFlag{
 		Name:  "metrics",
 		Usage: "Enables metrics reporting. When the value is a path, either relative or absolute, then a log is written to the respective file.",
+		Value: "",
 	}
 	FakePoWFlag = cli.BoolFlag{
 		Name:  "fake-pow, fakepow",
@@ -307,10 +310,12 @@ var (
 	ExecFlag = cli.StringFlag{
 		Name:  "exec",
 		Usage: "Execute JavaScript statement (only in combination with console/attach)",
+		Value: "",
 	}
 	PreloadJSFlag = cli.StringFlag{
 		Name:  "preload",
 		Usage: "Comma separated list of JavaScript files to preload into the console",
+		Value: "",
 	}
 
 	// Network Settings
