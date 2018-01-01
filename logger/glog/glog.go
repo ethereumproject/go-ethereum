@@ -1144,9 +1144,6 @@ func (sb *syncBuffer) rotateCurrent(now time.Time) error {
 	if sb.file != nil {
 		sb.Flush()
 		sb.file.Close()
-		if Compress {
-			gzipFile(sb.file.Name())
-		}
 	}
 	var err error
 	sb.file, _, err = create(severityName[sb.sev], now)
