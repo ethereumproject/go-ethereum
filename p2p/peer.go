@@ -118,7 +118,7 @@ func (p *Peer) Disconnect(reason DiscReason) {
 
 // String implements fmt.Stringer.
 func (p *Peer) String() string {
-	return fmt.Sprintf("Peer %x %v", p.rw.id[:8], p.RemoteAddr())
+	return fmt.Sprintf("Peer id=%x addr=%v name=%s", p.rw.id[:8], p.RemoteAddr(), p.Name())
 }
 
 func newPeer(conn *conn, protocols []Protocol) *Peer {
