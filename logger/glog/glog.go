@@ -122,7 +122,6 @@ import (
 	"time"
 )
 
-
 // DefaultVerbosity establishes the default verbosity Level for
 // to-file (debug) logging.
 var DefaultVerbosity = 5
@@ -1214,7 +1213,7 @@ func (sb *syncBuffer) rotateOld(now time.Time) {
 			Fatal(err)
 		}
 
-		logs = excludeActive(logs)
+		logs = sb.excludeActive(logs)
 
 		logs, err = removeOutdated(logs, now)
 		if err != nil {
@@ -1276,9 +1275,9 @@ func getLogFiles() (logFiles []logFile, err error) {
 	return nil, errors.New("log: no log dirs")
 }
 
-func excludeActive(logs []logFile) []logFile {
+func (sb *syncBuffer) excludeActive(logs []logFile) []logFile {
 	filtered := logs[:0]
-	current := getCurrentLogs()
+	current := sb.getCurrentLogs()
 	for _, log := range logs {
 		active := false
 		fullName := filepath.Join(log.dir, log.name)
@@ -1295,19 +1294,16 @@ func excludeActive(logs []logFile) []logFile {
 }
 
 // getCurrentLogs returns list of log files pointed by symlinks
-func getCurrentLogs() (logs []string) {
-	for _, logDir := range logDirs {
-		files, err := ioutil.ReadDir(logDir)
-		if err == nil {
-			for _, file := range files {
-				if file.Mode()&os.ModeSymlink != 0 {
-					target, err := os.Readlink(filepath.Join(logDir, file.Name()))
-					if err == nil {
-						logs = append(logs, filepath.Join(logDir, target))
-					}
-				}
+func (sb *syncBuffer) getCurrentLogs() (logs []string) {
+	if sb.logger == nil {
+		return nil
+	}
+	for _, buffer := range sb.logger.file {
+		if buffer != nil && buffer.(*syncBuffer).file != nil {
+			path, err := filepath.Abs(buffer.(*syncBuffer).file.Name())
+			if err == nil {
+				logs = append(logs, path)
 			}
-			break
 		}
 	}
 	return logs
