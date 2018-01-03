@@ -1293,7 +1293,7 @@ func (sb *syncBuffer) excludeActive(logs []logFile) []logFile {
 	return filtered
 }
 
-// getCurrentLogs returns list of log files pointed by symlinks
+// getCurrentLogs returns list of log files currently in use by the syncBuffer
 func (sb *syncBuffer) getCurrentLogs() (logs []string) {
 	if sb.logger == nil {
 		return nil
