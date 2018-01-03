@@ -9,7 +9,7 @@ BINARY=bin
 BUILD_TIME=`date +%FT%T%z`
 COMMIT=`git log --pretty=format:'%h' -n 1`
 
-LDFLAGS=-ldflags "-X main.date=${BUILD_TIME} -X main.commit=${COMMIT} -X main.version=${BUILD_VERSION}"
+LDFLAGS=-ldflags "-X main.Version="`git describe --tags`
 
 setup: ## Install all the build and lint dependencies
 	go get -u github.com/alecthomas/gometalinter
@@ -50,13 +50,13 @@ cover: test ## Run all the tests and opens the coverage report
 	go tool cover -html=coverage.txt
 
 build: ## Build a local snapshot binary version
-	go build ${LDFLAGS} -o ${BINARY}/nem ./cmd/nem/...
+	go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth/...
 
 clean: ## Remove a local snapshot binary version
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
 
 install: ## Install to $GOPATH/src
-	go install ${LDFLAGS} ./cmd/nem/...
+	go install ${LDFLAGS} ./cmd/geth/...
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
