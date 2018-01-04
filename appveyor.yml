@@ -16,10 +16,7 @@ install:
   - ps: $env:VERSION = "$(janus.exe version -format='TAG_OR_NIGHTLY')"
 
   # Install Rust.
-  # Downgrade to use older, not-currently-broken version.
-  - appveyor DownloadFile https://static.rust-lang.org/rustup/archive/1.7.0/i686-pc-windows-gnu/rustup-init.exe -FileName rustup-init.exe
-  # Currently broken version.
-  # - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
+  - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - rustup-init -yv --default-toolchain stable --default-host x86_64-pc-windows-gnu
   - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
   - rustup update
