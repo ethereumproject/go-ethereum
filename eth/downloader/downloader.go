@@ -540,6 +540,8 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 		}
 	}
 
+	d.queue.Close()
+	d.cancel()
 	wg.Wait()
 	return err
 }

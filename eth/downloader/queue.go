@@ -62,7 +62,7 @@ type fetchResult struct {
 
 // queue represents hashes that are either need fetching or are being fetched
 type queue struct {
-	lock sync.Mutex
+	sync.Mutex
 
 	mode          SyncMode // Synchronisation mode to decide on the block parts to schedule for fetching
 	fastSyncPivot uint64   // Block number where the fast sync pivots into archive synchronisation mode
@@ -95,14 +95,12 @@ type queue struct {
 	resultOffset uint64         // Offset of the first cached fetch result in the block chain
 
 	active *sync.Cond
-	done   chan struct{}
 	closed bool
 }
 
 // newQueue creates a new download queue for scheduling block retrieval.
 func newQueue() *queue {
-	return &queue{
-		lock: *new(sync.Mutex),
+	q := &queue{
 		headerPendPool:   make(map[string]*fetchRequest),
 		headerContCh:     make(chan bool),
 		blockTaskPool:    make(map[common.Hash]*types.Header),
@@ -114,14 +112,15 @@ func newQueue() *queue {
 		receiptPendPool:  make(map[string]*fetchRequest),
 		receiptDonePool:  make(map[common.Hash]struct{}),
 		resultCache:      make([]*fetchResult, blockCacheLimit),
-		done:             make(chan struct{}),
 	}
+	q.active = sync.NewCond(q)
+	return q
 }
 
 // Reset clears out the queue contents.
 func (q *queue) Reset() {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	q.closed = false
 	q.mode = FullSync
@@ -148,32 +147,32 @@ func (q *queue) Reset() {
 // Close marks the end of the sync, unblocking WaitResults.
 // It may be called even if the queue is already closed.
 func (q *queue) Close() {
-	q.lock.Lock()
+	q.Lock()
 	q.closed = true
-	q.lock.Unlock()
+	q.Unlock()
 	q.active.Broadcast()
 }
 
 // PendingHeaders retrieves the number of header requests pending for retrieval.
 func (q *queue) PendingHeaders() int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.headerTaskQueue.Size()
 }
 
 // PendingBlocks retrieves the number of block (body) requests pending for retrieval.
 func (q *queue) PendingBlocks() int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.blockTaskQueue.Size()
 }
 
 // PendingReceipts retrieves the number of block receipts pending for retrieval.
 func (q *queue) PendingReceipts() int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.receiptTaskQueue.Size()
 }
@@ -181,8 +180,8 @@ func (q *queue) PendingReceipts() int {
 // InFlightHeaders retrieves whether there are header fetch requests currently
 // in flight.
 func (q *queue) InFlightHeaders() bool {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return len(q.headerPendPool) > 0
 }
@@ -190,8 +189,8 @@ func (q *queue) InFlightHeaders() bool {
 // InFlightBlocks retrieves whether there are block fetch requests currently in
 // flight.
 func (q *queue) InFlightBlocks() bool {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return len(q.blockPendPool) > 0
 }
@@ -199,16 +198,16 @@ func (q *queue) InFlightBlocks() bool {
 // InFlightReceipts retrieves whether there are receipt fetch requests currently
 // in flight.
 func (q *queue) InFlightReceipts() bool {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return len(q.receiptPendPool) > 0
 }
 
 // Idle returns if the queue is fully idle or has some data still inside.
 func (q *queue) Idle() bool {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	queued := q.blockTaskQueue.Size() + q.receiptTaskQueue.Size()
 	pending := len(q.blockPendPool) + len(q.receiptPendPool)
@@ -219,8 +218,8 @@ func (q *queue) Idle() bool {
 
 // FastSyncPivot retrieves the currently used fast sync pivot point.
 func (q *queue) FastSyncPivot() uint64 {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.fastSyncPivot
 }
@@ -228,8 +227,8 @@ func (q *queue) FastSyncPivot() uint64 {
 // ShouldThrottleBlocks checks if the download should be throttled (active block (body)
 // fetches exceed block cache).
 func (q *queue) ShouldThrottleBlocks() bool {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	// Calculate the currently in-flight block (body) requests
 	pending := 0
@@ -243,8 +242,8 @@ func (q *queue) ShouldThrottleBlocks() bool {
 // ShouldThrottleReceipts checks if the download should be throttled (active receipt
 // fetches exceed block cache).
 func (q *queue) ShouldThrottleReceipts() bool {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	// Calculate the currently in-flight receipt requests
 	pending := 0
@@ -258,8 +257,8 @@ func (q *queue) ShouldThrottleReceipts() bool {
 // ScheduleSkeleton adds a batch of header retrieval tasks to the queue to fill
 // up an already retrieved header skeleton.
 func (q *queue) ScheduleSkeleton(from uint64, skeleton []*types.Header) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	// No skeleton retrieval can be in progress, fail hard if so (huge implementation bug)
 	if q.headerResults != nil {
@@ -285,8 +284,8 @@ func (q *queue) ScheduleSkeleton(from uint64, skeleton []*types.Header) {
 // RetrieveHeaders retrieves the header chain assemble based on the scheduled
 // skeleton.
 func (q *queue) RetrieveHeaders() ([]*types.Header, int) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	headers, proced := q.headerResults, q.headerProced
 	q.headerResults, q.headerProced = nil, 0
@@ -297,8 +296,8 @@ func (q *queue) RetrieveHeaders() ([]*types.Header, int) {
 // Schedule adds a set of headers for the download queue for scheduling, returning
 // the new headers encountered.
 func (q *queue) Schedule(headers []*types.Header, from uint64) []*types.Header {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	// Insert all the headers prioritised by the contained block number
 	inserts := make([]*types.Header, 0, len(headers))
@@ -338,26 +337,14 @@ func (q *queue) Schedule(headers []*types.Header, from uint64) []*types.Header {
 	return inserts
 }
 
-// Done marks the end of the sync, unblocking WaitResults.
-func (q *queue) Done() {
-	close(q.done)
-	q.active.Broadcast()
-}
-
 // WaitResults retrieves and permanently removes a batch of fetch
 // results from the cache. The return is empty when queue.Done.
 func (q *queue) WaitResults() []*fetchResult {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	nproc := q.countProcessableItems()
-	for nproc == 0 {
-		select {
-		case <-q.done:
-			return nil
-		default:
-		}
-
+	for nproc == 0 && !q.closed {
 		q.active.Wait()
 		nproc = q.countProcessableItems()
 	}
@@ -407,8 +394,8 @@ func (q *queue) countProcessableItems() int {
 // ReserveHeaders reserves a set of headers for the given peer, skipping any
 // previously failed batches.
 func (q *queue) ReserveHeaders(p *peer, count int) *fetchRequest {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	// Short circuit if the peer's already downloading something (sanity check to
 	// not corrupt state)
@@ -451,8 +438,8 @@ func (q *queue) ReserveBodies(p *peer, count int) (*fetchRequest, bool, error) {
 	isNoop := func(header *types.Header) bool {
 		return header.TxHash == types.EmptyRootHash && header.UncleHash == types.EmptyUncleHash
 	}
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.reserveHeaders(p, count, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool, q.blockDonePool, isNoop)
 }
@@ -464,8 +451,8 @@ func (q *queue) ReserveReceipts(p *peer, count int) (*fetchRequest, bool, error)
 	isNoop := func(header *types.Header) bool {
 		return header.ReceiptHash == types.EmptyRootHash
 	}
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.reserveHeaders(p, count, q.receiptTaskPool, q.receiptTaskQueue, q.receiptPendPool, q.receiptDonePool, isNoop)
 }
@@ -579,8 +566,8 @@ func (q *queue) CancelReceipts(request *fetchRequest) {
 
 // Cancel aborts a fetch request, returning all pending hashes to the task queue.
 func (q *queue) cancel(request *fetchRequest, taskQueue *prque.Prque, pendPool map[string]*fetchRequest) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	if request.From > 0 {
 		taskQueue.Push(request.From, -float32(request.From))
@@ -598,8 +585,8 @@ func (q *queue) cancel(request *fetchRequest, taskQueue *prque.Prque, pendPool m
 // meant to be called during a peer drop to quickly reassign owned data fetches
 // to remaining nodes.
 func (q *queue) Revoke(peerId string) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	if request, ok := q.blockPendPool[peerId]; ok {
 		for _, header := range request.Headers {
@@ -618,8 +605,8 @@ func (q *queue) Revoke(peerId string) {
 // ExpireHeaders checks for in flight requests that exceeded a timeout allowance,
 // canceling them and returning the responsible peers for penalisation.
 func (q *queue) ExpireHeaders(timeout time.Duration) map[string]int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.expire(timeout, q.headerPendPool, q.headerTaskQueue, metrics.DLHeaderTimeouts.Mark)
 }
@@ -627,8 +614,8 @@ func (q *queue) ExpireHeaders(timeout time.Duration) map[string]int {
 // ExpireBodies checks for in flight block body requests that exceeded a timeout
 // allowance, canceling them and returning the responsible peers for penalisation.
 func (q *queue) ExpireBodies(timeout time.Duration) map[string]int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.expire(timeout, q.blockPendPool, q.blockTaskQueue, metrics.DLBodyTimeouts.Mark)
 }
@@ -636,8 +623,8 @@ func (q *queue) ExpireBodies(timeout time.Duration) map[string]int {
 // ExpireReceipts checks for in flight receipt requests that exceeded a timeout
 // allowance, canceling them and returning the responsible peers for penalisation.
 func (q *queue) ExpireReceipts(timeout time.Duration) map[string]int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	return q.expire(timeout, q.receiptPendPool, q.receiptTaskQueue, metrics.DLReceiptTimeouts.Mark)
 }
@@ -689,8 +676,8 @@ func (q *queue) expire(timeout time.Duration, pendPool map[string]*fetchRequest,
 // of ready headers to the processor to keep the pipeline full. However it will
 // not block to prevent stalling other pending deliveries.
 func (q *queue) DeliverHeaders(id string, headers []*types.Header, headerProcCh chan []*types.Header) (int, error) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	// Short circuit if the data was never requested
 	request := q.headerPendPool[id]
@@ -773,8 +760,8 @@ func (q *queue) DeliverHeaders(id string, headers []*types.Header, headerProcCh 
 // The method returns the number of blocks bodies accepted from the delivery and
 // also wakes any threads waiting for data delivery.
 func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, uncleLists [][]*types.Header) (int, error) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
 		if types.DeriveSha(types.Transactions(txLists[index])) != header.TxHash || types.CalcUncleHash(uncleLists[index]) != header.UncleHash {
@@ -791,8 +778,8 @@ func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, uncleLi
 // The method returns the number of transaction receipts accepted from the delivery
 // and also wakes any threads waiting for data delivery.
 func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int, error) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	reconstruct := func(header *types.Header, index int, result *fetchResult) error {
 		if types.DeriveSha(types.Receipts(receiptList[index])) != header.ReceiptHash {
@@ -879,8 +866,8 @@ func (q *queue) deliver(id string, taskPool map[common.Hash]*types.Header, taskQ
 // Prepare configures the result cache to allow accepting and caching inbound
 // fetch results.
 func (q *queue) Prepare(offset uint64, mode SyncMode, pivot uint64, head *types.Header) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.Lock()
+	defer q.Unlock()
 
 	// Prepare the queue for sync results
 	if q.resultOffset < offset {
