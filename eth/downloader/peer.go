@@ -30,9 +30,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 const (
@@ -348,7 +346,6 @@ func (p *peer) String() string {
 // download procedure.
 type peerSet struct {
 	peers       map[string]*peer
-	newPeerFeed event.Feed
 	lock        sync.RWMutex
 }
 
@@ -357,10 +354,6 @@ func newPeerSet() *peerSet {
 	return &peerSet{
 		peers: make(map[string]*peer),
 	}
-}
-
-func (ps *peerSet) SubscribeNewPeers(ch chan<- *peer) event.Subscription {
-	return ps.newPeerFeed.Subscribe(ch)
 }
 
 // Reset iterates over the current peer set, and resets each of the known peers
@@ -409,7 +402,6 @@ func (ps *peerSet) Register(p *peer) error {
 	ps.peers[p.id] = p
 	ps.lock.Unlock()
 
-	ps.newPeerFeed.Send(p)
 	return nil
 }
 
