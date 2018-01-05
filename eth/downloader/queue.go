@@ -95,7 +95,6 @@ type queue struct {
 	resultOffset uint64         // Offset of the first cached fetch result in the block chain
 
 	active *sync.Cond
-	done   chan struct{}
 	closed bool
 }
 
@@ -113,7 +112,6 @@ func newQueue() *queue {
 		receiptPendPool:  make(map[string]*fetchRequest),
 		receiptDonePool:  make(map[common.Hash]struct{}),
 		resultCache:      make([]*fetchResult, blockCacheLimit),
-		done:             make(chan struct{}),
 	}
 	q.active = sync.NewCond(q)
 	return q
@@ -339,12 +337,6 @@ func (q *queue) Schedule(headers []*types.Header, from uint64) []*types.Header {
 	return inserts
 }
 
-// Done marks the end of the sync, unblocking WaitResults.
-func (q *queue) Done() {
-	close(q.done)
-	q.active.Broadcast()
-}
-
 // WaitResults retrieves and permanently removes a batch of fetch
 // results from the cache. The return is empty when queue.Done.
 func (q *queue) WaitResults() []*fetchResult {
@@ -352,13 +344,7 @@ func (q *queue) WaitResults() []*fetchResult {
 	defer q.Unlock()
 
 	nproc := q.countProcessableItems()
-	for nproc == 0 {
-		select {
-		case <-q.done:
-			return nil
-		default:
-		}
-
+	for nproc == 0 && !q.closed {
 		q.active.Wait()
 		nproc = q.countProcessableItems()
 	}
