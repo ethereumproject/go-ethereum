@@ -77,7 +77,7 @@ type TrieSyncLeafCallback func(leaf []byte, parent common.Hash) error
 // unknown trie hashes to retrieve, accepts node data associated with said hashes
 // and reconstructs the trie step by step until all is done.
 type TrieSync struct {
-	database DatabaseReader           // Persistent database to check for existing entries
+	database ethdb.Database           // Persistent database to check for existing entries
 	membatch *syncMemBatch            // Memory buffer to avoid frequest database writes
 	requests map[common.Hash]*request // Pending requests pertaining to a key hash
 	queue    *prque.Prque             // Priority queue with the pending requests
@@ -180,7 +180,7 @@ func (s *TrieSync) Process(results []SyncResult) (bool, int, error) {
 		// If the item was not requested, bail out
 		request := s.requests[item.Hash]
 		if request == nil {
-			return i, ErrNotRequested
+			return committed, i, ErrNotRequested
 		}
 		if request.data != nil {
 			return committed, i, ErrAlreadyProcessed
@@ -195,7 +195,7 @@ func (s *TrieSync) Process(results []SyncResult) (bool, int, error) {
 		// Decode the node data content and update the request
 		node, err := decodeNode(item.Hash[:], item.Data)
 		if err != nil {
-			return i, err
+			return committed, i, err
 		}
 		*request.object = node
 		request.data = item.Data
@@ -203,7 +203,7 @@ func (s *TrieSync) Process(results []SyncResult) (bool, int, error) {
 		// Create and schedule a request for all the children nodes
 		requests, err := s.children(request)
 		if err != nil {
-			return i, err
+			return committed, i, err
 		}
 		if len(requests) == 0 && request.deps == 0 {
 			s.commit(request)
@@ -215,7 +215,7 @@ func (s *TrieSync) Process(results []SyncResult) (bool, int, error) {
 			s.schedule(child)
 		}
 	}
-	return 0, nil
+	return committed, 0, nil
 }
 
 // Commit flushes the data stored in the internal membatch out to persistent
