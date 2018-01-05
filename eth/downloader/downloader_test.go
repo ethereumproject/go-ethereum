@@ -1770,7 +1770,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	tester.downloader.dropPeer = func(id string) {} // We reuse the same "faulty" peer throughout the test
 
 	// Synchronise with the peer a few times and make sure they fail until the retry limit
-	for i := 0; i < fsCriticalTrials; i++ {
+	for i := 0; i < int(fsCriticalTrials); i++ {
 		// Attempt a sync and ensure it fails properly
 		if err := tester.sync("peer", nil, FastSync); err == nil {
 			t.Fatalf("failing fast sync succeeded: %v", err)
