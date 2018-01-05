@@ -267,22 +267,6 @@ func (d *Downloader) GetPeers() *peerSet {
 	return d.peers
 }
 
-// Cancel cancels all of the operations and resets the queue. It returns true
-// if the cancel operation was completed.
-func (d *Downloader) Cancel() {
-	// Close the current cancel channel
-	d.cancelLock.Lock()
-	if d.cancelCh != nil {
-		select {
-		case <-d.cancelCh:
-			// Channel was already closed
-		default:
-			close(d.cancelCh)
-		}
-	}
-	d.cancelLock.Unlock()
-}
-
 // RegisterPeer injects a new download peer into the set of block source to be
 // used for fetching hashes and blocks from.
 func (d *Downloader) RegisterPeer(id string, version int, name string, currentHead currentHeadRetrievalFn,
@@ -557,7 +541,7 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 	}
 
 	d.queue.Close()
-	d.Cancel()
+	d.cancel()
 	wg.Wait()
 	return err
 }
