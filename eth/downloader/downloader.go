@@ -28,14 +28,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/rcrowley/go-metrics"
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/metrics"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 const (
@@ -71,7 +70,7 @@ var (
 	fsHeaderForceVerify    = 24   // Number of headers to verify before and after the pivot to accept it
 	fsPivotInterval        = 512  // Number of headers out of which to randomize the pivot point
 	fsMinFullBlocks        = 1024 // Number of blocks to retrieve fully even in fast sync
-	fsCriticalTrials       = 10   // Number of times to retry in the cricical section before bailing
+	fsCriticalTrials uint32      = 10   // Number of times to retry in the cricical section before bailing
 )
 
 var (
@@ -118,7 +117,7 @@ type Downloader struct {
 	stateDB ethdb.Database
 
 	fsPivotLock  *types.Header // Pivot header on critical section entry (cannot change between retries)
-	fsPivotFails int           // Number of fast sync failures in the critical section
+	fsPivotFails uint32           // Number of fast sync failures in the critical section
 
 	rttEstimate   uint64 // Round trip time to target for download requests
 	rttConfidence uint64 // Confidence in the estimated RTT (unit: millionths to allow atomic ops)
@@ -230,7 +229,7 @@ func New(stateDb ethdb.Database, mux *event.TypeMux, hasHeader headerCheckFn, ha
 // In addition, during the state download phase of fast synchronisation the number
 // of processed and the total number of known states are also returned. Otherwise
 // these are zero.
-func (d *Downloader) Progress() ethereum.SyncProgress {
+func (d *Downloader) Progress() (uint64, uint64, uint64, uint64, uint64) {
 	// Lock the current stats and return the progress
 	d.syncStatsLock.RLock()
 	defer d.syncStatsLock.RUnlock()
@@ -244,13 +243,7 @@ func (d *Downloader) Progress() ethereum.SyncProgress {
 	case LightSync:
 		current = d.headHeader().Number.Uint64()
 	}
-	return ethereum.SyncProgress{
-		StartingBlock: d.syncStatsChainOrigin,
-		CurrentBlock:  current,
-		HighestBlock:  d.syncStatsChainHeight,
-		PulledStates:  d.syncStatsState.processed,
-		KnownStates:   d.syncStatsState.processed + d.syncStatsState.pending,
-	}
+	return d.syncStatsChainOrigin, current, d.syncStatsChainHeight, d.syncStatsState.processed, d.syncStatsState.processed + d.syncStatsState.pending
 }
 
 // Synchronising returns whether the downloader is currently retrieving blocks.
@@ -376,7 +369,7 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 		glog.V(logger.Info).Infoln("Block synchronisation started")
 	}
 	// Reset the queue, peer set and wake channels to clean any internal leftover state
-	d.queue = newQueue(d.queue.stateDatabase)
+	d.queue = newQueue()
 	d.peers.Reset()
 
 	for _, ch := range []chan bool{d.bodyWakeCh, d.receiptWakeCh} {
@@ -1368,7 +1361,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 		// Retrieve the a batch of results to import
 		items := int(math.Min(float64(len(results)), float64(maxResultsProcess)))
 		first, last := results[0].Header, results[items-1].Header
-		log.Debug("Inserting downloaded chain", "items", len(results),
+		glog.V(logger.Debug).Infoln("Inserting downloaded chain", "items", len(results),
 			"firstnum", first.Number, "firsthash", first.Hash(),
 			"lastnum", last.Number, "lasthash", last.Hash(),
 		)
@@ -1377,7 +1370,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 			blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles)
 		}
 		if index, err := d.insertBlocks(blocks); err != nil {
-			log.Debug("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
+			glog.V(logger.Debug).Infoln("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
 			return errInvalidChain
 		}
 		// Shift the results to the next batch
@@ -1454,7 +1447,7 @@ func (d *Downloader) commitFastSyncData(results []*fetchResult, stateSync *state
 		// Retrieve the a batch of results to import
 		items := int(math.Min(float64(len(results)), float64(maxResultsProcess)))
 		first, last := results[0].Header, results[items-1].Header
-		log.Debug("Inserting fast-sync blocks", "items", len(results),
+		glog.V(logger.Debug).Infoln("Inserting fast-sync blocks", "items", len(results),
 			"firstnum", first.Number, "firsthash", first.Hash(),
 			"lastnumn", last.Number, "lasthash", last.Hash(),
 		)
@@ -1465,7 +1458,7 @@ func (d *Downloader) commitFastSyncData(results []*fetchResult, stateSync *state
 			receipts[i] = result.Receipts
 		}
 		if index, err := d.insertReceipts(blocks, receipts); err != nil {
-			log.Debug("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
+			glog.V(logger.Debug).Infoln("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
 			return errInvalidChain
 		}
 		// Shift the results to the next batch
@@ -1481,7 +1474,7 @@ func (d *Downloader) commitPivotBlock(result *fetchResult) error {
 	if err := d.syncState(b.Root()).Wait(); err != nil {
 		return err
 	}
-	log.Debug("Committing fast sync pivot as new head", "number", b.Number(), "hash", b.Hash())
+	glog.V(logger.Debug).Infoln("Committing fast sync pivot as new head", "number", b.Number(), "hash", b.Hash())
 	if _, err := d.insertReceipts([]*types.Block{b}, []types.Receipts{result.Receipts}); err != nil {
 		return err
 	}
