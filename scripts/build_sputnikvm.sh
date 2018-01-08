@@ -25,8 +25,10 @@ if [ "$OS" == "Windows" ]; then
 		cd sputnikvm-ffi
 		if [ -d "%GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\.git" ]; then
 			remote_name=$(git remote -v | head -1 | awk '{print $1;}')
-			echo "Updating SputnikVM FFI..."
-			git pull %remote_name% master
+			if [ ! "%remote_name%" == "" ]; then
+				echo "Updating SputnikVM FFI from branch [%remote_name%]..."
+				git pull %remote_name% master
+			fi
 		fi
     	cd c\ffi
 	else
@@ -54,8 +56,10 @@ else
 		if [ -d "$sputnikffi_path/.git" ]; then
         	cd $sputnikffi_path
 			remote_name=$(git remote -v | head -1 | awk '{print $1;}')
-        	echo "Updating SputnikVM FFI..."
-        	git pull "$remote_name" master
+			if [ ! "$remote_name" == "" ]; then
+				echo "Updating SputnikVM FFI from branch [$remote_name]..."
+				git pull "$remote_name" master
+			fi
 		fi
     else
         echo "Cloning SputnikVM FFI..."
