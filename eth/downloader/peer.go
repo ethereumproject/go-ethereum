@@ -379,8 +379,9 @@ func (ps *peerSet) Register(p *peer) error {
 
 	// Register the new peer with some meaningful defaults
 	ps.lock.Lock()
+	defer ps.lock.Unlock()
+
 	if _, ok := ps.peers[p.id]; ok {
-		ps.lock.Unlock()
 		return errAlreadyRegistered
 	}
 	if len(ps.peers) > 0 {
@@ -400,7 +401,6 @@ func (ps *peerSet) Register(p *peer) error {
 		p.stateThroughput /= float64(len(ps.peers))
 	}
 	ps.peers[p.id] = p
-	ps.lock.Unlock()
 
 	return nil
 }
