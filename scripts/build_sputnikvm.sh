@@ -18,7 +18,7 @@ case "$(uname -s)" in
         exit;;
 esac
 
-if ["$OS" == "Windows"]; then
+if [ "$OS" == "Windows" ]; then
     cd %GOPATH%\src\github.com\ethereumproject
     git clone https://github.com/ethereumproject/sputnikvm-ffi
     cd sputnikvm-ffi\c\ffi
