@@ -67,7 +67,7 @@ func (s *StateSync) Process(list []trie.SyncResult) (bool, int, error) {
 }
 
 // Commit flushes the data stored in the internal memcache out to persistent
-// storage, returning th enumber of items written and any occurred error.
+// storage, returning the number of items written and any occurred error.
 func (s *StateSync) Commit(dbw trie.DatabaseWriter) (int, error) {
 	return (*trie.TrieSync)(s).Commit(dbw)
 }
