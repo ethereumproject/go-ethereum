@@ -50,13 +50,16 @@ cover: test ## Run all the tests and opens the coverage report
 	go tool cover -html=coverage.txt
 
 build: ## Build a local snapshot binary version
-	go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth/...
+	./scripts/build.sh ${LDFLAGS} ${BINARY}
+
+sputnikvm: ## Build a local snapshot binary version with sputnikvm
+	./scripts/build_sputnikvm.sh ${LDFLAGS} ${BINARY}
 
 clean: ## Remove a local snapshot binary version
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
 
 install: ## Install to $GOPATH/src
-	go install ${LDFLAGS} ./cmd/geth/...
+	go install ${LDFLAGS} ./cmd/...
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:

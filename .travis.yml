@@ -47,11 +47,11 @@ script:
 deploy:
   - provider: script
     skip_cleanup: true
-    script: ./deploy.sh
+    script: ./scripts/deploy.sh
     on:
       branch: master
   - provider: script
     skip_cleanup: true
-    script: ./deploy.sh
+    script: ./scripts/deploy.sh
     on:
       tags: true
