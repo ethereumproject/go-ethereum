@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 LDFLAGS="$1" "$2"
 BINARY="$3"
 FOLDERS=$(ls cmd)

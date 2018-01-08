@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 OS='Unknown OS'
 case "$(uname -s)" in
     Darwin)
