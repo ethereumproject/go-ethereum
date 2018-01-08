@@ -20,7 +20,7 @@ esac
 
 if [ "$OS" == "Windows" ]; then
     cd %GOPATH%\src\github.com\ethereumproject
-    git clone https://github.com/ethereumproject/sputnikvm-ffi
+    git clone https://github.com/ethereumproject/sputnikvm-ffi.git
     cd sputnikvm-ffi\c\ffi
     cargo build --release
     copy %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi\target\release\sputnikvm.lib \
