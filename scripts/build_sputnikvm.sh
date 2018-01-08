@@ -31,19 +31,34 @@ if [ "$OS" == "Windows" ]; then
         %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
     go build -tags=sputnikvm .
 else
-    cd $GOPATH/src/github.com/ethereumproject
-    git clone https://github.com/ethereumproject/sputnikvm-ffi
-    cd sputnikvm-ffi/c/ffi
-    cargo build --release
-    cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a \
-        $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+    ep_gopath=$GOPATH/src/github.com/ethereumproject
+	sputnikffi_path="$ep_gopath/sputnikvm-ffi"
 
-    if ["$OS" == "Linux"]; then
+	# If sputnikvmffi has not already been cloned/existing
+	if [ -d "$sputnikffi_path/.git" ]; then
+        echo "Updating SputnikVM FFI..."
+        cd $sputnikffi_path
+        git pull origin master # TODO: handle alternate remote names, ala 'upstream'?
+    else
+        echo "Cloning SputnikVM FFI..."
+        cd $ep_gopath
+        git clone https://github.com/ethereumproject/sputnikvm-ffi.git
+	fi
+    cd "$sputnikffi_path/c/ffi"
+	echo "Building SputnikVM FFI..."
+    cargo build --release
+    cp $sputnikffi_path/c/ffi/target/release/libsputnikvm_ffi.a \
+        $sputnikffi_path/c/libsputnikvm.a
+
+	geth_binpath="$ep_gopath/go-ethereum/bin"
+	echo "Building geth to $geth_binpath/geth..."
+	mkdir -p "$geth_binpath"
+    if [ "$OS" == "Linux" ]; then
         cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
-        CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go build -tags=sputnikvm .
+        CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl" go build -o $geth_binpath/geth -tags=sputnikvm .
     else
         cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
-        CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv" go build -tags=sputnikvm .
+        CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl -lresolv" go build -o $geth_binpath/geth -tags=sputnikvm .
     fi
 fi
 
