@@ -48,7 +48,7 @@ else
     ep_gopath=$GOPATH/src/github.com/ethereumproject
 	sputnikffi_path="$ep_gopath/sputnikvm-ffi"
 
-	# If sputnikvmffi has not already been cloned/existing
+	# If sputnikvmffi has already been cloned/existing
 	if [ -d "$sputnikffi_path" ]; then
 		# Ensure git is happening in svm-ffi.
 		# Update if .git exists, otherwise don't try updating. We could possibly handle git-initing and adding remote but seems
