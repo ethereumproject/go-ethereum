@@ -8,6 +8,6 @@ FOLDERS=$(ls cmd)
 
 for CMD in $FOLDERS;
 do
-    echo "Building $CMD..."
+    echo "Building $BINARY/$CMD..."
     go build $LDFLAGS -o $BINARY/$CMD ./cmd/$CMD
 done
