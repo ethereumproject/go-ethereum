@@ -10,7 +10,7 @@ FOLDERS=$(ls cmd)
 for CMD in $FOLDERS;
 do
 	if [ ! "$CMD" == "geth" ]; then
-    	echo "Building $BINARY/$CMD ..."
+		echo "Building $BINARY/$CMD ..."
 		go build -o $BINARY/$CMD ./cmd/$CMD
 	fi
 done
