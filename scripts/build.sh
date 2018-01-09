@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
+# Handles building all packages from ./cmd/* EXCEPT for geth.
+
 set -e
 
-LDFLAGS="$1" "$2"
-BINARY="$3"
+BINARY="$1"
 FOLDERS=$(ls cmd)
 
 for CMD in $FOLDERS;
 do
-    echo "Building $BINARY/$CMD..."
-    go build $LDFLAGS -o $BINARY/$CMD ./cmd/$CMD
+	if [ ! "$CMD" == "geth" ]; then
+    	echo "Building $BINARY/$CMD ..."
+		go build -o $BINARY/$CMD ./cmd/$CMD
+	fi
 done
