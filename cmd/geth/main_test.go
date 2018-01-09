@@ -19,6 +19,10 @@ func TestSetVersionIfFromSource(t *testing.T) {
 		t.Log("OK: source version=", Version)
 	}
 
+	if strings.Contains(Version, "\\n") || strings.Contains(Version, "\\r") {
+		t.Errorf("Got unwanted newline")
+	}
+
 	customVersion := "custom_ldflags_version"
 	Version = customVersion
 	setVersionIfDefaulty()

@@ -31,6 +31,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"runtime"
 	"os/exec"
+	"regexp"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -46,9 +47,11 @@ func setVersionIfDefaulty() {
 		if ok {
 			d := filepath.Dir(f) // ./cmd/geth
 			d = filepath.Join(d, "..", "..", ".git")
+			// Ignore error
 			if o, err := exec.Command("git", "--git-dir", d, "describe", "--tags").Output(); err == nil {
-				// Ignore error
-				Version = "source_" + string(o)
+				// Remove newline
+				re := regexp.MustCompile(`\r?\n`) // handle both Windows carriage returns and *nix newlines.
+				Version = "source_" + re.ReplaceAllString(string(o), "")
 			}
 		}
 	}
