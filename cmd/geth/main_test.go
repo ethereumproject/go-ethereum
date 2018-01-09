@@ -3,13 +3,19 @@ package main
 import (
 	"testing"
 	"strings"
+	"os"
 )
 
 // TestSetVersionIfFromSourceWithOverride checks the conditional in the init fn.
 func TestSetVersionIfFromSource(t *testing.T) {
 	expectedSetVersionPrefix := "source_v"
 
-	// Ensure if Version override; check fn functionality.
+	// Ensure version was set by init fn (without linker flag), it should already not be "source"
+	if !strings.Contains(strings.Join(os.Args, " "), "ldflag") && Version == "source" {
+		t.Errorf("Version should be set to git revision by default, got: %s", Version)
+	}
+
+	// Reset, ensure conditional Version override; double check fn functionality.
 	Version = "source"
 	setVersionIfDefaulty()
 	if Version == "source" || !strings.Contains(Version, expectedSetVersionPrefix) {
