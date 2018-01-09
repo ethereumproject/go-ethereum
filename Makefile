@@ -49,10 +49,10 @@ test: ## Run all the tests
 cover: test ## Run all the tests and opens the coverage report
 	go tool cover -html=coverage.txt
 
-build: ## Build a local snapshot binary version
+build: ## Build a local snapshot binary version of geth
 	./scripts/build.sh ${LDFLAGS} ${BINARY}
 
-sputnikvm: ## Build a local snapshot binary version with sputnikvm
+build_sputnikvm: ## Build a local snapshot binary version of geth with sputnikvm
 	./scripts/build_sputnikvm.sh ${LDFLAGS} ${BINARY}
 
 clean: ## Remove a local snapshot binary version
