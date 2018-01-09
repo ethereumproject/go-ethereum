@@ -20,7 +20,7 @@ setup: ## Install all the build and lint dependencies
 	gometalinter --install
 
 fmt: ## gofmt and goimports all go files
-	find . -name '*.go' -not -wholename './vendor/*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
+	find . -name '*.go' -not -wholename './vendor/*' -not -wholename './_vendor*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
 
 ci: lint test ## Run all code checks and tests
 
