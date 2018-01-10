@@ -58,7 +58,7 @@ sputnikvm: ## Build a local snapshot binary version with sputnikvm
 clean: ## Remove a local snapshot binary version
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
 
-install: ## Install to $GOPATH/src
+install: ## Install to $GOPATH/bin
 	go install ${LDFLAGS} ./cmd/...
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
