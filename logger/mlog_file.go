@@ -337,6 +337,8 @@ func (m *MLogT) FormatJSON() []byte {
 }
 
 func (m *MLogT) FormatKV() (out string) {
+	m.Lock()
+	defer m.Unlock()
 	m.placeholderize()
 	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
@@ -351,6 +353,8 @@ func (m *MLogT) FormatKV() (out string) {
 }
 
 func (m *MLogT) FormatPlain() (out string) {
+	m.Lock()
+	defer m.Unlock()
 	m.placeholderize()
 	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
