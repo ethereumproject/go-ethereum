@@ -21,7 +21,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 func TestBcValidBlockTests(t *testing.T) {
 	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcValidBlockTest.json"), BlockSkipTests)

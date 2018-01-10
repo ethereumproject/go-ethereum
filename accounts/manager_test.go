@@ -19,6 +19,7 @@ package accounts
 import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -28,6 +29,11 @@ import (
 	"testing"
 	"time"
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 var testSigData = make([]byte, 32)
 

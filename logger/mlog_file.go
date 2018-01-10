@@ -34,10 +34,10 @@ import (
 	"time"
 )
 
-type mlogFormat uint
+type mlogFormatT uint
 
 const (
-	mLOGPlain mlogFormat = iota + 1
+	mLOGPlain mlogFormatT = iota + 1
 	mLOGKV
 	MLOGJSON
 )
@@ -45,8 +45,8 @@ const (
 var (
 	// If non-empty, overrides the choice of directory in which to write logs.
 	// See createLogDirs for the full list of possible destinations.
-	mLogDir    *string    = new(string)
-	mLogFormat mlogFormat = mLOGKV
+	mLogDir    = new(string)
+	mLogFormat = MLOGJSON
 
 	errMLogComponentUnavailable = errors.New("provided component name is unavailable")
 	ErrUnkownMLogFormat         = errors.New("unknown mlog format")
@@ -68,7 +68,7 @@ var (
 		"DURATION":       time.Minute + time.Second*3 + time.Millisecond*42,
 	}
 
-	MLogStringToFormat = map[string]mlogFormat{
+	MLogStringToFormat = map[string]mlogFormatT{
 		"plain": mLOGPlain,
 		"kv":    mLOGKV,
 		"json":  MLOGJSON,
@@ -77,8 +77,20 @@ var (
 	// Global var set to false if "--mlog=off", used to simply/
 	// speed-up checks to avoid performance penalty if mlog is
 	// off.
-	isMlogEnabled bool = true
+	isMlogEnabled bool
 )
+
+func (f mlogFormatT) String() string {
+	switch f {
+	case MLOGJSON:
+		return "json"
+	case mLOGKV:
+		return "kv"
+	case mLOGPlain:
+		return "plain"
+	}
+	panic(ErrUnkownMLogFormat)
+}
 
 // MLogT defines an mlog LINE
 type MLogT struct {
@@ -181,7 +193,7 @@ func (c mlogComponent) Send(msg MLogT) {
 	mlogRegLock.RUnlock()
 }
 
-func (l *Logger) SendFormatted(format mlogFormat, level LogLevel, msg MLogT) {
+func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg MLogT) {
 	switch format {
 	case mLOGKV:
 		l.Sendln(level, msg.FormatKV())
@@ -202,8 +214,17 @@ func SetMLogDir(str string) {
 	*mLogDir = str
 }
 
-func SetMLogFormat(format mlogFormat) {
+func GetMLogDir() string {
+	m := *mLogDir
+	return m
+}
+
+func SetMLogFormat(format mlogFormatT) {
 	mLogFormat = format
+}
+
+func GetMLogFormat() mlogFormatT {
+	return mLogFormat
 }
 
 func SetMLogFormatFromString(formatString string) error {
@@ -213,10 +234,6 @@ func SetMLogFormatFromString(formatString string) error {
 		SetMLogFormat(f)
 	}
 	return nil
-}
-
-func GetMLogFormat() mlogFormat {
-	return mLogFormat
 }
 
 func createLogDirs() error {

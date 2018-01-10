@@ -23,7 +23,13 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 // Tests that fast sync gets disabled as soon as a real block is successfully
 // imported into the blockchain.

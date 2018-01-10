@@ -27,11 +27,17 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var (
 	testNodeKey, _ = crypto.GenerateKey()
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 func testNodeConfig() *Config {
 	return &Config{

@@ -1,0 +1,12 @@
+[package]
+name = "sputnikvm-ffi"
+version = "0.0.0"
+authors = ["Wei Tang <hi@that.world>"]
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+libc = "0.2"
+etcommon-bigint = { version = "0.2", default-features = false, features = ["rlp"] }
+sputnikvm = { version = "0.9", default-features = false, features = ["std", "rust-secp256k1"] }
