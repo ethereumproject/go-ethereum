@@ -185,15 +185,6 @@ func MLogRegisterActive(component mlogComponent) {
 	mlogRegLock.Unlock()
 }
 
-//// SendMLog writes enabled component mlogs to file if the component is registered active.
-//func (c mlogComponent) Send(msg MLogT) {
-//	mlogRegLock.RLock()
-//	if l, exists := MLogRegistryActive[c]; exists {
-//		l.SendFormatted(GetMLogFormat(), 1, msg)
-//	}
-//	mlogRegLock.RUnlock()
-//}
-
 // SendMLog writes enabled component mlogs to file if the component is registered active.
 func (msg *MLogT) Send(c mlogComponent) {
 	mlogRegLock.RLock()
@@ -518,7 +509,7 @@ func (m *MLogT) AssignDetails(detailVals ...interface{}) *MLogT {
 	for i, detailval := range detailVals {
 		m.Details[i].Value = detailval
 	}
-	defer m.Unlock()
+	m.Unlock()
 
 	return m
 }
