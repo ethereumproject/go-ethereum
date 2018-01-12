@@ -30,6 +30,8 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Version: source_v"* ]]
 
+    ## These next two tests should show that the binary is independent from the
+    # source code from which it was built.
     # Ensure messing around with source doesn't impact version value for
     # existing binary.
     mv "$GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth" "$GOPATH/src/github.com/ethereumproject/go-ethereum/geth"
@@ -38,6 +40,17 @@ teardown() {
 	[[ "$output" == *"Version: source_v"* ]]
     # put it back
     mv "$GOPATH/src/github.com/ethereumproject/go-ethereum/geth" "$GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth"
+
+    # Ensure messing around with source .git doesn't impact version value for
+    # existing binary. THIS FAILS, so binary is dependent of working source
+    # tree. Weird.
+#    mv "$GOPATH/src/github.com/ethereumproject/go-ethereum/.git" "$GOPATH/src/github.com/ethereumproject/go-ethereum/.notgit"
+#    run "$another_place/geth" version
+#    [ "$status" -eq 0 ]
+#    echo "$output"
+#	[[ "$output" == *"Version: source_v"* ]]
+#    # put it back
+#    mv "$GOPATH/src/github.com/ethereumproject/go-ethereum/.notgit" "$GOPATH/src/github.com/ethereumproject/go-ethereum/.git"
 
     # Ensure building from project WD yields expected version value.
     cd "$GOPATH/src/github.com/ethereumproject/go-ethereum"
