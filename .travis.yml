@@ -38,7 +38,9 @@ script:
 # Run go tests.
 - go test -tags=sputnikvm ./...
 # Build for integration tests.
-- go build -tags=sputnikvm -ldflags "-extldflags=-static -X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
+# Linux builds static binary, osx does not.
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go build -tags=sputnikvm -ldflags "-extldflags=-static -X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth ; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go build -tags=sputnikvm -ldflags "-X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth ; fi
 # Run bats integration tests.
 - bats cmd/geth
 
