@@ -19,16 +19,18 @@ package main
 
 import (
 	"fmt"
+	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
 	"path/filepath"
-	"gopkg.in/urfave/cli.v1"
 
+	"github.com/ethereumproject/benchmark/rtprof"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/metrics"
+	"time"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -120,6 +122,8 @@ func makeCLIApp() (app *cli.App) {
 	}
 
 	app.Flags = []cli.Flag{
+		PprofFlag,
+		PprofIntervalFlag,
 		SputnikVMFlag,
 		NodeNameFlag,
 		UnlockedAccountFlag,
@@ -282,10 +286,19 @@ func makeCLIApp() (app *cli.App) {
 			}
 		}
 
+		if port := ctx.GlobalInt(PprofFlag.Name); port != 0 {
+			interval := 5 * time.Second
+			if i := ctx.GlobalInt(PprofIntervalFlag.Name); i > 0 {
+				interval = time.Duration(i) * time.Second
+			}
+			rtppf.Start(interval, port)
+		}
+
 		return nil
 	}
 
 	app.After = func(ctx *cli.Context) error {
+		rtppf.Stop()
 		logger.Flush()
 		console.Stdin.Close() // Resets terminal mode.
 		return nil
@@ -311,6 +324,7 @@ func main() {
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
+
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
 
