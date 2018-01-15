@@ -5,12 +5,12 @@ import "github.com/ethereumproject/go-ethereum/logger"
 var mlogDownloader = logger.MLogRegisterAvailable("downloader", mLogLines)
 
 var mLogLines = []logger.MLogT{
-	mlogDownloaderRegisterPeer,
-	mlogDownloaderUnregisterPeer,
-	mlogDownloaderTuneQOS,
+	*mlogDownloaderRegisterPeer,
+	*mlogDownloaderUnregisterPeer,
+	*mlogDownloaderTuneQOS,
 }
 
-var mlogDownloaderRegisterPeer = logger.MLogT{
+var mlogDownloaderRegisterPeer = &logger.MLogT{
 	Description: "Called when the downloader registers a peer.",
 	Receiver:    "DOWNLOADER",
 	Verb:        "REGISTER",
@@ -22,7 +22,7 @@ var mlogDownloaderRegisterPeer = logger.MLogT{
 	},
 }
 
-var mlogDownloaderUnregisterPeer = logger.MLogT{
+var mlogDownloaderUnregisterPeer = &logger.MLogT{
 	Description: "Called when the downloader unregisters a peer.",
 	Receiver:    "DOWNLOADER",
 	Verb:        "UNREGISTER",
@@ -33,7 +33,7 @@ var mlogDownloaderUnregisterPeer = logger.MLogT{
 	},
 }
 
-var mlogDownloaderTuneQOS = logger.MLogT{
+var mlogDownloaderTuneQOS = &logger.MLogT{
 	Description: `Called at intervals to gather peer latency statistics. Estimates request round trip time.
 
 RTT reports the estimated Request Round Trip time, confidence is measures from 0-1 (1 is ultimately confidenct),
