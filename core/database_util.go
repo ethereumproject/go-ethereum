@@ -46,6 +46,8 @@ var (
 	receiptsPrefix      = []byte("receipts-")
 	blockReceiptsPrefix = []byte("receipts-block-")
 
+	txAddressIndexPrefix = []byte("atx-")
+
 	mipmapPre    = []byte("mipmap-log-bloom-")
 	MIPMapLevels = []uint64{1000000, 500000, 100000, 50000, 1000}
 
@@ -136,6 +138,113 @@ func GetBody(db ethdb.Database, hash common.Hash) *types.Body {
 		return nil
 	}
 	return body
+}
+
+// formatAddrTxIterator formats the index key prefix iterator, eg. atx-<address>
+func formatAddrTxIterator(address common.Address) (iteratorPrefix []byte) {
+	iteratorPrefix = append(iteratorPrefix, txAddressIndexPrefix...)
+	iteratorPrefix = append(iteratorPrefix, address.Bytes()...)
+	return
+}
+
+// GetAddrTxs gets the indexed transactions for a given account address.
+func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, toFromOrBoth string) []string {
+	if toFromOrBoth != "to" && toFromOrBoth != "from" && toFromOrBoth != "both" && toFromOrBoth != "" {
+		glog.Fatal("Address transactions list signature requires 'to', 'from', or 'both' or '' (=both)")
+	}
+
+	// Have to cast to LevelDB to use iterator. Yuck.
+	ldb, ok := db.(*ethdb.LDBDatabase)
+	if !ok {
+		return nil
+	}
+
+	// Create address prefix for iteration.
+	prefix := ethdb.NewBytesPrefix(formatAddrTxIterator(address))
+	it := ldb.NewIteratorRange(prefix)
+
+	// This will be the returnable.
+	var hashes []string
+
+	// Convert start/stop block number to *big for easier comparison.
+	wantStart := new(big.Int).SetUint64(blockStartN)
+	wantEnd := new(big.Int).SetUint64(blockEndN)
+
+	for it.Next() {
+		key := it.Key()
+
+		_, blockNum, torf, txh := resolveAddrTxBytes(key)
+
+		if blockStartN > 0 {
+			txaI := new(big.Int).SetUint64(binary.LittleEndian.Uint64(blockNum))
+			if txaI.Cmp(wantStart) < 0 {
+				continue
+			}
+		}
+		if blockEndN > 0 {
+			txaI := new(big.Int).SetUint64(binary.LittleEndian.Uint64(blockNum))
+			if txaI.Cmp(wantEnd) > 0 {
+				continue
+			}
+		}
+		if toFromOrBoth == "to" {
+			if string(torf) != "t" {
+				continue
+			}
+		} else if toFromOrBoth == "from" {
+			if string(torf) != "f" {
+				continue
+			}
+		}
+		tx := common.ToHex(txh)
+		hashes = append(hashes, tx)
+	}
+	it.Release()
+	if it.Error() != nil {
+		panic(it.Error())
+	}
+
+	return hashes
+}
+
+// formatAddrTxBytes formats the index key, eg. atx-<addr><blockNumber><t|f><txhash>
+// The values for these arguments should be of determinate length and format, see test TestFormatAndResolveAddrTxBytesKey
+// for example.
+func formatAddrTxBytes(address, blockNumber, toOrFrom, txhash []byte) (key []byte) {
+	key = txAddressIndexPrefix
+	key = append(key, address...)
+	key = append(key, blockNumber...)
+	key = append(key, toOrFrom...)
+	key = append(key, txhash...)
+	return
+}
+
+// resolveAddrTxBytes resolves the index key to individual []byte values
+func resolveAddrTxBytes(key []byte) (address, blockNumber, toOrFrom, txhash []byte) {
+	// prefix = key[:4]
+	address = key[4:24] // common.AddressLength = 20
+	blockNumber = key[24:32]
+	toOrFrom = key[32:33] // == key[32] (1 byte)
+	txhash = key[33:]
+	return
+}
+
+// PutAddrTxs adds an address/tx index to the indexes db.
+// if isTo is false, then the address is the sender in the tx (from), t/f
+func PutAddrTxs(db ethdb.Database, block *types.Block, isTo bool, address common.Address, txhash common.Hash) error {
+	var tOrF = []byte("f")
+	if isTo {
+		tOrF = []byte("t")
+	}
+
+	bk := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bk, block.NumberU64())
+	k := formatAddrTxBytes(address.Bytes(), bk, tOrF, txhash.Bytes())
+
+	if err := db.Put(k, nil); err != nil {
+		glog.Fatalf("failed to store addrtxidx into database: %v", err)
+	}
+	return nil
 }
 
 // GetTd retrieves a block's total difficulty corresponding to the hash, nil if

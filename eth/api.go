@@ -520,6 +520,7 @@ type PublicBlockChainAPI struct {
 	config                  *core.ChainConfig
 	bc                      *core.BlockChain
 	chainDb                 ethdb.Database
+	indexesDb ethdb.Database
 	eventMux                *event.TypeMux
 	muNewBlockSubscriptions sync.Mutex                             // protects newBlocksSubscriptions
 	newBlockSubscriptions   map[string]func(core.ChainEvent) error // callbacks for new block subscriptions
@@ -1616,6 +1617,26 @@ type PublicDebugAPI struct {
 // of the Ethereum service.
 func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
 	return &PublicDebugAPI{eth: eth}
+}
+
+// AddressTransactions gets transactions for a given address.
+// Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
+// Returns a slice of strings of transactions hashes.
+func (api *PublicDebugAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string) (list []string, err error) {
+	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s", address, blockStartN, blockEndN, toOrFrom)
+
+	if _, inUse := api.eth.BlockChain().GetAddTxIndex(); !inUse {
+		return nil, errors.New("addr-tx indexing not enabled")
+	}
+
+	list = core.GetAddrTxs(api.eth.indexesDb, address, blockStartN, blockEndN, toOrFrom)
+
+	// Since list is a slice, it can be nil, which returns 'null'.
+	// Should return empty 'array' if no txs found.
+	if list == nil {
+		list = []string{}
+	}
+	return list, nil
 }
 
 // DumpBlock retrieves the entire state of the database at a given block.

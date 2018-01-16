@@ -28,6 +28,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	ldbutil "github.com/syndtr/goleveldb/leveldb/util"
 )
 
 var OpenFileLimit = 64
@@ -108,6 +109,14 @@ func (self *LDBDatabase) Delete(key []byte) error {
 
 func (self *LDBDatabase) NewIterator() iterator.Iterator {
 	return self.db.NewIterator(nil, nil)
+}
+
+func (self *LDBDatabase) NewIteratorRange(slice *ldbutil.Range) iterator.Iterator {
+	return self.db.NewIterator(slice, nil)
+}
+
+func NewBytesPrefix(prefix []byte) *ldbutil.Range {
+	return ldbutil.BytesPrefix(prefix)
 }
 
 func (self *LDBDatabase) Close() {

@@ -81,6 +81,8 @@ type Config struct {
 	MinerThreads   int
 	SolcPath       string
 
+	UseAddrTxIndex bool
+
 	GpoMinGasPrice          *big.Int
 	GpoMaxGasPrice          *big.Int
 	GpoFullBlockRatio       int
@@ -98,8 +100,9 @@ type Ethereum struct {
 	shutdownChan chan bool
 
 	// DB interfaces
-	chainDb ethdb.Database // Block chain database
-	dappDb  ethdb.Database // Dapp database
+	chainDb   ethdb.Database // Block chain database
+	dappDb    ethdb.Database // Dapp database
+	indexesDb ethdb.Database // Indexes database (optional -- eg. add-tx indexes)
 
 	// Handlers
 	txPool          *core.TxPool
@@ -220,6 +223,19 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		eth.pow = ethash.New()
 	}
 
+	// Initialize indexes db if enabled
+	// Blockchain will be assigned the db and atx enabled after blockchain is intialized below.
+	var indexesDb ethdb.Database
+	if config.UseAddrTxIndex {
+		indexesDb, err = ctx.OpenDatabase("indexes", config.DatabaseCache, config.DatabaseHandles)
+		if err != nil {
+			return nil, err
+		}
+		eth.indexesDb = indexesDb
+		glog.V(logger.Info).Infof("Opened add-tx index db")
+		glog.D(logger.Warn).Infof("Opened add-tx index db")
+	}
+
 	// load the genesis block or write a new one if no genesis
 	// block is present in the database.
 	genesis := core.GetBlock(chainDb, core.GetCanonicalHash(chainDb, 0))
@@ -257,6 +273,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		}
 		return nil, err
 	}
+	// Configure enabled atxi for blockchain
+	if config.UseAddrTxIndex {
+		eth.blockchain.SetAddTxIndex(eth.indexesDb, true)
+	}
+
 	eth.gpo = NewGasPriceOracle(eth)
 
 	newPool := core.NewTxPool(eth.chainConfig, eth.EventMux(), eth.blockchain.State, eth.blockchain.GasLimit)

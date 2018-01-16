@@ -33,6 +33,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"encoding/binary"
 )
 
 type diffTest struct {
@@ -295,6 +296,56 @@ func TestTdStorage(t *testing.T) {
 	DeleteTd(db, hash)
 	if entry := GetTd(db, hash); entry != nil {
 		t.Fatalf("Deleted TD returned: %v", entry)
+	}
+}
+
+func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
+	testAddr := common.Address{}
+	testBN := big.NewInt(42)
+	testTorf := "f"
+	testTxH := common.Hash{}
+
+	testBNBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(testBNBytes, testBN.Uint64())
+
+	key := formatAddrTxBytes(testAddr.Bytes(), testBNBytes, []byte(testTorf), testTxH.Bytes())
+
+	// Test key/prefix iterator-ability.
+	itPrefix := formatAddrTxIterator(testAddr)
+	if !bytes.HasPrefix(key, itPrefix) {
+		t.Fatalf("key/prefix mismatch: prefix=%s key=%s", itPrefix, key)
+	}
+
+	// Reverse engineer key and ensure expected.
+	outAddr, outBNBytes, outTorf, outTxH := resolveAddrTxBytes(key)
+
+	if gotAddr := common.BytesToAddress(outAddr); gotAddr != testAddr {
+		t.Errorf("got: %v, want: %v", gotAddr.Hex(), testAddr.Hex())
+	}
+	if gotBN := new(big.Int).SetUint64(binary.LittleEndian.Uint64(outBNBytes)); gotBN.Cmp(testBN) != 0 {
+		t.Errorf("got: %v, want: %v", gotBN, testBN)
+	}
+	if gotTorf := string(outTorf); gotTorf != testTorf {
+		t.Errorf("got: %v, want: %v", gotTorf, testTorf)
+	}
+	if gotTxH := common.BytesToHash(outTxH); gotTxH != testTxH {
+		t.Errorf("got: %v, want: %v", gotTxH, testTxH)
+	}
+
+	// Ensure proper key part sizing.
+	sizes := []struct{
+		b []byte
+		expectedLen int
+	}{
+		{outAddr, common.AddressLength},
+		{outBNBytes, 8},
+		{outTorf, 1},
+		{outTxH, common.HashLength},
+	}
+	for _, s := range sizes {
+		if l := len(s.b); l != s.expectedLen {
+			t.Errorf("want: %v, got: %v", s.expectedLen, l)
+		}
 	}
 }
 

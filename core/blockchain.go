@@ -109,6 +109,9 @@ type BlockChain struct {
 	pow       pow.PoW
 	processor Processor // block processor interface
 	validator Validator // block and state validator interface
+
+	useAddTxIndex bool
+	indexesDb     ethdb.Database
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -212,6 +215,17 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 
 func (self *BlockChain) GetEventMux() *event.TypeMux {
 	return self.eventMux
+}
+
+// SetAddTxIndex sets the db and in-use var for atx indexing.
+func (self *BlockChain) SetAddTxIndex(db ethdb.Database, tf bool) {
+	self.useAddTxIndex = tf
+	self.indexesDb = db
+}
+
+// GetAddTxIndex return indexes db and if atx index in use.
+func (self *BlockChain) GetAddTxIndex() (ethdb.Database, bool) {
+	return self.indexesDb, self.useAddTxIndex
 }
 
 func (self *BlockChain) getProcInterrupt() bool {
@@ -1276,6 +1290,30 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 	return 0, nil
 }
 
+func WriteBlockAddTxIndexes(indexDb ethdb.Database, block *types.Block) error {
+	for _, tx := range block.Transactions() {
+		var err error
+		from, err := tx.From()
+		if err != nil {
+			return err
+		}
+		err = PutAddrTxs(indexDb, block, false, from, tx.Hash())
+		if err != nil {
+			return err
+		}
+
+		to := tx.To()
+		if to == nil {
+			continue
+		}
+		err = PutAddrTxs(indexDb, block, true, *to, tx.Hash())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // WriteBlock writes the block to the chain.
 func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err error) {
 
@@ -1522,6 +1560,12 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			// Write map map bloom filters
 			if err := WriteMipmapBloom(self.chainDb, block.NumberU64(), receipts); err != nil {
 				return i, err
+			}
+			// Store the add-tx indexes
+			if self.useAddTxIndex {
+				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+					glog.Fatalf("failed to write block add-tx indexes", err)
+				}
 			}
 		case SideStatTy:
 			if glog.V(logger.Detail) {
