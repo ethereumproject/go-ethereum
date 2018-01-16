@@ -371,47 +371,6 @@ func TestChainConfig_GetChainID(t *testing.T) {
 	}
 }
 
-// Test nonconventional settings.
-func TestChainConfig_GetChainID2(t *testing.T) {
-	// Test default hardcoded configs.
-	if DefaultConfigMainnet.ChainConfig.GetChainID().Cmp(DefaultConfigMainnet.ChainConfig.GetChainID()) != 0 {
-		t.Errorf("got: %v, want: %v", DefaultConfigMainnet.ChainConfig.GetChainID(), DefaultConfigMainnet.ChainConfig.GetChainID())
-	}
-	if DefaultConfigMorden.ChainConfig.GetChainID().Cmp(DefaultConfigMorden.ChainConfig.GetChainID()) != 0 {
-		t.Errorf("got: %v, want: %v", DefaultConfigMorden.ChainConfig.GetChainID(), DefaultConfigMorden.ChainConfig.GetChainID())
-	}
-
-	cc := DefaultConfigMainnet.ChainConfig
-	feat, fork, ok := cc.HasFeature("eip155")
-	if !ok {
-		t.Fatal("unexpected missing eip155 feature for default mainnet config")
-	}
-
-	var featI int
-	for i, f := range fork.Features {
-		if f == feat {
-			featI = i
-			break
-		}
-	}
-
-	fork.Features = append(fork.Features[:featI], fork.Features[featI+1:]...)
-	if _, _, ok := cc.HasFeature("eip155"); ok {
-		t.Fatal("unexpect existing eip155 feature; should have been removed for testing")
-	}
-
-	if cid := cc.GetChainID(); cid.Cmp(new(big.Int)) != 0 {
-		t.Errorf("want: 0, got: %v", cid)
-	}
-
-	dc := DefaultConfigMainnet
-	dc.ChainConfig = cc
-	if s, ok := dc.IsValid(); !ok {
-		t.Fatalf("want: valid; got: %v", s)
-	}
-}
-
-
 // Acceptance-y tests.
 
 // Test GetFeature gets expected feature values from default configuration data...
