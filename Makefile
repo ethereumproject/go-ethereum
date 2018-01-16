@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := build_geth
+.DEFAULT_GOAL := build
 
 BUILD_VERSION?=snapshot
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
@@ -22,17 +22,52 @@ setup: ## Install all the build and lint dependencies
 	dep ensure
 	gometalinter --install
 
-build_all: ## Build a local snapshot binary versions of all commands
-	./scripts/build.sh ${BINARY}
-	make build_geth
+build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cmd/rlpdump cmd/geth ## Build a local snapshot binary versions of all commands
+	@ls -ld $(BINARY)/*
 
-build_geth: ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
-	$(info Building ${BINARY}/geth)
-	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh build ; else mkdir -p ./bin && go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth ; fi
+cmd/geth: ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
+	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh build ; else mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth ; fi
+	@echo "Done building geth."
+	@echo "Run \"$(BINARY)/geth\" to launch geth."
 
-install_all: ## Install all packages to $GOPATH/bin
+cmd/abigen: ## Build a local snapshot binary version of abigen.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/abigen ./cmd/abigen
+	@echo "Done building abigen."
+	@echo "Run \"$(BINARY)/abigen\" to launch abigen."
+
+cmd/bootnode: ## Build a local snapshot of bootnode.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/bootnode ./cmd/bootnode
+	@echo "Done building bootnode."
+	@echo "Run \"$(BINARY)/bootnode\" to launch bootnode."
+
+cmd/disasm: ## Build a local snapshot of disasm.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/disasm ./cmd/disasm
+	@echo "Done building disasm."
+	@echo "Run \"$(BINARY)/disasm\" to launch disasm."
+
+cmd/ethtest: ## Build a local snapshot of ethtest.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/ethtest ./cmd/ethtest
+	@echo "Done building ethtest."
+	@echo "Run \"$(BINARY)/ethtest\" to launch ethtest."
+
+cmd/evm: ## Build a local snapshot of evm.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/evm ./cmd/evm
+	@echo "Done building evm."
+	@echo "Run \"$(BINARY)/evm\" to launch evm."
+
+cmd/gethrpctest: ## Build a local snapshot of gethrpctest.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/gethrpctest ./cmd/gethrpctest
+	@echo "Done building gethrpctest."
+	@echo "Run \"$(BINARY)/gethrpctest\" to launch gethrpctest."
+
+cmd/rlpdump: ## Build a local snapshot of rlpdump.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/rlpdump ./cmd/rlpdump
+	@echo "Done building rlpdump."
+	@echo "Run \"$(BINARY)/rlpdump\" to launch rlpdump."
+
+install: ## Install all packages to $GOPATH/bin
 	go install ./cmd/{abigen,bootnode,disasm,ethtest,evm,gethrpctest,rlpdump}
-	make install_geth
+	$(MAKE) install_geth
 
 install_geth: ## Install geth to $GOPATH/bin. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
 	$(info Installing $$GOPATH/bin/geth)
@@ -76,4 +111,4 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
-.PHONY: setup test cover fmt lint ci build_all build_geth install_all install_geth clean help static
+.PHONY: setup test cover fmt lint ci build cmd/geth cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrlptest cmd/rlpdump install install_geth clean help static
