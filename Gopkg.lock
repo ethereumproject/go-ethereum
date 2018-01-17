@@ -47,7 +47,7 @@
   branch = "master"
   name = "github.com/ethereumproject/ethash"
   packages = ["."]
-  revision = "b8d3da9abf86c0eb9cd153c64048f82f188dcd96"
+  revision = "65a5b25efc277ff0996160cc3c76a44bec7a11fb"
 
 [[projects]]
   branch = "master"
