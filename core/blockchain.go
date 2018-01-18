@@ -45,6 +45,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
 	"github.com/hashicorp/golang-lru"
+	"encoding/binary"
 )
 
 var (
@@ -1288,6 +1289,50 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 		time.Since(start), last.Number(), first.Hash().Bytes()[:4], last.Hash().Bytes()[:4])
 
 	return 0, nil
+}
+
+func (self *BlockChain) AddTxIndexesBatch(indexDb ethdb.Database, startBlock, stopBlock uint64) (err error) {
+	block := self.GetBlockByNumber(startBlock)
+	putBatch := indexDb.NewBatch()
+	startTime := time.Now()
+	lastTime := time.Now()
+	for block != nil && block.NumberU64() <= stopBlock {
+		for _, tx := range block.Transactions() {
+			from, err := tx.From()
+			if err != nil {
+				return err
+			}
+			bn := make([]byte, 8)
+			binary.LittleEndian.PutUint64(bn, block.NumberU64())
+
+			if err := putBatch.Put(FormatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), tx.Hash().Bytes()), nil); err != nil {
+				return err
+			}
+
+			to := tx.To()
+			if to == nil {
+				continue
+			}
+			var tob []byte
+			copy(tob, to.Bytes())
+			if err := putBatch.Put(FormatAddrTxBytesIndex(tob, bn, []byte("t"), tx.Hash().Bytes()), nil); err != nil {
+				return err
+			}
+		}
+		if block.NumberU64() % 10000 == 0 {
+			if err := putBatch.Write(); err != nil {
+				return err
+			} else {
+				putBatch = indexDb.NewBatch()
+			}
+			glog.D(logger.Error).Infoln("Batch atxi... block", block.NumberU64(), "/", stopBlock, time.Since(startTime), "~",
+				10000/time.Since(lastTime).Seconds(), "bps")
+			lastTime = time.Now()
+		}
+		block = self.GetBlockByNumber(block.NumberU64()+1)
+	}
+	glog.D(logger.Error).Infoln("Batch atxi... block", stopBlock, "/", stopBlock, "took:", time.Since(startTime))
+	return putBatch.Write()
 }
 
 func WriteBlockAddTxIndexes(indexDb ethdb.Database, block *types.Block) error {

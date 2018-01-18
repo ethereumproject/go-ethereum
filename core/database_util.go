@@ -207,10 +207,10 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 	return hashes
 }
 
-// formatAddrTxBytes formats the index key, eg. atx-<addr><blockNumber><t|f><txhash>
+// FormatAddrTxBytesIndex formats the index key, eg. atx-<addr><blockNumber><t|f><txhash>
 // The values for these arguments should be of determinate length and format, see test TestFormatAndResolveAddrTxBytesKey
 // for example.
-func formatAddrTxBytes(address, blockNumber, toOrFrom, txhash []byte) (key []byte) {
+func FormatAddrTxBytesIndex(address, blockNumber, toOrFrom, txhash []byte) (key []byte) {
 	key = txAddressIndexPrefix
 	key = append(key, address...)
 	key = append(key, blockNumber...)
@@ -239,7 +239,7 @@ func PutAddrTxs(db ethdb.Database, block *types.Block, isTo bool, address common
 
 	bk := make([]byte, 8)
 	binary.LittleEndian.PutUint64(bk, block.NumberU64())
-	k := formatAddrTxBytes(address.Bytes(), bk, tOrF, txhash.Bytes())
+	k := FormatAddrTxBytesIndex(address.Bytes(), bk, tOrF, txhash.Bytes())
 
 	if err := db.Put(k, nil); err != nil {
 		glog.Fatalf("failed to store addrtxidx into database: %v", err)

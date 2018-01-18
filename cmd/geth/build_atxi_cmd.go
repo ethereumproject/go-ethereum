@@ -5,9 +5,6 @@ import (
 	"strconv"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/cheggaaa/pb"
-	"os"
 	"path/filepath"
 	"io/ioutil"
 )
@@ -53,23 +50,9 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 		glog.Fatal(blockIndex, "block is nil")
 	}
 
-	bar := pb.StartNew(int(stopIndex)) // progress bar
-	for block != nil && block.NumberU64() <= stopIndex {
-
-		if err := core.WriteBlockAddTxIndexes(indexDb, block); err != nil {
-			return err
-		}
-
-		bar.Set(int(block.NumberU64()))
-		blockIndex++
-
-		// Placeholder every 1000 blocks is plenty.
-		if blockIndex % 1000 == 0 {
-			ioutil.WriteFile(placeholderFilename, []byte(strconv.Itoa(int(blockIndex))), os.ModePerm)
-		}
-		block = bc.GetBlockByNumber(blockIndex)
+	if err := bc.AddTxIndexesBatch(indexDb, startIndex, stopIndex); err != nil {
+		return err
 	}
-	bar.Finish()
 	return nil
 }
 

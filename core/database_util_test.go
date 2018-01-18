@@ -308,7 +308,7 @@ func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
 	testBNBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(testBNBytes, testBN.Uint64())
 
-	key := formatAddrTxBytes(testAddr.Bytes(), testBNBytes, []byte(testTorf), testTxH.Bytes())
+	key := FormatAddrTxBytesIndex(testAddr.Bytes(), testBNBytes, []byte(testTorf), testTxH.Bytes())
 
 	// Test key/prefix iterator-ability.
 	itPrefix := formatAddrTxIterator(testAddr)
