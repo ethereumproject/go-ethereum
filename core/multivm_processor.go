@@ -73,7 +73,16 @@ func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, s
 			vm = sputnikvm.NewMordenFrontier(&vmtx, &vmheader)
 		}
 	} else {
-		panic("Unsupported network")
+		sputnikvm.SetCustomInitialNonce(big.NewInt(state.StartingNonce))
+		if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
+			vm = sputnikvm.NewCustomEIP160(&vmtx, &vmheader)
+		} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
+			vm = sputnikvm.NewCustomEIP150(&vmtx, &vmheader)
+		} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
+			vm = sputnikvm.NewCustomHomestead(&vmtx, &vmheader)
+		} else {
+			vm = sputnikvm.NewCustomFrontier(&vmtx, &vmheader)
+		}
 	}
 
 Loop:
