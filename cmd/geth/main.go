@@ -22,15 +22,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
-
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 )
 
@@ -172,9 +169,18 @@ func makeCLIApp() (app *cli.App) {
 		TestNetFlag,
 		NetworkIdFlag,
 		RPCCORSDomainFlag,
+		NeckbeardFlag,
 		VerbosityFlag,
+		DisplayFlag,
+		DisplayFormatFlag,
 		VModuleFlag,
 		LogDirFlag,
+		LogMaxSizeFlag,
+		LogMinSizeFlag,
+		LogMaxTotalSizeFlag,
+		LogIntervalFlag,
+		LogMaxAgeFlag,
+		LogCompressFlag,
 		LogStatusFlag,
 		MLogFlag,
 		MLogDirFlag,
@@ -231,20 +237,23 @@ func makeCLIApp() (app *cli.App) {
 			}
 		}
 
-		runtime.GOMAXPROCS(runtime.NumCPU())
+		// Check for migrations and handle if conditionals are met.
+		if err := handleIfDataDirSchemaMigrations(ctx); err != nil {
+			return err
+		}
 
-		glog.CopyStandardLogTo("INFO")
+		if err := setupLogRotation(ctx); err != nil {
+			return err
+		}
 
-		if ctx.GlobalIsSet(aliasableName(LogDirFlag.Name, ctx)) {
-			if p := ctx.GlobalString(aliasableName(LogDirFlag.Name, ctx)); p != "" {
-				if e := os.MkdirAll(p, os.ModePerm); e != nil {
-					return e
-				}
-				glog.SetLogDir(p)
-				glog.SetAlsoToStderr(true)
-			}
-		} else {
-			glog.SetToStderr(true)
+		// Handle parsing and applying log verbosity, severities, and default configurations from context.
+		if err := setupLogging(ctx); err != nil {
+			return err
+		}
+
+		// Handle parsing and applying log rotation configs from context.
+		if err := setupLogRotation(ctx); err != nil {
+			return err
 		}
 
 		if s := ctx.String("metrics"); s != "" {
@@ -261,14 +270,14 @@ func makeCLIApp() (app *cli.App) {
 		// > The output of this command is supposed to be machine-readable.
 		gasLimit := ctx.GlobalString(aliasableName(TargetGasLimitFlag.Name, ctx))
 		if _, ok := core.TargetGasLimit.SetString(gasLimit, 0); !ok {
-			log.Fatalf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
+			return fmt.Errorf("malformed %s flag value %q", aliasableName(TargetGasLimitFlag.Name, ctx), gasLimit)
 		}
 
 		// Set morden chain by default for dev mode.
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 			if !ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 				if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), "morden"); e != nil {
-					log.Fatalf("failed to set chain value: %v", e)
+					return fmt.Errorf("failed to set chain value: %v", e)
 				}
 			}
 		}
@@ -305,9 +314,10 @@ func geth(ctx *cli.Context) error {
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
 
-	if ctx.GlobalIsSet(LogStatusFlag.Name) {
+	if ctx.GlobalString(LogStatusFlag.Name) != "off" {
 		dispatchStatusLogs(ctx, ethe)
 	}
+	logLoggingConfiguration(ctx)
 
 	n.Wait()
 

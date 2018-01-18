@@ -247,6 +247,7 @@ func ListenUDP(priv *ecdsa.PrivateKey, laddr string, natm nat.Interface, nodeDBP
 		return nil, err
 	}
 	glog.V(logger.Info).Infoln("Listening,", tab.self)
+	glog.D(logger.Warn).Infoln("UDP listening. Client enode:", logger.ColorGreen(tab.self.String()))
 	return tab, nil
 }
 
@@ -338,9 +339,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		var okNodes []*Node
 		for _, n := range nodes {
 			if isReserved(n.IP) {
-				if glog.V(logger.Debug) {
-					glog.Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
-				}
+				glog.V(logger.Detail).Warnf("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
 				continue
 			}
 			okNodes = append(okNodes, n)
@@ -510,25 +509,25 @@ func (t *udp) send(toaddr *net.UDPAddr, ptype byte, req interface{}) error {
 		switch ptype {
 		// @sorpass: again, performance penalty?
 		case pingPacket:
-			mlogDiscover.Send(mlogPingSendTo.SetDetailValues(
+			mlogPingSendTo.AssignDetails(
 				toaddr.String(),
 				len(packet),
-			))
+			).Send(mlogDiscover)
 		case pongPacket:
-			mlogDiscover.Send(mlogPongSendTo.SetDetailValues(
+			mlogPongSendTo.AssignDetails(
 				toaddr.String(),
 				len(packet),
-			))
+			).Send(mlogDiscover)
 		case findnodePacket:
-			mlogDiscover.Send(mlogFindNodeSendTo.SetDetailValues(
+			mlogFindNodeSendTo.AssignDetails(
 				toaddr.String(),
 				len(packet),
-			))
+			).Send(mlogDiscover)
 		case neighborsPacket:
-			mlogDiscover.Send(mlogNeighborsSendTo.SetDetailValues(
+			mlogNeighborsSendTo.AssignDetails(
 				toaddr.String(),
 				len(packet),
-			))
+			).Send(mlogDiscover)
 		}
 	}
 	if glog.V(logger.Detail) {
@@ -607,29 +606,29 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 		// since packet is an interface with 1 method: handle.
 		switch p := fmt.Sprintf("%T", packet); p {
 		case "*discover.ping":
-			mlogDiscover.Send(mlogPingHandleFrom.SetDetailValues(
+			mlogPingHandleFrom.AssignDetails(
 				from.String(),
 				fromID.String(),
 				len(buf),
-			))
+			).Send(mlogDiscover)
 		case "*discover.pong":
-			mlogDiscover.Send(mlogPongHandleFrom.SetDetailValues(
+			mlogPongHandleFrom.AssignDetails(
 				from.String(),
 				fromID.String(),
 				len(buf),
-			))
+			).Send(mlogDiscover)
 		case "*discover.findnode":
-			mlogDiscover.Send(mlogFindNodeHandleFrom.SetDetailValues(
+			mlogFindNodeHandleFrom.AssignDetails(
 				from.String(),
 				fromID.String(),
 				len(buf),
-			))
+			).Send(mlogDiscover)
 		case "*discover.neighbors":
-			mlogDiscover.Send(mlogNeighborsHandleFrom.SetDetailValues(
+			mlogNeighborsHandleFrom.AssignDetails(
 				from.String(),
 				fromID.String(),
 				len(buf),
-			))
+			).Send(mlogDiscover)
 		}
 	}
 	if glog.V(logger.Detail) {

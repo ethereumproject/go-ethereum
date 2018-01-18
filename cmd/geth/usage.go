@@ -140,6 +140,12 @@ var AppHelpFlagGroups = []flagGroup{
 			VerbosityFlag,
 			VModuleFlag,
 			LogDirFlag,
+			LogMaxSizeFlag,
+			LogMinSizeFlag,
+			LogMaxTotalSizeFlag,
+			LogIntervalFlag,
+			LogMaxAgeFlag,
+			LogCompressFlag,
 			LogStatusFlag,
 			MLogFlag,
 			MLogDirFlag,
@@ -154,6 +160,9 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			WhisperEnabledFlag,
 			NatspecEnabledFlag,
+			DisplayFlag,
+			DisplayFormatFlag,
+			NeckbeardFlag,
 		},
 	},
 	{

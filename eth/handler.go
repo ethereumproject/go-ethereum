@@ -106,11 +106,13 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 	}
 	// Figure out whether to allow fast sync or not
 	if fastSync && blockchain.CurrentBlock().NumberU64() > 0 {
-		glog.V(logger.Warn).Infof("WARNING: Blockchain not empty, fast sync disabled")
+		glog.V(logger.Warn).Infoln("Blockchain not empty, fast sync disabled")
+		glog.D(logger.Warn).Warnln("Blockchain not empty. Fast sync disabled.")
 		fastSync = false
 	}
 	if fastSync {
 		manager.fastSync = uint32(1)
+		glog.D(logger.Warn).Infoln("Fast sync mode enabled.")
 	}
 	// Initiate a sub-protocol for every implemented version we can handle
 	manager.SubProtocols = make([]p2p.Protocol, 0, len(ProtocolVersions))
@@ -261,14 +263,14 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// Register the peer locally
 	glog.V(logger.Detail).Infof("%v: adding peer", p)
 	if err := pm.peers.Register(p); err != nil {
-		glog.V(logger.Error).Infof("%v: addition failed: %v", p, err)
+		glog.V(logger.Error).Errorf("%v: addition failed: %v", p, err)
 		return err
 	}
 	defer pm.removePeer(p.id)
 
 	// Register the peer in the downloader. If the downloader considers it banned, we disconnect
 	// TODO Causing error in tests
-	if err := pm.downloader.RegisterPeer(p.id, p.version, p.Head,
+	if err := pm.downloader.RegisterPeer(p.id, p.version, p.Name(), p.Head,
 		p.RequestHeadersByHash, p.RequestHeadersByNumber, p.RequestBodies,
 		p.RequestReceipts, p.RequestNodeData); err != nil {
 		return err
@@ -432,7 +434,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if len(headers) > 0 || !filter {
 			err := pm.downloader.DeliverHeaders(p.id, headers)
 			if err != nil {
-				glog.V(logger.Debug).Infoln(err)
+				glog.V(logger.Debug).Infoln("peer", p.id, err)
 			}
 		}
 
@@ -524,7 +526,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		// Deliver all to the downloader
 		if err := pm.downloader.DeliverNodeData(p.id, data); err != nil {
-			glog.V(logger.Debug).Infof("failed to deliver node state data: %v", err)
+			glog.V(logger.Core).Warnf("failed to deliver node state data: %v", err)
 		}
 
 	case p.version >= eth63 && msg.Code == GetReceiptsMsg:
@@ -571,7 +573,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		// Deliver all to the downloader
 		if err := pm.downloader.DeliverReceipts(p.id, receipts); err != nil {
-			glog.V(logger.Debug).Infof("failed to deliver receipts: %v", err)
+			glog.V(logger.Core).Warnf("failed to deliver receipts: %v", err)
 		}
 
 	case msg.Code == NewBlockHashesMsg:
@@ -644,7 +646,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if _, td := p.Head(); trueTD.Cmp(td) > 0 {
 			glog.V(logger.Debug).Infof("Peer %s: setting head: tdWas=%v trueTD=%v", p.id, td, trueTD)
 			p.SetHead(trueHead, trueTD)
-			
+
 			// Schedule a sync if above ours. Note, this will not fire a sync for a gap of
 			// a singe block (as the true TD is below the propagated block), however this
 			// scenario should easily be covered by the fetcher.
