@@ -32,6 +32,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"encoding/binary"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -45,7 +46,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
 	"github.com/hashicorp/golang-lru"
-	"encoding/binary"
 )
 
 var (
@@ -1291,13 +1291,16 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 	return 0, nil
 }
 
-func (self *BlockChain) AddTxIndexesBatch(indexDb ethdb.Database, startBlock, stopBlock uint64) (err error) {
-	block := self.GetBlockByNumber(startBlock)
+func (self *BlockChain) AddTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN uint64) (err error) {
+	block := self.GetBlockByNumber(startBlockN)
 	putBatch := indexDb.NewBatch()
 	startTime := time.Now()
 	lastTime := time.Now()
-	for block != nil && block.NumberU64() <= stopBlock {
+	txsCount := 0
+	for block != nil && block.NumberU64() <= stopBlockN {
 		for _, tx := range block.Transactions() {
+			txsCount++
+
 			from, err := tx.From()
 			if err != nil {
 				return err
@@ -1319,19 +1322,24 @@ func (self *BlockChain) AddTxIndexesBatch(indexDb ethdb.Database, startBlock, st
 				return err
 			}
 		}
-		if block.NumberU64() % 10000 == 0 {
+		if block.NumberU64()%10000 == 0 {
 			if err := putBatch.Write(); err != nil {
 				return err
 			} else {
 				putBatch = indexDb.NewBatch()
 			}
-			glog.D(logger.Error).Infoln("Batch atxi... block", block.NumberU64(), "/", stopBlock, time.Since(startTime), "~",
-				10000/time.Since(lastTime).Seconds(), "bps")
-			lastTime = time.Now()
 		}
-		block = self.GetBlockByNumber(block.NumberU64()+1)
+		block = self.GetBlockByNumber(block.NumberU64() + 1)
 	}
-	glog.D(logger.Error).Infoln("Batch atxi... block", stopBlock, "/", stopBlock, "took:", time.Since(startTime))
+	// TODO: remove me D... i'm just a debugger
+	glog.D(logger.Error).Infoln("Batch atxi... block",
+		startBlockN, "/", stopBlockN,
+		"txs:", txsCount,
+		"took:", time.Since(startTime),
+		float64(stopBlockN-startBlockN)/time.Since(lastTime).Seconds(), "bps",
+		float64(txsCount)/time.Since(lastTime).Seconds(), "txps")
+	glog.V(logger.Debug).Infoln("Batch atxi... block", startBlockN, "/", stopBlockN, "txs:", txsCount, "took:", time.Since(startTime), float64(stopBlockN-startBlockN)/time.Since(lastTime).Seconds(), "bps")
+	lastTime = time.Now()
 	return putBatch.Write()
 }
 

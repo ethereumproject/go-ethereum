@@ -122,6 +122,11 @@ func makeCLIApp() (app *cli.App) {
 					Name:  "stop",
 					Usage: "Block number at which to stop building index",
 				},
+				cli.IntFlag{
+					Name: "step",
+					Usage: "Step increment for batching. Higher number requires more mem, but may be faster. [default: 10000]",
+					Value: 10000,
+				},
 			},
 		},
 		{

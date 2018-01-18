@@ -7,6 +7,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"path/filepath"
 	"io/ioutil"
+	"os"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"time"
 )
 
 func buildAddrTxIndexCmd(ctx *cli.Context) error {
@@ -36,6 +39,10 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 	if stopIndex < startIndex {
 		glog.Fatal("start must be prior to (smaller than) or equal to stop, got start=", startIndex, "stop=", stopIndex)
 	}
+	if startIndex == stopIndex {
+		glog.D(logger.Error).Infoln("Up to date. Exiting.")
+		os.Exit(0)
+	}
 
 	indexDb := MakeIndexDatabase(ctx)
 	if indexDb == nil {
@@ -50,9 +57,20 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 		glog.Fatal(blockIndex, "block is nil")
 	}
 
-	if err := bc.AddTxIndexesBatch(indexDb, startIndex, stopIndex); err != nil {
-		return err
+	var inc = uint64(ctx.Int("step"))
+	startTime := time.Now()
+	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", inc)
+	for i := startIndex; i <= stopIndex; i = i+inc {
+		if i+inc > stopIndex {
+			inc = stopIndex - startIndex
+		}
+		if err := bc.AddTxIndexesBatch(indexDb, i, i+inc); err != nil {
+			return err
+		}
+		ioutil.WriteFile(placeholderFilename, []byte(strconv.Itoa(int(i+inc))), os.ModePerm)
 	}
+	ioutil.WriteFile(placeholderFilename, []byte(strconv.Itoa(int(stopIndex))), os.ModePerm)
+	glog.D(logger.Error).Infoln("Finished atxi. Took:", time.Since(startTime))
 	return nil
 }
 
