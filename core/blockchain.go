@@ -1246,6 +1246,12 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 				glog.Fatal(errs[index])
 				return
 			}
+			// Store the addr-tx indexes if enabled
+			if self.useAddTxIndex {
+				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+					glog.Fatalf("failed to write block add-tx indexes", err)
+				}
+			}
 			atomic.AddInt32(&stats.processed, 1)
 		}
 	}
@@ -1614,7 +1620,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			if err := WriteMipmapBloom(self.chainDb, block.NumberU64(), receipts); err != nil {
 				return i, err
 			}
-			// Store the add-tx indexes
+			// Store the addr-tx indexes if enabled
 			if self.useAddTxIndex {
 				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
 					glog.Fatalf("failed to write block add-tx indexes", err)
@@ -1770,6 +1776,12 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		if err := WriteMipmapBloom(self.chainDb, block.NumberU64(), receipts); err != nil {
 			return err
 		}
+		// Store the addr-tx indexes if enabled
+		if self.useAddTxIndex {
+			if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+				glog.Fatalf("failed to write block add-tx indexes", err)
+			}
+		}
 		addedTxs = append(addedTxs, block.Transactions()...)
 	}
 
@@ -1779,6 +1791,11 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	// receipts that were created in the fork must also be deleted
 	for _, tx := range diff {
 		DeleteReceipt(self.chainDb, tx.Hash())
+		if self.useAddTxIndex {
+			if err := RmAddrTx(self.indexesDb, tx); err != nil {
+				return err
+			}
+		}
 		DeleteTransaction(self.chainDb, tx.Hash())
 	}
 	// Must be posted in a goroutine because of the transaction pool trying
