@@ -1291,7 +1291,7 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 	return 0, nil
 }
 
-func (self *BlockChain) AddTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN uint64) (err error) {
+func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN uint64) (err error) {
 	block := self.GetBlockByNumber(startBlockN)
 	putBatch := indexDb.NewBatch()
 	startTime := time.Now()

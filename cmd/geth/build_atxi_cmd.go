@@ -64,7 +64,7 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 		if i+inc > stopIndex {
 			inc = stopIndex - startIndex
 		}
-		if err := bc.AddTxIndexesBatch(indexDb, i, i+inc); err != nil {
+		if err := bc.WriteBlockAddrTxIndexesBatch(indexDb, i, i+inc); err != nil {
 			return err
 		}
 		ioutil.WriteFile(placeholderFilename, []byte(strconv.Itoa(int(i+inc))), os.ModePerm)
