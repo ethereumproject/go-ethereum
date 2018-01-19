@@ -28,6 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"strconv"
 )
 
 var (
@@ -47,12 +48,31 @@ var (
 	blockReceiptsPrefix = []byte("receipts-block-")
 
 	txAddressIndexPrefix = []byte("atx-")
+	txAddressBookmarkKey = []byte("ATXIBookmark")
 
 	mipmapPre    = []byte("mipmap-log-bloom-")
 	MIPMapLevels = []uint64{1000000, 500000, 100000, 50000, 1000}
 
 	blockHashPrefix = []byte("block-hash-") // [deprecated by the header/block split, remove eventually]
 )
+
+func GetATXIBookmark(db ethdb.Database) uint64 {
+	v, err := db.Get(txAddressBookmarkKey)
+	if err != nil || v == nil {
+		return 0
+	}
+	s := string(v)
+	i, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		glog.Fatalln(err)
+	}
+	return i
+}
+
+func SetATXIBookmark(db ethdb.Database, i uint64) error {
+	s := strconv.FormatUint(i, 10)
+	return db.Put(txAddressBookmarkKey, []byte(s))
+}
 
 // GetCanonicalHash retrieves a hash assigned to a canonical block number.
 func GetCanonicalHash(db ethdb.Database, number uint64) common.Hash {
