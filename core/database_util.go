@@ -148,8 +148,8 @@ func formatAddrTxIterator(address common.Address) (iteratorPrefix []byte) {
 }
 
 // GetAddrTxs gets the indexed transactions for a given account address.
-func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, toFromOrBoth string) []string {
-	if toFromOrBoth != "to" && toFromOrBoth != "from" && toFromOrBoth != "both" && toFromOrBoth != "" {
+func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string) []string {
+	if direction != "to" && direction != "from" && direction != "both" && direction != "" {
 		glog.Fatal("Address transactions list signature requires 'to', 'from', or 'both' or '' (=both)")
 	}
 
@@ -187,11 +187,11 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 				continue
 			}
 		}
-		if toFromOrBoth == "to" {
+		if direction == "to" {
 			if string(torf) != "t" {
 				continue
 			}
-		} else if toFromOrBoth == "from" {
+		} else if direction == "from" {
 			if string(torf) != "f" {
 				continue
 			}
