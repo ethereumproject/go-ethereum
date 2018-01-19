@@ -27,7 +27,7 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 
 	bc, chainDB := MakeChain(ctx)
 	if bc == nil || chainDB == nil {
-		glog.Fatal("bc or cdb is nil")
+		glog.Fatalln("bc or cdb is nil")
 	}
 	defer chainDB.Close()
 
@@ -37,7 +37,7 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 	}
 
 	if stopIndex < startIndex {
-		glog.Fatal("start must be prior to (smaller than) or equal to stop, got start=", startIndex, "stop=", stopIndex)
+		glog.Fatalln("start must be prior to (smaller than) or equal to stop, got start=", startIndex, "stop=", stopIndex)
 	}
 	if startIndex == stopIndex {
 		glog.D(logger.Error).Infoln("Up to date. Exiting.")
@@ -46,7 +46,7 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 
 	indexDb := MakeIndexDatabase(ctx)
 	if indexDb == nil {
-		glog.Fatal("indexes db is nil")
+		glog.Fatalln("indexes db is nil")
 	}
 	defer indexDb.Close()
 
@@ -54,27 +54,62 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 	blockIndex := startIndex
 	block = bc.GetBlockByNumber(blockIndex)
 	if block == nil {
-		glog.Fatal(blockIndex, "block is nil")
+		glog.Fatalln(blockIndex, "block is nil")
 	}
 
 	var inc = uint64(ctx.Int("step"))
 	startTime := time.Now()
-	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", inc)
+	totalTxCount := uint64(0)
+	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", inc, "| This may take a while.")
+	breaker := false
 	for i := startIndex; i <= stopIndex; i = i+inc {
 		if i+inc > stopIndex {
-			inc = stopIndex - startIndex
+			inc = stopIndex - i
+			breaker = true
 		}
+
+		stepStartTime := time.Now()
+
 		// It may seem weird to pass i, i+inc, and inc, but its just a "coincidence"
 		// The function could accepts a smaller step for batch putting (in this case, inc),
 		// or a larger stopBlock (i+inc), but this is just how this cmd is using the fn now
 		// We could mess around a little with exploring batch optimization...
-		if err := bc.WriteBlockAddrTxIndexesBatch(indexDb, i, i+inc, inc); err != nil {
+		txsCount, err := bc.WriteBlockAddrTxIndexesBatch(indexDb, i, i+inc, inc)
+		if err != nil {
 			return err
 		}
+		totalTxCount += uint64(txsCount)
+
+		// TODO: use dedicated placeholder in indexes db instead
 		ioutil.WriteFile(placeholderFilename, []byte(strconv.Itoa(int(i+inc))), os.ModePerm)
+
+		glog.D(logger.Error).Infoln("atxi-build... block",
+			i+inc, "/", stopIndex,
+			"txs:", txsCount,
+			"took:", time.Since(stepStartTime),
+			float64(inc)/time.Since(stepStartTime).Seconds(), "bps",
+			float64(txsCount)/time.Since(stepStartTime).Seconds(), "txps")
+		glog.V(logger.Info).Infoln("Batch atxi... block", i, "/", stopIndex, "txs:", txsCount, "took:", time.Since(stepStartTime), float64(inc)/time.Since(stepStartTime).Seconds(), "bps")
+		if breaker {
+			break
+		}
 	}
+
 	ioutil.WriteFile(placeholderFilename, []byte(strconv.Itoa(int(stopIndex))), os.ModePerm)
-	glog.D(logger.Error).Infoln("Finished atxi. Took:", time.Since(startTime))
+	totalBlocksF := float64(stopIndex - startIndex)
+	totalTxsF := float64(totalTxCount)
+	took := time.Since(startTime)
+	glog.D(logger.Error).Infof(`Finished atxi. Took: %v
+	%d blocks
+	~ %.2f blocks/sec
+	%d txs
+	~ %.2f txs/sec`,
+		took.Round(time.Second),
+		stopIndex - startIndex,
+		totalBlocksF/took.Seconds(),
+		totalTxCount,
+		totalTxsF/took.Seconds(),
+		)
 	return nil
 }
 

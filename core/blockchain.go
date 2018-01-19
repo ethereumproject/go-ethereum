@@ -1324,87 +1324,72 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 	return 0, nil
 }
 
-func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN, stepN uint64) (err error) {
+func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN, stepN uint64) (txsCount int, err error) {
 	block := self.GetBlockByNumber(startBlockN)
-	putBatch := indexDb.NewBatch()
-
-	startTime := time.Now()
-	lastTime := time.Now()
+	batch := indexDb.NewBatch()
 
 	blockProcessedCount := uint64(0)
-	txsCount := 0
-
-	for block != nil && block.NumberU64() <= stopBlockN {
-		for _, tx := range block.Transactions() {
-			txsCount++
-
-			from, err := tx.From()
-			if err != nil {
-				return err
-			}
-			bn := make([]byte, 8)
-			binary.LittleEndian.PutUint64(bn, block.NumberU64())
-
-			if err := putBatch.Put(FormatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), tx.Hash().Bytes()), nil); err != nil {
-				return err
-			}
-
-			to := tx.To()
-			if to == nil {
-				continue
-			}
-			var tob []byte
-			copy(tob, to.Bytes())
-			if err := putBatch.Put(FormatAddrTxBytesIndex(tob, bn, []byte("t"), tx.Hash().Bytes()), nil); err != nil {
-				return err
-			}
-		}
-		blockProcessedCount++
-		if blockProcessedCount%stepN == 0 {
-			if err := putBatch.Write(); err != nil {
-				return err
-			} else {
-				putBatch = indexDb.NewBatch()
-			}
-		}
-		block = self.GetBlockByNumber(block.NumberU64() + 1)
+	blockProcessedHead := func() uint64 {
+		return startBlockN + blockProcessedCount
 	}
-	// TODO: remove me D... i'm just a debugger
-	glog.D(logger.Error).Infoln("Batch atxi... block",
-		startBlockN, "/", stopBlockN,
-		"txs:", txsCount,
-		"took:", time.Since(startTime),
-		float64(stopBlockN-startBlockN)/time.Since(lastTime).Seconds(), "bps",
-		float64(txsCount)/time.Since(lastTime).Seconds(), "txps")
-	glog.V(logger.Debug).Infoln("Batch atxi... block", startBlockN, "/", stopBlockN, "txs:", txsCount, "took:", time.Since(startTime), float64(stopBlockN-startBlockN)/time.Since(lastTime).Seconds(), "bps")
-	lastTime = time.Now()
+
+	for block != nil && blockProcessedHead() <= stopBlockN {
+		txP, err := putBlockAddrTxsToBatch(batch, block)
+		if err != nil {
+			return txsCount, err
+		}
+		txsCount += txP
+		blockProcessedCount++
+
+		// Write on stepN mod
+		if blockProcessedCount%stepN == 0 {
+			if err := batch.Write(); err != nil {
+				return txsCount, err
+			} else {
+				batch = indexDb.NewBatch()
+			}
+		}
+		block = self.GetBlockByNumber(blockProcessedHead())
+	}
 
 	// This will put the last batch
-	return putBatch.Write()
+	return txsCount, batch.Write()
 }
 
-func WriteBlockAddTxIndexes(indexDb ethdb.Database, block *types.Block) error {
+func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount int, err error) {
 	for _, tx := range block.Transactions() {
-		var err error
+		txsCount++
+
 		from, err := tx.From()
 		if err != nil {
-			return err
+			return txsCount, err
 		}
-		err = PutAddrTxs(indexDb, block, false, from, tx.Hash())
-		if err != nil {
-			return err
+		bn := make([]byte, 8)
+		binary.LittleEndian.PutUint64(bn, block.NumberU64())
+
+		if err := putBatch.Put(FormatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), tx.Hash().Bytes()), nil); err != nil {
+			return txsCount, err
 		}
 
 		to := tx.To()
 		if to == nil {
 			continue
 		}
-		err = PutAddrTxs(indexDb, block, true, *to, tx.Hash())
-		if err != nil {
-			return err
+		var tob []byte
+		copy(tob, to.Bytes())
+		if err := putBatch.Put(FormatAddrTxBytesIndex(tob, bn, []byte("t"), tx.Hash().Bytes()), nil); err != nil {
+			return txsCount, err
 		}
 	}
-	return nil
+	return txsCount, nil
+}
+
+func WriteBlockAddTxIndexes(indexDb ethdb.Database, block *types.Block) error {
+	batch := indexDb.NewBatch()
+	if _, err := putBlockAddrTxsToBatch(batch, block); err != nil {
+		return err
+	}
+	return batch.Write()
 }
 
 // WriteBlock writes the block to the chain.
