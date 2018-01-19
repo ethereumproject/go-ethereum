@@ -207,21 +207,21 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 // FormatAddrTxBytesIndex formats the index key, eg. atx-<addr><blockNumber><t|f><txhash>
 // The values for these arguments should be of determinate length and format, see test TestFormatAndResolveAddrTxBytesKey
 // for example.
-func FormatAddrTxBytesIndex(address, blockNumber, toOrFrom, txhash []byte) (key []byte) {
+func FormatAddrTxBytesIndex(address, blockNumber, direction, txhash []byte) (key []byte) {
 	key = txAddressIndexPrefix
 	key = append(key, address...)
 	key = append(key, blockNumber...)
-	key = append(key, toOrFrom...)
+	key = append(key, direction...)
 	key = append(key, txhash...)
 	return
 }
 
 // resolveAddrTxBytes resolves the index key to individual []byte values
-func resolveAddrTxBytes(key []byte) (address, blockNumber, toOrFrom, txhash []byte) {
+func resolveAddrTxBytes(key []byte) (address, blockNumber, direction, txhash []byte) {
 	// prefix = key[:4]
 	address = key[4:24] // common.AddressLength = 20
 	blockNumber = key[24:32]
-	toOrFrom = key[32:33] // == key[32] (1 byte)
+	direction = key[32:33] // == key[32] (1 byte)
 	txhash = key[33:]
 	return
 }
