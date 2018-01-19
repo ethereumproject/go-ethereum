@@ -166,6 +166,12 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 	// This will be the returnable.
 	var hashes []string
 
+	// Map direction -> byte
+	var wantDirectionB byte = 'b'
+	if len(direction) > 0 {
+		wantDirectionB = direction[0]
+	}
+
 	for it.Next() {
 		key := it.Key()
 
@@ -177,19 +183,15 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 				continue
 			}
 		}
+		// If atxi is greater than blockend, skip
 		if blockEndN > 0 {
 			if binary.LittleEndian.Uint64(blockNum) > blockEndN {
 				continue
 			}
 		}
-		if direction == "to" {
-			if string(torf) != "t" {
-				continue
-			}
-		} else if direction == "from" {
-			if string(torf) != "f" {
-				continue
-			}
+		// Ensure matching direction if spec'd
+		if wantDirectionB != 'b' && wantDirectionB != torf[0] {
+			continue
 		}
 		tx := common.ToHex(txh)
 		hashes = append(hashes, tx)
