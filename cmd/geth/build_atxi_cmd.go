@@ -27,7 +27,7 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 
 	bc, chainDB := MakeChain(ctx)
 	if bc == nil || chainDB == nil {
-		panic("bc or cdb is nil")
+		glog.Fatal("bc or cdb is nil")
 	}
 	defer chainDB.Close()
 
@@ -46,7 +46,7 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 
 	indexDb := MakeIndexDatabase(ctx)
 	if indexDb == nil {
-		panic("indexdb is nil")
+		glog.Fatal("indexes db is nil")
 	}
 	defer indexDb.Close()
 
@@ -64,7 +64,11 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 		if i+inc > stopIndex {
 			inc = stopIndex - startIndex
 		}
-		if err := bc.WriteBlockAddrTxIndexesBatch(indexDb, i, i+inc); err != nil {
+		// It may seem weird to pass i, i+inc, and inc, but its just a "coincidence"
+		// The function could accepts a smaller step for batch putting (in this case, inc),
+		// or a larger stopBlock (i+inc), but this is just how this cmd is using the fn now
+		// We could mess around a little with exploring batch optimization...
+		if err := bc.WriteBlockAddrTxIndexesBatch(indexDb, i, i+inc, inc); err != nil {
 			return err
 		}
 		ioutil.WriteFile(placeholderFilename, []byte(strconv.Itoa(int(i+inc))), os.ModePerm)

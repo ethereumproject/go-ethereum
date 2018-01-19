@@ -1324,12 +1324,16 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 	return 0, nil
 }
 
-func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN uint64) (err error) {
+func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN, stepN uint64) (err error) {
 	block := self.GetBlockByNumber(startBlockN)
 	putBatch := indexDb.NewBatch()
+
 	startTime := time.Now()
 	lastTime := time.Now()
+
+	blockProcessedCount := uint64(0)
 	txsCount := 0
+
 	for block != nil && block.NumberU64() <= stopBlockN {
 		for _, tx := range block.Transactions() {
 			txsCount++
@@ -1355,7 +1359,8 @@ func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, sta
 				return err
 			}
 		}
-		if block.NumberU64()%10000 == 0 {
+		blockProcessedCount++
+		if blockProcessedCount%stepN == 0 {
 			if err := putBatch.Write(); err != nil {
 				return err
 			} else {
@@ -1373,6 +1378,8 @@ func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, sta
 		float64(txsCount)/time.Since(lastTime).Seconds(), "txps")
 	glog.V(logger.Debug).Infoln("Batch atxi... block", startBlockN, "/", stopBlockN, "txs:", txsCount, "took:", time.Since(startTime), float64(stopBlockN-startBlockN)/time.Since(lastTime).Seconds(), "bps")
 	lastTime = time.Now()
+
+	// This will put the last batch
 	return putBatch.Write()
 }
 
