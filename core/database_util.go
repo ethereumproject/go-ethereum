@@ -166,24 +166,19 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 	// This will be the returnable.
 	var hashes []string
 
-	// Convert start/stop block number to *big for easier comparison.
-	wantStart := new(big.Int).SetUint64(blockStartN)
-	wantEnd := new(big.Int).SetUint64(blockEndN)
-
 	for it.Next() {
 		key := it.Key()
 
 		_, blockNum, torf, txh := resolveAddrTxBytes(key)
 
+		// If atxi is smaller than blockstart, skip
 		if blockStartN > 0 {
-			txaI := new(big.Int).SetUint64(binary.LittleEndian.Uint64(blockNum))
-			if txaI.Cmp(wantStart) < 0 {
+			if binary.LittleEndian.Uint64(blockNum) < blockStartN {
 				continue
 			}
 		}
 		if blockEndN > 0 {
-			txaI := new(big.Int).SetUint64(binary.LittleEndian.Uint64(blockNum))
-			if txaI.Cmp(wantEnd) > 0 {
+			if binary.LittleEndian.Uint64(blockNum) > blockEndN {
 				continue
 			}
 		}
