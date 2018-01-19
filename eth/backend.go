@@ -232,8 +232,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 			return nil, err
 		}
 		eth.indexesDb = indexesDb
-		glog.V(logger.Info).Infof("Opened add-tx index db")
-		glog.D(logger.Warn).Infof("Opened add-tx index db")
 	}
 
 	// load the genesis block or write a new one if no genesis

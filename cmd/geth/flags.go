@@ -90,8 +90,8 @@ var (
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
 	}
 	AddrTxIndexFlag = cli.BoolFlag{
-		Name: "add-tx-index,atxi",
-		Usage: "Toggle indexes for transactions by address. Pre-existing chaindata can be indexed with command 'geth atxi-build'",
+		Name: "atxi,add-tx-index",
+		Usage: "Toggle indexes for transactions by address. Pre-existing chaindata can be indexed with command 'atxi-build'",
 	}
 	// Network Split settings
 	ETFChain = cli.BoolFlag{

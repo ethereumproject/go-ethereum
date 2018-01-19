@@ -301,12 +301,12 @@ func TestTdStorage(t *testing.T) {
 
 func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
 	testAddr := common.Address{}
-	testBN := big.NewInt(42)
+	testBN := uint64(42)
 	testTorf := "f"
 	testTxH := common.Hash{}
 
 	testBNBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(testBNBytes, testBN.Uint64())
+	binary.LittleEndian.PutUint64(testBNBytes, testBN)
 
 	key := FormatAddrTxBytesIndex(testAddr.Bytes(), testBNBytes, []byte(testTorf), testTxH.Bytes())
 
@@ -322,7 +322,7 @@ func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
 	if gotAddr := common.BytesToAddress(outAddr); gotAddr != testAddr {
 		t.Errorf("got: %v, want: %v", gotAddr.Hex(), testAddr.Hex())
 	}
-	if gotBN := new(big.Int).SetUint64(binary.LittleEndian.Uint64(outBNBytes)); gotBN.Cmp(testBN) != 0 {
+	if gotBN := binary.LittleEndian.Uint64(outBNBytes); gotBN != testBN {
 		t.Errorf("got: %v, want: %v", gotBN, testBN)
 	}
 	if gotTorf := string(outTorf); gotTorf != testTorf {

@@ -793,26 +793,38 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		if !ok {
 			glog.Fatal("could not cast indexes db to level db")
 		}
+
+		removals := [][]byte{}
+		removeRemovals := func(removals [][]byte) {
+			for _, r := range removals {
+				if e := ldb.Delete(r); e != nil {
+					glog.Fatal(e)
+				}
+			}
+		}
+
 		pre := ethdb.NewBytesPrefix(txAddressIndexPrefix)
 		it := ldb.NewIteratorRange(pre)
-		removals := [][]byte{}
+
 		for it.Next() {
 			key := it.Key()
 			_, bn, _, _ := resolveAddrTxBytes(key)
 			n := binary.LittleEndian.Uint64(bn)
 			if n > head {
 				removals = append(removals, key)
+				// Prevent removals from getting too massive in case it's a big rollback
+				// 100000 is a guess at a big but not-too-big memory allowance
+				if len(removals) > 100000 {
+					removeRemovals(removals)
+					removals = [][]byte{}
+				}
 			}
 		}
 		it.Release()
 		if e := it.Error(); e != nil {
 			return e
 		}
-		for _, r := range removals {
-			if e := ldb.Delete(r); e != nil {
-				glog.Fatal(e)
-			}
-		}
+		removeRemovals(removals)
 	}
 
 	bc.mu.Unlock()

@@ -163,6 +163,7 @@ var AppHelpFlagGroups = []flagGroup{
 			DisplayFlag,
 			DisplayFormatFlag,
 			NeckbeardFlag,
+			AddrTxIndexFlag,
 		},
 	},
 	{

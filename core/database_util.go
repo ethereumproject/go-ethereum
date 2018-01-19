@@ -198,7 +198,7 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 	}
 	it.Release()
 	if it.Error() != nil {
-		panic(it.Error())
+		glog.Fatalln(it.Error())
 	}
 
 	return hashes
