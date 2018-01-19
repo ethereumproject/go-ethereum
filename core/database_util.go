@@ -247,6 +247,63 @@ func PutAddrTxs(db ethdb.Database, block *types.Block, isTo bool, address common
 	return nil
 }
 
+func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
+	ldb, ok := db.(*ethdb.LDBDatabase)
+	if !ok {
+		return nil
+	}
+
+	txH := tx.Hash()
+	from, err := tx.From()
+	if err != nil {
+		return err
+	}
+
+	removals := [][]byte{}
+
+	// TODO: not DRY, could be refactored
+	pre := ethdb.NewBytesPrefix(formatAddrTxIterator(from))
+	it := ldb.NewIteratorRange(pre)
+	for it.Next() {
+		key := it.Key()
+		_, _, _, txh := resolveAddrTxBytes(key)
+		if bytes.Compare(txH.Bytes(), txh) == 0 {
+			removals = append(removals, txh)
+			break // because there can be only one
+		}
+	}
+	it.Release()
+	if e := it.Error(); e != nil {
+		return e
+	}
+
+	to := tx.To()
+	if to != nil {
+		toRef := *to
+		pre := ethdb.NewBytesPrefix(formatAddrTxIterator(toRef))
+		it := ldb.NewIteratorRange(pre)
+		for it.Next() {
+			key := it.Key()
+			_, _, _, txh := resolveAddrTxBytes(key)
+			if bytes.Compare(txH.Bytes(), txh) == 0 {
+				removals = append(removals, txh)
+				break // because there can be only one
+			}
+		}
+		it.Release()
+		if e := it.Error(); e != nil {
+			return e
+		}
+	}
+
+	for _, r := range removals {
+		if err := db.Delete(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetTd retrieves a block's total difficulty corresponding to the hash, nil if
 // none found.
 func GetTd(db ethdb.Database, hash common.Hash) *big.Int {

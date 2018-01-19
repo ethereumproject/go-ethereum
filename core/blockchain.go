@@ -788,6 +788,33 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
 	}
 
+	if bc.useAddTxIndex {
+		ldb, ok := bc.indexesDb.(*ethdb.LDBDatabase)
+		if !ok {
+			glog.Fatal("could not cast indexes db to level db")
+		}
+		pre := ethdb.NewBytesPrefix(txAddressIndexPrefix)
+		it := ldb.NewIteratorRange(pre)
+		removals := [][]byte{}
+		for it.Next() {
+			key := it.Key()
+			_, bn, _, _ := resolveAddrTxBytes(key)
+			n := binary.LittleEndian.Uint64(bn)
+			if n > head {
+				removals = append(removals, key)
+			}
+		}
+		it.Release()
+		if e := it.Error(); e != nil {
+			return e
+		}
+		for _, r := range removals {
+			if e := ldb.Delete(r); e != nil {
+				glog.Fatal(e)
+			}
+		}
+	}
+
 	bc.mu.Unlock()
 	return bc.LoadLastState(false)
 }
