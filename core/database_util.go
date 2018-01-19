@@ -226,24 +226,10 @@ func resolveAddrTxBytes(key []byte) (address, blockNumber, direction, txhash []b
 	return
 }
 
-// PutAddrTxs adds an address/tx index to the indexes db.
-// if isTo is false, then the address is the sender in the tx (from), t/f
-func PutAddrTxs(db ethdb.Database, block *types.Block, isTo bool, address common.Address, txhash common.Hash) error {
-	var tOrF = []byte("f")
-	if isTo {
-		tOrF = []byte("t")
-	}
-
-	bk := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bk, block.NumberU64())
-	k := FormatAddrTxBytesIndex(address.Bytes(), bk, tOrF, txhash.Bytes())
-
-	if err := db.Put(k, nil); err != nil {
-		glog.Fatalf("failed to store addrtxidx into database: %v", err)
-	}
-	return nil
-}
-
+// RmAddrTx removes all atxi indexes for a given tx in case of a transaction removal, eg.
+// in the case of chain reorg.
+// It isn't an elegant function, but not a top priority for optimization because of
+// expected infrequency of it's being called.
 func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
 	ldb, ok := db.(*ethdb.LDBDatabase)
 	if !ok {

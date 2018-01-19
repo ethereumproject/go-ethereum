@@ -1324,6 +1324,10 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 	return 0, nil
 }
 
+// WriteBlockAddrTxIndexesBatch builds indexes for a given range of blocks N. It writes batches at increment 'step'.
+// If any error occurs during db writing it will be returned immediately.
+// It's sole implementation is the command 'atxi-build', since we must use individual block atxi indexing during
+// sync and import in order to ensure we're on the canonical chain for each block.
 func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN, stepN uint64) (txsCount int, err error) {
 	block := self.GetBlockByNumber(startBlockN)
 	batch := indexDb.NewBatch()
@@ -1356,6 +1360,8 @@ func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, sta
 	return txsCount, batch.Write()
 }
 
+// putBlockAddrTxsToBatch formats and puts keys for a given block to a db Batch.
+// Batch can be written afterward if no errors, ie. batch.Write()
 func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount int, err error) {
 	for _, tx := range block.Transactions() {
 		txsCount++
@@ -1364,6 +1370,7 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 		if err != nil {
 			return txsCount, err
 		}
+		// Note that len 8 because uint64 guaranteed <= 8 bytes.
 		bn := make([]byte, 8)
 		binary.LittleEndian.PutUint64(bn, block.NumberU64())
 
@@ -1384,6 +1391,7 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 	return txsCount, nil
 }
 
+// WriteBlockAddTxIndexes writes atx-indexes for a given block.
 func WriteBlockAddTxIndexes(indexDb ethdb.Database, block *types.Block) error {
 	batch := indexDb.NewBatch()
 	if _, err := putBlockAddrTxsToBatch(batch, block); err != nil {
