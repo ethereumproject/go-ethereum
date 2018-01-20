@@ -145,6 +145,35 @@ func GetBodyRLP(db ethdb.Database, hash common.Hash) rlp.RawValue {
 	return data
 }
 
+// formatAddrTxIterator formats the index key prefix iterator, eg. atx-<address>
+func formatAddrTxIterator(address common.Address) (iteratorPrefix []byte) {
+	iteratorPrefix = append(iteratorPrefix, txAddressIndexPrefix...)
+	iteratorPrefix = append(iteratorPrefix, address.Bytes()...)
+	return
+}
+
+// formatAddrTxBytesIndex formats the index key, eg. atx-<addr><blockNumber><t|f><txhash>
+// The values for these arguments should be of determinate length and format, see test TestFormatAndResolveAddrTxBytesKey
+// for example.
+func formatAddrTxBytesIndex(address, blockNumber, direction, txhash []byte) (key []byte) {
+	key = txAddressIndexPrefix
+	key = append(key, address...)
+	key = append(key, blockNumber...)
+	key = append(key, direction...)
+	key = append(key, txhash...)
+	return
+}
+
+// resolveAddrTxBytes resolves the index key to individual []byte values
+func resolveAddrTxBytes(key []byte) (address, blockNumber, direction, txhash []byte) {
+	// prefix = key[:4]
+	address = key[4:24] // common.AddressLength = 20
+	blockNumber = key[24:32]
+	direction = key[32:33] // == key[32] (1 byte)
+	txhash = key[33:]
+	return
+}
+
 // GetBody retrieves the block body (transactons, uncles) corresponding to the
 // hash, nil if none found.
 func GetBody(db ethdb.Database, hash common.Hash) *types.Body {
@@ -160,11 +189,42 @@ func GetBody(db ethdb.Database, hash common.Hash) *types.Body {
 	return body
 }
 
-// formatAddrTxIterator formats the index key prefix iterator, eg. atx-<address>
-func formatAddrTxIterator(address common.Address) (iteratorPrefix []byte) {
-	iteratorPrefix = append(iteratorPrefix, txAddressIndexPrefix...)
-	iteratorPrefix = append(iteratorPrefix, address.Bytes()...)
-	return
+// WriteBlockAddTxIndexes writes atx-indexes for a given block.
+func WriteBlockAddTxIndexes(indexDb ethdb.Database, block *types.Block) error {
+	batch := indexDb.NewBatch()
+	if _, err := putBlockAddrTxsToBatch(batch, block); err != nil {
+		return err
+	}
+	return batch.Write()
+}
+
+// putBlockAddrTxsToBatch formats and puts keys for a given block to a db Batch.
+// Batch can be written afterward if no errors, ie. batch.Write()
+func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount int, err error) {
+	for _, tx := range block.Transactions() {
+		txsCount++
+
+		from, err := tx.From()
+		if err != nil {
+			return txsCount, err
+		}
+		// Note that len 8 because uint64 guaranteed <= 8 bytes.
+		bn := make([]byte, 8)
+		binary.LittleEndian.PutUint64(bn, block.NumberU64())
+
+		if err := putBatch.Put(formatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), tx.Hash().Bytes()), nil); err != nil {
+			return txsCount, err
+		}
+
+		to := tx.To()
+		if to == nil || to.IsEmpty() {
+			continue
+		}
+		if err := putBatch.Put(formatAddrTxBytesIndex(to.Bytes(), bn, []byte("t"), tx.Hash().Bytes()), nil); err != nil {
+			return txsCount, err
+		}
+	}
+	return txsCount, nil
 }
 
 // GetAddrTxs gets the indexed transactions for a given account address.
@@ -179,10 +239,6 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		return nil
 	}
 
-	// Create address prefix for iteration.
-	prefix := ethdb.NewBytesPrefix(formatAddrTxIterator(address))
-	it := ldb.NewIteratorRange(prefix)
-
 	// This will be the returnable.
 	var hashes []string
 
@@ -191,6 +247,10 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 	if len(direction) > 0 {
 		wantDirectionB = direction[0]
 	}
+
+	// Create address prefix for iteration.
+	prefix := ethdb.NewBytesPrefix(formatAddrTxIterator(address))
+	it := ldb.NewIteratorRange(prefix)
 
 	for it.Next() {
 		key := it.Key()
@@ -217,33 +277,11 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		hashes = append(hashes, tx)
 	}
 	it.Release()
-	if it.Error() != nil {
-		glog.Fatalln(it.Error())
+	if e := it.Error(); e != nil {
+		glog.Fatalln(e)
 	}
 
 	return hashes
-}
-
-// FormatAddrTxBytesIndex formats the index key, eg. atx-<addr><blockNumber><t|f><txhash>
-// The values for these arguments should be of determinate length and format, see test TestFormatAndResolveAddrTxBytesKey
-// for example.
-func FormatAddrTxBytesIndex(address, blockNumber, direction, txhash []byte) (key []byte) {
-	key = txAddressIndexPrefix
-	key = append(key, address...)
-	key = append(key, blockNumber...)
-	key = append(key, direction...)
-	key = append(key, txhash...)
-	return
-}
-
-// resolveAddrTxBytes resolves the index key to individual []byte values
-func resolveAddrTxBytes(key []byte) (address, blockNumber, direction, txhash []byte) {
-	// prefix = key[:4]
-	address = key[4:24] // common.AddressLength = 20
-	blockNumber = key[24:32]
-	direction = key[32:33] // == key[32] (1 byte)
-	txhash = key[33:]
-	return
 }
 
 // RmAddrTx removes all atxi indexes for a given tx in case of a transaction removal, eg.

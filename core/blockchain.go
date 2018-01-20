@@ -1372,46 +1372,6 @@ func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, sta
 	return txsCount, batch.Write()
 }
 
-// putBlockAddrTxsToBatch formats and puts keys for a given block to a db Batch.
-// Batch can be written afterward if no errors, ie. batch.Write()
-func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount int, err error) {
-	for _, tx := range block.Transactions() {
-		txsCount++
-
-		from, err := tx.From()
-		if err != nil {
-			return txsCount, err
-		}
-		// Note that len 8 because uint64 guaranteed <= 8 bytes.
-		bn := make([]byte, 8)
-		binary.LittleEndian.PutUint64(bn, block.NumberU64())
-
-		if err := putBatch.Put(FormatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), tx.Hash().Bytes()), nil); err != nil {
-			return txsCount, err
-		}
-
-		to := tx.To()
-		if to == nil {
-			continue
-		}
-		var tob []byte
-		copy(tob, to.Bytes())
-		if err := putBatch.Put(FormatAddrTxBytesIndex(tob, bn, []byte("t"), tx.Hash().Bytes()), nil); err != nil {
-			return txsCount, err
-		}
-	}
-	return txsCount, nil
-}
-
-// WriteBlockAddTxIndexes writes atx-indexes for a given block.
-func WriteBlockAddTxIndexes(indexDb ethdb.Database, block *types.Block) error {
-	batch := indexDb.NewBatch()
-	if _, err := putBlockAddrTxsToBatch(batch, block); err != nil {
-		return err
-	}
-	return batch.Write()
-}
-
 // WriteBlock writes the block to the chain.
 func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err error) {
 
