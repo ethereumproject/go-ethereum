@@ -37,6 +37,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
+	"io/ioutil"
 )
 
 func init() {
@@ -880,6 +881,123 @@ func TestFastVsFullChains(t *testing.T) {
 	for i := 0; i < len(blocks)+1; i++ {
 		if fhash, ahash := GetCanonicalHash(fastDb, uint64(i)), GetCanonicalHash(archiveDb, uint64(i)); fhash != ahash {
 			t.Errorf("block #%d: canonical hash mismatch: have %v, want %v", i, fhash, ahash)
+		}
+	}
+}
+
+func TestFastVsFullChainsATXI(t *testing.T) {
+	archiveDir, e := ioutil.TempDir("", "archive-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	fastDir, e := ioutil.TempDir("", "fast-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer os.RemoveAll(archiveDir)
+	defer os.RemoveAll(fastDir)
+
+	// Create the dbs
+	//
+	archiveDb, err := ethdb.NewLDBDatabase(archiveDir, 10, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fastDb, err := ethdb.NewLDBDatabase(fastDir, 10, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	MinGasLimit = big.NewInt(125000)
+
+	key1, err := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key2, err := crypto.HexToECDSA("8a1f9a8f95be41cd7ccb6168179afb4504aefe388d1e14474d32c45c72ce7b7a")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var (
+		addr1  = crypto.PubkeyToAddress(key1.PublicKey)
+		addr2  = crypto.PubkeyToAddress(key2.PublicKey)
+		signer = types.NewChainIdSigner(big.NewInt(63))
+		dbs    = []ethdb.Database{archiveDb, fastDb}
+		config = MakeDiehardChainConfig()
+	)
+
+	for i, db := range dbs {
+		t1, err := types.NewTransaction(0, addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t2, err := types.NewTransaction(1, addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t3, err := types.NewTransaction(0, addr1, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		genesis := WriteGenesisBlockForTesting(db,
+			GenesisAccount{addr1, big.NewInt(1000000)},
+			GenesisAccount{addr2, big.NewInt(1000000)},
+		)
+		blocks, receipts := GenerateChain(config, genesis, db, 3, func(i int, gen *BlockGen) {
+			if i == 0 {
+				gen.AddTx(t1)
+			}
+			if i == 1 {
+				gen.AddTx(t2)
+			}
+			if i == 2 {
+				gen.AddTx(t3)
+			}
+		})
+
+		blockchain, err := NewBlockChain(db, config, FakePow{}, new(event.TypeMux))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// turn on atxi
+		blockchain.SetAddTxIndex(db, true)
+		if i == 0 {
+			if n, err := blockchain.InsertChain(blocks); err != nil {
+				t.Fatalf("failed to process block %d: %v", n, err)
+			}
+		} else {
+			headers := make([]*types.Header, len(blocks))
+			for i, block := range blocks {
+				headers[i] = block.Header()
+			}
+			if n, err := blockchain.InsertHeaderChain(headers, 1); err != nil {
+				t.Fatalf("failed to insert header %d: %v", n, err)
+			}
+			if n, err := blockchain.InsertReceiptChain(blocks, receipts); err != nil {
+				t.Fatalf("failed to insert receipt %d: %v", n, err)
+			}
+		}
+
+		out := GetAddrTxs(db, addr1, 0, 0, "")
+		if len(out) != 3 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 3)
+		}
+		out = GetAddrTxs(db, addr1, 0, 0, "from")
+		if len(out) != 2 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 2)
+		}
+		out = GetAddrTxs(db, addr1, 0, 0, "to")
+		if len(out) != 1 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 1)
+		}
+		out = GetAddrTxs(db, addr2, 0, 0, "")
+		if len(out) != 3 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 3)
+		}
+		out = GetAddrTxs(db, addr2, 3, 3, "")
+		if len(out) != 1 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 1)
 		}
 	}
 }
