@@ -211,7 +211,7 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 		// s: standard
 		// c: contract
 		txKindOf := []byte("s")
-		if to.IsEmpty() {
+		if to == nil || to.IsEmpty() {
 			txKindOf = []byte("c")
 		}
 
