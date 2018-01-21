@@ -10,14 +10,15 @@ jobs:
           name: Install software...
           command: |
               brew install go
-              export GOPATH=~/go/
+              export GOPATH=$HOME/go/
               go version
               brew install bats
               brew install rust
               curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
               export PATH=$HOME/.cargo/bin:$PATH
               mkdir -p $GOPATH/src/github.com/ethereumproject
-              go get github.com/ethereumproject/janus
+              curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+              export PATH=$PATH:$PWD/janusbin
 
       - run:
           name: Compile SputnikVM-ffi
