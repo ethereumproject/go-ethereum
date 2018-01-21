@@ -1757,6 +1757,17 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		).Send(mlogBlockchain)
 	}
 
+	// Remove all atxis from old chain; indexes should only reflect canonical
+	if self.useAddTxIndex {
+		for _, block := range oldChain {
+			for _, tx := range block.Transactions() {
+				if err := RmAddrTx(self.indexesDb, tx); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	var addedTxs types.Transactions
 	// insert blocks. Order does not matter. Last block will be written in ImportChain itself which creates the new head properly
 	for _, block := range newChain {
@@ -1765,6 +1776,12 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		// write canonical receipts and transactions
 		if err := WriteTransactions(self.chainDb, block); err != nil {
 			return err
+		}
+		// Store the addr-tx indexes if enabled
+		if self.useAddTxIndex {
+			if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+				return err
+			}
 		}
 		receipts := GetBlockReceipts(self.chainDb, block.Hash())
 		// write receipts
@@ -1775,12 +1792,6 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		if err := WriteMipmapBloom(self.chainDb, block.NumberU64(), receipts); err != nil {
 			return err
 		}
-		// Store the addr-tx indexes if enabled
-		if self.useAddTxIndex {
-			if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
-				glog.Fatalf("failed to write block add-tx indexes", err)
-			}
-		}
 		addedTxs = append(addedTxs, block.Transactions()...)
 	}
 
@@ -1790,11 +1801,6 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	// receipts that were created in the fork must also be deleted
 	for _, tx := range diff {
 		DeleteReceipt(self.chainDb, tx.Hash())
-		if self.useAddTxIndex {
-			if err := RmAddrTx(self.indexesDb, tx); err != nil {
-				return err
-			}
-		}
 		DeleteTransaction(self.chainDb, tx.Hash())
 	}
 	// Must be posted in a goroutine because of the transaction pool trying
