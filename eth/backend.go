@@ -227,7 +227,12 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	// Blockchain will be assigned the db and atx enabled after blockchain is intialized below.
 	var indexesDb ethdb.Database
 	if config.UseAddrTxIndex {
-		indexesDb, err = ctx.OpenDatabase("indexes", config.DatabaseCache, config.DatabaseHandles)
+		// TODO: these are arbitrary numbers I just made up. Optimize?
+		ethdb.SetCacheRatio("chaindata", 0.95)
+		ethdb.SetHandleRatio("chaindata", 0.95)
+		ethdb.SetCacheRatio("indexes", 0.05)
+		ethdb.SetHandleRatio("indexes", 0.05)
+		indexesDb, err = ctx.OpenDatabase("indexes", config.DatabaseCache, config.DatabaseCache)
 		if err != nil {
 			return nil, err
 		}

@@ -8,9 +8,16 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"time"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/ethdb"
 )
 
 func buildAddrTxIndexCmd(ctx *cli.Context) error {
+
+	ethdb.SetCacheRatio("chaindata", 0.5)
+	ethdb.SetHandleRatio("chaindata", 1)
+	ethdb.SetCacheRatio("indexes", 0.5)
+	ethdb.SetHandleRatio("indexes", 1)
+
 	startIndex := uint64(ctx.Int("start"))
 	var stopIndex uint64
 

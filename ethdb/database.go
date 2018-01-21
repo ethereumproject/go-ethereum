@@ -33,7 +33,7 @@ import (
 
 var OpenFileLimit = 64
 
-// cacheRatio specifies how the total alloted cache is distributed between the
+// cacheRatio specifies how the total allotted cache is distributed between the
 // various system databases.
 var cacheRatio = map[string]float64{
 	"dapp":      0.0,
@@ -45,6 +45,14 @@ var cacheRatio = map[string]float64{
 var handleRatio = map[string]float64{
 	"dapp":      0.0,
 	"chaindata": 1.0,
+}
+
+func SetCacheRatio(db string, ratio float64) {
+	cacheRatio[db] = ratio
+}
+
+func SetHandleRatio(db string, ratio float64) {
+	handleRatio[db] = ratio
 }
 
 type LDBDatabase struct {
