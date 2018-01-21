@@ -217,7 +217,7 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 		}
 
 		to := tx.To()
-		if to == nil || to.IsEmpty() {
+		if to == nil {
 			continue
 		}
 		if err := putBatch.Put(formatAddrTxBytesIndex(to.Bytes(), bn, []byte("t"), tx.Hash().Bytes()), nil); err != nil {
