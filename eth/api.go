@@ -1622,15 +1622,15 @@ func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
 // AddressTransactions gets transactions for a given address.
 // Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
 // Returns a slice of strings of transactions hashes.
-func (api *PublicDebugAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string) (list []string, err error) {
-	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s", address, blockStartN, blockEndN, toOrFrom)
+func (api *PublicDebugAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string, txKindOf string) (list []string, err error) {
+	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
 	db, inUse := api.eth.BlockChain().GetAddTxIndex()
 	if !inUse {
 		return nil, errors.New("addr-tx indexing not enabled")
 	}
 
-	list = core.GetAddrTxs(db, address, blockStartN, blockEndN, toOrFrom)
+	list = core.GetAddrTxs(db, address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
 	// Since list is a slice, it can be nil, which returns 'null'.
 	// Should return empty 'array' if no txs found.

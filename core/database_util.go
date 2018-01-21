@@ -149,25 +149,27 @@ func formatAddrTxIterator(address common.Address) (iteratorPrefix []byte) {
 	return
 }
 
-// formatAddrTxBytesIndex formats the index key, eg. atx-<addr><blockNumber><t|f><txhash>
+// formatAddrTxBytesIndex formats the index key, eg. atx-<addr><blockNumber><t|f><s|c|><txhash>
 // The values for these arguments should be of determinate length and format, see test TestFormatAndResolveAddrTxBytesKey
 // for example.
-func formatAddrTxBytesIndex(address, blockNumber, direction, txhash []byte) (key []byte) {
+func formatAddrTxBytesIndex(address, blockNumber, direction, kindof, txhash []byte) (key []byte) {
 	key = txAddressIndexPrefix
 	key = append(key, address...)
 	key = append(key, blockNumber...)
 	key = append(key, direction...)
+	key = append(key, kindof...)
 	key = append(key, txhash...)
 	return
 }
 
 // resolveAddrTxBytes resolves the index key to individual []byte values
-func resolveAddrTxBytes(key []byte) (address, blockNumber, direction, txhash []byte) {
+func resolveAddrTxBytes(key []byte) (address, blockNumber, direction, kindof, txhash []byte) {
 	// prefix = key[:4]
 	address = key[4:24] // common.AddressLength = 20
-	blockNumber = key[24:32]
+	blockNumber = key[24:32] // uint64 via little endian
 	direction = key[32:33] // == key[32] (1 byte)
-	txhash = key[33:]
+	kindof = key[33:34]
+	txhash = key[34:]
 	return
 }
 
@@ -205,19 +207,26 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 		if err != nil {
 			return txsCount, err
 		}
+		to := tx.To()
+		// s: standard
+		// c: contract
+		txKindOf := []byte("s")
+		if to.IsEmpty() {
+			txKindOf = []byte("c")
+		}
+
 		// Note that len 8 because uint64 guaranteed <= 8 bytes.
 		bn := make([]byte, 8)
 		binary.LittleEndian.PutUint64(bn, block.NumberU64())
 
-		if err := putBatch.Put(formatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), tx.Hash().Bytes()), nil); err != nil {
+		if err := putBatch.Put(formatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), txKindOf, tx.Hash().Bytes()), nil); err != nil {
 			return txsCount, err
 		}
 
-		to := tx.To()
 		if to == nil {
 			continue
 		}
-		if err := putBatch.Put(formatAddrTxBytesIndex(to.Bytes(), bn, []byte("t"), tx.Hash().Bytes()), nil); err != nil {
+		if err := putBatch.Put(formatAddrTxBytesIndex(to.Bytes(), bn, []byte("t"), txKindOf, tx.Hash().Bytes()), nil); err != nil {
 			return txsCount, err
 		}
 	}
@@ -225,9 +234,12 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 }
 
 // GetAddrTxs gets the indexed transactions for a given account address.
-func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string) []string {
+func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string, kindof string) []string {
 	if len(direction) > 0 && !strings.Contains("btf", direction[:1]) {
-		glog.Fatal("Address transactions list signature requires empty string or [b|t|f] prefix")
+		glog.Fatal("Address transactions list signature requires direction param to be empty string or [b|t|f] prefix (eg. both, to, or from)")
+	}
+	if len(kindof) > 0 && !strings.Contains("bsc", kindof[:1]) {
+		glog.Fatal("Address transactions list signature requires 'kind of' param to be empty string or [s|c] prefix (eg. both, standard, or contract)")
 	}
 
 	// Have to cast to LevelDB to use iterator. Yuck.
@@ -244,6 +256,10 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 	if len(direction) > 0 {
 		wantDirectionB = direction[0]
 	}
+	var wantKindOf byte = 'b'
+	if len(kindof) > 0 {
+		wantKindOf = kindof[0]
+	}
 
 	// Create address prefix for iteration.
 	prefix := ethdb.NewBytesPrefix(formatAddrTxIterator(address))
@@ -252,7 +268,7 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 	for it.Next() {
 		key := it.Key()
 
-		_, blockNum, torf, txh := resolveAddrTxBytes(key)
+		_, blockNum, torf, k, txh := resolveAddrTxBytes(key)
 
 		// If atxi is smaller than blockstart, skip
 		if blockStartN > 0 && binary.LittleEndian.Uint64(blockNum) < blockStartN {
@@ -264,6 +280,10 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		}
 		// Ensure matching direction if spec'd
 		if wantDirectionB != 'b' && wantDirectionB != torf[0] {
+			continue
+		}
+		// Ensure filter for/agnostic transaction kind of (contract, standard, both)
+		if wantKindOf != 'b' && wantKindOf != k[0] {
 			continue
 		}
 		tx := common.ToHex(txh)
@@ -304,7 +324,7 @@ func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
 	it := ldb.NewIteratorRange(pre)
 	for it.Next() {
 		key := it.Key()
-		_, _, _, txh := resolveAddrTxBytes(key)
+		_, _, _, _, txh := resolveAddrTxBytes(key)
 		if bytes.Compare(txH.Bytes(), txh) == 0 {
 			removals = append(removals, key)
 			break // because there can be only one
@@ -322,7 +342,7 @@ func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
 		it := ldb.NewIteratorRange(pre)
 		for it.Next() {
 			key := it.Key()
-			_, _, _, txh := resolveAddrTxBytes(key)
+			_, _, _, _, txh := resolveAddrTxBytes(key)
 			if bytes.Compare(txH.Bytes(), txh) == 0 {
 				removals = append(removals, key)
 				break // because there can be only one

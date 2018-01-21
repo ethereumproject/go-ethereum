@@ -980,23 +980,23 @@ func TestFastVsFullChainsATXI(t *testing.T) {
 			}
 		}
 
-		out := GetAddrTxs(db, addr1, 0, 0, "")
+		out := GetAddrTxs(db, addr1, 0, 0, "", "")
 		if len(out) != 3 {
 			t.Errorf("[%d] got: %v, want: %v", i, len(out), 3)
 		}
-		out = GetAddrTxs(db, addr1, 0, 0, "from")
+		out = GetAddrTxs(db, addr1, 0, 0, "from", "")
 		if len(out) != 2 {
 			t.Errorf("[%d] got: %v, want: %v", i, len(out), 2)
 		}
-		out = GetAddrTxs(db, addr1, 0, 0, "to")
+		out = GetAddrTxs(db, addr1, 0, 0, "to", "")
 		if len(out) != 1 {
 			t.Errorf("[%d] got: %v, want: %v", i, len(out), 1)
 		}
-		out = GetAddrTxs(db, addr2, 0, 0, "")
+		out = GetAddrTxs(db, addr2, 0, 0, "", "")
 		if len(out) != 3 {
 			t.Errorf("[%d] got: %v, want: %v", i, len(out), 3)
 		}
-		out = GetAddrTxs(db, addr2, 3, 3, "")
+		out = GetAddrTxs(db, addr2, 3, 3, "", "")
 		if len(out) != 1 {
 			t.Errorf("[%d] got: %v, want: %v", i, len(out), 1)
 		}
@@ -1074,14 +1074,14 @@ func TestRmAddrTx(t *testing.T) {
 		t.Fatalf("failed to process block %d: %v", n, err)
 	}
 
-	out := GetAddrTxs(db, addr1, 0, 0, "")
+	out := GetAddrTxs(db, addr1, 0, 0, "", "")
 	if len(out) != 3 {
 		t.Errorf("got: %v, want: %v", len(out), 3)
 	}
 	if err := RmAddrTx(db, t1); err != nil {
 		t.Fatal(err)
 	}
-	out = GetAddrTxs(db, addr1, 0, 0, "")
+	out = GetAddrTxs(db, addr1, 0, 0, "", "")
 	if len(out) != 2 {
 		t.Errorf("got: %v, want: %v", len(out), 2)
 	}
@@ -1361,9 +1361,9 @@ func testChainTxReorgs(t *testing.T, db ethdb.Database, withATXI bool) {
 	if !withATXI {
 		return
 	}
-	txsh1 := GetAddrTxs(db, addr1, 0, 0, "")
-	txsh2 :=  GetAddrTxs(db, addr2, 0, 0, "")
-	txsh3 := GetAddrTxs(db, addr3, 0, 0, "")
+	txsh1 := GetAddrTxs(db, addr1, 0, 0, "", "")
+	txsh2 :=  GetAddrTxs(db, addr2, 0, 0, "", "")
+	txsh3 := GetAddrTxs(db, addr3, 0, 0, "", "")
 
 	allAtxis := txsh1
 	allAtxis = append(allAtxis, txsh2...)

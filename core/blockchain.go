@@ -808,7 +808,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 
 		for it.Next() {
 			key := it.Key()
-			_, bn, _, _ := resolveAddrTxBytes(key)
+			_, bn, _, _, _ := resolveAddrTxBytes(key)
 			n := binary.LittleEndian.Uint64(bn)
 			if n > head {
 				removals = append(removals, key)

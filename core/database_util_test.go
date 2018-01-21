@@ -383,24 +383,33 @@ func TestAddrTxStorage(t *testing.T) {
 	for it.Next() {
 		count++
 		//// Debugger -- it's kinda nice to see what the indexes look like
-		//ad, bn, tf, txh := resolveAddrTxBytes(it.Key())
-		//addr, blockn, direc, txhash := common.BytesToAddress(ad), binary.LittleEndian.Uint64(bn), string(tf), common.BytesToHash(txh)
-		//t.Log(addr.Hex(), blockn, direc, txhash.Hex())
+		ad, bn, tf, sc, txh := resolveAddrTxBytes(it.Key())
+		addr, blockn, direc, ko, txhash := common.BytesToAddress(ad), binary.LittleEndian.Uint64(bn), string(tf), string(sc), common.BytesToHash(txh)
+		t.Log(addr.Hex(), blockn, direc, ko, txhash.Hex())
 	}
 	it.Release()
 	if e := it.Error(); e != nil {
 		t.Fatal(e)
 	}
-	if count != 7 {
+	if count != 8 {
 		t.Errorf("want: %v, got: %v", 7, count)
 	}
 
-	out := GetAddrTxs(db, from2, 0, 0, "")
+	out := GetAddrTxs(db, from2, 0, 0, "", "")
 	if len(out) != 3 {
 		t.Errorf("want: %v, got: %v", 3, len(out))
 	}
 
-	out = GetAddrTxs(db, from1, 314, 314, "")
+	out = GetAddrTxs(db, from2, 0, 0, "", "c")
+	if len(out) !=1 {
+		t.Errorf("got: %v, want: %v", len(out), 1)
+	}
+	out = GetAddrTxs(db, common.Address{}, 0, 0, "", "")
+	if len(out) !=1 {
+		t.Errorf("got: %v, want: %v", len(out), 1)
+	}
+
+	out = GetAddrTxs(db, from1, 314, 314, "", "")
 	if len(out) != 1 {
 		t.Errorf("want: %v, got: %v", 1, len(out))
 	} else {
@@ -423,7 +432,7 @@ func TestAddrTxStorage(t *testing.T) {
 		}
 	}
 
-	out = GetAddrTxs(db, from2to, 314, 314, "to")
+	out = GetAddrTxs(db, from2to, 314, 314, "to", "")
 	if len(out) != 1 {
 		t.Errorf("want: %v, got: %v", 1, len(out))
 	} else {
@@ -450,7 +459,7 @@ func TestAddrTxStorage(t *testing.T) {
 			t.Errorf("got: %v, want: %v", f, from2)
 		}
 	}
-	out = GetAddrTxs(db, from2to, 314, 314, "from")
+	out = GetAddrTxs(db, from2to, 314, 314, "from", "")
 	if len(out) != 0 {
 		t.Errorf("want: %v, got: %v", 0, len(out))
 	}
@@ -460,12 +469,13 @@ func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
 	testAddr := common.Address{}
 	testBN := uint64(42)
 	testTorf := "f"
+	testKindOf := "s"
 	testTxH := common.Hash{}
 
 	testBNBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(testBNBytes, testBN)
 
-	key := formatAddrTxBytesIndex(testAddr.Bytes(), testBNBytes, []byte(testTorf), testTxH.Bytes())
+	key := formatAddrTxBytesIndex(testAddr.Bytes(), testBNBytes, []byte(testTorf), []byte(testKindOf), testTxH.Bytes())
 
 	// Test key/prefix iterator-ability.
 	itPrefix := formatAddrTxIterator(testAddr)
@@ -474,7 +484,7 @@ func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
 	}
 
 	// Reverse engineer key and ensure expected.
-	outAddr, outBNBytes, outTorf, outTxH := resolveAddrTxBytes(key)
+	outAddr, outBNBytes, outTorf, outKindOf, outTxH := resolveAddrTxBytes(key)
 
 	if gotAddr := common.BytesToAddress(outAddr); gotAddr != testAddr {
 		t.Errorf("got: %v, want: %v", gotAddr.Hex(), testAddr.Hex())
@@ -484,6 +494,9 @@ func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
 	}
 	if gotTorf := string(outTorf); gotTorf != testTorf {
 		t.Errorf("got: %v, want: %v", gotTorf, testTorf)
+	}
+	if gotKindOf := string(outKindOf); gotKindOf != testKindOf {
+		t.Errorf("got: %v, want: %v", gotKindOf, testKindOf)
 	}
 	if gotTxH := common.BytesToHash(outTxH); gotTxH != testTxH {
 		t.Errorf("got: %v, want: %v", gotTxH, testTxH)
@@ -497,6 +510,7 @@ func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
 		{outAddr, common.AddressLength},
 		{outBNBytes, 8},
 		{outTorf, 1},
+		{outKindOf, 1},
 		{outTxH, common.HashLength},
 	}
 	for _, s := range sizes {
