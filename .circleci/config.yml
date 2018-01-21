@@ -1,0 +1,36 @@
+version: 2
+jobs:
+  build-and-test:
+    macos:
+      xcode: "9.0"
+
+    steps:
+      - checkout
+      - run:
+          name: Install software...
+          command: |
+              brew install go
+              go version
+              brew install bats
+              brew install rust
+              curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
+              export PATH=$HOME/.cargo/bin:$PATH
+              mkdir -p $GOPATH/src/github.com/ethereumproject
+              go get github.com/ethereumproject/janus
+
+      - run:
+          name: Compile SputnikVM-ffi
+          command: |
+              git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
+              cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
+              cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+              export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv";
+              cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+
+      - run:
+          name: Build and run tests
+          command: |
+              go env
+              go test -tags=sputnikvm ./...
+              go build -tags=sputnikvm -ldflags "-X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
+              bats cmd/geth
