@@ -211,7 +211,10 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 		// s: standard
 		// c: contract
 		txKindOf := []byte("s")
-		if to == nil || to.IsEmpty() {
+		if to == nil {
+			to = &common.Address{}
+		}
+		if to.IsEmpty() {
 			txKindOf = []byte("c")
 		}
 
@@ -221,10 +224,6 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 
 		if err := putBatch.Put(formatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), txKindOf, tx.Hash().Bytes()), nil); err != nil {
 			return txsCount, err
-		}
-
-		if to == nil {
-			continue
 		}
 		if err := putBatch.Put(formatAddrTxBytesIndex(to.Bytes(), bn, []byte("t"), txKindOf, tx.Hash().Bytes()), nil); err != nil {
 			return txsCount, err
