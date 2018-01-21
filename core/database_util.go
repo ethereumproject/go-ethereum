@@ -289,6 +289,10 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 // It isn't an elegant function, but not a top priority for optimization because of
 // expected infrequency of it's being called.
 func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
+	if tx == nil {
+		return nil
+	}
+
 	ldb, ok := db.(*ethdb.LDBDatabase)
 	if !ok {
 		return nil
@@ -309,7 +313,7 @@ func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
 		key := it.Key()
 		_, _, _, txh := resolveAddrTxBytes(key)
 		if bytes.Compare(txH.Bytes(), txh) == 0 {
-			removals = append(removals, txh)
+			removals = append(removals, key)
 			break // because there can be only one
 		}
 	}
@@ -327,7 +331,7 @@ func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
 			key := it.Key()
 			_, _, _, txh := resolveAddrTxBytes(key)
 			if bytes.Compare(txH.Bytes(), txh) == 0 {
-				removals = append(removals, txh)
+				removals = append(removals, key)
 				break // because there can be only one
 			}
 		}
@@ -338,6 +342,8 @@ func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
 	}
 
 	for _, r := range removals {
+		//addr, bn, tf, txh := resolveAddrTxBytes(r)
+		//glog.Fatalln(len(removals), common.BytesToAddress(addr).Hex(), binary.LittleEndian.Uint64(bn), string(tf), common.Bytes2Hex(txh))
 		if err := db.Delete(r); err != nil {
 			return err
 		}
