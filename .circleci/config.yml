@@ -10,6 +10,7 @@ jobs:
           name: Install software...
           command: |
               brew install go
+              export GOPATH=~/go/
               go version
               brew install bats
               brew install rust
