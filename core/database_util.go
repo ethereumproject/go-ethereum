@@ -28,7 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"strconv"
+	"strings"
 )
 
 var (
@@ -61,17 +61,14 @@ func GetATXIBookmark(db ethdb.Database) uint64 {
 	if err != nil || v == nil {
 		return 0
 	}
-	s := string(v)
-	i, err := strconv.ParseUint(s, 10, 64)
-	if err != nil {
-		glog.Fatalln(err)
-	}
+	i := binary.LittleEndian.Uint64(v)
 	return i
 }
 
 func SetATXIBookmark(db ethdb.Database, i uint64) error {
-	s := strconv.FormatUint(i, 10)
-	return db.Put(txAddressBookmarkKey, []byte(s))
+	bn := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bn, i)
+	return db.Put(txAddressBookmarkKey, bn)
 }
 
 // GetCanonicalHash retrieves a hash assigned to a canonical block number.
@@ -229,8 +226,8 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 
 // GetAddrTxs gets the indexed transactions for a given account address.
 func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string) []string {
-	if direction != "to" && direction != "from" && direction != "both" && direction != "" {
-		glog.Fatal("Address transactions list signature requires 'to', 'from', or 'both' or '' (=both)")
+	if len(direction) > 0 && !strings.Contains("btf", direction[:1]) {
+		glog.Fatal("Address transactions list signature requires empty string or [b|t|f] prefix")
 	}
 
 	// Have to cast to LevelDB to use iterator. Yuck.
@@ -258,16 +255,12 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		_, blockNum, torf, txh := resolveAddrTxBytes(key)
 
 		// If atxi is smaller than blockstart, skip
-		if blockStartN > 0 {
-			if binary.LittleEndian.Uint64(blockNum) < blockStartN {
-				continue
-			}
+		if blockStartN > 0 && binary.LittleEndian.Uint64(blockNum) < blockStartN {
+			continue
 		}
 		// If atxi is greater than blockend, skip
-		if blockEndN > 0 {
-			if binary.LittleEndian.Uint64(blockNum) > blockEndN {
-				continue
-			}
+		if blockEndN > 0 && binary.LittleEndian.Uint64(blockNum) > blockEndN {
+			continue
 		}
 		// Ensure matching direction if spec'd
 		if wantDirectionB != 'b' && wantDirectionB != torf[0] {
@@ -342,8 +335,6 @@ func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
 	}
 
 	for _, r := range removals {
-		//addr, bn, tf, txh := resolveAddrTxBytes(r)
-		//glog.Fatalln(len(removals), common.BytesToAddress(addr).Hex(), binary.LittleEndian.Uint64(bn), string(tf), common.Bytes2Hex(txh))
 		if err := db.Delete(r); err != nil {
 			return err
 		}
