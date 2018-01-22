@@ -7,7 +7,12 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install software...
+          name: Debug
+          command: |
+              ls -R $HOME
+
+      - run:
+          name: Install software
           command: |
               brew install go
               export GOPATH=$HOME/go
