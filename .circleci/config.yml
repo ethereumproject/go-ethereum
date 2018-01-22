@@ -19,7 +19,6 @@ jobs:
               export PATH=$HOME/.cargo/bin:$PATH
               mkdir -p $GOPATH/src/github.com/ethereumproject
               curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
-              export PATH=$PATH:$PWD/janusbin
 
       - run:
           name: Compile SputnikVM-ffi
@@ -34,6 +33,7 @@ jobs:
           name: Build and run tests
           command: |
               export GOPATH=$HOME/go
+              export PATH=$PATH:$PWD/janusbin
               export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv";
               cd $GOPATH/src/github.com/ethereumproject/go-ethereum
               go env
