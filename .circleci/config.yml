@@ -6,10 +6,6 @@ jobs:
 
     steps:
       - checkout
-      - run:
-          name: Debug
-          command: |
-              ls -R $HOME
 
       - run:
           name: Install software
@@ -29,7 +25,7 @@ jobs:
           name: Compile SputnikVM-ffi
           command: |
               export GOPATH=$HOME/go
-              mv $HOME/project/go-ethereum $GOPATH/src/github.com/etherumproject/
+              mv $HOME/project $GOPATH/src/github.com/ethereumproject/go-ethereum
               git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
               cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
               cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
