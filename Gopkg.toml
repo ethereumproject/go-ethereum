@@ -112,3 +112,7 @@
 [[constraint]]
   name = "gopkg.in/urfave/cli.v1"
   revision = "01857ac33766ce0c93856370626f9799281c14f4"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ethereumproject/benchmark"
