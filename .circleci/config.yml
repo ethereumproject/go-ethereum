@@ -14,7 +14,7 @@ jobs:
       - checkout:
           path:  $GOPATH/src/github.com/ethereumproject/go-ethereum
       - run:
-          name: Install required software
+          name: Install required dev_env
           command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
@@ -23,26 +23,44 @@ jobs:
             brew install bats
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
             curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+      - save_cache:
+         key: dev_env
+         paths:
+             - janusbin/
+             - go/
+             - /usr/local/Cellar/
+
 
   build_sputnik_vm:
     macos:
       xcode: "9.0"
 
     steps:
+      - restore_cache:
+          key: dev_env
       - run:
           name: Compile SputnikVM-ffi
           command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
             git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
             cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
             cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+      - save_cache:
+         key: dev_env
+         paths:
+             - janusbin/
+             - go/
+             - /usr/local/Cellar/
 
   unit_tests:
     macos:
       xcode: "9.0"
 
     steps:
+      - restore_cache:
+          key: dev_env
       - run:
           name: Run unit tests
             export GOPATH=$HOME/go
@@ -58,6 +76,8 @@ jobs:
       xcode: "9.0"
 
     steps:
+      - restore_cache:
+          key: dev_env
       - run:
           name: Run bats tests
           command: |
