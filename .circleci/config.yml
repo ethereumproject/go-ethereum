@@ -4,17 +4,17 @@ jobs:
     macos:
       xcode: "9.0"
 
-      environment: 
-        GOPATH: $HOME/go
-        PATH: $PATH:$HOME/.cargo/bin:$HOME/janusbin
+    environment: 
+      GOPATH: $HOME/go
+      PATH: $PATH:$HOME/.cargo/bin:$HOME/janusbin
 
-      steps:
-        - run:
+    steps:
+      - run:
+          name: Prepare directories
           command: mkdir -p $GOPATH/src/github.com/ethereumproject
-        - checkout:
-          path:  $GOPATH/src/github.com/etherumproject/go-etherum
-
-        - run:
+      - checkout:
+          path:  $GOPATH/src/github.com/ethereumproject/go-ethereum
+      - run:
           name: Install required software
           command: |
             brew install go
@@ -25,30 +25,30 @@ jobs:
 
   build_sputnik_vm:
     macos:
-        xcode: "9.0"
+      xcode: "9.0"
 
-        environment: 
-          GOPATH: $HOME/go
-          PATH: $PATH:$HOME/.cargo/bin:$HOME/janusbin
+    environment: 
+      GOPATH: $HOME/go
+      PATH: $PATH:$HOME/.cargo/bin:$HOME/janusbin
 
-        steps:
-          - run:
-            name: Compile SputnikVM-ffi
-            command: |
-              git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
-              cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
-              cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+    steps:
+      - run:
+          name: Compile SputnikVM-ffi
+          command: |
+            git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
+            cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
+            cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
 
   unit_tests:
     macos:
       xcode: "9.0"
 
-      environment: 
-        GOPATH: $HOME/go
-        PATH: $PATH:$HOME/.cargo/bin:$HOME/janusbin
+    environment: 
+      GOPATH: $HOME/go
+      PATH: $PATH:$HOME/.cargo/bin:$HOME/janusbin
 
-      steps:
-        - run:
+    steps:
+      - run:
           name: Run unit tests
           command: |
             export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv";
@@ -60,12 +60,12 @@ jobs:
     macos:
       xcode: "9.0"
 
-      environment: 
-        GOPATH: $HOME/go
-        PATH: $PATH:$HOME/.cargo/bin:$HOME/janusbin
+    environment: 
+      GOPATH: $HOME/go
+      PATH: $PATH:$HOME/.cargo/bin:$HOME/janusbin
 
-      steps:
-        - run:
+    steps:
+      - run:
           name: Run bats tests
           command: |
             export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv";
