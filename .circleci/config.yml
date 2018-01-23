@@ -44,7 +44,6 @@ jobs:
           command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-            curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
             git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
             cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
             cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
