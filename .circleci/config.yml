@@ -51,6 +51,7 @@ jobs:
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
             export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv";
+            cd $GOPATH/src/github.com/ethereumproject/go-ethereum
             go install -tags=sputnikvm -ldflags "-X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
             bats cmd/geth
 
