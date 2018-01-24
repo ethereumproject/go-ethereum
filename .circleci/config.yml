@@ -24,7 +24,7 @@ jobs:
             go version
             brew install bats
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
-            curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+            cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
 
       - run:
           name: Compile SputnikVM-ffi
@@ -44,15 +44,6 @@ jobs:
             cd $GOPATH/src/github.com/ethereumproject/go-ethereum
             go env
             go test -tags=sputnikvm ./...
-
-      - run:
-          name: Run bats tests
-          command: |
-            export GOPATH=$HOME/go
-            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv";
-            go install -tags=sputnikvm -ldflags "-X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
-            bats cmd/geth
 
       - run:
           name: Run bats tests
