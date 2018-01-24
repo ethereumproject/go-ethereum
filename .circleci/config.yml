@@ -61,6 +61,6 @@ jobs:
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              ./deploy.sh
+              ./deploy.sh gcloud-circleci.json.enc
             fi
 
