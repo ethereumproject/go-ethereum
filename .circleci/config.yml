@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  prepare:
+  build:
     macos:
       xcode: "9.0"
 
@@ -11,10 +11,12 @@ jobs:
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
             mkdir -p $GOPATH/src/github.com/ethereumproject
+
       - checkout:
           path:  $GOPATH/src/github.com/ethereumproject/go-ethereum
+
       - run:
-          name: Install required dev_env
+          name: Install required software
           command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
@@ -23,22 +25,7 @@ jobs:
             brew install bats
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
             curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
-      - save_cache:
-         key: dev_env
-         paths:
-             - ~/go/
-             - ~/.cargo/
-             - /usr/local/Cellar/
-             - janusbin/
 
-
-  build_sputnik_vm:
-    macos:
-      xcode: "9.0"
-
-    steps:
-      - restore_cache:
-          key: dev_env
       - run:
           name: Compile SputnikVM-ffi
           command: |
@@ -47,38 +34,17 @@ jobs:
             git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
             cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
             cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
-      - save_cache:
-         key: dev_env
-         paths:
-             - ~/go/
-             - ~/.cargo/
-             - /usr/local/Cellar/
-             - janusbin/
 
-  unit_tests:
-    macos:
-      xcode: "9.0"
-
-    steps:
-      - restore_cache:
-          key: dev_env
       - run:
           name: Run unit tests
+          command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-          command: |
             export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv";
             cd $GOPATH/src/github.com/ethereumproject/go-ethereum
             go env
             go test -tags=sputnikvm ./...
 
-  integration_tests:
-    macos:
-      xcode: "9.0"
-
-    steps:
-      - restore_cache:
-          key: dev_env
       - run:
           name: Run bats tests
           command: |
@@ -88,17 +54,21 @@ jobs:
             go install -tags=sputnikvm -ldflags "-X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
             bats cmd/geth
 
-workflows:
-  version: 2
-  build_and_test:
-    jobs:
-      - prepare
-      - build_sputnik_vm:
-          requires:
-            - prepare
-      - unit_tests:
-          requires:
-            - build_sputnik_vm
-      - integration_tests:
-          requires:
-            - build_sputnik_vm
+      - run:
+          name: Run bats tests
+          command: |
+            export GOPATH=$HOME/go
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv";
+            go install -tags=sputnikvm -ldflags "-X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
+            bats cmd/geth
+
+      - deploy:
+          name: Deploy to builds.etcdevteam.com
+          command: |
+            export GOPATH=$HOME/go
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              ./deploy.sh
+            fi
+
