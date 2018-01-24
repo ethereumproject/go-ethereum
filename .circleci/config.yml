@@ -13,7 +13,7 @@ jobs:
             mkdir -p $GOPATH/src/github.com/ethereumproject
 
       - checkout:
-          path:  $GOPATH/src/github.com/ethereumproject/go-ethereum
+          path:  ~/go/src/github.com/ethereumproject/go-ethereum
 
       - run:
           name: Install required software
