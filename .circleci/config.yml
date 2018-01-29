@@ -29,7 +29,7 @@ deploy_steps: &deploy_steps
           export GOPATH=$HOME/go
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
-          cd $GOPATH/bin/geth ./
+          cp $GOPATH/bin/geth ./
           ./deploy.sh gcloud-circleci.json.enc
 
 unit_tests_steps: &unit_tests_steps
