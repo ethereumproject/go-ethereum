@@ -252,7 +252,6 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 		progressRateD.value = fmt.Sprintf(strScanLenOf(xprogressRateD, false), formatProgressRateD(-1, txs, mgas))
 		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, true), "txs/mgas")
 	default:
-		panic("unreachable")
 	}
 	return current
 }
