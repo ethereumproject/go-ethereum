@@ -252,6 +252,8 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 		progressRateD.value = fmt.Sprintf(strScanLenOf(xprogressRateD, false), formatProgressRateD(-1, txs, mgas))
 		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, true), "txs/mgas")
 	default:
+		// This will be reached only when currentMode changes during the execution of the previous ~40 lines, which is very rarely.
+		// There is no harm done in this (default) case except having run a few unnecessary operations.
 	}
 	return current
 }

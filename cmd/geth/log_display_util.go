@@ -28,7 +28,8 @@ func (e logEventType) String() string {
 
 // Global bookmark vars.
 // These are accessible globally to allow inter-communication between display system event handlers.
-// TODO: ensure handler cooperation; ie use a mutex, atomic, or something
+// Note: since these may be read/modified from concurrent operations (eg. handler fns), these variables are NOT thread safe.
+// In the case that a logging operation requires thread safety, use externally implemented locking.
 var currentMode = lsModeDiscover
 var currentBlockNumber uint64
 var chainEventLastSent time.Time
