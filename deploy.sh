@@ -7,7 +7,12 @@ if [ $1 ]; then
 	KEY_FILE=$1
 fi
 
-GETH_ARCHIVE_NAME="geth-classic-$TRAVIS_OS_NAME-$(janus version -format='TAG_OR_NIGHTLY')"
+OS_NAME=`echo $(uname) | tr "[:upper:]" "[:lower:]"`
+if [ $OS_NAME == "darwin" ]; then
+	OS_NAME="osx"
+fi
+
+GETH_ARCHIVE_NAME="geth-classic-$OS_NAME-$(janus version -format='TAG_OR_NIGHTLY')"
 zip "$GETH_ARCHIVE_NAME.zip" geth
 tar -zcf "$GETH_ARCHIVE_NAME.tar.gz" geth
 
