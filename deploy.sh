@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 KEY_FILE="./gcloud-travis.json.enc"
 if [ $1 ]; then
 	KEY_FILE=$1
