@@ -1,7 +1,7 @@
 sputnik_vm_steps: &sputnik_vm_steps
   steps:
     - restore_cache:
-        key: v4-toolchain-{{ arch }}
+        key: v6-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - run:
@@ -20,7 +20,7 @@ sputnik_vm_steps: &sputnik_vm_steps
 deploy_steps: &deploy_steps
   steps:
     - restore_cache:
-        key: v4-toolchain-{{ arch }}
+        key: v6-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - deploy:
@@ -35,7 +35,7 @@ deploy_steps: &deploy_steps
 unit_tests_steps: &unit_tests_steps
   steps:
     - restore_cache:
-        key: v4-toolchain-{{ arch }}
+        key: v6-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - run:
@@ -54,7 +54,7 @@ unit_tests_steps: &unit_tests_steps
 bats_tests_steps: &bats_tests_steps
     steps:
       - restore_cache:
-          key: v4-toolchain-{{ arch }}
+          key: v6-toolchain-{{ arch }}
       - attach_workspace:
           at: ~/
       - run:
@@ -81,7 +81,7 @@ jobs:
       xcode: "9.0"
     steps:
       - restore_cache:
-          key: v4-toolchain-{{ arch }}
+          key: v6-toolchain-{{ arch }}
       - run:
           name: Prepare directories
           command: |
@@ -97,6 +97,7 @@ jobs:
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
             brew install go
             brew install bats
+            brew install gpg2
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
             if [ ! -x ~/janusbin/janus ]; then
               cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
@@ -106,12 +107,13 @@ jobs:
           paths:
             - go/src/github.com/ethereumproject/*
       - save_cache:
-          key: v4-toolchain-{{ arch }}
+          key: v6-toolchain-{{ arch }}
           paths:
             - /usr/local/bin/bats
             - /usr/local/bin/go
             - /usr/local/bin/godoc
             - /usr/local/bin/gofmt
+            - /usr/local/bin/gpg
             - /usr/local/Cellar
             - /usr/local/Homebrew
             - ~/.cargo
@@ -123,7 +125,7 @@ jobs:
       - image: circleci/golang:1.9
     steps:
       - restore_cache:
-          key: v4-toolchain-{{ arch }}
+          key: v6-toolchain-{{ arch }}
       - run:
           name: Prepare directories
           command: |
@@ -149,7 +151,7 @@ jobs:
           paths:
             - go/src/github.com/ethereumproject/*
       - save_cache:
-          key: v4-toolchain-{{ arch }}
+          key: v6-toolchain-{{ arch }}
           paths:
             - ~/bin
             - ~/libexec

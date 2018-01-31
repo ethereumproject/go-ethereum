@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 KEY_FILE="./gcloud-travis.json.enc"
 if [ $1 ]; then
 	KEY_FILE=$1
@@ -13,4 +15,8 @@ mkdir deploy
 mv *.zip *.tar.gz deploy/
 ls -l deploy/
 
-janus deploy -to="builds.etcdevteam.com/go-ethereum/$(janus version -format='v%M.%m.x')/" -files="./deploy/*" -key="$KEY_FILE"
+GPG=""
+if [ $CIRCLECI ]; then
+	GPG=-gpg
+fi
+janus deploy $GPG -to="builds.etcdevteam.com/go-ethereum/$(janus version -format='v%M.%m.x')/" -files="./deploy/*" -key="$KEY_FILE"
