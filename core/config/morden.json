@@ -115,7 +115,7 @@
             },
             {
                 "name": "Defuse Difficulty Bomb",
-                "block": 2150721,
+                "block": 2300000,
                 "features": [
                     {
                         "id": "difficulty",
