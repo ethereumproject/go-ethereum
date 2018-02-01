@@ -68,7 +68,7 @@ func (w *watcher) loop() {
 
 	err := notify.Watch(w.ac.getKeydir(), w.ev, notify.All)
 	if err != nil {
-		glog.V(logger.Detail).Infof("can't watch %s: %v", w.ac.getKeydir(), err)
+		glog.V(logger.Warn).Errorf("can't watch %s: %v", w.ac.getKeydir(), err)
 		return
 	}
 	defer notify.Stop(w.ev)

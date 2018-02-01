@@ -26,6 +26,20 @@ import (
 
 var (
 	// General settings
+	PprofFlag = cli.IntFlag{
+		Name:  "pprof",
+		Usage: "Enable runtime profiling with web interface",
+		Value: 0,
+	}
+	PprofIntervalFlag = cli.IntFlag{
+		Name:  "pprof-interval",
+		Usage: "Set interval in seconds for runtime profiling",
+		Value: 5,
+	}
+	SputnikVMFlag = cli.BoolFlag{
+		Name:  "sputnikvm",
+		Usage: "Use SputnikVM Ethereum Virtual Machine implementation",
+	}
 	DataDirFlag = DirectoryFlag{
 		Name:  "data-dir,datadir",
 		Usage: "Data directory for the databases and keystore",
@@ -56,6 +70,7 @@ var (
 	NodeNameFlag = cli.StringFlag{
 		Name:  "identity,name",
 		Usage: "Custom node name",
+		Value: "",
 	}
 	NatspecEnabledFlag = cli.BoolFlag{
 		Name:  "natspec",
@@ -103,6 +118,7 @@ var (
 	MiningGPUFlag = cli.StringFlag{
 		Name:  "miner-gpus,minergpus",
 		Usage: "List of GPUs to use for mining (e.g. '0,1' will use the first two GPUs found)",
+		Value: "",
 	}
 	TargetGasLimitFlag = cli.StringFlag{
 		Name:  "target-gas-limit,targetgaslimit",
@@ -138,27 +154,69 @@ var (
 		Usage: "Password file to use for non-inteactive password input",
 		Value: "",
 	}
-
 	// logging and debug settings
-	VerbosityFlag = cli.GenericFlag{
+	NeckbeardFlag = cli.BoolFlag{
+		Name:  "neckbeard",
+		Usage: "Use verbose->stderr defaults for logging (verbosity=5,log-status='sync=60')",
+	}
+	VerbosityFlag = cli.IntFlag{
 		Name:  "verbosity",
 		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=core, 5=debug, 6=detail",
-		Value: glog.GetVerbosity(),
+		Value: glog.DefaultVerbosity,
 	}
-	VModuleFlag = cli.GenericFlag{
+	DisplayFlag = cli.IntFlag{
+		Name:  "display",
+		Usage: "Display verbosity: 0=silent, 1=basics, 2=status, 3=status+events",
+		Value: glog.DefaultDisplay,
+	}
+	DisplayFormatFlag = cli.StringFlag{
+		Name:  "display-fmt",
+		Usage: "Display format (experimental). Current possible values are [basic|green|dash].",
+		Value: "basic",
+	}
+	VModuleFlag = cli.StringFlag{
 		Name:  "vmodule",
 		Usage: "Per-module verbosity: comma-separated list of <pattern>=<level> (e.g. eth/*=6,p2p=5)",
-		Value: glog.GetVModule(),
+		Value: "",
 	}
-	LogDirFlag = DirectoryFlag{
+	LogDirFlag = cli.StringFlag{
 		Name:  "log-dir,logdir",
-		Usage: "Directory in which to write log files.",
-		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "logs")},
+		Usage: "Directory in which to write log files",
+		Value: filepath.Join(common.DefaultDataDir(), "<chain>", glog.DefaultLogDirName),
+	}
+	LogMaxSizeFlag = cli.StringFlag{
+		Name:  "log-max-size,log-maxsize",
+		Usage: "Maximum size of a single log file (in bytes)",
+		Value: "30M",
+	}
+	LogMinSizeFlag = cli.StringFlag{
+		Name:  "log-min-size,log-minsize",
+		Usage: "Minimum size of a log file, to be considered for log-rotation (in bytes)",
+		Value: "0",
+	}
+	LogMaxTotalSizeFlag = cli.StringFlag{
+		Name:  "log-total-max-size,log-totalmaxsize",
+		Usage: "Maximum total size of all (current and archived) log files (in bytes)",
+		Value: "0",
+	}
+	LogIntervalFlag = cli.StringFlag{
+		Name:  "log-rotation-interval",
+		Usage: "Log rotation interval, one of values: never, hourly, daily, weekly, monthly",
+		Value: "hourly",
+	}
+	LogMaxAgeFlag = cli.StringFlag{
+		Name:  "log-max-age,log-maxage",
+		Usage: "Maximum age of the oldest log file, valid time units: h, d, w (hours, days, weeks)",
+		Value: "0",
+	}
+	LogCompressFlag = cli.BoolTFlag{
+		Name:  "log-compress,log-gzip",
+		Usage: "Enable/disable GZIP compression of archived log files (enabled by default)",
 	}
 	LogStatusFlag = cli.StringFlag{
 		Name:  "log-status",
-		Usage: `Toggle interval-based STATUS logs: comma-separated list of <pattern>=<interval>`,
-		Value: "sync=60",
+		Usage: `Configure interval-based status logs: comma-separated list of <pattern>=<interval>. Use 'off' or '0' to disable.`,
+		Value: defaultStatusLog,
 	}
 	MLogFlag = cli.StringFlag{
 		Name:  "mlog",
@@ -168,8 +226,7 @@ var (
 	MLogDirFlag = DirectoryFlag{
 		Name:  "mlog-dir",
 		Usage: "Directory in which to write machine log files",
-		// TODO: move to chain-subdir?
-		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mlogs")},
+		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mainnet", "mlogs")},
 	}
 	MLogComponentsFlag = cli.StringFlag{
 		Name:  "mlog-components",
@@ -190,6 +247,7 @@ var (
 	MetricsFlag = cli.StringFlag{
 		Name:  "metrics",
 		Usage: "Enables metrics reporting. When the value is a path, either relative or absolute, then a log is written to the respective file.",
+		Value: "",
 	}
 	FakePoWFlag = cli.BoolFlag{
 		Name:  "fake-pow, fakepow",
@@ -262,10 +320,12 @@ var (
 	ExecFlag = cli.StringFlag{
 		Name:  "exec",
 		Usage: "Execute JavaScript statement (only in combination with console/attach)",
+		Value: "",
 	}
 	PreloadJSFlag = cli.StringFlag{
 		Name:  "preload",
 		Usage: "Comma separated list of JavaScript files to preload into the console",
+		Value: "",
 	}
 
 	// Network Settings

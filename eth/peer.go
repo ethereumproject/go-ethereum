@@ -213,20 +213,20 @@ func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, rever
 // RequestBodies fetches a batch of blocks' bodies corresponding to the hashes
 // specified.
 func (p *peer) RequestBodies(hashes []common.Hash) error {
-	glog.V(logger.Debug).Infof("%v fetching %d block bodies", p, len(hashes))
+	glog.V(logger.Debug).Infof("%v fetching %d block bodies first=%s", p, len(hashes), hashes[0].Hex())
 	return p2p.Send(p.rw, GetBlockBodiesMsg, hashes)
 }
 
 // RequestNodeData fetches a batch of arbitrary data from a node's known state
 // data, corresponding to the specified hashes.
 func (p *peer) RequestNodeData(hashes []common.Hash) error {
-	glog.V(logger.Debug).Infof("%v fetching %v state data", p, len(hashes))
+	glog.V(logger.Debug).Infof("%v fetching %v state data first=%s", p, len(hashes), hashes[0].Hex())
 	return p2p.Send(p.rw, GetNodeDataMsg, hashes)
 }
 
 // RequestReceipts fetches a batch of transaction receipts from a remote node.
 func (p *peer) RequestReceipts(hashes []common.Hash) error {
-	glog.V(logger.Debug).Infof("%v fetching %v receipts", p, len(hashes))
+	glog.V(logger.Debug).Infof("%v fetching %v receipts first=%s", p, len(hashes), hashes[0].Hex())
 	return p2p.Send(p.rw, GetReceiptsMsg, hashes)
 }
 
@@ -281,7 +281,7 @@ func (p *peer) readStatus(network int, status *statusData, genesis common.Hash) 
 		return errResp(ErrDecode, "msg %v: %v", msg, err)
 	}
 	if status.GenesisBlock != genesis {
-		return errResp(ErrGenesisBlockMismatch, "%x (!= %x)", status.GenesisBlock, genesis)
+		return errResp(ErrGenesisBlockMismatch, "%x (!= %x…)", status.GenesisBlock, genesis.Bytes()[:8])
 	}
 	if int(status.NetworkId) != network {
 		return errResp(ErrNetworkIdMismatch, "%d (!= %d)", status.NetworkId, network)

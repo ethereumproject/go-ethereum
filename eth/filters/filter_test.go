@@ -28,7 +28,13 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 func makeReceipt(addr common.Address) *types.Receipt {
 	receipt := types.NewReceipt(nil, new(big.Int))

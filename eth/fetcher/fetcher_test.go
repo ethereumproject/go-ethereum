@@ -32,6 +32,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var (
@@ -43,6 +44,9 @@ var (
 )
 
 func init() {
+	glog.SetV(0)
+	glog.SetD(0)
+
 	var err error
 	testKey, err = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	if err != nil {
