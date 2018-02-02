@@ -178,6 +178,8 @@ jobs:
   linux_unit_tests:
     docker:
       - image: circleci/golang:1.9
+        environment:
+            GOMAXPROCS: 2
     <<: *unit_tests_steps
 
   mac_bats_tests:
@@ -236,42 +238,40 @@ workflows:
             tags:
               only: /.*/
 
-# Commented out Linux build, becase there are still some problems, and we can work
-# with Travis-CI for Linux for now.
 # Known problems:
 # Linux build goes OOM during `go test` phase in `eth/downloader`
 # TODO(tzdybal): there is a problem with installation of `net` (triggered by `netgo` tag)
 #                - it seems that `sudo go install <something>` is required
-#  linux_build:
-#    jobs:
-#      - linux_env_setup:
-#          filters:
-#            tags:
-#              only: /.*/
-#      - linux_sputnik_vm:
-#          requires:
-#            - linux_env_setup
-#          filters:
-#            tags:
-#              only: /.*/
-#      - linux_unit_tests:
-#          requires:
-#            - linux_sputnik_vm
-#          filters:
-#            tags:
-#              only: /.*/
-#      - linux_bats_tests:
-#          requires:
-#            - linux_sputnik_vm
-#          filters:
-#            tags:
-#              only: /.*/
-#      - linux_deploy:
-#          requires:
-#            - linux_unit_tests
-#            - linux_bats_tests
-#          filters:
-#            branches:
-#              only: master
-#            tags:
-#              only: /.*/
+  linux_build:
+    jobs:
+      - linux_env_setup:
+          filters:
+            tags:
+              only: /.*/
+      - linux_sputnik_vm:
+          requires:
+            - linux_env_setup
+          filters:
+            tags:
+              only: /.*/
+      - linux_unit_tests:
+          requires:
+            - linux_sputnik_vm
+          filters:
+            tags:
+              only: /.*/
+      - linux_bats_tests:
+          requires:
+            - linux_sputnik_vm
+          filters:
+            tags:
+              only: /.*/
+      - linux_deploy:
+          requires:
+            - linux_unit_tests
+            - linux_bats_tests
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/
