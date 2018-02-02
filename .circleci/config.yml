@@ -67,7 +67,10 @@ bats_tests_steps: &bats_tests_steps
             fi
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin:$HOME/bin
             cd $GOPATH/src/github.com/ethereumproject/go-ethereum
-            go install -tags="sputnikvm netgo" -ldflags "-X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
+            # go install ... doesn't work with netgo on CircleCI on Linux
+            go build -tags="sputnikvm netgo" -ldflags "-X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
+            mkdir -p $GOPATH/bin
+            mv ./geth $GOPATH/bin/
             bats cmd/geth
       - persist_to_workspace:
           root: ~/
@@ -238,10 +241,6 @@ workflows:
             tags:
               only: /.*/
 
-# Known problems:
-# Linux build goes OOM during `go test` phase in `eth/downloader`
-# TODO(tzdybal): there is a problem with installation of `net` (triggered by `netgo` tag)
-#                - it seems that `sudo go install <something>` is required
   linux_build:
     jobs:
       - linux_env_setup:
