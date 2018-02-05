@@ -47,13 +47,14 @@ package main
 
 import (
 	"time"
+	"fmt"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/gizak/termui"
+	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/core"
-	"fmt"
+	"github.com/ethereumproject/go-ethereum/metrics"
 )
 
 const (
@@ -85,13 +86,19 @@ var (
 )
 
 
-func tuiDrawDash(e *eth.Ethereum) {
+func tuiDrawDash(e *eth.Ethereum, ctx *cli.Context) {
 	if currentMode == lsModeImport || currentMode == lsModeDiscover {
 		syncheightGauge.Label = ""
 	}
 	if e != nil && e.IsListening() {
 		cb := e.BlockChain().GetBlockByNumber(currentBlockNumber)
-		syncheightGauge.BorderLabel = fmt.Sprintf("%s | local_head ◼ n=%d ⬡=%s txs=%d time=%v ago", currentMode, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(), time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
+		cid := e.ChainConfig().GetChainID()
+		cnet := e.NetVersion()
+		// Is there any other way retrieve chain name(mainnet or morden)?
+		cname := mustMakeChainIdentity(ctx)
+		syncheightGauge.BorderLabel = fmt.Sprintf("Mode=%s Chain=%v(%d) Chain Id=%d | local_head ◼ n=%d ⬡=%s txs=%d time=%v ago",
+			currentMode, cname, cnet, cid, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(),
+				time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
 	}
 	termui.Render(syncheightGauge, peerCountSparkHolder, peerList, blkMgasTxsSparkHolder)
 }
@@ -135,7 +142,7 @@ func tuiSetupDashComponents() {
 	peerCountSpark.Height = tuiMediumHeight
 	//// Peer count spark holder
 	peerCountSparkHolder = termui.NewSparklines(peerCountSpark)
-	peerCountSparkHolder.BorderLabel = "Peers (0)"
+	peerCountSparkHolder.BorderLabel = "Peers (0) | Bytes (0 rx / 0 tx) | Mean Rate (0 rx / 0 tx)"
 	peerCountSparkHolder.BorderLabelFg = termui.ColorBlue
 	peerCountSparkHolder.BorderBottom = false
 	peerCountSparkHolder.X = 0
@@ -185,7 +192,7 @@ var dashDisplaySystem = displayEventHandlers{
 						_, c, _, _, _ := e.Downloader().Progress()
 						currentBlockNumber = c
 					}
-					tuiDrawDash(e)
+					tuiDrawDash(e, ctx)
 
 					termui.Loop()
 				}()
@@ -205,6 +212,7 @@ var dashDisplaySystem = displayEventHandlers{
 						localheight = head
 					}
 					syncheightGauge.Percent = int(calcPercent(localheight, syncheight))
+
 					if localheight >= syncheight {
 						syncheightGauge.Label = fmt.Sprintf("%d", localheight)
 						syncheightGauge.BarColor = termui.ColorGreen
@@ -230,7 +238,7 @@ var dashDisplaySystem = displayEventHandlers{
 						blkMgasTxsSparkHolder.Lines[2].Title = fmt.Sprintf("n=%d] ∑ txs=%3d/%4dblks", localheight, txs, blks)
 					}
 					currentBlockNumber = localheight
-					tuiDrawDash(e)
+					tuiDrawDash(e, ctx)
 				default:
 					panic(d)
 				}
@@ -252,16 +260,22 @@ var dashDisplaySystem = displayEventHandlers{
 		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
+				rxP2P := metrics.P2PInBytes
+				txP2P := metrics.P2POutBytes
+				rxBytes := rxP2P.Count()
+				txByes := txP2P.Count()
+				rxRateMean := rxP2P.RateMean()
+				txRateMean := txP2P.RateMean()
 				peers := e.Downloader().GetPeers()
 				peerCountSparkHolder.Lines[0].Data = addDataWithLimit(peerCountSparkHolder.Lines[0].Data, int(peers.Len()), tuiDataLimit)
-				peerCountSparkHolder.BorderLabel = fmt.Sprintf("Peers (%d / %d)", int(peers.Len()), ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
-
+				peerCountSparkHolder.BorderLabel = fmt.Sprintf("Peers (%d / %d) | Bytes (%d rx / %d tx) | Mean Rate (%.2f rx / %.2f tx)",
+					int(peers.Len()), ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)), rxBytes, txByes, rxRateMean, txRateMean)
 				peerListData = []string{}
 				for _, p := range peers.AllPeers() {
 					peerListData = append(peerListData, p.String())
 				}
 				peerList.Items = peerListData
-				tuiDrawDash(e)
+				tuiDrawDash(e, ctx)
 			},
 		},
 	},
