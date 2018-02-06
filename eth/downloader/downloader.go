@@ -497,6 +497,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 	}
 
 	fetchers := []func() error {
+		func() error { return d.processContent() },
 		func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
 		func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
 		func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
