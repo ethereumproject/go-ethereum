@@ -30,12 +30,38 @@ import (
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/metrics"
+	"runtime"
+	"os/exec"
+	"regexp"
 	"time"
 )
 
 // Version is the application revision identifier. It can be set with the linker
 // as in: go build -ldflags "-X main.Version="`git describe --tags`
 var Version = "source"
+
+// setVersionIfDefaulty uses git to derive a meaningful version value if not set/overridden by -ldflags
+func setVersionIfDefaulty() {
+	if Version == "source" {
+		// Get the path of this file
+		_, f, _, ok := runtime.Caller(1)
+		if ok {
+			d := filepath.Dir(f) // .../cmd/geth
+			// Derive git project dir
+			d = filepath.Join(d, "..", "..", ".git")
+			// Ignore error
+			if o, err := exec.Command("git", "--git-dir", d, "describe", "--tags").Output(); err == nil {
+				// Remove newline
+				re := regexp.MustCompile(`\r?\n`) // Handle both Windows carriage returns and *nix newlines
+				Version = "source_" + re.ReplaceAllString(string(o), "")
+			}
+		}
+	}
+}
+
+func init() {
+	setVersionIfDefaulty()
+}
 
 func makeCLIApp() (app *cli.App) {
 	app = cli.NewApp()
