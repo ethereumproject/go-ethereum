@@ -45,6 +45,8 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"math/rand"
 	"os/user"
+
+	"github.com/denisbrodbeck/machineid"
 )
 
 const (
@@ -86,24 +88,6 @@ func randStringBytes(n int) string {
 	return string(b)
 }
 
-// will only get sessionID on shutdown, on start fn will generate and return it
-func mlogClientHandler(sessionID string, signal os.Signal, err error, details ...interface{}) {
-	mlogReceiver := mlogClientShutdown
-
-	if signal == nil {
-		mlogReceiver = mlogClientStartup
-	} else {
-		details = append(details, signal.String())
-		details = append(details, err)
-	}
-
-	mlogReceiver.AssignDetails(
-		details...,
-	).Send(mlogClient)
-
-	return
-}
-
 func StartNode(stack *node.Node) {
 	var startTime time.Time
 	if err := stack.Start(); err != nil {
@@ -120,22 +104,28 @@ func StartNode(stack *node.Node) {
 		Fatalf("Nil chain configuration")
 	}
 
-	hn, e := os.Hostname()
+	id, e := machineid.ID()
+	mid, e := machineid.ProtectedID(id)
 	if e != nil {
-		Fatalf("%v", e)
-	}
-	var userName string
-	current, e := user.Current()
-	if e == nil {
-		userName = current.Username
-	}
+		glog.D(logger.Warn).Warnln("mlog: Could not get machine id [err=%v]. Using 'hostname.username' instead.")
+		hn, e := os.Hostname()
+		if e != nil {
+			Fatalf("%v", e)
+		}
+		var userName string
+		current, e := user.Current()
+		if e == nil {
+			userName = current.Username
+		}
 
-	// Sanitize userName since it may contain filepath separators on Windows.
-	userName = strings.Replace(userName, `\`, "_", -1)
+		// Sanitize userName since it may contain filepath separators on Windows.
+		userName = strings.Replace(userName, `\`, "_", -1)
+		mid = hn + "." + userName
+	}
 
 	// Assign shared start/stop details
 	details := []interface{}{
-		hn + "." + userName,
+		mid,
 		os.Getpid(),
 		Version,
 		nodeInfo.ID,
