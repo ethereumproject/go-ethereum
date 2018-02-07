@@ -32,6 +32,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 type mlogFormatT uint
@@ -53,7 +54,7 @@ var (
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
 	// with MLogRegisterAvailable.
-	MLogRegistryAvailable = make(map[mlogComponent][]MLogT)
+	MLogRegistryAvailable = make(map[mlogComponent][]*MLogT)
 	// MLogRegistryActive contains all registered mlog component and their respective loggers.
 	MLogRegistryActive = make(map[mlogComponent]*Logger)
 	mlogRegLock        sync.RWMutex
@@ -95,6 +96,7 @@ func (f mlogFormatT) String() string {
 // MLogT defines an mlog LINE
 type MLogT struct {
 	sync.Mutex
+	Client *common.ClientSessionIdentityT `json:"cs"`
 	Description string        `json:"-"`
 	Receiver    string        `json:"receiver"`
 	Verb        string        `json:"verb"`
@@ -151,9 +153,18 @@ func MlogEnabled() bool {
 // MLogRegisterAvailable is called for each log component variable from a package/mlog.go file
 // as they set up their mlog vars.
 // It registers an mlog component as Available.
-func MLogRegisterAvailable(name string, lines []MLogT) mlogComponent {
+func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
+
+	// Ensure exists... dumb, but safety first! FIXME
+	if common.GetClientSessionIdentity() == nil {
+		common.SetClientSessionIdentity()
+	}
+
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
+	for _, l := range lines {
+		l.Client = common.ClientSessionIdentity
+	}
 	MLogRegistryAvailable[c] = lines
 	mlogRegLock.Unlock()
 	return c
@@ -331,7 +342,7 @@ func (m *MLogT) FormatKV() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", m.Client, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -347,7 +358,7 @@ func (m *MLogT) FormatPlain() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", m.Client, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -365,6 +376,7 @@ func (m *MLogT) MarshalJSON() ([]byte, error) {
 	var obj = make(map[string]interface{})
 	obj["event"] = m.EventName()
 	obj["ts"] = time.Now()
+	obj["client"] = m.Client
 	for _, d := range m.Details {
 		obj[d.EventName()] = d.Value
 	}
@@ -374,7 +386,7 @@ func (m *MLogT) MarshalJSON() ([]byte, error) {
 // Format usage print available mlog vars formatted for stderr help/usage instructions.
 func (m *MLogT) FormatUsage() (out string) {
 	// eg. BLOCKCHAIN WRITE BLOCK
-	out += fmt.Sprintf("\n%s %s %s", m.Receiver, m.Verb, m.Subject)
+	out += fmt.Sprintf("\n%s %s %s %s", m.Client, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		// eg. $BLOCK.HASH=<STRING>
 		out += fmt.Sprintf(" $%s.%s=%s", d.Owner, d.Key, d.Value)
@@ -385,6 +397,7 @@ func (m *MLogT) FormatUsage() (out string) {
 
 func (m *MLogT) FormatJSONExample() []byte {
 	mm := &MLogT{
+		Client: m.Client,
 		Receiver: m.Receiver,
 		Verb:     m.Verb,
 		Subject:  m.Subject,
@@ -392,7 +405,7 @@ func (m *MLogT) FormatJSONExample() []byte {
 	var dets []MLogDetailT
 	for _, d := range m.Details {
 		ex := mlogInterfaceExamples[d.Value.(string)]
-		// Type of var not matched to interfaceexample
+		// Type of var not matched to interface example
 		if ex == "" {
 			continue
 		}

@@ -4,8 +4,8 @@ import "github.com/ethereumproject/go-ethereum/logger"
 
 var mlogFetcher = logger.MLogRegisterAvailable("fetcher", mLogLines)
 
-var mLogLines = []logger.MLogT{
-	*mlogFetcherDiscardAnnouncement,
+var mLogLines = []*logger.MLogT{
+	mlogFetcherDiscardAnnouncement,
 }
 
 var mlogFetcherDiscardAnnouncement = &logger.MLogT{
