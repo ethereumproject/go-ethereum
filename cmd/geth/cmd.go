@@ -146,7 +146,7 @@ func StartNode(stack *node.Node) {
 		cconf.Name,
 		cconf.Identity,
 		cconf.Network,
-		hn + "." + userName + "." + strconv.Itoa(pid) + "." + randStringBytes(8),
+		hn + "." + userName + "." + strconv.Itoa(pid) + "." + randStringBytes(4),
 	}
 	mlogClientStartup.AssignDetails(
 		details...,
