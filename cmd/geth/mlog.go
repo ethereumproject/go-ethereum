@@ -12,8 +12,11 @@ var mlogLinesClient = []logger.MLogT{
 }
 
 var clientDetails = []logger.MLogDetailT{
-	{"CLIENT", "ID", "STRING"},
+	{"CLIENT", "MACHINE_ID", "STRING"},
+	{"CLIENT", "HOSTNAME", "STRING"},
+	{"CLIENT", "USERNAME", "STRING"},
 	{"CLIENT", "PID", "INT"},
+
 	{"CLIENT", "VERSION", "STRING"},
 
 	{"CLIENT", "SERVER_ID", "STRING"},

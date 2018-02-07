@@ -97,36 +97,46 @@ func StartNode(stack *node.Node) {
 	}
 
 	// mlog
-	sessionID := randStringBytes(8)
 	nodeInfo := stack.Server().NodeInfo()
 	cconf := cacheChainConfig
 	if cconf == nil {
 		Fatalf("Nil chain configuration")
 	}
 
-	id, e := machineid.ID()
-	mid, e := machineid.ProtectedID(id)
-	if e != nil {
-		glog.D(logger.Warn).Warnln("mlog: Could not get machine id [err=%v]. Using 'hostname.username' instead.")
-		hn, e := os.Hostname()
-		if e != nil {
-			Fatalf("%v", e)
-		}
-		var userName string
-		current, e := user.Current()
-		if e == nil {
-			userName = current.Username
-		}
 
-		// Sanitize userName since it may contain filepath separators on Windows.
-		userName = strings.Replace(userName, `\`, "_", -1)
+	glog.D(logger.Warn).Warnln("mlog: Could not get machine id [err=%v]. Using 'hostname.username' instead.")
+	hn, err := os.Hostname()
+	if err != nil {
+		Fatalf("%v", err)
+	}
+	var userName string
+	current, err := user.Current()
+	if err == nil {
+		userName = current.Username
+	}
+	// ignore error
+
+	// Sanitize userName since it may contain filepath separators on Windows.
+	userName = strings.Replace(userName, `\`, "_", -1)
+
+	var mid string
+	var e error
+	mid, e = machineid.ID()
+	if e == nil {
+		mid, e = machineid.ProtectedID(mid)
+	}
+	if e != nil {
 		mid = hn + "." + userName
 	}
+
+	pid := os.Getpid()
 
 	// Assign shared start/stop details
 	details := []interface{}{
 		mid,
-		os.Getpid(),
+		pid,
+		hn,
+		userName,
 		Version,
 		nodeInfo.ID,
 		nodeInfo.Name,
@@ -136,7 +146,7 @@ func StartNode(stack *node.Node) {
 		cconf.Name,
 		cconf.Identity,
 		cconf.Network,
-		sessionID,
+		hn + "." + userName + "." + strconv.Itoa(pid) + "." + randStringBytes(8),
 	}
 	mlogClientStartup.AssignDetails(
 		details...,
