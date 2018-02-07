@@ -154,12 +154,6 @@ func MlogEnabled() bool {
 // as they set up their mlog vars.
 // It registers an mlog component as Available.
 func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
-
-	// Ensure exists... dumb, but safety first! FIXME
-	if common.GetClientSessionIdentity() == nil {
-		common.SetClientSessionIdentity()
-	}
-
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
 	for _, l := range lines {
@@ -268,10 +262,9 @@ func shortHostname(hostname string) string {
 // logName returns a new log file name containing tag, with start time t, and
 // the name for the symlink for tag.
 func logName(t time.Time) (name, link string) {
-	name = fmt.Sprintf("%s.%s.%s.mlog.%04d%02d%02d-%02d%02d%02d.%d",
+	name = fmt.Sprintf("%s.%s.mlog.%04d%02d%02d-%02d%02d%02d.%d.log",
 		program,
-		host,
-		userName,
+		common.GetClientSessionIdentity().String(),
 		t.Year(),
 		t.Month(),
 		t.Day(),

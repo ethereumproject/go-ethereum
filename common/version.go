@@ -23,18 +23,19 @@ type ClientSessionIdentityT struct {
 }
 
 func (s *ClientSessionIdentityT) String() string {
-	commaSep := func(args ...string) string {
+	sep := func(sep string, args ...string) string {
 		var s string
 		for i, v := range args {
 			if i != len(args)-1 {
-				s += v + ","
+				s += v + sep
 			} else {
 				s += v
 			}
 		}
 		return s
 	}
-	return commaSep(s.Version, s.Goos, s.Goarch, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
+	// Use "_" because it's unlikely to conflict with semver or other data delimiters
+	return sep("_", s.Version, s.Goos, s.Goarch, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
 }
 
 var ClientSessionIdentity *ClientSessionIdentityT
@@ -96,8 +97,8 @@ func sourceBuildVersion() string {
 
 func SourceBuildVersionFormatted() string {
 	if v := sourceBuildVersion(); v != "" {
-		return "source_" + v
+		return "source-" + v
 	} else {
-		return "source_unknown"
+		return "source-unknown"
 	}
 }
