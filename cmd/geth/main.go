@@ -47,7 +47,6 @@ func setVersionIfDefaulty() {
 
 func init() {
 	setVersionIfDefaulty()
-	common.SetClientSessionIdentity()
 }
 
 func makeCLIApp() (app *cli.App) {

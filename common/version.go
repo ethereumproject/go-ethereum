@@ -40,6 +40,10 @@ func (s *ClientSessionIdentityT) String() string {
 
 var ClientSessionIdentity *ClientSessionIdentityT
 
+func init() {
+	SetClientSessionIdentity()
+}
+
 func SetClientSessionIdentity() {
 	var hostname, userName string
 	var err error
