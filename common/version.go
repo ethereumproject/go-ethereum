@@ -10,7 +10,6 @@ import (
 	"os/user"
 	"github.com/denisbrodbeck/machineid"
 	"strconv"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 type ClientSessionIdentityT struct {
@@ -72,8 +71,6 @@ func SetClientSessionIdentity() {
 		Goarch: runtime.GOARCH,
 		Pid: os.Getpid(),
 	}
-
-	glog.Errorln(ClientSessionIdentity)
 }
 
 func GetClientSessionIdentity() *ClientSessionIdentityT {
