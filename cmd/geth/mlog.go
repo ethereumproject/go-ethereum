@@ -6,22 +6,12 @@ import (
 
 var mlogClient = logger.MLogRegisterAvailable("client", mlogLinesClient)
 
-var mlogLinesClient = []logger.MLogT{
-	*mlogClientStartup,
-	*mlogClientShutdown,
+var mlogLinesClient = []*logger.MLogT{
+	mlogClientStartup,
+	mlogClientShutdown,
 }
 
 var clientDetails = []logger.MLogDetailT{
-	{"CLIENT", "MACHINE_ID", "STRING"},
-	{"CLIENT", "HOSTNAME", "STRING"},
-	{"CLIENT", "USERNAME", "STRING"},
-	{"CLIENT", "GOOS", "STRING"},
-	{"CLIENT", "GOARCH", "STRING"},
-	{"CLIENT", "GOMAXPROCS", "STRING"},
-	{"CLIENT", "PID", "INT"},
-
-	{"CLIENT", "VERSION", "STRING"},
-
 	{"CLIENT", "SERVER_ID", "STRING"},
 	{"CLIENT", "SERVER_NAME", "STRING"},
 	{"CLIENT", "SERVER_ENODE", "STRING"},
@@ -31,8 +21,6 @@ var clientDetails = []logger.MLogDetailT{
 	{"CLIENT", "CONFIG_CHAINNAME", "STRING"},
 	{"CLIENT", "CONFIG_CHAINID", "INT"},
 	{"CLIENT", "CONFIG_NETWORK", "INT"},
-
-	{"SESSION", "ID", "STRING"},
 }
 
 var mlogClientStartup = &logger.MLogT{

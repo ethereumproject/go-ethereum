@@ -44,10 +44,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
 	"math/rand"
-	"os/user"
-
-	"github.com/denisbrodbeck/machineid"
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 const (
@@ -94,44 +90,8 @@ func StartNode(stack *node.Node) {
 		Fatalf("Nil chain configuration")
 	}
 
-
-	glog.D(logger.Warn).Warnln("mlog: Could not get machine id [err=%v]. Using 'hostname.username' instead.")
-	hn, err := os.Hostname()
-	if err != nil {
-		Fatalf("%v", err)
-	}
-	var userName string
-	current, err := user.Current()
-	if err == nil {
-		userName = current.Username
-	}
-	// ignore error
-
-	// Sanitize userName since it may contain filepath separators on Windows.
-	userName = strings.Replace(userName, `\`, "_", -1)
-
-	var mid string
-	var e error
-	mid, e = machineid.ID()
-	if e == nil {
-		mid, e = machineid.ProtectedID(mid)
-	}
-	if e != nil {
-		mid = hn + "." + userName
-	}
-
-	pid := os.Getpid()
-
 	// Assign shared start/stop details
 	details := []interface{}{
-		mid,
-		pid,
-		hn,
-		userName,
-		runtime.GOOS,
-		runtime.GOARCH,
-		strconv.Itoa(runtime.GOMAXPROCS(0)),
-		Version,
 		nodeInfo.ID,
 		nodeInfo.Name,
 		nodeInfo.Enode,
@@ -140,8 +100,8 @@ func StartNode(stack *node.Node) {
 		cconf.Name,
 		cconf.Identity,
 		cconf.Network,
-		hn + "." + userName + "." + mid[:8] + "." + strconv.Itoa(pid),
 	}
+
 	mlogClientStartup.AssignDetails(
 		details...,
 	).Send(mlogClient)
