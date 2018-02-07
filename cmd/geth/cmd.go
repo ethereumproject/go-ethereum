@@ -43,11 +43,18 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
+	"math/rand"
+	"os/user"
 )
 
 const (
 	importBatchSize = 2500
+	sessionIDLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 // Fatalf formats a message to standard error and exits the program.
 // The message is also printed to standard output if standard error
@@ -70,10 +77,81 @@ func Fatalf(format string, args ...interface{}) {
 	os.Exit(1)
 }
 
+// https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang#31832326
+func randStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = sessionIDLetters[rand.Intn(len(sessionIDLetters))]
+	}
+	return string(b)
+}
+
+// will only get sessionID on shutdown, on start fn will generate and return it
+func mlogClientHandler(sessionID string, signal os.Signal, err error, details ...interface{}) {
+	mlogReceiver := mlogClientShutdown
+
+	if signal == nil {
+		mlogReceiver = mlogClientStartup
+	} else {
+		details = append(details, signal.String())
+		details = append(details, err)
+	}
+
+	mlogReceiver.AssignDetails(
+		details...,
+	).Send(mlogClient)
+
+	return
+}
+
 func StartNode(stack *node.Node) {
+	var startTime time.Time
 	if err := stack.Start(); err != nil {
 		Fatalf("Error starting protocol stack: %v", err)
+	} else {
+		startTime = time.Now()
 	}
+
+	// mlog
+	sessionID := randStringBytes(8)
+	nodeInfo := stack.Server().NodeInfo()
+	cconf := cacheChainConfig
+	if cconf == nil {
+		Fatalf("Nil chain configuration")
+	}
+
+	hn, e := os.Hostname()
+	if e != nil {
+		Fatalf("%v", e)
+	}
+	var userName string
+	current, e := user.Current()
+	if e == nil {
+		userName = current.Username
+	}
+
+	// Sanitize userName since it may contain filepath separators on Windows.
+	userName = strings.Replace(userName, `\`, "_", -1)
+
+	// Assign shared start/stop details
+	details := []interface{}{
+		hn + "." + userName,
+		os.Getpid(),
+		Version,
+		nodeInfo.ID,
+		nodeInfo.Name,
+		nodeInfo.Enode,
+		nodeInfo.IP,
+		stack.Server().MaxPeers,
+		cconf.Name,
+		cconf.Identity,
+		cconf.Network,
+		sessionID,
+	}
+	mlogClientStartup.AssignDetails(
+		details...,
+	).Send(mlogClient)
+
 	go func() {
 		// sigc is a single-val channel for listening to program interrupt
 		var sigc = make(chan os.Signal, 1)
@@ -83,11 +161,13 @@ func StartNode(stack *node.Node) {
 		glog.V(logger.Warn).Warnf("Got %v, shutting down...", sig)
 		glog.D(logger.Warn).Warnf("Got %v, shutting down...", sig)
 		fails := make(chan error, 1)
+		var stopError error
 		go func(fs chan error) {
 			for {
 				select {
 				case e := <-fs:
 					if e != nil {
+						stopError = e
 						glog.V(logger.Error).Errorf("node stop failure: %v", e)
 					}
 				}
@@ -97,20 +177,28 @@ func StartNode(stack *node.Node) {
 		go func(stack *node.Node) {
 			defer func() {
 				close(fails)
+
+				// mlog shutdown
+				details = append(details, sig.String())
+				details = append(details, stopError)
+				details = append(details, int(time.Since(startTime).Seconds()))
+				mlogClientShutdown.AssignDetails(
+					details...,
+				).Send(mlogClient)
+
 				// Ensure any write-pending I/O gets written.
 				glog.Flush()
 			}()
 			fails <- stack.Stop()
 		}(stack)
 
-		// WTF?
-		for i := 10; i > 0; i-- {
+		for i := 3; i > 0; i-- {
 			<-sigc
 			if i > 1 {
 				glog.D(logger.Warn).Warnf("Already shutting down, interrupt %d more times for panic.", i-1)
 			}
 		}
-		glog.Fatal("boom")
+		glog.Fatal("Forced quit.")
 	}()
 }
 
