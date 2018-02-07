@@ -43,16 +43,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
-	"math/rand"
 )
 
 const (
 	importBatchSize = 2500
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 // Fatalf formats a message to standard error and exits the program.
 // The message is also printed to standard output if standard error
