@@ -4,9 +4,9 @@ import "github.com/ethereumproject/go-ethereum/logger"
 
 var mlogServer = logger.MLogRegisterAvailable("server", mLogLines)
 
-var mLogLines = []logger.MLogT{
-	*mlogServerPeerAdded,
-	*mlogServerPeerRemove,
+var mLogLines = []*logger.MLogT{
+	mlogServerPeerAdded,
+	mlogServerPeerRemove,
 }
 
 var mlogServerPeerAdded = &logger.MLogT{
