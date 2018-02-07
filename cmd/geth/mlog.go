@@ -15,6 +15,9 @@ var clientDetails = []logger.MLogDetailT{
 	{"CLIENT", "MACHINE_ID", "STRING"},
 	{"CLIENT", "HOSTNAME", "STRING"},
 	{"CLIENT", "USERNAME", "STRING"},
+	{"CLIENT", "GOOS", "STRING"},
+	{"CLIENT", "GOARCH", "STRING"},
+	{"CLIENT", "GOMAXPROCS", "STRING"},
 	{"CLIENT", "PID", "INT"},
 
 	{"CLIENT", "VERSION", "STRING"},

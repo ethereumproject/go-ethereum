@@ -47,11 +47,11 @@ import (
 	"os/user"
 
 	"github.com/denisbrodbeck/machineid"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 const (
 	importBatchSize = 2500
-	sessionIDLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 func init() {
@@ -77,15 +77,6 @@ func Fatalf(format string, args ...interface{}) {
 	fmt.Fprintf(w, "Fatal: "+format+"\n", args...)
 	logger.Flush()
 	os.Exit(1)
-}
-
-// https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang#31832326
-func randStringBytes(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = sessionIDLetters[rand.Intn(len(sessionIDLetters))]
-	}
-	return string(b)
 }
 
 func StartNode(stack *node.Node) {
@@ -137,6 +128,9 @@ func StartNode(stack *node.Node) {
 		pid,
 		hn,
 		userName,
+		runtime.GOOS,
+		runtime.GOARCH,
+		strconv.Itoa(runtime.GOMAXPROCS(0)),
 		Version,
 		nodeInfo.ID,
 		nodeInfo.Name,
@@ -146,7 +140,7 @@ func StartNode(stack *node.Node) {
 		cconf.Name,
 		cconf.Identity,
 		cconf.Network,
-		hn + "." + userName + "." + strconv.Itoa(pid) + "." + randStringBytes(4),
+		hn + "." + userName + "." + mid[:8] + "." + strconv.Itoa(pid),
 	}
 	mlogClientStartup.AssignDetails(
 		details...,
