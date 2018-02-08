@@ -31,11 +31,23 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"time"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Version is the application revision identifier. It can be set with the linker
 // as in: go build -ldflags "-X main.Version="`git describe --tags`
 var Version = "source"
+
+// setVersionIfDefaulty uses git to derive a meaningful version value if not set/overridden by -ldflags
+func setVersionIfDefaulty() {
+	if Version == "source" {
+		Version = common.SourceBuildVersionFormatted()
+	}
+}
+
+func init() {
+	setVersionIfDefaulty()
+}
 
 func makeCLIApp() (app *cli.App) {
 	app = cli.NewApp()

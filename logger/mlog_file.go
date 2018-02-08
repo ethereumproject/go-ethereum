@@ -32,6 +32,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 type mlogFormatT uint
@@ -53,7 +54,7 @@ var (
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
 	// with MLogRegisterAvailable.
-	MLogRegistryAvailable = make(map[mlogComponent][]MLogT)
+	MLogRegistryAvailable = make(map[mlogComponent][]*MLogT)
 	// MLogRegistryActive contains all registered mlog component and their respective loggers.
 	MLogRegistryActive = make(map[mlogComponent]*Logger)
 	mlogRegLock        sync.RWMutex
@@ -95,6 +96,8 @@ func (f mlogFormatT) String() string {
 // MLogT defines an mlog LINE
 type MLogT struct {
 	sync.Mutex
+	// TODO: can remove these json tags, since we have a custom MarshalJSON fn
+	Client *common.ClientSessionIdentityT `json:"cs"`
 	Description string        `json:"-"`
 	Receiver    string        `json:"receiver"`
 	Verb        string        `json:"verb"`
@@ -151,9 +154,12 @@ func MlogEnabled() bool {
 // MLogRegisterAvailable is called for each log component variable from a package/mlog.go file
 // as they set up their mlog vars.
 // It registers an mlog component as Available.
-func MLogRegisterAvailable(name string, lines []MLogT) mlogComponent {
+func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
+	for _, l := range lines {
+		l.Client = common.ClientSessionIdentity
+	}
 	MLogRegistryAvailable[c] = lines
 	mlogRegLock.Unlock()
 	return c
@@ -189,17 +195,18 @@ func MLogRegisterActive(component mlogComponent) {
 func (msg *MLogT) Send(c mlogComponent) {
 	mlogRegLock.RLock()
 	if l, exists := MLogRegistryActive[c]; exists {
-		l.SendFormatted(GetMLogFormat(), 1, msg)
+		l.SendFormatted(GetMLogFormat(), 1, msg, c)
 	}
 	mlogRegLock.RUnlock()
 }
 
-func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT) {
+
+func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT, c mlogComponent) {
 	switch format {
 	case mLOGKV:
 		l.Sendln(level, msg.FormatKV())
 	case MLOGJSON:
-		logMessageC <- stdMsg{level, string(msg.FormatJSON())}
+		logMessageC <- stdMsg{level, string(msg.FormatJSON(c))}
 	case mLOGPlain:
 		l.Sendln(level, string(msg.FormatPlain()))
 	//case MLOGDocumentation:
@@ -256,10 +263,9 @@ func shortHostname(hostname string) string {
 // logName returns a new log file name containing tag, with start time t, and
 // the name for the symlink for tag.
 func logName(t time.Time) (name, link string) {
-	name = fmt.Sprintf("%s.%s.%s.mlog.%04d%02d%02d-%02d%02d%02d.%d",
+	name = fmt.Sprintf("%s.%s.mlog.%04d%02d%02d-%02d%02d%02d.%d.log",
 		program,
-		host,
-		userName,
+		common.GetClientSessionIdentity().String(),
 		t.Year(),
 		t.Month(),
 		t.Day(),
@@ -321,8 +327,8 @@ func (m *MLogT) placeholderize() {
 	}
 }
 
-func (m *MLogT) FormatJSON() []byte {
-	b, _ := m.MarshalJSON()
+func (m *MLogT) FormatJSON(c mlogComponent) []byte {
+	b, _ := m.MarshalJSON(c)
 	return b
 }
 
@@ -330,7 +336,7 @@ func (m *MLogT) FormatKV() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("client=%s %s %s %s", m.Client, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -346,7 +352,7 @@ func (m *MLogT) FormatPlain() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", m.Client, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -358,32 +364,23 @@ func (m *MLogT) FormatPlain() (out string) {
 	return out
 }
 
-func (m *MLogT) MarshalJSON() ([]byte, error) {
+func (m *MLogT) MarshalJSON(c mlogComponent) ([]byte, error) {
 	m.Lock()
 	defer m.Unlock()
 	var obj = make(map[string]interface{})
 	obj["event"] = m.EventName()
 	obj["ts"] = time.Now()
+	obj["client"] = m.Client
+	obj["component"] = string(c)
 	for _, d := range m.Details {
 		obj[d.EventName()] = d.Value
 	}
 	return json.Marshal(obj)
 }
 
-// Format usage print available mlog vars formatted for stderr help/usage instructions.
-func (m *MLogT) FormatUsage() (out string) {
-	// eg. BLOCKCHAIN WRITE BLOCK
-	out += fmt.Sprintf("\n%s %s %s", m.Receiver, m.Verb, m.Subject)
-	for _, d := range m.Details {
-		// eg. $BLOCK.HASH=<STRING>
-		out += fmt.Sprintf(" $%s.%s=%s", d.Owner, d.Key, d.Value)
-	}
-	out += fmt.Sprintf("\n  > %s", m.Description)
-	return out
-}
-
-func (m *MLogT) FormatJSONExample() []byte {
+func (m *MLogT) FormatJSONExample(c mlogComponent) []byte {
 	mm := &MLogT{
+		Client: m.Client,
 		Receiver: m.Receiver,
 		Verb:     m.Verb,
 		Subject:  m.Subject,
@@ -391,7 +388,7 @@ func (m *MLogT) FormatJSONExample() []byte {
 	var dets []MLogDetailT
 	for _, d := range m.Details {
 		ex := mlogInterfaceExamples[d.Value.(string)]
-		// Type of var not matched to interfaceexample
+		// Type of var not matched to interface example
 		if ex == "" {
 			continue
 		}
@@ -402,7 +399,7 @@ func (m *MLogT) FormatJSONExample() []byte {
 		})
 	}
 	mm.Details = dets
-	b, _ := mm.MarshalJSON()
+	b, _ := mm.MarshalJSON(c)
 	return b
 }
 
@@ -412,7 +409,7 @@ func (m *MLogT) FormatDocumentation(cmp mlogComponent) (out string) {
 
 	// Get the json example before converting to abstract literal format, eg STRING -> $STRING
 	// This keeps the interface example dictionary as a separate concern.
-	exJSON := string(m.FormatJSONExample())
+	exJSON := string(m.FormatJSONExample(cmp))
 
 	// Set up arbitrary documentation abstract literal format
 	docDetails := []MLogDetailT{}
