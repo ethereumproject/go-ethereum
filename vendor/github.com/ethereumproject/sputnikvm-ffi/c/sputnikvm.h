@@ -160,6 +160,68 @@ extern sputnikvm_vm_t *
 sputnikvm_new_eip160(sputnikvm_transaction transaction, sputnikvm_header_params header);
 
 /**
+ * Create a new frontier morden patch EVM instance using the given
+ * transaction and header parameters.
+ */
+extern sputnikvm_vm_t *
+sputnikvm_new_morden_frontier(sputnikvm_transaction transaction, sputnikvm_header_params header);
+
+/**
+ * Create a new homestead morden patch EVM instance using the given
+ * transaction and header parameters.
+ */
+extern sputnikvm_vm_t *
+sputnikvm_new_morden_homestead(sputnikvm_transaction transaction, sputnikvm_header_params header);
+
+/**
+ * Create a new EIP150 morden patch EVM instance using the given
+ * transaction and header parameters.
+ */
+extern sputnikvm_vm_t *
+sputnikvm_new_morden_eip150(sputnikvm_transaction transaction, sputnikvm_header_params header);
+
+/**
+ * Create a new EIP160 morden patch EVM instance using the given
+ * transaction and header parameters.
+ */
+extern sputnikvm_vm_t *
+sputnikvm_new_morden_eip160(sputnikvm_transaction transaction, sputnikvm_header_params header);
+
+/**
+ * Create a new frontier custom patch EVM instance using the given
+ * transaction and header parameters.
+ */
+extern sputnikvm_vm_t *
+sputnikvm_new_custom_frontier(sputnikvm_transaction transaction, sputnikvm_header_params header);
+
+/**
+ * Create a new homestead custom patch EVM instance using the given
+ * transaction and header parameters.
+ */
+extern sputnikvm_vm_t *
+sputnikvm_new_custom_homestead(sputnikvm_transaction transaction, sputnikvm_header_params header);
+
+/**
+ * Create a new EIP150 custom patch EVM instance using the given
+ * transaction and header parameters.
+ */
+extern sputnikvm_vm_t *
+sputnikvm_new_custom_eip150(sputnikvm_transaction transaction, sputnikvm_header_params header);
+
+/**
+ * Create a new EIP160 custom patch EVM instance using the given
+ * transaction and header parameters.
+ */
+extern sputnikvm_vm_t *
+sputnikvm_new_custom_eip160(sputnikvm_transaction transaction, sputnikvm_header_params header);
+
+/**
+ * Set the initial nonce value for custom patch.
+ */
+extern void
+sputnikvm_set_custom_initial_nonce(sputnikvm_u256 nonce);
+
+/**
  * Execute the VM until it reaches a require error.
  */
 extern sputnikvm_require
