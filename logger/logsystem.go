@@ -21,12 +21,14 @@ import (
 	"log"
 	"sync/atomic"
 	"time"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 // LogSystem is implemented by log output devices.
 // All methods can be called concurrently from multiple goroutines.
 type LogSystem interface {
 	LogPrint(LogMsg)
+	GetLogger() *log.Logger
 }
 
 // NewStdLogSystem creates a LogSystem that prints to the given writer.
@@ -47,9 +49,25 @@ type MLogSystem struct {
 	withTimestamp bool
 }
 
+func (m *MLogSystem) GetLogger() *log.Logger {
+	return m.logger
+}
+
+func (m *MLogSystem) NewFile() io.Writer {
+	f, _, err := CreateMLogFile(time.Now())
+	if err != nil {
+		glog.Fatal(err)
+	}
+	return f
+}
+
 type StdLogSystem struct {
 	logger *log.Logger
 	level  uint32
+}
+
+func (t *StdLogSystem) GetLogger() *log.Logger {
+	panic("implement me")
 }
 
 func (m *MLogSystem) LogPrint(msg LogMsg) {
@@ -95,6 +113,10 @@ func NewJsonLogSystem(writer io.Writer) LogSystem {
 
 type jsonLogSystem struct {
 	logger *log.Logger
+}
+
+func (t *jsonLogSystem) GetLogger() *log.Logger {
+	panic("implement me")
 }
 
 func (t *jsonLogSystem) LogPrint(msg LogMsg) {

@@ -195,7 +195,6 @@ func (msg *MLogT) Send(c mlogComponent) {
 }
 
 func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT) {
-
 	switch format {
 	case mLOGKV:
 		l.Sendln(level, msg.FormatKV())

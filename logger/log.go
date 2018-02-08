@@ -24,7 +24,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 )
 
-func openLogFile(datadir string, filename string) *os.File {
+func openFile(datadir string, filename string) *os.File {
 	path := common.EnsurePathAbsoluteOrRelativeTo(datadir, filename)
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -38,7 +38,7 @@ func New(datadir string, logFile string, logLevel int, flags int) LogSystem {
 	if logFile == "" {
 		writer = os.Stdout
 	} else {
-		writer = openLogFile(datadir, logFile)
+		writer = openFile(datadir, logFile)
 	}
 
 	var sys LogSystem
@@ -53,7 +53,7 @@ func BuildNewMLogSystem(datadir string, logFile string, logLevel int, flags int,
 	if logFile == "" {
 		writer = os.Stdout
 	} else {
-		writer = openLogFile(datadir, logFile)
+		writer = openFile(datadir, logFile)
 	}
 
 	var sys LogSystem
@@ -68,7 +68,7 @@ func NewJSONsystem(datadir string, logFile string) LogSystem {
 	if logFile == "-" {
 		writer = os.Stdout
 	} else {
-		writer = openLogFile(datadir, logFile)
+		writer = openFile(datadir, logFile)
 	}
 
 	var sys LogSystem
