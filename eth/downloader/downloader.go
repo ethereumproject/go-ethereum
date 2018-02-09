@@ -495,91 +495,56 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 	if d.syncInitHook != nil {
 		d.syncInitHook(origin, height)
 	}
-
-	fetchers := []func() error {
-		func() error { return d.processContent() },
+	return d.spawnSync(origin+1,
 		func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
 		func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
 		func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
 		func() error { return d.fetchReceipts(origin + 1) },    // Receipts are retrieved during fast sync
-	}
-	return d.spawnSync(fetchers)
+		func() error { return d.fetchNodeData() },              // Node state data is retrieved during fast sync
+	)
 }
-
-//// spawnSync runs d.process and all given fetcher functions to completion in
-//// separate goroutines, returning the first error that appears.
-//func (d *Downloader) spawnSync(origin uint64, fetchers ...func() error) (err error) {
-//	defer d.cancel()
-//
-//	// fetchers and processor must not block
-//	errc := make(chan error, len(fetchers)+1)
-//
-//	var wg sync.WaitGroup
-//	wg.Add(len(fetchers))
-//
-//	go func() {
-//		errc <- d.processContent()
-//
-//		wg.Wait()
-//		close(errc)
-//	}()
-//
-//	for _, fetcher := range fetchers {
-//		go func(f func() error) {
-//			defer wg.Done()
-//
-//			err := f()
-//			if err != nil {
-//				d.cancel()
-//			}
-//			errc <- err
-//		}(fetcher)
-//	}
-//
-//	wg.Wait()
-//	// causes the block processor to end when
-//	// it has processed the queue.
-//	d.queue.Done()
-//
-//	for e := range errc {
-//		if e != nil {
-//			err = e
-//			return
-//		}
-//	}
-//	return
-//}
 
 // spawnSync runs d.process and all given fetcher functions to completion in
 // separate goroutines, returning the first error that appears.
-func (d *Downloader) spawnSync(fetchers []func() error) error {
+func (d *Downloader) spawnSync(origin uint64, fetchers ...func() error) error {
+	defer d.cancel()
+
+	// fetchers and processor must not block
+	errc := make(chan error, len(fetchers)+1)
+
 	var wg sync.WaitGroup
-	errc := make(chan error, len(fetchers))
 	wg.Add(len(fetchers))
-	for _, fn := range fetchers {
-		fn := fn
-		go func() { defer wg.Done(); errc <- fn() }()
+
+	go func() {
+		errc <- d.processContent()
+
+		wg.Wait()
+		close(errc)
+	}()
+
+	for _, fetcher := range fetchers {
+		go func(f func() error) {
+			defer wg.Done()
+
+			err := f()
+			if err != nil {
+				d.cancel()
+			}
+			errc <- err
+		}(fetcher)
 	}
-	// Wait for the first error, then terminate the others.
-	var err error
-	for i := 0; i < len(fetchers); i++ {
-		if i == len(fetchers)-1 {
-			// Close the queue when all fetchers have exited.
-			// This will cause the block processor to end when
-			// it has processed the queue.
-			//d.queue.Close()
-			d.queue.Done()
-		}
-		if err = <-errc; err != nil {
-			break
-		}
-	}
-	//d.queue.Close()
-	d.queue.Done()
-	//d.Cancel()
-	d.cancel()
+
 	wg.Wait()
-	return err
+	// causes the block processor to end when
+	// it has processed the queue.
+	d.queue.Done()
+
+	for err := range errc {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // cancel cancels all of the operations and resets the queue.
