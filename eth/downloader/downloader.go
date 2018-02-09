@@ -497,7 +497,6 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 	}
 
 	fetchers := []func() error {
-		func() error { return d.processContent() },
 		func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
 		func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
 		func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
@@ -554,12 +553,20 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 // separate goroutines, returning the first error that appears.
 func (d *Downloader) spawnSync(fetchers []func() error) error {
 	var wg sync.WaitGroup
-	errc := make(chan error, len(fetchers))
+	errc := make(chan error, len(fetchers)+1)
 	wg.Add(len(fetchers))
+
+	go func() {
+		errc <- d.processContent()
+
+		wg.Wait()
+	}()
+
 	for _, fn := range fetchers {
 		fn := fn
 		go func() { defer wg.Done(); errc <- fn() }()
 	}
+
 	// Wait for the first error, then terminate the others.
 	var err error
 	for i := 0; i < len(fetchers); i++ {
@@ -568,14 +575,14 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 			// This will cause the block processor to end when
 			// it has processed the queue.
 			//d.queue.Close()
-			d.queue.Done()
+			d.queue.Close()
 		}
 		if err = <-errc; err != nil {
 			break
 		}
 	}
 	//d.queue.Close()
-	d.queue.Done()
+	d.queue.Close()
 	//d.Cancel()
 	d.cancel()
 	wg.Wait()
