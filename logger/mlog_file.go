@@ -170,15 +170,36 @@ func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
 // It returns an error if the specified mlog component is unavailable.
 // For each available component, the desires mlog components are registered as active,
 // creating new loggers for each.
+// If the string begins with '!', the function will remove the following components from the
+// default list
 func MLogRegisterComponentsFromContext(s string) error {
+	// negation
+	var negation bool
+	if strings.HasPrefix(s, "!") {
+		negation = true
+		s = strings.TrimPrefix(s, "!")
+	}
 	ss := strings.Split(s, ",")
-	for _, c := range ss {
-		ct := strings.TrimSpace(c)
-		if MLogRegistryAvailable[mlogComponent(ct)] != nil {
-			MLogRegisterActive(mlogComponent(ct))
-			continue
+
+	if !negation {
+		for _, c := range ss {
+			ct := strings.TrimSpace(c)
+			if MLogRegistryAvailable[mlogComponent(ct)] != nil {
+				MLogRegisterActive(mlogComponent(ct))
+				continue
+			}
+			return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
 		}
-		return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
+		return nil
+	}
+	// Register all
+	for c := range MLogRegistryAvailable {
+		MLogRegisterActive(c)
+	}
+	// then remove
+	for _, u := range ss {
+		ct := strings.TrimSpace(u)
+		mlogRegisterInactive(mlogComponent(ct))
 	}
 	return nil
 }
@@ -188,6 +209,12 @@ func MLogRegisterComponentsFromContext(s string) error {
 func MLogRegisterActive(component mlogComponent) {
 	mlogRegLock.Lock()
 	MLogRegistryActive[component] = NewLogger(string(component))
+	mlogRegLock.Unlock()
+}
+
+func mlogRegisterInactive(component mlogComponent) {
+	mlogRegLock.Lock()
+	delete(MLogRegistryActive, component) // noop if nil
 	mlogRegLock.Unlock()
 }
 
