@@ -11,17 +11,24 @@ import (
 	"github.com/denisbrodbeck/machineid"
 	"strconv"
 	"math/rand"
+	"time"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+	SetClientSessionIdentity()
+}
+
 type ClientSessionIdentityT struct {
-	Version string `json:"v"`
+	Revision string `json:"head"`
+	Version string `json:"version"`
 	Hostname string `json:"host"`
 	Username string `json:"user"`
-	MachineID string `json:"mid"`
+	MachineID string `json:"machineid"`
 	Goos string `json:"goos"`
 	Goarch string `json:"goarch"`
 	Pid int `json:"pid"`
-	SessionID string `json:"sid"`
+	SessionID string `json:"session"`
 }
 
 func (s *ClientSessionIdentityT) String() string {
@@ -37,7 +44,7 @@ func (s *ClientSessionIdentityT) String() string {
 		return s
 	}
 	// Use "_" because it's unlikely to conflict with semver or other data delimiters
-	return sep("_", s.Version, s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
+	return sep("_", s.Revision, s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
 }
 
 var ClientSessionIdentity *ClientSessionIdentityT
@@ -49,10 +56,6 @@ func randStringBytes(n int) string {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
-}
-
-func init() {
-	SetClientSessionIdentity()
 }
 
 func SetClientSessionIdentity() {
@@ -79,7 +82,7 @@ func SetClientSessionIdentity() {
 	}
 
 	ClientSessionIdentity = &ClientSessionIdentityT{
-		Version: SourceBuildVersionFormatted(),
+		Revision: getGitHeadHash()[:8],
 		Hostname: hostname,
 		Username: userName,
 		MachineID: mid[:8], // because we don't care that much
@@ -117,4 +120,21 @@ func SourceBuildVersionFormatted() string {
 	} else {
 		return "source-unknown"
 	}
+}
+
+func getGitHeadHash() string {
+	// Get the path of this file
+	_, f, _, ok := runtime.Caller(1)
+	if ok {
+		d := filepath.Dir(f) // .../cmd/geth
+		// Derive git project dir
+		d = filepath.Join(d, "..", ".git")
+		// Ignore error
+		if o, err := exec.Command("git", "--git-dir", d, "rev-parse", "HEAD").Output(); err == nil {
+			// Remove newline
+			re := regexp.MustCompile(`\r?\n`) // Handle both Windows carriage returns and *nix newlines
+			return re.ReplaceAllString(string(o), "")
+		}
+	}
+	return ""
 }

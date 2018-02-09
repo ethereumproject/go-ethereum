@@ -86,6 +86,10 @@ func StartNode(stack *node.Node) {
 		Fatalf("Nil chain configuration")
 	}
 
+	if cid := common.GetClientSessionIdentity(); cid != nil {
+		cid.Version = Version
+	}
+
 	// Assign shared start/stop details
 	details := []interface{}{
 		nodeInfo.ID,

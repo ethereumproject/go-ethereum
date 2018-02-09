@@ -67,6 +67,7 @@ var (
 		"QUOTEDSTRING":   "string with spaces",
 		"STRING_OR_NULL": nil,
 		"DURATION":       time.Minute + time.Second*3 + time.Millisecond*42,
+		"OBJECT": common.GetClientSessionIdentity(),
 	}
 
 	MLogStringToFormat = map[string]mlogFormatT{
@@ -158,7 +159,7 @@ func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
 	for _, l := range lines {
-		l.Client = common.ClientSessionIdentity
+		l.Client = common.GetClientSessionIdentity()
 	}
 	MLogRegistryAvailable[c] = lines
 	mlogRegLock.Unlock()
@@ -290,9 +291,9 @@ func shortHostname(hostname string) string {
 // logName returns a new log file name containing tag, with start time t, and
 // the name for the symlink for tag.
 func logName(t time.Time) (name, link string) {
-	name = fmt.Sprintf("%s.%s.mlog.%04d%02d%02d-%02d%02d%02d.%d.log",
+	name = fmt.Sprintf("%s.mlog.%s.%04d%02d%02d-%02d%02d%02d.%d.log",
 		program,
-		common.GetClientSessionIdentity().String(),
+		common.GetClientSessionIdentity().Revision,
 		t.Year(),
 		t.Month(),
 		t.Day(),
