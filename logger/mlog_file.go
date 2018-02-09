@@ -336,7 +336,7 @@ func (m *MLogT) FormatKV() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("client=%s %s %s %s", m.Client, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("session=%s %s %s %s", m.Client.SessionID, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -352,7 +352,7 @@ func (m *MLogT) FormatPlain() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s %s", m.Client, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", m.Client.SessionID, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -370,7 +370,7 @@ func (m *MLogT) MarshalJSON(c mlogComponent) ([]byte, error) {
 	var obj = make(map[string]interface{})
 	obj["event"] = m.EventName()
 	obj["ts"] = time.Now()
-	obj["client"] = m.Client
+	obj["session"] = m.Client.SessionID
 	obj["component"] = string(c)
 	for _, d := range m.Details {
 		obj[d.EventName()] = d.Value

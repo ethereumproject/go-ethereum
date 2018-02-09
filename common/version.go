@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"github.com/denisbrodbeck/machineid"
 	"strconv"
+	"math/rand"
 )
 
 type ClientSessionIdentityT struct {
@@ -20,6 +21,7 @@ type ClientSessionIdentityT struct {
 	Goos string `json:"goos"`
 	Goarch string `json:"goarch"`
 	Pid int `json:"pid"`
+	SessionID string `json:"sid"`
 }
 
 func (s *ClientSessionIdentityT) String() string {
@@ -35,10 +37,19 @@ func (s *ClientSessionIdentityT) String() string {
 		return s
 	}
 	// Use "_" because it's unlikely to conflict with semver or other data delimiters
-	return sep("_", s.Version, s.Goos, s.Goarch, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
+	return sep("_", s.Version, s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
 }
 
 var ClientSessionIdentity *ClientSessionIdentityT
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+func randStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
 
 func init() {
 	SetClientSessionIdentity()
@@ -75,6 +86,7 @@ func SetClientSessionIdentity() {
 		Goos: runtime.GOOS,
 		Goarch: runtime.GOARCH,
 		Pid: os.Getpid(),
+		SessionID: randStringBytes(8),
 	}
 }
 
