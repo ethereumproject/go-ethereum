@@ -19,6 +19,7 @@ package logger
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 type stdMsg struct {
@@ -77,8 +78,17 @@ func dispatchLoop() {
 		go sysLoop(sys, in, &systemWG)
 	}
 
+	var tick = time.NewTicker(time.Minute*1)
+
 	for {
 		select {
+		// HACK: quick and dirty way to get file rotation
+		case <-tick.C:
+			for _, s := range systems {
+				if c, ok := s.(*MLogSystem); ok {
+					c.GetLogger().SetOutput(c.NewFile())
+				}
+			}
 		case msg := <-logMessageC:
 			for _, c := range systemIn {
 				c <- msg

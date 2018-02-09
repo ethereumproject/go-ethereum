@@ -200,8 +200,8 @@ func (msg *MLogT) Send(c mlogComponent) {
 	mlogRegLock.RUnlock()
 }
 
-func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT, c mlogComponent) {
 
+func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT, c mlogComponent) {
 	switch format {
 	case mLOGKV:
 		l.Sendln(level, msg.FormatKV())
