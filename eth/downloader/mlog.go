@@ -8,6 +8,8 @@ var mLogLines = []*logger.MLogT{
 	mlogDownloaderRegisterPeer,
 	mlogDownloaderUnregisterPeer,
 	mlogDownloaderTuneQOS,
+	mlogDownloaderStartSync,
+	mlogDownloaderStopSync,
 }
 
 var mlogDownloaderRegisterPeer = &logger.MLogT{
@@ -45,5 +47,41 @@ and TTL reports the Timeout Allowance for a single downloader request to finish 
 		{"QOS", "RTT", "DURATION"},
 		{"QOS", "CONFIDENCE", "NUMBER"},
 		{"QOS", "TTL", "DURATION"},
+	},
+}
+
+var mlogDownloaderStartSync = &logger.MLogT{
+	Description: `Called when the downloader initiates synchronisation with a peer.`,
+	Receiver: "DOWNLOADER",
+	Verb: "START",
+	Subject: "SYNC",
+	Details: []logger.MLogDetailT{
+		{"DOWNLOADER", "MODE", "STRING"},
+		{"SYNC", "PEER_ID", "STRING"},
+		{"SYNC", "PEER_NAME", "STRING"},
+		{"SYNC", "PEER_VERSION", "NUMBER"},
+		{"SYNC", "HASH", "STRING"},
+		{"SYNC", "TD", "BIGINT"},
+	},
+}
+
+var mlogDownloaderStopSync = &logger.MLogT{
+	Description: `Called when the downloader terminates synchronisation with a peer. If ERROR is null, synchronisation was sucessful.`,
+	Receiver: "DOWNLOADER",
+	Verb: "STOP",
+	Subject: "SYNC",
+	Details: []logger.MLogDetailT{
+		{"DOWNLOADER", "MODE", "STRING"},
+		{"SYNC", "PEER_ID", "STRING"},
+		{"SYNC", "PEER_NAME", "STRING"},
+		{"SYNC", "PEER_VERSION", "NUMBER"},
+		{"SYNC", "PEER_HASH", "STRING"},
+		{"SYNC", "PEER_TD", "BIGINT"},
+
+		{"SYNC", "PIVOT", "NUMBER"},
+		{"SYNC", "ORIGIN", "NUMBER"},
+		{"SYNC", "HEIGHT", "NUMBER"},
+		{"SYNC", "ELAPSED", "DURATION"},
+		{"SYNC", "ERR", "STRING_OR_NULL"},
 	},
 }
