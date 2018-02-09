@@ -19,7 +19,6 @@
 package logger
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,7 +27,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -322,18 +320,6 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 	symlink := filepath.Join(*mLogDir, link)
 	os.Remove(symlink)        // ignore err
 	os.Symlink(name, symlink) // ignore err
-
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "Log file created at: %s\n", t.Format("2006/01/02 15:04:05"))
-	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
-	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	cmps := []string{}
-	for k := range MLogRegistryActive {
-		cmps = append(cmps, string(k))
-	}
-	fmt.Fprintf(&buf, "Registered components: %v\n", cmps) // no need for fancy formatting
-	fmt.Fprintln(&buf, glog.Separator("-"))
-	f.Write(buf.Bytes())
 
 	return f, fname, nil
 }
