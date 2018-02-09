@@ -11,7 +11,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"gopkg.in/urfave/cli.v1"
@@ -231,13 +230,7 @@ var (
 	MLogComponentsFlag = cli.StringFlag{
 		Name:  "mlog-components",
 		Usage: "Set machine-readable logging components, comma-separated",
-		Value: func() string {
-			var components []string
-			for k := range logger.MLogRegistryAvailable {
-				components = append(components, string(k))
-			}
-			return strings.Join(components, ",")
-		}(),
+		Value: "blockchain,txpool,downloader,fetcher,discover,server,state,headerchain,miner,client",
 	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",
