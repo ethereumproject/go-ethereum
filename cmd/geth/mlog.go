@@ -22,6 +22,8 @@ var clientDetails = []logger.MLogDetailT{
 	{"CLIENT", "CONFIG_CHAINID", "INT"},
 	{"CLIENT", "CONFIG_NETWORK", "INT"},
 
+	{"CLIENT", "MLOG_COMPONENTS", "STRING"},
+
 	{"CLIENT", "IDENTITY", "OBJECT"},
 }
 

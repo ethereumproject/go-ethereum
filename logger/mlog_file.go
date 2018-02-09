@@ -98,7 +98,6 @@ func (f mlogFormatT) String() string {
 type MLogT struct {
 	sync.Mutex
 	// TODO: can remove these json tags, since we have a custom MarshalJSON fn
-	Client *common.ClientSessionIdentityT `json:"cs"`
 	Description string        `json:"-"`
 	Receiver    string        `json:"receiver"`
 	Verb        string        `json:"verb"`
@@ -158,9 +157,6 @@ func MlogEnabled() bool {
 func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
-	for _, l := range lines {
-		l.Client = common.GetClientSessionIdentity()
-	}
 	MLogRegistryAvailable[c] = lines
 	mlogRegLock.Unlock()
 	return c
@@ -293,7 +289,7 @@ func shortHostname(hostname string) string {
 func logName(t time.Time) (name, link string) {
 	name = fmt.Sprintf("%s.mlog.%s.%04d%02d%02d-%02d%02d%02d.%d.log",
 		program,
-		common.GetClientSessionIdentity().Revision,
+		common.VCRevision,
 		t.Year(),
 		t.Month(),
 		t.Day(),
@@ -364,7 +360,7 @@ func (m *MLogT) FormatKV() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("session=%s %s %s %s", m.Client.SessionID, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("session=%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -380,7 +376,7 @@ func (m *MLogT) FormatPlain() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s %s", m.Client.SessionID, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -398,7 +394,7 @@ func (m *MLogT) MarshalJSON(c mlogComponent) ([]byte, error) {
 	var obj = make(map[string]interface{})
 	obj["event"] = m.EventName()
 	obj["ts"] = time.Now()
-	obj["session"] = m.Client.SessionID
+	obj["session"] = common.SessionID
 	obj["component"] = string(c)
 	for _, d := range m.Details {
 		obj[d.EventName()] = d.Value
@@ -408,7 +404,6 @@ func (m *MLogT) MarshalJSON(c mlogComponent) ([]byte, error) {
 
 func (m *MLogT) FormatJSONExample(c mlogComponent) []byte {
 	mm := &MLogT{
-		Client: m.Client,
 		Receiver: m.Receiver,
 		Verb:     m.Verb,
 		Subject:  m.Subject,

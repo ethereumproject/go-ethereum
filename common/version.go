@@ -14,8 +14,13 @@ import (
 	"time"
 )
 
+var ClientSessionIdentity *ClientSessionIdentityT
+var VCRevision = getGitHeadHash(8)
+var SessionID string
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
+	SessionID = randStringBytes(8)
 	SetClientSessionIdentity()
 }
 
@@ -27,6 +32,7 @@ type ClientSessionIdentityT struct {
 	MachineID string `json:"machineid"`
 	Goos string `json:"goos"`
 	Goarch string `json:"goarch"`
+	Goversion string `json:"goversion"`
 	Pid int `json:"pid"`
 	SessionID string `json:"session"`
 }
@@ -47,8 +53,6 @@ func (s *ClientSessionIdentityT) String() string {
 	return sep("_", s.Revision, s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
 }
 
-var ClientSessionIdentity *ClientSessionIdentityT
-
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 func randStringBytes(n int) string {
 	b := make([]byte, n)
@@ -63,10 +67,15 @@ func SetClientSessionIdentity() {
 	var err error
 
 	hostname, err = os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
 
 	current, err := user.Current()
 	if err == nil {
 		userName = current.Username
+	} else {
+		userName = "unknown"
 	}
 	// Sanitize userName since it may contain filepath separators on Windows.
 	userName = strings.Replace(userName, `\`, "_", -1)
@@ -82,14 +91,15 @@ func SetClientSessionIdentity() {
 	}
 
 	ClientSessionIdentity = &ClientSessionIdentityT{
-		Revision: getGitHeadHash()[:8],
-		Hostname: hostname,
-		Username: userName,
+		Revision:  VCRevision,
+		Hostname:  hostname,
+		Username:  userName,
 		MachineID: mid[:8], // because we don't care that much
-		Goos: runtime.GOOS,
-		Goarch: runtime.GOARCH,
-		Pid: os.Getpid(),
-		SessionID: randStringBytes(8),
+		Goos:      runtime.GOOS,
+		Goarch:    runtime.GOARCH,
+		Goversion: runtime.Version(),
+		Pid:       os.Getpid(),
+		SessionID: SessionID,
 	}
 }
 
@@ -122,7 +132,7 @@ func SourceBuildVersionFormatted() string {
 	}
 }
 
-func getGitHeadHash() string {
+func getGitHeadHash(abbrvN int) string {
 	// Get the path of this file
 	_, f, _, ok := runtime.Caller(1)
 	if ok {
@@ -133,7 +143,11 @@ func getGitHeadHash() string {
 		if o, err := exec.Command("git", "--git-dir", d, "rev-parse", "HEAD").Output(); err == nil {
 			// Remove newline
 			re := regexp.MustCompile(`\r?\n`) // Handle both Windows carriage returns and *nix newlines
-			return re.ReplaceAllString(string(o), "")
+			s := re.ReplaceAllString(string(o), "")
+			if len(s) >= abbrvN {
+				return s[:abbrvN]
+			}
+			return s
 		}
 	}
 	return ""

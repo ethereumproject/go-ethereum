@@ -90,6 +90,14 @@ func StartNode(stack *node.Node) {
 		cid.Version = Version
 	}
 
+	getcmpts := func () string {
+		var ss []string
+		for c := range logger.MLogRegistryActive {
+			ss = append(ss, string(c))
+		}
+		return strings.Join(ss, ",")
+	}
+
 	// Assign shared start/stop details
 	details := []interface{}{
 		nodeInfo.ID,
@@ -100,6 +108,7 @@ func StartNode(stack *node.Node) {
 		cconf.Name,
 		cconf.Identity,
 		cconf.Network,
+		getcmpts(),
 		common.GetClientSessionIdentity(),
 	}
 
@@ -778,8 +787,10 @@ func version(ctx *cli.Context) error {
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)))
-	fmt.Println("Go Version:", runtime.Version())
-	fmt.Println("OS:", runtime.GOOS)
+	fmt.Println("Go Version:", common.GetClientSessionIdentity().Version)
+	fmt.Println("Go OS:", common.GetClientSessionIdentity().Goos)
+	fmt.Println("Go Arch:", common.GetClientSessionIdentity().Goarch)
+	fmt.Println("Machine ID:", common.GetClientSessionIdentity().MachineID)
 	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
 	fmt.Printf("GOROOT=%s\n", runtime.GOROOT())
 
