@@ -451,7 +451,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 	glog.V(logger.Debug).Infof("Synchronising with the network using: %s [eth/%d]", p.id, p.version)
 	if logger.MlogEnabled() {
 		mlogDownloaderStartSync.AssignDetails(
-			d.mode,
+			d.mode.String(),
 			p.id,
 			p.name,
 			p.version,
@@ -464,7 +464,7 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		glog.V(logger.Debug).Warnf("Synchronisation with [%v][eth/%d] terminated after %v", p, p.version, elapsed)
 		if logger.MlogEnabled() {
 			mlogDownloaderStopSync.AssignDetails(
-				d.mode,
+				d.mode.String(),
 				p.id,
 				p.name,
 				p.version,
