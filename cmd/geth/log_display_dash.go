@@ -71,6 +71,7 @@ const (
 )
 
 var (
+	headerInfo      *termui.Par
 	syncheightGauge *termui.Gauge
 
 	peerCountSpark termui.Sparkline
@@ -86,7 +87,7 @@ var (
 )
 
 
-func tuiDrawDash(e *eth.Ethereum, ctx *cli.Context) {
+func tuiDrawDash(e *eth.Ethereum) {
 	if currentMode == lsModeImport || currentMode == lsModeDiscover {
 		syncheightGauge.Label = ""
 	}
@@ -94,16 +95,29 @@ func tuiDrawDash(e *eth.Ethereum, ctx *cli.Context) {
 		cb := e.BlockChain().GetBlockByNumber(currentBlockNumber)
 		cid := e.ChainConfig().GetChainID()
 		cnet := e.NetVersion()
-		// Is there any other way retrieve chain name(mainnet or morden)?
-		cname := mustMakeChainIdentity(ctx)
-		syncheightGauge.BorderLabel = fmt.Sprintf("Mode=%s Chain=%v(%d) Chain Id=%d | local_head ◼ n=%d ⬡=%s txs=%d time=%v ago",
-			currentMode, cname, cnet, cid, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(),
-				time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
+		cname := ""
+		if cacheChainIdentity != "" {
+			cname = cacheChainIdentity
+		}
+		headerInfo.Text = fmt.Sprintf("Mode=%s Chain=%v(%d) Chain Id=%d \n" +
+			"local_head ◼ n=%d ⬡=%s txs=%d time=%v ago",
+				currentMode, cname, cnet, cid, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(),
+					time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
+
 	}
-	termui.Render(syncheightGauge, peerCountSparkHolder, peerList, blkMgasTxsSparkHolder)
+	termui.Render(headerInfo, peerCountSparkHolder, peerList, blkMgasTxsSparkHolder)
 }
 
 func tuiSetupDashComponents() {
+
+	/// Config Info Header
+	headerInfo = termui.NewPar("")
+	headerInfo.X = 2
+	headerInfo.Height = 2
+	headerInfo.Border = false
+	headerInfo.TextBgColor = termui.ColorWhite
+	headerInfo.TextFgColor = termui.ColorBlack
+	headerInfo.SetWidth(termui.TermWidth() - 1)
 	//// Sync height gauge
 	syncheightGauge = termui.NewGauge()
 	syncheightGauge.Percent = 0
@@ -192,7 +206,7 @@ var dashDisplaySystem = displayEventHandlers{
 						_, c, _, _, _ := e.Downloader().Progress()
 						currentBlockNumber = c
 					}
-					tuiDrawDash(e, ctx)
+					tuiDrawDash(e)
 
 					termui.Loop()
 				}()
@@ -238,7 +252,7 @@ var dashDisplaySystem = displayEventHandlers{
 						blkMgasTxsSparkHolder.Lines[2].Title = fmt.Sprintf("n=%d] ∑ txs=%3d/%4dblks", localheight, txs, blks)
 					}
 					currentBlockNumber = localheight
-					tuiDrawDash(e, ctx)
+					tuiDrawDash(e)
 				default:
 					panic(d)
 				}
@@ -275,7 +289,7 @@ var dashDisplaySystem = displayEventHandlers{
 					peerListData = append(peerListData, p.String())
 				}
 				peerList.Items = peerListData
-				tuiDrawDash(e, ctx)
+				tuiDrawDash(e)
 			},
 		},
 	},
