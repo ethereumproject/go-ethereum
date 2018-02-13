@@ -653,7 +653,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			currentBlock := pm.blockchain.CurrentBlock()
 			if localTd := pm.blockchain.GetTd(currentBlock.Hash()); trueTD.Cmp(localTd) > 0 {
 				glog.V(logger.Info).Infof("Peer %s: localTD=%v (<) peerTrueTD=%v, synchronising", p.id, localTd, trueTD)
-				// Since downloader is syncronous (get it?), only useful to call synchronise when dl is available
+				// Since downloader is synchronous (get it?), only useful to call synchronise when dl is available
 				if !pm.downloader.Synchronising() {
 					go pm.synchronise(p)
 				}

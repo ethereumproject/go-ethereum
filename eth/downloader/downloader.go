@@ -36,6 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/trie"
+	"github.com/ethereumproject/go-ethereum/core"
 )
 
 const (
@@ -358,6 +359,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 		errInvalidAncestor, errInvalidChain:
 		glog.V(logger.Core).Warnf("Peer %s: drop: %s", id, err)
 		d.dropPeer(id)
+		if err == errInvalidBlock
 
 	case errCancelBlockFetch, errCancelHeaderFetch, errCancelBodyFetch, errCancelReceiptFetch, errCancelStateFetch, errCancelHeaderProcessing, errCancelContentProcessing:
 
