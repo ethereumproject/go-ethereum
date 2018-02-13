@@ -58,6 +58,8 @@ import (
 )
 
 const (
+	tuiHeaderHeight = 2
+	tuiHeaderStart = 1
 	tuiSmallHeight = 3
 	tuiMediumHeight = 5
 	tuiLargeHeight = 8
@@ -99,22 +101,23 @@ func tuiDrawDash(e *eth.Ethereum) {
 		if cacheChainIdentity != "" {
 			cname = cacheChainIdentity
 		}
-		headerInfo.Text = fmt.Sprintf("Mode=%s Chain=%v(%d) Chain Id=%d \n" +
-			"local_head ◼ n=%d ⬡=%s txs=%d time=%v ago",
+		headerInfo.Text = fmt.Sprintf(" Mode=%s Chain=%v(%d) Chain Id=%d \n" +
+			" local_head ◼ n=%d ⬡=%s txs=%d time=%v ago",
 				currentMode, cname, cnet, cid, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(),
 					time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
+		syncheightGauge.BorderLabel = fmt.Sprintf("Sync")
 
 	}
-	termui.Render(headerInfo, peerCountSparkHolder, peerList, blkMgasTxsSparkHolder)
+	termui.Render(headerInfo, syncheightGauge, peerCountSparkHolder, peerList, blkMgasTxsSparkHolder)
 }
 
 func tuiSetupDashComponents() {
 
 	/// Config Info Header
 	headerInfo = termui.NewPar("")
-	headerInfo.X = 2
-	headerInfo.Height = 2
+	headerInfo.Height = tuiHeaderHeight
 	headerInfo.Border = false
+	headerInfo.X = tuiHeaderStart
 	headerInfo.TextBgColor = termui.ColorWhite
 	headerInfo.TextFgColor = termui.ColorBlack
 	headerInfo.SetWidth(termui.TermWidth() - 1)
@@ -124,6 +127,7 @@ func tuiSetupDashComponents() {
 	syncheightGauge.BarColor = termui.ColorRed
 	syncheightGauge.Height = tuiSmallHeight
 	syncheightGauge.Width = tuiLargeWidth
+	syncheightGauge.Y = tuiHeaderHeight + 1
 	//// Mgas spark
 	mgasSpark = termui.Sparkline{}
 	mgasSpark.Title = "Mgas"
