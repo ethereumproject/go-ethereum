@@ -72,9 +72,50 @@ func Fatalf(format string, args ...interface{}) {
 }
 
 func StartNode(stack *node.Node) {
+	var startTime time.Time
 	if err := stack.Start(); err != nil {
 		Fatalf("Error starting protocol stack: %v", err)
+	} else {
+		startTime = time.Now()
 	}
+
+	// mlog
+	nodeInfo := stack.Server().NodeInfo()
+	cconf := cacheChainConfig
+	if cconf == nil {
+		Fatalf("Nil chain configuration")
+	}
+
+	if cid := common.GetClientSessionIdentity(); cid != nil {
+		cid.Version = Version
+	}
+
+	getcmpts := func () string {
+		var ss []string
+		for c := range logger.MLogRegistryActive {
+			ss = append(ss, string(c))
+		}
+		return strings.Join(ss, ",")
+	}
+
+	// Assign shared start/stop details
+	details := []interface{}{
+		nodeInfo.ID,
+		nodeInfo.Name,
+		nodeInfo.Enode,
+		nodeInfo.IP,
+		stack.Server().MaxPeers,
+		cconf.Name,
+		cconf.Identity,
+		cconf.Network,
+		getcmpts(),
+		common.GetClientSessionIdentity(),
+	}
+
+	mlogClientStartup.AssignDetails(
+		details...,
+	).Send(mlogClient)
+
 	go func() {
 		// sigc is a single-val channel for listening to program interrupt
 		var sigc = make(chan os.Signal, 1)
@@ -84,11 +125,13 @@ func StartNode(stack *node.Node) {
 		glog.V(logger.Warn).Warnf("Got %v, shutting down...", sig)
 		glog.D(logger.Warn).Warnf("Got %v, shutting down...", sig)
 		fails := make(chan error, 1)
+		var stopError error
 		go func(fs chan error) {
 			for {
 				select {
 				case e := <-fs:
 					if e != nil {
+						stopError = e
 						glog.V(logger.Error).Errorf("node stop failure: %v", e)
 					}
 				}
@@ -98,20 +141,28 @@ func StartNode(stack *node.Node) {
 		go func(stack *node.Node) {
 			defer func() {
 				close(fails)
+
+				// mlog shutdown
+				details = append(details, sig.String())
+				details = append(details, stopError)
+				details = append(details, int(time.Since(startTime).Seconds()))
+				mlogClientShutdown.AssignDetails(
+					details...,
+				).Send(mlogClient)
+
 				// Ensure any write-pending I/O gets written.
 				glog.Flush()
 			}()
 			fails <- stack.Stop()
 		}(stack)
 
-		// WTF?
-		for i := 10; i > 0; i-- {
+		for i := 3; i > 0; i-- {
 			<-sigc
 			if i > 1 {
 				glog.D(logger.Warn).Warnf("Already shutting down, interrupt %d more times for panic.", i-1)
 			}
 		}
-		glog.Fatal("boom")
+		glog.Fatal("Forced quit.")
 	}()
 }
 
