@@ -52,7 +52,7 @@ var (
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
 	// with MLogRegisterAvailable.
-	MLogRegistryAvailable = make(map[mlogComponent][]MLogT)
+	MLogRegistryAvailable = make(map[mlogComponent][]*MLogT)
 	// MLogRegistryActive contains all registered mlog component and their respective loggers.
 	MLogRegistryActive = make(map[mlogComponent]*Logger)
 	mlogRegLock        sync.RWMutex
@@ -346,7 +346,7 @@ func (m *MLogT) FormatKV() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("session=%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -362,7 +362,7 @@ func (m *MLogT) FormatPlain() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("session=%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
