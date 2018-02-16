@@ -33,6 +33,7 @@ import (
 
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -735,8 +736,10 @@ func version(ctx *cli.Context) error {
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)))
-	fmt.Println("Go Version:", runtime.Version())
-	fmt.Println("OS:", runtime.GOOS)
+	fmt.Println("Go Version:", common.GetClientSessionIdentity().Version)
+	fmt.Println("Go OS:", common.GetClientSessionIdentity().Goos)
+	fmt.Println("Go Arch:", common.GetClientSessionIdentity().Goarch)
+	fmt.Println("Machine ID:", common.GetClientSessionIdentity().MachineID)
 	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
 	fmt.Printf("GOROOT=%s\n", runtime.GOROOT())
 
