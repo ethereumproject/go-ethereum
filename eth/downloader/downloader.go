@@ -36,6 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/trie"
+	"github.com/ethereumproject/go-ethereum/core"
 )
 
 const (
@@ -108,6 +109,18 @@ const (
 	FastSync                  // Quickly download the headers, full sync only at the chain head
 	LightSync                 // Download only the headers and terminate afterwards
 )
+
+func (m SyncMode) String() string {
+	switch m {
+	case FullSync:
+		return "FULL"
+	case FastSync:
+		return "FAST"
+	default:
+		return "LIGHT"
+	}
+	return ""
+}
 
 type Downloader struct {
 	mode SyncMode       // Synchronisation mode defining the strategy used (per sync cycle)
@@ -346,6 +359,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 		errInvalidAncestor, errInvalidChain:
 		glog.V(logger.Core).Warnf("Peer %s: drop: %s", id, err)
 		d.dropPeer(id)
+		if err == errInvalidBlock
 
 	case errCancelBlockFetch, errCancelHeaderFetch, errCancelBodyFetch, errCancelReceiptFetch, errCancelStateFetch, errCancelHeaderProcessing, errCancelContentProcessing:
 
@@ -434,9 +448,37 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		}
 	}()
 
+	var pivot uint64
+
 	glog.V(logger.Debug).Infof("Synchronising with the network using: %s [eth/%d]", p.id, p.version)
+	if logger.MlogEnabled() {
+		mlogDownloaderStartSync.AssignDetails(
+			d.mode.String(),
+			p.id,
+			p.name,
+			p.version,
+			hash.Hex(),
+			td.Uint64(),
+		).Send(mlogDownloader)
+	}
 	defer func(start time.Time) {
-		glog.V(logger.Debug).Warnf("Synchronisation with [%v][eth/%d] terminated after %v", p, p.version, time.Since(start))
+		elapsed := time.Since(start)
+		glog.V(logger.Debug).Warnf("Synchronisation with [%v][eth/%d] terminated after %v", p, p.version, elapsed)
+		if logger.MlogEnabled() {
+			mlogDownloaderStopSync.AssignDetails(
+				d.mode.String(),
+				p.id,
+				p.name,
+				p.version,
+				hash.Hex(),
+				td.Uint64(),
+				pivot,
+				d.syncStatsChainOrigin,
+				d.syncStatsChainHeight,
+				elapsed,
+				err,
+			).Send(mlogDownloader)
+		}
 	}(time.Now())
 
 	if p.version < 62 {
@@ -444,14 +486,16 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		return errBadPeer
 	}
 
+	var origin, height uint64
+
 	// Look up the sync boundaries: the common ancestor and the target block
 	latest, err := d.fetchHeight(p)
 	if err != nil {
 		return err
 	}
-	height := latest.Number.Uint64()
+	height = latest.Number.Uint64()
 
-	origin, err := d.findAncestor(p, height)
+	origin, err = d.findAncestor(p, height)
 	if err != nil {
 		return err
 	}
@@ -463,7 +507,6 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 	d.syncStatsLock.Unlock()
 
 	// Initiate the sync using a concurrent header and content retrieval algorithm
-	pivot := uint64(0)
 	switch d.mode {
 	case LightSync:
 		pivot = height
@@ -495,56 +538,100 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 	if d.syncInitHook != nil {
 		d.syncInitHook(origin, height)
 	}
-	return d.spawnSync(origin+1,
+
+
+
+	fetchers := []func() error {
 		func() error { return d.fetchHeaders(p, origin+1) },    // Headers are always retrieved
 		func() error { return d.processHeaders(origin+1, td) }, // Headers are always retrieved
 		func() error { return d.fetchBodies(origin + 1) },      // Bodies are retrieved during normal and fast sync
 		func() error { return d.fetchReceipts(origin + 1) },    // Receipts are retrieved during fast sync
-		func() error { return d.fetchNodeData() },              // Node state data is retrieved during fast sync
-	)
+	}
+	return d.spawnSync(fetchers)
 }
+
+//// spawnSync runs d.process and all given fetcher functions to completion in
+//// separate goroutines, returning the first error that appears.
+//func (d *Downloader) spawnSync(origin uint64, fetchers ...func() error) (err error) {
+//	defer d.cancel()
+//
+//	// fetchers and processor must not block
+//	errc := make(chan error, len(fetchers)+1)
+//
+//	var wg sync.WaitGroup
+//	wg.Add(len(fetchers))
+//
+//	go func() {
+//		errc <- d.processContent()
+//
+//		wg.Wait()
+//		close(errc)
+//	}()
+//
+//	for _, fetcher := range fetchers {
+//		go func(f func() error) {
+//			defer wg.Done()
+//
+//			err := f()
+//			if err != nil {
+//				d.cancel()
+//			}
+//			errc <- err
+//		}(fetcher)
+//	}
+//
+//	wg.Wait()
+//	// causes the block processor to end when
+//	// it has processed the queue.
+//	d.queue.Done()
+//
+//	for e := range errc {
+//		if e != nil {
+//			err = e
+//			return
+//		}
+//	}
+//	return
+//}
 
 // spawnSync runs d.process and all given fetcher functions to completion in
 // separate goroutines, returning the first error that appears.
-func (d *Downloader) spawnSync(origin uint64, fetchers ...func() error) error {
-	defer d.cancel()
-
-	// fetchers and processor must not block
-	errc := make(chan error, len(fetchers)+1)
-
+func (d *Downloader) spawnSync(fetchers []func() error) error {
 	var wg sync.WaitGroup
+	errc := make(chan error, len(fetchers)+1)
 	wg.Add(len(fetchers))
 
 	go func() {
 		errc <- d.processContent()
 
 		wg.Wait()
-		close(errc)
 	}()
 
-	for _, fetcher := range fetchers {
-		go func(f func() error) {
-			defer wg.Done()
-
-			err := f()
-			if err != nil {
-				d.cancel()
-			}
-			errc <- err
-		}(fetcher)
+	for _, fn := range fetchers {
+		fn := fn
+		go func() { defer wg.Done(); errc <- fn() }()
 	}
 
-	wg.Wait()
-	// causes the block processor to end when
-	// it has processed the queue.
-	d.queue.Done()
-
-	for err := range errc {
-		if err != nil {
-			return err
+	// Wait for the first error, then terminate the others.
+	var err error
+	for i := 0; i < len(fetchers); i++ {
+		if i == len(fetchers)-1 {
+			// Close the queue when all fetchers have exited.
+			// This will cause the block processor to end when
+			// it has processed the queue.
+			//d.queue.Close()
+			d.queue.Close()
+		}
+		if err = <-errc; err != nil {
+			break
 		}
 	}
-	return nil
+	//d.queue.Close()
+	d.queue.Close()
+	//d.Cancel()
+	d.cancel()
+	wg.Wait()
+	return err
 }
 
 // cancel cancels all of the operations and resets the queue.

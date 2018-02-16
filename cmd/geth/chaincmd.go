@@ -93,6 +93,12 @@ var (
 	This is a destructive action, purging any block more recent than the index specified.
 	Syncing will require downloading contemporary block information from the index onwards.
 		`,
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name: "fast",
+				Usage: "Unset current full sync head, enabling fast sync",
+			},
+		},
 	}
 	statusCommand = cli.Command{
 		Action: status,
