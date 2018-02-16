@@ -5,6 +5,7 @@ import (
 )
 
 var mlogBlockchain = logger.MLogRegisterAvailable("blockchain", mLogLinesBlockchain)
+var mlogHeaderchain = logger.MLogRegisterAvailable("headerchain", mLogLinesHeaderchain)
 var mlogTxPool = logger.MLogRegisterAvailable("txpool", mLogLinesTxPool)
 
 // mLogLines is an private slice of all available mlog LINES.
@@ -15,15 +16,20 @@ var mLogLinesBlockchain = []logger.MLogT{
 	*mlogBlockchainInsertBlocks,
 }
 
-var mLogLinesTxPool = []logger.MLogT{
-	*mlogTxPoolAddTx,
-	*mlogTxPoolValidateTx,
+var mLogLinesHeaderchain = []*logger.MLogT{
+	mlogHeaderchainWriteHeader,
+	mlogHeaderchainInsertHeaders,
+}
+
+var mLogLinesTxPool = []*logger.MLogT{
+	mlogTxPoolAddTx,
+	mlogTxPoolValidateTx,
 }
 
 // Collect and document available mlog lines.
 
 var mlogBlockchainWriteBlock = &logger.MLogT{
-	Description: `Called when a single block written to the chain database.
+	Description: `Called when a single block is written to the chain database.
 A STATUS of NONE means it was written _without_ any abnormal chain event, such as a split.`,
 	Receiver: "BLOCKCHAIN",
 	Verb:     "WRITE",
@@ -72,6 +78,41 @@ var mlogBlockchainReorgBlocks = &logger.MLogT{
 		{"REORG", "SPLIT_NUMBER", "BIGINT"},
 		{"BLOCKS", "OLD_START_HASH", "STRING"},
 		{"BLOCKS", "NEW_START_HASH", "STRING"},
+	},
+}
+
+// Headerchain
+var mlogHeaderchainWriteHeader = &logger.MLogT{
+	Description: `Called when a single header is written to the chain header database.
+A STATUS of NONE means it was written _without_ any abnormal chain event, such as a split.`,
+	Receiver: "HEADERCHAIN",
+	Verb:     "WRITE",
+	Subject:  "HEADER",
+	Details: []logger.MLogDetailT{
+		{"WRITE", "STATUS", "STRING"},
+		{"WRITE", "ERROR", "STRING_OR_NULL"},
+		{"HEADER", "NUMBER", "BIGINT"},
+		{"HEADER", "HASH", "STRING"},
+		{"HEADER", "GAS_USED", "BIGINT"},
+		{"HEADER", "COINBASE", "STRING"},
+		{"HEADER", "TIME", "BIGINT"},
+		{"HEADER", "DIFFICULTY", "BIGINT"},
+		{"HEADER", "DIFF_PARENT_TIME", "BIGINT"},
+	},
+}
+
+var mlogHeaderchainInsertHeaders = &logger.MLogT{
+	Description: "Called when a chain of headers is inserted into the chain header database.",
+	Receiver:    "HEADERCHAIN",
+	Verb:        "INSERT",
+	Subject:     "HEADERS",
+	Details: []logger.MLogDetailT{
+		{"HEADERS", "COUNT", "INT"},
+		{"HEADERS", "IGNORED", "INT"},
+		{"HEADERS", "LAST_NUMBER", "BIGINT"},
+		{"HEADERS", "FIRST_HASH", "STRING"},
+		{"HEADERS", "LAST_HASH", "STRING"},
+		{"INSERT", "TIME", "DURATION"},
 	},
 }
 
