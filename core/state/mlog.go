@@ -4,10 +4,10 @@ import "github.com/ethereumproject/go-ethereum/logger"
 
 var mlogState = logger.MLogRegisterAvailable("state", mlogStateLines)
 
-var mlogStateLines = []logger.MLogT{
-	*mlogStateCreateObject,
-	*mlogStateAddBalanceObject,
-	*mlogStateSubBalanceObject,
+var mlogStateLines = []*logger.MLogT{
+	mlogStateCreateObject,
+	mlogStateAddBalanceObject,
+	mlogStateSubBalanceObject,
 }
 
 var mlogStateCreateObject = &logger.MLogT{

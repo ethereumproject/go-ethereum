@@ -11,9 +11,9 @@ var mlogTxPool = logger.MLogRegisterAvailable("txpool", mLogLinesTxPool)
 // mLogLines is an private slice of all available mlog LINES.
 // May be used for automatic mlog documentation generator, or
 // for API usage/display/documentation otherwise.
-var mLogLinesBlockchain = []logger.MLogT{
-	*mlogBlockchainWriteBlock,
-	*mlogBlockchainInsertBlocks,
+var mLogLinesBlockchain = []*logger.MLogT{
+	mlogBlockchainWriteBlock,
+	mlogBlockchainInsertBlocks,
 }
 
 var mLogLinesHeaderchain = []*logger.MLogT{

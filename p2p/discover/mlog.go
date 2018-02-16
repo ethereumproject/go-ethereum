@@ -30,15 +30,15 @@ var mlogDiscover = logger.MLogRegisterAvailable("discover", mLogLines)
 // mLogLines is a private slice of all available mlog LINES.
 // May be used for automatic mlog docmentation generator, or
 // for API usage/display/documentation otherwise.
-var mLogLines = []logger.MLogT{
-	*mlogPingHandleFrom,
-	*mlogPingSendTo,
-	*mlogPongHandleFrom,
-	*mlogPongSendTo,
-	*mlogFindNodeHandleFrom,
-	*mlogFindNodeSendTo,
-	*mlogNeighborsHandleFrom,
-	*mlogNeighborsSendTo,
+var mLogLines = []*logger.MLogT{
+	mlogPingHandleFrom,
+	mlogPingSendTo,
+	mlogPongHandleFrom,
+	mlogPongSendTo,
+	mlogFindNodeHandleFrom,
+	mlogFindNodeSendTo,
+	mlogNeighborsHandleFrom,
+	mlogNeighborsSendTo,
 }
 
 // Collect and document available mlog lines.

@@ -152,7 +152,7 @@ func MlogEnabled() bool {
 // MLogRegisterAvailable is called for each log component variable from a package/mlog.go file
 // as they set up their mlog vars.
 // It registers an mlog component as Available.
-func MLogRegisterAvailable(name string, lines []MLogT) mlogComponent {
+func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
 	MLogRegistryAvailable[c] = lines
