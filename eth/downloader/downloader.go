@@ -36,6 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/trie"
+	"github.com/ethereumproject/go-ethereum/core"
 )
 
 const (
@@ -108,6 +109,18 @@ const (
 	FastSync                  // Quickly download the headers, full sync only at the chain head
 	LightSync                 // Download only the headers and terminate afterwards
 )
+
+func (m SyncMode) String() string {
+	switch m {
+	case FullSync:
+		return "FULL"
+	case FastSync:
+		return "FAST"
+	default:
+		return "LIGHT"
+	}
+	return ""
+}
 
 type Downloader struct {
 	mode SyncMode       // Synchronisation mode defining the strategy used (per sync cycle)
@@ -434,9 +447,37 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		}
 	}()
 
+	var pivot uint64
+
 	glog.V(logger.Debug).Infof("Synchronising with the network using: %s [eth/%d]", p.id, p.version)
+	if logger.MlogEnabled() {
+		mlogDownloaderStartSync.AssignDetails(
+			d.mode.String(),
+			p.id,
+			p.name,
+			p.version,
+			hash.Hex(),
+			td.Uint64(),
+		).Send(mlogDownloader)
+	}
 	defer func(start time.Time) {
-		glog.V(logger.Debug).Warnf("Synchronisation with [%v][eth/%d] terminated after %v", p, p.version, time.Since(start))
+		elapsed := time.Since(start)
+		glog.V(logger.Debug).Warnf("Synchronisation with [%v][eth/%d] terminated after %v", p, p.version, elapsed)
+		if logger.MlogEnabled() {
+			mlogDownloaderStopSync.AssignDetails(
+				d.mode.String(),
+				p.id,
+				p.name,
+				p.version,
+				hash.Hex(),
+				td.Uint64(),
+				pivot,
+				d.syncStatsChainOrigin,
+				d.syncStatsChainHeight,
+				elapsed,
+				err,
+			).Send(mlogDownloader)
+		}
 	}(time.Now())
 
 	if p.version < 62 {
@@ -444,14 +485,16 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		return errBadPeer
 	}
 
+	var origin, height uint64
+
 	// Look up the sync boundaries: the common ancestor and the target block
 	latest, err := d.fetchHeight(p)
 	if err != nil {
 		return err
 	}
-	height := latest.Number.Uint64()
+	height = latest.Number.Uint64()
 
-	origin, err := d.findAncestor(p, height)
+	origin, err = d.findAncestor(p, height)
 	if err != nil {
 		return err
 	}
@@ -463,7 +506,6 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 	d.syncStatsLock.Unlock()
 
 	// Initiate the sync using a concurrent header and content retrieval algorithm
-	pivot := uint64(0)
 	switch d.mode {
 	case LightSync:
 		pivot = height
