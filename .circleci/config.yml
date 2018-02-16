@@ -100,7 +100,8 @@ jobs:
           command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-            brew install -f go
+            brew unlink go
+            brew install go
             brew install bats
             brew install gpg2
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
