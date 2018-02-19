@@ -794,7 +794,7 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 
 	// Only print per-line markdown documentation if -md flag given.
 	if ctx.Bool("md") {
-		fmt.Println("\n----\n") // hr
+		fmt.Println("\n----") // hr
 
 		// each LINE
 		for cmp, lines := range logger.MLogRegistryAvailable {
