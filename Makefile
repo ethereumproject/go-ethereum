@@ -9,6 +9,9 @@ BINARY=bin
 BUILD_TIME=`date +%FT%T%z`
 COMMIT=`git log --pretty=format:'%h' -n 1`
 
+# Choose to install geth with or without SputnikVM.
+WITH_SVM?=1
+
 LDFLAGS=-ldflags "-X main.Version="`git describe --tags`
 
 setup: ## Install all the build and lint dependencies
@@ -19,8 +22,59 @@ setup: ## Install all the build and lint dependencies
 	dep ensure
 	gometalinter --install
 
+build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cmd/rlpdump cmd/geth ## Build a local snapshot binary versions of all commands
+	@ls -ld $(BINARY)/*
+
+cmd/geth: ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
+	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh build ; else mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth ; fi
+	@echo "Done building geth."
+	@echo "Run \"$(BINARY)/geth\" to launch geth."
+
+cmd/abigen: ## Build a local snapshot binary version of abigen.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/abigen ./cmd/abigen
+	@echo "Done building abigen."
+	@echo "Run \"$(BINARY)/abigen\" to launch abigen."
+
+cmd/bootnode: ## Build a local snapshot of bootnode.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/bootnode ./cmd/bootnode
+	@echo "Done building bootnode."
+	@echo "Run \"$(BINARY)/bootnode\" to launch bootnode."
+
+cmd/disasm: ## Build a local snapshot of disasm.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/disasm ./cmd/disasm
+	@echo "Done building disasm."
+	@echo "Run \"$(BINARY)/disasm\" to launch disasm."
+
+cmd/ethtest: ## Build a local snapshot of ethtest.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/ethtest ./cmd/ethtest
+	@echo "Done building ethtest."
+	@echo "Run \"$(BINARY)/ethtest\" to launch ethtest."
+
+cmd/evm: ## Build a local snapshot of evm.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/evm ./cmd/evm
+	@echo "Done building evm."
+	@echo "Run \"$(BINARY)/evm\" to launch evm."
+
+cmd/gethrpctest: ## Build a local snapshot of gethrpctest.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/gethrpctest ./cmd/gethrpctest
+	@echo "Done building gethrpctest."
+	@echo "Run \"$(BINARY)/gethrpctest\" to launch gethrpctest."
+
+cmd/rlpdump: ## Build a local snapshot of rlpdump.
+	mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/rlpdump ./cmd/rlpdump
+	@echo "Done building rlpdump."
+	@echo "Run \"$(BINARY)/rlpdump\" to launch rlpdump."
+
+install: ## Install all packages to $GOPATH/bin
+	go install ./cmd/{abigen,bootnode,disasm,ethtest,evm,gethrpctest,rlpdump}
+	$(MAKE) install_geth
+
+install_geth: ## Install geth to $GOPATH/bin. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
+	$(info Installing $$GOPATH/bin/geth)
+	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh install ; else go install ${LDFLAGS} ./cmd/geth ; fi
+
 fmt: ## gofmt and goimports all go files
-	find . -name '*.go' -not -wholename './vendor/*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
+	find . -name '*.go' -not -wholename './vendor/*' -not -wholename './_vendor*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
 
 ci: lint test ## Run all code checks and tests
 
@@ -49,21 +103,12 @@ test: ## Run all the tests
 cover: test ## Run all the tests and opens the coverage report
 	go tool cover -html=coverage.txt
 
-build: ## Build a local snapshot binary version
-	./scripts/build.sh ${LDFLAGS} ${BINARY}
-
-sputnikvm: ## Build a local snapshot binary version with sputnikvm
-	./scripts/build_sputnikvm.sh ${LDFLAGS} ${BINARY}
-
-clean: ## Remove a local snapshot binary version
+clean: ## Remove local snapshot binary directory
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
-
-install: ## Install to $GOPATH/bin
-	go install ${LDFLAGS} ./cmd/...
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
-.PHONY: setup test cover fmt lint ci build clean install help static
+.PHONY: setup test cover fmt lint ci build cmd/geth cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrlptest cmd/rlpdump install install_geth clean help static

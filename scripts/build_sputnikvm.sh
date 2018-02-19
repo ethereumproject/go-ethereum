@@ -2,6 +2,15 @@
 
 set -e
 
+OUTPUT="$1"
+
+if [ ! "$OUTPUT" == "build" ] && [ ! "$OUTPUT" == "install" ]; then
+	echo "Specify 'install' or 'build' as first argument."
+	exit 1
+else
+	echo "With SputnikVM, running geth $OUTPUT ..."
+fi
+
 OS='Unknown OS'
 case "$(uname -s)" in
     Darwin)
@@ -26,7 +35,7 @@ if [ "$OS" == "Windows" ]; then
 		if [ -d "%GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\.git" ]; then
 			remote_name=$(git remote -v | head -1 | awk '{print $1;}')
 			if [ ! "%remote_name%" == "" ]; then
-				echo "Updating SputnikVM FFI from branch [%remote_name%]..."
+				echo "Updating SputnikVM FFI from branch [%remote_name%] ..."
 				git pull %remote_name% master
 			fi
 		fi
@@ -42,8 +51,12 @@ if [ "$OS" == "Windows" ]; then
     cd %GOPATH%\src\github.com\ethereumproject\go-ethereum\cmd\geth
     set CGO_LDFLAGS=-Wl,--allow-multiple-definition \
         %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
-	mkdir -p %GOPATH%\src\github.com\ethereumproject\go-ethereum\bin
-    go build -o %GOPATH%\src\github.com\ethereumproject\go-ethereum\bin\geth -tags=sputnikvm .
+	if [ "$OUTPUT" == "install" ]; then
+		go install -ldflags '-X main.Version='$(git describe --tags) -tags=sputnikvm .
+	elif [ "$OUTPUT" == "build" ]; then
+		mkdir -p %GOPATH%\src\github.com\ethereumproject\go-ethereum\bin
+		go build -ldflags '-X main.Version='$(git describe --tags) -o %GOPATH%\src\github.com\ethereumproject\go-ethereum\bin\geth -tags=sputnikvm .
+	fi
 else
     ep_gopath=$GOPATH/src/github.com/ethereumproject
 	sputnikffi_path="$ep_gopath/sputnikvm-ffi"
@@ -57,30 +70,38 @@ else
         	cd $sputnikffi_path
 			remote_name=$(git remote -v | head -1 | awk '{print $1;}')
 			if [ ! "$remote_name" == "" ]; then
-				echo "Updating SputnikVM FFI from branch [$remote_name]..."
+				echo "Updating SputnikVM FFI from branch [$remote_name] ..."
 				git pull "$remote_name" master
 			fi
 		fi
     else
-        echo "Cloning SputnikVM FFI..."
+        echo "Cloning SputnikVM FFI ..."
         cd $ep_gopath
         git clone https://github.com/ethereumproject/sputnikvm-ffi.git
 	fi
     cd "$sputnikffi_path/c/ffi"
-	echo "Building SputnikVM FFI..."
+	echo "Building SputnikVM FFI ..."
     cargo build --release
     cp $sputnikffi_path/c/ffi/target/release/libsputnikvm_ffi.a \
         $sputnikffi_path/c/libsputnikvm.a
 
 	geth_binpath="$ep_gopath/go-ethereum/bin"
-	echo "Building geth to $geth_binpath/geth..."
-	mkdir -p "$geth_binpath"
+	echo "Doing geth $OUTPUT ..."
+	cd "$ep_gopath/go-ethereum"
     if [ "$OS" == "Linux" ]; then
-        cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
-        CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl" go build -o $geth_binpath/geth -tags=sputnikvm .
+		if [ "$OUTPUT" == "install" ]; then
+			CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl" go install -ldflags '-X main.Version='$(git describe --tags) ./cmd/geth
+		elif [ "$OUTPUT" == "build" ]; then
+			mkdir -p "$geth_binpath"
+			CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl" go build -ldflags '-X main.Version='$(git describe --tags) -o $geth_binpath/geth -tags=sputnikvm ./cmd/geth
+		fi
     else
-        cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
-        CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl -lresolv" go build -o $geth_binpath/geth -tags=sputnikvm .
+		if [ "$OUTPUT" == "install" ]; then
+			CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl -lresolv" go install -ldflags '-X main.Version='$(git describe --tags) -tags=sputnikvm ./cmd/geth
+		elif [ "$OUTPUT" == "build" ]; then
+			mkdir -p "$geth_binpath"
+			CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl -lresolv" go build -ldflags '-X main.Version='$(git describe --tags) -o $geth_binpath/geth -tags=sputnikvm ./cmd/geth
+		fi
     fi
 fi
 
