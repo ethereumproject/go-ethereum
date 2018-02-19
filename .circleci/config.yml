@@ -100,8 +100,8 @@ jobs:
           command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-            brew unlink go
-            brew install go
+	    # Install go 1.9.3
+	    export BDIR="$(brew --repo homebrew/core)" && echo "$BDIR" && git -C "$BDIR" fetch origin ac2308d7640e45de0de1dbcbb6d4f42fcdd8adde && git -C "$BDIR" checkout FETCH_HEAD && HOMEBREW_NO_AUTO_UPDATE=1 brew install go && git -C "$BDIR" checkout master && unset BDIR
             brew install bats
             brew install gpg2
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
