@@ -16,7 +16,6 @@ var clientSessionIdentity *ClientSessionIdentityT
 var SessionID string // global because we use in mlog fns to inject for all data points
 
 func init() {
-	SessionID = randStringBytes(4)
 	SetClientSessionIdentity("")
 }
 
@@ -50,15 +49,15 @@ func randStringBytes(n int) string {
 }
 
 // SetClientSessionIdentity sets the global variable describing details about the client and session.
-// It should only be called once per session.
+// It is idempotent, excepting only being a setter for Version value.
 func SetClientSessionIdentity(versionName string) {
-
-	rand.Seed(time.Now().UnixNano())
-
 	if clientSessionIdentity != nil {
 		clientSessionIdentity.Version = runtime.Version()
 		return
 	}
+
+	rand.Seed(time.Now().UnixNano())
+	SessionID = randStringBytes(4)
 
 	var hostname, userName string
 	var err error
