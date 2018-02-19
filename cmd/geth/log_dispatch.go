@@ -21,6 +21,7 @@ var availableLogStatusFeatures = map[string]time.Duration{
 	"sync": time.Duration(0),
 }
 
+// lsMode represents the current behavior of the client.
 type lsMode uint
 
 const (
