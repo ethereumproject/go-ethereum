@@ -99,8 +99,10 @@ jobs:
           name: Install required software
           command: |
             export GOPATH=$HOME/go
-            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-            export BDIR="$(brew --repo homebrew/core)" && echo "$BDIR" && git -C "$BDIR" fetch origin ac2308d7640e45de0de1dbcbb6d4f42fcdd8adde && git -C "$BDIR" checkout FETCH_HEAD && HOMEBREW_NO_AUTO_UPDATE=1 brew install go && brew switch go 1.9.3 && git -C "$BDIR" checkout master && unset BDIR
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin]
+            brew update
+            export BDIR="$(brew --repo homebrew/core)" && echo "$BDIR" && git -C "$BDIR" reset --hard master && git -C "$BDIR" fetch origin ac2308d7640e45de0de1dbcbb6d4f42fcdd8adde && git -C "$BDIR" checkout FETCH_HEAD && HOMEBREW_NO_AUTO_UPDATE=1 brew install go && brew switch go 1.9.3 && git -C "$BDIR" checkout master && unset BDIR
+            brew info go
             brew install bats
             brew install gpg2
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
