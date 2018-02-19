@@ -38,15 +38,8 @@ import (
 // as in: go build -ldflags "-X main.Version="`git describe --tags`
 var Version = "source"
 
-// setVersionIfDefaulty uses git to derive a meaningful version value if not set/overridden by -ldflags
-func setVersionIfDefaulty() {
-	if Version == "source" {
-		Version = common.MustSourceBuildVersionFormatted()
-	}
-}
-
 func init() {
-	setVersionIfDefaulty()
+	common.SetClientSessionIdentity(Version)
 }
 
 func makeCLIApp() (app *cli.App) {
