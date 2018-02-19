@@ -1,0 +1,278 @@
+sputnik_vm_steps: &sputnik_vm_steps
+  steps:
+    - restore_cache:
+        key: v7-toolchain-{{ arch }}
+    - attach_workspace:
+        at: ~/
+    - run:
+        name: Compile SputnikVM-ffi
+        command: |
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+          git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
+          cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
+          cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+    - persist_to_workspace:
+        root: ~/ 
+        paths:
+          - go/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+
+deploy_steps: &deploy_steps
+  steps:
+    - restore_cache:
+        key: v7-toolchain-{{ arch }}
+    - attach_workspace:
+        at: ~/
+    - deploy:
+        name: Deploy to builds.etcdevteam.com
+        command: |
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+          cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+          cp $GOPATH/bin/geth ./
+          ./deploy.sh gcloud-circleci.json.enc
+
+unit_tests_steps: &unit_tests_steps
+  steps:
+    - restore_cache:
+        key: v7-toolchain-{{ arch }}
+    - attach_workspace:
+        at: ~/
+    - run:
+        name: Run unit tests
+        command: |
+          export GOPATH=$HOME/go
+          export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+          if [ "$(uname)" == "Darwin" ]; then
+            export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
+          fi
+          export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+          cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+          go env
+          go test -tags="sputnikvm netgo" ./...
+
+bats_tests_steps: &bats_tests_steps
+    steps:
+      - restore_cache:
+          key: v7-toolchain-{{ arch }}
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Run bats tests
+          command: |
+            export GOPATH=$HOME/go
+            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            if [ "$(uname)" == "Darwin" ]; then
+              export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
+            else
+              export EXT_LD_FLAGS="-extldflags=-static"
+            fi
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin:$HOME/bin
+            cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+            # go install ... doesn't work with netgo on CircleCI on Linux
+            go build -tags="sputnikvm netgo" -ldflags "$EXT_LD_FLAGS -X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
+            mkdir -p $GOPATH/bin
+            mv ./geth $GOPATH/bin/
+            bats cmd/geth
+      - persist_to_workspace:
+          root: ~/
+          paths:
+              - go/*
+
+version: 2
+jobs:
+  mac_env_setup:
+    macos:
+      xcode: "9.0"
+    steps:
+      - restore_cache:
+          key: v7-toolchain-{{ arch }}
+      - run:
+          name: Prepare directories
+          command: |
+            export GOPATH=$HOME/go
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+            mkdir -p $GOPATH/src/github.com/ethereumproject
+      - checkout:
+          path:  ~/go/src/github.com/ethereumproject/go-ethereum
+      - run:
+          name: Install required software
+          command: |
+            export GOPATH=$HOME/go
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+            brew install go
+            brew install bats
+            brew install gpg2
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
+            if [ ! -x ~/janusbin/janus ]; then
+              cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+            fi
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - go/src/github.com/ethereumproject/*
+      - save_cache:
+          key: v7-toolchain-{{ arch }}
+          paths:
+            - /usr/local/bin/bats
+            - /usr/local/bin/go
+            - /usr/local/bin/godoc
+            - /usr/local/bin/gofmt
+            - /usr/local/bin/gpg
+            - /usr/local/opt
+            - /usr/local/Cellar
+            - /usr/local/Homebrew
+            - ~/.cargo
+            - ~/.rustup
+            - ~/janusbin
+
+  linux_env_setup:
+    docker:
+      - image: circleci/golang:1.9
+    steps:
+      - restore_cache:
+          key: v7-toolchain-{{ arch }}
+      - run:
+          name: Prepare directories
+          command: |
+            export GOPATH=$HOME/go
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+            mkdir -p $GOPATH/src/github.com/ethereumproject
+      - checkout:
+          path:  ~/go/src/github.com/ethereumproject/go-ethereum
+      - run:
+          name: Install required software
+          command: |
+            export GOPATH=$HOME/go
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
+            git clone https://github.com/sstephenson/bats.git
+            cd bats
+            sudo ./install.sh ~/
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
+            if [ ! -x ~/janusbin/janus ]; then
+              cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+            fi
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - go/src/github.com/ethereumproject/*
+      - save_cache:
+          key: v7-toolchain-{{ arch }}
+          paths:
+            - ~/bin
+            - ~/libexec
+            - ~/.cargo
+            - ~/.rustup
+            - ~/janusbin
+
+  mac_sputnik_vm:
+    macos:
+      xcode: "9.0"
+    <<: *sputnik_vm_steps
+
+  linux_sputnik_vm:
+    docker:
+      - image: circleci/golang:1.9
+    <<: *sputnik_vm_steps
+
+  mac_unit_tests:
+    macos:
+      xcode: "9.0"
+    <<: *unit_tests_steps
+
+  linux_unit_tests:
+    docker:
+      - image: circleci/golang:1.9
+        environment:
+            GOMAXPROCS: 2
+    <<: *unit_tests_steps
+
+  mac_bats_tests:
+    macos:
+      xcode: "9.0"
+    <<: *bats_tests_steps
+
+  linux_bats_tests:
+    docker:
+      - image: circleci/golang:1.9
+    <<: *bats_tests_steps
+
+  mac_deploy:
+    macos:
+      xcode: "9.0"
+    <<: *deploy_steps
+
+  linux_deploy:
+    docker:
+      - image: circleci/golang:1.9
+    <<: *deploy_steps
+
+workflows:
+  version: 2
+  mac_build:
+    jobs:
+      - mac_env_setup:
+          filters:
+            tags:
+              only: /.*/
+      - mac_sputnik_vm:
+          requires:
+            - mac_env_setup
+          filters:
+            tags:
+              only: /.*/
+      - mac_unit_tests:
+          requires:
+            - mac_sputnik_vm
+          filters:
+            tags:
+              only: /.*/
+      - mac_bats_tests:
+          requires:
+            - mac_sputnik_vm
+          filters:
+            tags:
+              only: /.*/
+      - mac_deploy:
+          requires:
+            - mac_unit_tests
+            - mac_bats_tests
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/
+
+  linux_build:
+    jobs:
+      - linux_env_setup:
+          filters:
+            tags:
+              only: /.*/
+      - linux_sputnik_vm:
+          requires:
+            - linux_env_setup
+          filters:
+            tags:
+              only: /.*/
+      - linux_unit_tests:
+          requires:
+            - linux_sputnik_vm
+          filters:
+            tags:
+              only: /.*/
+      - linux_bats_tests:
+          requires:
+            - linux_sputnik_vm
+          filters:
+            tags:
+              only: /.*/
+      - linux_deploy:
+          requires:
+            - linux_unit_tests
+            - linux_bats_tests
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/

@@ -5,16 +5,16 @@ import "github.com/ethereumproject/go-ethereum/logger"
 var mlogMiner = logger.MLogRegisterAvailable("miner", mlogMinerLines)
 
 var mlogMinerLines = []logger.MLogT{
-	mlogMinerStart,
-	mlogMinerStop,
-	mlogMinerCommitWorkBlock,
-	mlogMinerCommitUncle,
-	mlogMinerCommitTx,
-	mlogMinerMineBlock,
-	mlogMinerConfirmMinedBlock,
+	*mlogMinerStart,
+	*mlogMinerStop,
+	*mlogMinerCommitWorkBlock,
+	*mlogMinerCommitUncle,
+	*mlogMinerCommitTx,
+	*mlogMinerMineBlock,
+	*mlogMinerConfirmMinedBlock,
 }
 
-var mlogMinerStart = logger.MLogT{
+var mlogMinerStart = &logger.MLogT{
 	Description: `Called once when the miner starts.`,
 	Receiver:    "MINER",
 	Verb:        "START",
@@ -25,7 +25,7 @@ var mlogMinerStart = logger.MLogT{
 	},
 }
 
-var mlogMinerStop = logger.MLogT{
+var mlogMinerStop = &logger.MLogT{
 	Description: `Called once when the miner stops.`,
 	Receiver:    "MINER",
 	Verb:        "STOP",
@@ -36,7 +36,7 @@ var mlogMinerStop = logger.MLogT{
 	},
 }
 
-var mlogMinerCommitWorkBlock = logger.MLogT{
+var mlogMinerCommitWorkBlock = &logger.MLogT{
 	Description: `Called when the miner commits new work on a block.`,
 	Receiver:    "MINER",
 	Verb:        "COMMIT_WORK",
@@ -49,7 +49,7 @@ var mlogMinerCommitWorkBlock = logger.MLogT{
 	},
 }
 
-var mlogMinerCommitUncle = logger.MLogT{
+var mlogMinerCommitUncle = &logger.MLogT{
 	Description: `Called when the miner commits an uncle.
 If $COMMIT_UNCLE is non-nil, uncle is not committed.`,
 	Receiver: "MINER",
@@ -62,7 +62,7 @@ If $COMMIT_UNCLE is non-nil, uncle is not committed.`,
 	},
 }
 
-var mlogMinerCommitTx = logger.MLogT{
+var mlogMinerCommitTx = &logger.MLogT{
 	Description: `Called when the miner commits (or attempts to commit) a transaction.
 If $COMMIT.ERROR is non-nil, the transaction is not committed.`,
 	Receiver: "MINER",
@@ -75,7 +75,7 @@ If $COMMIT.ERROR is non-nil, the transaction is not committed.`,
 	},
 }
 
-var mlogMinerMineBlock = logger.MLogT{
+var mlogMinerMineBlock = &logger.MLogT{
 	Description: `Called when the miner has mined a block.
 $BLOCK.STATUS will be either 'stale' or 'wait_confirm'. $BLOCK.WAIT_CONFIRM is an integer
 specifying _n_ blocks to wait for confirmation based on block depth, relevant only for when $BLOCK.STATUS is 'wait_confirm'.`,
@@ -90,7 +90,7 @@ specifying _n_ blocks to wait for confirmation based on block depth, relevant on
 	},
 }
 
-var mlogMinerConfirmMinedBlock = logger.MLogT{
+var mlogMinerConfirmMinedBlock = &logger.MLogT{
 	Description: `Called once to confirm the miner has mined a block _n_ blocks back,
 where _n_ refers to the $BLOCK.WAIT_CONFIRM value from MINER MINE BLOCK.
 This is only a logging confirmation message, and is not related to work done.`,

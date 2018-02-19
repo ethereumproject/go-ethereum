@@ -52,14 +52,37 @@ func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, s
 	eip160Fork := config.ForkByName("Diehard")
 
 	var vm *sputnikvm.VM
-	if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
-		vm = sputnikvm.NewEIP160(&vmtx, &vmheader)
-	} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
-		vm = sputnikvm.NewEIP150(&vmtx, &vmheader)
-	} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
-		vm = sputnikvm.NewHomestead(&vmtx, &vmheader)
+	if state.StartingNonce == 0 {
+		if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
+			vm = sputnikvm.NewEIP160(&vmtx, &vmheader)
+		} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
+			vm = sputnikvm.NewEIP150(&vmtx, &vmheader)
+		} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
+			vm = sputnikvm.NewHomestead(&vmtx, &vmheader)
+		} else {
+			vm = sputnikvm.NewFrontier(&vmtx, &vmheader)
+		}
+	} else if state.StartingNonce == 1048576 {
+		if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
+			vm = sputnikvm.NewMordenEIP160(&vmtx, &vmheader)
+		} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
+			vm = sputnikvm.NewMordenEIP150(&vmtx, &vmheader)
+		} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
+			vm = sputnikvm.NewMordenHomestead(&vmtx, &vmheader)
+		} else {
+			vm = sputnikvm.NewMordenFrontier(&vmtx, &vmheader)
+		}
 	} else {
-		vm = sputnikvm.NewFrontier(&vmtx, &vmheader)
+		sputnikvm.SetCustomInitialNonce(big.NewInt(int64(state.StartingNonce)))
+		if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
+			vm = sputnikvm.NewCustomEIP160(&vmtx, &vmheader)
+		} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
+			vm = sputnikvm.NewCustomEIP150(&vmtx, &vmheader)
+		} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
+			vm = sputnikvm.NewCustomHomestead(&vmtx, &vmheader)
+		} else {
+			vm = sputnikvm.NewCustomFrontier(&vmtx, &vmheader)
+		}
 	}
 
 Loop:
