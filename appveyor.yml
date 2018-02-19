@@ -39,9 +39,6 @@ build_script:
   - go test -tags=sputnikvm ./...
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
-artifacts:
-  - path: '*.zip'
-    name: geth
 before_deploy:
   # Set up GCP upload.
   - nuget install secure-file -ExcludeVersion
