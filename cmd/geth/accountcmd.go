@@ -275,7 +275,7 @@ func getPassPhrase(prompt string, confirmation bool, i int, passwords []string) 
 	if confirmation {
 		confirm, err := console.Stdin.PromptPassword("Repeat passphrase: ")
 		if err != nil {
-			log.Fatalf("Failed to read passphrase confirmation: ", err)
+			log.Fatal("Failed to read passphrase confirmation: ", err)
 		}
 		if password != confirm {
 			log.Fatal("Passphrases do not match")
