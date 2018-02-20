@@ -66,8 +66,9 @@ type StdLogSystem struct {
 	level  uint32
 }
 
+// GetLogger is unused, fulfills interface
 func (t *StdLogSystem) GetLogger() *log.Logger {
-	panic("implement me")
+	return t.logger
 }
 
 func (m *MLogSystem) LogPrint(msg LogMsg) {
@@ -115,8 +116,9 @@ type jsonLogSystem struct {
 	logger *log.Logger
 }
 
+// GetLogger is unused, fulfills interface
 func (t *jsonLogSystem) GetLogger() *log.Logger {
-	panic("implement me")
+	return t.logger
 }
 
 func (t *jsonLogSystem) LogPrint(msg LogMsg) {
