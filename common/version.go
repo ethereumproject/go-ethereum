@@ -16,6 +16,7 @@ var clientSessionIdentity *ClientSessionIdentityT
 var SessionID string // global because we use in mlog fns to inject for all data points
 
 func init() {
+	rand.Seed(time.Now().UnixNano())
 	SetClientSessionIdentity("")
 }
 
@@ -56,7 +57,6 @@ func SetClientSessionIdentity(versionName string) {
 		return
 	}
 
-	rand.Seed(time.Now().UnixNano())
 	SessionID = randStringBytes(4)
 
 	var hostname, userName string
