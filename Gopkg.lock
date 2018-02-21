@@ -20,6 +20,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/denisbrodbeck/machineid"
+  packages = ["."]
+  revision = "2777226d0340d8da18b49993ce2b4aeb9c1c6929"
+  version = "v0.8.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/ethereumproject/benchmark"
   packages = [
