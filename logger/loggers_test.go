@@ -23,12 +23,17 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"log"
 )
 
 type TestLogSystem struct {
 	mutex  sync.Mutex
 	output string
 	level  LogLevel
+}
+
+func (ls *TestLogSystem) GetLogger() *log.Logger {
+	return ls.GetLogger()
 }
 
 func (ls *TestLogSystem) LogPrint(msg LogMsg) {
