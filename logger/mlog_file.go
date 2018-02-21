@@ -266,7 +266,7 @@ func shortHostname(hostname string) string {
 func logName(t time.Time) (name, link string) {
 	name = fmt.Sprintf("%s.mlog.%s.%04d%02d%02d-%02d%02d%02d.%d.log",
 		program,
-		common.VCRevision,
+		common.SessionID,
 		t.Year(),
 		t.Month(),
 		t.Day(),
