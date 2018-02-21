@@ -6,9 +6,9 @@ import (
 
 var mlogClient = logger.MLogRegisterAvailable("client", mlogLinesClient)
 
-var mlogLinesClient = []logger.MLogT{
-	*mlogClientStartup,
-	*mlogClientShutdown,
+var mlogLinesClient = []*logger.MLogT{
+	mlogClientStartup,
+	mlogClientShutdown,
 }
 
 var clientDetails = []logger.MLogDetailT{
