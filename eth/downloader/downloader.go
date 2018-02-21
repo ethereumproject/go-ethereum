@@ -36,7 +36,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/trie"
-	"github.com/ethereumproject/go-ethereum/core"
 )
 
 const (
