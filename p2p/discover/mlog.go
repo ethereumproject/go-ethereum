@@ -51,9 +51,9 @@ var mlogPingHandleFrom = &logger.MLogT{
 	Verb:        "HANDLE",
 	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
-		{"FROM", "UDP_ADDRESS", "STRING"},
-		{"FROM", "ID", "STRING"},
-		{"PING", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "FROM", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FROM", Key: "ID", Value: "STRING"},
+		{Owner: "PING", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
@@ -63,8 +63,8 @@ var mlogPingSendTo = &logger.MLogT{
 	Verb:        "SEND",
 	Subject:     "TO",
 	Details: []logger.MLogDetailT{
-		{"TO", "UDP_ADDRESS", "STRING"},
-		{"PING", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "TO", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "PING", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
@@ -76,9 +76,9 @@ var mlogPongHandleFrom = &logger.MLogT{
 	Verb:        "HANDLE",
 	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
-		{"FROM", "UDP_ADDRESS", "STRING"},
-		{"FROM", "ID", "STRING"},
-		{"PONG", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "FROM", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FROM", Key: "ID", Value: "STRING"},
+		{Owner: "PONG", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
@@ -89,8 +89,8 @@ var mlogPongSendTo = &logger.MLogT{
 	Verb:        "SEND",
 	Subject:     "TO",
 	Details: []logger.MLogDetailT{
-		{"TO", "UDP_ADDRESS", "STRING"},
-		{"PONG", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "TO", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "PONG", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
@@ -102,9 +102,9 @@ var mlogFindNodeHandleFrom = &logger.MLogT{
 	Verb:        "HANDLE",
 	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
-		{"FROM", "UDP_ADDRESS", "STRING"},
-		{"FROM", "ID", "STRING"},
-		{"FINDNODE", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "FROM", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FROM", Key: "ID", Value: "STRING"},
+		{Owner: "FINDNODE", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
@@ -115,8 +115,8 @@ var mlogFindNodeSendTo = &logger.MLogT{
 	Verb:        "SEND",
 	Subject:     "TO",
 	Details: []logger.MLogDetailT{
-		{"TO", "UDP_ADDRESS", "STRING"},
-		{"FINDNODE", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "TO", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FINDNODE", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
@@ -128,9 +128,9 @@ var mlogNeighborsHandleFrom = &logger.MLogT{
 	Verb:        "HANDLE",
 	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
-		{"FROM", "UDP_ADDRESS", "STRING"},
-		{"FROM", "ID", "STRING"},
-		{"NEIGHBORS", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "FROM", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FROM", Key: "ID", Value: "STRING"},
+		{Owner: "NEIGHBORS", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
@@ -141,7 +141,7 @@ var mlogNeighborsSendTo = &logger.MLogT{
 	Verb:        "SEND",
 	Subject:     "TO",
 	Details: []logger.MLogDetailT{
-		{"TO", "UDP_ADDRESS", "STRING"},
-		{"NEIGHBORS", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "TO", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "NEIGHBORS", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }

@@ -14,9 +14,9 @@ var mlogFetcherDiscardAnnouncement = &logger.MLogT{
 	Verb:        "DISCARD",
 	Subject:     "ANNOUNCEMENT",
 	Details: []logger.MLogDetailT{
-		{"ANNOUNCEMENT", "ORIGIN", "STRING"},
-		{"ANNOUNCEMENT", "NUMBER", "INT"},
-		{"ANNOUNCEMENT", "HASH", "STRING"},
-		{"ANNOUNCEMENT", "DISTANCE", "INT"},
+		{Owner: "ANNOUNCEMENT", Key: "ORIGIN", Value: "STRING"},
+		{Owner: "ANNOUNCEMENT", Key: "NUMBER", Value: "INT"},
+		{Owner: "ANNOUNCEMENT", Key: "HASH", Value: "STRING"},
+		{Owner: "ANNOUNCEMENT", Key: "DISTANCE", Value: "INT"},
 	},
 }

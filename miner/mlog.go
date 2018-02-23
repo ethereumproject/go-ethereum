@@ -20,8 +20,8 @@ var mlogMinerStart = &logger.MLogT{
 	Verb:        "START",
 	Subject:     "COINBASE",
 	Details: []logger.MLogDetailT{
-		{"COINBASE", "ADDRESS", "STRING"},
-		{"MINER", "THREADS", "INT"},
+		{Owner: "COINBASE", Key: "ADDRESS", Value: "STRING"},
+		{Owner: "MINER", Key: "THREADS", Value: "INT"},
 	},
 }
 
@@ -31,8 +31,8 @@ var mlogMinerStop = &logger.MLogT{
 	Verb:        "STOP",
 	Subject:     "COINBASE",
 	Details: []logger.MLogDetailT{
-		{"COINBASE", "ADDRESS", "STRING"},
-		{"MINER", "THREADS", "INT"},
+		{Owner: "COINBASE", Key: "ADDRESS", Value: "STRING"},
+		{Owner: "MINER", Key: "THREADS", Value: "INT"},
 	},
 }
 
@@ -42,10 +42,10 @@ var mlogMinerCommitWorkBlock = &logger.MLogT{
 	Verb:        "COMMIT_WORK",
 	Subject:     "BLOCK",
 	Details: []logger.MLogDetailT{
-		{"BLOCK", "NUMBER", "BIGINT"},
-		{"COMMIT_WORK", "TXS_COUNT", "INT"},
-		{"COMMIT_WORK", "UNCLES_COUNT", "INT"},
-		{"COMMIT_WORK", "TIME_ELAPSED", "DURATION"},
+		{Owner: "BLOCK", Key: "NUMBER", Value: "BIGINT"},
+		{Owner: "COMMIT_WORK", Key: "TXS_COUNT", Value: "INT"},
+		{Owner: "COMMIT_WORK", Key: "UNCLES_COUNT", Value: "INT"},
+		{Owner: "COMMIT_WORK", Key: "TIME_ELAPSED", Value: "DURATION"},
 	},
 }
 
@@ -56,9 +56,9 @@ If $COMMIT_UNCLE is non-nil, uncle is not committed.`,
 	Verb:     "COMMIT",
 	Subject:  "UNCLE",
 	Details: []logger.MLogDetailT{
-		{"UNCLE", "BLOCK_NUMBER", "BIGINT"},
-		{"UNCLE", "HASH", "STRING"},
-		{"COMMIT", "ERROR", "STRING_OR_NULL"},
+		{Owner: "UNCLE", Key: "BLOCK_NUMBER", Value: "BIGINT"},
+		{Owner: "UNCLE", Key: "HASH", Value: "STRING"},
+		{Owner: "COMMIT", Key: "ERROR", Value: "STRING_OR_NULL"},
 	},
 }
 
@@ -69,9 +69,9 @@ If $COMMIT.ERROR is non-nil, the transaction is not committed.`,
 	Verb:     "COMMIT",
 	Subject:  "TX",
 	Details: []logger.MLogDetailT{
-		{"COMMIT", "BLOCK_NUMBER", "BIGINT"},
-		{"TX", "HASH", "STRING"},
-		{"COMMIT", "ERROR", "STRING"},
+		{Owner: "COMMIT", Key: "BLOCK_NUMBER", Value: "BIGINT"},
+		{Owner: "TX", Key: "HASH", Value: "STRING"},
+		{Owner: "COMMIT", Key: "ERROR", Value: "STRING"},
 	},
 }
 
@@ -83,10 +83,10 @@ specifying _n_ blocks to wait for confirmation based on block depth, relevant on
 	Verb:     "MINE",
 	Subject:  "BLOCK",
 	Details: []logger.MLogDetailT{
-		{"BLOCK", "NUMBER", "BIGINT"},
-		{"BLOCK", "HASH", "STRING"},
-		{"BLOCK", "STATUS", "STRING"},
-		{"BLOCK", "WAIT_CONFIRM", "INT"},
+		{Owner: "BLOCK", Key: "NUMBER", Value: "BIGINT"},
+		{Owner: "BLOCK", Key: "HASH", Value: "STRING"},
+		{Owner: "BLOCK", Key: "STATUS", Value: "STRING"},
+		{Owner: "BLOCK", Key: "WAIT_CONFIRM", Value: "INT"},
 	},
 }
 
@@ -98,6 +98,6 @@ This is only a logging confirmation message, and is not related to work done.`,
 	Verb:     "CONFIRM_MINED",
 	Subject:  "BLOCK",
 	Details: []logger.MLogDetailT{
-		{"BLOCK", "NUMBER", "INT"},
+		{Owner: "BLOCK", Key: "NUMBER", Value: "INT"},
 	},
 }
