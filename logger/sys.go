@@ -23,7 +23,7 @@ import (
 )
 
 // mlogLogRollIntervalDefault determines how often mlog files should roll
-const mlogLogRollIntervalDefault = 10 * time.Minute
+const mlogLogRollIntervalDefault = 30 * time.Minute
 
 type stdMsg struct {
 	level LogLevel
