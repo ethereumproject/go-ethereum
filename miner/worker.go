@@ -42,7 +42,7 @@ const (
 	miningLogAtDepth = 5
 )
 
-// Agent can register themself with the worker
+// Agent can register itself with the worker
 type Agent interface {
 	Work() chan<- *Work
 	SetReturnCh(chan<- *Result)

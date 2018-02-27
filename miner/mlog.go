@@ -101,3 +101,17 @@ This is only a logging confirmation message, and is not related to work done.`,
 		{Owner: "BLOCK", Key: "NUMBER", Value: "INT"},
 	},
 }
+
+var mlogMinerSubmitWork = &logger.MLogT{
+	Description: `Called when a remote agent submits work to the miner. Note that this method only
+acknowledges that work was indeed submitted, but does not confirm nor deny that the PoW was correct.`,
+	Receiver: "REMOTE_AGENT",
+	Verb:     "SUBMIT",
+	Subject:  "WORK",
+	Details: []logger.MLogDetailT{
+		{Owner: "WORK", Key: "NONCE", Value: "INT"},
+		{Owner: "WORK", Key: "MIX_DIGEST", Value: "STRING"},
+		{Owner: "WORK", Key: "HASH", Value: "STRING"},
+		{Owner: "WORK", Key: "EXISTS", Value: "BOOL"},
+	},
+}

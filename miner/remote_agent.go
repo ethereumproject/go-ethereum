@@ -129,9 +129,19 @@ func (a *RemoteAgent) GetWork() ([3]string, error) {
 }
 
 // Returns true or false, but does not indicate if the PoW was correct
-func (a *RemoteAgent) SubmitWork(nonce uint64, mixDigest, hash common.Hash) bool {
+func (a *RemoteAgent) SubmitWork(nonce uint64, mixDigest, hash common.Hash) (exists bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	defer func() {
+		if logger.MlogEnabled() {
+			mlogMinerSubmitWork.AssignDetails(
+				nonce,
+				mixDigest.Hex(),
+				hash.Hex(),
+				exists,
+			).Send(mlogMiner)
+		}
+	}()
 
 	// Make sure the work submitted is present
 	if a.work[hash] != nil {
@@ -140,12 +150,14 @@ func (a *RemoteAgent) SubmitWork(nonce uint64, mixDigest, hash common.Hash) bool
 
 		delete(a.work, hash)
 
-		return true
+		exists = true
+		return
 	} else {
 		glog.V(logger.Info).Infof("Work was submitted for %x but no pending work found\n", hash)
 	}
 
-	return false
+	exists = false
+	return
 }
 
 func (a *RemoteAgent) maintainLoop() {
