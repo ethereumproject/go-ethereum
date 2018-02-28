@@ -1,36 +1,36 @@
 package common
 
 import (
-	"runtime"
-	"os"
-	"strings"
-	"os/user"
-	"github.com/denisbrodbeck/machineid"
-	"strconv"
-	"math/rand"
-	"time"
 	"fmt"
+	"math/rand"
+	"os"
+	"os/user"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/denisbrodbeck/machineid"
 )
 
 var clientSessionIdentity *ClientSessionIdentityT
 var SessionID string // global because we use in mlog fns to inject for all data points
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
 	SetClientSessionIdentity("")
 }
 
 // ClientSessionIdentityT holds values describing the client, environment, and session.
 type ClientSessionIdentityT struct {
-	Version string `json:"version"`
-	Hostname string `json:"host"`
-	Username string `json:"user"`
-	MachineID string `json:"machineid"`
-	Goos string `json:"goos"`
-	Goarch string `json:"goarch"`
-	Goversion string `json:"goversion"`
-	Pid int `json:"pid"`
-	SessionID string `json:"session"`
+	Version   string    `json:"version"`
+	Hostname  string    `json:"host"`
+	Username  string    `json:"user"`
+	MachineID string    `json:"machineid"`
+	Goos      string    `json:"goos"`
+	Goarch    string    `json:"goarch"`
+	Goversion string    `json:"goversion"`
+	Pid       int       `json:"pid"`
+	SessionID string    `json:"session"`
 	StartTime time.Time `json:"start"`
 }
 
@@ -41,6 +41,7 @@ func (s *ClientSessionIdentityT) String() string {
 
 // Helpers for random sessionid string.
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 func randStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {
@@ -87,7 +88,7 @@ func SetClientSessionIdentity(versionName string) {
 	}
 
 	clientSessionIdentity = &ClientSessionIdentityT{
-		Version: versionName,
+		Version:   versionName,
 		Hostname:  hostname,
 		Username:  userName,
 		MachineID: mid[:8], // because we don't care that much
