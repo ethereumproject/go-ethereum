@@ -12,6 +12,7 @@ var mlogMinerLines = []*logger.MLogT{
 	mlogMinerCommitTx,
 	mlogMinerMineBlock,
 	mlogMinerConfirmMinedBlock,
+	mlogMinerSubmitWork,
 }
 
 var mlogMinerStart = &logger.MLogT{
