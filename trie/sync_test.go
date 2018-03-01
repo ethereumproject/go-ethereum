@@ -78,12 +78,12 @@ func checkTrieConsistency(db Database, root common.Hash) error {
 	// Create and iterate a trie rooted in a subnode
 	trie, err := New(root, db)
 	if err != nil {
-		return nil // // Consider a non existent state consistent
+		return nil // Consider a non existent state consistent
 	}
-	it := NewNodeIterator(trie)
-	for it.Next() {
+	it := trie.NodeIterator(nil)
+	for it.Next(true) {
 	}
-	return it.Error
+	return it.Error()
 }
 
 // Tests that an empty trie is not scheduled for syncing.

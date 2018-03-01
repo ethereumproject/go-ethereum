@@ -89,6 +89,12 @@ func NewLDBDatabase(file string, cache int, handles int) (*LDBDatabase, error) {
 	}, nil
 }
 
+
+// Path returns the path to the database directory.
+func (db *LDBDatabase) Path() string {
+	return db.file
+}
+
 // Put puts the given key / value to the queue
 func (self *LDBDatabase) Put(key []byte, value []byte) error {
 	return self.db.Put(key, value, nil)
