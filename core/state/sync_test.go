@@ -94,15 +94,36 @@ func checkStateAccounts(t *testing.T, db ethdb.Database, root common.Hash, accou
 func checkStateConsistency(db ethdb.Database, root common.Hash) error {
 	// Create and iterate a state trie rooted in a sub-node
 	if _, err := db.Get(root.Bytes()); err != nil {
+		panic("no db get root bytes")
 		return nil // Consider a non existent state consistent
 	}
+
 	state, err := New(root, db)
 	if err != nil {
+		panic("state new err db")
 		return err
 	}
+
+	//newDb, err := ethdb.NewMemDatabase()
+	//if err != nil {
+	//	return err
+	//}
+
+	//ssync := NewStateSync(root, db)
+	//state, err := New(root, newDb)
+	//if err != nil {
+	//	return err
+	//}
+
 	it := NewNodeIterator(state)
 	for it.Next() {
 	}
+
+	// ** This is the culprit
+	//
+	//if it.Error != nil {
+	//	panic("it error not nil")
+	//}
 	return it.Error
 }
 
@@ -125,10 +146,35 @@ func testIterativeStateSync(t *testing.T, batch int) {
 	srcDb, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
-	dstDb, _ := ethdb.NewMemDatabase()
+	dstDb, err := ethdb.NewMemDatabase()
+	if err != nil {
+		t.Fatal("dstDb err", err)
+	}
 	sched := NewStateSync(srcRoot, dstDb)
 
-	queue := append([]common.Hash{}, sched.Missing(batch)...)
+	t.Log("srcRoot", srcRoot.Hex())
+
+	missingHash := common.HexToHash("dfeafd80ff7b2cd06c585dd128634aba43f63317420d76c9a7f0c58cfa1b758e")
+	schedBatch := sched.Missing(batch)
+
+	queue := append([]common.Hash{}, schedBatch...)
+	var found bool
+	for _, b := range schedBatch {
+		if (b == missingHash) {
+			t.Log("schedbatch has missing from dstDb hash")
+			found = true
+		}
+	}
+	if !found {
+		t.Log("schedbatch does NOT have missing dstDb hash")
+	}
+
+	b, err := srcDb.Get(missingHash.Bytes())
+	if err != nil {
+		t.Fatal("could not get apparently missing hash from src db", err)
+	} else {
+		t.Log("src db HAS missing dst db hash", missingHash.Hex())
+	}
 	for len(queue) > 0 {
 		results := make([]trie.SyncResult, len(queue))
 		for i, hash := range queue {
@@ -136,7 +182,11 @@ func testIterativeStateSync(t *testing.T, batch int) {
 			if err != nil {
 				t.Fatalf("failed to retrieve node data for %x: %v", hash, err)
 			}
+			if (hash == missingHash) {
+				t.Log("adding missing hash to results queue")
+			}
 			results[i] = trie.SyncResult{Hash: hash, Data: data}
+			t.Log("hash", hash.Hex())
 		}
 		if _, index, err := sched.Process(results); err != nil {
 			t.Fatalf("failed to process result #%d: %v", index, err)
@@ -146,6 +196,28 @@ func testIterativeStateSync(t *testing.T, batch int) {
 		}
 		queue = append(queue[:0], sched.Missing(batch)...)
 	}
+
+
+	t.Log("pending", sched.Pending())
+	checkStateAccounts(t, srcDb, srcRoot, srcAccounts)
+
+
+	b, err = srcDb.Get(missingHash.Bytes())
+	if err != nil {
+		t.Fatal("could not get apparently missing hash from src db", err)
+	}
+	// ** This throws and error
+	//
+	//b, err = dstDb.Get(missingHash.Bytes())
+	//if err != nil {
+	//	t.Fatal("could not get apparently missing hash from dst db", err)
+	//}
+	t.Log("got b from srcDb", common.BytesToHash(b).Hex())
+
+	t.Log("checker1")
+
+
+
 	// Cross check that the two states are in sync
 	checkStateAccounts(t, dstDb, srcRoot, srcAccounts)
 }
@@ -196,6 +268,10 @@ func testIterativeRandomStateSync(t *testing.T, batch int) {
 	// Create a destination state and sync with the scheduler
 	dstDb, _ := ethdb.NewMemDatabase()
 	sched := NewStateSync(srcRoot, dstDb)
+
+
+	checkStateAccounts(t, srcDb, srcRoot, srcAccounts)
+	t.Log("passed checkpoint 1")
 
 	queue := make(map[common.Hash]struct{})
 	for _, hash := range sched.Missing(batch) {
