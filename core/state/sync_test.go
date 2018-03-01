@@ -67,7 +67,6 @@ func makeTestState() (Database, *ethdb.MemDatabase, common.Hash, []*testAccount)
 	return db, mem, root, accounts
 }
 
-
 // checkStateAccounts cross references a reconstructed state with an expected
 // account array.
 func checkStateAccounts(t *testing.T, db ethdb.Database, root common.Hash, accounts []*testAccount) {

@@ -24,6 +24,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 )
 
+
 // Iterator is a key-value trie iterator that traverses a Trie.
 type Iterator struct {
 	nodeIt NodeIterator

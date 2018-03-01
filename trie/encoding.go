@@ -15,16 +15,39 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 package trie
+// Trie keys are dealt with in three distinct encodings:
+//
+// KEYBYTES encoding contains the actual key and nothing else. This encoding is the
+// input to most API functions.
+//
+// HEX encoding contains one byte for each nibble of the key and an optional trailing
+// 'terminator' byte of value 0x10 which indicates whether or not the node at the key
+// contains a value. Hex key encoding is used for nodes loaded in memory because it's
+// convenient to access.
+//
+// COMPACT encoding is defined by the Ethereum Yellow Paper (it's called "hex prefix
+// encoding" there) and contains the bytes of the key and a flag. The high nibble of the
+// first byte contains the flag; the lowest bit encoding the oddness of the length and
+// the second-lowest encoding whether the node at the key is a value node. The low nibble
+// of the first byte is zero in the case of an even number of nibbles and the first nibble
+// in the case of an odd number. All remaining nibbles (now an even number) fit properly
+// into the remaining bytes. Compact encoding is used for nodes stored on disk.
 
-func keybytesToHex(str []byte) []byte {
-	l := len(str)*2 + 1
-	var nibbles = make([]byte, l)
-	for i, b := range str {
-		nibbles[i*2] = b / 16
-		nibbles[i*2+1] = b % 16
+func hexToCompact(hex []byte) []byte {
+	terminator := byte(0)
+	if hasTerm(hex) {
+		terminator = 1
+		hex = hex[:len(hex)-1]
 	}
-	nibbles[l-1] = 16
-	return nibbles
+	buf := make([]byte, len(hex)/2+1)
+	buf[0] = terminator << 5 // the flag byte
+	if len(hex)&1 == 1 {
+		buf[0] |= 1 << 4 // odd flag
+		buf[0] |= hex[0] // first nibble is contained in the first byte
+		hex = hex[1:]
+	}
+	decodeNibbles(hex, buf[1:])
+	return buf
 }
 
 func compactToHex(compact []byte) []byte {
@@ -37,6 +60,17 @@ func compactToHex(compact []byte) []byte {
 	// apply odd flag
 	chop := 2 - base[0]&1
 	return base[chop:]
+}
+
+func keybytesToHex(str []byte) []byte {
+	l := len(str)*2 + 1
+	var nibbles = make([]byte, l)
+	for i, b := range str {
+		nibbles[i*2] = b / 16
+		nibbles[i*2+1] = b % 16
+	}
+	nibbles[l-1] = 16
+	return nibbles
 }
 
 // hexToKeybytes turns hex nibbles into key bytes.
@@ -59,90 +93,6 @@ func decodeNibbles(nibbles []byte, bytes []byte) {
 	}
 }
 
-func compactEncode(hexSlice []byte) []byte {
-	terminator := byte(0)
-	if hexSlice[len(hexSlice)-1] == 16 {
-		terminator = 1
-		hexSlice = hexSlice[:len(hexSlice)-1]
-	}
-	var (
-		odd    = byte(len(hexSlice) % 2)
-		buflen = len(hexSlice)/2 + 1
-		bi, hi = 0, 0    // indices
-		hs     = byte(0) // shift: flips between 0 and 4
-	)
-	if odd == 0 {
-		bi = 1
-		hs = 4
-	}
-	buf := make([]byte, buflen)
-	buf[0] = terminator<<5 | byte(odd)<<4
-	for bi < len(buf) && hi < len(hexSlice) {
-		buf[bi] |= hexSlice[hi] << hs
-		if hs == 0 {
-			bi++
-		}
-		hi, hs = hi+1, hs^(1<<2)
-	}
-	return buf
-}
-
-func compactDecode(str []byte) []byte {
-	base := compactHexDecode(str)
-	base = base[:len(base)-1]
-	if base[0] >= 2 {
-		base = append(base, 16)
-	}
-	if base[0]%2 == 1 {
-		base = base[1:]
-	} else {
-		base = base[2:]
-	}
-	return base
-}
-
-func compactHexDecode(str []byte) []byte {
-	l := len(str)*2 + 1
-	var nibbles = make([]byte, l)
-	for i, b := range str {
-		nibbles[i*2] = b / 16
-		nibbles[i*2+1] = b % 16
-	}
-	nibbles[l-1] = 16
-	return nibbles
-}
-
-// compactHexEncode encodes a series of nibbles into a byte array
-func compactHexEncode(nibbles []byte) []byte {
-	nl := len(nibbles)
-	if nl == 0 {
-		return nil
-	}
-	if nibbles[nl-1] == 16 {
-		nl--
-	}
-	l := (nl + 1) / 2
-	var str = make([]byte, l)
-	for i := range str {
-		b := nibbles[i*2] * 16
-		if nl > i*2 {
-			b += nibbles[i*2+1]
-		}
-		str[i] = b
-	}
-	return str
-}
-
-func decodeCompact(key []byte) []byte {
-	l := len(key) / 2
-	var res = make([]byte, l)
-	for i := 0; i < l; i++ {
-		v1, v0 := key[2*i], key[2*i+1]
-		res[i] = v1*16 + v0
-	}
-	return res
-}
-
 // prefixLen returns the length of the common prefix of a and b.
 func prefixLen(a, b []byte) int {
 	var i, length = 0, len(a)
@@ -157,6 +107,7 @@ func prefixLen(a, b []byte) int {
 	return i
 }
 
+// hasTerm returns whether a hex key has the terminator flag.
 func hasTerm(s []byte) bool {
-	return s[len(s)-1] == 16
+	return len(s) > 0 && s[len(s)-1] == 16
 }
