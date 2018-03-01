@@ -29,7 +29,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
-	"github.com/hashicorp/golang-lru"
 	"github.com/ethereumproject/go-ethereum/core/types"
 )
 
@@ -66,7 +65,6 @@ type StateDB struct {
 	db            Database
 	trie          Trie
 	pastTries     []*trie.SecureTrie
-	codeSizeCache *lru.Cache
 
 	// DB error.
 	// State objects are used by the consensus core and VM which are
@@ -215,10 +213,7 @@ func (self *StateDB) GetNonce(addr common.Address) uint64 {
 func (self *StateDB) GetCode(addr common.Address) []byte {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
-		code := stateObject.Code(self.db)
-		key := common.BytesToHash(stateObject.CodeHash())
-		self.codeSizeCache.Add(key, len(code))
-		return code
+		return stateObject.Code(self.db)
 	}
 	return nil
 }
@@ -228,13 +223,12 @@ func (self *StateDB) GetCodeSize(addr common.Address) int {
 	if stateObject == nil {
 		return 0
 	}
-	key := common.BytesToHash(stateObject.CodeHash())
-	if cached, ok := self.codeSizeCache.Get(key); ok {
-		return cached.(int)
+	if stateObject.code != nil {
+		return len(stateObject.code)
 	}
-	size := len(stateObject.Code(self.db))
-	if stateObject.dbErr == nil {
-		self.codeSizeCache.Add(key, size)
+	size, err := self.db.ContractCodeSize(stateObject.addrHash, common.BytesToHash(stateObject.CodeHash()))
+	if err != nil {
+		self.setError(err)
 	}
 	return size
 }
