@@ -36,9 +36,10 @@ type testAccount struct {
 }
 
 // makeTestState create a sample test state to test node-wise reconstruction.
-func makeTestState() (ethdb.Database, common.Hash, []*testAccount) {
+func makeTestState() (Database, *ethdb.MemDatabase, common.Hash, []*testAccount) {
 	// Create an empty state
-	db, _ := ethdb.NewMemDatabase()
+	mem, _ := ethdb.NewMemDatabase()
+	db := NewDatabase(mem)
 	state, _ := New(common.Hash{}, db)
 
 	// Fill it with some arbitrary data
@@ -60,17 +61,18 @@ func makeTestState() (ethdb.Database, common.Hash, []*testAccount) {
 		state.updateStateObject(obj)
 		accounts = append(accounts, acc)
 	}
-	root, _ := state.Commit()
+	root, _ := state.CommitTo(mem, false)
 
 	// Return the generated state
-	return db, root, accounts
+	return db, mem, root, accounts
 }
+
 
 // checkStateAccounts cross references a reconstructed state with an expected
 // account array.
 func checkStateAccounts(t *testing.T, db ethdb.Database, root common.Hash, accounts []*testAccount) {
 	// Check root availability and state contents
-	state, err := New(root, db)
+	state, err := New(root, NewDatabase(db))
 	if err != nil {
 		t.Fatalf("failed to create state trie at %x: %v", root, err)
 	}
@@ -84,46 +86,40 @@ func checkStateAccounts(t *testing.T, db ethdb.Database, root common.Hash, accou
 		if nonce := state.GetNonce(acc.address); nonce != acc.nonce {
 			t.Errorf("account %d: nonce mismatch: have %v, want %v", i, nonce, acc.nonce)
 		}
-		if code := state.GetCode(acc.address); bytes.Compare(code, acc.code) != 0 {
+		if code := state.GetCode(acc.address); !bytes.Equal(code, acc.code) {
 			t.Errorf("account %d: code mismatch: have %x, want %x", i, code, acc.code)
 		}
 	}
 }
 
-// checkStateConsistency checks that all nodes in a state trie are indeed present.
+// checkTrieConsistency checks that all nodes in a (sub-)trie are indeed present.
+func checkTrieConsistency(db ethdb.Database, root common.Hash) error {
+	if v, _ := db.Get(root[:]); v == nil {
+		return nil // Consider a non existent state consistent.
+	}
+	trie, err := trie.New(root, db)
+	if err != nil {
+		return err
+	}
+	it := trie.NodeIterator(nil)
+	for it.Next(true) {
+	}
+	return it.Error()
+}
+
+// checkStateConsistency checks that all data of a state root is present.
 func checkStateConsistency(db ethdb.Database, root common.Hash) error {
 	// Create and iterate a state trie rooted in a sub-node
 	if _, err := db.Get(root.Bytes()); err != nil {
-		panic("no db get root bytes")
-		return nil // Consider a non existent state consistent
+		return nil // Consider a non existent state consistent.
 	}
-
-	state, err := New(root, db)
+	state, err := New(root, NewDatabase(db))
 	if err != nil {
-		panic("state new err db")
 		return err
 	}
-
-	//newDb, err := ethdb.NewMemDatabase()
-	//if err != nil {
-	//	return err
-	//}
-
-	//ssync := NewStateSync(root, db)
-	//state, err := New(root, newDb)
-	//if err != nil {
-	//	return err
-	//}
-
 	it := NewNodeIterator(state)
 	for it.Next() {
 	}
-
-	// ** This is the culprit
-	//
-	//if it.Error != nil {
-	//	panic("it error not nil")
-	//}
 	return it.Error
 }
 
@@ -143,50 +139,21 @@ func TestIterativeStateSyncBatched(t *testing.T)    { testIterativeStateSync(t, 
 
 func testIterativeStateSync(t *testing.T, batch int) {
 	// Create a random state to copy
-	srcDb, srcRoot, srcAccounts := makeTestState()
+	_, srcMem, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
-	dstDb, err := ethdb.NewMemDatabase()
-	if err != nil {
-		t.Fatal("dstDb err", err)
-	}
+	dstDb, _ := ethdb.NewMemDatabase()
 	sched := NewStateSync(srcRoot, dstDb)
 
-	t.Log("srcRoot", srcRoot.Hex())
-
-	missingHash := common.HexToHash("dfeafd80ff7b2cd06c585dd128634aba43f63317420d76c9a7f0c58cfa1b758e")
-	schedBatch := sched.Missing(batch)
-
-	queue := append([]common.Hash{}, schedBatch...)
-	var found bool
-	for _, b := range schedBatch {
-		if (b == missingHash) {
-			t.Log("schedbatch has missing from dstDb hash")
-			found = true
-		}
-	}
-	if !found {
-		t.Log("schedbatch does NOT have missing dstDb hash")
-	}
-
-	b, err := srcDb.Get(missingHash.Bytes())
-	if err != nil {
-		t.Fatal("could not get apparently missing hash from src db", err)
-	} else {
-		t.Log("src db HAS missing dst db hash", missingHash.Hex())
-	}
+	queue := append([]common.Hash{}, sched.Missing(batch)...)
 	for len(queue) > 0 {
 		results := make([]trie.SyncResult, len(queue))
 		for i, hash := range queue {
-			data, err := srcDb.Get(hash.Bytes())
+			data, err := srcMem.Get(hash.Bytes())
 			if err != nil {
 				t.Fatalf("failed to retrieve node data for %x: %v", hash, err)
 			}
-			if (hash == missingHash) {
-				t.Log("adding missing hash to results queue")
-			}
 			results[i] = trie.SyncResult{Hash: hash, Data: data}
-			t.Log("hash", hash.Hex())
 		}
 		if _, index, err := sched.Process(results); err != nil {
 			t.Fatalf("failed to process result #%d: %v", index, err)
@@ -196,28 +163,6 @@ func testIterativeStateSync(t *testing.T, batch int) {
 		}
 		queue = append(queue[:0], sched.Missing(batch)...)
 	}
-
-
-	t.Log("pending", sched.Pending())
-	checkStateAccounts(t, srcDb, srcRoot, srcAccounts)
-
-
-	b, err = srcDb.Get(missingHash.Bytes())
-	if err != nil {
-		t.Fatal("could not get apparently missing hash from src db", err)
-	}
-	// ** This throws and error
-	//
-	//b, err = dstDb.Get(missingHash.Bytes())
-	//if err != nil {
-	//	t.Fatal("could not get apparently missing hash from dst db", err)
-	//}
-	t.Log("got b from srcDb", common.BytesToHash(b).Hex())
-
-	t.Log("checker1")
-
-
-
 	// Cross check that the two states are in sync
 	checkStateAccounts(t, dstDb, srcRoot, srcAccounts)
 }
@@ -226,7 +171,7 @@ func testIterativeStateSync(t *testing.T, batch int) {
 // partial results are returned, and the others sent only later.
 func TestIterativeDelayedStateSync(t *testing.T) {
 	// Create a random state to copy
-	srcDb, srcRoot, srcAccounts := makeTestState()
+	_, srcMem, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
 	dstDb, _ := ethdb.NewMemDatabase()
@@ -237,7 +182,7 @@ func TestIterativeDelayedStateSync(t *testing.T) {
 		// Sync only half of the scheduled nodes
 		results := make([]trie.SyncResult, len(queue)/2+1)
 		for i, hash := range queue[:len(results)] {
-			data, err := srcDb.Get(hash.Bytes())
+			data, err := srcMem.Get(hash.Bytes())
 			if err != nil {
 				t.Fatalf("failed to retrieve node data for %x: %v", hash, err)
 			}
@@ -263,15 +208,11 @@ func TestIterativeRandomStateSyncBatched(t *testing.T)    { testIterativeRandomS
 
 func testIterativeRandomStateSync(t *testing.T, batch int) {
 	// Create a random state to copy
-	srcDb, srcRoot, srcAccounts := makeTestState()
+	_, srcMem, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
 	dstDb, _ := ethdb.NewMemDatabase()
 	sched := NewStateSync(srcRoot, dstDb)
-
-
-	checkStateAccounts(t, srcDb, srcRoot, srcAccounts)
-	t.Log("passed checkpoint 1")
 
 	queue := make(map[common.Hash]struct{})
 	for _, hash := range sched.Missing(batch) {
@@ -281,7 +222,7 @@ func testIterativeRandomStateSync(t *testing.T, batch int) {
 		// Fetch all the queued nodes in a random order
 		results := make([]trie.SyncResult, 0, len(queue))
 		for hash := range queue {
-			data, err := srcDb.Get(hash.Bytes())
+			data, err := srcMem.Get(hash.Bytes())
 			if err != nil {
 				t.Fatalf("failed to retrieve node data for %x: %v", hash, err)
 			}
@@ -307,7 +248,7 @@ func testIterativeRandomStateSync(t *testing.T, batch int) {
 // partial results are returned (Even those randomly), others sent only later.
 func TestIterativeRandomDelayedStateSync(t *testing.T) {
 	// Create a random state to copy
-	srcDb, srcRoot, srcAccounts := makeTestState()
+	_, srcMem, srcRoot, srcAccounts := makeTestState()
 
 	// Create a destination state and sync with the scheduler
 	dstDb, _ := ethdb.NewMemDatabase()
@@ -323,7 +264,7 @@ func TestIterativeRandomDelayedStateSync(t *testing.T) {
 		for hash := range queue {
 			delete(queue, hash)
 
-			data, err := srcDb.Get(hash.Bytes())
+			data, err := srcMem.Get(hash.Bytes())
 			if err != nil {
 				t.Fatalf("failed to retrieve node data for %x: %v", hash, err)
 			}
@@ -352,7 +293,9 @@ func TestIterativeRandomDelayedStateSync(t *testing.T) {
 // the database.
 func TestIncompleteStateSync(t *testing.T) {
 	// Create a random state to copy
-	srcDb, srcRoot, srcAccounts := makeTestState()
+	_, srcMem, srcRoot, srcAccounts := makeTestState()
+
+	checkTrieConsistency(srcMem, srcRoot)
 
 	// Create a destination state and sync with the scheduler
 	dstDb, _ := ethdb.NewMemDatabase()
@@ -364,7 +307,7 @@ func TestIncompleteStateSync(t *testing.T) {
 		// Fetch a batch of state nodes
 		results := make([]trie.SyncResult, len(queue))
 		for i, hash := range queue {
-			data, err := srcDb.Get(hash.Bytes())
+			data, err := srcMem.Get(hash.Bytes())
 			if err != nil {
 				t.Fatalf("failed to retrieve node data for %x: %v", hash, err)
 			}
@@ -380,21 +323,18 @@ func TestIncompleteStateSync(t *testing.T) {
 		for _, result := range results {
 			added = append(added, result.Hash)
 		}
-		// Check that all known sub-tries in the synced state is complete
-		for _, root := range added {
-			// Skim through the accounts and make sure the root hash is not a code node
-			codeHash := false
+		// Check that all known sub-tries added so far are complete or missing entirely.
+	checkSubtries:
+		for _, hash := range added {
 			for _, acc := range srcAccounts {
-				if bytes.Compare(root.Bytes(), crypto.Sha3(acc.code)) == 0 {
-					codeHash = true
-					break
+				if hash == crypto.Keccak256Hash(acc.code) {
+					continue checkSubtries // skip trie check of code nodes.
 				}
 			}
-			// If the root is a real trie node, check consistency
-			if !codeHash {
-				if err := checkStateConsistency(dstDb, root); err != nil {
-					t.Fatalf("state inconsistent: %v", err)
-				}
+			// Can't use checkStateConsistency here because subtrie keys may have odd
+			// length and crash in LeafKey.
+			if err := checkTrieConsistency(dstDb, hash); err != nil {
+				t.Fatalf("state inconsistent: %v", err)
 			}
 		}
 		// Fetch the next batch to retrieve
