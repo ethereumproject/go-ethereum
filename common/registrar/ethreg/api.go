@@ -114,7 +114,7 @@ func (api *PrivateRegistarAPI) RegisterUrl(sender common.Address, contentHashHex
 
 // callmsg is the message type used for call transations.
 type callmsg struct {
-	from          *state.StateObject
+	from          *state.stateObject
 	to            *common.Address
 	gas, gasPrice *big.Int
 	value         *big.Int
@@ -178,7 +178,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 		return "", "", err
 	}
 
-	var from *state.StateObject
+	var from *state.stateObject
 	if fromStr == "" {
 		accounts := be.am.Accounts()
 		if len(accounts) == 0 {

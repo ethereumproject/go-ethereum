@@ -159,7 +159,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 
 	// check post state
 	for addr, account := range test.Post {
-		obj := statedb.GetStateObject(common.HexToAddress(addr))
+		obj := statedb.getStateObject(common.HexToAddress(addr))
 		if obj == nil {
 			return fmt.Errorf("did not find expected post-state account: %s", addr)
 		}

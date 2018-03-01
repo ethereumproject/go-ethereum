@@ -174,7 +174,7 @@ func runVmTest(test VmTest) error {
 
 	// check post state
 	for addr, account := range test.Post {
-		obj := statedb.GetStateObject(common.HexToAddress(addr))
+		obj := statedb.getStateObject(common.HexToAddress(addr))
 		if obj == nil {
 			continue
 		}

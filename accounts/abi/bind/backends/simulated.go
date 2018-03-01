@@ -191,7 +191,7 @@ func (b *SimulatedBackend) SendTransaction(tx *types.Transaction) error {
 
 // callmsg implements core.Message to allow passing it as a transaction simulator.
 type callmsg struct {
-	from     *state.StateObject
+	from     *state.stateObject
 	to       *common.Address
 	gasLimit *big.Int
 	gasPrice *big.Int

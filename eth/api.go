@@ -714,7 +714,7 @@ func (s *PublicBlockChainAPI) GetStorageAt(address common.Address, key string, b
 
 // callmsg is the message type used for call transactions.
 type callmsg struct {
-	from          *state.StateObject
+	from          *state.stateObject
 	to            *common.Address
 	gas, gasPrice *big.Int
 	value         *big.Int
@@ -750,7 +750,7 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 	stateDb = stateDb.Copy()
 
 	// Retrieve the account state object to interact with
-	var from *state.StateObject
+	var from *state.stateObject
 	if args.From == (common.Address{}) {
 		accounts := s.am.Accounts()
 		if len(accounts) == 0 {
@@ -1804,7 +1804,7 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 	stateDb = stateDb.Copy()
 
 	// Retrieve the account state object to interact with
-	var from *state.StateObject
+	var from *state.stateObject
 	if args.From == (common.Address{}) {
 		accounts := s.am.Accounts()
 		if len(accounts) == 0 {
@@ -1887,7 +1887,7 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 	for idx, tx := range txs {
 		// Assemble the transaction call message
 		// Retrieve the account state object to interact with
-		var from *state.StateObject
+		var from *state.stateObject
 		fromAddress, e := tx.From()
 		if e != nil {
 			return nil, nil, e

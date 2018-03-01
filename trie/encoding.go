@@ -16,6 +16,49 @@
 
 package trie
 
+func keybytesToHex(str []byte) []byte {
+	l := len(str)*2 + 1
+	var nibbles = make([]byte, l)
+	for i, b := range str {
+		nibbles[i*2] = b / 16
+		nibbles[i*2+1] = b % 16
+	}
+	nibbles[l-1] = 16
+	return nibbles
+}
+
+func compactToHex(compact []byte) []byte {
+	base := keybytesToHex(compact)
+	base = base[:len(base)-1]
+	// apply terminator flag
+	if base[0] >= 2 {
+		base = append(base, 16)
+	}
+	// apply odd flag
+	chop := 2 - base[0]&1
+	return base[chop:]
+}
+
+// hexToKeybytes turns hex nibbles into key bytes.
+// This can only be used for keys of even length.
+func hexToKeybytes(hex []byte) []byte {
+	if hasTerm(hex) {
+		hex = hex[:len(hex)-1]
+	}
+	if len(hex)&1 != 0 {
+		panic("can't convert hex key of odd length")
+	}
+	key := make([]byte, (len(hex)+1)/2)
+	decodeNibbles(hex, key)
+	return key
+}
+
+func decodeNibbles(nibbles []byte, bytes []byte) {
+	for bi, ni := 0, 0; ni < len(nibbles); bi, ni = bi+1, ni+2 {
+		bytes[bi] = nibbles[ni]<<4 | nibbles[ni+1]
+	}
+}
+
 func compactEncode(hexSlice []byte) []byte {
 	terminator := byte(0)
 	if hexSlice[len(hexSlice)-1] == 16 {

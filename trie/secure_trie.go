@@ -160,13 +160,9 @@ func (t *SecureTrie) Root() []byte {
 	return t.trie.Root()
 }
 
-func (t *SecureTrie) Iterator() *Iterator {
-	return t.trie.Iterator()
-}
-
-func (t *SecureTrie) NodeIterator() NodeIterator {
+func (t *SecureTrie) NodeIterator(start []byte) NodeIterator {
 	//return tNewNodeIterator(&t.trie)
-	return t.trie.NodeIterator()
+	return t.trie.NodeIterator(start)
 }
 
 // CommitTo writes all nodes and the secure hash pre-images to the given database.
