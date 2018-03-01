@@ -96,12 +96,19 @@ type NodeIterator struct {
 	Error error // Failure set in case of an internal error in the iterator
 }
 
-// NewNodeIterator creates an post-order trie iterator.
-func NewNodeIterator(trie *Trie) *NodeIterator {
+type nodeIterator struct {
+	trie  *Trie                // Trie being iterated
+	stack []*nodeIteratorState // Hierarchy of trie nodes persisting the iteration state
+	path  []byte               // Path to the current node
+	err   error                // Failure set in case of an internal error in the iterator
+}
+
+// newNodeIterator creates an post-order trie iterator.
+func newNodeIterator(trie *Trie) NodeIterator {
 	if trie.Hash() == emptyState {
-		return new(NodeIterator)
+		return new(nodeIterator)
 	}
-	return &NodeIterator{trie: trie}
+	return NodeIterator{trie: trie}
 }
 
 // Next moves the iterator to the next node, returning whether there are any

@@ -138,6 +138,11 @@ func (t *SecureTrie) GetKey(shaKey []byte) []byte {
 	return key
 }
 
+func (t *SecureTrie) Copy() *SecureTrie {
+	cpy := *t
+	return &cpy
+}
+
 // Commit writes all nodes and the secure hash pre-images to the trie's database.
 // Nodes are stored with their sha3 hash as the key.
 //
@@ -159,8 +164,9 @@ func (t *SecureTrie) Iterator() *Iterator {
 	return t.trie.Iterator()
 }
 
-func (t *SecureTrie) NodeIterator() *NodeIterator {
-	return NewNodeIterator(&t.trie)
+func (t *SecureTrie) NodeIterator() NodeIterator {
+	//return tNewNodeIterator(&t.trie)
+	return t.trie.NodeIterator()
 }
 
 // CommitTo writes all nodes and the secure hash pre-images to the given database.
