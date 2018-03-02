@@ -315,7 +315,7 @@ func (self *stateObject) setBalance(amount *big.Int) {
 }
 
 // Return the gas back to the origin. Used by the Virtual machine or Closures
-func (c *stateObject) ReturnGas(gas *big.Int) {}
+func (c *stateObject) ReturnGas(*big.Int, *big.Int) {}
 
 func (self *stateObject) deepCopy(db *StateDB, onDirty func(addr common.Address)) *stateObject {
 	stateObject := newObject(db, self.address, self.data, onDirty)
@@ -409,4 +409,20 @@ func (self *stateObject) Nonce() uint64 {
 // interface. Interfaces are awesome.
 func (self *stateObject) Value() *big.Int {
 	panic("Value on stateObject should never be called")
+}
+
+func (self *stateObject) ForEachStorage(cb func(key, value common.Hash) bool) {
+	// When iterating over the storage check the cache first
+	for h, value := range self.cachedStorage {
+		cb(h, value)
+	}
+
+	it := trie.NewIterator(self.getTrie(self.db.db).NodeIterator(nil))
+	for it.Next() {
+		// ignore cached values
+		key := common.BytesToHash(self.trie.GetKey(it.Key))
+		if _, ok := self.cachedStorage[key]; !ok {
+			cb(key, common.BytesToHash(it.Value))
+		}
+	}
 }

@@ -93,7 +93,7 @@ func (api *PrivateRegistarAPI) SaveInfo(info *compiler.ContractInfo, filename st
 // Register registers a new content hash in the registry.
 func (api *PrivateRegistarAPI) Register(sender common.Address, addr common.Address, contentHashHex string) (bool, error) {
 	block := api.be.bc.CurrentBlock()
-	state, err := state.New(block.Root(), api.be.chainDb)
+	state, err := state.New(block.Root(), state.NewDatabase(api.be.chainDb))
 	if err != nil {
 		return false, err
 	}

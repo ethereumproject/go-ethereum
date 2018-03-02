@@ -35,7 +35,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
@@ -45,6 +44,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
 	"github.com/hashicorp/golang-lru"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 var (
@@ -94,7 +94,7 @@ type BlockChain struct {
 	currentBlock     *types.Block // Current head of the block chain
 	currentFastBlock *types.Block // Current head of the fast-sync chain (may be above the block chain!)
 
-	stateCache   *state.StateDB // State database to reuse between imports (contains state cache)
+	stateCache   state.Database // State database to reuse between imports (contains state cache)
 	bodyCache    *lru.Cache     // Cache for the most recent block bodies
 	bodyRLPCache *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
 	blockCache   *lru.Cache     // Cache for the most recent entire blocks
@@ -679,13 +679,6 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		return recoverOrReset()
 	}
 
-	// Initialize a statedb cache to ensure singleton account bloom filter generation
-	statedb, err := state.New(self.currentBlock.Root(), self.chainDb)
-	if err != nil {
-		return err
-	}
-	self.stateCache = statedb
-	self.stateCache.GetAccount(common.Address{})
 
 	// Issue a status log and return
 	headerTd := self.GetTd(self.hc.CurrentHeader().Hash())
@@ -749,7 +742,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		bc.currentBlock = bc.GetBlock(currentHeader.Hash())
 	}
 	if bc.currentBlock != nil {
-		if _, err := state.New(bc.currentBlock.Root(), bc.chainDb); err != nil {
+		if _, err := state.New(bc.currentBlock.Root(), bc.stateCache); err != nil {
 			// Rewound state missing, rolled back to before pivot, reset to genesis
 			bc.currentBlock = nil
 		}
@@ -876,8 +869,8 @@ func (self *BlockChain) State() (*state.StateDB, error) {
 }
 
 // StateAt returns a new mutable state based on a particular point in time.
-func (self *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
-	return self.stateCache.New(root)
+func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
+	return state.New(root, bc.stateCache)
 }
 
 // Reset purges the entire blockchain, restoring it to its genesis state.
@@ -1028,7 +1021,7 @@ func (bc *BlockChain) HasBlockAndState(hash common.Hash) bool {
 		return false
 	}
 	// Ensure the associated state is also present
-	_, err := state.New(block.Root(), bc.chainDb)
+	_, err := state.New(block.Root(), bc.stateCache)
 	return err == nil
 }
 
@@ -1094,6 +1087,23 @@ func (bc *BlockChain) Stop() {
 	bc.wg.Wait()
 
 	glog.V(logger.Info).Infoln("Chain manager stopped")
+}
+
+func (bc *BlockChain) procFutureBlocks() {
+	blocks := make([]*types.Block, 0, bc.futureBlocks.Len())
+	for _, hash := range bc.futureBlocks.Keys() {
+		if block, exist := bc.futureBlocks.Peek(hash); exist {
+			blocks = append(blocks, block.(*types.Block))
+		}
+	}
+	if len(blocks) > 0 {
+		types.BlockBy(types.Number).Sort(blocks)
+
+		// Insert one by one as chain insertion needs contiguous ancestry between blocks
+		for i := range blocks {
+			bc.InsertChain(blocks[i : i+1])
+		}
+	}
 }
 
 type WriteStatus byte
@@ -1366,8 +1376,82 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	return
 }
 
+// WriteBlock writes the block to the chain.
+func (bc *BlockChain) WriteBlockAndState(block *types.Block, receipts []*types.Receipt, state *state.StateDB) (status WriteStatus, err error) {
+	bc.wg.Add(1)
+	defer bc.wg.Done()
+
+	// Calculate the total difficulty of the block
+	ptd := bc.GetTd(block.ParentHash())
+	if ptd == nil {
+		return NonStatTy, ParentError(block.ParentHash())
+	}
+	// Make sure no inconsistent state is leaked during insertion
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
+	localTd := bc.GetTd(bc.currentBlock.Hash())
+	externTd := new(big.Int).Add(block.Difficulty(), ptd)
+
+	// Irrelevant of the canonical status, write the block itself to the database
+	if err := bc.hc.WriteTd(block.Hash(), externTd); err != nil {
+		return NonStatTy, err
+	}
+	// Write other block data using a batch.
+	if err := WriteBlock(bc.chainDb, block); err != nil {
+		return NonStatTy, err
+	}
+	batch := bc.chainDb.NewBatch()
+	if _, err := state.CommitTo(batch, false); err != nil {
+		return NonStatTy, err
+	}
+	if err := WriteBlockReceipts(bc.chainDb, block.Hash(), receipts); err != nil {
+		return NonStatTy, err
+	}
+
+
+	// If the total difficulty is higher than our known, add it to the canonical chain
+	// Second clause in the if statement reduces the vulnerability to selfish mining.
+	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
+	reorg := externTd.Cmp(localTd) > 0
+	if !reorg && externTd.Cmp(localTd) == 0 {
+		// Split same-difficulty blocks by number, then at random
+		reorg = block.NumberU64() < bc.currentBlock.NumberU64() || (block.NumberU64() == bc.currentBlock.NumberU64() && mrand.Float64() < 0.5)
+	}
+	if reorg {
+		// Reorganise the chain if the parent is not the head block
+		if block.ParentHash() != bc.currentBlock.Hash() {
+			if err := bc.reorg(bc.currentBlock, block); err != nil {
+				return NonStatTy, err
+			}
+		}
+		// Write the positional metadata for transaction and receipt lookups
+		if err := WriteTxLookupEntries(batch, block); err != nil {
+			return NonStatTy, err
+		}
+		// Write hash preimages
+		if err := WritePreimages(bc.chainDb, block.NumberU64(), state.Preimages()); err != nil {
+			return NonStatTy, err
+		}
+		status = CanonStatTy
+	} else {
+		status = SideStatTy
+	}
+	if err := batch.Write(); err != nil {
+		return NonStatTy, err
+	}
+
+	// Set new head.
+	if status == CanonStatTy {
+		bc.insert(block)
+	}
+	bc.futureBlocks.Remove(block.Hash())
+	return status, nil
+}
+
 // InsertChain inserts the given chain into the canonical chain or, otherwise, create a fork.
 // If the err return is not nil then chainIndex points to the cause in chain.
+// TODO: EPROJECT: return additional values in signature... ie also events and logs
 func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error) {
 	// EPROJECT
 	// Do a sanity check that the provided chain is actually ordered and linked
@@ -1459,32 +1543,37 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			return i, err
 		}
 
-		// Create a new statedb using the parent block and report an
-		// error if it fails.
-		switch {
-		case i == 0:
-			//if self.stateCache == nil {
-			//	panic("statecache nil")
-			//}
-			err = self.stateCache.Reset(self.GetBlock(block.ParentHash()).Root())
-		default:
-			err = self.stateCache.Reset(chain[i-1].Root())
+		var parent *types.Block
+		if i == 0 {
+			parent = self.GetBlock(block.ParentHash())
+		} else {
+			parent = chain[i-1]
 		}
+		state, err := state.New(parent.Root(), self.stateCache)
 		if err != nil {
+			//return i, events, coalescedLogs, err
 			return i, err
 		}
+
 		// Process block using the parent state as reference point.
-		receipts, logs, usedGas, err := self.processor.Process(block, self.stateCache)
+		receipts, logs, usedGas, err := self.processor.Process(block, state)
 		if err != nil {
 			return i, err
 		}
 		// Validate the state using the default validator
-		err = self.Validator().ValidateState(block, self.GetBlock(block.ParentHash()), self.stateCache, receipts, usedGas)
+		err = self.Validator().ValidateState(block, self.GetBlock(block.ParentHash()), state, receipts, usedGas)
 		if err != nil {
 			return i, err
 		}
 		// Write state changes to database
-		_, err = self.stateCache.Commit()
+		// TODO: this is the tip of the iceberg for a lot of refactoring to franky up to
+		// delegating block write, state writes, validation, processes... etc.
+		// Create a new statedb using the parent block and report an
+		// error if it fails.
+		txcount += len(block.Transactions())
+
+		// Write the block to the chain and get the status.
+		status, err := self.WriteBlockAndState(block, receipts, state)
 		if err != nil {
 			return i, err
 		}
@@ -1492,16 +1581,6 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 		// coalesce logs for later processing
 		coalescedLogs = append(coalescedLogs, logs...)
 
-		if err := WriteBlockReceipts(self.chainDb, block.Hash(), receipts); err != nil {
-			return i, err
-		}
-
-		txcount += len(block.Transactions())
-		// write the block to the chain and get the status
-		status, err := self.WriteBlock(block)
-		if err != nil {
-			return i, err
-		}
 		latestBlockTime = time.Unix(block.Time().Int64(), 0)
 
 		switch status {
@@ -1702,6 +1781,40 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	}
 
 	return nil
+}
+
+// SetReceiptsData computes all the non-consensus fields of the receipts
+func SetReceiptsData(config *ChainConfig, block *types.Block, receipts types.Receipts) {
+	signer := config.GetSigner(block.Number())
+
+	transactions, logIndex := block.Transactions(), uint(0)
+
+	for j := 0; j < len(receipts); j++ {
+		// The transaction hash can be retrieved from the transaction itself
+		receipts[j].TxHash = transactions[j].Hash()
+
+		// The contract address can be derived from the transaction itself
+		if transactions[j].To() == nil {
+			// Deriving the signer is expensive, only do if it's actually needed
+			from, _ := types.Sender(signer, transactions[j])
+			receipts[j].ContractAddress = crypto.CreateAddress(from, transactions[j].Nonce())
+		}
+		// The used gas can be calculated based on previous receipts
+		if j == 0 {
+			receipts[j].GasUsed = new(big.Int).Set(receipts[j].CumulativeGasUsed)
+		} else {
+			receipts[j].GasUsed = new(big.Int).Sub(receipts[j].CumulativeGasUsed, receipts[j-1].CumulativeGasUsed)
+		}
+		// The derived log fields can simply be set from the block and transaction
+		for k := 0; k < len(receipts[j].Logs); k++ {
+			receipts[j].Logs[k].BlockNumber = block.NumberU64()
+			receipts[j].Logs[k].BlockHash = block.Hash()
+			receipts[j].Logs[k].TxHash = receipts[j].TxHash
+			receipts[j].Logs[k].TxIndex = uint(j)
+			receipts[j].Logs[k].Index = logIndex
+			logIndex++
+		}
+	}
 }
 
 // postChainEvents iterates over the events generated by a chain insertion and

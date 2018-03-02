@@ -575,7 +575,7 @@ func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
 
 // WriteGenesisBlock writes the genesis block to the database as block number 0
 func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Block, error) {
-	statedb, err := state.New(common.Hash{}, chainDb)
+	statedb, err := state.New(common.Hash{}, state.NewDatabase(chainDb))
 	if err != nil {
 		return nil, err
 	}
@@ -609,7 +609,12 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 			statedb.SetState(addr, k, v)
 		}
 	}
-	root, stateBatch := statedb.CommitBatch()
+	batch := chainDb.NewBatch()
+
+	root, err := statedb.CommitTo(batch, false)
+	if err != nil {
+		return nil, err
+	}
 
 	header, err := genesis.Header()
 	if err != nil {
@@ -628,9 +633,9 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 		return block, nil
 	}
 
-	if err := stateBatch.Write(); err != nil {
-		return nil, fmt.Errorf("cannot write state: %v", err)
-	}
+	//if err := stateBatch.Write(); err != nil {
+	//	return nil, fmt.Errorf("cannot write state: %v", err)
+	//}
 	if err := WriteTd(chainDb, gblock.Hash(), header.Difficulty); err != nil {
 		return nil, err
 	}
@@ -704,7 +709,7 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	}
 
 	// State allocations.
-	genState, err := state.New(genesis.Root(), chaindb)
+	genState, err := state.New(genesis.Root(), state.NewDatabase(chaindb))
 	if err != nil {
 		return nil, err
 	}

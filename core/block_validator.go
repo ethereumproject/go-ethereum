@@ -82,7 +82,7 @@ func NewBlockValidator(config *ChainConfig, blockchain *BlockChain, pow pow.PoW)
 // false positives where a header is present but the state is not.
 func (v *BlockValidator) ValidateBlock(block *types.Block) error {
 	if v.bc.HasBlock(block.Hash()) {
-		if _, err := state.New(block.Root(), v.bc.chainDb); err == nil {
+		if _, err := state.New(block.Root(), state.NewDatabase(v.bc.chainDb)); err == nil {
 			return &KnownBlockError{block.Number(), block.Hash()}
 		}
 	}
@@ -90,7 +90,7 @@ func (v *BlockValidator) ValidateBlock(block *types.Block) error {
 	if parent == nil {
 		return ParentError(block.ParentHash())
 	}
-	if _, err := state.New(parent.Root(), v.bc.chainDb); err != nil {
+	if _, err := state.New(parent.Root(), state.NewDatabase(v.bc.chainDb)); err != nil {
 		return ParentError(block.ParentHash())
 	}
 
@@ -142,7 +142,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	}
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
-	if root := statedb.IntermediateRoot(); header.Root != root {
+	if root := statedb.IntermediateRoot(false); header.Root != root {
 		return fmt.Errorf("invalid merkle root: header=%x computed=%x", header.Root, root)
 	}
 	return nil
@@ -281,6 +281,8 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		name = ""
 	} // will fall to default panic
 	switch name {
+	case "defused":
+		return calcDifficultyDefused(time, parentTime, parentNumber, parentDiff)
 	case "ecip1010":
 		if length, ok := f.GetBigInt("length"); ok {
 			explosionBlock := big.NewInt(0).Add(fork.Block, length)
@@ -398,6 +400,43 @@ func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *
 		y.Sub(delayedCount, common.Big2)
 		y.Exp(common.Big2, y, nil)
 		x.Add(x, y)
+	}
+
+	return x
+}
+
+func calcDifficultyDefused(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.mediawiki
+	// algorithm:
+	// diff = (parent_diff +
+	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	//        )
+
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).SetUint64(parentTime)
+
+	// holds intermediate values to make the algo easier to read & audit
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// 1 - (block_timestamp -parent_timestamp) // 10
+	x.Sub(bigTime, bigParentTime)
+	x.Div(x, big10)
+	x.Sub(common.Big1, x)
+
+	// max(1 - (block_timestamp - parent_timestamp) // 10, -99)))
+	if x.Cmp(bigMinus99) < 0 {
+		x.Set(bigMinus99)
+	}
+
+	// (parent_diff + parent_diff // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	y.Div(parentDiff, DifficultyBoundDivisor)
+	x.Mul(y, x)
+	x.Add(parentDiff, x)
+
+	// minimum difficulty can ever be (before exponential factor)
+	if x.Cmp(MinimumDifficulty) < 0 {
+		x.Set(MinimumDifficulty)
 	}
 
 	return x
