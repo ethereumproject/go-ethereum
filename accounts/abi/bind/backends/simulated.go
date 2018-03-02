@@ -71,7 +71,7 @@ func (b *SimulatedBackend) Rollback() {
 	blocks, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, b.blockchain.CurrentBlock(), b.database, 1, func(int, *core.BlockGen) {})
 
 	b.pendingBlock = blocks[0]
-	b.pendingState, _ = state.New(b.pendingBlock.Root(), b.database)
+	b.pendingState, _ = state.New(b.pendingBlock.Root(), state.NewDatabase(b.database))
 }
 
 // HasCode implements ContractVerifier.HasCode, checking whether there is any
@@ -184,14 +184,14 @@ func (b *SimulatedBackend) SendTransaction(tx *types.Transaction) error {
 		block.AddTx(tx)
 	})
 	b.pendingBlock = blocks[0]
-	b.pendingState, _ = state.New(b.pendingBlock.Root(), b.database)
+	b.pendingState, _ = state.New(b.pendingBlock.Root(), state.NewDatabase(b.database))
 
 	return nil
 }
 
 // callmsg implements core.Message to allow passing it as a transaction simulator.
 type callmsg struct {
-	from     *state.stateObject
+	from     *state.StateObject
 	to       *common.Address
 	gasLimit *big.Int
 	gasPrice *big.Int
