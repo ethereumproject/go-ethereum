@@ -114,7 +114,7 @@ func (api *PrivateRegistarAPI) RegisterUrl(sender common.Address, contentHashHex
 
 // callmsg is the message type used for call transations.
 type callmsg struct {
-	from          *state.stateObject
+	from          *state.StateObject
 	to            *common.Address
 	gas, gasPrice *big.Int
 	value         *big.Int
@@ -173,12 +173,12 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 	}
 
 	block := be.bc.CurrentBlock()
-	statedb, err := state.New(block.Root(), be.chainDb)
+	statedb, err := state.New(block.Root(), state.NewDatabase(be.chainDb))
 	if err != nil {
 		return "", "", err
 	}
 
-	var from *state.stateObject
+	var from *state.StateObject
 	if fromStr == "" {
 		accounts := be.am.Accounts()
 		if len(accounts) == 0 {
@@ -217,7 +217,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 // StorageAt returns the data stores in the state for the given address and location.
 func (be *registryAPIBackend) StorageAt(addr string, storageAddr string) string {
 	block := be.bc.CurrentBlock()
-	state, err := state.New(block.Root(), be.chainDb)
+	state, err := state.New(block.Root(), state.NewDatabase(be.chainDb))
 	if err != nil {
 		return ""
 	}
