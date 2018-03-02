@@ -609,9 +609,7 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 			statedb.SetState(addr, k, v)
 		}
 	}
-	batch := chainDb.NewBatch()
-
-	root, err := statedb.CommitTo(batch, false)
+	root, err := statedb.CommitTo(chainDb, false)
 	if err != nil {
 		return nil, err
 	}

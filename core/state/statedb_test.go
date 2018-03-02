@@ -30,8 +30,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	check "gopkg.in/check.v1"
+	"gopkg.in/check.v1"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 // Tests that updating a state trie does not leak any database writes prior to
@@ -272,7 +272,7 @@ func newTestAction(addr common.Address, r *rand.Rand) testAction {
 			fn: func(a testAction, s *StateDB) {
 				data := make([]byte, 2)
 				binary.BigEndian.PutUint16(data, uint16(a.args[0]))
-				s.AddLog(&types.Log{Address: addr, Data: data})
+				s.AddLog(vm.Log{Address: addr, Data: data})
 			},
 			args: make([]int64, 1),
 		},

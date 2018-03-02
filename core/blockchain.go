@@ -1398,17 +1398,16 @@ func (bc *BlockChain) WriteBlockAndState(block *types.Block, receipts []*types.R
 		return NonStatTy, err
 	}
 	// Write other block data using a batch.
+	batch := bc.chainDb.NewBatch()
 	if err := WriteBlock(bc.chainDb, block); err != nil {
 		return NonStatTy, err
 	}
-	batch := bc.chainDb.NewBatch()
 	if _, err := state.CommitTo(batch, false); err != nil {
 		return NonStatTy, err
 	}
 	if err := WriteBlockReceipts(bc.chainDb, block.Hash(), receipts); err != nil {
 		return NonStatTy, err
 	}
-
 
 	// If the total difficulty is higher than our known, add it to the canonical chain
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
@@ -1426,7 +1425,7 @@ func (bc *BlockChain) WriteBlockAndState(block *types.Block, receipts []*types.R
 			}
 		}
 		// Write the positional metadata for transaction and receipt lookups
-		if err := WriteTxLookupEntries(batch, block); err != nil {
+		if err := WriteTxLookupEntries(bc.chainDb, block); err != nil {
 			return NonStatTy, err
 		}
 		// Write hash preimages
@@ -1570,13 +1569,13 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 		// delegating block write, state writes, validation, processes... etc.
 		// Create a new statedb using the parent block and report an
 		// error if it fails.
-		txcount += len(block.Transactions())
-
 		// Write the block to the chain and get the status.
 		status, err := self.WriteBlockAndState(block, receipts, state)
 		if err != nil {
 			return i, err
 		}
+
+		txcount += len(block.Transactions())
 
 		// coalesce logs for later processing
 		coalescedLogs = append(coalescedLogs, logs...)

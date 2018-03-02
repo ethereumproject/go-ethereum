@@ -267,8 +267,7 @@ func (self *worker) wait() {
 				}
 				go self.mux.Post(core.NewMinedBlockEvent{Block: block})
 			} else {
-				batch := self.chainDb.NewBatch()
-				work.state.CommitTo(batch, false)
+				work.state.CommitTo(self.chainDb, false)
 				parent := self.chain.GetBlock(block.ParentHash())
 				if parent == nil {
 					glog.V(logger.Error).Infoln("Invalid block found during mining")

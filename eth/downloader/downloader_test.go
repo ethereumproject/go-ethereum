@@ -63,13 +63,13 @@ func init() {
 		panic(err)
 	}
 
-	statedb, err := state.New(common.Hash{}, testdb)
+	statedb, err := state.New(common.Hash{}, state.NewDatabase(testdb))
 	if err != nil {
 		panic(err)
 	}
 	obj := statedb.GetOrNewStateObject(testAddress)
 	obj.SetBalance(big.NewInt(1000000000))
-	root, err := statedb.Commit()
+	root, err := statedb.CommitTo(testdb, false)
 	if err != nil {
 		panic(fmt.Sprintf("cannot write state: %v", err))
 	}
@@ -680,7 +680,7 @@ func assertOwnForkedChain(t *testing.T, tester *downloadTester, common int, leng
 			index = len(tester.ownHashes) - lengths[len(lengths)-1] + int(tester.downloader.queue.fastSyncPivot)
 		}
 		if index > 0 {
-			if statedb, err := state.New(tester.ownHeaders[tester.ownHashes[index]].Root, tester.stateDb); statedb == nil || err != nil {
+			if statedb, err := state.New(tester.ownHeaders[tester.ownHashes[index]].Root, state.NewDatabase(tester.stateDb)); statedb == nil || err != nil {
 				t.Fatalf("state reconstruction failed: %v", err)
 			}
 		}

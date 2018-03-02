@@ -47,14 +47,14 @@ func init() {
 // GenesisBlockForTesting creates a block in which addr has the given wei balance.
 // The state trie of the block is written to db. the passed db needs to contain a state root
 func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big.Int) *types.Block {
-	statedb, err := state.New(common.Hash{}, db)
+	statedb, err := state.New(common.Hash{}, state.NewDatabase(db))
 	if err != nil {
 		panic(err)
 	}
 
 	obj := statedb.GetOrNewStateObject(addr)
 	obj.SetBalance(balance)
-	root, err := statedb.Commit()
+	root, err := statedb.CommitTo(db, false)
 	if err != nil {
 		panic(fmt.Sprintf("cannot write state: %v", err))
 	}
@@ -153,7 +153,7 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 			}
 			return err
 		}
-		statedb, err := state.New(blockchain.GetBlock(block.ParentHash()).Root(), blockchain.chainDb)
+		statedb, err := state.New(blockchain.GetBlock(block.ParentHash()).Root(), state.NewDatabase(blockchain.chainDb))
 		if err != nil {
 			return err
 		}
@@ -168,7 +168,7 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 		blockchain.mu.Lock()
 		WriteTd(blockchain.chainDb, block.Hash(), new(big.Int).Add(block.Difficulty(), blockchain.GetTd(block.ParentHash())))
 		WriteBlock(blockchain.chainDb, block)
-		statedb.Commit()
+		statedb.CommitTo(blockchain.chainDb.NewBatch(), false)
 		blockchain.mu.Unlock()
 	}
 	return nil

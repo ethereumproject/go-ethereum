@@ -233,8 +233,7 @@ func (t *BlockTest) InsertPreState(db ethdb.Database) (*state.StateDB, error) {
 		}
 	}
 
-	batch := db.NewBatch()
-	root, err := statedb.CommitTo(batch, false)
+	root, err := statedb.CommitTo(db, false)
 	if err != nil {
 		return nil, fmt.Errorf("error writing state: %v", err)
 	}

@@ -234,8 +234,7 @@ func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, 
 			gen(i, b)
 		}
 		AccumulateRewards(config, statedb, h, b.uncles)
-		batch := db.NewBatch()
-		root, err := statedb.CommitTo(batch, false)
+		root, err := statedb.CommitTo(db, false)
 		if err != nil {
 			panic(fmt.Sprintf("state write error: %v", err))
 		}
@@ -243,10 +242,17 @@ func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, 
 		return types.NewBlock(h, b.txs, b.uncles, b.receipts), b.receipts
 	}
 	for i := 0; i < n; i++ {
-		statedb, err := state.New(parent.Root(), state.NewDatabase(db))
+		var statedb *state.StateDB
+		var err error
+		if i == 0 {
+			statedb, err = state.New(common.Hash{}, state.NewDatabase(db))
+		} else {
+			statedb, err = state.New(parent.Root(), state.NewDatabase(db))
+		}
 		if err != nil {
 			panic(err)
 		}
+
 		header := makeHeader(config, parent, statedb)
 		block, receipt := genblock(i, header, statedb)
 		blocks[i] = block
