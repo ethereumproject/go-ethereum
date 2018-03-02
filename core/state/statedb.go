@@ -74,7 +74,7 @@ type StateDB struct {
 	dbErr error
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
-	stateObjects      map[common.Address]*stateObject
+	stateObjects      map[common.Address]*StateObject
 	stateObjectsDirty map[common.Address]struct{}
 
 	// The refund counter, also used by state transitioning.
@@ -105,7 +105,7 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 	return &StateDB{
 		db:                db,
 		trie:              tr,
-		stateObjects:      make(map[common.Address]*stateObject),
+		stateObjects:      make(map[common.Address]*StateObject),
 		stateObjectsDirty: make(map[common.Address]struct{}),
 		refund:            new(big.Int),
 		logs:              make(map[common.Hash]vm.Logs),
@@ -133,7 +133,7 @@ func (self *StateDB) Reset(root common.Hash) error {
 		return err
 	}
 	self.trie = tr
-	self.stateObjects = make(map[common.Address]*stateObject)
+	self.stateObjects = make(map[common.Address]*StateObject)
 	self.stateObjectsDirty = make(map[common.Address]struct{})
 	self.thash = common.Hash{}
 	self.bhash = common.Hash{}
@@ -330,7 +330,7 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 //
 
 // updateStateObject writes the given object to the trie.
-func (self *StateDB) updateStateObject(stateObject *stateObject) {
+func (self *StateDB) updateStateObject(stateObject *StateObject) {
 	addr := stateObject.Address()
 	data, err := rlp.EncodeToBytes(stateObject)
 	if err != nil {
@@ -340,14 +340,14 @@ func (self *StateDB) updateStateObject(stateObject *stateObject) {
 }
 
 // deleteStateObject removes the given object from the state trie.
-func (self *StateDB) deleteStateObject(stateObject *stateObject) {
+func (self *StateDB) deleteStateObject(stateObject *StateObject) {
 	stateObject.deleted = true
 	addr := stateObject.Address()
 	self.setError(self.trie.TryDelete(addr[:]))
 }
 
 // Retrieve a state object given my the address. Returns nil if not found.
-func (self *StateDB) getStateObject(addr common.Address) (stateObject *stateObject) {
+func (self *StateDB) getStateObject(addr common.Address) (stateObject *StateObject) {
 	// Prefer 'live' objects.
 	if obj := self.stateObjects[addr]; obj != nil {
 		if obj.deleted {
@@ -373,14 +373,14 @@ func (self *StateDB) getStateObject(addr common.Address) (stateObject *stateObje
 	return obj
 }
 
-func (self *StateDB) setStateObject(object *stateObject) {
+func (self *StateDB) setStateObject(object *StateObject) {
 	self.lock.Lock()
 	self.stateObjects[object.Address()] = object
 	self.lock.Unlock()
 }
 
 // Retrieve a state object or create a new state object if nil
-func (self *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
+func (self *StateDB) GetOrNewStateObject(addr common.Address) *StateObject {
 	stateObject := self.getStateObject(addr)
 	if stateObject == nil || stateObject.deleted {
 		stateObject, _ = self.createObject(addr)
@@ -396,7 +396,7 @@ func (self *StateDB) MarkStateObjectDirty(addr common.Address) {
 
 // createObject creates a new state object. If there is an existing account with
 // the given address, it is overwritten and returned as the second return value.
-func (self *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) {
+func (self *StateDB) createObject(addr common.Address) (newobj, prev *StateObject) {
 	prev = self.getStateObject(addr)
 	newobj = newObject(self, addr, Account{}, self.MarkStateObjectDirty)
 	newobj.setNonce(StartingNonce) // sets the object to dirty
@@ -452,7 +452,7 @@ func (self *StateDB) Copy() *StateDB {
 	state := &StateDB{
 		db:                self.db,
 		trie:              self.db.CopyTrie(self.trie),
-		stateObjects:      make(map[common.Address]*stateObject, len(self.stateObjectsDirty)),
+		stateObjects:      make(map[common.Address]*StateObject, len(self.stateObjectsDirty)),
 		stateObjectsDirty: make(map[common.Address]struct{}, len(self.stateObjectsDirty)),
 		refund:            new(big.Int).Set(self.refund),
 		logs:              make(map[common.Hash]vm.Logs, len(self.logs)),
