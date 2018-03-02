@@ -267,7 +267,8 @@ func (self *worker) wait() {
 				}
 				go self.mux.Post(core.NewMinedBlockEvent{Block: block})
 			} else {
-				work.state.Commit()
+				batch := self.chainDb.NewBatch()
+				work.state.CommitTo(batch, false)
 				parent := self.chain.GetBlock(block.ParentHash())
 				if parent == nil {
 					glog.V(logger.Error).Infoln("Invalid block found during mining")
@@ -556,7 +557,7 @@ func (self *worker) commitNewWork() {
 	if atomic.LoadInt32(&self.mining) == 1 {
 		// commit state root after all state transitions.
 		core.AccumulateRewards(work.config, work.state, header, uncles)
-		header.Root = work.state.IntermediateRoot()
+		header.Root = work.state.IntermediateRoot(false)
 	}
 
 	// create the new block whose nonce will be mined.
