@@ -406,6 +406,115 @@ func NewEIP160(transaction *Transaction, header *HeaderParams) *VM {
 	return vm
 }
 
+func NewMordenFrontier(transaction *Transaction, header *HeaderParams) *VM {
+	ctransaction, cinput := toCTransaction(transaction)
+	cheader := ToCHeaderParams(header)
+
+	cvm := C.sputnikvm_new_morden_frontier(*ctransaction, *cheader)
+	C.free(cinput)
+
+	vm := new(VM)
+	vm.c = cvm
+
+	return vm
+}
+
+func NewMordenHomestead(transaction *Transaction, header *HeaderParams) *VM {
+	ctransaction, cinput := toCTransaction(transaction)
+	cheader := ToCHeaderParams(header)
+
+	cvm := C.sputnikvm_new_morden_homestead(*ctransaction, *cheader)
+	C.free(cinput)
+
+	vm := new(VM)
+	vm.c = cvm
+
+	return vm
+}
+
+func NewMordenEIP150(transaction *Transaction, header *HeaderParams) *VM {
+	ctransaction, cinput := toCTransaction(transaction)
+	cheader := ToCHeaderParams(header)
+
+	cvm := C.sputnikvm_new_morden_eip150(*ctransaction, *cheader)
+	C.free(cinput)
+
+	vm := new(VM)
+	vm.c = cvm
+
+	return vm
+}
+
+func NewMordenEIP160(transaction *Transaction, header *HeaderParams) *VM {
+	ctransaction, cinput := toCTransaction(transaction)
+	cheader := ToCHeaderParams(header)
+
+	cvm := C.sputnikvm_new_morden_eip160(*ctransaction, *cheader)
+	C.free(cinput)
+
+	vm := new(VM)
+	vm.c = cvm
+
+	return vm
+}
+
+func NewCustomFrontier(transaction *Transaction, header *HeaderParams) *VM {
+	ctransaction, cinput := toCTransaction(transaction)
+	cheader := ToCHeaderParams(header)
+
+	cvm := C.sputnikvm_new_custom_frontier(*ctransaction, *cheader)
+	C.free(cinput)
+
+	vm := new(VM)
+	vm.c = cvm
+
+	return vm
+}
+
+func NewCustomHomestead(transaction *Transaction, header *HeaderParams) *VM {
+	ctransaction, cinput := toCTransaction(transaction)
+	cheader := ToCHeaderParams(header)
+
+	cvm := C.sputnikvm_new_custom_homestead(*ctransaction, *cheader)
+	C.free(cinput)
+
+	vm := new(VM)
+	vm.c = cvm
+
+	return vm
+}
+
+func NewCustomEIP150(transaction *Transaction, header *HeaderParams) *VM {
+	ctransaction, cinput := toCTransaction(transaction)
+	cheader := ToCHeaderParams(header)
+
+	cvm := C.sputnikvm_new_custom_eip150(*ctransaction, *cheader)
+	C.free(cinput)
+
+	vm := new(VM)
+	vm.c = cvm
+
+	return vm
+}
+
+func NewCustomEIP160(transaction *Transaction, header *HeaderParams) *VM {
+	ctransaction, cinput := toCTransaction(transaction)
+	cheader := ToCHeaderParams(header)
+
+	cvm := C.sputnikvm_new_custom_eip160(*ctransaction, *cheader)
+	C.free(cinput)
+
+	vm := new(VM)
+	vm.c = cvm
+
+	return vm
+}
+
+func SetCustomInitialNonce(nonce *big.Int) {
+	cnonce := ToCU256(nonce)
+	C.sputnikvm_set_custom_initial_nonce(cnonce)
+}
+
 func (vm *VM) Fire() Require {
 	ret := C.sputnikvm_fire(vm.c)
 	return Require {

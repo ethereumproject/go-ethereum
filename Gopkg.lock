@@ -21,9 +21,33 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/ethereumproject/benchmark"
+  packages = [
+    "rtprof",
+    "rtprof/pprof/driver",
+    "rtprof/pprof/internal/binutils",
+    "rtprof/pprof/internal/driver",
+    "rtprof/pprof/internal/elfexec",
+    "rtprof/pprof/internal/graph",
+    "rtprof/pprof/internal/measurement",
+    "rtprof/pprof/internal/plugin",
+    "rtprof/pprof/internal/report",
+    "rtprof/pprof/internal/symbolizer",
+    "rtprof/pprof/internal/symbolz",
+    "rtprof/pprof/measurement",
+    "rtprof/pprof/profile",
+    "rtprof/pprof/third_party/d3",
+    "rtprof/pprof/third_party/d3flamegraph",
+    "rtprof/pprof/third_party/d3tip",
+    "rtprof/pprof/third_party/svg"
+  ]
+  revision = "8eff34efba2579d41fe2fb772fe1a3c89f6496ce"
+
+[[projects]]
+  branch = "master"
   name = "github.com/ethereumproject/ethash"
   packages = ["."]
-  revision = "b8d3da9abf86c0eb9cd153c64048f82f188dcd96"
+  revision = "65a5b25efc277ff0996160cc3c76a44bec7a11fb"
 
 [[projects]]
   branch = "master"
@@ -46,14 +70,31 @@
 [[projects]]
   branch = "master"
   name = "github.com/hashicorp/golang-lru"
-  packages = [".","simplelru"]
+  packages = [
+    ".",
+    "simplelru"
+  ]
   revision = "0a025b7e63adc15a622f29b0b2c4c3848243bbf6"
 
 [[projects]]
   branch = "master"
   name = "github.com/huin/goupnp"
-  packages = [".","dcps/internetgateway1","dcps/internetgateway2","httpu","scpd","soap","ssdp"]
+  packages = [
+    ".",
+    "dcps/internetgateway1",
+    "dcps/internetgateway2",
+    "httpu",
+    "scpd",
+    "soap",
+    "ssdp"
+  ]
   revision = "dceda08e705b2acee36aab47d765ed801f64cfc7"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/ianlancetaylor/demangle"
+  packages = ["."]
+  revision = "4883227f66371e02c4948937d3e2be1664d9be38"
 
 [[projects]]
   name = "github.com/jackpal/go-nat-pmp"
@@ -64,7 +105,12 @@
 [[projects]]
   branch = "master"
   name = "github.com/mailru/easyjson"
-  packages = [".","buffer","jlexer","jwriter"]
+  packages = [
+    ".",
+    "buffer",
+    "jlexer",
+    "jwriter"
+  ]
   revision = "32fa128f234d041f196a9f3e0fea5ac9772c08e1"
 
 [[projects]]
@@ -118,7 +164,15 @@
 [[projects]]
   branch = "master"
   name = "github.com/robertkrimen/otto"
-  packages = [".","ast","dbg","file","parser","registry","token"]
+  packages = [
+    ".",
+    "ast",
+    "dbg",
+    "file",
+    "parser",
+    "registry",
+    "token"
+  ]
   revision = "3b44b4dcb6c00477273595c312908e2412d07da6"
 
 [[projects]]
@@ -130,37 +184,83 @@
 [[projects]]
   branch = "master"
   name = "github.com/syndtr/goleveldb"
-  packages = ["leveldb","leveldb/cache","leveldb/comparer","leveldb/errors","leveldb/filter","leveldb/iterator","leveldb/journal","leveldb/memdb","leveldb/opt","leveldb/storage","leveldb/table","leveldb/util"]
+  packages = [
+    "leveldb",
+    "leveldb/cache",
+    "leveldb/comparer",
+    "leveldb/errors",
+    "leveldb/filter",
+    "leveldb/iterator",
+    "leveldb/journal",
+    "leveldb/memdb",
+    "leveldb/opt",
+    "leveldb/storage",
+    "leveldb/table",
+    "leveldb/util"
+  ]
   revision = "34011bf325bce385408353a30b101fe5e923eb6e"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = ["pbkdf2","ripemd160","scrypt"]
+  packages = [
+    "pbkdf2",
+    "ripemd160",
+    "scrypt"
+  ]
   revision = "d585fd2cc9195196078f516b69daff6744ef5e84"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["html","html/atom","html/charset","websocket"]
+  packages = [
+    "html",
+    "html/atom",
+    "html/charset",
+    "websocket"
+  ]
   revision = "d866cfc389cec985d6fda2859936a575a55a3ab6"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix","windows"]
+  packages = [
+    "unix",
+    "windows"
+  ]
   revision = "83801418e1b59fb1880e363299581ee543af32ca"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
-  packages = ["encoding","encoding/charmap","encoding/htmlindex","encoding/internal","encoding/internal/identifier","encoding/japanese","encoding/korean","encoding/simplifiedchinese","encoding/traditionalchinese","encoding/unicode","internal/gen","internal/tag","internal/utf8internal","language","runes","transform","unicode/cldr"]
+  packages = [
+    "encoding",
+    "encoding/charmap",
+    "encoding/htmlindex",
+    "encoding/internal",
+    "encoding/internal/identifier",
+    "encoding/japanese",
+    "encoding/korean",
+    "encoding/simplifiedchinese",
+    "encoding/traditionalchinese",
+    "encoding/unicode",
+    "internal/gen",
+    "internal/tag",
+    "internal/utf8internal",
+    "language",
+    "runes",
+    "transform",
+    "unicode/cldr"
+  ]
   revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/tools"
-  packages = ["go/ast/astutil","imports"]
+  packages = [
+    "go/ast/astutil",
+    "imports"
+  ]
   revision = "b451b9aaee4dcf75f9f28cddb69b9d0ed17a9752"
 
 [[projects]]
@@ -183,7 +283,10 @@
 
 [[projects]]
   name = "gopkg.in/sourcemap.v1"
-  packages = [".","base64vlq"]
+  packages = [
+    ".",
+    "base64vlq"
+  ]
   revision = "6e83acea0053641eff084973fee085f0c193c61a"
   version = "v1.0.5"
 
@@ -195,6 +298,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "803cc2cdca758526169a444788e436c4d905150702b80d333138703a813ba169"
+  inputs-digest = "e7aa41af1a0e54915148500472af193b085e126e0d2a9c4d19e480d2329feb02"
   solver-name = "gps-cdcl"
   solver-version = 1

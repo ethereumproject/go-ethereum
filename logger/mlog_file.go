@@ -94,6 +94,7 @@ func (f mlogFormatT) String() string {
 
 // MLogT defines an mlog LINE
 type MLogT struct {
+	sync.Mutex
 	Description string        `json:"-"`
 	Receiver    string        `json:"receiver"`
 	Verb        string        `json:"verb"`
@@ -185,7 +186,7 @@ func MLogRegisterActive(component mlogComponent) {
 }
 
 // SendMLog writes enabled component mlogs to file if the component is registered active.
-func (c mlogComponent) Send(msg MLogT) {
+func (msg *MLogT) Send(c mlogComponent) {
 	mlogRegLock.RLock()
 	if l, exists := MLogRegistryActive[c]; exists {
 		l.SendFormatted(GetMLogFormat(), 1, msg)
@@ -193,7 +194,8 @@ func (c mlogComponent) Send(msg MLogT) {
 	mlogRegLock.RUnlock()
 }
 
-func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg MLogT) {
+func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT) {
+
 	switch format {
 	case mLOGKV:
 		l.Sendln(level, msg.FormatKV())
@@ -326,6 +328,8 @@ func (m *MLogT) FormatJSON() []byte {
 }
 
 func (m *MLogT) FormatKV() (out string) {
+	m.Lock()
+	defer m.Unlock()
 	m.placeholderize()
 	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
@@ -340,6 +344,8 @@ func (m *MLogT) FormatKV() (out string) {
 }
 
 func (m *MLogT) FormatPlain() (out string) {
+	m.Lock()
+	defer m.Unlock()
 	m.placeholderize()
 	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
@@ -354,6 +360,8 @@ func (m *MLogT) FormatPlain() (out string) {
 }
 
 func (m *MLogT) MarshalJSON() ([]byte, error) {
+	m.Lock()
+	defer m.Unlock()
 	var obj = make(map[string]interface{})
 	obj["event"] = m.EventName()
 	obj["ts"] = time.Now()
@@ -485,22 +493,23 @@ func (m *MLogDetailT) AsDocumentation() *MLogDetailT {
 	return m
 }
 
-// SetDetailValues is a setter function for setting values for pre-existing details.
+// AssignDetails is a setter function for setting values for pre-existing details.
 // It accepts a variadic number of empty interfaces.
 // If the number of arguments does not match  the number of established details
 // for the receiving MLogT, it will fatal error.
 // Arguments MUST be provided in the order in which they should be applied to the
 // slice of existing details.
-func (m MLogT) SetDetailValues(detailVals ...interface{}) MLogT {
-
+func (m *MLogT) AssignDetails(detailVals ...interface{}) *MLogT {
 	// Check for congruence between argument length and registered details.
 	if len(detailVals) != len(m.Details) {
-		glog.Fatal("mlog: wrong number of details set, want: ", len(m.Details), "got:", len(detailVals))
+		glog.Fatal(m.EventName(), "wrong number of details set, want: ", len(m.Details), "got:", len(detailVals))
 	}
 
+	m.Lock()
 	for i, detailval := range detailVals {
 		m.Details[i].Value = detailval
 	}
+	m.Unlock()
 
 	return m
 }

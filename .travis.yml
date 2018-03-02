@@ -3,18 +3,15 @@ go_import_path: github.com/ethereumproject/go-ethereum
 go: 1.9.2
 os:
 - linux
-- osx
 
 env:
   global:
     - secure: "MjvfqrKakMa+z+6LFxaL30n+BtjxUm2BnJ6/+S5cbxoCcXGVUBQf9LZ7+FbxIiucZqe7LoawPfLfrzyYPH9Lf03o+gUAdqV2Mm9EYVh5cbF51DmhcRL36Pubm4BeR2DdZTk/v31/TN9g/D9/rsCCwpwFuQB4iuBwYLtyJi8JLopVLpw7/ZI/8EYkOAE/3L0t4ICOMYexKGGi8XkVCC0TWBAHbzFYfeRJxspDNP2WhLS3vJdqDoJKFi/p/ZFzn2J4GKP6hhSUWzG57MpshhYcnIFzt4ZgB1sa1gNF04fe0gT+qAP9WuMFuUPgKhAN/bIPy78BfUi3ScJVYMj6y5D9PzN5+Kp3bo0SsXf6tAJ4t8m8IfU7FBpZkctMxP5aqvu/WX+eHgjNhVkHseZmRO/kst1YfXa5cjjAbiXwivRFtIv7LTrlpshB06k6zj9kD1JngOjf9sLnyYv38Njy/Vb1rK2kkPGMGzLDfkxxmrVgbijfvxX1Hidn97X/y6iLZvq14XsycoWFetiH67OT81grL1hpYC2HyTIdVrG/8CT1FtHsRKa4DqGiWAlaQf8ksm/TPGczylZbtEXFqDLuVl/o0SyOBfsxLiFuOz0cbeThcU8qe5xukK4C9Usu1z7V5h9dMY9y8jKWMNFWOumRjMea1bqS/LEVsUCQ5AmBGWr+AQU="
 
 before_install:
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository ppa:duggan/bats --yes; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -qq bats; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install bats; fi
+- sudo add-apt-repository ppa:duggan/bats --yes
+- sudo apt-get update -qq
+- sudo apt-get install -qq bats
 
 # Install Rust and C binding
 - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
@@ -23,8 +20,7 @@ before_install:
 - git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
 - cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
 - cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv"; fi
+- export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
 - cd $GOPATH/src/github.com/ethereumproject/go-ethereum
 
 script:
@@ -38,7 +34,8 @@ script:
 # Run go tests.
 - go test -tags=sputnikvm ./...
 # Build for integration tests.
-- go build -tags=sputnikvm -ldflags "-X main.Version="`janus version -format TAG_OR_NIGHTLY` ./cmd/geth
+# Linux builds static binary
+- go build -tags="sputnikvm netgo" -ldflags "-extldflags=-static -X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
 # Run bats integration tests.
 - bats cmd/geth
 
