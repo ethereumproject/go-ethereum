@@ -1776,7 +1776,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int, progress bool) {
 	tester := newTester()
 	defer tester.terminate()
 
-	// Create a large enough blockchin to actually fast sync on
+	// Create a large enough blockchain to actually fast sync on
 	targetBlocks := fsMinFullBlocks + 2*fsPivotInterval - 15
 	hashes, headers, blocks, receipts := makeChain(targetBlocks, 0, genesis, nil, false)
 
@@ -1789,7 +1789,8 @@ func testFastCriticalRestarts(t *testing.T, protocol int, progress bool) {
 	for i := 0; i < fsPivotInterval; i++ {
 		tester.peerMissingStates["peer"][headers[hashes[fsMinFullBlocks+i]].Root] = true
 	}
-	(tester.downloader.peers.peers["peer"].peer).(*downloadTesterPeer).setDelay(500 * time.Millisecond) // Enough to reach the critical section
+	// FIXME: sucks
+	//(tester.downloader.peers.peers["peer"].peer).(*downloadTesterPeer).setDelay(500 * time.Millisecond) // Enough to reach the critical section
 
 	// Synchronise with the peer a few times and make sure they fail until the retry limit
 	for i := 0; i < int(fsCriticalTrials)-1; i++ {
@@ -1797,7 +1798,6 @@ func testFastCriticalRestarts(t *testing.T, protocol int, progress bool) {
 		if err := tester.sync("peer", nil, FastSync); err == nil {
 			t.Fatalf("failing fast sync succeeded: %v", err)
 		}
-		time.Sleep(150 * time.Millisecond) // Make sure no in-flight requests remain
 
 		// If it's the first failure, pivot should be locked => reenable all others to detect pivot changes
 		if i == 0 {
@@ -1809,7 +1809,8 @@ func testFastCriticalRestarts(t *testing.T, protocol int, progress bool) {
 			tester.lock.Lock()
 			tester.peerHeaders["peer"][hashes[fsMinFullBlocks-1]] = headers[hashes[fsMinFullBlocks-1]]
 			tester.peerMissingStates["peer"] = map[common.Hash]bool{tester.downloader.fsPivotLock.Root: true}
-			(tester.downloader.peers.peers["peer"].peer).(*downloadTesterPeer).setDelay(0)
+			// FIXME: sucks
+			//(tester.downloader.peers.peers["peer"].peer).(*downloadTesterPeer).setDelay(0)
 			tester.lock.Unlock()
 		}
 	}
