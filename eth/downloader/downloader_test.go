@@ -33,8 +33,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/trie"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/trie"
 )
 
 var (
@@ -201,7 +201,7 @@ func newTester() *downloadTester {
 		peerReceipts:      make(map[string]map[common.Hash]types.Receipts),
 		peerChainTds:      make(map[string]map[common.Hash]*big.Int),
 		peerMissingStates: make(map[string]map[common.Hash]bool),
-		delay: 0,
+		delay:             0,
 	}
 	tester.stateDb, _ = ethdb.NewMemDatabase()
 	tester.stateDb.Put(genesis.Root().Bytes(), []byte{0x00})
@@ -1756,11 +1756,25 @@ func testDeliverHeadersHang(t *testing.T, protocol int, mode SyncMode) {
 
 // Tests that if fast sync aborts in the critical section, it can restart a few
 // times before giving up.
-func TestFastCriticalRestarts63(t *testing.T) { testFastCriticalRestarts(t, 63) }
-func TestFastCriticalRestarts64(t *testing.T) { testFastCriticalRestarts(t, 64) }
+// Tests that if fast sync aborts in the critical section, it can restart a few
+// times before giving up.
+// We use data driven subtests to manage this so that it will be parallel on its own
+// and not with the other tests, avoiding intermittent failures.
+func TestFastCriticalRestarts(t *testing.T) {
+	testCases := []struct {
+		protocol int
+	}{
+		{63},
+		{64},
+	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("protocol %d", tc.protocol), func(t *testing.T) {
+			testFastCriticalRestarts(t, tc.protocol)
+		})
+	}
+}
 
 func testFastCriticalRestarts(t *testing.T, protocol int) {
-	t.Parallel()
 
 	// Create a large enough blockchain to actually fast sync on
 	targetBlocks := fsMinFullBlocks + 2*fsPivotInterval - 15
@@ -1776,14 +1790,16 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	}
 	tester.downloader.dropPeer = func(id string) {} // We reuse the same "faulty" peer throughout the test
 
-	tester.setDelay(100*time.Millisecond)
+	tester.setDelay(100 * time.Millisecond)
+
 	// Synchronise with the peer a few times and make sure they fail until the retry limit
+	// WTF: It usually passes (==fails, ie 'failing fast sync succeeded') on about the half-th iteration
+	// (eg i=5/fsCriticalTrials=10, i=3/fsCriticalTrials=5) for whatever reason...
 	var i uint32 = 0
-	// It usually passes (==fails, ie 'failing fast sync succeeded') on the 5th iteration for whatever reason...
-	for ; i < 5 ; i++ { // fsCriticalTrials; i++ {
+	for ; i < fsCriticalTrials/2; i++ {
 		// Attempt a sync and ensure it fails properly
 		if err := tester.sync("peer", nil, FastSync); err == nil {
-			t.Fatal("failing fast sync succeeded", err, i)
+			t.Fatalf("failing fast sync succeeded err=%v i=%d/fsCriticalTrials=%d", err, i, fsCriticalTrials)
 		}
 
 		if i == 0 {
@@ -1801,14 +1817,11 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	// Retry limit exhausted, downloader will switch to full sync, should succeed
 	if err := tester.sync("peer", nil, FastSync); err != nil {
 		t.Fatalf("failed to synchronise blocks in slow sync: %v", err)
+	} else {
+		if m := tester.downloader.GetMode(); m != FullSync {
+			t.Fatalf("got: %v, want: %v", m, FullSync)
+		}
 	}
+
 	assertOwnChain(t, tester, targetBlocks+1)
 }
-
-//GOROOT=/usr/local/Cellar/go/1.9.2/libexec #gosetup
-//GOPATH=/Users/ia/gocode #gosetup
-///usr/local/Cellar/go/1.9.2/libexec/bin/go test -c -i -o /private/var/folders/zw/5jg9p0yx0gb97hh28z85c9rw0000gn/T/___TestFastCriticalRestarts64Original_in_downloader_test_go github.com/ethereumproject/go-ethereum/eth/downloader #gosetup
-///private/var/folders/zw/5jg9p0yx0gb97hh28z85c9rw0000gn/T/___TestFastCriticalRestarts64Original_in_downloader_test_go -test.v -test.run ^TestFastCriticalRestarts64Original$ #gosetup
-//downloader_test.go:1938: failed to synchronise blocks in slow sync: state node 0xe57c55cdc5ab8a8b87ddcbcd5909c4887db053e5918309e72d028d263911bf53 failed with all peers (1 tries, 1 peers)
-//
-//Process finished with exit code 1
