@@ -1667,6 +1667,16 @@ func (api *PublicDebugAPI) GetAddressTransactions(address common.Address, blockS
 	if !inUse {
 		return nil, errors.New("addr-tx indexing not enabled")
 	}
+	// Use human-friendly abbreviations, per https://github.com/ethereumproject/go-ethereum/pull/475#issuecomment-366065122
+	// so 't' => to, 'f' => from, 'tf|ft' => either/both. Same pattern for txKindOf.
+	// _t_o OR _f_rom
+	if toOrFrom == "tf" || toOrFrom == "ft" {
+		toOrFrom = "b"
+	}
+	// _s_tandard OR _c_ontract
+	if txKindOf == "sc" || txKindOf == "cs" {
+		txKindOf = "b"
+	}
 
 	list = core.GetAddrTxs(db, address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
