@@ -195,10 +195,6 @@ func (c *SufficientChainConfig) IsValid() (string, bool) {
 		return "forks", false
 	}
 
-	if cid := c.ChainConfig.GetChainID(); cid.Cmp(new(big.Int)) == 0 {
-		return "diehard chainid", false
-	}
-
 	return "", true
 }
 
@@ -243,18 +239,17 @@ func (c *ChainConfig) SortForks() *ChainConfig {
 }
 
 // GetChainID gets the chainID for a chainconfig.
-// It assumes chain configuration has a "Diehard" fork.
-// It assumes eip155 will only be set on the "Diehard" fork.
-// It returns big.Int zero-value if no chainID is set for eip155,
-// which means that it implicitly assumes to be only called for blocks >= Diehard fork block num.
-// If called/configured "incorrectly" it will "pass the buck" by returning a non-error (ie zero value).
+// It returns big.Int zero-value if no chainID is ever set for eip155/chainID.
+// It uses ChainConfig#HasFeature, so it will return the last chronological value
+// if the value is set multiple times.
 func (c *ChainConfig) GetChainID() *big.Int {
 	n := new(big.Int)
-	fork := c.ForkByName("Diehard")
-	if feat, _, ok := c.GetFeature(fork.Block, "eip155"); ok {
-		if val, ok := feat.GetBigInt("chainID"); ok {
-			n.Set(val)
-		}
+	feat, _, ok := c.HasFeature("eip155")
+	if !ok {
+		return n
+	}
+	if val, ok := feat.GetBigInt("chainID"); ok {
+		n.Set(val)
 	}
 	return n
 }

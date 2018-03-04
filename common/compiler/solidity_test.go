@@ -71,7 +71,7 @@ func TestCompileError(t *testing.T) {
 	if err != nil || sol.version != solcVersion {
 		t.Skip("solc not found: skip")
 	} else if sol.Version() != solcVersion {
-		t.Skip("WARNING: skipping due to a newer version of solc found (%v, expect %v)", sol.Version(), solcVersion)
+		t.Skipf("WARNING: skipping due to a newer version of solc found (%v, expect %v)", sol.Version(), solcVersion)
 	}
 	contracts, err := sol.Compile(source[2:])
 	if err == nil {

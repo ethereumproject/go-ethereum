@@ -47,16 +47,19 @@ package main
 
 import (
 	"time"
+	"fmt"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/gizak/termui"
+	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/core"
-	"fmt"
+	"github.com/ethereumproject/go-ethereum/metrics"
 )
 
 const (
+	tuiHeaderHeight = 2
+	tuiHeaderStart = 1
 	tuiSmallHeight = 3
 	tuiMediumHeight = 5
 	tuiLargeHeight = 8
@@ -70,6 +73,7 @@ const (
 )
 
 var (
+	headerInfo      *termui.Par
 	syncheightGauge *termui.Gauge
 
 	peerCountSpark termui.Sparkline
@@ -91,18 +95,39 @@ func tuiDrawDash(e *eth.Ethereum) {
 	}
 	if e != nil && e.IsListening() {
 		cb := e.BlockChain().GetBlockByNumber(currentBlockNumber)
-		syncheightGauge.BorderLabel = fmt.Sprintf("%s | local_head ◼ n=%d ⬡=%s txs=%d time=%v ago", currentMode, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(), time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
+		cid := e.ChainConfig().GetChainID()
+		cnet := e.NetVersion()
+		cname := ""
+		if cacheChainIdentity != "" {
+			cname = cacheChainIdentity
+		}
+		headerInfo.Text = fmt.Sprintf(" Mode=%s Chain=%v(%d) Chain Id=%d \n" +
+			" local_head ◼ n=%d ⬡=%s txs=%d time=%v ago",
+				currentMode, cname, cnet, cid, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(),
+					time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
+		syncheightGauge.BorderLabel = fmt.Sprintf("Sync")
+
 	}
-	termui.Render(syncheightGauge, peerCountSparkHolder, peerList, blkMgasTxsSparkHolder)
+	termui.Render(headerInfo, syncheightGauge, peerCountSparkHolder, peerList, blkMgasTxsSparkHolder)
 }
 
 func tuiSetupDashComponents() {
+
+	/// Config Info Header
+	headerInfo = termui.NewPar("")
+	headerInfo.Height = tuiHeaderHeight
+	headerInfo.Border = false
+	headerInfo.X = tuiHeaderStart
+	headerInfo.TextBgColor = termui.ColorWhite
+	headerInfo.TextFgColor = termui.ColorBlack
+	headerInfo.SetWidth(termui.TermWidth() - 1)
 	//// Sync height gauge
 	syncheightGauge = termui.NewGauge()
 	syncheightGauge.Percent = 0
 	syncheightGauge.BarColor = termui.ColorRed
 	syncheightGauge.Height = tuiSmallHeight
 	syncheightGauge.Width = tuiLargeWidth
+	syncheightGauge.Y = tuiHeaderHeight + 1
 	//// Mgas spark
 	mgasSpark = termui.Sparkline{}
 	mgasSpark.Title = "Mgas"
@@ -135,7 +160,7 @@ func tuiSetupDashComponents() {
 	peerCountSpark.Height = tuiMediumHeight
 	//// Peer count spark holder
 	peerCountSparkHolder = termui.NewSparklines(peerCountSpark)
-	peerCountSparkHolder.BorderLabel = "Peers (0)"
+	peerCountSparkHolder.BorderLabel = "Peers (0) | Bytes (0 rx / 0 tx) | Mean Rate (0 rx / 0 tx)"
 	peerCountSparkHolder.BorderLabelFg = termui.ColorBlue
 	peerCountSparkHolder.BorderBottom = false
 	peerCountSparkHolder.X = 0
@@ -205,6 +230,7 @@ var dashDisplaySystem = displayEventHandlers{
 						localheight = head
 					}
 					syncheightGauge.Percent = int(calcPercent(localheight, syncheight))
+
 					if localheight >= syncheight {
 						syncheightGauge.Label = fmt.Sprintf("%d", localheight)
 						syncheightGauge.BarColor = termui.ColorGreen
@@ -252,10 +278,16 @@ var dashDisplaySystem = displayEventHandlers{
 		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
+				rxP2P := metrics.P2PInBytes
+				txP2P := metrics.P2POutBytes
+				rxBytes := rxP2P.Count()
+				txByes := txP2P.Count()
+				rxRateMean := rxP2P.RateMean()
+				txRateMean := txP2P.RateMean()
 				peers := e.Downloader().GetPeers()
 				peerCountSparkHolder.Lines[0].Data = addDataWithLimit(peerCountSparkHolder.Lines[0].Data, int(peers.Len()), tuiDataLimit)
-				peerCountSparkHolder.BorderLabel = fmt.Sprintf("Peers (%d / %d)", int(peers.Len()), ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
-
+				peerCountSparkHolder.BorderLabel = fmt.Sprintf("Peers (%d / %d) | Bytes (%d rx / %d tx) | Mean Rate (%.2f rx / %.2f tx)",
+					int(peers.Len()), ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)), rxBytes, txByes, rxRateMean, txRateMean)
 				peerListData = []string{}
 				for _, p := range peers.AllPeers() {
 					peerListData = append(peerListData, p.String())

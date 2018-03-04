@@ -13,7 +13,7 @@ sputnik_vm_steps: &sputnik_vm_steps
           cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
           cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
     - persist_to_workspace:
-        root: ~/ 
+        root: ~/
         paths:
           - go/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
 
@@ -30,7 +30,7 @@ deploy_steps: &deploy_steps
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           cp $GOPATH/bin/geth ./
-          ./deploy.sh gcloud-circleci.json.enc
+          ./scripts/deploy.sh gcloud-circleci.json.enc
 
 unit_tests_steps: &unit_tests_steps
   steps:
@@ -99,13 +99,16 @@ jobs:
           name: Install required software
           command: |
             export GOPATH=$HOME/go
-            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-            brew install go
-            brew install bats
-            brew install gpg2
+            export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin]
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
             if [ ! -x ~/janusbin/janus ]; then
               cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+              brew update
+              export BDIR="$(brew --repo homebrew/core)" && echo "$BDIR" && git -C "$BDIR" reset --hard master && git -C "$BDIR" fetch origin ac2308d7640e45de0de1dbcbb6d4f42fcdd8adde && git -C "$BDIR" checkout FETCH_HEAD && HOMEBREW_NO_AUTO_UPDATE=1 brew install go && brew switch go 1.9.3 && git -C "$BDIR" checkout master && unset BDIR
+              brew info go
+              go version
+              brew install bats
+              brew install gpg2
             fi
       - persist_to_workspace:
           root: ~/

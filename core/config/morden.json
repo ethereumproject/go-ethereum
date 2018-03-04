@@ -112,6 +112,18 @@
                         }
                     }
                 ]
+            },
+            {
+                "name": "Defuse Difficulty Bomb",
+                "block": 2300000,
+                "features": [
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "type": "defused"
+                        }
+                    }
+                ]
             }
         ],
         "badHashes": [

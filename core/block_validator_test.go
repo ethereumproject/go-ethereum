@@ -320,68 +320,157 @@ func TestDifficultyBombExplodeTestnet(t *testing.T) {
 }
 
 // Compare expected difficulties on edges of forks.
-func TestCalcDifficulty1(t *testing.T) {
-	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
-	for i, config := range configs {
+func TestCalcDifficulty1Mainnet(t *testing.T) {
+	config := DefaultConfigMainnet.ChainConfig
 
-		parentTime := uint64(1513175023)
-		time := parentTime + 20
-		parentDiff := big.NewInt(28670444)
+	parentTime := uint64(1513175023)
+	time := parentTime + 20
+	parentDiff := big.NewInt(28670444)
 
-		dhB := config.ForkByName("Diehard").Block
-		if dhB == nil {
-			t.Error("missing Diehard fork block")
+	dhB := config.ForkByName("Diehard").Block
+	if dhB == nil {
+		t.Error("missing Diehard fork block")
+	}
+
+	feat, dhFork, configured := config.GetFeature(dhB, "difficulty")
+	if !configured {
+		t.Errorf("difficulty not configured for diehard block: %v", dhB)
+	}
+	if val, ok := feat.GetString("type"); !ok || val != "ecip1010" {
+		t.Errorf("ecip1010 not configured as difficulty for diehard block: %v", dhB)
+	}
+	delay, ok := feat.GetBigInt("length")
+	if !ok {
+		t.Error("ecip1010 bomb delay length not configured")
+	}
+
+	// Paradise
+	defuseBlock := config.ForkByName("Defuse Difficulty Bomb").Block
+	if defuseBlock == nil {
+		t.Error("missing Defuse Difficulty Bomb fork block")
+	}
+
+	defuseFeat, _, defuseConfigured := config.GetFeature(defuseBlock, "difficulty")
+	if !defuseConfigured {
+		t.Errorf("difficulty not configured for Defuse Difficulty Bomb block: %v", dhB)
+	}
+	if val, ok := defuseFeat.GetString("type"); !ok || val != "defused" {
+		t.Errorf("diffusion not configured as difficulty for Defuse Difficulty Bomb block: %v", dhB)
+	}
+
+
+	explosionBlock := big.NewInt(0).Add(dhB, delay)
+
+	//parentBlocks to compare with expected equality
+	table := map[*big.Int]*big.Int{
+
+		big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-2)): calcDifficultyFrontier(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-2)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-1)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(0)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(1)), parentDiff),
+
+		big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-2)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-1)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(0)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(1)), parentDiff),
+
+		big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-2)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-1)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(0)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(1)), parentDiff),
+
+		big.NewInt(0).Add(dhB, big.NewInt(-1)): calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 2999999
+		big.NewInt(0).Add(dhB, big.NewInt(0)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000000
+		big.NewInt(0).Add(dhB, big.NewInt(1)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000001
+		big.NewInt(-2).Add(dhB, delay):         calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 4999998
+
+		big.NewInt(-1).Add(dhB, delay): calcDifficultyExplosion(time, parentTime, big.NewInt(-1).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock), // 4999999
+		big.NewInt(0).Add(dhB, delay):  calcDifficultyExplosion(time, parentTime, big.NewInt(0).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock),  // 5000000
+		big.NewInt(1).Add(dhB, delay):  calcDifficultyExplosion(time, parentTime, big.NewInt(1).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock),  // 5000001
+
+		new(big.Int).Add(defuseBlock, big.NewInt(-1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(-1)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(0)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(0)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(1)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(1)), parentDiff),
+		
+		big.NewInt(10000000): calcDifficultyDefused(time, parentTime, big.NewInt(10000000), parentDiff),
+	}
+
+	for parentNum, expected := range table {
+		difficulty := CalcDifficulty(config, time, parentTime, parentNum, parentDiff)
+		if difficulty.Cmp(expected) != 0 {
+			t.Errorf("config: %v, got: %v, want: %v, with parentBlock: %v", "mainnet", difficulty, expected, parentNum)
 		}
+	}
+}
 
-		feat, dhFork, configured := config.GetFeature(dhB, "difficulty")
-		if !configured {
-			t.Errorf("difficulty not configured for diehard block: %v", dhB)
-		}
-		if val, ok := feat.GetString("type"); !ok || val != "ecip1010" {
-			t.Errorf("ecip1010 not configured as difficulty for diehard block: %v", dhB)
-		}
-		delay, ok := feat.GetBigInt("length")
-		if !ok {
-			t.Error("ecip1010 bomb delay length not configured")
-		}
+// Compare expected difficulties on edges of forks.
+func TestCalcDifficulty1Morden(t *testing.T) {
+	config := DefaultConfigMainnet.ChainConfig
 
-		explosionBlock := big.NewInt(0).Add(dhB, delay)
+	parentTime := uint64(1513175023)
+	time := parentTime + 20
+	parentDiff := big.NewInt(28670444)
 
-		//parentBlocks to compare with expected equality
-		table := map[*big.Int]*big.Int{
+	dhB := config.ForkByName("Diehard").Block
+	if dhB == nil {
+		t.Error("missing Diehard fork block")
+	}
 
-			big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-2)): calcDifficultyFrontier(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-2)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-1)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(0)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(1)), parentDiff),
+	feat, dhFork, configured := config.GetFeature(dhB, "difficulty")
+	if !configured {
+		t.Errorf("difficulty not configured for diehard block: %v", dhB)
+	}
+	if val, ok := feat.GetString("type"); !ok || val != "ecip1010" {
+		t.Errorf("ecip1010 not configured as difficulty for diehard block: %v", dhB)
+	}
 
-			big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-2)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-1)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(0)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(1)), parentDiff),
+	// Paradise
+	defuseBlock := config.ForkByName("Defuse Difficulty Bomb").Block
+	if defuseBlock == nil {
+		t.Error("missing Defuse Difficulty Bomb fork block")
+	}
 
-			big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-2)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-1)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(0)), parentDiff),
-			big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(1)), parentDiff),
+	defuseFeat, _, defuseConfigured := config.GetFeature(defuseBlock, "difficulty")
+	if !defuseConfigured {
+		t.Errorf("difficulty not configured for Defuse Difficulty Bomb block: %v", dhB)
+	}
+	if val, ok := defuseFeat.GetString("type"); !ok || val != "defused" {
+		t.Errorf("diffusion not configured as difficulty for Defuse Difficulty Bomb block: %v", dhB)
+	}
 
-			big.NewInt(0).Add(dhB, big.NewInt(-1)): calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 2999999
-			big.NewInt(0).Add(dhB, big.NewInt(0)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000000
-			big.NewInt(0).Add(dhB, big.NewInt(1)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000001
-			big.NewInt(-2).Add(dhB, delay):         calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 4999998
+	//parentBlocks to compare with expected equality
+	table := map[*big.Int]*big.Int{
 
-			big.NewInt(-1).Add(dhB, delay): calcDifficultyExplosion(time, parentTime, big.NewInt(-1).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock), // 4999999
-			big.NewInt(0).Add(dhB, delay):  calcDifficultyExplosion(time, parentTime, big.NewInt(0).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock),  // 5000000
-			big.NewInt(1).Add(dhB, delay):  calcDifficultyExplosion(time, parentTime, big.NewInt(1).Add(dhB, delay), parentDiff, dhFork.Block, explosionBlock),  // 5000001
+		big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-2)): calcDifficultyFrontier(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-2)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(-1)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(0)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("Homestead").Block, big.NewInt(1)), parentDiff),
 
-			big.NewInt(10000000): calcDifficultyExplosion(time, parentTime, big.NewInt(10000000), parentDiff, dhFork.Block, explosionBlock),
-		}
+		big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-2)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(-1)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(0)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("The DAO Hard Fork").Block, big.NewInt(1)), parentDiff),
 
-		for parentNum, expected := range table {
-			difficulty := CalcDifficulty(config, time, parentTime, parentNum, parentDiff)
-			if difficulty.Cmp(expected) != 0 {
-				t.Errorf("config: %v, got: %v, want: %v, with parentBlock: %v", i, difficulty, expected, parentNum)
-			}
+		big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-2)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-2)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-1)): calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(-1)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(0)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(0)), parentDiff),
+		big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(1)):  calcDifficultyHomestead(time, parentTime, big.NewInt(0).Add(config.ForkByName("GasReprice").Block, big.NewInt(1)), parentDiff),
+
+		big.NewInt(0).Add(dhB, big.NewInt(-1)): calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 2999999
+		big.NewInt(0).Add(dhB, big.NewInt(0)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000000
+		big.NewInt(0).Add(dhB, big.NewInt(1)):  calcDifficultyDiehard(time, parentTime, parentDiff, dhFork.Block), // 3000001
+
+		new(big.Int).Add(defuseBlock, big.NewInt(-1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(-1)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(0)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(0)), parentDiff),
+		new(big.Int).Add(defuseBlock, big.NewInt(1)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(1)), parentDiff),
+
+		big.NewInt(10000000): calcDifficultyDefused(time, parentTime, big.NewInt(10000000), parentDiff),
+	}
+
+	for parentNum, expected := range table {
+		difficulty := CalcDifficulty(config, time, parentTime, parentNum, parentDiff)
+		if difficulty.Cmp(expected) != 0 {
+			t.Errorf("config: %v, got: %v, want: %v, with parentBlock: %v", "mainnet", difficulty, expected, parentNum)
 		}
 	}
 }

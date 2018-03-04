@@ -2,15 +2,17 @@ package main
 
 import (
 	"time"
-	"gopkg.in/urfave/cli.v1"
+
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
-	"fmt"
+	"gopkg.in/urfave/cli.v1"
 )
 
+//go:generate stringer -type=logEventType
 type logEventType int
+
 const (
-	logEventChainInsert       logEventType = iota
+	logEventChainInsert logEventType = iota
 	logEventChainInsertSide
 	logEventHeaderChainInsert
 	logEventMinedBlock
@@ -21,10 +23,6 @@ const (
 	logEventBefore
 	logEventAfter
 )
-
-func (e logEventType) String() string {
-	return fmt.Sprintf("%s", e)
-}
 
 // Global bookmark vars.
 // These are accessible globally to allow inter-communication between display system event handlers.
