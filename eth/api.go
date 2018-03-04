@@ -484,10 +484,27 @@ func (s *PrivateAccountAPI) LockAccount(addr common.Address) bool {
 	return s.am.Lock(addr) == nil
 }
 
-// SignAndSendTransaction will create a transaction from the given arguments and
+// Sign calculates an Ethereum ECDSA signature for:
+// keccack256("\x19Ethereum Signed Message:\n" + len(message) + message))
+//
+// Note, the produced signature conforms to the secp256k1 curve R, S and V values,
+// where the V value will be 27 or 28 for legacy reasons.
+//
+// The key used to calculate the signature is decrypted with the given password.
+//
+// https://github.com/ethereum/go-ethereum/wiki/Management-APIs#personal_sign
+func (s *PrivateAccountAPI) Sign(data []byte, addr common.Address, passwd string) (string, error) {
+	signature, err := s.am.SignWithPassphrase(addr, passwd, signHash(data))
+	if err == nil {
+		signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	}
+	return common.ToHex(signature), nil
+}
+
+// SendTransaction will create a transaction from the given arguments and
 // tries to sign it with the key associated with args.To. If the given passwd isn't
 // able to decrypt the key it fails.
-func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
+func(s *PrivateAccountAPI) SendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
 	args = prepareSendTxArgs(args, s.gpo)
 
 	s.txMu.Lock()
@@ -512,6 +529,12 @@ func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd strin
 	}
 
 	return submitTransaction(s.bc, s.txPool, tx, signature)
+}
+
+// SignAndSendTransaction was renamed to SendTransaction. This method is deprecated
+// and will be removed in the future. It primary goal is to give clients time to update.
+func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
+	return s.SignAndSendTransaction(args, passwd)
 }
 
 // PublicBlockChainAPI provides an API to access the Ethereum blockchain.
@@ -1282,11 +1305,26 @@ func (s *PublicTransactionPoolAPI) SendRawTransaction(encodedTx string) (string,
 	return tx.Hash().Hex(), nil
 }
 
+// signHash is a helper function that calculates a hash for the given message that can be
+// safely used to calculate a signature from.
+//
+// The hash is calculated as
+//   keccak256("\x19Ethereum Signed Message:\n"${message length}${message}).
+//
+// This gives context to the signed message and prevents signing of transactions.
+func signHash(data []byte) []byte {
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), data)
+	return crypto.Keccak256([]byte(msg))
+}
+
 // Sign signs the given hash using the key that matches the address. The key must be
 // unlocked in order to sign the hash.
-func (s *PublicTransactionPoolAPI) Sign(addr common.Address, hash common.Hash) (string, error) {
-	signature, error := s.am.Sign(addr, hash[:])
-	return common.ToHex(signature), error
+func (s *PublicTransactionPoolAPI) Sign(addr common.Address, data []byte) (string, error) {
+	signature, err := s.am.Sign(addr, signHash(data))
+	if err == nil {
+		signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	}
+	return common.ToHex(signature), err
 }
 
 // SignTransactionArgs represents the arguments to sign a transaction.

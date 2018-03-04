@@ -366,7 +366,7 @@ func TestChainConfig_GetChainID(t *testing.T) {
 			t.Fatalf("could not decode file: %v", err)
 		}
 		if extConfig.ChainConfig.GetChainID().Cmp(wantInt) != 0 {
-			t.Error("got: %v, want: %v", extConfig.ChainConfig.GetChainID(), wantInt)
+			t.Errorf("got: %v, want: %v", extConfig.ChainConfig.GetChainID(), wantInt)
 		}
 	}
 }

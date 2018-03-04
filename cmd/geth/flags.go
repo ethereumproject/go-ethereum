@@ -26,6 +26,16 @@ import (
 
 var (
 	// General settings
+	PprofFlag = cli.IntFlag{
+		Name:  "pprof",
+		Usage: "Enable runtime profiling with web interface",
+		Value: 0,
+	}
+	PprofIntervalFlag = cli.IntFlag{
+		Name:  "pprof-interval",
+		Usage: "Set interval in seconds for runtime profiling",
+		Value: 5,
+	}
 	SputnikVMFlag = cli.BoolFlag{
 		Name:  "sputnikvm",
 		Usage: "Use SputnikVM Ethereum Virtual Machine implementation",

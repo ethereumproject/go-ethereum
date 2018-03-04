@@ -570,10 +570,10 @@ func HandleIpBetween(t *testing.T, from string, to string, test string, assert b
 	res, e := IpBetween(net.ParseIP(from), net.ParseIP(to), net.ParseIP(test))
 	// If there is an error and we expected truth.
 	if e != nil && assert {
-		t.Errorf("Assertion (have: %s should be: %s) failed on range %s-%s with test %s: error: %v", res, assert, from, to, test, e)
+		t.Errorf("Assertion (have: %t should be: %t) failed on range %s-%s with test %s: error: %v", res, assert, from, to, test, e)
 	}
 	if res != assert {
-		t.Errorf("Assertion (have: %s should be: %s) failed on range %s-%s with test %s", res, assert, from, to, test)
+		t.Errorf("Assertion (have: %t should be: %t) failed on range %s-%s with test %s", res, assert, from, to, test)
 	}
 }
 

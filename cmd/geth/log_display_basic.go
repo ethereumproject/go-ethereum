@@ -153,6 +153,9 @@ func calcPercent(quotient, divisor uint64) float64 {
 // PrintStatusBasic implements the displayEventHandlerFn interface
 var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, insertEvent *core.ChainInsertEvent, maxPeers int) uint64 {
 
+	// Set variable copy of current mode to avoid issue around currentMode's non-thread safety
+	currentModeLocal := currentMode
+
 	localOfMaxD := &printUnit{"", xlocalOfMaxD, true}
 	percentOrHash := &printUnit{"", xlocalHeadHashD, false}
 	progressRateD := &printUnit{"", xprogressRateD, false}           //  117/ 129/11
@@ -197,7 +200,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 	peersD.value = formatPeersD(e.Downloader().GetPeers().Len(), maxPeers)
 	defer func() {
 		glog.D(logger.Warn).Infof(basicScanLn,
-			currentMode, localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD)
+			currentModeLocal, localOfMaxD, percentOrHash, progressRateD, progressRateUnitsD, peersD)
 
 	}()
 
@@ -207,22 +210,29 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 		current = e.BlockChain().CurrentFastBlock().NumberU64()
 	}
 
-	if currentMode == lsModeDiscover {
+	if currentModeLocal == lsModeDiscover {
 		return current
 	}
 
 	var localHead *types.Block
 	if insertEvent != nil {
-		if evB := e.BlockChain().GetBlock(insertEvent.LastHash); evB != nil && currentMode == lsModeImport {
+		if evB := e.BlockChain().GetBlock(insertEvent.LastHash); evB != nil && currentModeLocal == lsModeImport {
 			localHead = evB
 		}
 	} else {
 		localHead = e.BlockChain().GetBlockByNumber(current)
 	}
+	// Sanity/safety check
+	if localHead == nil {
+		localHead = e.BlockChain().CurrentBlock()
+		if mode == downloader.FastSync {
+			localHead = e.BlockChain().CurrentFastBlock()
+		}
+	}
 
 	// Calculate progress rates
 	var blks, txs, mgas int
-	if currentMode == lsModeImport && insertEvent != nil && insertEvent.Processed == 1 {
+	if currentModeLocal == lsModeImport && insertEvent != nil && insertEvent.Processed == 1 {
 		blks, txs, mgas = 1, localHead.Transactions().Len(), int(new(big.Int).Div(localHead.GasUsed(), big.NewInt(1000000)).Uint64())
 	} else if insertEvent != nil && insertEvent.Processed > 1 {
 		blks, txs, mgas = calcBlockDiff(e, localHead.NumberU64() - uint64(insertEvent.Processed), localHead)
@@ -234,7 +244,7 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 		blks, txs, mgas = calcBlockDiff(e, localHead.NumberU64() - 1, localHead)
 	}
 
-	switch currentMode {
+	switch currentModeLocal {
 	case lsModeFastSync:
 		lh := localHead.NumberU64()
 		localOfMaxD.value = formatLocalOfMaxD(lh, chainSyncHeight)
@@ -252,7 +262,8 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 		progressRateD.value = fmt.Sprintf(strScanLenOf(xprogressRateD, false), formatProgressRateD(-1, txs, mgas))
 		progressRateUnitsD.value = fmt.Sprintf(strScanLenOf(xprogressRateUnitsD, true), "txs/mgas")
 	default:
-		panic("unreachable")
+		// Without establishing currentModeLocal it would be possible to reach this case if currentMode changed during
+		// execution of last ~40 lines.
 	}
 	return current
 }
