@@ -167,7 +167,7 @@ Loop:
 	}
 	for _, log := range vm.Logs() {
 		statelog := evm.NewLog(log.Address, log.Topics, log.Data, header.Number.Uint64())
-		statedb.AddLog(statelog)
+		statedb.AddLog(*statelog)
 	}
 	usedGas := vm.UsedGas()
 	totalUsedGas.Add(totalUsedGas, usedGas)
