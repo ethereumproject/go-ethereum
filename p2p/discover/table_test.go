@@ -31,65 +31,65 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
-func TestTable_pingReplace(t *testing.T) {
-	doit := func(newNodeIsResponding, lastInBucketIsResponding bool) {
-		transport := newPingRecorder()
-		tab, _ := newTable(transport, NodeID{}, &net.UDPAddr{}, "")
-		defer tab.Close()
-		pingSender := NewNode(MustHexID("a502af0f59b2aab7746995408c79e9ca312d2793cc997e44fc55eda62f0150bbb8c59a6f9269ba3a081518b62699ee807c7c19c20125ddfccca872608af9e370"), net.IP{}, 99, 99)
+// Each time the logdistS1 and logdistS2 are different. We have no
+// way to know which bucket it will ping. This is expected
+// behaviour.
+// func TestTable_pingReplace(t *testing.T) {
+// 	doit := func(newNodeIsResponding, lastInBucketIsResponding bool) {
+// 		transport := newPingRecorder()
+// 		tab, _ := newTable(transport, NodeID{}, &net.UDPAddr{}, "")
+// 		defer tab.Close()
+// 		pingSender := NewNode(MustHexID("a502af0f59b2aab7746995408c79e9ca312d2793cc997e44fc55eda62f0150bbb8c59a6f9269ba3a081518b62699ee807c7c19c20125ddfccca872608af9e370"), net.IP{}, 99, 99)
 
-		// fill up the sender's bucket.
-		last := fillBucket(tab, 253)
+// 		// fill up the sender's bucket.
+// 		last := fillBucket(tab, 253)
 
-		// this call to bond should replace the last node
-		// in its bucket if the node is not responding.
-		transport.responding[last.ID] = lastInBucketIsResponding
-		transport.responding[pingSender.ID] = newNodeIsResponding
-		tab.bond(true, pingSender.ID, &net.UDPAddr{}, 0)
+// 		// this call to bond should replace the last node
+// 		// in its bucket if the node is not responding.
+// 		transport.responding[last.ID] = lastInBucketIsResponding
+// 		transport.responding[pingSender.ID] = newNodeIsResponding
+// 		tab.bond(true, pingSender.ID, &net.UDPAddr{}, 0)
 
-		// first ping goes to sender (bonding pingback)
-		if !transport.pinged[pingSender.ID] {
-			t.Error("table did not ping back sender")
-		}
-		if newNodeIsResponding {
-			// second ping goes to oldest node in bucket
-			// to see whether it is still alive.
-			if !transport.pinged[last.ID] {
-				t.Error("table did not ping last node in bucket")
-			}
-		}
+// 		// first ping goes to sender (bonding pingback)
+// 		if !transport.pinged[pingSender.ID] {
+// 			t.Error("table did not ping back sender")
+// 		}
+// 		if newNodeIsResponding {
+// 			// second ping goes to oldest node in bucket
+// 			// to see whether it is still alive.
+// 			if !transport.pinged[last.ID] {
+// 				t.Error("table did not ping last node in bucket")
+// 			}
+// 		}
 
-		tab.mutex.Lock()
-		defer tab.mutex.Unlock()
-		if l := len(tab.buckets[253].entries); l != bucketSize {
-			t.Errorf("wrong bucket size after bond: got %d, want %d", l, bucketSize)
-		}
+// 		tab.mutex.Lock()
+// 		defer tab.mutex.Unlock()
+// 		if l := len(tab.buckets[253].entries); l != bucketSize {
+// 			t.Errorf("wrong bucket size after bond: got %d, want %d", l, bucketSize)
+// 		}
 
-		if lastInBucketIsResponding || !newNodeIsResponding {
-			if !contains(tab.buckets[253].entries, last.ID) {
-				t.Error("last entry was removed")
-			}
-			if contains(tab.buckets[253].entries, pingSender.ID) {
-				t.Error("new entry was added")
-			}
-		} else {
-			if contains(tab.buckets[253].entries, last.ID) {
-				t.Error("last entry was not removed")
-			}
-			if !contains(tab.buckets[253].entries, pingSender.ID) {
-				t.Error("new entry was not added")
-			}
-		}
-	}
+// 		if lastInBucketIsResponding || !newNodeIsResponding {
+// 			if !contains(tab.buckets[253].entries, last.ID) {
+// 				t.Error("last entry was removed")
+// 			}
+// 			if contains(tab.buckets[253].entries, pingSender.ID) {
+// 				t.Error("new entry was added")
+// 			}
+// 		} else {
+// 			if contains(tab.buckets[253].entries, last.ID) {
+// 				t.Error("last entry was not removed")
+// 			}
+// 			if !contains(tab.buckets[253].entries, pingSender.ID) {
+// 				t.Error("new entry was not added")
+// 			}
+// 		}
+// 	}
 
-	// Each time the logdistS1 and logdistS2 are different. We have no
-	// way to know which bucket it will ping. This is expected
-	// behaviour.
-	// doit(true, true)
-	// doit(false, true)
-	// doit(true, false)
-	// doit(false, false)
-}
+// 	doit(true, true)
+// 	doit(false, true)
+// 	doit(true, false)
+// 	doit(false, false)
+// }
 
 func TestBucket_bumpNoDuplicates(t *testing.T) {
 	t.Parallel()
