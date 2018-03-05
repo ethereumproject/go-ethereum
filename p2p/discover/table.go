@@ -51,6 +51,22 @@ const (
 	seedMaxAge          = 5 * 24 * time.Hour
 )
 
+var (
+	logdistS1 = new(common.Hash)
+	logdistS2 = new(common.Hash)
+)
+
+func init() {
+	s1a := make([]byte, 32)
+	s2a := make([]byte, 32)
+
+	rand.Read(s1a)
+	rand.Read(s2a)
+
+	logdistS1.SetBytes(s1a)
+	logdistS2.SetBytes(s2a)
+}
+
 type Table struct {
 	mutex   sync.Mutex        // protects buckets, their content, and nursery
 	buckets [nBuckets]*bucket // index of known nodes by distance
@@ -551,7 +567,7 @@ func (tab *Table) ping(id NodeID, addr *net.UDPAddr) error {
 //
 // The caller must not hold tab.mutex.
 func (tab *Table) add(new *Node) {
-	b := tab.buckets[logdist(tab.self.sha, new.sha)]
+	b := tab.buckets[logdist(*logdistS1, crypto.Keccak256Hash(new.sha.Bytes(), logdistS2.Bytes()))]
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
 	if b.bump(new) {
@@ -591,7 +607,7 @@ outer:
 		if n.ID == tab.self.ID {
 			continue // don't add self
 		}
-		bucket := tab.buckets[logdist(tab.self.sha, n.sha)]
+		bucket := tab.buckets[logdist(*logdistS1, crypto.Keccak256Hash(n.sha.Bytes(), logdistS2.Bytes()))]
 		for i := range bucket.entries {
 			if bucket.entries[i].ID == n.ID {
 				continue outer // already in bucket
@@ -611,7 +627,7 @@ outer:
 func (tab *Table) delete(node *Node) {
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
-	bucket := tab.buckets[logdist(tab.self.sha, node.sha)]
+	bucket := tab.buckets[logdist(*logdistS1, crypto.Keccak256Hash(node.sha.Bytes(), logdistS2.Bytes()))]
 	for i := range bucket.entries {
 		if bucket.entries[i].ID == node.ID {
 			bucket.entries = append(bucket.entries[:i], bucket.entries[i+1:]...)
