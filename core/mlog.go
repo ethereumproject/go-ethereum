@@ -138,6 +138,12 @@ If transaction is invalid, TX.ERROR will be non-nil, otherwise it will be nil.`,
 	Subject:  "TX",
 	Details: []logger.MLogDetailT{
 		{Owner: "TX", Key: "HASH", Value: "STRING"},
+		{Owner: "TX", Key: "SIZE", Value: "QUOTEDSTRING"},
+		{Owner: "TX", Key: "DATA_SIZE", Value: "QUOTEDSTRING"},
+		{Owner: "TX", Key: "NONCE", Value: "INT"},
+		{Owner: "TX", Key: "GAS", Value: "BIGINT"},
+		{Owner: "TX", Key: "GAS_PRICE", Value: "BIGINT"},
+		{Owner: "TX", Key: "VALID", Value: "BOOL"},
 		{Owner: "TX", Key: "ERROR", Value: "STRING_OR_NULL"},
 	},
 }
