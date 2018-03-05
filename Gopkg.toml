@@ -116,3 +116,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/ethereumproject/benchmark"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/fatih/color"
