@@ -62,6 +62,12 @@
   revision = "68bcac0a08ca8ed7d8f2ace4b4aca72176544770"
 
 [[projects]]
+  name = "github.com/fatih/color"
+  packages = ["."]
+  revision = "507f6050b8568533fb3f5504de8e5205fa62a114"
+  version = "v1.6.0"
+
+[[projects]]
   name = "github.com/gizak/termui"
   packages = ["."]
   revision = "24acd523c756fd9728824cdfac66aad9d8982fb7"
@@ -124,6 +130,18 @@
   packages = ["stack"]
   revision = "766956aceb8ff49664065ae50bef0ae8a0a83ec4"
   version = "v1.0.2"
+
+[[projects]]
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
+
+[[projects]]
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
+  version = "v0.0.3"
 
 [[projects]]
   name = "github.com/mattn/go-runewidth"
@@ -232,7 +250,8 @@
   name = "golang.org/x/sys"
   packages = [
     "unix",
-    "windows"
+    "windows",
+    "windows/registry"
   ]
   revision = "83801418e1b59fb1880e363299581ee543af32ca"
 
@@ -304,6 +323,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e7aa41af1a0e54915148500472af193b085e126e0d2a9c4d19e480d2329feb02"
+  inputs-digest = "2a159657f64d076ce0a2e9a184eda92d100ca9b1fa9dda0c003bdbd6079e3b26"
   solver-name = "gps-cdcl"
   solver-version = 1
