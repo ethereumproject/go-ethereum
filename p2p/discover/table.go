@@ -54,6 +54,7 @@ const (
 var (
 	logdistS1 = new(common.Hash)
 	logdistS2 = new(common.Hash)
+	logdistS3 [64]byte
 )
 
 func init() {
@@ -62,6 +63,7 @@ func init() {
 
 	rand.Read(s1a)
 	rand.Read(s2a)
+	rand.Read(logdistS3[:])
 
 	logdistS1.SetBytes(s1a)
 	logdistS2.SetBytes(s2a)
@@ -259,8 +261,15 @@ func (tab *Table) lookup(id NodeID, refreshIfEmpty bool) []*Node {
 		asked          = make(map[NodeID]bool)
 		reply          = make(chan []*Node, alpha)
 		pendingQueries = 0
-		result         = tab.closest(id)
 	)
+
+	var result *closest
+	if id == tab.self.ID {
+		result = tab.closest(logdistS3)
+	} else {
+		result = tab.closest(id)
+	}
+
 	// don't query further if we hit ourself.
 	// unlikely to happen often in practice.
 	asked[tab.self.ID] = true
@@ -272,7 +281,11 @@ func (tab *Table) lookup(id NodeID, refreshIfEmpty bool) []*Node {
 		// logic.
 		<-tab.refresh()
 
-		result = tab.closest(id)
+		if id == tab.self.ID {
+			result = tab.closest(logdistS3)
+		} else {
+			result = tab.closest(id)
+		}
 	}
 
 	for {
