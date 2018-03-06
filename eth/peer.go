@@ -250,7 +250,9 @@ func (p *peer) RequestReceipts(hashes []common.Hash) error {
 // network IDs, difficulties, head and genesis blocks.
 func (p *peer) Handshake(network int, td *big.Int, head common.Hash, genesis common.Hash) error {
 	// Send out own handshake in a new thread
-	errc := make(chan error, 2)
+	sendErrc := make(chan error, 1)
+	recErrc := make(chan error, 1)
+	var sendErr, recErr error
 	var status statusData // safe to read after two values have been received from errc
 
 	d := &statusData{
@@ -261,23 +263,32 @@ func (p *peer) Handshake(network int, td *big.Int, head common.Hash, genesis com
 		GenesisBlock:    genesis,
 	}
 
-
 	go func() {
-		mlogWireDelegate(p, "send", StatusMsg, d, nil)
-		errc <- p2p.Send(p.rw, StatusMsg, d)
+		sendErrc <- p2p.Send(p.rw, StatusMsg, d)
 	}()
 	go func() {
-		errc <- p.readStatus(network, &status, genesis)
+		recErrc <- p.readStatus(network, &status, genesis)
 	}()
 	timeout := time.NewTimer(handshakeTimeout)
 	defer timeout.Stop()
+
+	defer mlogWireDelegate(p, "send", StatusMsg, d, sendErr)
+	defer mlogWireDelegate(p, "receive", StatusMsg, &status, recErr)
+
 	for i := 0; i < 2; i++ {
 		select {
-		case err := <-errc:
+		case err := <-sendErrc:
 			if err != nil {
+				sendErr = err
+				return err
+			}
+		case err := <-recErrc:
+			if err != nil {
+				recErr = err
 				return err
 			}
 		case <-timeout.C:
+			recErr = p2p.DiscReadTimeout
 			return p2p.DiscReadTimeout
 		}
 	}
@@ -290,7 +301,6 @@ func (p *peer) readStatus(network int, status *statusData, genesis common.Hash) 
 	if err != nil {
 		return err
 	}
-	defer mlogWireDelegate(p, "receive", msg.Code, status, err)
 	if msg.Code != StatusMsg {
 		return errResp(ErrNoStatusMsg, "first msg has code %x (!= %x)", msg.Code, StatusMsg)
 	}

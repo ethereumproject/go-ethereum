@@ -107,8 +107,8 @@ var mlogWireSendHandshake = &logger.MLogT{
 	Verb: "SEND",
 	Subject: "HANDSHAKE",
 	Details: []logger.MLogDetailT{
-		{Owner: "HANDSHAKE", Key: "CODE", Value: "INT"},
-		{Owner: "HANDSHAKE", Key: "NAME", Value: "STRING"},
+		{Owner: "WIRE", Key: "CODE", Value: "INT"},
+		{Owner: "WIRE", Key: "NAME", Value: "STRING"},
 		//{Owner: "HANDSHAKE", Key: "SIZE", Value: "INT"}, // size in bytes
 		{Owner: "WIRE", Key: "REMOTE_ID", Value: "STRING"},
 		{Owner: "WIRE", Key: "REMOTE_ADDR", Value: "STRING"},
@@ -118,7 +118,7 @@ var mlogWireSendHandshake = &logger.MLogT{
 		{Owner: "HANDSHAKE", Key: "TD", Value: "BIGINT"},
 		{Owner: "HANDSHAKE", Key: "HEAD_BLOCK_HASH", Value: "STRING"},
 		{Owner: "HANDSHAKE", Key: "GENESIS_BLOCK_HASH", Value: "STRING"},
-		{Owner: "WIRE", Key: "ERROR", Value: "STRING_OR_NULL"},
+		{Owner: "HANDSHAKE", Key: "ERROR", Value: "STRING_OR_NULL"},
 	},
 }
 
@@ -128,8 +128,8 @@ var mlogWireReceiveHandshake = &logger.MLogT{
 	Verb: "RECEIVE",
 	Subject: "HANDSHAKE",
 	Details: []logger.MLogDetailT{
-		{Owner: "HANDSHAKE", Key: "CODE", Value: "INT"},
-		{Owner: "HANDSHAKE", Key: "NAME", Value: "STRING"},
+		{Owner: "WIRE", Key: "CODE", Value: "INT"},
+		{Owner: "WIRE", Key: "NAME", Value: "STRING"},
 		//{Owner: "HANDSHAKE", Key: "SIZE", Value: "INT"}, // size in bytes
 		{Owner: "WIRE", Key: "REMOTE_ID", Value: "STRING"},
 		{Owner: "WIRE", Key: "REMOTE_ADDR", Value: "STRING"},
@@ -139,7 +139,7 @@ var mlogWireReceiveHandshake = &logger.MLogT{
 		{Owner: "HANDSHAKE", Key: "TD", Value: "BIGINT"},
 		{Owner: "HANDSHAKE", Key: "HEAD_BLOCK_HASH", Value: "STRING"},
 		{Owner: "HANDSHAKE", Key: "GENESIS_BLOCK_HASH", Value: "STRING"},
-		{Owner: "WIRE", Key: "ERROR", Value: "STRING_OR_NULL"},
+		{Owner: "HANDSHAKE", Key: "ERROR", Value: "STRING_OR_NULL"},
 	},
 }
 
@@ -149,14 +149,14 @@ var mlogWireSendTransfer = &logger.MLogT{
 	Verb: "SEND",
 	Subject: "TRANSFER",
 	Details: []logger.MLogDetailT{
-		{Owner: "TRANSFER", Key: "CODE", Value: "INT"},
-		{Owner: "TRANSFER", Key: "NAME", Value: "STRING"},
+		{Owner: "WIRE", Key: "CODE", Value: "INT"},
+		{Owner: "WIRE", Key: "NAME", Value: "STRING"},
 		//{Owner: "TRANSFER", Key: "SIZE", Value: "INT"}, // size in bytes
 		{Owner: "WIRE", Key: "REMOTE_ID", Value: "STRING"},
 		{Owner: "WIRE", Key: "REMOTE_ADDR", Value: "STRING"},
 		{Owner: "WIRE", Key: "REMOTE_VERSION", Value: "STRING"},
 		{Owner: "TRANSFER", Key: "PAYLOAD_LENGTH", Value: "INT"}, // eg length of hashes
-		{Owner: "WIRE", Key: "ERROR", Value: "STRING_OR_NULL"},
+		{Owner: "TRANSFER", Key: "ERROR", Value: "STRING_OR_NULL"},
 	},
 }
 
@@ -166,14 +166,14 @@ var mlogWireReceiveTransfer = &logger.MLogT{
 	Verb: "RECEIVE",
 	Subject: "TRANSFER",
 	Details: []logger.MLogDetailT{
-		{Owner: "TRANSFER", Key: "CODE", Value: "INT"},
-		{Owner: "TRANSFER", Key: "NAME", Value: "STRING"},
+		{Owner: "WIRE", Key: "CODE", Value: "INT"},
+		{Owner: "WIRE", Key: "NAME", Value: "STRING"},
 		//{Owner: "TRANSFER", Key: "SIZE", Value: "INT"}, // size in bytes
 		{Owner: "WIRE", Key: "REMOTE_ID", Value: "STRING"},
 		{Owner: "WIRE", Key: "REMOTE_ADDR", Value: "STRING"},
 		{Owner: "WIRE", Key: "REMOTE_VERSION", Value: "STRING"},
 		{Owner: "TRANSFER", Key: "PAYLOAD_LENGTH", Value: "INT"},
-		{Owner: "WIRE", Key: "ERROR", Value: "STRING_OR_NULL"},
+		{Owner: "TRANSFER", Key: "ERROR", Value: "STRING_OR_NULL"},
 	},
 }
 
