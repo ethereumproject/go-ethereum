@@ -65,6 +65,37 @@ const (
 	ReceiptsMsg    = 0x10
 )
 
+func ProtocolMessageStringer(m uint) string {
+	switch m {
+	case StatusMsg:
+		return "Status"
+	case NewBlockHashesMsg:
+		return "NewBlockHashes"
+	case TxMsg:
+		return "Tx"
+	case GetBlockHeadersMsg:
+		return "GetBlockHeaders"
+	case BlockHeadersMsg:
+		return "BlockHeaders"
+	case GetBlockBodiesMsg:
+		return "GetBlockBodies"
+	case BlockBodiesMsg:
+		return "BlockBodies"
+	case NewBlockMsg:
+		return "NewBlock"
+	case GetNodeDataMsg:
+		return "GetNodeData"
+	case NodeDataMsg:
+		return "NodeData"
+	case GetReceiptsMsg:
+		return "GetReceipts"
+	case ReceiptsMsg:
+		return "Receipts"
+	default:
+		return "Unknown"
+	}
+}
+
 type errCode int
 
 const (

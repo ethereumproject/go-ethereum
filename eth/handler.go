@@ -317,7 +317,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 
 // handleMsg is invoked whenever an inbound message is received from a remote
 // peer. The remote connection is torn down upon returning any error.
-func (pm *ProtocolManager) handleMsg(p *peer) error {
+func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 	// Read the next message from the remote peer, and ensure it's fully consumed
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
@@ -331,12 +331,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	// Handle the message depending on its contents
 	switch {
 	case msg.Code == StatusMsg:
+		defer mlogWireDelegate(p, "receive", StatusMsg, []interface{}{&statusData{}}, err)
 		// Status messages should never arrive after the handshake
 		return errResp(ErrExtraStatusMsg, "uncontrolled status message")
 	// Block header query, collect the requested headers and reply
 	case p.version >= eth62 && msg.Code == GetBlockHeadersMsg:
 		// Decode the complex header query
 		var query getBlockHeadersData
+		defer mlogWireDelegate(p, "receive", GetBlockHeadersMsg, query, err)
 		if err := msg.Decode(&query); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
@@ -403,6 +405,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case p.version >= eth62 && msg.Code == BlockHeadersMsg:
 		// A batch of headers arrived to one of our previous requests
 		var headers []*types.Header
+		defer mlogWireDelegate(p, "receive", BlockHeadersMsg, headers, err)
 		if err := msg.Decode(&headers); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -450,6 +453,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			bytes  int
 			bodies []rlp.RawValue
 		)
+		defer mlogWireDelegate(p, "receive", GetBlockBodiesMsg, bodies, err)
 		for bytes < softResponseLimit && len(bodies) < downloader.MaxBlockFetch {
 			// Retrieve the hash of the next block
 			if err := msgStream.Decode(&hash); err == rlp.EOL {
@@ -468,10 +472,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case p.version >= eth62 && msg.Code == BlockBodiesMsg:
 		// A batch of block bodies arrived to one of our previous requests
 		var request blockBodiesData
+		// Deliver them all to the downloader for queuing
+		defer mlogWireDelegate(p, "receive", BlockBodiesMsg, request, err)
 		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		// Deliver them all to the downloader for queuing
 		trasactions := make([][]*types.Transaction, len(request))
 		uncles := make([][]*types.Header, len(request))
 
@@ -503,6 +508,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			bytes int
 			data  [][]byte
 		)
+		defer mlogWireDelegate(p, "receive", GetNodeDataMsg, data, err)
 		for bytes < softResponseLimit && len(data) < downloader.MaxStateFetch {
 			// Retrieve the hash of the next state entry
 			if err := msgStream.Decode(&hash); err == rlp.EOL {
@@ -521,6 +527,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case p.version >= eth63 && msg.Code == NodeDataMsg:
 		// A batch of node state data arrived to one of our previous requests
 		var data [][]byte
+		defer mlogWireDelegate(p, "receive", NodeDataMsg, data, err)
 		if err := msg.Decode(&data); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -541,6 +548,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			bytes    int
 			receipts []rlp.RawValue
 		)
+		defer mlogWireDelegate(p, "receive", GetReceiptsMsg, receipts, err)
 		for bytes < softResponseLimit && len(receipts) < downloader.MaxReceiptFetch {
 			// Retrieve the hash of the next block
 			if err := msgStream.Decode(&hash); err == rlp.EOL {
@@ -568,6 +576,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case p.version >= eth63 && msg.Code == ReceiptsMsg:
 		// A batch of receipts arrived to one of our previous requests
 		var receipts [][]*types.Receipt
+		defer mlogWireDelegate(p, "receive", ReceiptsMsg, receipts, err)
 		if err := msg.Decode(&receipts); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -583,6 +592,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			Number uint64
 		}
 		var announces = []announce{}
+		defer mlogWireDelegate(p, "receive", NewBlockHashesMsg, announces, err)
 
 		if p.version < eth62 {
 			// We're running the old protocol, make block number unknown (0)
@@ -623,6 +633,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == NewBlockMsg:
 		// Retrieve and decode the propagated block
 		var request newBlockData
+		defer mlogWireDelegate(p, "receive", NewBlockMsg, []interface{}{request}, err)
 		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
@@ -670,6 +681,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		// Transactions can be processed, parse all of them and deliver to the pool
 		var txs []*types.Transaction
+		defer mlogWireDelegate(p, "receive", TxMsg, txs, err)
 		if err := msg.Decode(&txs); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}

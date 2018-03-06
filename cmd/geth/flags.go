@@ -230,7 +230,7 @@ var (
 	MLogComponentsFlag = cli.StringFlag{
 		Name:  "mlog-components",
 		Usage: "Set machine-readable logging components, comma-separated. Use a '!'-prefix to disabled listed components instead.",
-		Value: "blockchain,txpool,downloader,fetcher,discover,server,state,headerchain,miner,client",
+		Value: "blockchain,txpool,downloader,fetcher,discover,server,state,headerchain,miner,client,wire",
 	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",
