@@ -72,7 +72,7 @@ func ProtocolMessageStringer(m uint) string {
 	case NewBlockHashesMsg:
 		return "NewBlockHashes"
 	case TxMsg:
-		return "Tx"
+		return "Txs"
 	case GetBlockHeadersMsg:
 		return "GetBlockHeaders"
 	case BlockHeadersMsg:
