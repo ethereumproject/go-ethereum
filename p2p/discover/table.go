@@ -364,8 +364,12 @@ func (tab *Table) refreshLoop() {
 	var (
 		timer   = time.NewTicker(autoRefreshInterval)
 		waiting = []chan struct{}{tab.initDone} // accumulates waiting callers while doRefresh runs
-		done    chan struct{}   // where doRefresh reports completion
+		done    = make(chan struct{})   // where doRefresh reports completion
 	)
+	
+	// Initial refresh
+	go tab.doRefresh(done)
+	
 loop:
 	for {
 		select {
