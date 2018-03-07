@@ -325,7 +325,7 @@ var mlogWireCommonDetails = []logger.MLogDetailT{
 }
 
 var mlogWireSendHandshake = &logger.MLogT{
-	Description: "Called once for each outgoing StatusMsg (handshake) event.",
+	Description: "Called once for each outgoing StatusMsg (handshake) message.",
 	Receiver: "WIRE",
 	Verb: "SEND",
 	Subject: strings.ToUpper(ProtocolMessageStringer(StatusMsg)),
@@ -339,7 +339,7 @@ var mlogWireSendHandshake = &logger.MLogT{
 }
 
 var mlogWireReceiveHandshake = &logger.MLogT{
-	Description: "Called once for each incoming StatusMsg (handshake) event.",
+	Description: "Called once for each incoming StatusMsg (handshake) message.",
 	Receiver: "WIRE",
 	Verb: "RECEIVE",
 	Subject: strings.ToUpper(ProtocolMessageStringer(StatusMsg)),
@@ -353,7 +353,7 @@ var mlogWireReceiveHandshake = &logger.MLogT{
 }
 
 var mlogWireSendNewBlockHashes = &logger.MLogT{
-	Description: "Called once for each outgoing SendNewBlockHashes message.",
+	Description: "Called once for each outgoing SendNewBlockHashesMsg message.",
 	Receiver: "WIRE",
 	Verb: "SEND",
 	Subject: strings.ToUpper(ProtocolMessageStringer(NewBlockHashesMsg)),
@@ -365,7 +365,7 @@ var mlogWireSendNewBlockHashes = &logger.MLogT{
 }
 
 var mlogWireReceiveNewBlockHashes = &logger.MLogT{
-	Description: "Called once for each incoming SendNewBlockHashes message.",
+	Description: "Called once for each incoming SendNewBlockHashesMsg message.",
 	Receiver: "WIRE",
 	Verb: "RECEIVE",
 	Subject: strings.ToUpper(ProtocolMessageStringer(NewBlockHashesMsg)),
@@ -377,7 +377,7 @@ var mlogWireReceiveNewBlockHashes = &logger.MLogT{
 }
 
 var mlogWireSendTxs = &logger.MLogT{
-	Description: "Called once for each outgoing SendNewBTxMsglockHashes message.",
+	Description: "Called once for each outgoing TxsMessage message.",
 	Receiver: "WIRE",
 	Verb: "SEND",
 	Subject: strings.ToUpper(ProtocolMessageStringer(TxMsg)),
@@ -387,7 +387,7 @@ var mlogWireSendTxs = &logger.MLogT{
 }
 
 var mlogWireReceiveTxs = &logger.MLogT{
-	Description: "Called once for each incoming TxMsg message.",
+	Description: "Called once for each incoming TxsMsg message.",
 	Receiver: "WIRE",
 	Verb: "RECEIVE",
 	Subject: strings.ToUpper(ProtocolMessageStringer(TxMsg)),
@@ -397,7 +397,7 @@ var mlogWireReceiveTxs = &logger.MLogT{
 }
 
 var mlogWireSendGetBlockHeaders = &logger.MLogT{
-	Description: "Called once for each outgoing GetBlockHeadersMsg message. Note that origin value will be EITHER hash or origin.",
+	Description: "Called once for each outgoing GetBlockHeadersMsg message. Note that origin value will be EITHER hash OR origin.",
 	Receiver: "WIRE",
 	Verb: "SEND",
 	Subject: strings.ToUpper(ProtocolMessageStringer(GetBlockHeadersMsg)),
@@ -411,7 +411,7 @@ var mlogWireSendGetBlockHeaders = &logger.MLogT{
 }
 
 var mlogWireReceiveGetBlockHeaders = &logger.MLogT{
-	Description: "Called once for each incoming GetBlockHeadersMsg message. Note that origin value will be EITHER hash or origin.",
+	Description: "Called once for each incoming GetBlockHeadersMsg message. Note that origin value will be EITHER hash OR origin.",
 	Receiver: "WIRE",
 	Verb: "RECEIVE",
 	Subject: strings.ToUpper(ProtocolMessageStringer(GetBlockHeadersMsg)),
@@ -596,7 +596,7 @@ var mlogWireReceiveReceipts = &logger.MLogT{
 }
 
 var mlogWireReceiveInvalid = &logger.MLogT{
-	Description: "Called once for each incoming INVALID message.",
+	Description: "Called once for each incoming wire message that is invalid.",
 	Receiver: "WIRE",
 	Verb: "RECEIVE",
 	Subject: "INVALID",
