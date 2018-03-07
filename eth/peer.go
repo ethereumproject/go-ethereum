@@ -138,8 +138,9 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 	for _, tx := range txs {
 		p.knownTxs.Add(tx.Hash())
 	}
-	mlogWireDelegate(p, "send", TxMsg, txs, nil)
-	return p2p.Send(p.rw, TxMsg, txs)
+	s, e := p2p.SendAndReturnSize(p.rw, TxMsg, txs)
+	mlogWireDelegate(p, "send", TxMsg, s, txs, nil)
+	return e
 }
 
 // SendNewBlockHashes announces the availability of a number of blocks through
@@ -153,48 +154,55 @@ func (p *peer) SendNewBlockHashes(hashes []common.Hash, numbers []uint64) error 
 		request[i].Hash = hashes[i]
 		request[i].Number = numbers[i]
 	}
-	mlogWireDelegate(p, "send", NewBlockHashesMsg, request, nil)
-	return p2p.Send(p.rw, NewBlockHashesMsg, request)
+	s, e := p2p.SendAndReturnSize(p.rw, NewBlockHashesMsg, request)
+	mlogWireDelegate(p, "send", NewBlockHashesMsg, s, request, nil)
+	return e
 }
 
 // SendNewBlock propagates an entire block to a remote peer.
 func (p *peer) SendNewBlock(block *types.Block, td *big.Int) error {
 	p.knownBlocks.Add(block.Hash())
-	mlogWireDelegate(p, "send", NewBlockMsg, newBlockData{Block: block, TD: td}, nil) // send slice of len 1
-	return p2p.Send(p.rw, NewBlockMsg, []interface{}{block, td})
+	s, e := p2p.SendAndReturnSize(p.rw, NewBlockMsg, []interface{}{block, td})
+	mlogWireDelegate(p, "send", NewBlockMsg, s, newBlockData{Block: block, TD: td}, nil) // send slice of len 1
+	return e
 }
 
 // SendBlockHeaders sends a batch of block headers to the remote peer.m
 func (p *peer) SendBlockHeaders(headers []*types.Header) error {
-	mlogWireDelegate(p, "send", BlockHeadersMsg, headers, nil)
-	return p2p.Send(p.rw, BlockHeadersMsg, headers)
+	s, e := p2p.SendAndReturnSize(p.rw, BlockHeadersMsg, headers)
+	mlogWireDelegate(p, "send", BlockHeadersMsg, s, headers, nil)
+	return e
 }
 
 // SendBlockBodies sends a batch of block contents to the remote peer.
 func (p *peer) SendBlockBodies(bodies []*blockBody) error {
-	mlogWireDelegate(p, "send", BlockBodiesMsg, bodies, nil)
-	return p2p.Send(p.rw, BlockBodiesMsg, blockBodiesData(bodies))
+	s, e := p2p.SendAndReturnSize(p.rw, BlockBodiesMsg, blockBodiesData(bodies))
+	mlogWireDelegate(p, "send", BlockBodiesMsg, s, bodies, nil)
+	return e
 }
 
 // SendBlockBodiesRLP sends a batch of block contents to the remote peer from
 // an already RLP encoded format.
 func (p *peer) SendBlockBodiesRLP(bodies []rlp.RawValue) error {
-	mlogWireDelegate(p, "send", BlockBodiesMsg, bodies, nil)
-	return p2p.Send(p.rw, BlockBodiesMsg, bodies)
+	s, e := p2p.SendAndReturnSize(p.rw, BlockBodiesMsg, bodies)
+	mlogWireDelegate(p, "send", BlockBodiesMsg, s, bodies, nil)
+	return e
 }
 
 // SendNodeDataRLP sends a batch of arbitrary internal data, corresponding to the
 // hashes requested.
 func (p *peer) SendNodeData(data [][]byte) error {
-	mlogWireDelegate(p, "send", NodeDataMsg, data, nil)
-	return p2p.Send(p.rw, NodeDataMsg, data)
+	s, e := p2p.SendAndReturnSize(p.rw, NodeDataMsg, data)
+	mlogWireDelegate(p, "send", NodeDataMsg, s, data, nil)
+	return e
 }
 
 // SendReceiptsRLP sends a batch of transaction receipts, corresponding to the
 // ones requested from an already RLP encoded format.
 func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
-	mlogWireDelegate(p, "send", ReceiptsMsg, receipts, nil)
-	return p2p.Send(p.rw, ReceiptsMsg, receipts)
+	s, e := p2p.SendAndReturnSize(p.rw, ReceiptsMsg, receipts)
+	mlogWireDelegate(p, "send", ReceiptsMsg, s, receipts, nil)
+	return e
 }
 
 // RequestHeaders is a wrapper around the header query functions to fetch a
@@ -202,8 +210,9 @@ func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 func (p *peer) RequestOneHeader(hash common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching a single header: %x", p, hash)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Hash: hash}, Amount: uint64(1), Skip: uint64(0), Reverse: false}
-	mlogWireDelegate(p, "send", GetBlockHeadersMsg, d, nil)
-	return p2p.Send(p.rw, GetBlockHeadersMsg, d)
+	s, e := p2p.SendAndReturnSize(p.rw, GetBlockHeadersMsg, d)
+	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
+	return e
 }
 
 // RequestHeadersByHash fetches a batch of blocks' headers corresponding to the
@@ -211,8 +220,9 @@ func (p *peer) RequestOneHeader(hash common.Hash) error {
 func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, reverse bool) error {
 	glog.V(logger.Debug).Infof("%v fetching %d headers from %x, skipping %d (reverse = %v)", p, amount, origin[:4], skip, reverse)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Hash: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse}
-	mlogWireDelegate(p, "send", GetBlockHeadersMsg, d, nil)
-	return p2p.Send(p.rw, GetBlockHeadersMsg, d)
+	s, e := p2p.SendAndReturnSize(p.rw, GetBlockHeadersMsg, d)
+	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
+	return e
 }
 
 // RequestHeadersByNumber fetches a batch of blocks' headers corresponding to the
@@ -220,31 +230,35 @@ func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, re
 func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, reverse bool) error {
 	glog.V(logger.Debug).Infof("%v fetching %d headers from #%d, skipping %d (reverse = %v)", p, amount, origin, skip, reverse)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Number: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse}
-	mlogWireDelegate(p, "send", GetBlockHeadersMsg, d, nil)
-	return p2p.Send(p.rw, GetBlockHeadersMsg, d)
+	s, e := p2p.SendAndReturnSize(p.rw, GetBlockHeadersMsg, d)
+	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
+	return e
 }
 
 // RequestBodies fetches a batch of blocks' bodies corresponding to the hashes
 // specified.
 func (p *peer) RequestBodies(hashes []common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching %d block bodies first=%s", p, len(hashes), hashes[0].Hex())
-	mlogWireDelegate(p, "send", GetBlockBodiesMsg, hashes, nil)
-	return p2p.Send(p.rw, GetBlockBodiesMsg, hashes)
+	s, e := p2p.SendAndReturnSize(p.rw, GetBlockBodiesMsg, hashes)
+	mlogWireDelegate(p, "send", GetBlockBodiesMsg, s, hashes, nil)
+	return e
 }
 
 // RequestNodeData fetches a batch of arbitrary data from a node's known state
 // data, corresponding to the specified hashes.
 func (p *peer) RequestNodeData(hashes []common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching %v state data first=%s", p, len(hashes), hashes[0].Hex())
-	mlogWireDelegate(p, "send", GetNodeDataMsg, hashes, nil)
-	return p2p.Send(p.rw, GetNodeDataMsg, hashes)
+	s, e := p2p.SendAndReturnSize(p.rw, GetNodeDataMsg, hashes)
+	mlogWireDelegate(p, "send", GetNodeDataMsg, s, hashes, nil)
+	return e
 }
 
 // RequestReceipts fetches a batch of transaction receipts from a remote node.
 func (p *peer) RequestReceipts(hashes []common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching %v receipts first=%s", p, len(hashes), hashes[0].Hex())
-	mlogWireDelegate(p, "send", GetReceiptsMsg, hashes, nil)
-	return p2p.Send(p.rw, GetReceiptsMsg, hashes)
+	s, e := p2p.SendAndReturnSize(p.rw, GetReceiptsMsg, hashes)
+	mlogWireDelegate(p, "send", GetReceiptsMsg, s, hashes, nil)
+	return e
 }
 
 // Handshake executes the eth protocol handshake, negotiating version number,
@@ -254,6 +268,7 @@ func (p *peer) Handshake(network int, td *big.Int, head common.Hash, genesis com
 	sendErrc := make(chan error, 1)
 	recErrc := make(chan error, 1)
 	var sendErr, recErr error
+	var sendSize, recSize int
 	var status statusData // safe to read after two values have been received from errc
 
 	d := &statusData{
@@ -265,16 +280,22 @@ func (p *peer) Handshake(network int, td *big.Int, head common.Hash, genesis com
 	}
 
 	go func() {
-		sendErrc <- p2p.Send(p.rw, StatusMsg, d)
+		var e error
+		sendSize, e = p2p.SendAndReturnSize(p.rw, StatusMsg, d)
+		sendErrc <- e
 	}()
 	go func() {
-		recErrc <- p.readStatus(network, &status, genesis)
+		var e error
+		var s uint32
+		s, e = p.readStatusReturnSize(network, &status, genesis)
+		recSize = int(s)
+		recErrc <- e
 	}()
 	timeout := time.NewTimer(handshakeTimeout)
 	defer timeout.Stop()
 
-	defer mlogWireDelegate(p, "receive", StatusMsg, &status, recErr)
-	defer mlogWireDelegate(p, "send", StatusMsg, d, sendErr)
+	defer mlogWireDelegate(p, "receive", StatusMsg, recSize, &status, recErr)
+	defer mlogWireDelegate(p, "send", StatusMsg, sendSize, d, sendErr)
 
 	for i := 0; i < 2; i++ {
 		select {
@@ -297,31 +318,36 @@ func (p *peer) Handshake(network int, td *big.Int, head common.Hash, genesis com
 	return nil
 }
 
-func (p *peer) readStatus(network int, status *statusData, genesis common.Hash) (err error) {
+func (p *peer) readStatusReturnSize(network int, status *statusData, genesis common.Hash) (size uint32, err error) {
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
-		return err
+		return msg.Size, err
 	}
 	if msg.Code != StatusMsg {
-		return errResp(ErrNoStatusMsg, "first msg has code %x (!= %x)", msg.Code, StatusMsg)
+		return msg.Size, errResp(ErrNoStatusMsg, "first msg has code %x (!= %x)", msg.Code, StatusMsg)
 	}
 	if msg.Size > ProtocolMaxMsgSize {
-		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
+		return msg.Size, errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
 	}
 	// Decode the handshake and make sure everything matches
 	if err := msg.Decode(&status); err != nil {
-		return errResp(ErrDecode, "msg %v: %v", msg, err)
+		return msg.Size, errResp(ErrDecode, "msg %v: %v", msg, err)
 	}
 	if status.GenesisBlock != genesis {
-		return errResp(ErrGenesisBlockMismatch, "%x (!= %x…)", status.GenesisBlock, genesis.Bytes()[:8])
+		return msg.Size, errResp(ErrGenesisBlockMismatch, "%x (!= %x…)", status.GenesisBlock, genesis.Bytes()[:8])
 	}
 	if int(status.NetworkId) != network {
-		return errResp(ErrNetworkIdMismatch, "%d (!= %d)", status.NetworkId, network)
+		return msg.Size, errResp(ErrNetworkIdMismatch, "%d (!= %d)", status.NetworkId, network)
 	}
 	if int(status.ProtocolVersion) != p.version {
-		return errResp(ErrProtocolVersionMismatch, "%d (!= %d)", status.ProtocolVersion, p.version)
+		return msg.Size, errResp(ErrProtocolVersionMismatch, "%d (!= %d)", status.ProtocolVersion, p.version)
 	}
-	return nil
+	return msg.Size, nil
+}
+
+func (p *peer) readStatus(network int, status *statusData, genesis common.Hash) (err error) {
+	_, err = p.readStatusReturnSize(network, status, genesis)
+	return
 }
 
 // String implements fmt.Stringer.

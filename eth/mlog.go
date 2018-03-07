@@ -38,7 +38,7 @@ var mlogLinesWire = []*logger.MLogT{
 	mlogWireReceiveInvalid,
 }
 
-func mlogWireDelegate(p *peer, direction string, msgCode uint64, data interface{}, err error) {
+func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data interface{}, err error) {
 	if !logger.MlogEnabled() {
 		return
 	}
@@ -46,6 +46,7 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, data interface{
 	var line *logger.MLogT
 	var details = []interface{}{
 		msgCode,
+		size,
 		ProtocolMessageStringer(uint(msgCode)),
 		p.id,
 		p.RemoteAddr().String(),
@@ -317,6 +318,7 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, data interface{
 
 var mlogWireCommonDetails = []logger.MLogDetailT{
 	{Owner: "WIRE", Key: "CODE", Value: "INT"},
+	{Owner: "WIRE", Key: "SIZE", Value: "INT"},
 	{Owner: "WIRE", Key: "NAME", Value: "STRING"},
 	{Owner: "WIRE", Key: "REMOTE_ID", Value: "STRING"},
 	{Owner: "WIRE", Key: "REMOTE_ADDR", Value: "STRING"},

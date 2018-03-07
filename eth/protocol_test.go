@@ -103,8 +103,10 @@ func testRecvTransactions(t *testing.T, protocol int) {
 	defer p.close()
 
 	tx := newTestTransaction(testAccount, 0, 0)
-	if err := p2p.Send(p.app, TxMsg, []interface{}{tx}); err != nil {
+	if s, err := p2p.SendAndReturnSize(p.app, TxMsg, []interface{}{tx}); err != nil {
 		t.Fatalf("send error: %v", err)
+	} else if s <= 0 {
+		t.Errorf("got: %v, want: >0", s)
 	}
 	select {
 	case added := <-txAdded:
