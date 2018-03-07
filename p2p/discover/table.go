@@ -394,19 +394,6 @@ loop:
 func (tab *Table) doRefresh(done chan struct{}) {
 	defer close(done)
 
-	// The Kademlia paper specifies that the bucket refresh should
-	// perform a lookup in the least recently used bucket. We cannot
-	// adhere to this because the findnode target is a 512bit value
-	// (not hash-sized) and it is not easily possible to generate a
-	// sha3 preimage that falls into a chosen bucket.
-	// We perform a lookup with a random target instead.
-	var target NodeID
-	rand.Read(target[:])
-	result := tab.lookup(target, false)
-	if len(result) > 0 {
-		return
-	}
-
 	// The table is empty. Load nodes from the database and insert
 	// them. This should yield a few previously seen nodes that are
 	// (hopefully) still alive.
@@ -427,6 +414,18 @@ func (tab *Table) doRefresh(done chan struct{}) {
 
 	// Finally, do a self lookup to fill up the buckets.
 	tab.lookup(tab.self.ID, false)
+
+	// The Kademlia paper specifies that the bucket refresh should
+	// perform a lookup in the least recently used bucket. We cannot
+	// adhere to this because the findnode target is a 512bit value
+	// (not hash-sized) and it is not easily possible to generate a
+	// sha3 preimage that falls into a chosen bucket.
+	// We perform a few lookups with a random target instead.
+	for i := 0; i < 3; i++ {
+		var target NodeID
+		rand.Read(target[:])
+		tab.lookup(target, false)
+	}
 }
 
 func (tab *Table) closest(id NodeID) *closest {
