@@ -78,6 +78,7 @@ type Table struct {
 	refreshReq chan chan struct{}
 	closeReq   chan struct{}
 	closed     chan struct{}
+	initDone   chan struct{}
 
 	bondmu    sync.Mutex
 	bonding   map[NodeID]*bondproc
@@ -124,6 +125,7 @@ func newTable(t transport, ourID NodeID, ourAddr *net.UDPAddr, nodeDBPath string
 		refreshReq: make(chan chan struct{}),
 		closeReq:   make(chan struct{}),
 		closed:     make(chan struct{}),
+		initDone:   make(chan struct{}),
 	}
 	for i := 0; i < cap(tab.bondslots); i++ {
 		tab.bondslots <- struct{}{}
@@ -145,6 +147,10 @@ func (tab *Table) Self() *Node {
 // table. It will not write the same node more than once. The nodes in
 // the slice are copies and can be modified by the caller.
 func (tab *Table) ReadRandomNodes(buf []*Node) (n int) {
+	if !tab.isInitDone() {
+		return 0
+	}
+
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
 	// TODO: tree-based buckets would help here
@@ -219,6 +225,16 @@ func (tab *Table) SetFallbackNodes(nodes []*Node) error {
 	tab.mutex.Unlock()
 	tab.refresh()
 	return nil
+}
+
+// isInitDone returns whether the table's initial seeding procedure has completed.
+func (tab *Table) isInitDone() bool {
+	select {
+	case <-tab.initDone:
+		return true
+	default:
+		return false
+	}
 }
 
 // Resolve searches for a specific node with the given ID.
@@ -347,7 +363,7 @@ func (tab *Table) refresh() <-chan struct{} {
 func (tab *Table) refreshLoop() {
 	var (
 		timer   = time.NewTicker(autoRefreshInterval)
-		waiting []chan struct{} // accumulates waiting callers while doRefresh runs
+		waiting []chan struct{}{tab.initDone} // accumulates waiting callers while doRefresh runs
 		done    chan struct{}   // where doRefresh reports completion
 	)
 loop:
@@ -486,6 +502,9 @@ func (tab *Table) bondall(nodes []*Node) (result []*Node) {
 func (tab *Table) bond(pinged bool, id NodeID, addr *net.UDPAddr, tcpPort uint16) (*Node, error) {
 	if id == tab.self.ID {
 		return nil, errors.New("is self")
+	}
+	if pinged && !tab.isInitDone() {
+		return nil, errors.New("still initializing")
 	}
 	// Retrieve a previously known node and any recent findnode failures
 	node, fails := tab.db.node(id), 0
