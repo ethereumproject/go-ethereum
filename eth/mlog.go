@@ -43,13 +43,13 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, data interface{
 				GenesisBlock: common.Hash{},
 			}
 		}
-		details = append(details, []interface{}{
+		details = append(details,
 			d.ProtocolVersion,
 			d.NetworkId,
 			d.TD,
 			d.CurrentBlock.Hex(),
 			d.GenesisBlock.Hex(),
-		})
+		)
 		if direction == "send" {
 			line = mlogWireSendHandshake
 		} else {
@@ -57,11 +57,18 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, data interface{
 		}
 	case NewBlockHashesMsg:
 		if payload, ok := data.(newBlockHashesData); ok {
-			details = append(details,
-				len(payload),
-				payload[0].Hash,
-				payload[0].Number,
-			)
+			details = append(details, len(payload))
+			if len(payload) > 0 {
+				details = append(details,
+					payload[0].Hash.Hex(),
+					payload[0].Number,
+				)
+			} else {
+				details = append(details,
+					common.Hash{}.Hex(),
+					-1,
+				)
+			}
 		} else {
 			glog.Fatal("cant cast: NewBlockHashesMsg", direction)
 		}
