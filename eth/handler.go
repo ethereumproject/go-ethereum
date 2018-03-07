@@ -319,9 +319,11 @@ func (pm *ProtocolManager) handle(p *peer) error {
 // peer. The remote connection is torn down upon returning any error.
 func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 	// Read the next message from the remote peer, and ensure it's fully consumed
+	var unknownMessageCode uint64 = 666666
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
-		return err
+		mlogWireDelegate(p, "receive", unknownMessageCode, -1, nil, err)
+		return
 	}
 	intSize := int(msg.Size)
 	if msg.Size > ProtocolMaxMsgSize {
@@ -731,7 +733,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 
 	default:
 		err = errResp(ErrInvalidMsgCode, "%v", msg.Code)
-		mlogWireDelegate(p, "receive", 666666,  intSize,nil, err)
+		mlogWireDelegate(p, "receive", unknownMessageCode,  intSize,nil, err)
 		return
 	}
 	return nil
