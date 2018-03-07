@@ -275,6 +275,7 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, data interface{
 		}
 
 	default:
+		line = mlogWireReceiveInvalid
 	}
 
 	if line == nil {
@@ -564,4 +565,12 @@ var mlogWireReceiveReceipts = &logger.MLogT{
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "STRING"},
 	}...),
+}
+
+var mlogWireReceiveInvalid = &logger.MLogT{
+	Description: "Called once for each incoming INVALID message.",
+	Receiver: "WIRE",
+	Verb: "RECEIVE",
+	Subject: "INVALID",
+	Details: mlogWireCommonDetails,
 }
