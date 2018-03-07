@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"gopkg.in/urfave/cli.v1"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -39,6 +40,7 @@ import (
 var Version = "source"
 
 func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	common.SetClientVersion(Version)
 }
 
