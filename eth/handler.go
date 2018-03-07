@@ -587,11 +587,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 
 	case msg.Code == NewBlockHashesMsg:
 		// Retrieve and deserialize the remote new block hashes notification
-		type announce struct {
-			Hash   common.Hash
-			Number uint64
-		}
-		var announces = []announce{}
+		var announces newBlockHashesData // = []announce{}
 		defer mlogWireDelegate(p, "receive", NewBlockHashesMsg, announces, err)
 
 		if p.version < eth62 {

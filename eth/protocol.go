@@ -145,11 +145,29 @@ type statusData struct {
 	GenesisBlock    common.Hash
 }
 
-// newBlockHashesData is the network packet for the block announcements.
-type newBlockHashesData []struct {
-	Hash   common.Hash // Hash of one particular block being announced
-	Number uint64      // Number of one particular block being announced
+// newBlockData is the network packet for the block propagation message.
+type newBlockData struct {
+	Block *types.Block
+	TD    *big.Int
 }
+
+// blockBody represents the data content of a single block.
+type blockBody struct {
+	Transactions []*types.Transaction // Transactions contained within a block
+	Uncles       []*types.Header      // Uncles contained within a block
+}
+
+// blockBodiesData is the network packet for block content distribution.
+type blockBodiesData []*blockBody
+
+// announce is received with NewBlockHashesMsg
+type announce struct {
+	Hash   common.Hash // Hash of one particular block being announced
+	Number uint64 // Number of one particular block being announced
+}
+
+// newBlockHashesData is the network packet for the block announcements.
+type newBlockHashesData []announce
 
 // getBlockHeadersData represents a block header query.
 type getBlockHeadersData struct {
@@ -195,17 +213,3 @@ func (hn *hashOrNumber) DecodeRLP(s *rlp.Stream) error {
 	return err
 }
 
-// newBlockData is the network packet for the block propagation message.
-type newBlockData struct {
-	Block *types.Block
-	TD    *big.Int
-}
-
-// blockBody represents the data content of a single block.
-type blockBody struct {
-	Transactions []*types.Transaction // Transactions contained within a block
-	Uncles       []*types.Header      // Uncles contained within a block
-}
-
-// blockBodiesData is the network packet for block content distribution.
-type blockBodiesData []*blockBody
