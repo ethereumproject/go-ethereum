@@ -17,7 +17,7 @@ var clientSessionIdentity *ClientSessionIdentityT
 var SessionID string // global because we use in mlog fns to inject for all data points
 
 func init() {
-	SetClientSessionIdentity("")
+	initClientSessionIdentity()
 }
 
 // ClientSessionIdentityT holds values describing the client, environment, and session.
@@ -50,14 +50,8 @@ func randStringBytes(n int) string {
 	return string(b)
 }
 
-// SetClientSessionIdentity sets the global variable describing details about the client and session.
-// It is idempotent, excepting only being a setter for Version value.
-func SetClientSessionIdentity(versionName string) {
-	if clientSessionIdentity != nil {
-		clientSessionIdentity.Version = runtime.Version()
-		return
-	}
-
+// initClientSessionIdentity sets the global variable describing details about the client and session.
+func initClientSessionIdentity() {
 	SessionID = randStringBytes(4)
 
 	var hostname, userName string
@@ -88,7 +82,7 @@ func SetClientSessionIdentity(versionName string) {
 	}
 
 	clientSessionIdentity = &ClientSessionIdentityT{
-		Version:   versionName,
+		Version:   "unknown",
 		Hostname:  hostname,
 		Username:  userName,
 		MachineID: mid[:8], // because we don't care that much
@@ -98,6 +92,12 @@ func SetClientSessionIdentity(versionName string) {
 		Pid:       os.Getpid(),
 		SessionID: SessionID,
 		StartTime: time.Now(),
+	}
+}
+
+func SetClientVersion(version string) {
+	if clientSessionIdentity != nil {
+		clientSessionIdentity.Version = version
 	}
 }
 

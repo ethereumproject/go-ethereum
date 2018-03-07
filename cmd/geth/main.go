@@ -41,7 +41,7 @@ var Version = "source"
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
-	common.SetClientSessionIdentity(Version)
+	common.SetClientVersion(Version)
 }
 
 func makeCLIApp() (app *cli.App) {
