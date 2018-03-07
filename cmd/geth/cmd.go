@@ -787,7 +787,7 @@ func version(ctx *cli.Context) error {
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)))
-	fmt.Println("Go Version:", common.GetClientSessionIdentity().Version)
+	fmt.Println("Go Version:", common.GetClientSessionIdentity().Goversion)
 	fmt.Println("Go OS:", common.GetClientSessionIdentity().Goos)
 	fmt.Println("Go Arch:", common.GetClientSessionIdentity().Goarch)
 	fmt.Println("Machine ID:", common.GetClientSessionIdentity().MachineID)
