@@ -363,7 +363,7 @@ func (tab *Table) refresh() <-chan struct{} {
 func (tab *Table) refreshLoop() {
 	var (
 		timer   = time.NewTicker(autoRefreshInterval)
-		waiting []chan struct{}{tab.initDone} // accumulates waiting callers while doRefresh runs
+		waiting = []chan struct{}{tab.initDone} // accumulates waiting callers while doRefresh runs
 		done    chan struct{}   // where doRefresh reports completion
 	)
 loop:
