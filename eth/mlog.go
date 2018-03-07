@@ -2,6 +2,10 @@ package eth
 
 import (
 	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/common"
+	"math/big"
+	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
@@ -32,7 +36,10 @@ func mlogWireDelegate(p *peer, direction string, msgcode uint64, data interface{
 	if msgcode == StatusMsg {
 		d, ok := data.(*statusData)
 		if !ok {
-			glog.Fatal("yikes. FIXME")
+			d = &statusData{}
+			d.TD = new(big.Int)
+			d.CurrentBlock = common.Hash{}
+			d.GenesisBlock = common.Hash{}
 		}
 
 		logLine := mlogWireReceiveHandshake
@@ -58,29 +65,118 @@ func mlogWireDelegate(p *peer, direction string, msgcode uint64, data interface{
 
 	// set length of hashes if relevant
 	var payloadLength int
+	var eventData interface{}
 
 	// This could obviously be refactored, but I like the explicitness of it.
 	switch msgcode {
 	case NewBlockHashesMsg:
-		payloadLength = mustGetLenIfPossible(data)
+		if payload, ok := data.(newBlockHashesData); ok {
+			payloadLength = len(payload)
+		} else {
+			glog.Fatal("cant cast: NewBlockHashesMsg", direction)
+		}
 	case TxMsg:
-		payloadLength = mustGetLenIfPossible(data)
+		if payload, ok := data.(types.Transactions); ok {
+			payloadLength = payload.Len()
+		} else {
+			glog.Fatal("cant cast: TxMsg", direction)
+		}
 	case GetBlockHeadersMsg:
+		if payload, ok := data.(*getBlockHeadersData); ok {
+			eventData = payload
+		 } else {
+			glog.Fatal("cant cast: GetBlockHeadersMsg", direction)
+		}
 	case BlockHeadersMsg:
-		payloadLength = mustGetLenIfPossible(data)
+		if payload, ok := data.([]*types.Header); ok {
+			payloadLength = len(payload)
+		} else {
+			glog.Fatal("cant cast: BlockHeadersMsg", direction)
+		}
 	case GetBlockBodiesMsg:
+		if direction == "send" {
+			if payload, ok := data.([]common.Hash); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: GetBlockBodiesMsg", direction)
+			}
+		} else {
+			if payload, ok := data.([]rlp.RawValue); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: GetBlockBodiesMsg", direction)
+			}
+		}
 	case BlockBodiesMsg:
-		payloadLength = mustGetLenIfPossible(data)
+		if direction == "send" {
+			if payload, ok := data.([]rlp.RawValue); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: BlockBodiesMsg", direction)
+			}
+		} else {
+			if payload, ok := data.(blockBodiesData); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: BlockBodiesMsg", direction)
+			}
+		}
 	case NewBlockMsg:
+		if payload, ok := data.(newBlockData); ok {
+			eventData = payload
+		} else {
+			glog.Fatal("cant cast: NewBlockMsg", direction)
+		}
 		payloadLength = 1
 	case GetNodeDataMsg:
-		payloadLength = mustGetLenIfPossible(data)
+		if direction == "send" {
+			if payload, ok := data.([]common.Hash); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: GetNodeDataMsg", direction)
+			}
+		} else {
+			if payload, ok := data.([][]byte); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: GetNodeDataMsg", direction)
+			}
+		}
 	case NodeDataMsg:
-		payloadLength = mustGetLenIfPossible(data)
+		if payload, ok := data.([][]byte); ok {
+			payloadLength = len(payload)
+		} else {
+			glog.Fatal("cant cast: GetNNodeDataMsg", direction)
+		}
 	case GetReceiptsMsg:
-		payloadLength = mustGetLenIfPossible(data)
+		if direction == "send" {
+			if payload, ok := data.([]common.Hash); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: GetReceiptsMsg", direction)
+			}
+		} else {
+			if payload, ok := data.([]rlp.RawValue); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: GetNNodGetReceiptsMsg", direction)
+			}
+		}
 	case ReceiptsMsg:
-		payloadLength = mustGetLenIfPossible(data)
+		//[][]*types.Receipt
+		if direction == "send" {
+			if payload, ok := data.([]rlp.RawValue); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: ReceiptsMsg", direction)
+			}
+		} else {
+			if payload, ok := data.([][]*types.Receipt); ok {
+				payloadLength = len(payload)
+			} else {
+				glog.Fatal("cant cast: ReceiptsMsg", direction)
+			}
+		}
 	default:
 	}
 
@@ -96,7 +192,8 @@ func mlogWireDelegate(p *peer, direction string, msgcode uint64, data interface{
 		p.RemoteAddr().String(),
 		p.version,
 		payloadLength,
-		err,
+		eventData, // can be nil
+		err,       // can be nil
 	).Send(mlogWwireProtocol)
 
 }
@@ -156,6 +253,7 @@ var mlogWireSendTransfer = &logger.MLogT{
 		{Owner: "WIRE", Key: "REMOTE_ADDR", Value: "STRING"},
 		{Owner: "WIRE", Key: "REMOTE_VERSION", Value: "STRING"},
 		{Owner: "TRANSFER", Key: "PAYLOAD_LENGTH", Value: "INT"}, // eg length of hashes
+		{Owner: "TRANSFER", Key: "DATA", Value: "OBJECT"}, // only present for GetHeadersData messages
 		{Owner: "TRANSFER", Key: "ERROR", Value: "STRING_OR_NULL"},
 	},
 }
@@ -173,6 +271,7 @@ var mlogWireReceiveTransfer = &logger.MLogT{
 		{Owner: "WIRE", Key: "REMOTE_ADDR", Value: "STRING"},
 		{Owner: "WIRE", Key: "REMOTE_VERSION", Value: "STRING"},
 		{Owner: "TRANSFER", Key: "PAYLOAD_LENGTH", Value: "INT"},
+		{Owner: "TRANSFER", Key: "DATA", Value: "OBJECT"},
 		{Owner: "TRANSFER", Key: "ERROR", Value: "STRING_OR_NULL"},
 	},
 }

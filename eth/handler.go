@@ -331,14 +331,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 	// Handle the message depending on its contents
 	switch {
 	case msg.Code == StatusMsg:
-		defer mlogWireDelegate(p, "receive", StatusMsg, []interface{}{&statusData{}}, err)
+		defer mlogWireDelegate(p, "receive", StatusMsg, nil, err)
 		// Status messages should never arrive after the handshake
 		return errResp(ErrExtraStatusMsg, "uncontrolled status message")
 	// Block header query, collect the requested headers and reply
 	case p.version >= eth62 && msg.Code == GetBlockHeadersMsg:
 		// Decode the complex header query
 		var query getBlockHeadersData
-		defer mlogWireDelegate(p, "receive", GetBlockHeadersMsg, query, err)
+		defer mlogWireDelegate(p, "receive", GetBlockHeadersMsg, &query, err)
 		if err := msg.Decode(&query); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
@@ -629,7 +629,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 	case msg.Code == NewBlockMsg:
 		// Retrieve and decode the propagated block
 		var request newBlockData
-		defer mlogWireDelegate(p, "receive", NewBlockMsg, []interface{}{request}, err)
+		defer mlogWireDelegate(p, "receive", NewBlockMsg, request, err)
 		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}

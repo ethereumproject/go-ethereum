@@ -160,11 +160,11 @@ func (p *peer) SendNewBlockHashes(hashes []common.Hash, numbers []uint64) error 
 // SendNewBlock propagates an entire block to a remote peer.
 func (p *peer) SendNewBlock(block *types.Block, td *big.Int) error {
 	p.knownBlocks.Add(block.Hash())
-	mlogWireDelegate(p, "send", NewBlockMsg, []*types.Block{block}, nil) // send slice of len 1
+	mlogWireDelegate(p, "send", NewBlockMsg, newBlockData{Block: block, TD: td}, nil) // send slice of len 1
 	return p2p.Send(p.rw, NewBlockMsg, []interface{}{block, td})
 }
 
-// SendBlockHeaders sends a batch of block headers to the remote peer.
+// SendBlockHeaders sends a batch of block headers to the remote peer.m
 func (p *peer) SendBlockHeaders(headers []*types.Header) error {
 	mlogWireDelegate(p, "send", BlockHeadersMsg, headers, nil)
 	return p2p.Send(p.rw, BlockHeadersMsg, headers)
@@ -201,8 +201,9 @@ func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 // single header. It is used solely by the fetcher.
 func (p *peer) RequestOneHeader(hash common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching a single header: %x", p, hash)
-	mlogWireDelegate(p, "send", GetBlockHeadersMsg, []common.Hash{hash}, nil)
-	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Hash: hash}, Amount: uint64(1), Skip: uint64(0), Reverse: false})
+	d := &getBlockHeadersData{Origin: hashOrNumber{Hash: hash}, Amount: uint64(1), Skip: uint64(0), Reverse: false}
+	mlogWireDelegate(p, "send", GetBlockHeadersMsg, d, nil)
+	return p2p.Send(p.rw, GetBlockHeadersMsg, d)
 }
 
 // RequestHeadersByHash fetches a batch of blocks' headers corresponding to the
@@ -210,7 +211,7 @@ func (p *peer) RequestOneHeader(hash common.Hash) error {
 func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, reverse bool) error {
 	glog.V(logger.Debug).Infof("%v fetching %d headers from %x, skipping %d (reverse = %v)", p, amount, origin[:4], skip, reverse)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Hash: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse}
-	mlogWireDelegate(p, "send", GetBlockHeadersMsg, []interface{}{d}, nil)
+	mlogWireDelegate(p, "send", GetBlockHeadersMsg, d, nil)
 	return p2p.Send(p.rw, GetBlockHeadersMsg, d)
 }
 
@@ -219,7 +220,7 @@ func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, re
 func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, reverse bool) error {
 	glog.V(logger.Debug).Infof("%v fetching %d headers from #%d, skipping %d (reverse = %v)", p, amount, origin, skip, reverse)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Number: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse}
-	mlogWireDelegate(p, "send", GetBlockHeadersMsg, []interface{}{d}, nil)
+	mlogWireDelegate(p, "send", GetBlockHeadersMsg, d, nil)
 	return p2p.Send(p.rw, GetBlockHeadersMsg, d)
 }
 
@@ -272,8 +273,8 @@ func (p *peer) Handshake(network int, td *big.Int, head common.Hash, genesis com
 	timeout := time.NewTimer(handshakeTimeout)
 	defer timeout.Stop()
 
-	defer mlogWireDelegate(p, "send", StatusMsg, d, sendErr)
 	defer mlogWireDelegate(p, "receive", StatusMsg, &status, recErr)
+	defer mlogWireDelegate(p, "send", StatusMsg, d, sendErr)
 
 	for i := 0; i < 2; i++ {
 		select {
