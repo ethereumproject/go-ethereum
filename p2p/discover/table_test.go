@@ -224,6 +224,8 @@ func TestTable_ReadRandomNodesGetAll(t *testing.T) {
 	test := func(buf []*Node) bool {
 		tab, _ := newTable(nil, NodeID{}, &net.UDPAddr{}, "")
 		defer tab.Close()
+		<-tab.initDone
+
 		for i := 0; i < len(buf); i++ {
 			ld := cfg.Rand.Intn(len(tab.buckets))
 			tab.stuff([]*Node{nodeAtDistance(tab.self.sha, ld)})
