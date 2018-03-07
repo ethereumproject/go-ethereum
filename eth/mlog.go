@@ -15,6 +15,27 @@ var mlogWwireProtocol = logger.MLogRegisterAvailable("wire", mlogLinesWire)
 var mlogLinesWire = []*logger.MLogT{
 	mlogWireSendHandshake,
 	mlogWireReceiveHandshake,
+	mlogWireSendNewBlockHashes,
+	mlogWireReceiveNewBlockHashes,
+	mlogWireSendTxs,
+	mlogWireReceiveTxs,
+	mlogWireSendGetBlockHeaders,
+	mlogWireReceiveGetBlockHeaders,
+	mlogWireSendBlockHeaders,
+	mlogWireReceiveBlockHeaders,
+	mlogWireSendGetBlockBodies,
+	mlogWireReceiveGetBlockBodies,
+	mlogWireSendNewBlock,
+	mlogWireReceiveNewBlock,
+	mlogWireSendGetNodeData,
+	mlogWireReceiveGetNodeData,
+	mlogWireSendNodeData,
+	mlogWireReceiveNodeData,
+	mlogWireSendGetReceipts,
+	mlogWireReceiveGetReceipts,
+	mlogWireSendReceipts,
+	mlogWireReceiveReceipts,
+	mlogWireReceiveInvalid,
 }
 
 func mlogWireDelegate(p *peer, direction string, msgCode uint64, data interface{}, err error) {
