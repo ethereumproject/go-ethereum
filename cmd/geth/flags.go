@@ -36,9 +36,9 @@ var (
 		Usage: "Set interval in seconds for runtime profiling",
 		Value: 5,
 	}
-	SputnikVMFlag = cli.BoolFlag{
+	SputnikVMFlag = cli.BoolTFlag{
 		Name:  "sputnikvm",
-		Usage: "Use SputnikVM Ethereum Virtual Machine implementation",
+		Usage: "Use SputnikVM Ethereum Virtual Machine implementation (enabled by default)",
 	}
 	DataDirFlag = DirectoryFlag{
 		Name:  "data-dir,datadir",
