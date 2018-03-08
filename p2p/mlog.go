@@ -2,9 +2,9 @@ package p2p
 
 import "github.com/ethereumproject/go-ethereum/logger"
 
-var mlogServer = logger.MLogRegisterAvailable("server", mLogLines)
+var mlogServer = logger.MLogRegisterAvailable("server", mLogLinesServer)
 
-var mLogLines = []*logger.MLogT{
+var mLogLinesServer = []*logger.MLogT{
 	mlogServerPeerAdded,
 	mlogServerPeerRemove,
 }
@@ -33,3 +33,4 @@ var mlogServerPeerRemove = &logger.MLogT{
 		{Owner: "REMOVE", Key: "REASON", Value: "QUOTEDSTRING"},
 	},
 }
+

@@ -177,8 +177,10 @@ func (p *testPeer) handshake(t *testing.T, td *big.Int, head common.Hash, genesi
 	if err := p2p.ExpectMsg(p.app, StatusMsg, msg); err != nil {
 		t.Fatalf("status recv: %v", err)
 	}
-	if err := p2p.Send(p.app, StatusMsg, msg); err != nil {
+	if s, err := p2p.SendAndReturnSize(p.app, StatusMsg, msg); err != nil {
 		t.Fatalf("status send: %v", err)
+	} else if s <= 0 {
+		t.Errorf("got: %v, want: >0", s)
 	}
 }
 

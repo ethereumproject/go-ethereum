@@ -85,6 +85,16 @@ type MsgReadWriter interface {
 	MsgWriter
 }
 
+// SendAndReturnSize writes an RLP-encoded message with the given code.
+// data should encode as an RLP list. It returns the size of the encoded data for logging purposes.
+func SendAndReturnSize(w MsgWriter, msgcode uint64, data interface{}) (int, error) {
+	size, r, err := rlp.EncodeToReader(data)
+	if err != nil {
+		return size, err
+	}
+	return size, w.WriteMsg(Msg{Code: msgcode, Size: uint32(size), Payload: r})
+}
+
 // Send writes an RLP-encoded message with the given code.
 // data should encode as an RLP list.
 func Send(w MsgWriter, msgcode uint64, data interface{}) error {
