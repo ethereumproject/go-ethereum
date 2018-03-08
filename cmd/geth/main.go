@@ -241,12 +241,8 @@ func makeCLIApp() (app *cli.App) {
 
 		core.UseSputnikVM = ctx.GlobalBoolT(SputnikVMFlag.Name)
 
-		if core.UseSputnikVM {
-			if !core.SputnikVMExists {
-				log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
-			} else {
-				log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation")
-			}
+		if core.UseSputnikVM && !core.SputnikVMExists {
+			log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
 		}
 
 		// Check for migrations and handle if conditionals are met.

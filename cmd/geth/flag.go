@@ -481,6 +481,10 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
 	// global settings
 
+	if core.UseSputnikVM {
+		log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation")
+	}
+
 	if ctx.GlobalIsSet(aliasableName(ExtraDataFlag.Name, ctx)) {
 		s := ctx.GlobalString(aliasableName(ExtraDataFlag.Name, ctx))
 		if len(s) > types.HeaderExtraMax {
