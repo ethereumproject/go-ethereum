@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"github.com/ellaism/go-ellaism/eth"
+	"github.com/ellaism/go-ellaism/eth/downloader"
 	"fmt"
 )
 

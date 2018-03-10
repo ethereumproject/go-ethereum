@@ -120,8 +120,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-)
 
+	"github.com/fatih/color"
+)
 
 // DefaultVerbosity establishes the default verbosity Level for
 // to-file (debug) logging.
@@ -144,51 +145,6 @@ var DefaultAlsoToStdErr = false
 // By default, this directory will be created if it does not exist within the context's chain directory, eg.
 // <datadir>/<chain>/log/.
 var DefaultLogDirName = "log"
-
-// MinSize is a minimum file size qualifying for rotation. This variable can be used
-// to avoid rotation of empty or almost emtpy files.
-var MinSize uint64
-
-// MaxTotalSize is a maximum size of all log files.
-var MaxTotalSize uint64
-
-// Interval is a type for rotation interval specification
-type Interval uint8
-
-// These constants identify the interval for log rotation.
-const (
-	Never Interval = iota
-	Hourly
-	Daily
-	Weekly
-	Monthly
-)
-
-func ParseInterval(str string) (Interval, error) {
-	mapping := map[string]Interval{
-		"never":   Never,
-		"hourly":  Hourly,
-		"daily":   Daily,
-		"weekly":  Weekly,
-		"monthly": Monthly,
-	}
-
-	interval, ok := mapping[strings.ToLower(str)]
-	if !ok {
-		return Never, fmt.Errorf("invalid interval value '%s'", str)
-	}
-	return interval, nil
-}
-
-// RotationInterval determines how often log rotation should take place
-var RotationInterval = Never
-
-// MaxAge defines the maximum age of the oldest log file. All log files older
-// than MaxAge will be removed.
-var MaxAge time.Duration
-
-// Compress determines whether to compress rotated logs with GZIP or not.
-var Compress bool
 
 // severity identifies the sort of log: info, warning etc. It also implements
 // the flag.Value interface. The -stderrthreshold flag is of type severity and
@@ -222,10 +178,12 @@ var severityName = []string{
 	fatalLog:   "FATAL",
 }
 
+var displayStderr = color.StderrOutput
+
 // these path prefixes are trimmed for display, but not when
 // matching vmodule filters.
 var trimPrefixes = []string{
-	"/github.com/ethereumproject/go-ethereum",
+	"/github.com/ellaism/go-ellaism",
 	"/github.com/ethereumproject/ethash",
 }
 
@@ -965,14 +923,14 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 	}
 	data := buf.Bytes()
 	if l.toStderr {
-		os.Stderr.Write(data)
+		displayStderr.Write(data)
 	} else {
 		if alsoToStderr || l.alsoToStderr || s >= l.stderrThreshold.get() {
-			os.Stderr.Write(data)
+			displayStderr.Write(data)
 		}
 		if l.file[s] == nil {
 			if err := l.createFiles(s); err != nil {
-				os.Stderr.Write(data) // Make sure the message appears somewhere.
+				displayStderr.Write(data) // Make sure the message appears somewhere.
 				l.exit(err)
 			}
 		}

@@ -19,7 +19,7 @@ package accounts
 import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"io/ioutil"
 	"math/rand"
 	"os"

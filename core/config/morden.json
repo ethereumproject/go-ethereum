@@ -1,87 +1,31 @@
 {
-    "identity": "morden",
-    "name": "Morden Testnet",
-    "state": {
-        "startingNonce": 1048576
-    },
-    "network": 2,
+    "identity": "testnet",
+    "name": "Ellaism Mainnet",
+    "state": null,
+    "network": 64,
     "consensus": "ethash",
     "genesis": {
-        "nonce": "0x00006d6f7264656e",
+        "nonce": "0x0000000000000040",
         "timestamp": "",
         "parentHash": "",
-        "extraData": "",
-        "gasLimit": "0x2FEFD8",
-        "difficulty": "0x020000",
-        "mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
+        "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "gasLimit": "0x1388",
+        "difficulty": "0x40000000",
+        "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "coinbase": "",
-        "alloc": {
-            "0000000000000000000000000000000000000001": {
-                "balance": "1"
-            },
-            "0000000000000000000000000000000000000002": {
-                "balance": "1"
-            },
-            "0000000000000000000000000000000000000003": {
-                "balance": "1"
-            },
-            "0000000000000000000000000000000000000004": {
-                "balance": "1"
-            },
-            "102e61f5d8f9bc71d0ad4a084df4e65e05ce0e1c": {
-                "balance": "1606938044258990275541962092341162602522202993782792835301376"
-            }
-        }
+        "alloc": {}
     },
     "chainConfig": {
         "forks": [
             {
-                "name": "Homestead",
-                "block": 494000,
+                "name": "Diehard",
+                "block": 0,
                 "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "features": [
                     {
                         "id": "difficulty",
                         "options": {
-                            "type": "homestead"
-                        }
-                    },
-                    {
-                        "id": "gastable",
-                        "options": {
-                            "type": "homestead"
-                        }
-                    }
-                ]
-            },
-            {
-                "name": "GasReprice",
-                "block": 1783000,
-                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "features": [
-                    {
-                        "id": "gastable",
-                        "options": {
-                            "type": "eip150"
-                        }
-                    }
-                ]
-            },
-            {
-                "name": "The DAO Hard Fork",
-                "block": 1885000,
-                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "features": []
-            },
-            {
-                "name": "Diehard",
-                "block": 1915000,
-                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "features": [
-                    {
-                        "id": "eip155",
-                        "options": {
-                            "chainID": 62
+                            "type": "diffused"
                         }
                     },
                     {
@@ -90,48 +34,32 @@
                             "type": "eip160"
                         }
                     },
-                    {
-                        "id": "difficulty",
+		    {
+                        "id": "eip155",
                         "options": {
-                            "length": 2000000,
-                            "type": "ecip1010"
+                            "chainID": 64
                         }
-                    }
-                ]
-            },
-            {
-                "name": "Gotham",
-                "block": 2000000,
-                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "features": [
-                    {
+                    },
+		    {
                         "id": "reward",
                         "options": {
-                            "era": 2000000,
+                            "era": 10000000,
                             "type": "ecip1017"
                         }
                     }
                 ]
             }
         ],
-        "badHashes": [
-            {
-                "Block": 383792,
-                "Hash": "0x9690db54968a760704d99b8118bf79d565711669cefad24b51b5b1013d827808"
-            },
-            {
-                "Block": 1915277,
-                "Hash": "0x3bef9997340acebc85b84948d849ceeff74384ddf512a20676d424e972a3c3c4"
-            }
-        ]
+        "badHashes": []
     },
     "bootstrap": [
-        "enode://fb28713820e718066a2f5df6250ae9d07cff22f672dbf26be6c75d088f821a9ad230138ba492c533a80407d054b1436ef18e951bb65e6901553516c8dffe8ff0@104.155.176.151:30304",
-        "enode://afdc6076b9bf3e7d3d01442d6841071e84c76c73a7016cb4f35c0437df219db38565766234448f1592a07ba5295a867f0ce87b359bf50311ed0b830a2361392d@104.154.136.117:30403",
-        "enode://21101a9597b79e933e17bc94ef3506fe99a137808907aa8fefa67eea4b789792ad11fb391f38b00087f8800a2d3dff011572b62a31232133dd1591ac2d1502c8@104.198.71.200:30403",
-        "enode://fd008499e9c4662f384b3cff23438879d31ced24e2d19504c6389bc6da6c882f9c2f8dbed972f7058d7650337f54e4ba17bb49c7d11882dd1731d26a6e62e3cb@35.187.57.94:30304",
-        "enode://30a1fd71f28aa6f66fe662af9ecc75f0a6980f06b71598f2b19d3dda04223fc0e53b47e40c9171d5014e9f5b59d9954de125782da592f5d95ea39066e2591d5d@104.237.131.102:30304",
-        "enode://7909d51011d8a153351169f21d3a7bbedb3be1e17d38c1f2fad06504dd5aa07a00f00845835d535fe702bf379c4d7209a51f4d1b723e0ca8b8732bd21fba3b30@139.162.133.42:30303",
-        "enode://a088dfb2f5305be9232e8071c5535f13718a4017e247a0b35074b807d43d99e022880c27302cdb5b1e98ad34c083dbbb483f2b17bdc66149bad037154d6ace96@139.162.127.72:30303"
+	"enode://98b48cc7149326d00a57994ad55014a095a3e5cd4f0144cd7b034fb667d8e8017082bd90047d72c4403798b8ece11a33bd2e344d6500faba30889ebcfa5316fa@172.104.163.204:30303",
+	"enode://d1373d7187a20d695220fafb5746a289786bad92469d6bbe800f07572f8f444479f507cfcb8fcd8f5bee5dd44efb6185df4a1e4f1a7170408ada9876ef5b3fe4@178.79.189.58:30303",
+	"enode://d8059dcb137cb52b8960ca82613eeba1d121105572decd8f1d3ea22b09070645eeab548d2a3cd2914f206e1331c7870bd2bd5a231ebac6b3d4886ec3b8e627e5@173.212.216.105:30303",
+	"enode://5a89c8664d29a321fd4cb1b55b0f0be832ce376b5e7feb14a2073fdbd9bd7b7394169ed289dd991112b42ecfb74ea36e436bc72a1c99dcdb50d96eaf3b0ed254@213.136.91.42:30303",
+	"enode://9215ad77bd081e35013cb42a8ceadff9d8e94a78fcc680dff1752a54e7484badff0904e331c4b40a68be593782e55acfd800f076d22f9d2832e8483733ade149@213.14.82.125:30303",
+	"enode://bf38dff8585becc5f02ef9f846a35d83c829acc983cdf992ca046f038ab024d37999c6ff93801d3cb38cecb0e327c73954a6ba48b26d2ba86e340b651b1ef939@45.32.19.37:30303",
+	"enode://7c2f43b2e7fded9469917311574d267427e62cd12e1864effd15f31c1246e4e955463d843acaa37309693a515df7986cb6d160b7e85a4ca2779a798a72d90850@108.61.194.191:30303",
+	"enode://5dd35866da95aea15211fb1f98684f6e8c4e355e6aa3cc17585680ed53fa164477b8c52cb6ca4b24ec4d80f3d48ff9212b53feb131d825c7945a3abaaf02d24d@178.79.189.58:60606"
     ]
 }

@@ -24,7 +24,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ellaism/go-ellaism/crypto"
 )
 
 // Tests that datadirs can be successfully created, be them manually configured

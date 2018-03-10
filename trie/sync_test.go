@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/ethdb"
 )
 
 // makeTestTrie create a sample test trie to test node-wise reconstruction.

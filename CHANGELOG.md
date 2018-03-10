@@ -16,7 +16,7 @@ __Legend__:
 <Consensus> to invite users to upgrade in case of consensus protocol changes.
 ```
 
-Releases considered __stable__ may be found on our [Releases Page](https://github.com/ethereumproject/go-ethereum/releases).
+Releases considered __stable__ may be found on our [Releases Page](https://github.com/ellaism/go-ellaism/releases).
 
 Rolling builds for the master branch may be found at [builds.etcdevteam.com](builds.etcdevteam.com).
 
@@ -76,7 +76,7 @@ Rolling builds for the master branch may be found at [builds.etcdevteam.com](bui
 
 ## [3.5.0] - 2017-06-02 - 402c170
 
-Wiki: https://github.com/ethereumproject/go-ethereum/wiki/Release-3.5.0-Notes
+Wiki: https://github.com/ellaism/go-ellaism/wiki/Release-3.5.0-Notes
 
 #### Security
 - Hash map exploit opportunity (thanks @karalabe)
@@ -95,7 +95,7 @@ Wiki: https://github.com/ethereumproject/go-ethereum/wiki/Release-3.5.0-Notes
 
 ## [3.4.0] - 2017-05-15 - c18792d
 
-Wiki: https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes
+Wiki: https://github.com/ellaism/go-ellaism/wiki/Release-3.4.0-Notes
 
 #### Added
 - _Command_: `rollback <int>` - sets blockchain head and purges blocks antecedent to specified block number

@@ -20,11 +20,11 @@ import (
 	"math"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/core/vm"
+	"github.com/ellaism/go-ellaism/ethdb"
 )
 
 type AccountChange struct {

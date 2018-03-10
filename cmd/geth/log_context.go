@@ -9,8 +9,8 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"os"
 	"path/filepath"
 )
@@ -102,40 +102,6 @@ func setupLogging(ctx *cli.Context) error {
 	if !ctx.GlobalIsSet(LogStatusFlag.Name) {
 		ctx.Set(LogStatusFlag.Name, defaultStatusLog)
 	}
-
-	return nil
-}
-
-func setupLogRotation(ctx *cli.Context) error {
-	var err error
-	glog.MaxSize, err = getSizeFlagValue(&LogMaxSizeFlag, ctx)
-	if err != nil {
-		return err
-	}
-
-	glog.MinSize, err = getSizeFlagValue(&LogMinSizeFlag, ctx)
-	if err != nil {
-		return err
-	}
-
-	glog.MaxTotalSize, err = getSizeFlagValue(&LogMaxTotalSizeFlag, ctx)
-	if err != nil {
-		return err
-	}
-
-	glog.Compress = ctx.GlobalBool(aliasableName(LogCompressFlag.Name, ctx))
-
-	interval, err := glog.ParseInterval(ctx.GlobalString(aliasableName(LogIntervalFlag.Name, ctx)))
-	if err != nil {
-		return fmt.Errorf("invalid log rotation interval: %v", err)
-	}
-	glog.RotationInterval = interval
-
-	maxAge, err := parseDuration(ctx.GlobalString(aliasableName(LogMaxAgeFlag.Name, ctx)))
-	if err != nil {
-		return fmt.Errorf("error parsing log max age: %v", err)
-	}
-	glog.MaxAge = maxAge
 
 	return nil
 }

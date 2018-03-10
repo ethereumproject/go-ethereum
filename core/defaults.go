@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/ethereumproject/go-ethereum/core/assets"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ellaism/go-ellaism/core/assets"
+	"github.com/ellaism/go-ellaism/logger/glog"
 )
 
 var (

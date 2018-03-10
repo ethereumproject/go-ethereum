@@ -290,6 +290,7 @@ func TestWarningLogging(t *testing.T) {
 	Warning("test")
 	if !loggingContains(warningLog, "W", t) {
 		t.Errorf("Warning has wrong character: %q", loggingContents(warningLog))
+<<<<<<< HEAD
 	}
 	if !loggingContains(warningLog, "test", t) {
 		t.Error("Warning failed")
@@ -327,6 +328,45 @@ func TestErrorDisplay(t *testing.T) {
 	if !displayContains(warningLog, "test", t) {
 		t.Error("Warning failed")
 	}
+=======
+	}
+	if !loggingContains(warningLog, "test", t) {
+		t.Error("Warning failed")
+	}
+	str := loggingContents(warningLog)
+	if !loggingContains(infoLog, str, t) {
+		t.Error("Info failed")
+	}
+}
+
+func TestWarningDisplay(t *testing.T) {
+	setFlags()
+	defer display.swapDisplay(display.newDisplayBuffers())
+	display.verbosity.Set("3")
+	defer display.verbosity.Set("0")
+	D(2).Warnln("test")
+	if !displayContains(warningLog, "test", t) {
+		t.Error("Warning failed")
+	}
+	str := displayContents(warningLog)
+	if !displayContains(infoLog, str, t) {
+		t.Error("Info failed")
+	}
+}
+
+func TestErrorDisplay(t *testing.T) {
+	setFlags()
+	defer display.swapDisplay(display.newDisplayBuffers())
+	display.verbosity.Set("3")
+	defer display.verbosity.Set("0")
+	D(2).Errorln("test")
+	if !displayContains(errorLog, "ERROR", t) {
+		t.Errorf("Error has wrong character: %q", displayContents(errorLog))
+	}
+	if !displayContains(warningLog, "test", t) {
+		t.Error("Warning failed")
+	}
+>>>>>>> ellaism/master
 	str := displayContents(warningLog)
 	if !displayContains(infoLog, str, t) {
 		t.Error("Info failed")
@@ -545,6 +585,7 @@ func TestLogBacktraceAt(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 func TestExtractTimestamp(t *testing.T) {
 	preffix := fmt.Sprintf("%s.%s.%s.log.", "geth_test", "sampleHost", "sampleUser")
 	cases := []struct {
@@ -924,6 +965,8 @@ func TestLongRunningRotateOld(t *testing.T) {
 	wg.Wait()
 }
 
+=======
+>>>>>>> ellaism/master
 func BenchmarkHeaderLogging(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf, _, _ := logging.header(infoLog, 0)

@@ -21,11 +21,11 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/pow"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core/state"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/pow"
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -281,6 +281,8 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		name = ""
 	} // will fall to default panic
 	switch name {
+	case "diffused":
+		return calcDifficultyDiffused(time, parentTime, parentNumber, parentDiff)
 	case "ecip1010":
 		if length, ok := f.GetBigInt("length"); ok {
 			explosionBlock := big.NewInt(0).Add(fork.Block, length)
@@ -447,6 +449,43 @@ func calcDifficultyHomestead(time, parentTime uint64, parentNumber, parentDiff *
 		y.Sub(periodCount, common.Big2)
 		y.Exp(common.Big2, y, nil)
 		x.Add(x, y)
+	}
+
+	return x
+}
+
+func calcDifficultyDiffused(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.mediawiki
+	// algorithm:
+	// diff = (parent_diff +
+	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	//        ) + 2^(periodCount - 2)
+
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).SetUint64(parentTime)
+
+	// holds intermediate values to make the algo easier to read & audit
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// 1 - (block_timestamp -parent_timestamp) // 10
+	x.Sub(bigTime, bigParentTime)
+	x.Div(x, big10)
+	x.Sub(common.Big1, x)
+
+	// max(1 - (block_timestamp - parent_timestamp) // 10, -99)))
+	if x.Cmp(bigMinus99) < 0 {
+		x.Set(bigMinus99)
+	}
+
+	// (parent_diff + parent_diff // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	y.Div(parentDiff, DifficultyBoundDivisor)
+	x.Mul(y, x)
+	x.Add(parentDiff, x)
+
+	// minimum difficulty can ever be (before exponential factor)
+	if x.Cmp(MinimumDifficulty) < 0 {
+		x.Set(MinimumDifficulty)
 	}
 
 	return x

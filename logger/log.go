@@ -21,7 +21,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/fatih/color"
 )
 
 func openLogFile(datadir string, filename string) *os.File {
@@ -88,17 +89,17 @@ const (
 )
 
 func ColorGreen(s string) (coloredString string) {
-	return green + s + reset
+	return color.GreenString(s)
 }
 func ColorRed(s string) (coloredString string) {
-	return red + s + reset
+	return color.RedString(s)
 }
 func ColorBlue(s string) (coloredString string) {
-	return blue + s + reset
+	return color.BlueString(s)
 }
 func ColorYellow(s string) (coloredString string) {
-	return yellow + s + reset
+	return color.YellowString(s)
 }
 func ColorMagenta(s string) (coloredString string) {
-	return magenta + s + reset
+	return color.MagentaString(s)
 }

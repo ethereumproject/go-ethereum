@@ -29,13 +29,13 @@ import (
 	"time"
 	"fmt"
 	"math/big"
-	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ellaism/go-ellaism/logger"
 	"strings"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/eth"
+	"github.com/ellaism/go-ellaism/eth/downloader"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ellaism/go-ellaism/core"
 )
 
 var lsModeIcon = []string{

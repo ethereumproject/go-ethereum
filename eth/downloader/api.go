@@ -20,9 +20,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/rpc"
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ellaism/go-ellaism/event"
+	"github.com/ellaism/go-ellaism/rpc"
+	"github.com/ellaism/go-ellaism/common"
 	"math/big"
 )
 

@@ -22,7 +22,7 @@ import (
 	"net"
 	"reflect"
 	"testing"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ellaism/go-ellaism/logger/glog"
 )
 
 type Service struct{}

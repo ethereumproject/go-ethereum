@@ -25,8 +25,8 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/ellaism/go-ellaism/node"
+	"github.com/ellaism/go-ellaism/rpc"
 	"os"
 )
 

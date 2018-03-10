@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/rlp"
-	"github.com/ethereumproject/go-ethereum/trie"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/rlp"
+	"github.com/ellaism/go-ellaism/trie"
 )
 
 // NodeIterator is an iterator to traverse the entire state trie post-order,

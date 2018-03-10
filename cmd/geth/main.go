@@ -22,13 +22,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereumproject/go-ethereum/console"
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/metrics"
+	"github.com/ellaism/go-ellaism/console"
+	"github.com/ellaism/go-ellaism/core"
+	"github.com/ellaism/go-ellaism/eth"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/metrics"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -228,19 +230,7 @@ func makeCLIApp() (app *cli.App) {
 			}
 		}
 
-		if ctx.IsSet(SputnikVMFlag.Name) {
-			if core.SputnikVMExists {
-				log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation ...")
-				core.UseSputnikVM = true
-			} else {
-				log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
-			}
-		}
-
-		// Check for migrations and handle if conditionals are met.
-		if err := handleIfDataDirSchemaMigrations(ctx); err != nil {
-			return err
-		}
+		glog.CopyStandardLogTo("INFO")
 
 		if err := setupLogRotation(ctx); err != nil {
 			return err
@@ -253,6 +243,11 @@ func makeCLIApp() (app *cli.App) {
 
 		// Handle parsing and applying log rotation configs from context.
 		if err := setupLogRotation(ctx); err != nil {
+			return err
+		}
+
+		// Handle parsing and applying log verbosity, severities, and default configurations from context.
+		if err := setupLogging(ctx); err != nil {
 			return err
 		}
 

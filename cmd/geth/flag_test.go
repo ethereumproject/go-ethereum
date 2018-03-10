@@ -4,14 +4,16 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"reflect"
 
-	"github.com/ethereumproject/go-ethereum/accounts"
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ellaism/go-ellaism/accounts"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core"
+	"github.com/ellaism/go-ellaism/logger/glog"
 	"gopkg.in/urfave/cli.v1"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"os/exec"
@@ -127,13 +129,13 @@ func TestMustMakeChainDataDir(t *testing.T) {
 		{[]string{"--datadir", tmpDir}, filepath.Join(tmpDir, "mainnet"), nil},
 		{[]string{"--data-dir", tmpDir}, filepath.Join(tmpDir, "mainnet"), nil},
 
-		{[]string{"--testnet", "--data-dir", tmpDir}, filepath.Join(tmpDir, "morden"), nil},
-		{[]string{"--testnet"}, filepath.Join(dd, "morden"), nil},
+		{[]string{"--testnet", "--data-dir", tmpDir}, filepath.Join(tmpDir, "testnet"), nil},
+		{[]string{"--testnet"}, filepath.Join(dd, "testnet"), nil},
 
 		{[]string{"--chain"}, "", ErrInvalidFlag},
 		{[]string{"--chain", "main"}, filepath.Join(dd, "mainnet"), nil},
-		{[]string{"--chain", "morden"}, filepath.Join(dd, "morden"), nil},
-		{[]string{"--chain", "testnet"}, filepath.Join(dd, "morden"), nil},
+		{[]string{"--chain", "morden"}, filepath.Join(dd, "testnet"), nil},
+		{[]string{"--chain", "testnet"}, filepath.Join(dd, "testnet"), nil},
 		{[]string{"--chain", "kitty"}, filepath.Join(dd, "kitty"), nil},
 
 		{[]string{"--chain", "kitty/cat"}, filepath.Join(dd, "kitty", "cat"), nil},
@@ -178,8 +180,8 @@ func TestGetChainIdentityValue(t *testing.T) {
 		want  string
 	}{
 		// Known (defaulty) chain values.
-		{[]string{"--chain", "morden"}, "morden"},
-		{[]string{"--chain", "testnet"}, "morden"},
+		{[]string{"--chain", "morden"}, "testnet"},
+		{[]string{"--chain", "testnet"}, "testnet"},
 		{[]string{"--chain", "main"}, "mainnet"},
 		{[]string{"--chain", "mainnet"}, "mainnet"},
 

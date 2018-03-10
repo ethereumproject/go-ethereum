@@ -25,8 +25,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/rlp"
 )
 
 type DumpAccount struct {

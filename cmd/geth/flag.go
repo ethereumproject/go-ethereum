@@ -31,23 +31,23 @@ import (
 	"errors"
 
 	"github.com/ethereumproject/ethash"
-	"github.com/ethereumproject/go-ethereum/accounts"
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/miner"
-	"github.com/ethereumproject/go-ethereum/node"
-	"github.com/ethereumproject/go-ethereum/p2p/discover"
-	"github.com/ethereumproject/go-ethereum/p2p/nat"
-	"github.com/ethereumproject/go-ethereum/pow"
-	"github.com/ethereumproject/go-ethereum/whisper"
+	"github.com/ellaism/go-ellaism/accounts"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core"
+	"github.com/ellaism/go-ellaism/core/state"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/crypto"
+	"github.com/ellaism/go-ellaism/eth"
+	"github.com/ellaism/go-ellaism/ethdb"
+	"github.com/ellaism/go-ellaism/event"
+	"github.com/ellaism/go-ellaism/logger"
+	"github.com/ellaism/go-ellaism/logger/glog"
+	"github.com/ellaism/go-ellaism/miner"
+	"github.com/ellaism/go-ellaism/node"
+	"github.com/ellaism/go-ellaism/p2p/discover"
+	"github.com/ellaism/go-ellaism/p2p/nat"
+	"github.com/ellaism/go-ellaism/pow"
+	"github.com/ellaism/go-ellaism/whisper"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -138,7 +138,6 @@ func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePat
 		return e
 	}
 
-	// glog.V(logger.Debug).Infof("Copying %v to %v/chain.json", configFilePath, identityDirPath)
 	b, e := ioutil.ReadFile(configFilePath)
 	if e != nil {
 		return e
@@ -198,7 +197,6 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 			glog.V(logger.Debug).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
 			c, configurationError := core.ReadExternalChainConfigFromFile(filepath.Clean(chainFlagVal))
 			if configurationError == nil {
-				// glog.V(logger.Debug).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
 					glog.Fatalf("Could not copy chain configuration: %v", e)
 				}
@@ -215,7 +213,6 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 			glog.Fatalf("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
 				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, configurationError)
 		}
-		// glog.V(logger.Debug).Infof("No existing file at --%v: '%v'. Using literal chain identity.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
 		identity = chainFlagVal
 		return identity
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
@@ -523,7 +520,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	}
 
 	if ctx.GlobalBool(Unused1.Name) {
-		glog.V(logger.Warn).Warnln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Classic and can be omitted", Unused1.Name))
+		glog.V(logger.Warn).Warnln(fmt.Sprintf("Geth started with --%s flag, which is unused by Geth Ellaism and can be omitted", Unused1.Name))
 	}
 
 	return stack
@@ -750,8 +747,8 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
-	glog.V(logger.Info).Infof("Starting Geth Classic %s", ctx.App.Version)
-	glog.D(logger.Warn).Infof("Geth Classic version: %s", logger.ColorGreen(ctx.App.Version))
+	glog.V(logger.Info).Infof("Starting Geth Ellaism %s", ctx.App.Version)
+	glog.D(logger.Warn).Infof("Geth Ellaism version: %s", logger.ColorGreen(ctx.App.Version))
 
 	glog.V(logger.Info).Infof("Geth is configured to use ETC blockchain: %v", config.Name)
 	glog.D(logger.Warn).Infof("Blockchain: %s", logger.ColorGreen(config.Name))

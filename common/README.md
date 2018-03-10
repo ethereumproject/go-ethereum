@@ -1,14 +1,14 @@
 # common
 
 [![Build
-Status](https://travis-ci.org/ethereumproject/go-ethereum.png?branch=master)](https://travis-ci.org/ethereum/go-ethereum)
+Status](https://travis-ci.org/ellaism/go-ellaism.png?branch=master)](https://travis-ci.org/ellaism/go-ellaism)
 
 The common package contains the ethereum utility library.
 
 # Installation
 
 As a subdirectory the main go-ethereum repository, you get it with
-`go get github.com/ethereumproject/go-ethereum`.
+`go get github.com/ellaism/go-ellaism`.
 
 # Usage
 

@@ -19,7 +19,7 @@ package p2p
 import (
 	"fmt"
 
-	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"github.com/ellaism/go-ellaism/p2p/discover"
 )
 
 // Protocol represents a P2P subprotocol implementation.

@@ -144,8 +144,8 @@ teardown() {
 		run $GETH_CMD --datadir $DATA_DIR --$var --exec 'exit' console
 		[ "$status" -eq 0 ]
 	    [[ "$output" == *"Blockchain"* ]]
-    	[[ "$output" == *"Local head"* ]]
-    	[[ "$output" == *"Starting server"* ]]
+	[[ "$output" == *"Local head"* ]]
+	[[ "$output" == *"Starting server"* ]]
 	done
 
 	for var in "${new_command_names[@]}"
@@ -153,8 +153,8 @@ teardown() {
 		run $GETH_CMD --data-dir $DATA_DIR --$var --exec 'exit' console
 		[ "$status" -eq 0 ]
 	    [[ "$output" == *"Blockchain"* ]]
-    	[[ "$output" == *"Local head"* ]]
-    	[[ "$output" == *"Starting server"* ]]
+	[[ "$output" == *"Local head"* ]]
+	[[ "$output" == *"Starting server"* ]]
 	done
 }
 

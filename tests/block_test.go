@@ -21,40 +21,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ellaism/go-ellaism/logger/glog"
 )
 
 func init() {
 	glog.SetD(0)
 	glog.SetV(0)
-}
-
-func TestBcValidBlockTests(t *testing.T) {
-	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcValidBlockTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestBcUncleHeaderValidityTests(t *testing.T) {
-	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcUncleHeaderValiditiy.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestBcUncleTests(t *testing.T) {
-	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcUncleTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestBcForkUncleTests(t *testing.T) {
-	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcForkUncle.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestBcInvalidHeaderTests(t *testing.T) {
@@ -85,25 +57,11 @@ func TestBcForkBlockTests(t *testing.T) {
 	}
 }
 
-func TestBcForkStress(t *testing.T) {
-	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcForkStressTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestBcTotalDifficulty(t *testing.T) {
 	// skip because these will fail due to selfish mining fix
 	t.Skip()
 
 	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcTotalDifficultyTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestBcWallet(t *testing.T) {
-	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcWalletTest.json"), BlockSkipTests)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,21 +87,6 @@ func TestBcMultiChain(t *testing.T) {
 	t.Skip()
 
 	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcMultiChainTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestBcState(t *testing.T) {
-	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcStateTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// Homestead tests
-func TestHomesteadBcValidBlockTests(t *testing.T) {
-	err := RunBlockTest(big.NewInt(0), big.NewInt(100000), filepath.Join(blockTestDir, "Homestead", "bcValidBlockTest.json"), BlockSkipTests)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,13 +134,6 @@ func TestHomesteadBcTotalDifficulty(t *testing.T) {
 	}
 }
 
-func TestHomesteadBcWallet(t *testing.T) {
-	err := RunBlockTest(big.NewInt(0), big.NewInt(100000), filepath.Join(blockTestDir, "Homestead", "bcWalletTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestHomesteadBcGasPricer(t *testing.T) {
 	err := RunBlockTest(big.NewInt(0), big.NewInt(100000), filepath.Join(blockTestDir, "Homestead", "bcGasPricerTest.json"), BlockSkipTests)
 	if err != nil {
@@ -207,13 +143,6 @@ func TestHomesteadBcGasPricer(t *testing.T) {
 
 func TestHomesteadBcMultiChain(t *testing.T) {
 	err := RunBlockTest(big.NewInt(0), big.NewInt(100000), filepath.Join(blockTestDir, "Homestead", "bcMultiChainTest.json"), BlockSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestHomesteadBcState(t *testing.T) {
-	err := RunBlockTest(big.NewInt(0), big.NewInt(100000), filepath.Join(blockTestDir, "Homestead", "bcStateTest.json"), BlockSkipTests)
 	if err != nil {
 		t.Fatal(err)
 	}

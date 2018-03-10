@@ -21,9 +21,9 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/ellaism/go-ellaism/common"
+	"github.com/ellaism/go-ellaism/core/types"
+	"github.com/ellaism/go-ellaism/rlp"
 )
 
 // Constants to match up protocol versions and messages
@@ -42,7 +42,7 @@ var ProtocolVersions = []uint{eth63, eth62}
 var ProtocolLengths = []uint64{17, 8}
 
 const (
-	NetworkId          = 1
+	NetworkId          = 64
 	ProtocolMaxMsgSize = 10 * 1024 * 1024 // Maximum cap on the size of a protocol message
 )
 

@@ -47,11 +47,11 @@ func defaultDataDirParent() string {
 
 func defaultClassicDataDir() string {
 	if runtime.GOOS == "darwin" {
-		return "EthereumClassic"
+		return "Ellaism"
 	} else if runtime.GOOS == "windows" {
-		return "EthereumClassic"
+		return "Ellaism"
 	} else {
-		return ".ethereum-classic"
+		return ".ellaism"
 	}
 }
 

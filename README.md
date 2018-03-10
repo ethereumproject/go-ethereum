@@ -1,23 +1,15 @@
-[![Build Status](https://travis-ci.org/ethereumproject/go-ethereum.svg?branch=master)](https://travis-ci.org/ethereumproject/go-ethereum)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/ethereumproject/go-ethereum?svg=true)](https://ci.appveyor.com/project/splix/go-ethereum)
-[![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
-)](https://godoc.org/github.com/ethereumproject/go-ethereum)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+## Ethereum Go (Ellaism Blockchain)
 
-## Ethereum Go (Ethereum Classic Blockchain)
+[![Build Status](https://travis-ci.org/ellaism/go-ellaism.svg?branch=v4.0.0)](https://travis-ci.org/ellaism/go-ellaism)
+[![Build status](https://ci.appveyor.com/api/projects/status/nex44mcbumitbw79?svg=true)](https://ci.appveyor.com/project/ellaismer/go-ellaism)
 
-Official Go language implementation of the Ethereum protocol supporting the
-_original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and powerful application platform for developers in parallel to Ethereum (ETHF), while differentially rejecting the DAO bailout.
+
+Official Go language implementation of the Ethereum protocol supporting the Ellaism chain.
 
 ## Install
 
 ### :rocket: From a release binary
-The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Home#Developers).
-
-#### :beers: Using Homebrew (OSX only)
-```
-$ brew install ethereumproject/classic/geth
-```
+The simplest way to get started running a node is to visit our [Releases page](https://github.com/ellaism/go-ellaism/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working.
 
 ### :hammer: Building the source
 
@@ -27,80 +19,35 @@ If your heart is set on the bleeding edge, install from source. However, please 
 Building geth requires both Go >=1.9 and a C compiler.
 
 #### Get source and dependencies
-`$ go get -v github.com/ethereumproject/go-ethereum/...`
+`$ go get -v github.com/ellaism/go-ellaism/...`
 
 #### Installing command executables
 
 To install...
-
-- the full suite of utilities: `$ go install github.com/ethereumproject/go-ethereum/cmd/...`
-- just __geth__: `$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
+- the full suite of utilities: `$ go install github.com/ellaism/go-ellaism/cmd/...`
+- just __geth__: `$ go install github.com/ellaism/go-ellaism/cmd/geth`
 
 Executables built from source will, by default, be installed in `$GOPATH/bin/`.
 
 #### Building specific release
 All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following:
 ```
-$ go get -d github.com/ethereumproject/go-ethereum/...
-$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+$ go get -d github.com/ellaism/go-ellaism/...
+$ cd $GOPATH/src/github.com/ellaism/go-ellaism
 $ git checkout <TAG OR REVISION>
 $ go install -ldflags "-X main.Version="`git describe --tags` ./cmd/...
 ```
 
 #### Using release source code tarball
-Because of strict Go directory structure, the tarball needs to be extracted into the proper subdirectory under `$GOPATH`.
+Because of strict Go directory structure, the tarball needs to be extracted into proper subdirectory under `$GOPATH`.
 The following commands are an example of building the v4.1.1 release:
 ```
-$ mkdir -p $GOPATH/src/github.com/ethereumproject
-$ cd $GOPATH/src/github.com/ethereumproject
-$ tar xzf /path/to/go-ethereum-4.1.1.tar.gz
-$ mv go-ethereum-4.1.1 go-ethereum
-$ cd go-ethereum
+$ mkdir -p $GOPATH/src/github.com/ellaism
+$ cd $GOPATH/src/github.com/ellaism
+$ tar xzf /path/to/go-ellaism-4.1.1.tar.gz
+$ mv go-ellaism-4.1.1 go-ellaism
+$ cd go-ellaism
 $ go install -ldflags "-X main.Version=v4.1.1" ./cmd/...
-```
-
-#### Building with [SputnikVM](https://github.com/ethereumproject/sputnikvm)
-Have Rust (>= 1.21) and Golang (>= 1.9) installed.
-
-> For __Linux__ and __macOS__:
-
-```
-cd $GOPATH/src/github.com/ethereumproject
-git clone https://github.com/ethereumproject/sputnikvm-ffi
-cd sputnikvm-ffi/c/ffi
-cargo build --release
-cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
-```
-And then build geth with CGO_LDFLAGS:
-
-- In Linux:
-
-```
-cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
-CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go build -tags=sputnikvm .
-```
-
-- In macOS:
-
-```
-cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
-CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv" go build -tags=sputnikvm .
-```
-
-> For __Windows__:
-
-```
-cd %GOPATH%\src\github.com\ethereumproject
-git clone https://github.com/ethereumproject/sputnikvm-ffi
-cd sputnikvm-ffi\c\ffi
-cargo build --release
-copy %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi\target\release\sputnikvm.lib %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib
-```
-And then build geth with CGO_LDFLAGS:
-```
-cd %GOPATH%\src\github.com\ethereumproject\go-ethereum\cmd\geth
-set CGO_LDFLAGS=-Wl,--allow-multiple-definition %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
-go build -tags=sputnikvm .
 ```
 
 ## Executables
@@ -109,8 +56,8 @@ This repository includes several wrappers/executables found in the `cmd` directo
 
 | Command    | Description |
 |:----------:|-------------|
-| **`geth`** | The main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test-, or private net), capable of running as a full node (default) archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. Please see our [Command Line Options](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options) wiki page for details. |
-| `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Ethereum contract ABIs](https://github.com/ethereumproject/wiki/wiki/Ethereum-Contract-ABI) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/ethereumproject/go-ethereum/wiki/Native-DApps-in-Go) wiki page for details. |
+| **`geth`** | The main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test-, or private net), capable of running as a full node (default) archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. Please see our [Command Line Options](https://github.com/ellaism/go-ellaism/wiki/Command-Line-Options) wiki page for details. |
+| `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Ethereum contract ABIs](https://github.com/ethereumproject/wiki/wiki/Ethereum-Contract-ABI) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/ellaism/go-ellaism/wiki/Native-DApps-in-Go) wiki page for details. |
 | `bootnode` | Stripped down version of our Ethereum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks. |
 | `disasm` | Bytecode disassembler to convert EVM (Ethereum Virtual Machine) bytecode into more user friendly assembly-like opcodes (e.g. `echo "6001" | disasm`). For details on the individual opcodes, please see pages 22-30 of the [Ethereum Yellow Paper](http://gavwood.com/paper.pdf). |
 | `evm` | Developer utility version of the EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode. Its purpose is to allow insolated, fine graned debugging of EVM opcodes (e.g. `evm --code 60ff60ff --debug`). |
@@ -121,9 +68,9 @@ This repository includes several wrappers/executables found in the `cmd` directo
 
 ### Data directory
 By default, geth will store all node and blockchain data in a __parent directory__ depending on your OS:
-- Linux: `$HOME/.ethereum-classic/`
-- Mac: `$HOME/Library/EthereumClassic/`
-- Windows: `$HOME/AppData/Roaming/EthereumClassic/`
+- Linux: `$HOME/.ellaism/`
+- Mac: `$HOME/Library/Ellaism/`
+- Windows: `$HOME/AppData/Roaming/Ellaism/`
 
 __You can specify this directory__ with `--data-dir=$HOME/id/rather/put/it/here`.
 
@@ -133,19 +80,17 @@ Within this parent directory, geth will use a __/subdirectory__ to hold data for
 
 __You can specify this subdirectory__ with `--chain=mycustomnet`.
 
-> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/ethereumproject/go-ethereum/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes).
-
 ### Full node on the main Ethereum network
 
 ```
 $ geth
 ```
 
-It's that easy! This will establish an ETC blockchain node and download ("sync") the full blocks for the entirety of the ETC blockchain. __However__, before you go ahead with plain ol' `geth`, we would encourage reviewing the following section...
+It's that easy! This will establish an Ellaism blockchain node and download ("sync") the full blocks for the entirety of the Ellaism blockchain. __However__, before you go ahead with plain ol' `geth`, we would encourage reviewing the following section...
 
 #### :speedboat: `--fast`
 
-The most common scenario is users wanting to simply interact with the Ethereum Classic network: create accounts; transfer funds; deploy and interact with contracts, and mine. For this particular use-case the user doesn't care about years-old historical data, so we can _fast-sync_ to the current state of the network. To do so:
+The most common scenario is users wanting to simply interact with the Ellaism network: create accounts; transfer funds; deploy and interact with contracts, and mine. For this particular use-case the user doesn't care about years-old historical data, so we can _fast-sync_ to the current state of the network. To do so:
 
 ```
 $ geth --fast
@@ -182,7 +127,7 @@ SUBCOMMANDS:
 
 ```
 
-Learn more at the [Accounts Wiki Page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-Accounts). If you're interested in using geth to manage a lot (~100,000+) of accounts, please visit the [Indexing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Indexing-Accounts).
+Learn more at the [Accounts Wiki Page](https://github.com/ellaism/go-ellaism/wiki/Managing-Accounts). If you're interested in using geth to manage a lot (~100,000+) of accounts, please visit the [Indexing Accounts Wiki page](https://github.com/ellaism/go-ellaism/wiki/Indexing-Accounts).
 
 
 ### Interact with the Javascript console
@@ -190,14 +135,14 @@ Learn more at the [Accounts Wiki Page](https://github.com/ethereumproject/go-eth
 $ geth console
 ```
 
-This command will start up Geth's built-in interactive [JavaScript console](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console), through which you can invoke all official [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API) as well as Geth's own [management APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs). This too is optional and if you leave it out you can always attach to an already running Geth instance with `geth attach`.
+This command will start up Geth's built-in interactive [JavaScript console](https://github.com/ellaism/go-ellaism/wiki/JavaScript-Console), through which you can invoke all official [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API) as well as Geth's own [management APIs](https://github.com/ellaism/go-ellaism/wiki/Management-APIs). This too is optional and if you leave it out you can always attach to an already running Geth instance with `geth attach`.
 
-Learn more at the [Javascript Console Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console).
+Learn more at the [Javascript Console Wiki page](https://github.com/ellaism/go-ellaism/wiki/JavaScript-Console).
 
 
 ### And so much more!
 
-For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
+For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/ellaism/go-ellaism/wiki/Command-Line-Options).
 
 ## :orange_book: Geth: developing and advanced useage
 
@@ -224,7 +169,7 @@ will by default correctly separate the two networks and will not make any accoun
 ### Programatically interfacing Geth nodes
 
 As a developer, sooner rather than later you'll want to start interacting with Geth and the Ethereum network via your own programs and not manually through the console. To aid this, Geth has built in support for a JSON-RPC based APIs ([standard APIs](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) and
-[Geth specific APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs)). These can be exposed via HTTP, WebSockets and IPC (unix sockets on unix based platroms, and named pipes on Windows).
+[Geth specific APIs](https://github.com/ellaism/go-ellaism/wiki/Management-APIs)). These can be exposed via HTTP, WebSockets and IPC (unix sockets on unix based platroms, and named pipes on Windows).
 
 The IPC interface is enabled by default and exposes all the APIs supported by Geth, whereas the HTTP and WS interfaces need to manually be enabled and only expose a subset of APIs due to security reasons. These can be turned on/off and configured as you'd expect.
 
@@ -250,7 +195,7 @@ You'll need to use your own programming environments' capabilities (libraries, t
 
 ### Operating a private/custom network
 
-As of [Geth 3.4](https://github.com/ethereumproject/go-ethereum/releases) you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID.
+As of [Geth 3.4](https://github.com/ellaism/go-ellaism/releases) you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID.
 
 Please find full [example  external configuration files representing the Mainnet and Morden Testnet specs in the /config subdirectory of this repo](). You can use either of these files as a starting point for your own customizations.
 
@@ -272,7 +217,7 @@ The external chain configuration file specifies valid settings for the following
 | JSON Key | Notes |
 | --- | --- |
 | `chainID` |  Chain identity. Determines local __/subdir__ for chain data, with required `chain.json` located in it. It is required, but must not be identical for each node. Please note that this is _not_ the chainID validation introduced in _EIP-155_; that is configured as a protocal upgrade within `forks.features`. |
-| `name` | _Optional_. Human readable name, ie _Ethereum Classic Mainnet_, _Morden Testnet._ |
+| `name` | _Optional_. Human readable name, ie _Ellaism Mainnet_, _Morden Testnet._ |
 | `state.startingNonce` | _Optional_. Initialize state db with a custom nonce. |
 | `network` | Determines Network ID to identify valid peers. |
 | `consensus` | _Optional_. Proof of work algorithm to use, either "ethash" or "ethast-test" (for development) |
@@ -283,7 +228,7 @@ The external chain configuration file specifies valid settings for the following
 
 *Fields `name`, `state.startingNonce`, and `consensus` are optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain` __incompatible__ with `--testnet`. It remains __compatible__ with `--data-dir`.*
 
-To learn more about external chain configuration, please visit the [External Command Line Options Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
+To learn more about external chain configuration, please visit the [External Command Line Options Wiki page](https://github.com/ellaism/go-ellaism/wiki/Command-Line-Options).
 
 ##### Create the rendezvous point
 
@@ -325,7 +270,7 @@ $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x000000000000000000000
 
 Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to the account specified by `--etherbase`. You can further tune the mining by changing the default gas limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
 
-For more information about managing accounts, please see the [Managing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-Accounts).
+For more information about managing accounts, please see the [Managing Accounts Wiki page](https://github.com/ellaism/go-ellaism/wiki/Managing-Accounts).
 
 
 ## Contribution
@@ -338,7 +283,7 @@ This project is migrated from the now hard-forked [Ethereum (ETHF) Github projec
 
 If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes, please check up with the core devs first on [our Slack channel (#development)](http://ethereumclassic.herokuapp.com/) or [our Discord channel (#development)](https://discord.gg/wpwSGWn) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
 
-Please see the [Wiki](https://github.com/ethereumproject/go-ethereum/wiki) for more details on configuring your environment, managing project dependencies, and testing procedures.
+Please see the [Wiki](https://github.com/ellaism/go-ellaism/wiki) for more details on configuring your environment, managing project dependencies, and testing procedures.
 
 ## License
 
