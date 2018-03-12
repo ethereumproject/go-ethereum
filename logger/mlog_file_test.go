@@ -23,3 +23,15 @@ func BenchmarkSetDetailValues(b *testing.B) {
 		mlogExampleT.AssignDetails(vals...)
 	}
 }
+
+func TestEnabling(t *testing.T) {
+	SetMlogEnabled(false)
+	if MlogEnabled() != false {
+		t.Error("expected: false, got: true")
+	}
+
+	SetMlogEnabled(true)
+	if MlogEnabled() != true {
+		t.Error("expected: true, got: false")
+	}
+}

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"math/big"
 	"os"
@@ -30,7 +31,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 type mlogFormatT uint
@@ -66,7 +66,7 @@ var (
 		"QUOTEDSTRING":   "string with spaces",
 		"STRING_OR_NULL": nil,
 		"DURATION":       time.Minute + time.Second*3 + time.Millisecond*42,
-		"OBJECT": common.GetClientSessionIdentity(),
+		"OBJECT":         common.GetClientSessionIdentity(),
 	}
 
 	MLogStringToFormat = map[string]mlogFormatT{
@@ -140,10 +140,8 @@ func init() {
 	userName = strings.Replace(userName, `\`, "_", -1)
 }
 
-// Getters.
-func SetMlogEnabled(b bool) bool {
+func SetMlogEnabled(b bool) {
 	isMlogEnabled = b
-	return isMlogEnabled
 }
 
 func MlogEnabled() bool {
@@ -222,7 +220,6 @@ func (msg *MLogT) Send(c mlogComponent) {
 	}
 	mlogRegLock.RUnlock()
 }
-
 
 func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT, c mlogComponent) {
 	switch format {
