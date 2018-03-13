@@ -370,7 +370,7 @@ func (m *MLogT) FormatKV() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("session=%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s session=%s", m.Receiver, m.Verb, m.Subject, common.SessionID)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -386,7 +386,7 @@ func (m *MLogT) FormatPlain() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", m.Receiver, m.Verb, m.Subject, common.SessionID)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
