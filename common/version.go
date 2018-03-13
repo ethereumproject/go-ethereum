@@ -36,7 +36,7 @@ type ClientSessionIdentityT struct {
 
 // String is the stringer fn for ClientSessionIdentityT
 func (s *ClientSessionIdentityT) String() string {
-	return fmt.Sprintln(s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
+	return fmt.Sprint(s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
 }
 
 // Helpers for random sessionid string.

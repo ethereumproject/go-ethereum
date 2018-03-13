@@ -2,11 +2,11 @@ package p2p
 
 import "github.com/ethereumproject/go-ethereum/logger"
 
-var mlogServer = logger.MLogRegisterAvailable("server", mLogLines)
+var mlogServer = logger.MLogRegisterAvailable("server", mLogLinesServer)
 
-var mLogLines = []logger.MLogT{
-	*mlogServerPeerAdded,
-	*mlogServerPeerRemove,
+var mLogLinesServer = []*logger.MLogT{
+	mlogServerPeerAdded,
+	mlogServerPeerRemove,
 }
 
 var mlogServerPeerAdded = &logger.MLogT{
@@ -15,10 +15,10 @@ var mlogServerPeerAdded = &logger.MLogT{
 	Verb:        "ADD",
 	Subject:     "PEER",
 	Details: []logger.MLogDetailT{
-		{"SERVER", "PEER_COUNT", "INT"},
-		{"PEER", "ID", "STRING"},
-		{"PEER", "REMOTE_ADDR", "STRING"},
-		{"PEER", "REMOTE_VERSION", "STRING"},
+		{Owner: "SERVER", Key: "PEER_COUNT", Value: "INT"},
+		{Owner: "PEER", Key: "ID", Value: "STRING"},
+		{Owner: "PEER", Key: "REMOTE_ADDR", Value: "STRING"},
+		{Owner: "PEER", Key: "REMOTE_VERSION", Value: "STRING"},
 	},
 }
 
@@ -28,8 +28,9 @@ var mlogServerPeerRemove = &logger.MLogT{
 	Verb:        "REMOVE",
 	Subject:     "PEER",
 	Details: []logger.MLogDetailT{
-		{"SERVER", "PEER_COUNT", "INT"},
-		{"PEER", "ID", "STRING"},
-		{"REMOVE", "REASON", "QUOTEDSTRING"},
+		{Owner: "SERVER", Key: "PEER_COUNT", Value: "INT"},
+		{Owner: "PEER", Key: "ID", Value: "STRING"},
+		{Owner: "REMOVE", Key: "REASON", Value: "QUOTEDSTRING"},
 	},
 }
+

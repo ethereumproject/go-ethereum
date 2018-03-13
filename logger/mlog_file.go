@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"math/big"
 	"os"
@@ -30,7 +31,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 type mlogFormatT uint
@@ -52,9 +52,9 @@ var (
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
 	// with MLogRegisterAvailable.
-	MLogRegistryAvailable = make(map[mlogComponent][]MLogT)
+	mLogRegistryAvailable = make(map[mlogComponent][]*MLogT)
 	// MLogRegistryActive contains all registered mlog component and their respective loggers.
-	MLogRegistryActive = make(map[mlogComponent]*Logger)
+	mLogRegistryActive = make(map[mlogComponent]*Logger)
 	mlogRegLock        sync.RWMutex
 
 	// Abstract literals (for documentation examples, labels)
@@ -62,10 +62,11 @@ var (
 		"INT":            int(0),
 		"BIGINT":         new(big.Int),
 		"STRING":         "string",
+		"BOOL":           true,
 		"QUOTEDSTRING":   "string with spaces",
 		"STRING_OR_NULL": nil,
 		"DURATION":       time.Minute + time.Second*3 + time.Millisecond*42,
-		"OBJECT": common.GetClientSessionIdentity(),
+		"OBJECT":         common.GetClientSessionIdentity(),
 	}
 
 	MLogStringToFormat = map[string]mlogFormatT{
@@ -139,10 +140,8 @@ func init() {
 	userName = strings.Replace(userName, `\`, "_", -1)
 }
 
-// Getters.
-func SetMlogEnabled(b bool) bool {
+func SetMlogEnabled(b bool) {
 	isMlogEnabled = b
-	return isMlogEnabled
 }
 
 func MlogEnabled() bool {
@@ -152,12 +151,37 @@ func MlogEnabled() bool {
 // MLogRegisterAvailable is called for each log component variable from a package/mlog.go file
 // as they set up their mlog vars.
 // It registers an mlog component as Available.
-func MLogRegisterAvailable(name string, lines []MLogT) mlogComponent {
+func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
-	MLogRegistryAvailable[c] = lines
+	mLogRegistryAvailable[c] = lines
 	mlogRegLock.Unlock()
 	return c
+}
+
+// GetMlogRegistryAvailable returns copy of all registered components mapping
+func GetMLogRegistryAvailable() map[mlogComponent][]*MLogT {
+	mlogRegLock.RLock()
+	defer mlogRegLock.RUnlock()
+
+	ret := make(map[mlogComponent][]*MLogT)
+	for k, v := range mLogRegistryAvailable {
+		ret[k] = make([]*MLogT, len(v))
+		copy(ret[k], v)
+	}
+	return ret
+}
+
+// GetMlogRegistryActive returns copy of all active components mapping
+func GetMLogRegistryActive() map[mlogComponent]*Logger {
+	mlogRegLock.RLock()
+	defer mlogRegLock.RUnlock()
+
+	ret := make(map[mlogComponent]*Logger)
+	for k, v := range mLogRegistryActive {
+		ret[k] = v
+	}
+	return ret
 }
 
 // MLogRegisterComponentsFromContext receives a comma-separated string of
@@ -165,15 +189,37 @@ func MLogRegisterAvailable(name string, lines []MLogT) mlogComponent {
 // It returns an error if the specified mlog component is unavailable.
 // For each available component, the desires mlog components are registered as active,
 // creating new loggers for each.
+// If the string begins with '!', the function will remove the following components from the
+// default list
 func MLogRegisterComponentsFromContext(s string) error {
+	// negation
+	var negation bool
+	if strings.HasPrefix(s, "!") {
+		negation = true
+		s = strings.TrimPrefix(s, "!")
+	}
 	ss := strings.Split(s, ",")
-	for _, c := range ss {
-		ct := strings.TrimSpace(c)
-		if MLogRegistryAvailable[mlogComponent(ct)] != nil {
+
+	registry := GetMLogRegistryAvailable()
+
+	if !negation {
+		for _, c := range ss {
+			ct := strings.TrimSpace(c)
+			if _, ok := registry[mlogComponent(ct)]; !ok {
+				return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
+			}
 			MLogRegisterActive(mlogComponent(ct))
-			continue
 		}
-		return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
+		return nil
+	}
+	// Register all
+	for c := range registry {
+		MLogRegisterActive(c)
+	}
+	// then remove
+	for _, u := range ss {
+		ct := strings.TrimSpace(u)
+		mlogRegisterInactive(mlogComponent(ct))
 	}
 	return nil
 }
@@ -182,25 +228,24 @@ func MLogRegisterComponentsFromContext(s string) error {
 // Only registered loggers will write to mlog file.
 func MLogRegisterActive(component mlogComponent) {
 	mlogRegLock.Lock()
-	MLogRegistryActive[component] = NewLogger(string(component))
+	mLogRegistryActive[component] = NewLogger(string(component))
 	mlogRegLock.Unlock()
 }
 
 func mlogRegisterInactive(component mlogComponent) {
 	mlogRegLock.Lock()
-	delete(MLogRegistryActive, component) // noop if nil
+	delete(mLogRegistryActive, component) // noop if nil
 	mlogRegLock.Unlock()
 }
 
 // SendMLog writes enabled component mlogs to file if the component is registered active.
 func (msg *MLogT) Send(c mlogComponent) {
 	mlogRegLock.RLock()
-	if l, exists := MLogRegistryActive[c]; exists {
+	if l, exists := mLogRegistryActive[c]; exists {
 		l.SendFormatted(GetMLogFormat(), 1, msg, c)
 	}
 	mlogRegLock.RUnlock()
 }
-
 
 func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT, c mlogComponent) {
 	switch format {
@@ -325,7 +370,7 @@ func (m *MLogT) FormatKV() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("session=%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -341,7 +386,7 @@ func (m *MLogT) FormatPlain() (out string) {
 	m.Lock()
 	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("session=%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", common.SessionID, m.Receiver, m.Verb, m.Subject)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
