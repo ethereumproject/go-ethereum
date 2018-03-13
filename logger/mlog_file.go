@@ -52,9 +52,9 @@ var (
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
 	// with MLogRegisterAvailable.
-	MLogRegistryAvailable = make(map[mlogComponent][]*MLogT)
+	mLogRegistryAvailable = make(map[mlogComponent][]*MLogT)
 	// MLogRegistryActive contains all registered mlog component and their respective loggers.
-	MLogRegistryActive = make(map[mlogComponent]*Logger)
+	mLogRegistryActive = make(map[mlogComponent]*Logger)
 	mlogRegLock        sync.RWMutex
 
 	// Abstract literals (for documentation examples, labels)
@@ -154,9 +154,34 @@ func MlogEnabled() bool {
 func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
-	MLogRegistryAvailable[c] = lines
+	mLogRegistryAvailable[c] = lines
 	mlogRegLock.Unlock()
 	return c
+}
+
+// GetMlogRegistryAvailable returns copy of all registered components mapping
+func GetMLogRegistryAvailable() map[mlogComponent][]*MLogT {
+	mlogRegLock.RLock()
+	defer mlogRegLock.RUnlock()
+
+	ret := make(map[mlogComponent][]*MLogT)
+	for k, v := range mLogRegistryAvailable {
+		ret[k] = make([]*MLogT, len(v))
+		copy(ret[k], v)
+	}
+	return ret
+}
+
+// GetMlogRegistryActive returns copy of all active components mapping
+func GetMLogRegistryActive() map[mlogComponent]*Logger {
+	mlogRegLock.RLock()
+	defer mlogRegLock.RUnlock()
+
+	ret := make(map[mlogComponent]*Logger)
+	for k, v := range mLogRegistryActive {
+		ret[k] = v
+	}
+	return ret
 }
 
 // MLogRegisterComponentsFromContext receives a comma-separated string of
@@ -175,19 +200,20 @@ func MLogRegisterComponentsFromContext(s string) error {
 	}
 	ss := strings.Split(s, ",")
 
+	registry := GetMLogRegistryAvailable()
+
 	if !negation {
 		for _, c := range ss {
 			ct := strings.TrimSpace(c)
-			if MLogRegistryAvailable[mlogComponent(ct)] != nil {
-				MLogRegisterActive(mlogComponent(ct))
-				continue
+			if _, ok := registry[mlogComponent(ct)]; !ok {
+				return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
 			}
-			return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
+			MLogRegisterActive(mlogComponent(ct))
 		}
 		return nil
 	}
 	// Register all
-	for c := range MLogRegistryAvailable {
+	for c := range registry {
 		MLogRegisterActive(c)
 	}
 	// then remove
@@ -202,20 +228,20 @@ func MLogRegisterComponentsFromContext(s string) error {
 // Only registered loggers will write to mlog file.
 func MLogRegisterActive(component mlogComponent) {
 	mlogRegLock.Lock()
-	MLogRegistryActive[component] = NewLogger(string(component))
+	mLogRegistryActive[component] = NewLogger(string(component))
 	mlogRegLock.Unlock()
 }
 
 func mlogRegisterInactive(component mlogComponent) {
 	mlogRegLock.Lock()
-	delete(MLogRegistryActive, component) // noop if nil
+	delete(mLogRegistryActive, component) // noop if nil
 	mlogRegLock.Unlock()
 }
 
 // SendMLog writes enabled component mlogs to file if the component is registered active.
 func (msg *MLogT) Send(c mlogComponent) {
 	mlogRegLock.RLock()
-	if l, exists := MLogRegistryActive[c]; exists {
+	if l, exists := mLogRegistryActive[c]; exists {
 		l.SendFormatted(GetMLogFormat(), 1, msg, c)
 	}
 	mlogRegLock.RUnlock()
