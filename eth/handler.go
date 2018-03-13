@@ -319,7 +319,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 // peer. The remote connection is torn down upon returning any error.
 func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 	// Read the next message from the remote peer, and ensure it's fully consumed
-	var unknownMessageCode uint64 = 666666
+	var unknownMessageCode uint64 = math.MaxUint64
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
 		mlogWireDelegate(p, "receive", unknownMessageCode, -1, nil, err)
