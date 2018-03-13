@@ -138,7 +138,7 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 	for _, tx := range txs {
 		p.knownTxs.Add(tx.Hash())
 	}
-	s, e := p2p.SendAndReturnSize(p.rw, TxMsg, txs)
+	s, e := p2p.Send(p.rw, TxMsg, txs)
 	mlogWireDelegate(p, "send", TxMsg, s, txs, nil)
 	return e
 }
@@ -154,7 +154,7 @@ func (p *peer) SendNewBlockHashes(hashes []common.Hash, numbers []uint64) error 
 		request[i].Hash = hashes[i]
 		request[i].Number = numbers[i]
 	}
-	s, e := p2p.SendAndReturnSize(p.rw, NewBlockHashesMsg, request)
+	s, e := p2p.Send(p.rw, NewBlockHashesMsg, request)
 	mlogWireDelegate(p, "send", NewBlockHashesMsg, s, request, nil)
 	return e
 }
@@ -162,21 +162,21 @@ func (p *peer) SendNewBlockHashes(hashes []common.Hash, numbers []uint64) error 
 // SendNewBlock propagates an entire block to a remote peer.
 func (p *peer) SendNewBlock(block *types.Block, td *big.Int) error {
 	p.knownBlocks.Add(block.Hash())
-	s, e := p2p.SendAndReturnSize(p.rw, NewBlockMsg, []interface{}{block, td})
+	s, e := p2p.Send(p.rw, NewBlockMsg, []interface{}{block, td})
 	mlogWireDelegate(p, "send", NewBlockMsg, s, newBlockData{Block: block, TD: td}, nil) // send slice of len 1
 	return e
 }
 
 // SendBlockHeaders sends a batch of block headers to the remote peer.m
 func (p *peer) SendBlockHeaders(headers []*types.Header) error {
-	s, e := p2p.SendAndReturnSize(p.rw, BlockHeadersMsg, headers)
+	s, e := p2p.Send(p.rw, BlockHeadersMsg, headers)
 	mlogWireDelegate(p, "send", BlockHeadersMsg, s, headers, nil)
 	return e
 }
 
 // SendBlockBodies sends a batch of block contents to the remote peer.
 func (p *peer) SendBlockBodies(bodies []*blockBody) error {
-	s, e := p2p.SendAndReturnSize(p.rw, BlockBodiesMsg, blockBodiesData(bodies))
+	s, e := p2p.Send(p.rw, BlockBodiesMsg, blockBodiesData(bodies))
 	mlogWireDelegate(p, "send", BlockBodiesMsg, s, bodies, nil)
 	return e
 }
@@ -184,7 +184,7 @@ func (p *peer) SendBlockBodies(bodies []*blockBody) error {
 // SendBlockBodiesRLP sends a batch of block contents to the remote peer from
 // an already RLP encoded format.
 func (p *peer) SendBlockBodiesRLP(bodies []rlp.RawValue) error {
-	s, e := p2p.SendAndReturnSize(p.rw, BlockBodiesMsg, bodies)
+	s, e := p2p.Send(p.rw, BlockBodiesMsg, bodies)
 	mlogWireDelegate(p, "send", BlockBodiesMsg, s, bodies, nil)
 	return e
 }
@@ -192,7 +192,7 @@ func (p *peer) SendBlockBodiesRLP(bodies []rlp.RawValue) error {
 // SendNodeDataRLP sends a batch of arbitrary internal data, corresponding to the
 // hashes requested.
 func (p *peer) SendNodeData(data [][]byte) error {
-	s, e := p2p.SendAndReturnSize(p.rw, NodeDataMsg, data)
+	s, e := p2p.Send(p.rw, NodeDataMsg, data)
 	mlogWireDelegate(p, "send", NodeDataMsg, s, data, nil)
 	return e
 }
@@ -200,7 +200,7 @@ func (p *peer) SendNodeData(data [][]byte) error {
 // SendReceiptsRLP sends a batch of transaction receipts, corresponding to the
 // ones requested from an already RLP encoded format.
 func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
-	s, e := p2p.SendAndReturnSize(p.rw, ReceiptsMsg, receipts)
+	s, e := p2p.Send(p.rw, ReceiptsMsg, receipts)
 	mlogWireDelegate(p, "send", ReceiptsMsg, s, receipts, nil)
 	return e
 }
@@ -210,7 +210,7 @@ func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 func (p *peer) RequestOneHeader(hash common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching a single header: %x", p, hash)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Hash: hash}, Amount: uint64(1), Skip: uint64(0), Reverse: false}
-	s, e := p2p.SendAndReturnSize(p.rw, GetBlockHeadersMsg, d)
+	s, e := p2p.Send(p.rw, GetBlockHeadersMsg, d)
 	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
 	return e
 }
@@ -220,7 +220,7 @@ func (p *peer) RequestOneHeader(hash common.Hash) error {
 func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, reverse bool) error {
 	glog.V(logger.Debug).Infof("%v fetching %d headers from %x, skipping %d (reverse = %v)", p, amount, origin[:4], skip, reverse)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Hash: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse}
-	s, e := p2p.SendAndReturnSize(p.rw, GetBlockHeadersMsg, d)
+	s, e := p2p.Send(p.rw, GetBlockHeadersMsg, d)
 	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
 	return e
 }
@@ -230,7 +230,7 @@ func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, re
 func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, reverse bool) error {
 	glog.V(logger.Debug).Infof("%v fetching %d headers from #%d, skipping %d (reverse = %v)", p, amount, origin, skip, reverse)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Number: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse}
-	s, e := p2p.SendAndReturnSize(p.rw, GetBlockHeadersMsg, d)
+	s, e := p2p.Send(p.rw, GetBlockHeadersMsg, d)
 	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
 	return e
 }
@@ -239,7 +239,7 @@ func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, rever
 // specified.
 func (p *peer) RequestBodies(hashes []common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching %d block bodies first=%s", p, len(hashes), hashes[0].Hex())
-	s, e := p2p.SendAndReturnSize(p.rw, GetBlockBodiesMsg, hashes)
+	s, e := p2p.Send(p.rw, GetBlockBodiesMsg, hashes)
 	mlogWireDelegate(p, "send", GetBlockBodiesMsg, s, hashes, nil)
 	return e
 }
@@ -248,7 +248,7 @@ func (p *peer) RequestBodies(hashes []common.Hash) error {
 // data, corresponding to the specified hashes.
 func (p *peer) RequestNodeData(hashes []common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching %v state data first=%s", p, len(hashes), hashes[0].Hex())
-	s, e := p2p.SendAndReturnSize(p.rw, GetNodeDataMsg, hashes)
+	s, e := p2p.Send(p.rw, GetNodeDataMsg, hashes)
 	mlogWireDelegate(p, "send", GetNodeDataMsg, s, hashes, nil)
 	return e
 }
@@ -256,7 +256,7 @@ func (p *peer) RequestNodeData(hashes []common.Hash) error {
 // RequestReceipts fetches a batch of transaction receipts from a remote node.
 func (p *peer) RequestReceipts(hashes []common.Hash) error {
 	glog.V(logger.Debug).Infof("%v fetching %v receipts first=%s", p, len(hashes), hashes[0].Hex())
-	s, e := p2p.SendAndReturnSize(p.rw, GetReceiptsMsg, hashes)
+	s, e := p2p.Send(p.rw, GetReceiptsMsg, hashes)
 	mlogWireDelegate(p, "send", GetReceiptsMsg, s, hashes, nil)
 	return e
 }
@@ -281,7 +281,7 @@ func (p *peer) Handshake(network int, td *big.Int, head common.Hash, genesis com
 
 	go func() {
 		var e error
-		sendSize, e = p2p.SendAndReturnSize(p.rw, StatusMsg, d)
+		sendSize, e = p2p.Send(p.rw, StatusMsg, d)
 		sendErrc <- e
 	}()
 	go func() {

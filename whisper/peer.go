@@ -167,7 +167,7 @@ func (self *peer) broadcast() error {
 		}
 	}
 	// Transmit the unknown batch (potentially empty)
-	if err := p2p.Send(self.ws, messagesCode, transmit); err != nil {
+	if _, err := p2p.Send(self.ws, messagesCode, transmit); err != nil {
 		return err
 	}
 	glog.V(logger.Detail).Infoln(self.peer, "broadcasted", len(transmit), "message(s)")

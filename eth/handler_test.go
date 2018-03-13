@@ -207,7 +207,7 @@ func testGetBlockHeaders(t *testing.T, protocol int) {
 			headers = append(headers, pm.blockchain.GetBlock(hash).Header())
 		}
 		// Send the hash request and verify the response
-		s, _ := p2p.SendAndReturnSize(peer.app, 0x03, tt.query)
+		s, _ := p2p.Send(peer.app, 0x03, tt.query)
 		if s == 0 {
 			t.Errorf("got: %v, want: >0", s)
 		}
@@ -219,7 +219,7 @@ func testGetBlockHeaders(t *testing.T, protocol int) {
 			if origin := pm.blockchain.GetBlockByNumber(tt.query.Origin.Number); origin != nil {
 				tt.query.Origin.Hash, tt.query.Origin.Number = origin.Hash(), 0
 
-				s, _ := p2p.SendAndReturnSize(peer.app, 0x03, tt.query)
+				s, _ := p2p.Send(peer.app, 0x03, tt.query)
 				if s == 0 {
 					t.Errorf("got: %v, want: >0", s)
 				}
@@ -296,7 +296,7 @@ func testGetBlockBodies(t *testing.T, protocol int) {
 			}
 		}
 		// Send the hash request and verify the response
-		s, _ := p2p.SendAndReturnSize(peer.app, 0x05, hashes)
+		s, _ := p2p.Send(peer.app, 0x05, hashes)
 		if s == 0 {
 			t.Errorf("got: %v, want: >0", s)
 		}
@@ -356,7 +356,7 @@ func testGetNodeData(t *testing.T, protocol int) {
 			hashes = append(hashes, common.BytesToHash(key))
 		}
 	}
-	s, _ := p2p.SendAndReturnSize(peer.app, 0x0d, hashes)
+	s, _ := p2p.Send(peer.app, 0x0d, hashes)
 	if s == 0 {
 		t.Errorf("got: %v, want: >0", s)
 	}
@@ -452,7 +452,7 @@ func testGetReceipt(t *testing.T, protocol int) {
 		receipts = append(receipts, core.GetBlockReceipts(pm.chaindb, block.Hash()))
 	}
 	// Send the hash request and verify the response
-	s, _ := p2p.SendAndReturnSize(peer.app, 0x0f, hashes)
+	s, _ := p2p.Send(peer.app, 0x0f, hashes)
 	if s <= 0 {
 		t.Errorf("got: %v, want: >0", s)
 	}

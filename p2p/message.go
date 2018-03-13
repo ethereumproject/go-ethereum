@@ -85,24 +85,14 @@ type MsgReadWriter interface {
 	MsgWriter
 }
 
-// SendAndReturnSize writes an RLP-encoded message with the given code.
+// Send writes an RLP-encoded message with the given code.
 // data should encode as an RLP list. It returns the size of the encoded data for logging purposes.
-func SendAndReturnSize(w MsgWriter, msgcode uint64, data interface{}) (int, error) {
+func Send(w MsgWriter, msgcode uint64, data interface{}) (int, error) {
 	size, r, err := rlp.EncodeToReader(data)
 	if err != nil {
 		return size, err
 	}
 	return size, w.WriteMsg(Msg{Code: msgcode, Size: uint32(size), Payload: r})
-}
-
-// Send writes an RLP-encoded message with the given code.
-// data should encode as an RLP list.
-func Send(w MsgWriter, msgcode uint64, data interface{}) error {
-	size, r, err := rlp.EncodeToReader(data)
-	if err != nil {
-		return err
-	}
-	return w.WriteMsg(Msg{Code: msgcode, Size: uint32(size), Payload: r})
 }
 
 // SendItems writes an RLP with the given code and data elements.
@@ -114,8 +104,9 @@ func Send(w MsgWriter, msgcode uint64, data interface{}) error {
 //
 //    [e1, e2, e3]
 //
-func SendItems(w MsgWriter, msgcode uint64, elems ...interface{}) error {
-	return Send(w, msgcode, elems)
+func SendItems(w MsgWriter, msgcode uint64, elems ...interface{}) (err error) {
+	_, err = Send(w, msgcode, elems)
+	return
 }
 
 // eofSignal wraps a reader with eof signaling. the eof channel is
