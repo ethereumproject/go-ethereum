@@ -144,6 +144,39 @@ func fillBucket(tab *Table, ld int) (last *Node) {
 	return b.entries[bucketSize-1]
 }
 
+// This checks that the table-wide IP limit is applied correctly.
+func TestTable_IPLimit(t *testing.T) {
+	transport := newPingRecorder()
+	tab, _ := newTable(transport, NodeID{}, &net.UDPAddr{}, "")
+	defer tab.Close()
+
+	for i := 0; i < tableIPLimit+1; i++ {
+		n := nodeAtDistance(tab.self.sha, i)
+		n.IP = net.IP{172, 0, 1, byte(i)}
+		tab.add(n)
+	}
+	if tab.len() > tableIPLimit {
+		t.Errorf("too many nodes in table")
+	}
+}
+
+// This checks that the table-wide IP limit is applied correctly.
+func TestTable_BucketIPLimit(t *testing.T) {
+	transport := newPingRecorder()
+	tab, _ := newTable(transport, NodeID{}, &net.UDPAddr{}, "")
+	defer tab.Close()
+
+	d := 3
+	for i := 0; i < bucketIPLimit+1; i++ {
+		n := nodeAtDistance(tab.self.sha, d)
+		n.IP = net.IP{172, 0, 1, byte(i)}
+		tab.add(n)
+	}
+	if tab.len() > bucketIPLimit {
+		t.Errorf("too many nodes in table")
+	}
+}
+
 // nodeAtDistance creates a node for which logdist(base, n.sha) == ld.
 // The node's ID does not correspond to n.sha.
 func nodeAtDistance(base common.Hash, ld int) (n *Node) {

@@ -35,6 +35,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p"
 )
 
 const (
@@ -45,6 +46,10 @@ const (
 
 	maxBondingPingPongs = 16
 	maxFindnodeFailures = 5
+
+	// IP address limits.
+	bucketIPLimit, bucketSubnet = 2, 24 // at most 2 addresses from the same /24
+	tableIPLimit, tableSubnet   = 10, 24
 
 	autoRefreshInterval = 1 * time.Hour
 	seedCount           = 30
@@ -74,6 +79,7 @@ type Table struct {
 	buckets [nBuckets]*bucket // index of known nodes by distance
 	nursery []*Node           // bootstrap nodes
 	db      *nodeDB           // database of known nodes
+	ips     p2p.DistinctNetSet
 
 	refreshReq chan chan struct{}
 	closeReq   chan struct{}
@@ -108,7 +114,10 @@ type transport interface {
 
 // bucket contains nodes, ordered by their last activity. the entry
 // that was most recently active is the first element in entries.
-type bucket struct{ entries []*Node }
+type bucket struct {
+	entries []*Node
+	ips     p2p.DistinctNetSet
+}
 
 func newTable(t transport, ourID NodeID, ourAddr *net.UDPAddr, nodeDBPath string) (*Table, error) {
 	// If no node database was given, use an in-memory one
@@ -126,9 +135,15 @@ func newTable(t transport, ourID NodeID, ourAddr *net.UDPAddr, nodeDBPath string
 		closeReq:   make(chan struct{}),
 		closed:     make(chan struct{}),
 		initDone:   make(chan struct{}),
+		ips:        p2p.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
 	}
 	for i := 0; i < cap(tab.bondslots); i++ {
 		tab.bondslots <- struct{}{}
+	}
+	for i := range tab.buckets {
+		tab.buckets[i] = &bucket{
+			ips: p2p.DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
+		}
 	}
 	for i := range tab.buckets {
 		tab.buckets[i] = new(bucket)
@@ -364,12 +379,12 @@ func (tab *Table) refreshLoop() {
 	var (
 		timer   = time.NewTicker(autoRefreshInterval)
 		waiting = []chan struct{}{tab.initDone} // accumulates waiting callers while doRefresh runs
-		done    = make(chan struct{})   // where doRefresh reports completion
+		done    = make(chan struct{})           // where doRefresh reports completion
 	)
-	
+
 	// Initial refresh
 	go tab.doRefresh(done)
-	
+
 loop:
 	for {
 		select {
