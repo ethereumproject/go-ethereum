@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"bytes"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 var mlogExample1T = &MLogT{
@@ -239,21 +241,56 @@ func TestAssignDetails(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
+	Reset()
+	// Set up a log sys with a local buffer instead of file
+	var b = new(bytes.Buffer)
+	sys := NewMLogSystem(b, 0, LogLevel(1), false)
+	AddLogSystem(sys)
+
 	testLogger := MLogRegisterAvailable("example1", []*MLogT{mlogExample1T, mlogExample2T})
 	MLogRegisterActive("example1")
 
 	addr := "sampleAddress"
 	id := "sampleId"
-	bytes := 123
-	mlogExample1T.AssignDetails(addr, id, bytes)
+	numBytesSent := 123
+	mlogExample1T.AssignDetails(addr, id, numBytesSent)
 
 	formats := []string{"plain", "kv", "json"}
+
+	// wants are expected strings in each format's log line
+	// TODO: build these expectation dynamically in case test data wants to change
+	wants := make(map[string][]string)
+	wants["plain"] = []string{"[example1]", "TESTER TESTING MLOG", common.SessionID, addr, id, "123"}
+	wants["kv"] = []string{"[example1]","TESTER TESTING MLOG", "session="+common.SessionID, "from.udp_address=sampleAddress from.id=sampleId neighbors.bytes_transferred=123"}
+	wants["json"] = []string{
+		"{", "}", // suggests json object-ness
+		`"component":"example1"`,
+		`"event":"tester.testing.mlog"`,
+		`"from.id":"sampleId","from.udp_address":"sampleAddress","neighbors.bytes_transferred":123,`,
+		`"session":"`+common.SessionID+`"`,
+	}
+
 	for _, format := range formats {
 		SetMLogFormatFromString(format)
 		mlogExample1T.Send(testLogger)
-		// TODO: add some assertions!
-	}
 
+		Flush() // wait for messages to be delivered
+
+		var hasError bool
+
+		for _, wantString := range wants[format] {
+			if !strings.Contains(b.String(), wantString) {
+				t.Errorf("got: %v, should include: %v", b.String(), wantString)
+				hasError = true
+			}
+		}
+
+		if !hasError {
+			t.Logf("%s ok: %s", format, b.String())
+		}
+
+		b.Reset()
+	}
 }
 
 func TestFormats(t *testing.T) {
