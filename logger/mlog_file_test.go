@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 	"bytes"
+	"encoding/json"
 	"github.com/ethereumproject/go-ethereum/common"
+	"fmt"
 )
 
 var mlogExample1T = &MLogT{
@@ -257,31 +259,73 @@ func TestSend(t *testing.T) {
 
 	formats := []string{"plain", "kv", "json"}
 
-	// wants are expected strings in each format's log line
-	// TODO: build these expectation dynamically in case test data wants to change
-	wants := make(map[string][]string)
-	wants["plain"] = []string{"[example1]", "TESTER TESTING MLOG", common.SessionID, addr, id, "123"}
-	wants["kv"] = []string{"[example1]","TESTER TESTING MLOG", "session="+common.SessionID, "from.udp_address=sampleAddress from.id=sampleId neighbors.bytes_transferred=123"}
-	wants["json"] = []string{
-		"{", "}", // suggests json object-ness
-		`"component":"example1"`,
-		`"event":"tester.testing.mlog"`,
-		`"from.id":"sampleId","from.udp_address":"sampleAddress","neighbors.bytes_transferred":123,`,
-		`"session":"`+common.SessionID+`"`,
-	}
-
 	for _, format := range formats {
 		SetMLogFormatFromString(format)
 		mlogExample1T.Send(testLogger)
 
 		Flush() // wait for messages to be delivered
 
-		var hasError bool
+		if format == "plain" || format == "kv" {
+			var wantString string
+			if format == "plain" {
+				wantString = mlogExample1T.FormatPlain()
+			} else if format == "kv" {
+				wantString = mlogExample1T.FormatKV()
+			}
 
-		for _, wantString := range wants[format] {
+			// basic sanity check for our expectations
+			if len(wantString) < 10 || !strings.Contains(wantString, common.SessionID) {
+				t.Fatalf("wantstring: got: %v, want: %v", wantString, "something sane")
+			}
+
 			if !strings.Contains(b.String(), wantString) {
-				t.Errorf("got: %v, should include: %v", b.String(), wantString)
+				t.Errorf("got: %v, want: %v", b.String(), wantString)
+			} else {
+				t.Logf("%s ok: %s", format, b.String())
+			}
+
+			b.Reset()
+			continue
+		}
+
+		// handle JSON differently, since we can show that values are OK as well as valid JSON format
+		//
+		// for decoding the JSON line for got/want comparison
+		type arbitraryJSON map[string]interface{}
+		arb := arbitraryJSON{}
+
+		if err := json.Unmarshal(mlogExample1T.FormatJSON(testLogger), &arb); err != nil {
+			t.Fatal(err)
+		}
+
+		wantMap := make(map[string]interface{})
+
+		wantMap["component"] = string(testLogger)
+		wantMap["session"] = common.SessionID
+
+		// eg. "event":"tester.testing.mlog"
+		wantMap["event"] = strings.Join([]string{
+						strings.ToLower(mlogExample1T.Receiver),
+						strings.ToLower(mlogExample1T.Verb),
+						strings.ToLower(mlogExample1T.Subject),
+						}, ".")
+
+		// eg. "from.udp_address":"sampleAddress"
+		for _, v := range mlogExample1T.Details {
+			wantMap[strings.Join(
+				[]string{
+					strings.ToLower(v.Owner),
+					strings.ToLower(v.Key),
+				}, ".")] = v.Value
+		}
+
+		var hasError bool
+		for k, v := range wantMap {
+			// fmtStringer comparison because 123 != 123...
+			if arb[k] != v && fmt.Sprintf("%v", arb[k]) != fmt.Sprintf("%v", v) {
 				hasError = true
+				t.Errorf("arb[k] != v, arb[k] = %v, v = %v", arb[k], v)
+				t.Errorf("got: %v, want: %v", b.String(), wantMap)
 			}
 		}
 
