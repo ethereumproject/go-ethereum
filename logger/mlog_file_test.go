@@ -294,7 +294,7 @@ func TestSend(t *testing.T) {
 		type arbitraryJSON map[string]interface{}
 		arb := arbitraryJSON{}
 
-		if err := json.Unmarshal(mlogExample1T.FormatJSON(testLogger), &arb); err != nil {
+		if err := json.Unmarshal(b.Bytes(), &arb); err != nil {
 			t.Fatal(err)
 		}
 
