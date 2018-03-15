@@ -36,6 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p"
+	"github.com/ethereumproject/go-ethereum/p2p/distip"
 )
 
 const (
@@ -116,7 +117,7 @@ type transport interface {
 // that was most recently active is the first element in entries.
 type bucket struct {
 	entries []*Node
-	ips     p2p.DistinctNetSet
+	ips     distip.DistinctNetSet
 }
 
 func newTable(t transport, ourID NodeID, ourAddr *net.UDPAddr, nodeDBPath string) (*Table, error) {
@@ -135,14 +136,14 @@ func newTable(t transport, ourID NodeID, ourAddr *net.UDPAddr, nodeDBPath string
 		closeReq:   make(chan struct{}),
 		closed:     make(chan struct{}),
 		initDone:   make(chan struct{}),
-		ips:        p2p.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
+		ips:        distip.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
 	}
 	for i := 0; i < cap(tab.bondslots); i++ {
 		tab.bondslots <- struct{}{}
 	}
 	for i := range tab.buckets {
 		tab.buckets[i] = &bucket{
-			ips: p2p.DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
+			ips: distip.DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
 		}
 	}
 	for i := range tab.buckets {
