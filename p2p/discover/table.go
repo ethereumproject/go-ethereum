@@ -35,7 +35,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/p2p/distip"
 )
 
@@ -80,7 +79,7 @@ type Table struct {
 	buckets [nBuckets]*bucket // index of known nodes by distance
 	nursery []*Node           // bootstrap nodes
 	db      *nodeDB           // database of known nodes
-	ips     p2p.DistinctNetSet
+	ips     distip.DistinctNetSet
 
 	refreshReq chan chan struct{}
 	closeReq   chan struct{}
