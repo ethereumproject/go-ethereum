@@ -137,15 +137,17 @@ func TestBucket_bumpNoDuplicates(t *testing.T) {
 func TestTable_IPLimit(t *testing.T) {
 	transport := newPingRecorder()
 	tab, _ := newTable(transport, NodeID{}, &net.UDPAddr{}, "")
+	<-tab.initDone
 	defer tab.Close()
 
+	// iterate through node additions more time than limit allows
 	for i := 0; i < tableIPLimit+1; i++ {
 		n := nodeAtDistance(tab.self.sha, i)
 		n.IP = net.IP{172, 0, 1, byte(i)}
 		tab.add(n)
 	}
 	if tab.len() > tableIPLimit {
-		t.Errorf("too many nodes in table")
+		t.Errorf("too many nodes in table; got: %v, want: %v", tab.len(), tableIPLimit)
 	}
 }
 
@@ -153,6 +155,7 @@ func TestTable_IPLimit(t *testing.T) {
 func TestTable_BucketIPLimit(t *testing.T) {
 	transport := newPingRecorder()
 	tab, _ := newTable(transport, NodeID{}, &net.UDPAddr{}, "")
+	<-tab.initDone
 	defer tab.Close()
 
 	d := 3
@@ -162,7 +165,7 @@ func TestTable_BucketIPLimit(t *testing.T) {
 		tab.add(n)
 	}
 	if tab.len() > bucketIPLimit {
-		t.Errorf("too many nodes in table")
+		t.Errorf("too many nodes in table; got: %v, want: %v", tab.len(), bucketIPLimit)
 	}
 }
 
