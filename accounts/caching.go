@@ -20,10 +20,11 @@ package accounts
 
 import (
 	"fmt"
-	"github.com/ethereumproject/go-ethereum/common"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Minimum amount of time between cache reloads. This limit applies if the platform does

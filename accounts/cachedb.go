@@ -27,14 +27,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"runtime"
+	"sort"
+	"sync"
+
 	"github.com/boltdb/bolt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/mailru/easyjson"
-	"runtime"
-	"sort"
-	"sync"
 )
 
 var addrBucketName = []byte("byAddr")

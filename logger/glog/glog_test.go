@@ -112,7 +112,6 @@ func displayContains(s severity, str string, t *testing.T) bool {
 	return strings.Contains(displayContents(s), str)
 }
 
-
 // setFlags configures the logging flags how the test expects them.
 func setFlags() {
 	logging.toStderr = false
@@ -245,7 +244,7 @@ func TestHeader2InfoLog(t *testing.T) {
 	defer logging.verbosityTraceThreshold.set(s)
 	pid = 1234
 	Info("test")
-	format := "I" + "0102 15:04:05.067890 logger/glog/glog_test.go:"+strconv.Itoa(lineNumber()-1)+"] test\n"
+	format := "I" + "0102 15:04:05.067890 logger/glog/glog_test.go:" + strconv.Itoa(lineNumber()-1) + "] test\n"
 	n, err := fmt.Sscanf(loggingContents(infoLog), format)
 	if err != nil {
 		t.Errorf("log format error: %d elements, error %s:\n%s", n, err, loggingContents(infoLog))

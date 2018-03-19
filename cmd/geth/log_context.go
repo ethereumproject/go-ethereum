@@ -9,10 +9,11 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"os"
 	"path/filepath"
+
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 const defaultStatusLog = "sync=60s"
@@ -180,7 +181,7 @@ func parseWithSuffix(str string, mapping map[rune]uint64) (uint64, error) {
 	number := strings.ToLower(strings.TrimLeftFunc(str, unicode.IsSpace))
 
 	trim := ""
-	for k, _ := range mapping {
+	for k := range mapping {
 		if k != 0 {
 			trim += string(k)
 		}
