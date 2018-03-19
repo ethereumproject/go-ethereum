@@ -145,9 +145,6 @@ func newTable(t transport, ourID NodeID, ourAddr *net.UDPAddr, nodeDBPath string
 			ips: distip.DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
 		}
 	}
-	for i := range tab.buckets {
-		tab.buckets[i] = new(bucket)
-	}
 	go tab.refreshLoop()
 	return tab, nil
 }
