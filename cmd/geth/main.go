@@ -19,12 +19,13 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/urfave/cli.v1"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
+
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/benchmark/rtprof"
 	"github.com/ethereumproject/go-ethereum/common"

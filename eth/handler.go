@@ -333,7 +333,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 	}
 	defer msg.Discard()
 
-
 	// Handle the message depending on its contents
 	switch {
 	case msg.Code == StatusMsg:
@@ -733,7 +732,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 
 	default:
 		err = errResp(ErrInvalidMsgCode, "%v", msg.Code)
-		mlogWireDelegate(p, "receive", unknownMessageCode,  intSize,nil, err)
+		mlogWireDelegate(p, "receive", unknownMessageCode, intSize, nil, err)
 		return
 	}
 	return nil
