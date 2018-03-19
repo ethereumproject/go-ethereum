@@ -133,17 +133,6 @@ func TestBucket_bumpNoDuplicates(t *testing.T) {
 	}
 }
 
-// fillBucket inserts nodes into the given bucket until
-// it is full. The node's IDs dont correspond to their
-// hashes.
-func fillBucket(tab *Table, ld int) (last *Node) {
-	b := tab.buckets[ld]
-	for len(b.entries) < bucketSize {
-		b.entries = append(b.entries, nodeAtDistance(tab.self.sha, ld))
-	}
-	return b.entries[bucketSize-1]
-}
-
 // This checks that the table-wide IP limit is applied correctly.
 func TestTable_IPLimit(t *testing.T) {
 	transport := newPingRecorder()
