@@ -1,13 +1,14 @@
 package eth
 
 import (
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/common"
 	"math/big"
-	"github.com/ethereumproject/go-ethereum/rlp"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"strings"
+
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
 var mlogWwireProtocol = logger.MLogRegisterAvailable("wire", mlogLinesWire)
@@ -60,7 +61,7 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 		d, ok := data.(*statusData)
 		if !ok || d == nil {
 			d = &statusData{
-				TD: new(big.Int),
+				TD:           new(big.Int),
 				CurrentBlock: common.Hash{},
 				GenesisBlock: common.Hash{},
 			}
@@ -128,7 +129,7 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 				payload.Skip,
 				payload.Reverse,
 			}...)
-		 } else {
+		} else {
 			glog.Fatal("cant cast: GetBlockHeadersMsg", direction)
 		}
 		if direction == "send" {
@@ -236,9 +237,9 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			if payload, ok := data.([]common.Hash); ok {
 				details = append(details, len(payload))
 				if len(payload) > 0 {
-					details =append(details, payload[0].Hex())
+					details = append(details, payload[0].Hex())
 				} else {
-					details =append(details, common.Hash{}.Hex())
+					details = append(details, common.Hash{}.Hex())
 				}
 			} else {
 				glog.Fatal("cant cast: GetNodeDataMsg", direction)
@@ -312,7 +313,7 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 	}
 
 	line.AssignDetails(
-		details...
+		details...,
 	).Send(mlogWwireProtocol)
 }
 
@@ -328,9 +329,9 @@ var mlogWireCommonDetails = []logger.MLogDetailT{
 
 var mlogWireSendHandshake = &logger.MLogT{
 	Description: "Called once for each outgoing StatusMsg (handshake) message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(StatusMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(StatusMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "PROTOCOL_VERSION", Value: "INT"},
 		{Owner: "MSG", Key: "NETWORK_ID", Value: "INT"},
@@ -342,9 +343,9 @@ var mlogWireSendHandshake = &logger.MLogT{
 
 var mlogWireReceiveHandshake = &logger.MLogT{
 	Description: "Called once for each incoming StatusMsg (handshake) message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(StatusMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(StatusMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "PROTOCOL_VERSION", Value: "INT"},
 		{Owner: "MSG", Key: "NETWORK_ID", Value: "INT"},
@@ -356,9 +357,9 @@ var mlogWireReceiveHandshake = &logger.MLogT{
 
 var mlogWireSendNewBlockHashes = &logger.MLogT{
 	Description: "Called once for each outgoing SendNewBlockHashesMsg message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(NewBlockHashesMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(NewBlockHashesMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 		{Owner: "MSG", Key: "FIRST_HASH", Value: "STRING"},
@@ -368,9 +369,9 @@ var mlogWireSendNewBlockHashes = &logger.MLogT{
 
 var mlogWireReceiveNewBlockHashes = &logger.MLogT{
 	Description: "Called once for each incoming SendNewBlockHashesMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(NewBlockHashesMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(NewBlockHashesMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 		{Owner: "MSG", Key: "FIRST_HASH", Value: "STRING"},
@@ -380,9 +381,9 @@ var mlogWireReceiveNewBlockHashes = &logger.MLogT{
 
 var mlogWireSendTxs = &logger.MLogT{
 	Description: "Called once for each outgoing TxsMessage message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(TxMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(TxMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -390,9 +391,9 @@ var mlogWireSendTxs = &logger.MLogT{
 
 var mlogWireReceiveTxs = &logger.MLogT{
 	Description: "Called once for each incoming TxsMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(TxMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(TxMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -400,9 +401,9 @@ var mlogWireReceiveTxs = &logger.MLogT{
 
 var mlogWireSendGetBlockHeaders = &logger.MLogT{
 	Description: "Called once for each outgoing GetBlockHeadersMsg message. Note that origin value will be EITHER hash OR origin.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(GetBlockHeadersMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(GetBlockHeadersMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "ORIGIN_HASH", Value: "STRING"},
 		{Owner: "MSG", Key: "ORIGIN_NUMBER", Value: "INT"},
@@ -414,9 +415,9 @@ var mlogWireSendGetBlockHeaders = &logger.MLogT{
 
 var mlogWireReceiveGetBlockHeaders = &logger.MLogT{
 	Description: "Called once for each incoming GetBlockHeadersMsg message. Note that origin value will be EITHER hash OR origin.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(GetBlockHeadersMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(GetBlockHeadersMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "ORIGIN_HASH", Value: "STRING"},
 		{Owner: "MSG", Key: "ORIGIN_NUMBER", Value: "INT"},
@@ -428,9 +429,9 @@ var mlogWireReceiveGetBlockHeaders = &logger.MLogT{
 
 var mlogWireSendBlockHeaders = &logger.MLogT{
 	Description: "Called once for each outgoing BlockHeadersMsg message. Note that origin value will be EITHER hash or origin.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(BlockHeadersMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(BlockHeadersMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 		{Owner: "MSG", Key: "FIRST_HASH", Value: "STRING"},
@@ -440,9 +441,9 @@ var mlogWireSendBlockHeaders = &logger.MLogT{
 
 var mlogWireReceiveBlockHeaders = &logger.MLogT{
 	Description: "Called once for each incoming BlockHeadersMsg message. Note that origin value will be EITHER hash or origin.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(BlockHeadersMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(BlockHeadersMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 		{Owner: "MSG", Key: "FIRST_HASH", Value: "STRING"},
@@ -452,9 +453,9 @@ var mlogWireReceiveBlockHeaders = &logger.MLogT{
 
 var mlogWireSendGetBlockBodies = &logger.MLogT{
 	Description: "Called once for each outgoing GetBlockBodiesMsg message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(GetBlockBodiesMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(GetBlockBodiesMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 		{Owner: "MSG", Key: "FIRST_HASH", Value: "STRING"},
@@ -463,9 +464,9 @@ var mlogWireSendGetBlockBodies = &logger.MLogT{
 
 var mlogWireReceiveGetBlockBodies = &logger.MLogT{
 	Description: "Called once for each incoming GetBlockBodiesMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(GetBlockBodiesMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(GetBlockBodiesMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -473,9 +474,9 @@ var mlogWireReceiveGetBlockBodies = &logger.MLogT{
 
 var mlogWireSendBlockBodies = &logger.MLogT{
 	Description: "Called once for each outgoing BlockBodiesMsg message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(BlockBodiesMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(BlockBodiesMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -483,9 +484,9 @@ var mlogWireSendBlockBodies = &logger.MLogT{
 
 var mlogWireReceiveBlockBodies = &logger.MLogT{
 	Description: "Called once for each incoming BlockBodiesMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(BlockBodiesMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(BlockBodiesMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -493,9 +494,9 @@ var mlogWireReceiveBlockBodies = &logger.MLogT{
 
 var mlogWireSendNewBlock = &logger.MLogT{
 	Description: "Called once for each outgoing NewBlockMsg message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(NewBlockMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(NewBlockMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "BLOCK_HASH", Value: "STRING"},
 		{Owner: "MSG", Key: "BLOCK_NUMBER", Value: "INT"},
@@ -505,9 +506,9 @@ var mlogWireSendNewBlock = &logger.MLogT{
 
 var mlogWireReceiveNewBlock = &logger.MLogT{
 	Description: "Called once for each incoming NewBlockMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(NewBlockMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(NewBlockMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "BLOCK_HASH", Value: "STRING"},
 		{Owner: "MSG", Key: "BLOCK_NUMBER", Value: "INT"},
@@ -517,9 +518,9 @@ var mlogWireReceiveNewBlock = &logger.MLogT{
 
 var mlogWireSendGetNodeData = &logger.MLogT{
 	Description: "Called once for each outgoing GetNodeDataMsg message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(GetNodeDataMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(GetNodeDataMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 		{Owner: "MSG", Key: "FIRST_HASH", Value: "STRING"},
@@ -528,9 +529,9 @@ var mlogWireSendGetNodeData = &logger.MLogT{
 
 var mlogWireReceiveGetNodeData = &logger.MLogT{
 	Description: "Called once for each incoming GetNodeDataMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(GetNodeDataMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(GetNodeDataMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -538,9 +539,9 @@ var mlogWireReceiveGetNodeData = &logger.MLogT{
 
 var mlogWireSendNodeData = &logger.MLogT{
 	Description: "Called once for each outgoing NodeDataMsg message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(NodeDataMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(NodeDataMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -548,9 +549,9 @@ var mlogWireSendNodeData = &logger.MLogT{
 
 var mlogWireReceiveNodeData = &logger.MLogT{
 	Description: "Called once for each incoming NodeDataMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(NodeDataMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(NodeDataMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -558,9 +559,9 @@ var mlogWireReceiveNodeData = &logger.MLogT{
 
 var mlogWireSendGetReceipts = &logger.MLogT{
 	Description: "Called once for each outgoing GetReceiptsMsg message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(GetReceiptsMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(GetReceiptsMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 		{Owner: "MSG", Key: "FIRST_HASH", Value: "STRING"},
@@ -569,9 +570,9 @@ var mlogWireSendGetReceipts = &logger.MLogT{
 
 var mlogWireReceiveGetReceipts = &logger.MLogT{
 	Description: "Called once for each incoming GetReceiptsMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(GetReceiptsMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(GetReceiptsMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "STRING"},
 	}...),
@@ -579,9 +580,9 @@ var mlogWireReceiveGetReceipts = &logger.MLogT{
 
 var mlogWireSendReceipts = &logger.MLogT{
 	Description: "Called once for each outgoing ReceiptsMsg message.",
-	Receiver: "WIRE",
-	Verb: "SEND",
-	Subject: strings.ToUpper(ProtocolMessageStringer(ReceiptsMsg)),
+	Receiver:    "WIRE",
+	Verb:        "SEND",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(ReceiptsMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "INT"},
 	}...),
@@ -589,9 +590,9 @@ var mlogWireSendReceipts = &logger.MLogT{
 
 var mlogWireReceiveReceipts = &logger.MLogT{
 	Description: "Called once for each incoming ReceiptsMsg message.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: strings.ToUpper(ProtocolMessageStringer(ReceiptsMsg)),
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     strings.ToUpper(ProtocolMessageStringer(ReceiptsMsg)),
 	Details: append(mlogWireCommonDetails, []logger.MLogDetailT{
 		{Owner: "MSG", Key: "LEN_ITEMS", Value: "STRING"},
 	}...),
@@ -599,8 +600,8 @@ var mlogWireReceiveReceipts = &logger.MLogT{
 
 var mlogWireReceiveInvalid = &logger.MLogT{
 	Description: "Called once for each incoming wire message that is invalid.",
-	Receiver: "WIRE",
-	Verb: "RECEIVE",
-	Subject: "INVALID",
-	Details: mlogWireCommonDetails,
+	Receiver:    "WIRE",
+	Verb:        "RECEIVE",
+	Subject:     "INVALID",
+	Details:     mlogWireCommonDetails,
 }

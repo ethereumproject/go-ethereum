@@ -33,4 +33,3 @@ var mlogServerPeerRemove = &logger.MLogT{
 		{Owner: "REMOVE", Key: "REASON", Value: "QUOTEDSTRING"},
 	},
 }
-

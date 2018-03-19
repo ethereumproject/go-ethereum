@@ -18,12 +18,12 @@ package logger
 
 import (
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"sync"
 	"testing"
 	"time"
-	"log"
 )
 
 type TestLogSystem struct {
