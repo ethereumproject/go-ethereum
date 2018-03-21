@@ -1,6 +1,7 @@
 package distip
 
 import (
+	"fmt"
 	"net"
 	"testing"
 )
@@ -26,36 +27,40 @@ func checkContains(t *testing.T, fn func(net.IP) bool, inc, exc []string) {
 	}
 }
 
-func makeTestDistinctNetSet() *DistinctNetSet {
-	return &DistinctNetSet{
-		Subnet: 24,
-		Limit:  1,
-	}
-}
-
 func TestDistinctNetSet(t *testing.T) {
-	set := makeTestDistinctNetSet()
-	testip := net.ParseIP("24.207.212.9")
+	ops := []struct {
+		add, remove string
+		fails       bool
+	}{
+		{add: "127.0.0.1"},
+		{add: "127.0.0.2"},
+		{add: "127.0.0.3", fails: true},
+		{add: "127.32.0.1"},
+		{add: "127.32.0.2"},
+		{add: "127.32.0.3", fails: true},
+		{add: "127.33.0.1", fails: true},
+		{add: "127.34.0.1"},
+		{add: "127.34.0.2"},
+		{add: "127.34.0.3", fails: true},
+		// Make room for an address, then add again.
+		{remove: "127.0.0.1"},
+		{add: "127.0.0.3"},
+		{add: "127.0.0.3", fails: true},
+	}
 
-	key := set.key(testip)
-	t.Logf("key: %v", key)
-
-	if ok := set.Add(testip); !ok {
-		t.Errorf("got: %v, want: %v", ok, true)
-	}
-	if contains := set.Contains(testip); !contains {
-		t.Errorf("got: %v, want: %v", contains, true)
-	}
-	if len := set.Len(); len != 1 {
-		t.Errorf("got: %v, want: %v", len, 1)
-	}
-
-	set.Remove(testip)
-	if contains := set.Contains(testip); contains {
-		t.Errorf("got: %v, want: %v", contains, false)
-	}
-	if len := set.Len(); len != 0 {
-		t.Errorf("got: %v, want: %v", len, 0)
+	set := DistinctNetSet{Subnet: 15, Limit: 2}
+	for _, op := range ops {
+		var desc string
+		if op.add != "" {
+			desc = fmt.Sprintf("Add(%s)", op.add)
+			if ok := set.Add(parseIP(op.add)); ok != !op.fails {
+				t.Errorf("%s == %t, want %t", desc, ok, !op.fails)
+			}
+		} else {
+			desc = fmt.Sprintf("Remove(%s)", op.remove)
+			set.Remove(parseIP(op.remove))
+		}
+		t.Logf("%s: %v", desc, set)
 	}
 }
 
