@@ -616,45 +616,6 @@ func (tab *Table) ping(id NodeID, addr *net.UDPAddr) error {
 // the bucket does not respond to a ping packet.
 //
 // The caller must not hold tab.mutex.
-// func (tab *Table) add(new *Node) {
-// 	b := tab.buckets[logdist(*logdistS1, crypto.Keccak256Hash(new.sha.Bytes(), logdistS2.Bytes()))]
-// 	tab.mutex.Lock()
-// 	defer tab.mutex.Unlock()
-// 	if b.bump(new) {
-// 		return
-// 	}
-// 	var oldest *Node
-// 	if len(b.entries) == bucketSize {
-// 		oldest = b.entries[bucketSize-1]
-// 		if oldest.contested {
-// 			// The node is already being replaced, don't attempt
-// 			// to replace it.
-// 			return
-// 		}
-// 		oldest.contested = true
-// 		// Let go of the mutex so other goroutines can access
-// 		// the table while we ping the least recently active node.
-// 		tab.mutex.Unlock()
-// 		err := tab.ping(oldest.ID, oldest.addr())
-// 		tab.mutex.Lock()
-// 		oldest.contested = false
-// 		if err == nil {
-// 			// The node responded, don't replace it.
-// 			return
-// 		}
-// 	}
-// 	added := b.replace(new, oldest)
-// 	if added && tab.nodeAddedHook != nil {
-// 		tab.nodeAddedHook(new)
-// 	}
-// }
-
-// add attempts to add the given node its corresponding bucket. If the
-// bucket has space available, adding the node succeeds immediately.
-// Otherwise, the node is added if the least recently active node in
-// the bucket does not respond to a ping packet.
-//
-// The caller must not hold tab.mutex.
 func (tab *Table) add(new *Node) {
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
