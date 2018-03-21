@@ -81,3 +81,33 @@ func TestIsLAN(t *testing.T) {
 		},
 	)
 }
+
+func TestCheckRelayIP(t *testing.T) {
+	tests := []struct {
+		sender, addr string
+		want         error
+	}{
+		{"127.0.0.1", "0.0.0.0", errUnspecified},
+		{"192.168.0.1", "0.0.0.0", errUnspecified},
+		{"23.55.1.242", "0.0.0.0", errUnspecified},
+		{"127.0.0.1", "255.255.255.255", errSpecial},
+		{"192.168.0.1", "255.255.255.255", errSpecial},
+		{"23.55.1.242", "255.255.255.255", errSpecial},
+		{"192.168.0.1", "127.0.2.19", errLoopback},
+		{"23.55.1.242", "192.168.0.1", errLAN},
+
+		{"127.0.0.1", "127.0.2.19", nil},
+		{"127.0.0.1", "192.168.0.1", nil},
+		{"127.0.0.1", "23.55.1.242", nil},
+		{"192.168.0.1", "192.168.0.1", nil},
+		{"192.168.0.1", "23.55.1.242", nil},
+		{"23.55.1.242", "23.55.1.242", nil},
+	}
+
+	for _, test := range tests {
+		err := CheckRelayIP(parseIP(test.sender), parseIP(test.addr))
+		if err != test.want {
+			t.Errorf("%s from %s: got %q, want %q", test.addr, test.sender, err, test.want)
+		}
+	}
+}
