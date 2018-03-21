@@ -7,6 +7,82 @@ import (
 	"sort"
 )
 
+// Netlist is a list of IP networks.
+type Netlist []net.IPNet
+
+var lan4, lan6, special4, special6 Netlist
+
+func init() {
+	// Lists from RFC 5735, RFC 5156,
+	// https://www.iana.org/assignments/iana-ipv4-special-registry/
+	lan4.Add("0.0.0.0/8")              // "This" network
+	lan4.Add("10.0.0.0/8")             // Private Use
+	lan4.Add("172.16.0.0/12")          // Private Use
+	lan4.Add("192.168.0.0/16")         // Private Use
+	lan6.Add("fe80::/10")              // Link-Local
+	lan6.Add("fc00::/7")               // Unique-Local
+	special4.Add("192.0.0.0/29")       // IPv4 Service Continuity
+	special4.Add("192.0.0.9/32")       // PCP Anycast
+	special4.Add("192.0.0.170/32")     // NAT64/DNS64 Discovery
+	special4.Add("192.0.0.171/32")     // NAT64/DNS64 Discovery
+	special4.Add("192.0.2.0/24")       // TEST-NET-1
+	special4.Add("192.31.196.0/24")    // AS112
+	special4.Add("192.52.193.0/24")    // AMT
+	special4.Add("192.88.99.0/24")     // 6to4 Relay Anycast
+	special4.Add("192.175.48.0/24")    // AS112
+	special4.Add("198.18.0.0/15")      // Device Benchmark Testing
+	special4.Add("198.51.100.0/24")    // TEST-NET-2
+	special4.Add("203.0.113.0/24")     // TEST-NET-3
+	special4.Add("255.255.255.255/32") // Limited Broadcast
+
+	// http://www.iana.org/assignments/iana-ipv6-special-registry/
+	special6.Add("100::/64")
+	special6.Add("2001::/32")
+	special6.Add("2001:1::1/128")
+	special6.Add("2001:2::/48")
+	special6.Add("2001:3::/32")
+	special6.Add("2001:4:112::/48")
+	special6.Add("2001:5::/32")
+	special6.Add("2001:10::/28")
+	special6.Add("2001:20::/28")
+	special6.Add("2001:db8::/32")
+	special6.Add("2002::/16")
+}
+
+// Add parses a CIDR mask and appends it to the list. It panics for invalid masks and is
+// intended to be used for setting up static lists.
+func (l *Netlist) Add(cidr string) {
+	_, n, err := net.ParseCIDR(cidr)
+	if err != nil {
+		panic(err)
+	}
+	*l = append(*l, *n)
+}
+
+// Contains reports whether the given IP is contained in the list.
+func (l *Netlist) Contains(ip net.IP) bool {
+	if l == nil {
+		return false
+	}
+	for _, net := range *l {
+		if net.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsLAN reports whether an IP is a local network address.
+func IsLAN(ip net.IP) bool {
+	if ip.IsLoopback() {
+		return true
+	}
+	if v4 := ip.To4(); v4 != nil {
+		return lan4.Contains(v4)
+	}
+	return lan6.Contains(ip)
+}
+
 // DistinctNetSet tracks IPs, ensuring that at most N of them
 // fall into the same network range.
 type DistinctNetSet struct {
