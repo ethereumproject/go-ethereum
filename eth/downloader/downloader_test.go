@@ -1795,21 +1795,25 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	// Synchronise with the peer a few times and make sure they fail until the retry limit
 	// WTF: It usually passes (==fails, ie 'failing fast sync succeeded') on about the half-th iteration
 	// (eg i=5/fsCriticalTrials=10, i=3/fsCriticalTrials=5) for whatever reason...
-	var i uint32 = 0
-	for ; i < fsCriticalTrials/2; i++ {
-		// Attempt a sync and ensure it fails properly
-		if err := tester.sync("peer", nil, FastSync); err == nil {
-			t.Fatalf("failing fast sync succeeded err=%v i=%d/fsCriticalTrials=%d", err, i, fsCriticalTrials)
-		}
 
-		if i == 0 {
-			// If it's the first failure, pivot should be locked => reenable all others to detect pivot changes
-			tester.lock.Lock()
-			tester.peerMissingStates["peer"] = map[common.Hash]bool{tester.downloader.fsPivotLock.Root: true}
-			tester.setDelay(0)
-			tester.lock.Unlock()
+	var i uint32 = 0
+	runTrials := func(trialsN uint32) {
+		for ; i < trialsN; i++ {
+			// Attempt a sync and ensure it fails properly
+			if err := tester.sync("peer", nil, FastSync); err == nil {
+				t.Fatalf("failing fast sync succeeded err=%v i=%d/fsCriticalTrials=%d", err, i, fsCriticalTrials)
+			}
+
+			if i == 0 {
+				// If it's the first failure, pivot should be locked => reenable all others to detect pivot changes
+				tester.lock.Lock()
+				tester.peerMissingStates["peer"] = map[common.Hash]bool{tester.downloader.fsPivotLock.Root: true}
+				tester.setDelay(0)
+				tester.lock.Unlock()
+			}
 		}
 	}
+	runTrials(fsCriticalTrials / 2)
 
 	// reset tester delay
 	tester.setDelay(0)
@@ -1817,15 +1821,44 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	// Wait to make sure all data is set after sync
 	time.Sleep(500 * time.Millisecond)
 
-	// Retry limit exhausted, downloader will switch to full sync, should succeed
-	if err := tester.sync("peer", nil, FastSync); err != nil {
+	tryFullSync := func() error {
+		return tester.sync("peer", nil, FastSync)
+	}
+	type modeErr struct {
+		err  error
+		got  SyncMode
+		want SyncMode
+	}
+	errMode := errors.New("got wrong mode")
+	checkMode := func() *modeErr {
 		if m := tester.downloader.GetMode(); m != FullSync {
-			t.Fatalf("got: %v, want: %v", m, FullSync)
+			return &modeErr{
+				err:  errMode,
+				got:  m,
+				want: FullSync,
+			}
 		}
-		t.Fatalf("failed to synchronise blocks in slow sync: %v", err)
+		return nil
+	}
+
+	// Retry limit exhausted, downloader will switch to full sync, should succeed
+	if err := tryFullSync(); err != nil {
+		// dl didn't switch mode
+		if e := checkMode(); e != nil && e.got == FastSync {
+			// finish off fscritical trials (may fix windows?)
+			tester.setDelay(100 * time.Millisecond)
+			runTrials(fsCriticalTrials)
+			tester.setDelay(0)
+			if e := tryFullSync(); e != nil {
+				if e := checkMode(); e != nil {
+					t.Fatalf("%v: got: %v, want: %v", e.err, e.got, e.want)
+				}
+				t.Fatalf("failed to synchronise blocks in slow sync: %v", err)
+			}
+		}
 	} else {
-		if m := tester.downloader.GetMode(); m != FullSync {
-			t.Fatalf("got: %v, want: %v", m, FullSync)
+		if e := checkMode(); e != nil {
+			t.Fatalf("%v: got: %v, want: %v", e.err, e.got, e.want)
 		}
 	}
 
