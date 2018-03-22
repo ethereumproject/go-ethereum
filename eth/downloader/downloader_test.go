@@ -1820,69 +1820,8 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 		}
 	}
 
-	//runTrials := func(trialsN uint32) {
-	//	for ; i < trialsN; i++ {
-	//		// Attempt a sync and ensure it fails properly
-	//		if err := tester.sync("peer", nil, FastSync); err == nil {
-	//			t.Fatalf("failing fast sync succeeded err=%v i=%d/fsCriticalTrials=%d", err, i, fsCriticalTrials)
-	//		}
-	//
-	//		if i == 0 {
-	//			// If it's the first failure, pivot should be locked => reenable all others to detect pivot changes
-	//			tester.lock.Lock()
-	//			tester.peerMissingStates["peer"] = map[common.Hash]bool{tester.downloader.fsPivotLock.Root: true}
-	//			tester.setDelay(0)
-	//			tester.lock.Unlock()
-	//		}
-	//	}
-	//}
-	//runTrials(fsCriticalTrials / 2)
-	//
-	//// reset tester delay
-	//tester.setDelay(0)
-	//
-	//tryFullSync := func() error {
-	//	return tester.sync("peer", nil, FastSync)
-	//}
-	//type modeErr struct {
-	//	err  error
-	//	got  SyncMode
-	//	want SyncMode
-	//}
-	//errMode := errors.New("got wrong mode")
-	//checkMode := func() *modeErr {
-	//	if m := tester.downloader.GetMode(); m != FullSync {
-	//		return &modeErr{
-	//			err:  errMode,
-	//			got:  m,
-	//			want: FullSync,
-	//		}
-	//	}
-	//	return nil
-	//}
-	//
-	//// Retry limit exhausted, downloader will switch to full sync, should succeed
-	//if err := tryFullSync(); err != nil {
-	//	i++ // since we just tried another trial
-	//	// dl didn't switch mode
-	//	if e := checkMode(); e != nil && e.got == FastSync {
-	//		// HACK: BOHICA
-	//		// finish off fscritical trials (may fix windows?)
-	//		tester.setDelay(100 * time.Millisecond)
-	//		runTrials(fsCriticalTrials)
-	//		tester.setDelay(0)
-	//		if e := tryFullSync(); e != nil {
-	//			if e := checkMode(); e != nil {
-	//				t.Fatalf("%v: got: %v, want: %v", e.err, e.got, e.want)
-	//			}
-	//			t.Fatalf("failed to synchronise blocks in slow sync: %v", err)
-	//		}
-	//	}
-	//} else {
-	//	if e := checkMode(); e != nil {
-	//		t.Fatalf("%v: got: %v, want: %v", e.err, e.got, e.want)
-	//	}
-	//}
+	// Wait to make sure all data is set after sync
+	time.Sleep(500 * time.Millisecond)
 
 	assertOwnChain(t, tester, targetBlocks+1)
 }
