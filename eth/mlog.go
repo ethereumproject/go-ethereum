@@ -49,10 +49,27 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 		msgCode,
 		size,
 		ProtocolMessageStringer(uint(msgCode)),
-		p.id,
-		p.RemoteAddr().String(),
-		p.version,
-		err,
+	}
+	if p != nil {
+		details = append(details,
+			p.id,
+			p.RemoteAddr().String(),
+			p.version,
+		)
+	} else {
+		// for testing
+		details = append(details,
+			0,
+			"123.123.123.123",
+			42,
+		)
+	}
+
+	// Use error string if err not nil
+	if err != nil {
+		details = append(details, err.Error())
+	} else {
+		details = append(details, err)
 	}
 
 	// This could obviously be refactored, but I like the explicitness of it.
@@ -92,6 +109,11 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 					-1,
 				)
 			}
+		} else if err != nil {
+			details = append(details,
+				common.Hash{}.Hex(),
+				-1,
+			)
 		} else {
 			glog.Fatal("cant cast: NewBlockHashesMsg", direction)
 		}
@@ -107,6 +129,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			line = mlogWireSendTxs
 			if payload, ok := data.(types.Transactions); ok {
 				l = payload.Len()
+			} else if err != nil {
+				l = 0
 			} else {
 				glog.Fatal("cant cast: TxMsg", direction)
 			}
@@ -114,6 +138,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			line = mlogWireReceiveTxs
 			if payload, ok := data.([]*types.Transaction); ok {
 				l = len(payload)
+			} else if err != nil {
+				l = 0
 			} else {
 				glog.Fatal("cant cast: TxMsg", direction)
 			}
@@ -129,6 +155,14 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 				payload.Skip,
 				payload.Reverse,
 			}...)
+		} else if err != nil || payload == nil {
+			details = append(details,
+				common.Hash{}.Hex(),
+				0,
+				0,
+				0,
+				false,
+			)
 		} else {
 			glog.Fatal("cant cast: GetBlockHeadersMsg", direction)
 		}
@@ -154,6 +188,11 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 					-1,
 				)
 			}
+		} else if err != nil {
+			details = append(details,
+				common.Hash{}.Hex(),
+				-1,
+			)
 		} else {
 			glog.Fatal("cant cast: BlockHeadersMsg", direction)
 		}
@@ -173,6 +212,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 				} else {
 					details = append(details, common.Hash{}.Hex())
 				}
+			} else if err != nil {
+				details = append(details, common.Hash{}.Hex())
 			} else {
 				glog.Fatal("cant cast: GetBlockBodiesMsg", direction)
 			}
@@ -182,6 +223,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 				details = append(details,
 					len(payload),
 				)
+			} else if err != nil {
+				details = append(details, 0)
 			} else {
 				glog.Fatal("cant cast: GetBlockBodiesMsg", direction)
 			}
@@ -192,6 +235,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			line = mlogWireSendBlockBodies
 			if payload, ok := data.([]rlp.RawValue); ok {
 				details = append(details, len(payload))
+			} else if err != nil {
+				details = append(details, 0)
 			} else {
 				glog.Fatal("cant cast: BlockBodiesMsg", direction)
 			}
@@ -199,6 +244,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			line = mlogWireReceiveBlockBodies
 			if payload, ok := data.(blockBodiesData); ok {
 				details = append(details, len(payload))
+			} else if err != nil {
+				details = append(details, 0)
 			} else {
 				glog.Fatal("cant cast: BlockBodiesMsg", direction)
 			}
@@ -222,6 +269,12 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			} else {
 				details = append(details, 0)
 			}
+		} else if err != nil {
+			details = append(details,
+				common.Hash{}.Hex(),
+				-1,
+				0,
+			)
 		} else {
 			glog.Fatal("cant cast: NewBlockMsg", direction)
 		}
@@ -241,6 +294,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 				} else {
 					details = append(details, common.Hash{}.Hex())
 				}
+			} else if err != nil {
+				details = append(details, common.Hash{}.Hex())
 			} else {
 				glog.Fatal("cant cast: GetNodeDataMsg", direction)
 			}
@@ -248,6 +303,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			line = mlogWireReceiveGetNodeData
 			if payload, ok := data.([][]byte); ok {
 				details = append(details, len(payload))
+			} else if err != nil {
+				details = append(details, 0)
 			} else {
 				glog.Fatal("cant cast: GetNodeDataMsg", direction)
 			}
@@ -256,6 +313,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 	case NodeDataMsg:
 		if payload, ok := data.([][]byte); ok {
 			details = append(details, len(payload))
+		} else if err != nil {
+			details = append(details, 0)
 		} else {
 			glog.Fatal("cant cast: GetNNodeDataMsg", direction)
 		}
@@ -275,6 +334,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 				} else {
 					details = append(details, common.Hash{}.Hex())
 				}
+			} else if err != nil {
+				details = append(details, common.Hash{}.Hex())
 			} else {
 				glog.Fatal("cant cast: GetReceiptsMsg", direction)
 			}
@@ -282,6 +343,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			line = mlogWireReceiveGetReceipts
 			if payload, ok := data.([]rlp.RawValue); ok {
 				details = append(details, len(payload))
+			} else if err != nil {
+				details = append(details, 0)
 			} else {
 				glog.Fatal("cant cast: GetNNodGetReceiptsMsg", direction)
 			}
@@ -292,6 +355,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			line = mlogWireSendReceipts
 			if payload, ok := data.([]rlp.RawValue); ok {
 				details = append(details, len(payload))
+			} else if err != nil {
+				details = append(details, 0)
 			} else {
 				glog.Fatal("cant cast: ReceiptsMsg", direction)
 			}
@@ -299,6 +364,8 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 			line = mlogWireReceiveReceipts
 			if payload, ok := data.([][]*types.Receipt); ok {
 				details = append(details, len(payload))
+			} else if err != nil {
+				details = append(details, 0)
 			} else {
 				glog.Fatal("cant cast: ReceiptsMsg", direction)
 			}
