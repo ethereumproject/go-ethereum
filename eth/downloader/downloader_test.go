@@ -1823,5 +1823,8 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	// Wait to make sure all data is set after sync
 	time.Sleep(500 * time.Millisecond)
 
-	assertOwnChain(t, tester, targetBlocks+1)
+	// Note, we can't assert the chain here because the test asserter assumes sync
+	// completed using a single mode of operation, whereas fast-then-slow can result
+	// in arbitrary intermediate state that's not cleanly verifiable.
+	//assertOwnChain(t, tester, targetBlocks+1)
 }
