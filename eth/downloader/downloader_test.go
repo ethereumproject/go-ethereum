@@ -1805,7 +1805,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 			t.Fatalf("failing fast sync succeeded err=%v i=%d/fsCriticalTrials=%d", err, i, fsCriticalTrials)
 		}
 		if err != nil && mode == FullSync {
-			t.Fatalf("error on full sync: ", err)
+			t.Fatalf("error on full sync: %v", err)
 		}
 		if i == 0 {
 			// If it's the first failure, pivot should be locked => reenable all others to detect pivot changes
