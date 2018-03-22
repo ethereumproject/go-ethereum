@@ -49,10 +49,27 @@ func mlogWireDelegate(p *peer, direction string, msgCode uint64, size int, data 
 		msgCode,
 		size,
 		ProtocolMessageStringer(uint(msgCode)),
-		p.id,
-		p.RemoteAddr().String(),
-		p.version,
-		err,
+	}
+	if p != nil {
+		details = append(details,
+			p.id,
+			p.RemoteAddr().String(),
+			p.version,
+		)
+	} else {
+		// for testing
+		details = append(details,
+			0,
+			"123.123.123.123",
+			42,
+		)
+	}
+
+	// Use error string if err not nil
+	if err != nil {
+		details = append(details, err.Error())
+	} else {
+		details = append(details, err)
 	}
 
 	// This could obviously be refactored, but I like the explicitness of it.
