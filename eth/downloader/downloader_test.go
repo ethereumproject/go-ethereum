@@ -1818,9 +1818,6 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	// reset tester delay
 	tester.setDelay(0)
 
-	// Wait to make sure all data is set after sync
-	//time.Sleep(500 * time.Millisecond)
-
 	tryFullSync := func() error {
 		return tester.sync("peer", nil, FastSync)
 	}
@@ -1846,6 +1843,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 		i++ // since we just tried another trial
 		// dl didn't switch mode
 		if e := checkMode(); e != nil && e.got == FastSync {
+			// HACK: BOHICA
 			// finish off fscritical trials (may fix windows?)
 			tester.setDelay(100 * time.Millisecond)
 			runTrials(fsCriticalTrials)
