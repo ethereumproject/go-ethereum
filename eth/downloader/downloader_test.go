@@ -1819,7 +1819,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	tester.setDelay(0)
 
 	// Wait to make sure all data is set after sync
-	time.Sleep(500 * time.Millisecond)
+	//time.Sleep(500 * time.Millisecond)
 
 	tryFullSync := func() error {
 		return tester.sync("peer", nil, FastSync)
@@ -1843,6 +1843,7 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 
 	// Retry limit exhausted, downloader will switch to full sync, should succeed
 	if err := tryFullSync(); err != nil {
+		i++ // since we just tried another trial
 		// dl didn't switch mode
 		if e := checkMode(); e != nil && e.got == FastSync {
 			// finish off fscritical trials (may fix windows?)
