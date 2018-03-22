@@ -504,7 +504,7 @@ func (s *PrivateAccountAPI) Sign(data []byte, addr common.Address, passwd string
 // SendTransaction will create a transaction from the given arguments and
 // tries to sign it with the key associated with args.To. If the given passwd isn't
 // able to decrypt the key it fails.
-func(s *PrivateAccountAPI) SendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
+func (s *PrivateAccountAPI) SendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
 	args = prepareSendTxArgs(args, s.gpo)
 
 	s.txMu.Lock()

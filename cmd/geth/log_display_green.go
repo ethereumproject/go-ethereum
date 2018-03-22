@@ -26,16 +26,17 @@
 package main
 
 import (
-	"time"
 	"fmt"
 	"math/big"
-	"github.com/ethereumproject/go-ethereum/logger"
 	"strings"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"time"
+
+	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/core"
 )
 
 var lsModeIcon = []string{

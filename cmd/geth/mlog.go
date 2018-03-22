@@ -6,33 +6,33 @@ import (
 
 var mlogClient = logger.MLogRegisterAvailable("client", mlogLinesClient)
 
-var mlogLinesClient = []logger.MLogT{
-	*mlogClientStartup,
-	*mlogClientShutdown,
+var mlogLinesClient = []*logger.MLogT{
+	mlogClientStartup,
+	mlogClientShutdown,
 }
 
 var clientDetails = []logger.MLogDetailT{
-	{"CLIENT", "SERVER_ID", "STRING"},
-	{"CLIENT", "SERVER_NAME", "STRING"},
-	{"CLIENT", "SERVER_ENODE", "STRING"},
-	{"CLIENT", "SERVER_IP", "STRING"},
-	{"CLIENT", "SERVER_MAXPEERS", "INT"},
+	{Owner: "CLIENT", Key: "SERVER_ID", Value: "STRING"},
+	{Owner: "CLIENT", Key: "SERVER_NAME", Value: "STRING"},
+	{Owner: "CLIENT", Key: "SERVER_ENODE", Value: "STRING"},
+	{Owner: "CLIENT", Key: "SERVER_IP", Value: "STRING"},
+	{Owner: "CLIENT", Key: "SERVER_MAXPEERS", Value: "INT"},
 
-	{"CLIENT", "CONFIG_CHAINNAME", "QUOTEDSTRING"},
-	{"CLIENT", "CONFIG_CHAINID", "INT"},
-	{"CLIENT", "CONFIG_NETWORK", "INT"},
+	{Owner: "CLIENT", Key: "CONFIG_CHAINNAME", Value: "QUOTEDSTRING"},
+	{Owner: "CLIENT", Key: "CONFIG_CHAINID", Value: "INT"},
+	{Owner: "CLIENT", Key: "CONFIG_NETWORK", Value: "INT"},
 
-	{"CLIENT", "MLOG_COMPONENTS", "STRING"},
+	{Owner: "CLIENT", Key: "MLOG_COMPONENTS", Value: "STRING"},
 
-	{"CLIENT", "IDENTITY", "OBJECT"},
+	{Owner: "CLIENT", Key: "IDENTITY", Value: "OBJECT"},
 }
 
 var mlogClientStartup = &logger.MLogT{
 	Description: `Called when the geth client starts up.`,
-	Receiver: "CLIENT",
-	Verb:     "START",
-	Subject:  "SESSION",
-	Details: clientDetails,
+	Receiver:    "CLIENT",
+	Verb:        "START",
+	Subject:     "SESSION",
+	Details:     clientDetails,
 }
 
 var mlogClientShutdown = &logger.MLogT{
@@ -42,7 +42,7 @@ var mlogClientShutdown = &logger.MLogT{
 	Subject:     "SESSION",
 	Details: append(clientDetails,
 		[]logger.MLogDetailT{
-			{"STOP", "SIGNAL", "STRING"},
-			{"STOP", "ERROR", "STRING_OR_NULL"},
-			{"CLIENT", "DURATION", "INT"}}...),
+			{Owner: "STOP", Key: "SIGNAL", Value: "STRING"},
+			{Owner: "STOP", Key: "ERROR", Value: "STRING_OR_NULL"},
+			{Owner: "CLIENT", Key: "DURATION", Value: "INT"}}...),
 }

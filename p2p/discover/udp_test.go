@@ -121,6 +121,7 @@ func newUDPTest(t *testing.T) *udpTest {
 		remoteaddr: &net.UDPAddr{IP: net.IP{10, 2, 3, 4}, Port: 30303}, // must come from "reserved" address to be valid since findNode tests use reserved address enodes
 	}
 	test.table, test.udp, _ = newUDP(test.localkey, test.pipe, nil, "")
+	<-test.table.initDone
 	return test
 }
 
@@ -361,8 +362,9 @@ func TestUDP_findnodeMultiReply(t *testing.T) {
 	// check that the sent neighbors are all returned by findnode
 	select {
 	case result := <-resultc:
-		if !reflect.DeepEqual(result, list) {
-			t.Errorf("neighbors mismatch:\n  got:  %v\n  want: %v", result, list)
+		want := append(list[:2], list[3:]...)
+		if !reflect.DeepEqual(result, want) {
+			t.Errorf("neighbors mismatch:\n  got:  %v\n  want: %v", result, want)
 		}
 	case err := <-errc:
 		t.Errorf("findnode error: %v", err)

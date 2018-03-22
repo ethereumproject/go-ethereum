@@ -358,7 +358,6 @@ func TestCalcDifficulty1Mainnet(t *testing.T) {
 		t.Errorf("diffusion not configured as difficulty for Defuse Difficulty Bomb block: %v", dhB)
 	}
 
-
 	explosionBlock := big.NewInt(0).Add(dhB, delay)
 
 	//parentBlocks to compare with expected equality
@@ -391,7 +390,7 @@ func TestCalcDifficulty1Mainnet(t *testing.T) {
 		new(big.Int).Add(defuseBlock, big.NewInt(-1)): calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(-1)), parentDiff),
 		new(big.Int).Add(defuseBlock, big.NewInt(0)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(0)), parentDiff),
 		new(big.Int).Add(defuseBlock, big.NewInt(1)):  calcDifficultyDefused(time, parentTime, new(big.Int).Add(defuseBlock, big.NewInt(1)), parentDiff),
-		
+
 		big.NewInt(10000000): calcDifficultyDefused(time, parentTime, big.NewInt(10000000), parentDiff),
 	}
 

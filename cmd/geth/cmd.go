@@ -32,8 +32,8 @@ import (
 	"time"
 
 	"github.com/ethereumproject/ethash"
-	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -90,9 +90,9 @@ func StartNode(stack *node.Node) {
 		cid.Version = Version
 	}
 
-	getcmpts := func () string {
+	getcmpts := func() string {
 		var ss []string
-		for c := range logger.MLogRegistryActive {
+		for c := range logger.GetMLogRegistryActive() {
 			ss = append(ss, string(c))
 		}
 		return strings.Join(ss, ",")
@@ -787,7 +787,7 @@ func version(ctx *cli.Context) error {
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)))
-	fmt.Println("Go Version:", common.GetClientSessionIdentity().Version)
+	fmt.Println("Go Version:", common.GetClientSessionIdentity().Goversion)
 	fmt.Println("Go OS:", common.GetClientSessionIdentity().Goos)
 	fmt.Println("Go Arch:", common.GetClientSessionIdentity().Goarch)
 	fmt.Println("Machine ID:", common.GetClientSessionIdentity().MachineID)
@@ -812,16 +812,18 @@ func stringInSlice(s string, sl []string) bool {
 func makeMLogDocumentation(ctx *cli.Context) error {
 	wantComponents := ctx.Args()
 
+	mlogRegistry := logger.GetMLogRegistryAvailable()
+
 	// If no components specified, print all.
 	if len(wantComponents) == 0 {
-		for k := range logger.MLogRegistryAvailable {
+		for k := range mlogRegistry {
 			wantComponents = append(wantComponents, string(k))
 		}
 	}
 
 	// Should throw an error if any unavailable components were specified.
 	cs := []string{}
-	for c := range logger.MLogRegistryAvailable {
+	for c := range mlogRegistry {
 		cs = append(cs, string(c))
 	}
 	for _, c := range wantComponents {
@@ -831,7 +833,7 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 	}
 
 	// "table of contents"
-	for cmp, lines := range logger.MLogRegistryAvailable {
+	for cmp, lines := range mlogRegistry {
 		if !stringInSlice(string(cmp), wantComponents) {
 			continue
 		}
@@ -851,7 +853,7 @@ func makeMLogDocumentation(ctx *cli.Context) error {
 		fmt.Println("\n----") // hr
 
 		// each LINE
-		for cmp, lines := range logger.MLogRegistryAvailable {
+		for cmp, lines := range mlogRegistry {
 			if !stringInSlice(string(cmp), wantComponents) {
 				continue
 			}

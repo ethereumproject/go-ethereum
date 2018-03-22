@@ -4,9 +4,10 @@ import (
 	"math/big"
 	"testing"
 
+	"path/filepath"
+
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"path/filepath"
 )
 
 func TestConfigErrorProperties(t *testing.T) {

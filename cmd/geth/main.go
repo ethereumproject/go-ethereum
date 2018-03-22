@@ -19,19 +19,21 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/urfave/cli.v1"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"time"
+
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/benchmark/rtprof"
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/metrics"
-	"time"
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -39,7 +41,8 @@ import (
 var Version = "source"
 
 func init() {
-	common.SetClientSessionIdentity(Version)
+	rand.Seed(time.Now().UTC().UnixNano())
+	common.SetClientVersion(Version)
 }
 
 func makeCLIApp() (app *cli.App) {

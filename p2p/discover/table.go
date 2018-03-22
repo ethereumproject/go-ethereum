@@ -35,31 +35,58 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p/distip"
 )
 
 const (
-	alpha      = 3  // Kademlia concurrency factor
-	bucketSize = 16 // Kademlia bucket size
-	hashBits   = len(common.Hash{}) * 8
-	nBuckets   = hashBits + 1 // Number of buckets
+	alpha             = 3  // Kademlia concurrency factor
+	bucketSize        = 16 // Kademlia bucket size
+	maxReplacements   = 10 // Size of per-bucket replacement list
+	hashBits          = len(common.Hash{}) * 8
+	nBuckets          = hashBits + 1        // Number of buckets
+	bucketMinDistance = hashBits - nBuckets // Log distance of closest bucket
 
 	maxBondingPingPongs = 16
 	maxFindnodeFailures = 5
+
+	// IP address limits.
+	bucketIPLimit, bucketSubnet = 2, 24 // at most 2 addresses from the same /24
+	tableIPLimit, tableSubnet   = 10, 24
 
 	autoRefreshInterval = 1 * time.Hour
 	seedCount           = 30
 	seedMaxAge          = 5 * 24 * time.Hour
 )
 
+var (
+	logdistS1 = new(common.Hash)
+	logdistS2 = new(common.Hash)
+	logdistS3 [64]byte
+)
+
+func init() {
+	s1a := make([]byte, 32)
+	s2a := make([]byte, 32)
+
+	rand.Read(s1a)
+	rand.Read(s2a)
+	rand.Read(logdistS3[:])
+
+	logdistS1.SetBytes(s1a)
+	logdistS2.SetBytes(s2a)
+}
+
 type Table struct {
 	mutex   sync.Mutex        // protects buckets, their content, and nursery
 	buckets [nBuckets]*bucket // index of known nodes by distance
 	nursery []*Node           // bootstrap nodes
 	db      *nodeDB           // database of known nodes
+	ips     distip.DistinctNetSet
 
 	refreshReq chan chan struct{}
 	closeReq   chan struct{}
 	closed     chan struct{}
+	initDone   chan struct{}
 
 	bondmu    sync.Mutex
 	bonding   map[NodeID]*bondproc
@@ -89,7 +116,11 @@ type transport interface {
 
 // bucket contains nodes, ordered by their last activity. the entry
 // that was most recently active is the first element in entries.
-type bucket struct{ entries []*Node }
+type bucket struct {
+	entries      []*Node // live entries, sorted by time of last contact
+	replacements []*Node // recently seen nodes to be used if revalidation fails
+	ips          distip.DistinctNetSet
+}
 
 func newTable(t transport, ourID NodeID, ourAddr *net.UDPAddr, nodeDBPath string) (*Table, error) {
 	// If no node database was given, use an in-memory one
@@ -106,12 +137,16 @@ func newTable(t transport, ourID NodeID, ourAddr *net.UDPAddr, nodeDBPath string
 		refreshReq: make(chan chan struct{}),
 		closeReq:   make(chan struct{}),
 		closed:     make(chan struct{}),
+		initDone:   make(chan struct{}),
+		ips:        distip.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
 	}
 	for i := 0; i < cap(tab.bondslots); i++ {
 		tab.bondslots <- struct{}{}
 	}
 	for i := range tab.buckets {
-		tab.buckets[i] = new(bucket)
+		tab.buckets[i] = &bucket{
+			ips: distip.DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
+		}
 	}
 	go tab.refreshLoop()
 	return tab, nil
@@ -127,6 +162,10 @@ func (tab *Table) Self() *Node {
 // table. It will not write the same node more than once. The nodes in
 // the slice are copies and can be modified by the caller.
 func (tab *Table) ReadRandomNodes(buf []*Node) (n int) {
+	if !tab.isInitDone() {
+		return 0
+	}
+
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
 	// TODO: tree-based buckets would help here
@@ -203,6 +242,16 @@ func (tab *Table) SetFallbackNodes(nodes []*Node) error {
 	return nil
 }
 
+// isInitDone returns whether the table's initial seeding procedure has completed.
+func (tab *Table) isInitDone() bool {
+	select {
+	case <-tab.initDone:
+		return true
+	default:
+		return false
+	}
+}
+
 // Resolve searches for a specific node with the given ID.
 // It returns nil if the node could not be found.
 func (tab *Table) Resolve(id NodeID) *Node {
@@ -243,8 +292,15 @@ func (tab *Table) lookup(id NodeID, refreshIfEmpty bool) []*Node {
 		asked          = make(map[NodeID]bool)
 		reply          = make(chan []*Node, alpha)
 		pendingQueries = 0
-		result         = tab.closest(id)
 	)
+
+	var result *closest
+	if id == tab.self.ID {
+		result = tab.closest(logdistS3)
+	} else {
+		result = tab.closest(id)
+	}
+
 	// don't query further if we hit ourself.
 	// unlikely to happen often in practice.
 	asked[tab.self.ID] = true
@@ -256,7 +312,11 @@ func (tab *Table) lookup(id NodeID, refreshIfEmpty bool) []*Node {
 		// logic.
 		<-tab.refresh()
 
-		result = tab.closest(id)
+		if id == tab.self.ID {
+			result = tab.closest(logdistS3)
+		} else {
+			result = tab.closest(id)
+		}
 	}
 
 	for {
@@ -318,9 +378,13 @@ func (tab *Table) refresh() <-chan struct{} {
 func (tab *Table) refreshLoop() {
 	var (
 		timer   = time.NewTicker(autoRefreshInterval)
-		waiting []chan struct{} // accumulates waiting callers while doRefresh runs
-		done    chan struct{}   // where doRefresh reports completion
+		waiting = []chan struct{}{tab.initDone} // accumulates waiting callers while doRefresh runs
+		done    = make(chan struct{})           // where doRefresh reports completion
 	)
+
+	// Initial refresh
+	go tab.doRefresh(done)
+
 loop:
 	for {
 		select {
@@ -365,19 +429,6 @@ loop:
 func (tab *Table) doRefresh(done chan struct{}) {
 	defer close(done)
 
-	// The Kademlia paper specifies that the bucket refresh should
-	// perform a lookup in the least recently used bucket. We cannot
-	// adhere to this because the findnode target is a 512bit value
-	// (not hash-sized) and it is not easily possible to generate a
-	// sha3 preimage that falls into a chosen bucket.
-	// We perform a lookup with a random target instead.
-	var target NodeID
-	rand.Read(target[:])
-	result := tab.lookup(target, false)
-	if len(result) > 0 {
-		return
-	}
-
 	// The table is empty. Load nodes from the database and insert
 	// them. This should yield a few previously seen nodes that are
 	// (hopefully) still alive.
@@ -398,6 +449,18 @@ func (tab *Table) doRefresh(done chan struct{}) {
 
 	// Finally, do a self lookup to fill up the buckets.
 	tab.lookup(tab.self.ID, false)
+
+	// The Kademlia paper specifies that the bucket refresh should
+	// perform a lookup in the least recently used bucket. We cannot
+	// adhere to this because the findnode target is a 512bit value
+	// (not hash-sized) and it is not easily possible to generate a
+	// sha3 preimage that falls into a chosen bucket.
+	// We perform a few lookups with a random target instead.
+	for i := 0; i < 3; i++ {
+		var target NodeID
+		rand.Read(target[:])
+		tab.lookup(target, false)
+	}
 }
 
 func (tab *Table) closest(id NodeID) *closest {
@@ -458,6 +521,9 @@ func (tab *Table) bondall(nodes []*Node) (result []*Node) {
 func (tab *Table) bond(pinged bool, id NodeID, addr *net.UDPAddr, tcpPort uint16) (*Node, error) {
 	if id == tab.self.ID {
 		return nil, errors.New("is self")
+	}
+	if pinged && !tab.isInitDone() {
+		return nil, errors.New("still initializing")
 	}
 	// Retrieve a previously known node and any recent findnode failures
 	node, fails := tab.db.node(id), 0
@@ -551,36 +617,23 @@ func (tab *Table) ping(id NodeID, addr *net.UDPAddr) error {
 //
 // The caller must not hold tab.mutex.
 func (tab *Table) add(new *Node) {
-	b := tab.buckets[logdist(tab.self.sha, new.sha)]
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
-	if b.bump(new) {
-		return
+
+	b := tab.bucket(new.sha)
+	if !tab.bumpOrAdd(b, new) {
+		// Node is not in table. Add it to the replacement list.
+		tab.addReplacement(b, new)
 	}
-	var oldest *Node
-	if len(b.entries) == bucketSize {
-		oldest = b.entries[bucketSize-1]
-		if oldest.contested {
-			// The node is already being replaced, don't attempt
-			// to replace it.
-			return
-		}
-		oldest.contested = true
-		// Let go of the mutex so other goroutines can access
-		// the table while we ping the least recently active node.
-		tab.mutex.Unlock()
-		err := tab.ping(oldest.ID, oldest.addr())
-		tab.mutex.Lock()
-		oldest.contested = false
-		if err == nil {
-			// The node responded, don't replace it.
-			return
-		}
+}
+
+// bucket returns the bucket for the given node ID hash.
+func (tab *Table) bucket(sha common.Hash) *bucket {
+	d := logdist(tab.self.sha, sha)
+	if d <= bucketMinDistance {
+		return tab.buckets[0]
 	}
-	added := b.replace(new, oldest)
-	if added && tab.nodeAddedHook != nil {
-		tab.nodeAddedHook(new)
-	}
+	return tab.buckets[d-bucketMinDistance-1]
 }
 
 // stuff adds nodes the table to the end of their corresponding bucket
@@ -591,7 +644,7 @@ outer:
 		if n.ID == tab.self.ID {
 			continue // don't add self
 		}
-		bucket := tab.buckets[logdist(tab.self.sha, n.sha)]
+		bucket := tab.buckets[logdist(*logdistS1, crypto.Keccak256Hash(n.sha.Bytes(), logdistS2.Bytes()))]
 		for i := range bucket.entries {
 			if bucket.entries[i].ID == n.ID {
 				continue outer // already in bucket
@@ -611,7 +664,7 @@ outer:
 func (tab *Table) delete(node *Node) {
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
-	bucket := tab.buckets[logdist(tab.self.sha, node.sha)]
+	bucket := tab.buckets[logdist(*logdistS1, crypto.Keccak256Hash(node.sha.Bytes(), logdistS2.Bytes()))]
 	for i := range bucket.entries {
 		if bucket.entries[i].ID == node.ID {
 			bucket.entries = append(bucket.entries[:i], bucket.entries[i+1:]...)
@@ -651,4 +704,83 @@ func (b *bucket) bump(n *Node) bool {
 		}
 	}
 	return false
+}
+
+// bumpOrAdd moves n to the front of the bucket entry list or adds it if the list isn't
+// full. The return value is true if n is in the bucket.
+func (tab *Table) bumpOrAdd(b *bucket, n *Node) bool {
+	if b.bump(n) {
+		return true
+	}
+	if len(b.entries) >= bucketSize || !tab.addIP(b, n.IP) {
+		return false
+	}
+	b.entries, _ = pushNode(b.entries, n, bucketSize)
+	b.replacements = deleteNode(b.replacements, n)
+	n.addedAt = time.Now()
+	if tab.nodeAddedHook != nil {
+		tab.nodeAddedHook(n)
+	}
+	return true
+}
+
+func (tab *Table) addReplacement(b *bucket, n *Node) {
+	for _, e := range b.replacements {
+		if e.ID == n.ID {
+			return // already in list
+		}
+	}
+	if !tab.addIP(b, n.IP) {
+		return
+	}
+	var removed *Node
+	b.replacements, removed = pushNode(b.replacements, n, maxReplacements)
+	if removed != nil {
+		tab.removeIP(b, removed.IP)
+	}
+}
+
+func (tab *Table) addIP(b *bucket, ip net.IP) bool {
+	if distip.IsLAN(ip) {
+		return true
+	}
+	if !tab.ips.Add(ip) {
+		// log.Debug("IP exceeds table limit", "ip", ip)
+		return false
+	}
+	if !b.ips.Add(ip) {
+		// log.Debug("IP exceeds bucket limit", "ip", ip)
+		tab.ips.Remove(ip)
+		return false
+	}
+	return true
+}
+
+func (tab *Table) removeIP(b *bucket, ip net.IP) {
+	if distip.IsLAN(ip) {
+		return
+	}
+	tab.ips.Remove(ip)
+	b.ips.Remove(ip)
+}
+
+// pushNode adds n to the front of list, keeping at most max items.
+func pushNode(list []*Node, n *Node, max int) ([]*Node, *Node) {
+	if len(list) < max {
+		list = append(list, nil)
+	}
+	removed := list[len(list)-1]
+	copy(list[1:], list)
+	list[0] = n
+	return list, removed
+}
+
+// deleteNode removes n from list.
+func deleteNode(list []*Node, n *Node) []*Node {
+	for i := range list {
+		if list[i].ID == n.ID {
+			return append(list[:i], list[i+1:]...)
+		}
+	}
+	return list
 }

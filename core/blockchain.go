@@ -426,7 +426,6 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	// a vulnerability.
 	// Random increments are only implemented with using an interval > 1.
 	randomizeIncrement := func(i int) int {
-		mrand.Seed(time.Now().UTC().UnixNano())
 		halfIncrement := i / 2
 		ri := mrand.Int63n(int64(halfIncrement))
 		if ri%2 == 0 {
