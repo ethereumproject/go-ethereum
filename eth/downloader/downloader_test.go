@@ -1811,11 +1811,17 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 		}
 	}
 
+	// reset tester delay
+	tester.setDelay(0)
+
 	// Wait to make sure all data is set after sync
 	time.Sleep(500 * time.Millisecond)
 
 	// Retry limit exhausted, downloader will switch to full sync, should succeed
 	if err := tester.sync("peer", nil, FastSync); err != nil {
+		if m := tester.downloader.GetMode(); m != FullSync {
+			t.Fatalf("got: %v, want: %v", m, FullSync)
+		}
 		t.Fatalf("failed to synchronise blocks in slow sync: %v", err)
 	} else {
 		if m := tester.downloader.GetMode(); m != FullSync {
