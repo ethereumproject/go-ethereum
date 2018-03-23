@@ -49,7 +49,7 @@ unit_tests_steps: &unit_tests_steps
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           go env
-          go test -tags="sputnikvm netgo" ./...
+          go test -tags="sputnikvm netgo deterministic" ./...
 
 bats_tests_steps: &bats_tests_steps
     steps:

@@ -36,7 +36,7 @@ install:
   - go env
   - go get golang.org/x/sys/windows
 build_script:
-  - go test -tags=sputnikvm ./...
+  - go test -tags="sputnikvm deterministic" ./...
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - geth version
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
