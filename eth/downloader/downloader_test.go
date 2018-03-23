@@ -1797,15 +1797,20 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 	// (eg i=5/fsCriticalTrials=10, i=3/fsCriticalTrials=5) for whatever reason...
 
 	var i uint32 = 0
-
+	var passed bool
 	for ; i < fsCriticalTrials+2; i++ {
 		err := tester.sync("peer", nil, FastSync)
 		mode := tester.downloader.GetMode()
 		if err == nil && mode == FastSync {
 			t.Fatalf("failing fast sync succeeded err=%v i=%d/fsCriticalTrials=%d", err, i, fsCriticalTrials)
 		}
-		if err != nil && mode == FullSync {
-			t.Fatalf("error on full sync: %v", err)
+		if err != nil && mode == FullSync && i >= fsCriticalTrials {
+			t.Fatalf("error on full sync: %v i=%d", err, i)
+		}
+		if err == nil && mode == FullSync {
+			t.Logf("completed trials: i=%d(fsCriticalTrials=%d) mode=%v err=%v", i, fsCriticalTrials, mode, err)
+			passed = true
+			break
 		}
 		if i == 0 {
 			// If it's the first failure, pivot should be locked => reenable all others to detect pivot changes
@@ -1814,14 +1819,17 @@ func testFastCriticalRestarts(t *testing.T, protocol int) {
 			tester.setDelay(0)
 			tester.lock.Unlock()
 		}
-		if i >= fsCriticalTrials && err == nil && mode == FullSync {
-			t.Logf("completed trials: i=%d(fsCriticalTrials=%d) mode=%v err=%v", i, fsCriticalTrials, mode, err)
-			break
+		if mode == FullSync {
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 
+	if !passed {
+		t.Errorf("did not sync: got: %v, want: %v", passed, true)
+	}
+
 	// Wait to make sure all data is set after sync
-	time.Sleep(500 * time.Millisecond)
+	//time.Sleep(500 * time.Millisecond)
 
 	// Note, we can't assert the chain here because the test asserter assumes sync
 	// completed using a single mode of operation, whereas fast-then-slow can result
