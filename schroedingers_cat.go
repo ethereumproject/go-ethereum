@@ -63,6 +63,10 @@ func parseLinePackageTest(s string) *test {
 
 func handleLine(s string) (*test, error) {
 	var t *test
+	s = strings.Trim(s, " ")
+	if len(s) == 0 {
+		return nil, errEmptyLine
+	}
 	re := regexp.MustCompile(`/^$/`)
 	if re.MatchString(s) {
 		return nil, errEmptyLine
