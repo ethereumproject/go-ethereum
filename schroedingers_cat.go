@@ -24,6 +24,7 @@ var testsFile string
 var trialsAllowed int
 
 var goExecutablePath string
+var commandPrefix []string
 
 var errEmptyLine = errors.New("empty line")
 var errCommentLine = errors.New("comment line")
@@ -35,6 +36,7 @@ type test struct {
 
 func init() {
 	goExecutablePath = getGoPath()
+	commandPrefix = getCommandPrefix()
 	flag.StringVar(&testsFile, "f", "schroedinger-tests.txt", "file argument")
 	flag.IntVar(&trialsAllowed, "t", 3, "allowed trials before nondeterministic test actually fails")
 	flag.Parse()
@@ -42,6 +44,13 @@ func init() {
 
 func getGoPath() string {
 	return filepath.Join(runtime.GOROOT(), "bin", "go")
+}
+
+func getCommandPrefix() []string {
+	if runtime.GOOS == "windows" {
+		return []string{"cmd", "/C"}
+	}
+	return []string{"/bin/sh", "-c"}
 }
 
 func parseLinePackageTest(s string) *test {
@@ -68,7 +77,7 @@ func handleLine(s string) (*test, error) {
 
 func runTest(t *test) error {
 	args := fmt.Sprintf("test %s -run %s", t.pkg, t.name)
-	cmd := exec.Command("/bin/sh", "-c", goExecutablePath+" "+args)
+	cmd := exec.Command(commandPrefix[0], commandPrefix[1], goExecutablePath+" "+args)
 	return cmd.Run()
 }
 
@@ -77,6 +86,7 @@ func main() {
 	testsFile, _ := filepath.Abs(testsFile)
 
 	log.Println("* go executable path:", goExecutablePath)
+	log.Println("* command prefix:", strings.Join(commandPrefix, " "))
 	log.Println("* tests file:", testsFile)
 	log.Println("* trials: ", trialsAllowed)
 
