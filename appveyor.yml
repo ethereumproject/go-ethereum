@@ -38,7 +38,7 @@ install:
 build_script:
   - go test -tags="sputnikvm deterministic" ./...
   - go build ./schroedingers_cat.go
-  - .\schroedingers_cat.exe -f .\schroedinger-tests.txt
+  - .\schroedingers_cat.exe -t 5 -f .\schroedinger-tests.txt
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - geth version
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
