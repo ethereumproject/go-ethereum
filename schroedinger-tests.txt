@@ -44,3 +44,9 @@ github.com/ethereumproject/go-ethereum/accounts TestTimedUnlock_Mem
 github.com/ethereumproject/go-ethereum/accounts TestTimedUnlock_Mem2
 github.com/ethereumproject/go-ethereum/accounts TestOverrideUnlock_Mem
 github.com/ethereumproject/go-ethereum/accounts TestSignRace_Mem
+
+github.com/ethereumproject/go-ethereum/whisper TestSelfMessage
+github.com/ethereumproject/go-ethereum/whisper TestDirectMessage
+github.com/ethereumproject/go-ethereum/whisper TestAnonymousBroadcast
+github.com/ethereumproject/go-ethereum/whisper TestIdentifiedBroadcast
+github.com/ethereumproject/go-ethereum/whisper TestMessageExpiration
