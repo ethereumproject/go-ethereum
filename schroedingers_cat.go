@@ -9,11 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"time"
 )
+
+const commentPattern = "#"
 
 // tests file should contains only lines or blank lines of the form:
 // ./eth/downloader TestCanonicalSynchronisation
@@ -63,19 +64,18 @@ func parseLinePackageTest(s string) *test {
 
 func handleLine(s string) (*test, error) {
 	var t *test
-	s = strings.Trim(s, " ")
-	if len(s) == 0 {
+	ss := strings.Trim(s, " ")
+	if len(ss) == 0 {
 		return nil, errEmptyLine
 	}
-	re := regexp.MustCompile(`/^$/`)
-	if re.MatchString(s) {
-		return nil, errEmptyLine
-	}
-	re = regexp.MustCompile(`/^#/`)
-	if re.MatchString(s) {
+	if strings.HasPrefix(ss, commentPattern) {
 		return nil, errCommentLine
 	}
-	t = parseLinePackageTest(s)
+	if strings.Contains(ss, commentPattern) {
+		sss := strings.Split(ss, commentPattern)
+		ss = strings.Trim(sss[0], " ")
+	}
+	t = parseLinePackageTest(ss)
 	return t, nil
 }
 
