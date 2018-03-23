@@ -102,7 +102,9 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 	allstart := time.Now()
-	defer log.Printf("FINISHED (%v)", time.Since(allstart))
+	defer func() {
+		log.Printf("FINISHED (%v)", time.Since(allstart))
+	}()
 
 outer:
 	for scanner.Scan() {
