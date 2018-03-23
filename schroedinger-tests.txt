@@ -1,4 +1,3 @@
-# Downloader tests :fu:
 github.com/ethereumproject/go-ethereum/eth/downloader TestCanonicalSynchronisation
 github.com/ethereumproject/go-ethereum/eth/downloader TestThrottling
 github.com/ethereumproject/go-ethereum/eth/downloader TestForkedSync

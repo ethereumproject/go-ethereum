@@ -50,6 +50,8 @@ unit_tests_steps: &unit_tests_steps
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           go env
           go test -tags="sputnikvm netgo deterministic" ./...
+          go build ./schroedingers_cat.go
+          ./schroedingers_cat -f ./schroedinger-tests.txt
 
 bats_tests_steps: &bats_tests_steps
     steps:
