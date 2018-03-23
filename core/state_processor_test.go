@@ -410,7 +410,7 @@ func TestAccumulateRewards1(t *testing.T) {
 
 		db, _ := ethdb.NewMemDatabase()
 
-		stateDB, err := state.New(common.Hash{}, db)
+		stateDB, err := state.New(common.Hash{}, state.NewDatabase(db))
 		if err != nil {
 			t.Fatalf("could not open statedb: %v", err)
 		}
@@ -531,7 +531,7 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 		// Here's where cases slice is assign according to config slice.
 		for _, c := range cases[i] {
 			db, _ := ethdb.NewMemDatabase()
-			stateDB, err := state.New(common.Hash{}, db)
+			stateDB, err := state.New(common.Hash{}, state.NewDatabase(db))
 			if err != nil {
 				t.Fatalf("could not open statedb: %v", err)
 			}
@@ -629,7 +629,7 @@ func TestAccumulateRewards3_1Uncle(t *testing.T) {
 		for _, c := range cases[i] {
 
 			db, _ := ethdb.NewMemDatabase()
-			stateDB, err := state.New(common.Hash{}, db)
+			stateDB, err := state.New(common.Hash{}, state.NewDatabase(db))
 			if err != nil {
 				t.Fatalf("could not open statedb: %v", err)
 			}
@@ -715,7 +715,7 @@ func TestAccumulateRewards4_0Uncles(t *testing.T) {
 		for _, c := range cases[i] {
 
 			db, _ := ethdb.NewMemDatabase()
-			stateDB, err := state.New(common.Hash{}, db)
+			stateDB, err := state.New(common.Hash{}, state.NewDatabase(db))
 			if err != nil {
 				t.Fatalf("could not open statedb: %v", err)
 			}

@@ -125,7 +125,7 @@ func run(ctx *cli.Context) error {
 	glog.SetV(ctx.GlobalInt(VerbosityFlag.Name))
 
 	db, _ := ethdb.NewMemDatabase()
-	statedb, _ := state.New(common.Hash{}, db)
+	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	sender := statedb.CreateAccount(common.StringToAddress("sender"))
 
 	valueFlag, _ := new(big.Int).SetString(ctx.GlobalString(ValueFlag.Name), 0)
@@ -163,7 +163,7 @@ func run(ctx *cli.Context) error {
 	vmdone := time.Since(tstart)
 
 	if ctx.GlobalBool(DumpFlag.Name) {
-		statedb.Commit()
+		statedb.CommitTo(db, false)
 		fmt.Println(string(statedb.Dump([]common.Address{})))
 	}
 
@@ -262,7 +262,7 @@ func (self *VMEnv) GetHash(n uint64) common.Hash {
 	return common.Hash{}
 }
 func (self *VMEnv) AddLog(log *vm.Log) {
-	self.state.AddLog(log)
+	self.state.AddLog(*log)
 }
 func (self *VMEnv) CanTransfer(from common.Address, balance *big.Int) bool {
 	return self.state.GetBalance(from).Cmp(balance) >= 0

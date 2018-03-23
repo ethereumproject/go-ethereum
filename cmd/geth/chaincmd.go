@@ -286,7 +286,7 @@ func dump(ctx *cli.Context) error {
 			out.WriteString("{}\n")
 			log.Fatal("block not found")
 		} else {
-			state, err := state.New(block.Root(), chainDb)
+			state, err := state.New(block.Root(), state.NewDatabase(chainDb))
 			if err != nil {
 				return fmt.Errorf("could not create new state: %v", err)
 			}

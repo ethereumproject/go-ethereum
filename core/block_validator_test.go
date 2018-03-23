@@ -106,7 +106,7 @@ func proc(t testing.TB) (Validator, *BlockChain) {
 func TestNumber(t *testing.T) {
 	_, chain := proc(t)
 
-	statedb, err := state.New(chain.Genesis().Root(), chain.chainDb)
+	statedb, err := state.New(chain.Genesis().Root(), state.NewDatabase(chain.chainDb))
 	if err != nil {
 		t.Fatal(err)
 	}

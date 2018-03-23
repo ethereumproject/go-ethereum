@@ -679,7 +679,8 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	}
 
 	// Initialize a statedb cache to ensure singleton account bloom filter generation
-	statedb, err := state.New(self.currentBlock.Root(), self.chainDb)
+	//statedb, err := state.New(self.currentBlock.Root(), state.NewDatabase(self.chainDb))
+	statedb, err := state.New(self.currentBlock.Root(), state.NewDatabase(self.chainDb))
 	if err != nil {
 		return err
 	}
@@ -748,7 +749,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		bc.currentBlock = bc.GetBlock(currentHeader.Hash())
 	}
 	if bc.currentBlock != nil {
-		if _, err := state.New(bc.currentBlock.Root(), bc.chainDb); err != nil {
+		if _, err := state.New(bc.currentBlock.Root(), state.NewDatabase(bc.chainDb)); err != nil {
 			// Rewound state missing, rolled back to before pivot, reset to genesis
 			bc.currentBlock = nil
 		}
@@ -876,7 +877,7 @@ func (self *BlockChain) State() (*state.StateDB, error) {
 
 // StateAt returns a new mutable state based on a particular point in time.
 func (self *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
-	return self.stateCache.New(root)
+	return state.New(root, state.NewDatabase(self.chainDb))
 }
 
 // Reset purges the entire blockchain, restoring it to its genesis state.
@@ -1027,7 +1028,7 @@ func (bc *BlockChain) HasBlockAndState(hash common.Hash) bool {
 		return false
 	}
 	// Ensure the associated state is also present
-	_, err := state.New(block.Root(), bc.chainDb)
+	_, err := state.New(block.Root(), state.NewDatabase(bc.chainDb))
 	return err == nil
 }
 
@@ -1483,7 +1484,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			return i, err
 		}
 		// Write state changes to database
-		_, err = self.stateCache.Commit()
+		_, err = self.stateCache.CommitTo(self.chainDb, false)
 		if err != nil {
 			return i, err
 		}

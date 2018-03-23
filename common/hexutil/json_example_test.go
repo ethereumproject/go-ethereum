@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2017 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,28 +14,32 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package ethdb
+package hexutil_test
 
-// Code using batches should try to add this much data to the batch.
-// The value was determined empirically.
-const IdealBatchSize = 100 * 1024
+import (
+	"encoding/json"
+	"fmt"
 
-// Putter wraps the database write operation supported by both batches and regular databases.
-type Putter interface {
-	Put(key []byte, value []byte) error
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
+)
+
+type MyType [5]byte
+
+func (v *MyType) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedText("MyType", input, v[:])
 }
 
-type Database interface {
-	Putter
-	Get(key []byte) ([]byte, error)
-	Has(key []byte) (bool, error)
-	Delete(key []byte) error
-	Close()
-	NewBatch() Batch
+func (v MyType) String() string {
+	return hexutil.Bytes(v[:]).String()
 }
 
-type Batch interface {
-	Putter
-	ValueSize() int // amount of data in the batch
-	Write() error
+func ExampleUnmarshalFixedText() {
+	var v1, v2 MyType
+	fmt.Println("v1 error:", json.Unmarshal([]byte(`"0x01"`), &v1))
+	fmt.Println("v2 error:", json.Unmarshal([]byte(`"0x0101010101"`), &v2))
+	fmt.Println("v2:", v2)
+	// Output:
+	// v1 error: hex string has length 2, want 10 for MyType
+	// v2 error: <nil>
+	// v2: 0x0101010101
 }

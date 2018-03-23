@@ -168,12 +168,12 @@ Loop:
 	}
 	for _, log := range vm.Logs() {
 		statelog := evm.NewLog(log.Address, log.Topics, log.Data, header.Number.Uint64())
-		statedb.AddLog(statelog)
+		statedb.AddLog(*statelog)
 	}
 	usedGas := vm.UsedGas()
 	totalUsedGas.Add(totalUsedGas, usedGas)
 
-	receipt := types.NewReceipt(statedb.IntermediateRoot().Bytes(), totalUsedGas)
+	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), totalUsedGas)
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
 	if MessageCreatesContract(tx) {

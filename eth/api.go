@@ -84,7 +84,7 @@ func stateAndBlockByNumber(m *miner.Miner, bc *core.BlockChain, blockNr rpc.Bloc
 	if block == nil {
 		return nil, nil, nil
 	}
-	stateDb, err := state.New(block.Root(), chainDb)
+	stateDb, err := state.New(block.Root(), state.NewDatabase(chainDb))
 	return stateDb, block, err
 }
 
