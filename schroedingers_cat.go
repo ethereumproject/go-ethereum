@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/mailru/easyjson/buffer"
 	"log"
 	"os"
 	"os/exec"
@@ -65,7 +67,10 @@ func getCommandPrefix() []string {
 func parseLinePackageTest(s string) *test {
 	t := &test{}
 	lsep := strings.Split(s, " ")
-	t.pkg, t.name = lsep[0], lsep[1]
+	t.pkg = lsep[0]
+	if len(lsep) > 1 {
+		t.name = lsep[1]
+	}
 	t.pkg = strings.Replace(t.pkg, "/", string(filepath.Separator), -1)
 	return t
 }
@@ -87,11 +92,14 @@ func handleLine(s string) (*test, error) {
 	return t, nil
 }
 
-func runTest(t *test) (string, error) {
-	args := fmt.Sprintf("test %s -run %s", t.pkg, t.name)
+func runTest(t *test) ([]byte, error) {
+	args := fmt.Sprintf("test %s", t.pkg)
+	if t.name != "" {
+		args += fmt.Sprintf("-run %s", t.name)
+	}
 	cmd := exec.Command(commandPrefix[0], commandPrefix[1], goExecutablePath+" "+args)
 	out, err := cmd.Output()
-	return string(out), err
+	return out, err
 }
 
 func collectTests(f string) (tests []*test, err error) {
@@ -122,7 +130,7 @@ func filterTests(tests []*test, allowed func(*test) bool) []*test {
 	return out
 }
 
-func tryTest(t *test, c chan error) {
+func tryIndividualTest(t *test, c chan error) {
 	for i := 0; i < trialsAllowed; i++ {
 		start := time.Now()
 		if o, e := runTest(t); e == nil {
@@ -132,11 +140,74 @@ func tryTest(t *test, c chan error) {
 			return
 		} else {
 			log.Println(t.pkg, t.name)
-			log.Println(o)
+			log.Println(string(o))
 			log.Printf("- FAIL (%v) %d/%d: %v", time.Since(start), i+1, trialsAllowed, e)
 		}
 	}
 	c <- fmt.Errorf("FAIL %s %s", t.pkg, t.name)
+}
+
+func grepFails(gotestout []byte) []string {
+	var b bytes.Buffer
+	reader := bufio.NewReader(&b)
+	reader.Read(gotestout)
+	scanner := bufio.NewScanner(reader)
+
+	var fails []string
+
+	for scanner.Scan() {
+		// eg. '--- FAIL: TestFastCriticalRestarts64 (12.34s)'
+		text := scanner.Text()
+		if !strings.Contains(text, "FAIL") {
+			continue
+		}
+		step1 := strings.Split(text, ":")
+		step2 := strings.Split(step1[1], "(")
+		testname := strings.Trim(step2[0], " ")
+		fails = append(fails, testname)
+	}
+
+	return fails
+}
+
+func tryPackageTest(t *test, c chan error) {
+	start := time.Now()
+	if o, e := runTest(t); e == nil {
+		log.Println(t.pkg, t.name)
+		log.Printf("- PASS (%v)", time.Since(start))
+		c <- nil
+		return
+	} else {
+		pc := make(chan error, 1)
+		fails := grepFails(o)
+		var failingTests []*test
+		for _, f := range fails {
+			failingTests = append(failingTests,
+				&test{
+					pkg:  t.pkg,
+					name: f,
+				})
+		}
+		for _, f := range failingTests {
+			go func() {
+				tryIndividualTest(f, pc)
+			}()
+			if pe := <-pc; pe != nil {
+				c <- pe
+				return
+			}
+		}
+		close(pc)
+		c <- nil
+	}
+}
+
+func tryTest(t *test, c chan error) {
+	if t.name != "" {
+		tryIndividualTest(t, c)
+	} else {
+		tryPackageTest(t, c)
+	}
 }
 
 func lineMatchList(line string, whites, blacks []string) bool {
