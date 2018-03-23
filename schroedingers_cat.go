@@ -6,7 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/mailru/easyjson/buffer"
 	"log"
 	"os"
 	"os/exec"
@@ -43,6 +42,10 @@ type test struct {
 	name string
 }
 
+func (t *test) String() string {
+	return fmt.Sprintf("%s %s", t.pkg, t.name)
+}
+
 func init() {
 	goExecutablePath = getGoPath()
 	commandPrefix = getCommandPrefix()
@@ -75,6 +78,12 @@ func parseLinePackageTest(s string) *test {
 	return t
 }
 
+func getNonRecursivePackageName(s string) string {
+	out := strings.TrimSuffix(s, "/...")
+	out = strings.TrimSuffix(out, "...")
+	return out
+}
+
 func handleLine(s string) (*test, error) {
 	var t *test
 	ss := strings.Trim(s, " ")
@@ -95,10 +104,11 @@ func handleLine(s string) (*test, error) {
 func runTest(t *test) ([]byte, error) {
 	args := fmt.Sprintf("test %s", t.pkg)
 	if t.name != "" {
-		args += fmt.Sprintf("-run %s", t.name)
+		args += fmt.Sprintf(" -run %s", t.name)
 	}
+	log.Println("|", commandPrefix[0], commandPrefix[1], goExecutablePath+" "+args)
 	cmd := exec.Command(commandPrefix[0], commandPrefix[1], goExecutablePath+" "+args)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	return out, err
 }
 
@@ -130,27 +140,8 @@ func filterTests(tests []*test, allowed func(*test) bool) []*test {
 	return out
 }
 
-func tryIndividualTest(t *test, c chan error) {
-	for i := 0; i < trialsAllowed; i++ {
-		start := time.Now()
-		if o, e := runTest(t); e == nil {
-			log.Println(t.pkg, t.name)
-			log.Printf("- PASS (%v) %d/%d", time.Since(start), i+1, trialsAllowed)
-			c <- nil
-			return
-		} else {
-			log.Println(t.pkg, t.name)
-			log.Println(string(o))
-			log.Printf("- FAIL (%v) %d/%d: %v", time.Since(start), i+1, trialsAllowed, e)
-		}
-	}
-	c <- fmt.Errorf("FAIL %s %s", t.pkg, t.name)
-}
-
 func grepFails(gotestout []byte) []string {
-	var b bytes.Buffer
-	reader := bufio.NewReader(&b)
-	reader.Read(gotestout)
+	reader := bytes.NewReader(gotestout)
 	scanner := bufio.NewScanner(reader)
 
 	var fails []string
@@ -161,43 +152,83 @@ func grepFails(gotestout []byte) []string {
 		if !strings.Contains(text, "FAIL") {
 			continue
 		}
+		if !strings.Contains(text, ":") {
+			continue
+		}
 		step1 := strings.Split(text, ":")
 		step2 := strings.Split(step1[1], "(")
 		testname := strings.Trim(step2[0], " ")
 		fails = append(fails, testname)
 	}
 
+	if e := scanner.Err(); e != nil {
+		log.Fatal(e)
+	}
+
 	return fails
 }
 
+func tryIndividualTest(t *test, c chan error) {
+	for i := 0; i < trialsAllowed; i++ {
+		start := time.Now()
+		if o, e := runTest(t); e == nil {
+			log.Println(t)
+			log.Printf("- PASS (%v) %d/%d", time.Since(start), i+1, trialsAllowed)
+			c <- nil
+			return
+		} else {
+			fmt.Println()
+			fmt.Println(string(o))
+			log.Println(t)
+			log.Printf("- FAIL (%v) %d/%d: %v", time.Since(start), i+1, trialsAllowed, e)
+		}
+	}
+	c <- fmt.Errorf("FAIL %s %s", t.pkg, t.name)
+}
+
+// only gets to send one nil/error on the given channel
 func tryPackageTest(t *test, c chan error) {
 	start := time.Now()
 	if o, e := runTest(t); e == nil {
-		log.Println(t.pkg, t.name)
+		fmt.Println()
+		fmt.Println(string(o))
+		log.Println(t)
 		log.Printf("- PASS (%v)", time.Since(start))
 		c <- nil
 		return
 	} else {
-		pc := make(chan error, 1)
+		fmt.Println()
+		fmt.Println(string(o))
+
 		fails := grepFails(o)
+		if len(fails) == 0 {
+			log.Fatalf("%s reported failure, but no failing tests were discovered, err=%v",
+				getNonRecursivePackageName(t.pkg), e)
+		}
+
 		var failingTests []*test
 		for _, f := range fails {
 			failingTests = append(failingTests,
 				&test{
-					pkg:  t.pkg,
+					pkg:  getNonRecursivePackageName(t.pkg),
 					name: f,
 				})
 		}
+		log.Printf("Found failing test(s) in %s: %v. Rerunning...",
+			getNonRecursivePackageName(t.pkg),
+			fails,
+		)
+
+		pc := make(chan error, len(failingTests))
 		for _, f := range failingTests {
-			go func() {
-				tryIndividualTest(f, pc)
-			}()
-			if pe := <-pc; pe != nil {
-				c <- pe
+			go tryIndividualTest(f, pc)
+		}
+		for i := 0; i < len(failingTests); i++ {
+			if e := <-pc; e != nil {
+				c <- e
 				return
 			}
 		}
-		close(pc)
 		c <- nil
 	}
 }
