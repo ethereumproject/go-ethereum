@@ -40,7 +40,6 @@ install:
   - go get golang.org/x/sys/windows
 build_script:
   - go test -tags="sputnikvm deterministic" ./...
-  - go build ./schroedingers_cat.go
   - schroedinger.exe -t 5 -f .\schroedinger-tests.txt
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - geth version
