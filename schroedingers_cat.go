@@ -38,8 +38,9 @@ var goExecutablePath string
 var commandPrefix []string
 
 type test struct {
-	pkg  string
-	name string
+	pkg    string
+	name   string
+	trials int
 }
 
 func (t *test) String() string {
@@ -108,6 +109,7 @@ func runTest(t *test) ([]byte, error) {
 	}
 	log.Println("|", commandPrefix[0], commandPrefix[1], goExecutablePath+" "+args)
 	cmd := exec.Command(commandPrefix[0], commandPrefix[1], goExecutablePath+" "+args)
+	t.trials++
 	out, err := cmd.CombinedOutput()
 	return out, err
 }
@@ -169,18 +171,18 @@ func grepFails(gotestout []byte) []string {
 }
 
 func tryIndividualTest(t *test, c chan error) {
-	for i := 0; i < trialsAllowed; i++ {
+	for t.trials < trialsAllowed {
 		start := time.Now()
 		if o, e := runTest(t); e == nil {
 			log.Println(t)
-			log.Printf("- PASS (%v) %d/%d", time.Since(start), i+1, trialsAllowed)
+			log.Printf("- PASS (%v) %d/%d", time.Since(start), t.trials, trialsAllowed)
 			c <- nil
 			return
 		} else {
+			log.Println(t)
+			log.Printf("- FAIL (%v) %d/%d: %v", time.Since(start), t.trials, trialsAllowed, e)
 			fmt.Println()
 			fmt.Println(string(o))
-			log.Println(t)
-			log.Printf("- FAIL (%v) %d/%d: %v", time.Since(start), i+1, trialsAllowed, e)
 		}
 	}
 	c <- fmt.Errorf("FAIL %s %s", t.pkg, t.name)
@@ -190,13 +192,15 @@ func tryIndividualTest(t *test, c chan error) {
 func tryPackageTest(t *test, c chan error) {
 	start := time.Now()
 	if o, e := runTest(t); e == nil {
-		fmt.Println()
-		fmt.Println(string(o))
 		log.Println(t)
 		log.Printf("- PASS (%v)", time.Since(start))
+		fmt.Println()
+		fmt.Println(string(o))
 		c <- nil
 		return
 	} else {
+		log.Println(t)
+		log.Printf("- FAIL (%v)", time.Since(start))
 		fmt.Println()
 		fmt.Println(string(o))
 
@@ -210,8 +214,9 @@ func tryPackageTest(t *test, c chan error) {
 		for _, f := range fails {
 			failingTests = append(failingTests,
 				&test{
-					pkg:  getNonRecursivePackageName(t.pkg),
-					name: f,
+					pkg:    getNonRecursivePackageName(t.pkg),
+					name:   f,
+					trials: 1,
 				})
 		}
 		log.Printf("Found failing test(s) in %s: %v. Rerunning...",
