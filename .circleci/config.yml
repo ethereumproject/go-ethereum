@@ -42,6 +42,8 @@ unit_tests_steps: &unit_tests_steps
         name: Run unit tests
         command: |
           export GOPATH=$HOME/go
+          export GOBIN=$GOPATH/bin
+          export PATH=$PATH:$GOBIN
           export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
           if [ "$(uname)" == "Darwin" ]; then
             export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
@@ -50,8 +52,8 @@ unit_tests_steps: &unit_tests_steps
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           go env
           go test -tags="sputnikvm netgo deterministic" ./...
-          go build ./schroedingers_cat.go
-          ./schroedingers_cat -t 5 -f ./schroedinger-tests.txt
+          go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
+          schroedinger -t 5 -f ./schroedinger-tests.txt
 
 bats_tests_steps: &bats_tests_steps
     steps:
