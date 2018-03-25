@@ -42,7 +42,8 @@ build_script:
   - echo "-X main.Version="%VERSION%
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - geth.exe version
-  - go build -tags=sputnikvm -ldflags "-X main.Version=tzdybal" ./cmd/geth
+  - set CGO_LDFLAGS=
+  - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
   - geth.exe version
   - dir geth.exe
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
