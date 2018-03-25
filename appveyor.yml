@@ -39,12 +39,14 @@ build_script:
   - go test -tags=sputnikvm ./...
   - echo %VERSION%
   - echo "-X main.Version=%VERSION%"
-  - echo "-X main.Version="%VERSION%
-  - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" ./cmd/geth
-  - geth.exe version
-  - set CGO_LDFLAGS=
+  - go build -tags=sputnikvm -ldflags "-X main.Version=WTF" ./cmd/geth
+  - .\geth.exe version
+  - set CGO_LDFLAG=
   - go build -ldflags "-X main.Version=%VERSION%" ./cmd/geth
-  - geth.exe version
+  - .\geth.exe version
+  - cd .\cmd\geth
+  - go build -tags=sputnikvm -ldflags "-X main.Version=WTF"
+  - .\geth.exe version
   - dir geth.exe
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
 before_deploy:
