@@ -38,7 +38,7 @@ import (
 
 // Version is the application revision identifier. It can be set with the linker
 // as in: go build -ldflags "-X main.Version="`git describe --tags`
-var Version = "source/unknown"
+var Version = "source"
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
