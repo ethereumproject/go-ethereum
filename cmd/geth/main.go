@@ -119,7 +119,6 @@ func makeCLIApp() (app *cli.App) {
 		exportCommand,
 		dumpChainConfigCommand,
 		upgradedbCommand,
-		removedbCommand,
 		dumpCommand,
 		rollbackCommand,
 		recoverCommand,

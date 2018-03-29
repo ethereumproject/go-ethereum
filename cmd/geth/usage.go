@@ -70,7 +70,6 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 			importCommand,
 			exportCommand,
 			dumpChainConfigCommand,
-			removedbCommand,
 			dumpCommand,
 			rollbackCommand,
 			recoverCommand,
