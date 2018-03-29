@@ -228,8 +228,9 @@ var (
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mainnet", "mlogs")},
 	}
 	MLogComponentsFlag = cli.StringFlag{
-		Name:  "mlog-components",
-		Usage: "Set machine-readable logging components, comma-separated. Use a '!'-prefix to disabled listed components instead.",
+		Name: "mlog-components",
+		Usage: `Set machine-readable logging components, comma-separated. 
+	Use a '!'-prefix to disabled listed components instead.`,
 		Value: "blockchain,txpool,downloader,fetcher,discover,server,state,headerchain,miner,client,wire",
 	}
 	BacktraceAtFlag = cli.GenericFlag{

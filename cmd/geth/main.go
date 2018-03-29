@@ -45,6 +45,67 @@ func init() {
 	common.SetClientVersion(Version)
 }
 
+var makeDagCommand = cli.Command{
+	Action:  makedag,
+	Name:    "make-dag",
+	Aliases: []string{"makedag"},
+	Usage:   "Generate ethash dag (for testing)",
+	Description: `
+		The makedag command generates an ethash DAG in /tmp/dag.
+	
+		This command exists to support the system testing project.
+		Regular users do not need to execute it.
+				`,
+}
+
+var gpuInfoCommand = cli.Command{
+	Action:  gpuinfo,
+	Name:    "gpu-info",
+	Aliases: []string{"gpuinfo"},
+	Usage:   "GPU info",
+	Description: `
+	Prints OpenCL device info for all found GPUs.
+			`,
+}
+
+var gpuBenchCommand = cli.Command{
+	Action:  gpubench,
+	Name:    "gpu-bench",
+	Aliases: []string{"gpubench"},
+	Usage:   "Benchmark GPU",
+	Description: `
+	Runs quick benchmark on first GPU found.
+			`,
+}
+
+var versionCommand = cli.Command{
+	Action: version,
+	Name:   "version",
+	Usage:  "Print ethereum version numbers",
+	Description: `
+	The output of this command is supposed to be machine-readable.
+			`,
+}
+
+var makeMlogDocCommand = cli.Command{
+	Action: makeMLogDocumentation,
+	Name:   "mdoc",
+	Usage:  "Generate mlog documentation",
+	Description: `
+	Auto-generates documentation for all available mlog lines.
+	Use -md switch to toggle markdown output (eg. for wiki).
+	Arguments may be used to specify exclusive candidate components;
+	so 'geth mdoc -md discover' will generate markdown documentation only
+	for the 'discover' component.
+			`,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "md",
+			Usage: "Toggle markdown formatting",
+		},
+	},
+}
+
 func makeCLIApp() (app *cli.App) {
 	app = cli.NewApp()
 	app.Name = filepath.Base(os.Args[0])
@@ -71,62 +132,11 @@ func makeCLIApp() (app *cli.App) {
 		javascriptCommand,
 		statusCommand,
 		apiCommand,
-		{
-			Action:  makedag,
-			Name:    "make-dag",
-			Aliases: []string{"makedag"},
-			Usage:   "Generate ethash dag (for testing)",
-			Description: `
-	The makedag command generates an ethash DAG in /tmp/dag.
-
-	This command exists to support the system testing project.
-	Regular users do not need to execute it.
-			`,
-		},
-		{
-			Action:  gpuinfo,
-			Name:    "gpu-info",
-			Aliases: []string{"gpuinfo"},
-			Usage:   "GPU info",
-			Description: `
-	Prints OpenCL device info for all found GPUs.
-			`,
-		},
-		{
-			Action:  gpubench,
-			Name:    "gpu-bench",
-			Aliases: []string{"gpubench"},
-			Usage:   "Benchmark GPU",
-			Description: `
-	Runs quick benchmark on first GPU found.
-			`,
-		},
-		{
-			Action: version,
-			Name:   "version",
-			Usage:  "Print ethereum version numbers",
-			Description: `
-	The output of this command is supposed to be machine-readable.
-			`,
-		},
-		{
-			Action: makeMLogDocumentation,
-			Name:   "mdoc",
-			Usage:  "Generate mlog documentation",
-			Description: `
-	Auto-generates documentation for all available mlog lines.
-	Use -md switch to toggle markdown output (eg. for wiki).
-	Arguments may be used to specify exclusive candidate components;
-	so 'geth mdoc -md discover' will generate markdown documentation only
-	for the 'discover' component.
-			`,
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "md",
-					Usage: "Toggle markdown formatting",
-				},
-			},
-		},
+		makeDagCommand,
+		gpuInfoCommand,
+		gpuBenchCommand,
+		versionCommand,
+		makeMlogDocCommand,
 	}
 
 	app.Flags = []cli.Flag{
