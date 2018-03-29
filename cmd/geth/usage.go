@@ -78,15 +78,14 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 		Flags: []cli.Flag{
 			DataDirFlag,
 			ChainIdentityFlag,
-			KeyStoreDirFlag,
 			NetworkIdFlag,
 			DevModeFlag,
 			NodeNameFlag,
 			FastSyncFlag,
-			LightKDFFlag,
 			CacheFlag,
-			BlockchainVersionFlag,
+			LightKDFFlag,
 			SputnikVMFlag,
+			BlockchainVersionFlag,
 		},
 	},
 	{
@@ -96,6 +95,7 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 			walletCommand,
 		},
 		Flags: []cli.Flag{
+			KeyStoreDirFlag,
 			UnlockedAccountFlag,
 			PasswordFileFlag,
 			AccountsIndexFlag,
