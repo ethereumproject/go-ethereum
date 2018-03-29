@@ -353,6 +353,12 @@ web3._extend({
 			call: 'personal_signAndSendTransaction',
 			params: 2,
 			inputFormatter: [web3._extend.formatters.inputTransactionFormatter, null]
+		}),
+		new web3._extend.Method({
+			name: 'sendTransaction',
+			call: 'personal_sendTransaction',
+			params: 2,
+			inputFormatter: [web3._extend.formatters.inputTransactionFormatter, null]
 		})
 	]
 });
