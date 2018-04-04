@@ -534,7 +534,7 @@ func (s *PrivateAccountAPI) SendTransaction(args SendTxArgs, passwd string) (com
 // SignAndSendTransaction was renamed to SendTransaction. This method is deprecated
 // and will be removed in the future. It primary goal is to give clients time to update.
 func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
-	return s.SignAndSendTransaction(args, passwd)
+	return s.SendTransaction(args, passwd)
 }
 
 // PublicBlockChainAPI provides an API to access the Ethereum blockchain.
