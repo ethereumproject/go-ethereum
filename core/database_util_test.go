@@ -383,9 +383,9 @@ func TestAddrTxStorage(t *testing.T) {
 	for it.Next() {
 		count++
 		//// Debugger -- it's kinda nice to see what the indexes look like
-		ad, bn, tf, sc, txh := resolveAddrTxBytes(it.Key())
-		addr, blockn, direc, ko, txhash := common.BytesToAddress(ad), binary.LittleEndian.Uint64(bn), string(tf), string(sc), common.BytesToHash(txh)
-		t.Log(addr.Hex(), blockn, direc, ko, txhash.Hex())
+		//ad, bn, tf, sc, txh := resolveAddrTxBytes(it.Key())
+		//addr, blockn, direc, ko, txhash := common.BytesToAddress(ad), binary.LittleEndian.Uint64(bn), string(tf), string(sc), common.BytesToHash(txh)
+		//t.Log(addr.Hex(), blockn, direc, ko, txhash.Hex())
 	}
 	it.Release()
 	if e := it.Error(); e != nil {
@@ -395,21 +395,36 @@ func TestAddrTxStorage(t *testing.T) {
 		t.Errorf("want: %v, got: %v", 7, count)
 	}
 
-	out := GetAddrTxs(db, from2, 0, 0, "", "")
+	out := GetAddrTxs(db, from2, 0, 0, "", "", -1, -1, false)
 	if len(out) != 3 {
 		t.Errorf("want: %v, got: %v", 3, len(out))
 	}
 
-	out = GetAddrTxs(db, from2, 0, 0, "", "c")
+	// Test pagination and reverse
+	outReverse := GetAddrTxs(db, from2, 0, 0, "", "", -1, -1, true)
+	if len(outReverse) != 3 {
+		t.Errorf("want: %v, got: %v", 3, len(outReverse))
+	}
+	// reverse
+	if out[0] != outReverse[2] || out[1] != outReverse[1] || out[2] != outReverse[0] {
+		t.Errorf("got: %v, want: %v", outReverse, out)
+	}
+	// pagination
+	outPag := GetAddrTxs(db, from2, 0, 0, "", "", 1, -1, false)
+	if len(outPag) != 2 {
+		t.Errorf("got: %v, want: %v", len(outPag), 2)
+	}
+
+	out = GetAddrTxs(db, from2, 0, 0, "", "c", -1, -1, false)
 	if len(out) != 1 {
 		t.Errorf("got: %v, want: %v", len(out), 1)
 	}
-	out = GetAddrTxs(db, common.Address{}, 0, 0, "", "")
+	out = GetAddrTxs(db, common.Address{}, 0, 0, "", "", -1, -1, false)
 	if len(out) != 1 {
 		t.Errorf("got: %v, want: %v", len(out), 1)
 	}
 
-	out = GetAddrTxs(db, from1, 314, 314, "", "")
+	out = GetAddrTxs(db, from1, 314, 314, "", "", -1, -1, false)
 	if len(out) != 1 {
 		t.Errorf("want: %v, got: %v", 1, len(out))
 	} else {
@@ -432,7 +447,7 @@ func TestAddrTxStorage(t *testing.T) {
 		}
 	}
 
-	out = GetAddrTxs(db, from2to, 314, 314, "to", "")
+	out = GetAddrTxs(db, from2to, 314, 314, "to", "", -1, -1, false)
 	if len(out) != 1 {
 		t.Errorf("want: %v, got: %v", 1, len(out))
 	} else {
@@ -459,7 +474,7 @@ func TestAddrTxStorage(t *testing.T) {
 			t.Errorf("got: %v, want: %v", f, from2)
 		}
 	}
-	out = GetAddrTxs(db, from2to, 314, 314, "from", "")
+	out = GetAddrTxs(db, from2to, 314, 314, "from", "", -1, -1, false)
 	if len(out) != 0 {
 		t.Errorf("want: %v, got: %v", 0, len(out))
 	}

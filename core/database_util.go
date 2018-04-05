@@ -243,7 +243,7 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 }
 
 // GetAddrTxs gets the indexed transactions for a given account address.
-func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string, kindof string) []string {
+func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string, kindof string, paginationStart int, paginationEnd int, reverse bool) []string {
 	if len(direction) > 0 && !strings.Contains("btf", direction[:1]) {
 		glog.Fatal("Address transactions list signature requires direction param to be empty string or [b|t|f] prefix (eg. both, to, or from)")
 	}
@@ -303,7 +303,25 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		glog.Fatalln(e)
 	}
 
-	return hashes
+	handleSorting := func(s []string) []string {
+		if len(s) <= 1 {
+			return s
+		}
+		if reverse {
+			for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+				s[i], s[j] = s[j], s[i]
+			}
+		}
+		if paginationStart < 0 {
+			paginationStart = 0
+		}
+		if paginationEnd < 0 {
+			paginationEnd = len(s)
+		}
+		return s[paginationStart:paginationEnd]
+	}
+
+	return handleSorting(hashes)
 }
 
 // RmAddrTx removes all atxi indexes for a given tx in case of a transaction removal, eg.
