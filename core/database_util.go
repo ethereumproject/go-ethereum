@@ -164,7 +164,8 @@ func formatAddrTxIterator(address common.Address) (iteratorPrefix []byte) {
 // The values for these arguments should be of determinate length and format, see test TestFormatAndResolveAddrTxBytesKey
 // for example.
 func formatAddrTxBytesIndex(address, blockNumber, direction, kindof, txhash []byte) (key []byte) {
-	key = txAddressIndexPrefix
+	key = make([]byte, 0, 66) // 66 is the total capacity of the key = prefix(4)+addr(20)+blockNumber(8)+dir(1)+kindof(1)+txhash(32)
+	key = append(key, txAddressIndexPrefix...)
 	key = append(key, address...)
 	key = append(key, blockNumber...)
 	key = append(key, direction...)
