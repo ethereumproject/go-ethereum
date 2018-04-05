@@ -385,7 +385,7 @@ func (s *Ethereum) ResetWithGenesisBlock(gb *types.Block) {
 
 func (s *Ethereum) Etherbase() (eb common.Address, err error) {
 	eb = s.etherbase
-	if (eb == common.Address{}) {
+	if eb.IsEmpty() {
 		firstAccount, err := s.AccountManager().AccountByIndex(0)
 		eb = firstAccount.Address
 		if err != nil {
