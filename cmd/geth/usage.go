@@ -35,7 +35,7 @@ VERSION:
    {{.App.Version}}{{if .CommandAndFlagGroups}}
 
 COMMANDS AND FLAGS:
-------------------------------------------------------------------------
+
 {{range .CommandAndFlagGroups}}{{.Name}}
 ------------------------------------------------------------------------
   {{if .Commands}}{{range .Commands}}
