@@ -257,7 +257,7 @@ func (s sortableAtxis) Len() int {
 // Less implements sort.Sort interface.
 // By default newer transactions by blockNumber are first.
 func (s sortableAtxis) Less(i, j int) bool {
-	return s[i].blockN < s[j].blockN
+	return s[i].blockN > s[j].blockN
 }
 
 // Swap implements sort.Sort interface.
