@@ -231,4 +231,3 @@ func compareStateObjects(so0, so1 *StateObject, t *testing.T) {
 		t.Fatalf("Deleted mismatch: have %v, want %v", so0.deleted, so1.deleted)
 	}
 }
-

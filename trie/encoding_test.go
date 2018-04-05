@@ -17,8 +17,8 @@
 package trie
 
 import (
-	"testing"
 	"bytes"
+	"testing"
 )
 
 func TestHexCompact(t *testing.T) {

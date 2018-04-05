@@ -1362,7 +1362,7 @@ func testChainTxReorgs(t *testing.T, db ethdb.Database, withATXI bool) {
 		return
 	}
 	txsh1 := GetAddrTxs(db, addr1, 0, 0, "", "")
-	txsh2 :=  GetAddrTxs(db, addr2, 0, 0, "", "")
+	txsh2 := GetAddrTxs(db, addr2, 0, 0, "", "")
 	txsh3 := GetAddrTxs(db, addr3, 0, 0, "", "")
 
 	allAtxis := txsh1
@@ -1377,8 +1377,8 @@ func testChainTxReorgs(t *testing.T, db ethdb.Database, withATXI bool) {
 	}
 
 	// Ensure no duplicate tx hashes returned
-	DUPECHECK:
-	for i, l := range ([][]string{txsh1, txsh2, txsh3}) {
+DUPECHECK:
+	for i, l := range [][]string{txsh1, txsh2, txsh3} {
 		j := strings.Join(l, "")
 		for _, h := range l {
 			if strings.Count(j, h[:8]) > 1 {
@@ -1404,8 +1404,6 @@ func testChainTxReorgs(t *testing.T, db ethdb.Database, withATXI bool) {
 		t.Errorf("got: %v, want: %v", len(allAtxis), wantMag)
 	}
 }
-
-
 
 func TestLogReorgs(t *testing.T) {
 	// This test itself is a little bit incorrect. Below,

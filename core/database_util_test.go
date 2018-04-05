@@ -26,6 +26,8 @@ import (
 	"strconv"
 	"testing"
 
+	"crypto/ecdsa"
+	"encoding/binary"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
@@ -33,8 +35,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"encoding/binary"
-	"crypto/ecdsa"
 	"strings"
 )
 
@@ -401,11 +401,11 @@ func TestAddrTxStorage(t *testing.T) {
 	}
 
 	out = GetAddrTxs(db, from2, 0, 0, "", "c")
-	if len(out) !=1 {
+	if len(out) != 1 {
 		t.Errorf("got: %v, want: %v", len(out), 1)
 	}
 	out = GetAddrTxs(db, common.Address{}, 0, 0, "", "")
-	if len(out) !=1 {
+	if len(out) != 1 {
 		t.Errorf("got: %v, want: %v", len(out), 1)
 	}
 
@@ -503,8 +503,8 @@ func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
 	}
 
 	// Ensure proper key part sizing.
-	sizes := []struct{
-		b []byte
+	sizes := []struct {
+		b           []byte
 		expectedLen int
 	}{
 		{outAddr, common.AddressLength},

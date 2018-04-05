@@ -98,7 +98,6 @@ func NewLDBDatabase(file string, cache int, handles int) (*LDBDatabase, error) {
 	}, nil
 }
 
-
 // Path returns the path to the database directory.
 func (db *LDBDatabase) Path() string {
 	return db.file

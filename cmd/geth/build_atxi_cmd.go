@@ -1,14 +1,14 @@
 package main
 
 import (
-	"gopkg.in/urfave/cli.v1"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"os"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"time"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"gopkg.in/urfave/cli.v1"
+	"os"
+	"time"
 )
 
 func buildAddrTxIndexCmd(ctx *cli.Context) error {
@@ -66,7 +66,7 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 	totalTxCount := uint64(0)
 	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", inc, "| This may take a while.")
 	breaker := false
-	for i := startIndex; i <= stopIndex; i = i+inc {
+	for i := startIndex; i <= stopIndex; i = i + inc {
 		if i+inc > stopIndex {
 			inc = stopIndex - i
 			breaker = true
@@ -106,12 +106,10 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 	took := time.Since(startTime)
 	glog.D(logger.Error).Infof(`Finished atxi-build in %v: %d blocks (~ %.2f blocks/sec), %d txs (~ %.2f txs/sec)`,
 		took.Round(time.Second),
-		stopIndex - startIndex,
+		stopIndex-startIndex,
 		totalBlocksF/took.Seconds(),
 		totalTxCount,
 		totalTxsF/took.Seconds(),
-		)
+	)
 	return nil
 }
-
-

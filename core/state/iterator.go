@@ -151,4 +151,3 @@ func (it *NodeIterator) retrieve() bool {
 	}
 	return true
 }
-

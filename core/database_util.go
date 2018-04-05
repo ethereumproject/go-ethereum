@@ -55,8 +55,8 @@ var (
 
 	blockHashPrefix = []byte("block-hash-") // [deprecated by the header/block split, remove eventually]
 
-	preimagePrefix = "secure-key-"              // preimagePrefix + hash -> preimage
-	lookupPrefix        = []byte("l") // lookupPrefix + hash -> transaction/receipt lookup metadata
+	preimagePrefix = "secure-key-" // preimagePrefix + hash -> preimage
+	lookupPrefix   = []byte("l")   // lookupPrefix + hash -> transaction/receipt lookup metadata
 )
 
 // TxLookupEntry is a positional metadata to help looking up the data content of
@@ -176,9 +176,9 @@ func formatAddrTxBytesIndex(address, blockNumber, direction, kindof, txhash []by
 // resolveAddrTxBytes resolves the index key to individual []byte values
 func resolveAddrTxBytes(key []byte) (address, blockNumber, direction, kindof, txhash []byte) {
 	// prefix = key[:4]
-	address = key[4:24] // common.AddressLength = 20
+	address = key[4:24]      // common.AddressLength = 20
 	blockNumber = key[24:32] // uint64 via little endian
-	direction = key[32:33] // == key[32] (1 byte)
+	direction = key[32:33]   // == key[32] (1 byte)
 	kindof = key[33:34]
 	txhash = key[34:]
 	return
@@ -743,7 +743,6 @@ func WriteTxLookupEntries(db ethdb.Putter, block *types.Block) error {
 	}
 	return nil
 }
-
 
 // [deprecated by the header/block split, remove eventually]
 // GetBlockByHashOld returns the old combined block corresponding to the hash

@@ -23,8 +23,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
-	"github.com/rcrowley/go-metrics"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/rcrowley/go-metrics"
 )
 
 var (

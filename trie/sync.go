@@ -38,7 +38,7 @@ type request struct {
 	hash   common.Hash // Hash of the node data content to retrieve
 	data   []byte      // Data content of the node, cached until all subtrees complete
 	object *node       // Target node to populate with retrieved data (hashnode originally)
-	raw  bool        // Whether this is a raw entry (code) or a trie node
+	raw    bool        // Whether this is a raw entry (code) or a trie node
 
 	parents []*request // Parent state nodes referencing this entry (notify all upon completion)
 	depth   int        // Depth level within the trie the node is located to prioritise DFS
