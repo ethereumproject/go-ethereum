@@ -28,6 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"sort"
 	"strings"
 )
 
@@ -242,7 +243,37 @@ func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount 
 	return txsCount, nil
 }
 
+type atxi struct {
+	blockN uint64
+	tx     string
+}
+type sortableAtxis []atxi
+
+// Len implements sort.Sort interface.
+func (s sortableAtxis) Len() int {
+	return len(s)
+}
+
+// Less implements sort.Sort interface.
+// By default newer transactions by blockNumber are first.
+func (s sortableAtxis) Less(i, j int) bool {
+	return s[i].blockN < s[j].blockN
+}
+
+// Swap implements sort.Sort interface.
+func (s sortableAtxis) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s sortableAtxis) TxStrings() []string {
+	var out = make([]string, 0, len(s))
+	for _, str := range s {
+		out = append(out, str.tx)
+	}
+	return out
+}
+
 // GetAddrTxs gets the indexed transactions for a given account address.
+// 'reverse' means "oldest first"
 func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string, kindof string, paginationStart int, paginationEnd int, reverse bool) []string {
 	if len(direction) > 0 && !strings.Contains("btf", direction[:1]) {
 		glog.Fatal("Address transactions list signature requires direction param to be empty string or [b|t|f] prefix (eg. both, to, or from)")
@@ -274,17 +305,21 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 	prefix := ethdb.NewBytesPrefix(formatAddrTxIterator(address))
 	it := ldb.NewIteratorRange(prefix)
 
+	var atxis sortableAtxis
+
 	for it.Next() {
 		key := it.Key()
 
 		_, blockNum, torf, k, txh := resolveAddrTxBytes(key)
 
+		bn := binary.LittleEndian.Uint64(blockNum)
+
 		// If atxi is smaller than blockstart, skip
-		if blockStartN > 0 && binary.LittleEndian.Uint64(blockNum) < blockStartN {
+		if blockStartN > 0 && bn < blockStartN {
 			continue
 		}
 		// If atxi is greater than blockend, skip
-		if blockEndN > 0 && binary.LittleEndian.Uint64(blockNum) > blockEndN {
+		if blockEndN > 0 && bn > blockEndN {
 			continue
 		}
 		// Ensure matching direction if spec'd
@@ -295,18 +330,22 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		if wantKindOf != 'b' && wantKindOf != k[0] {
 			continue
 		}
+		if len(hashes) > 0 {
+
+		}
 		tx := common.ToHex(txh)
-		hashes = append(hashes, tx)
+		atxis = append(atxis, atxi{blockN: bn, tx: tx})
 	}
 	it.Release()
 	if e := it.Error(); e != nil {
 		glog.Fatalln(e)
 	}
 
-	handleSorting := func(s []string) []string {
+	handleSorting := func(s sortableAtxis) sortableAtxis {
 		if len(s) <= 1 {
 			return s
 		}
+		sort.Sort(s) // newest txs (by blockNumber) latest
 		if reverse {
 			for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 				s[i], s[j] = s[j], s[i]
@@ -321,7 +360,7 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		return s[paginationStart:paginationEnd]
 	}
 
-	return handleSorting(hashes)
+	return handleSorting(atxis).TxStrings()
 }
 
 // RmAddrTx removes all atxi indexes for a given tx in case of a transaction removal, eg.
