@@ -31,7 +31,7 @@ deploy_steps: &deploy_steps
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           cp $GOPATH/bin/geth ./
           export VERSION=`janus version -format TAG_OR_NIGHTLY`
-          ./geth version | grep "$VERSION" || (echo "Wrong geth version, $VERSION expected"; exit 1)
+          ./geth version | awk '/^Version: /{if (ENVIRON["VERSION"] != $2){printf "Expected: \"%s\", got \"%s\"\n",ENVIRON["VERSION"], $2; exit 1}}'
 
           ./scripts/deploy.sh gcloud-circleci.json.enc
 
