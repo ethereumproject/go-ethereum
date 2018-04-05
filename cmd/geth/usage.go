@@ -88,12 +88,14 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 		Commands: []cli.Command{
 			accountCommand,
 			walletCommand,
+			buildAddrTxIndexCommand,
 		},
 		Flags: []cli.Flag{
 			KeyStoreDirFlag,
 			UnlockedAccountFlag,
 			PasswordFileFlag,
 			AccountsIndexFlag,
+			AddrTxIndexFlag,
 		},
 	},
 	{

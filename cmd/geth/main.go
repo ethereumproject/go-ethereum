@@ -136,6 +136,7 @@ func makeCLIApp() (app *cli.App) {
 		gpuBenchCommand,
 		versionCommand,
 		makeMlogDocCommand,
+		buildAddrTxIndexCommand,
 	}
 
 	app.Flags = []cli.Flag{
