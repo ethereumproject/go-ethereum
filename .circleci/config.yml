@@ -30,6 +30,9 @@ deploy_steps: &deploy_steps
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           cp $GOPATH/bin/geth ./
+          export VERSION=`janus version -format TAG_OR_NIGHTLY`
+          ./geth version | grep "$VERSION" || (echo "Wrong geth version, $VERSION expected"; exit 1)
+
           ./scripts/deploy.sh gcloud-circleci.json.enc
 
 unit_tests_steps: &unit_tests_steps
