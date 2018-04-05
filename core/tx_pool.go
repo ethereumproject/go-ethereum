@@ -228,6 +228,12 @@ func (pool *TxPool) validateTx(tx *types.Transaction) (e error) {
 	defer func() {
 		mlogTxPoolValidateTx.AssignDetails(
 			tx.Hash().Hex(),
+			tx.Size(),
+			common.StorageSize(len(tx.Data())),
+			tx.Nonce(),
+			tx.Gas(),
+			tx.GasPrice(),
+			e == nil,
 			e,
 		).Send(mlogTxPool)
 	}()

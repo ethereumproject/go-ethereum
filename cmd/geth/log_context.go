@@ -9,10 +9,11 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"os"
 	"path/filepath"
+
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 const defaultStatusLog = "sync=60s"
@@ -180,7 +181,7 @@ func parseWithSuffix(str string, mapping map[rune]uint64) (uint64, error) {
 	number := strings.ToLower(strings.TrimLeftFunc(str, unicode.IsSpace))
 
 	trim := ""
-	for k, _ := range mapping {
+	for k := range mapping {
 		if k != 0 {
 			trim += string(k)
 		}
@@ -267,7 +268,7 @@ func mustRegisterMLogsFromContext(ctx *cli.Context) {
 	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalString(MLogComponentsFlag.Name)); e != nil {
 		// print documentation if user enters unavailable mlog component
 		var components []string
-		for k := range logger.MLogRegistryAvailable {
+		for k := range logger.GetMLogRegistryAvailable() {
 			components = append(components, string(k))
 		}
 		glog.V(logger.Error).Errorf("Error: %s", e)

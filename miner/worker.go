@@ -42,7 +42,7 @@ const (
 	miningLogAtDepth = 5
 )
 
-// Agent can register themself with the worker
+// Agent can register itself with the worker
 type Agent interface {
 	Work() chan<- *Work
 	SetReturnCh(chan<- *Result)
@@ -267,7 +267,7 @@ func (self *worker) wait() {
 				}
 				go self.mux.Post(core.NewMinedBlockEvent{Block: block})
 			} else {
-				work.state.Commit()
+				work.state.CommitTo(self.chainDb, false)
 				parent := self.chain.GetBlock(block.ParentHash())
 				if parent == nil {
 					glog.V(logger.Error).Infoln("Invalid block found during mining")
@@ -556,7 +556,7 @@ func (self *worker) commitNewWork() {
 	if atomic.LoadInt32(&self.mining) == 1 {
 		// commit state root after all state transitions.
 		core.AccumulateRewards(work.config, work.state, header, uncles)
-		header.Root = work.state.IntermediateRoot()
+		header.Root = work.state.IntermediateRoot(false)
 	}
 
 	// create the new block whose nonce will be mined.

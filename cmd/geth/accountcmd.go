@@ -178,7 +178,7 @@ geth account import <keyfile>
 				Usage:  "Build persistent account index",
 				Description: `
 
-geth --index-accounts account index
+geth account index
 
 	Create keystore directory index cache database (keystore/accounts.db),
 	which is relevant for use with large amounts of key files (>10,000).
@@ -197,7 +197,9 @@ geth --index-accounts account index
 func accountIndex(ctx *cli.Context) error {
 	n := aliasableName(AccountsIndexFlag.Name, ctx)
 	if !ctx.GlobalBool(n) {
-		log.Fatalf("Use: $ geth --%v account index\n (missing '%v' flag)", n, n)
+		if e := ctx.GlobalSet(n, "true"); e != nil {
+			log.Fatal("err set flag", e)
+		}
 	}
 	am := MakeAccountManager(ctx)
 	errs := am.BuildIndexDB()

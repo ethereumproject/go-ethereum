@@ -317,14 +317,19 @@ func (pm *ProtocolManager) handle(p *peer) error {
 
 // handleMsg is invoked whenever an inbound message is received from a remote
 // peer. The remote connection is torn down upon returning any error.
-func (pm *ProtocolManager) handleMsg(p *peer) error {
+func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 	// Read the next message from the remote peer, and ensure it's fully consumed
+	var unknownMessageCode uint64 = math.MaxUint64
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
-		return err
+		mlogWireDelegate(p, "receive", unknownMessageCode, -1, nil, err)
+		return
 	}
+	intSize := int(msg.Size)
 	if msg.Size > ProtocolMaxMsgSize {
-		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
+		err = errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
+		mlogWireDelegate(p, "receive", msg.Code, intSize, nil, err)
+		return
 	}
 	defer msg.Discard()
 
@@ -332,14 +337,19 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	switch {
 	case msg.Code == StatusMsg:
 		// Status messages should never arrive after the handshake
-		return errResp(ErrExtraStatusMsg, "uncontrolled status message")
+		err = errResp(ErrExtraStatusMsg, "uncontrolled status message")
+		mlogWireDelegate(p, "receive", StatusMsg, intSize, nil, err)
+		return
 	// Block header query, collect the requested headers and reply
 	case p.version >= eth62 && msg.Code == GetBlockHeadersMsg:
 		// Decode the complex header query
 		var query getBlockHeadersData
-		if err := msg.Decode(&query); err != nil {
-			return errResp(ErrDecode, "%v: %v", msg, err)
+		if e := msg.Decode(&query); e != nil {
+			err = errResp(ErrDecode, "%v: %v", msg, e)
+			mlogWireDelegate(p, "receive", GetBlockHeadersMsg, intSize, &query, err)
+			return
 		}
+		mlogWireDelegate(p, "receive", GetBlockHeadersMsg, intSize, &query, err)
 		hashMode := query.Origin.Hash != (common.Hash{})
 
 		// Gather headers until the fetch or network limits is reached
@@ -403,9 +413,13 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case p.version >= eth62 && msg.Code == BlockHeadersMsg:
 		// A batch of headers arrived to one of our previous requests
 		var headers []*types.Header
-		if err := msg.Decode(&headers); err != nil {
-			return errResp(ErrDecode, "msg %v: %v", msg, err)
+		if e := msg.Decode(&headers); e != nil {
+			err = errResp(ErrDecode, "msg %v: %v", msg, e)
+			mlogWireDelegate(p, "receive", BlockHeadersMsg, intSize, headers, err)
+			return
 		}
+		defer mlogWireDelegate(p, "receive", BlockHeadersMsg, intSize, headers, err)
+
 		// Good will assumption. Even if the peer is ahead of the fork check header but returns
 		// empty header response, it might be that the peer is a light client which only keeps
 		// the last 256 block headers. Besides it does not prevent network attacks. See #313 for
@@ -424,7 +438,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				p.timeout.Stop()
 				p.timeout = nil
 			}
-			if err := pm.chainConfig.HeaderCheck(headers[0]); err != nil {
+			if err = pm.chainConfig.HeaderCheck(headers[0]); err != nil {
 				pm.removePeer(p.id)
 				return err
 			}
@@ -441,7 +455,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case p.version >= eth62 && msg.Code == GetBlockBodiesMsg:
 		// Decode the retrieval message
 		msgStream := rlp.NewStream(msg.Payload, uint64(msg.Size))
-		if _, err := msgStream.List(); err != nil {
+		if _, err = msgStream.List(); err != nil {
 			return err
 		}
 		// Gather blocks until the fetch or network limits is reached
@@ -452,10 +466,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		)
 		for bytes < softResponseLimit && len(bodies) < downloader.MaxBlockFetch {
 			// Retrieve the hash of the next block
-			if err := msgStream.Decode(&hash); err == rlp.EOL {
+			if e := msgStream.Decode(&hash); e == rlp.EOL {
 				break
-			} else if err != nil {
-				return errResp(ErrDecode, "msg %v: %v", msg, err)
+			} else if e != nil {
+				err = errResp(ErrDecode, "msg %v: %v", msg, e)
+				mlogWireDelegate(p, "receive", GetBlockBodiesMsg, intSize, bodies, err)
+				return err
 			}
 			// Retrieve the requested block body, stopping if enough was found
 			if data := pm.blockchain.GetBodyRLP(hash); len(data) != 0 {
@@ -463,38 +479,44 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				bytes += len(data)
 			}
 		}
+		mlogWireDelegate(p, "receive", GetBlockBodiesMsg, intSize, bodies, err)
 		return p.SendBlockBodiesRLP(bodies)
 
 	case p.version >= eth62 && msg.Code == BlockBodiesMsg:
 		// A batch of block bodies arrived to one of our previous requests
 		var request blockBodiesData
-		if err := msg.Decode(&request); err != nil {
-			return errResp(ErrDecode, "msg %v: %v", msg, err)
-		}
 		// Deliver them all to the downloader for queuing
-		trasactions := make([][]*types.Transaction, len(request))
+		if e := msg.Decode(&request); e != nil {
+			err = errResp(ErrDecode, "msg %v: %v", msg, e)
+			mlogWireDelegate(p, "receive", BlockBodiesMsg, intSize, request, err)
+			return
+		}
+		mlogWireDelegate(p, "receive", BlockBodiesMsg, intSize, request, err)
+
+		transactions := make([][]*types.Transaction, len(request))
 		uncles := make([][]*types.Header, len(request))
 
 		for i, body := range request {
-			trasactions[i] = body.Transactions
+			transactions[i] = body.Transactions
 			uncles[i] = body.Uncles
 		}
 		// Filter out any explicitly requested bodies, deliver the rest to the downloader
-		filter := len(trasactions) > 0 || len(uncles) > 0
+		filter := len(transactions) > 0 || len(uncles) > 0
 		if filter {
-			trasactions, uncles = pm.fetcher.FilterBodies(trasactions, uncles, time.Now())
+			transactions, uncles = pm.fetcher.FilterBodies(transactions, uncles, time.Now())
 		}
-		if len(trasactions) > 0 || len(uncles) > 0 || !filter {
-			err := pm.downloader.DeliverBodies(p.id, trasactions, uncles)
-			if err != nil {
-				glog.V(logger.Debug).Infoln(err)
+		if len(transactions) > 0 || len(uncles) > 0 || !filter {
+			if e := pm.downloader.DeliverBodies(p.id, transactions, uncles); e != nil {
+				glog.V(logger.Debug).Infoln(e)
+
 			}
 		}
 
 	case p.version >= eth63 && msg.Code == GetNodeDataMsg:
 		// Decode the retrieval message
 		msgStream := rlp.NewStream(msg.Payload, uint64(msg.Size))
-		if _, err := msgStream.List(); err != nil {
+		if _, err = msgStream.List(); err != nil {
+			mlogWireDelegate(p, "receive", GetNodeDataMsg, intSize, [][]byte{}, err)
 			return err
 		}
 		// Gather state data until the fetch or network limits is reached
@@ -505,34 +527,42 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		)
 		for bytes < softResponseLimit && len(data) < downloader.MaxStateFetch {
 			// Retrieve the hash of the next state entry
-			if err := msgStream.Decode(&hash); err == rlp.EOL {
+			if e := msgStream.Decode(&hash); e == rlp.EOL {
 				break
-			} else if err != nil {
-				return errResp(ErrDecode, "msg %v: %v", msg, err)
+			} else if e != nil {
+				err = errResp(ErrDecode, "msg %v: %v", msg, e)
+				mlogWireDelegate(p, "receive", GetNodeDataMsg, intSize, data, err)
+				return
 			}
 			// Retrieve the requested state entry, stopping if enough was found
-			if entry, err := pm.chaindb.Get(hash.Bytes()); err == nil {
+			if entry, e := pm.chaindb.Get(hash.Bytes()); e == nil {
 				data = append(data, entry)
 				bytes += len(entry)
 			}
 		}
+		mlogWireDelegate(p, "receive", GetNodeDataMsg, intSize, data, err)
 		return p.SendNodeData(data)
 
 	case p.version >= eth63 && msg.Code == NodeDataMsg:
 		// A batch of node state data arrived to one of our previous requests
 		var data [][]byte
-		if err := msg.Decode(&data); err != nil {
-			return errResp(ErrDecode, "msg %v: %v", msg, err)
+
+		if e := msg.Decode(&data); e != nil {
+			err = errResp(ErrDecode, "msg %v: %v", msg, e)
+			mlogWireDelegate(p, "receive", NodeDataMsg, intSize, data, err)
+			return
 		}
+		mlogWireDelegate(p, "receive", NodeDataMsg, intSize, data, err)
 		// Deliver all to the downloader
-		if err := pm.downloader.DeliverNodeData(p.id, data); err != nil {
-			glog.V(logger.Core).Warnf("failed to deliver node state data: %v", err)
+		if e := pm.downloader.DeliverNodeData(p.id, data); e != nil {
+			glog.V(logger.Core).Warnf("failed to deliver node state data: %v", e)
 		}
 
 	case p.version >= eth63 && msg.Code == GetReceiptsMsg:
 		// Decode the retrieval message
 		msgStream := rlp.NewStream(msg.Payload, uint64(msg.Size))
-		if _, err := msgStream.List(); err != nil {
+		if _, err = msgStream.List(); err != nil {
+			mlogWireDelegate(p, "receive", GetReceiptsMsg, intSize, []rlp.RawValue{}, err)
 			return err
 		}
 		// Gather state data until the fetch or network limits is reached
@@ -543,10 +573,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		)
 		for bytes < softResponseLimit && len(receipts) < downloader.MaxReceiptFetch {
 			// Retrieve the hash of the next block
-			if err := msgStream.Decode(&hash); err == rlp.EOL {
+			if e := msgStream.Decode(&hash); e == rlp.EOL {
 				break
-			} else if err != nil {
-				return errResp(ErrDecode, "msg %v: %v", msg, err)
+			} else if e != nil {
+				err = errResp(ErrDecode, "msg %v: %v", msg, e)
+				mlogWireDelegate(p, "receive", GetReceiptsMsg, intSize, receipts, err)
+				return
 			}
 			// Retrieve the requested block's receipts, skipping if unknown to us
 			results := core.GetBlockReceipts(pm.chaindb, hash)
@@ -563,14 +595,17 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				bytes += len(encoded)
 			}
 		}
+		mlogWireDelegate(p, "receive", GetReceiptsMsg, intSize, receipts, err)
 		return p.SendReceiptsRLP(receipts)
 
 	case p.version >= eth63 && msg.Code == ReceiptsMsg:
 		// A batch of receipts arrived to one of our previous requests
 		var receipts [][]*types.Receipt
 		if err := msg.Decode(&receipts); err != nil {
+			mlogWireDelegate(p, "receive", ReceiptsMsg, intSize, receipts, err)
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+		mlogWireDelegate(p, "receive", ReceiptsMsg, intSize, receipts, err)
 		// Deliver all to the downloader
 		if err := pm.downloader.DeliverReceipts(p.id, receipts); err != nil {
 			glog.V(logger.Core).Warnf("failed to deliver receipts: %v", err)
@@ -578,17 +613,15 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	case msg.Code == NewBlockHashesMsg:
 		// Retrieve and deserialize the remote new block hashes notification
-		type announce struct {
-			Hash   common.Hash
-			Number uint64
-		}
-		var announces = []announce{}
+		var announces newBlockHashesData // = []announce{}
 
 		if p.version < eth62 {
 			// We're running the old protocol, make block number unknown (0)
 			var hashes []common.Hash
-			if err := msg.Decode(&hashes); err != nil {
-				return errResp(ErrDecode, "%v: %v", msg, err)
+			if e := msg.Decode(&hashes); e != nil {
+				err = errResp(ErrDecode, "%v: %v", msg, e)
+				mlogWireDelegate(p, "receive", NewBlockHashesMsg, intSize, announces, err)
+				return
 			}
 			for _, hash := range hashes {
 				announces = append(announces, announce{hash, 0})
@@ -596,13 +629,16 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		} else {
 			// Otherwise extract both block hash and number
 			var request newBlockHashesData
-			if err := msg.Decode(&request); err != nil {
-				return errResp(ErrDecode, "%v: %v", msg, err)
+			if e := msg.Decode(&request); e != nil {
+				err = errResp(ErrDecode, "%v: %v", msg, e)
+				mlogWireDelegate(p, "receive", NewBlockHashesMsg, intSize, announces, err)
+				return
 			}
 			for _, block := range request {
 				announces = append(announces, announce{block.Hash, block.Number})
 			}
 		}
+		mlogWireDelegate(p, "receive", NewBlockHashesMsg, intSize, announces, err)
 		// Mark the hashes as present at the remote node
 		for _, block := range announces {
 			p.MarkBlock(block.Hash)
@@ -623,12 +659,20 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == NewBlockMsg:
 		// Retrieve and decode the propagated block
 		var request newBlockData
-		if err := msg.Decode(&request); err != nil {
-			return errResp(ErrDecode, "%v: %v", msg, err)
+
+		if e := msg.Decode(&request); e != nil {
+			err = errResp(ErrDecode, "%v: %v", msg, e)
+			mlogWireDelegate(p, "receive", NewBlockMsg, intSize, request, err)
+			return
 		}
-		if err := request.Block.ValidateFields(); err != nil {
-			return errResp(ErrDecode, "block validation %v: %v", msg, err)
+		if e := request.Block.ValidateFields(); e != nil {
+			err = errResp(ErrDecode, "block validation %v: %v", msg, e)
+			mlogWireDelegate(p, "receive", NewBlockMsg, intSize, request, err)
+			return
 		}
+
+		mlogWireDelegate(p, "receive", NewBlockMsg, intSize, request, err)
+
 		request.Block.ReceivedAt = msg.ReceivedAt
 		request.Block.ReceivedFrom = p
 
@@ -666,13 +710,17 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == TxMsg:
 		// Transactions arrived, make sure we have a valid and fresh chain to handle them
 		if atomic.LoadUint32(&pm.synced) == 0 {
+			mlogWireDelegate(p, "receive", TxMsg, intSize, []*types.Transaction{}, errors.New("not synced"))
 			break
 		}
 		// Transactions can be processed, parse all of them and deliver to the pool
 		var txs []*types.Transaction
-		if err := msg.Decode(&txs); err != nil {
-			return errResp(ErrDecode, "msg %v: %v", msg, err)
+		if e := msg.Decode(&txs); e != nil {
+			err = errResp(ErrDecode, "msg %v: %v", msg, e)
+			mlogWireDelegate(p, "receive", TxMsg, intSize, txs, err)
+			return
 		}
+		mlogWireDelegate(p, "receive", TxMsg, intSize, txs, err)
 		for i, tx := range txs {
 			// Validate and mark the remote transaction
 			if tx == nil {
@@ -683,7 +731,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		pm.txpool.AddTransactions(txs)
 
 	default:
-		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
+		err = errResp(ErrInvalidMsgCode, "%v", msg.Code)
+		mlogWireDelegate(p, "receive", unknownMessageCode, intSize, nil, err)
+		return
 	}
 	return nil
 }

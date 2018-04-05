@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"bytes"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 )

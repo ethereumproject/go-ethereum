@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 func init() {

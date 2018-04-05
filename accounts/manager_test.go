@@ -18,8 +18,6 @@ package accounts
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -28,6 +26,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 func init() {

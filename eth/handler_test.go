@@ -207,7 +207,10 @@ func testGetBlockHeaders(t *testing.T, protocol int) {
 			headers = append(headers, pm.blockchain.GetBlock(hash).Header())
 		}
 		// Send the hash request and verify the response
-		p2p.Send(peer.app, 0x03, tt.query)
+		s, _ := p2p.Send(peer.app, 0x03, tt.query)
+		if s == 0 {
+			t.Errorf("got: %v, want: >0", s)
+		}
 		if err := p2p.ExpectMsg(peer.app, 0x04, headers); err != nil {
 			t.Errorf("test %d: headers mismatch: %v", i, err)
 		}
@@ -216,7 +219,10 @@ func testGetBlockHeaders(t *testing.T, protocol int) {
 			if origin := pm.blockchain.GetBlockByNumber(tt.query.Origin.Number); origin != nil {
 				tt.query.Origin.Hash, tt.query.Origin.Number = origin.Hash(), 0
 
-				p2p.Send(peer.app, 0x03, tt.query)
+				s, _ := p2p.Send(peer.app, 0x03, tt.query)
+				if s == 0 {
+					t.Errorf("got: %v, want: >0", s)
+				}
 				if err := p2p.ExpectMsg(peer.app, 0x04, headers); err != nil {
 					t.Errorf("test %d: headers mismatch: %v", i, err)
 				}
@@ -290,7 +296,10 @@ func testGetBlockBodies(t *testing.T, protocol int) {
 			}
 		}
 		// Send the hash request and verify the response
-		p2p.Send(peer.app, 0x05, hashes)
+		s, _ := p2p.Send(peer.app, 0x05, hashes)
+		if s == 0 {
+			t.Errorf("got: %v, want: >0", s)
+		}
 		if err := p2p.ExpectMsg(peer.app, 0x06, bodies); err != nil {
 			t.Errorf("test %d: bodies mismatch: %v", i, err)
 		}
@@ -347,7 +356,10 @@ func testGetNodeData(t *testing.T, protocol int) {
 			hashes = append(hashes, common.BytesToHash(key))
 		}
 	}
-	p2p.Send(peer.app, 0x0d, hashes)
+	s, _ := p2p.Send(peer.app, 0x0d, hashes)
+	if s == 0 {
+		t.Errorf("got: %v, want: >0", s)
+	}
 	msg, err := peer.app.ReadMsg()
 	if err != nil {
 		t.Fatalf("failed to read node data response: %v", err)
@@ -371,7 +383,7 @@ func testGetNodeData(t *testing.T, protocol int) {
 	}
 	accounts := []common.Address{testBank.Address, acc1Addr, acc2Addr}
 	for i := uint64(0); i <= pm.blockchain.CurrentBlock().NumberU64(); i++ {
-		trie, _ := state.New(pm.blockchain.GetBlockByNumber(i).Root(), statedb)
+		trie, _ := state.New(pm.blockchain.GetBlockByNumber(i).Root(), state.NewDatabase(statedb))
 
 		for j, acc := range accounts {
 			state, _ := pm.blockchain.State()
@@ -440,7 +452,10 @@ func testGetReceipt(t *testing.T, protocol int) {
 		receipts = append(receipts, core.GetBlockReceipts(pm.chaindb, block.Hash()))
 	}
 	// Send the hash request and verify the response
-	p2p.Send(peer.app, 0x0f, hashes)
+	s, _ := p2p.Send(peer.app, 0x0f, hashes)
+	if s <= 0 {
+		t.Errorf("got: %v, want: >0", s)
+	}
 	if err := p2p.ExpectMsg(peer.app, 0x10, receipts); err != nil {
 		t.Errorf("receipts mismatch: %v", err)
 	}

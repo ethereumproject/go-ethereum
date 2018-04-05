@@ -18,8 +18,6 @@ package accounts
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereumproject/go-ethereum/common"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -28,6 +26,9 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 var (

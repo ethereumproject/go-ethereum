@@ -30,47 +30,67 @@ var AppHelpTemplate = `NAME:
 
 USAGE:
    {{.App.HelpName}} [options]{{if .App.Commands}} <command> [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
+
 VERSION:
-   {{.App.Version}}{{if .App.Commands}}
-COMMANDS:
-   {{range .App.Commands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
-   {{end}}{{end}}{{if .FlagGroups}}
-{{range .FlagGroups}}{{.Name}} OPTIONS:
-  {{range .Flags}}{{.}}
+   {{.App.Version}}{{if .CommandAndFlagGroups}}
+
+COMMANDS AND FLAGS:
+------------------------------------------------------------------------
+{{range .CommandAndFlagGroups}}{{.Name}}
+------------------------------------------------------------------------
+  {{if .Commands}}{{range .Commands}}
+    {{join .Names ", "}}{{ "\t" }}{{.Usage}}{{ if .Subcommands }}{{ "\n\n" }}{{end}}{{range .Subcommands}}{{"\t"}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}{{"\n"}}{{end}}{{end}}
+  
+  {{end}}{{range .Flags}}{{.}}
   {{end}}
 {{end}}{{end}}{{if .App.Copyright }}
+
 COPYRIGHT:
    {{.App.Copyright}}
    {{end}}
 `
 
-// flagGroup is a collection of flags belonging to a single topic.
+// flagGroup is a collection of commands and/or flags belonging to a single topic.
 type flagGroup struct {
-	Name  string
-	Flags []cli.Flag
+	Name     string
+	Flags    []cli.Flag
+	Commands []cli.Command
 }
 
-// AppHelpFlagGroups is the application flags, grouped by functionality.
-var AppHelpFlagGroups = []flagGroup{
+// AppHelpFlagAndCommandGroups is the application flags, grouped by functionality.
+var AppHelpFlagAndCommandGroups = []flagGroup{
 	{
 		Name: "ETHEREUM",
+		Commands: []cli.Command{
+			importCommand,
+			exportCommand,
+			dumpChainConfigCommand,
+			dumpCommand,
+			rollbackCommand,
+			recoverCommand,
+			resetCommand,
+		},
 		Flags: []cli.Flag{
 			DataDirFlag,
 			ChainIdentityFlag,
-			KeyStoreDirFlag,
 			NetworkIdFlag,
 			DevModeFlag,
 			NodeNameFlag,
 			FastSyncFlag,
-			LightKDFFlag,
 			CacheFlag,
-			BlockchainVersionFlag,
+			LightKDFFlag,
 			SputnikVMFlag,
+			BlockchainVersionFlag,
 		},
 	},
 	{
 		Name: "ACCOUNT",
+		Commands: []cli.Command{
+			accountCommand,
+			walletCommand,
+		},
 		Flags: []cli.Flag{
+			KeyStoreDirFlag,
 			UnlockedAccountFlag,
 			PasswordFileFlag,
 			AccountsIndexFlag,
@@ -78,6 +98,12 @@ var AppHelpFlagGroups = []flagGroup{
 	},
 	{
 		Name: "API AND CONSOLE",
+		Commands: []cli.Command{
+			consoleCommand,
+			attachCommand,
+			javascriptCommand,
+			apiCommand,
+		},
 		Flags: []cli.Flag{
 			RPCEnabledFlag,
 			RPCListenAddrFlag,
@@ -112,6 +138,9 @@ var AppHelpFlagGroups = []flagGroup{
 	},
 	{
 		Name: "MINER",
+		Commands: []cli.Command{
+			makeDagCommand,
+		},
 		Flags: []cli.Flag{
 			MiningEnabledFlag,
 			MinerThreadsFlag,
@@ -136,6 +165,14 @@ var AppHelpFlagGroups = []flagGroup{
 	},
 	{
 		Name: "LOGGING AND DEBUGGING",
+		Commands: []cli.Command{
+			versionCommand,
+			statusCommand,
+			monitorCommand,
+			makeMlogDocCommand,
+			gpuInfoCommand,
+			gpuBenchCommand,
+		},
 		Flags: []cli.Flag{
 			VerbosityFlag,
 			VModuleFlag,
@@ -147,6 +184,9 @@ var AppHelpFlagGroups = []flagGroup{
 			LogMaxAgeFlag,
 			LogCompressFlag,
 			LogStatusFlag,
+			DisplayFlag,
+			DisplayFormatFlag,
+			NeckbeardFlag,
 			MLogFlag,
 			MLogDirFlag,
 			MLogComponentsFlag,
@@ -168,6 +208,9 @@ var AppHelpFlagGroups = []flagGroup{
 	},
 	{
 		Name: "LEGACY",
+		Commands: []cli.Command{
+			upgradedbCommand,
+		},
 		Flags: []cli.Flag{
 			TestNetFlag,
 			Unused1,
@@ -187,8 +230,8 @@ func init() {
 
 	// Define a one shot struct to pass to the usage template
 	type helpData struct {
-		App        interface{}
-		FlagGroups []flagGroup
+		App                  interface{}
+		CommandAndFlagGroups []flagGroup
 	}
 	// Override the default app help printer, but only for the global app help
 	originalHelpPrinter := cli.HelpPrinter
@@ -196,7 +239,7 @@ func init() {
 		if tmpl == AppHelpTemplate {
 			// Iterate over all the flags and add any uncategorized ones
 			categorized := make(map[string]struct{})
-			for _, group := range AppHelpFlagGroups {
+			for _, group := range AppHelpFlagAndCommandGroups {
 				for _, flag := range group.Flags {
 					categorized[flag.String()] = struct{}{}
 				}
@@ -209,16 +252,16 @@ func init() {
 			}
 			if len(uncategorized) > 0 {
 				// Append all ungategorized options to the misc group
-				miscs := len(AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags)
-				AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags = append(AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags, uncategorized...)
+				miscs := len(AppHelpFlagAndCommandGroups[len(AppHelpFlagAndCommandGroups)-1].Flags)
+				AppHelpFlagAndCommandGroups[len(AppHelpFlagAndCommandGroups)-1].Flags = append(AppHelpFlagAndCommandGroups[len(AppHelpFlagAndCommandGroups)-1].Flags, uncategorized...)
 
 				// Make sure they are removed afterwards
 				defer func() {
-					AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags = AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags[:miscs]
+					AppHelpFlagAndCommandGroups[len(AppHelpFlagAndCommandGroups)-1].Flags = AppHelpFlagAndCommandGroups[len(AppHelpFlagAndCommandGroups)-1].Flags[:miscs]
 				}()
 			}
 			// Render out custom usage screen
-			originalHelpPrinter(w, tmpl, helpData{data, AppHelpFlagGroups})
+			originalHelpPrinter(w, tmpl, helpData{data, AppHelpFlagAndCommandGroups})
 		} else {
 			originalHelpPrinter(w, tmpl, data)
 		}

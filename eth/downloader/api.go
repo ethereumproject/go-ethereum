@@ -20,25 +20,26 @@ import (
 	"context"
 	"sync"
 
+	"math/big"
+
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/rpc"
-	"github.com/ethereumproject/go-ethereum/common"
-	"math/big"
 )
 
-type DoneEvent struct{
+type DoneEvent struct {
 	Peer *peer
 	Hash common.Hash
-	TD *big.Int
+	TD   *big.Int
 }
-type StartEvent struct{
+type StartEvent struct {
 	Peer *peer
 	Hash common.Hash
-	TD *big.Int
+	TD   *big.Int
 }
-type FailedEvent struct{
+type FailedEvent struct {
 	Peer *peer
-	Err error
+	Err  error
 }
 
 // PublicDownloaderAPI provides an API which gives information about the current synchronisation status.

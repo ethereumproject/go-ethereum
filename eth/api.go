@@ -84,7 +84,7 @@ func stateAndBlockByNumber(m *miner.Miner, bc *core.BlockChain, blockNr rpc.Bloc
 	if block == nil {
 		return nil, nil, nil
 	}
-	stateDb, err := state.New(block.Root(), chainDb)
+	stateDb, err := state.New(block.Root(), state.NewDatabase(chainDb))
 	return stateDb, block, err
 }
 
@@ -504,7 +504,7 @@ func (s *PrivateAccountAPI) Sign(data []byte, addr common.Address, passwd string
 // SendTransaction will create a transaction from the given arguments and
 // tries to sign it with the key associated with args.To. If the given passwd isn't
 // able to decrypt the key it fails.
-func(s *PrivateAccountAPI) SendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
+func (s *PrivateAccountAPI) SendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
 	args = prepareSendTxArgs(args, s.gpo)
 
 	s.txMu.Lock()
@@ -534,7 +534,7 @@ func(s *PrivateAccountAPI) SendTransaction(args SendTxArgs, passwd string) (comm
 // SignAndSendTransaction was renamed to SendTransaction. This method is deprecated
 // and will be removed in the future. It primary goal is to give clients time to update.
 func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
-	return s.SignAndSendTransaction(args, passwd)
+	return s.SendTransaction(args, passwd)
 }
 
 // PublicBlockChainAPI provides an API to access the Ethereum blockchain.

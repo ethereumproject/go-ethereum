@@ -1,63 +1,59 @@
 package common
 
 import (
-	"runtime"
-	"os"
-	"strings"
-	"os/user"
-	"github.com/denisbrodbeck/machineid"
-	"strconv"
-	"math/rand"
-	"time"
 	"fmt"
+	"math/rand"
+	"os"
+	"os/user"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/denisbrodbeck/machineid"
 )
 
 var clientSessionIdentity *ClientSessionIdentityT
 var SessionID string // global because we use in mlog fns to inject for all data points
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
-	SetClientSessionIdentity("")
+	initClientSessionIdentity()
 }
 
 // ClientSessionIdentityT holds values describing the client, environment, and session.
 type ClientSessionIdentityT struct {
-	Version string `json:"version"`
-	Hostname string `json:"host"`
-	Username string `json:"user"`
-	MachineID string `json:"machineid"`
-	Goos string `json:"goos"`
-	Goarch string `json:"goarch"`
-	Goversion string `json:"goversion"`
-	Pid int `json:"pid"`
-	SessionID string `json:"session"`
+	Version   string    `json:"version"`
+	Hostname  string    `json:"host"`
+	Username  string    `json:"user"`
+	MachineID string    `json:"machineid"`
+	Goos      string    `json:"goos"`
+	Goarch    string    `json:"goarch"`
+	Goversion string    `json:"goversion"`
+	Pid       int       `json:"pid"`
+	SessionID string    `json:"session"`
 	StartTime time.Time `json:"start"`
 }
 
 // String is the stringer fn for ClientSessionIdentityT
 func (s *ClientSessionIdentityT) String() string {
-	return fmt.Sprintln(s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
+	return fmt.Sprint(s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
 }
 
 // Helpers for random sessionid string.
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-func randStringBytes(n int) string {
+
+func randStringBytes(rng *rand.Rand, n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		b[i] = letterBytes[rng.Intn(len(letterBytes))]
 	}
 	return string(b)
 }
 
-// SetClientSessionIdentity sets the global variable describing details about the client and session.
-// It is idempotent, excepting only being a setter for Version value.
-func SetClientSessionIdentity(versionName string) {
-	if clientSessionIdentity != nil {
-		clientSessionIdentity.Version = runtime.Version()
-		return
-	}
-
-	SessionID = randStringBytes(4)
+// initClientSessionIdentity sets the global variable describing details about the client and session.
+func initClientSessionIdentity() {
+	rng := rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
+	SessionID = randStringBytes(rng, 4)
 
 	var hostname, userName string
 	var err error
@@ -87,7 +83,7 @@ func SetClientSessionIdentity(versionName string) {
 	}
 
 	clientSessionIdentity = &ClientSessionIdentityT{
-		Version: versionName,
+		Version:   "unknown",
 		Hostname:  hostname,
 		Username:  userName,
 		MachineID: mid[:8], // because we don't care that much
@@ -97,6 +93,12 @@ func SetClientSessionIdentity(versionName string) {
 		Pid:       os.Getpid(),
 		SessionID: SessionID,
 		StartTime: time.Now(),
+	}
+}
+
+func SetClientVersion(version string) {
+	if clientSessionIdentity != nil {
+		clientSessionIdentity.Version = version
 	}
 }
 

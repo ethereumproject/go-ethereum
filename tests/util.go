@@ -95,7 +95,7 @@ func (self Log) Topics() [][]byte {
 }
 
 func makePreState(db ethdb.Database, accounts map[string]Account) *state.StateDB {
-	statedb, _ := state.New(common.Hash{}, db)
+	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	for addr, account := range accounts {
 		insertAccount(statedb, addr, account)
 	}
@@ -267,7 +267,7 @@ func (self *Env) GetHash(n uint64) common.Hash {
 	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 }
 func (self *Env) AddLog(log *vm.Log) {
-	self.state.AddLog(log)
+	self.state.AddLog(*log)
 }
 func (self *Env) Depth() int     { return self.depth }
 func (self *Env) SetDepth(i int) { self.depth = i }

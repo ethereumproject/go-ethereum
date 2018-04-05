@@ -28,6 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p/distip"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
@@ -159,8 +160,16 @@ func makeEndpoint(addr *net.UDPAddr, tcpPort uint16) rpcEndpoint {
 	return rpcEndpoint{IP: ip, UDP: uint16(addr.Port), TCP: tcpPort}
 }
 
-func nodeFromRPC(rn rpcNode) (*Node, error) {
-	// TODO: don't accept localhost, LAN addresses from internet hosts
+func (t *udp) nodeFromRPC(sender *net.UDPAddr, rn rpcNode) (*Node, error) {
+	if rn.UDP <= 1024 {
+		return nil, errors.New("low port")
+	}
+	if err := distip.CheckRelayIP(sender.IP, rn.IP); err != nil {
+		return nil, err
+	}
+	if t.netrestrict != nil && !t.netrestrict.Contains(rn.IP) {
+		return nil, errors.New("not contained in netrestrict whitelist")
+	}
 	n := NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
 	err := n.validateComplete()
 	return n, err
@@ -184,6 +193,7 @@ type conn interface {
 // udp implements the RPC protocol.
 type udp struct {
 	conn        conn
+	netrestrict *distip.Netlist
 	priv        *ecdsa.PrivateKey
 	ourEndpoint rpcEndpoint
 
@@ -314,7 +324,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		reply := r.(*neighbors)
 		for _, rn := range reply.Nodes {
 			nreceived++
-			if n, err := nodeFromRPC(rn); err == nil {
+			if n, err := t.nodeFromRPC(toaddr, rn); err == nil {
 				nodes = append(nodes, n)
 			}
 		}

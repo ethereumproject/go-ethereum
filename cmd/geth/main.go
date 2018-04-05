@@ -19,19 +19,21 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/urfave/cli.v1"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"time"
+
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/benchmark/rtprof"
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/metrics"
-	"time"
-	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -39,7 +41,69 @@ import (
 var Version = "source"
 
 func init() {
-	common.SetClientSessionIdentity(Version)
+	rand.Seed(time.Now().UTC().UnixNano())
+	common.SetClientVersion(Version)
+}
+
+var makeDagCommand = cli.Command{
+	Action:  makedag,
+	Name:    "make-dag",
+	Aliases: []string{"makedag"},
+	Usage:   "Generate ethash dag (for testing)",
+	Description: `
+		The makedag command generates an ethash DAG in /tmp/dag.
+
+		This command exists to support the system testing project.
+		Regular users do not need to execute it.
+				`,
+}
+
+var gpuInfoCommand = cli.Command{
+	Action:  gpuinfo,
+	Name:    "gpu-info",
+	Aliases: []string{"gpuinfo"},
+	Usage:   "GPU info",
+	Description: `
+	Prints OpenCL device info for all found GPUs.
+			`,
+}
+
+var gpuBenchCommand = cli.Command{
+	Action:  gpubench,
+	Name:    "gpu-bench",
+	Aliases: []string{"gpubench"},
+	Usage:   "Benchmark GPU",
+	Description: `
+	Runs quick benchmark on first GPU found.
+			`,
+}
+
+var versionCommand = cli.Command{
+	Action: version,
+	Name:   "version",
+	Usage:  "Print ethereum version numbers",
+	Description: `
+	The output of this command is supposed to be machine-readable.
+			`,
+}
+
+var makeMlogDocCommand = cli.Command{
+	Action: makeMLogDocumentation,
+	Name:   "mdoc",
+	Usage:  "Generate mlog documentation",
+	Description: `
+	Auto-generates documentation for all available mlog lines.
+	Use -md switch to toggle markdown output (eg. for wiki).
+	Arguments may be used to specify exclusive candidate components;
+	so 'geth mdoc -md discover' will generate markdown documentation only
+	for the 'discover' component.
+			`,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "md",
+			Usage: "Toggle markdown formatting",
+		},
+	},
 }
 
 func makeCLIApp() (app *cli.App) {
@@ -55,7 +119,6 @@ func makeCLIApp() (app *cli.App) {
 		exportCommand,
 		dumpChainConfigCommand,
 		upgradedbCommand,
-		removedbCommand,
 		dumpCommand,
 		rollbackCommand,
 		recoverCommand,
@@ -68,92 +131,11 @@ func makeCLIApp() (app *cli.App) {
 		javascriptCommand,
 		statusCommand,
 		apiCommand,
-		{
-			Action:  makedag,
-			Name:    "make-dag",
-			Aliases: []string{"makedag"},
-			Usage:   "Generate ethash dag (for testing)",
-			Description: `
-	The makedag command generates an ethash DAG in /tmp/dag.
-
-	This command exists to support the system testing project.
-	Regular users do not need to execute it.
-			`,
-		},
-		{
-			Action:  gpuinfo,
-			Name:    "gpu-info",
-			Aliases: []string{"gpuinfo"},
-			Usage:   "GPU info",
-			Description: `
-	Prints OpenCL device info for all found GPUs.
-			`,
-		},
-		{
-			Action:  gpubench,
-			Name:    "gpu-bench",
-			Aliases: []string{"gpubench"},
-			Usage:   "Benchmark GPU",
-			Description: `
-	Runs quick benchmark on first GPU found.
-			`,
-		},
-		{
-			Action: version,
-			Name:   "version",
-			Usage:  "Print ethereum version numbers",
-			Description: `
-	The output of this command is supposed to be machine-readable.
-			`,
-		},
-		{
-			Action: buildAddrTxIndexCmd,
-			Name:   "atxi-build",
-			Usage:  "Generate index for transactions by address",
-			Description: `
-	Builds an index for transactions by address. 
-	The command is idempotent; it will not hurt to run multiple times on the same range.
-
-	If run without --start flag, the command makes use of a persistent placeholder, so you can
-	run the command on multiple occasions and pick up indexing progress where the last session
-	left off.
-
-	To enable address-transaction indexing during block sync and import, use the '--atxi' flag.
-			`,
-			Flags: []cli.Flag{
-				cli.IntFlag{
-					Name:  "start",
-					Usage: "Block number at which to begin building index",
-				},
-				cli.IntFlag{
-					Name:  "stop",
-					Usage: "Block number at which to stop building index",
-				},
-				cli.IntFlag{
-					Name: "step",
-					Usage: "Step increment for batching. Higher number requires more mem, but may be faster",
-					Value: 10000,
-				},
-			},
-		},
-		{
-			Action: makeMLogDocumentation,
-			Name:   "mdoc",
-			Usage:  "Generate mlog documentation",
-			Description: `
-	Auto-generates documentation for all available mlog lines.
-	Use -md switch to toggle markdown output (eg. for wiki).
-	Arguments may be used to specify exclusive candidate components;
-	so 'geth mdoc -md discover' will generate markdown documentation only
-	for the 'discover' component.
-			`,
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "md",
-					Usage: "Toggle markdown formatting",
-				},
-			},
-		},
+		makeDagCommand,
+		gpuInfoCommand,
+		gpuBenchCommand,
+		versionCommand,
+		makeMlogDocCommand,
 	}
 
 	app.Flags = []cli.Flag{

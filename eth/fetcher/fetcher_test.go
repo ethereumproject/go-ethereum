@@ -59,14 +59,14 @@ func init() {
 		panic(err)
 	}
 
-	statedb, err := state.New(common.Hash{}, testdb)
+	statedb, err := state.New(common.Hash{}, state.NewDatabase(testdb))
 	if err != nil {
 		panic(err)
 	}
 
 	obj := statedb.GetOrNewStateObject(testAddress)
 	obj.SetBalance(big.NewInt(1000000000))
-	root, err := statedb.Commit()
+	root, err := statedb.CommitTo(testdb, false)
 	if err != nil {
 		panic(fmt.Sprintf("cannot write state: %v", err))
 	}

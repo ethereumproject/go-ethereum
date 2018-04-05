@@ -135,6 +135,37 @@ func (hc *HeaderChain) WriteHeader(header *types.Header) (status WriteStatus, er
 		hash   = header.Hash()
 		number = header.Number.Uint64()
 	)
+
+	if logger.MlogEnabled() {
+		defer func() {
+			mlogWriteStatus := "UNKNOWN"
+			switch status {
+			case NonStatTy:
+				mlogWriteStatus = "NONE"
+			case CanonStatTy:
+				mlogWriteStatus = "CANON"
+			case SideStatTy:
+				mlogWriteStatus = "SIDE"
+			}
+			parent := hc.GetHeader(header.ParentHash)
+			parentTimeDiff := new(big.Int)
+			if parent != nil {
+				parentTimeDiff = new(big.Int).Sub(header.Time, parent.Time)
+			}
+			mlogHeaderchainWriteHeader.AssignDetails(
+				mlogWriteStatus,
+				err,
+				header.Number,
+				header.Hash().Hex(),
+				header.GasUsed,
+				header.Coinbase.Hex(),
+				header.Time,
+				header.Difficulty,
+				parentTimeDiff,
+			).Send(mlogHeaderchain)
+		}()
+	}
+
 	// Calculate the total difficulty of the header
 	ptd := hc.GetTd(header.ParentHash)
 	if ptd == nil {
@@ -315,6 +346,17 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 	elapsed := time.Since(start)
 	glog.V(logger.Info).Infof("imported %d header(s) (%d ignored) in %v. #%v [%x… / %x…]", stats.processed, stats.ignored,
 		elapsed, last.Number, first.Hash().Bytes()[:4], last.Hash().Bytes()[:4])
+
+	if logger.MlogEnabled() {
+		mlogHeaderchainInsertHeaders.AssignDetails(
+			stats.processed,
+			stats.ignored,
+			last.Number,
+			first.Hash().Hex(),
+			last.Hash().Hex(),
+			elapsed,
+		).Send(mlogHeaderchain)
+	}
 
 	events = append(events, HeaderChainInsertEvent{
 		Processed:  stats.processed,

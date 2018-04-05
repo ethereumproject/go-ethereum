@@ -338,7 +338,7 @@ func (f *Fetcher) loop() {
 						mlogFetcherDiscardAnnouncement.AssignDetails(
 							notification.origin,
 							notification.number,
-							notification.hash.Str(),
+							notification.hash.Hex(),
 							dist,
 						).Send(mlogFetcher)
 					}
@@ -639,7 +639,7 @@ func (f *Fetcher) enqueue(peer string, block *types.Block) {
 			mlogFetcherDiscardAnnouncement.AssignDetails(
 				peer,
 				block.NumberU64(),
-				hash.Str(),
+				hash.Hex(),
 				dist,
 			).Send(mlogFetcher)
 		}

@@ -4,10 +4,10 @@ import "github.com/ethereumproject/go-ethereum/logger"
 
 var mlogState = logger.MLogRegisterAvailable("state", mlogStateLines)
 
-var mlogStateLines = []logger.MLogT{
-	*mlogStateCreateObject,
-	*mlogStateAddBalanceObject,
-	*mlogStateSubBalanceObject,
+var mlogStateLines = []*logger.MLogT{
+	mlogStateCreateObject,
+	mlogStateAddBalanceObject,
+	mlogStateSubBalanceObject,
 }
 
 var mlogStateCreateObject = &logger.MLogT{
@@ -18,8 +18,8 @@ If there was an existing account with the same address, it is overwritten and it
 	Verb:     "CREATE",
 	Subject:  "OBJECT",
 	Details: []logger.MLogDetailT{
-		{"OBJECT", "NEW", "STRING"},
-		{"OBJECT", "PREV", "STRING"},
+		{Owner: "OBJECT", Key: "NEW", Value: "STRING"},
+		{Owner: "OBJECT", Key: "PREV", Value: "STRING"},
 	},
 }
 
@@ -29,10 +29,10 @@ var mlogStateAddBalanceObject = &logger.MLogT{
 	Verb:        "ADD_BALANCE",
 	Subject:     "OBJECT",
 	Details: []logger.MLogDetailT{
-		{"OBJECT", "ADDRESS", "STRING"},
-		{"OBJECT", "NONCE", "INT"},
-		{"OBJECT", "BALANCE", "BIGINT"},
-		{"ADD_BALANCE", "AMOUNT", "BIGINT"},
+		{Owner: "OBJECT", Key: "ADDRESS", Value: "STRING"},
+		{Owner: "OBJECT", Key: "NONCE", Value: "INT"},
+		{Owner: "OBJECT", Key: "BALANCE", Value: "BIGINT"},
+		{Owner: "ADD_BALANCE", Key: "AMOUNT", Value: "BIGINT"},
 	},
 }
 
@@ -42,9 +42,9 @@ var mlogStateSubBalanceObject = &logger.MLogT{
 	Verb:        "SUB_BALANCE",
 	Subject:     "OBJECT",
 	Details: []logger.MLogDetailT{
-		{"OBJECT", "ADDRESS", "STRING"},
-		{"OBJECT", "NONCE", "INT"},
-		{"OBJECT", "BALANCE", "BIGINT"},
-		{"SUB_BALANCE", "AMOUNT", "BIGINT"},
+		{Owner: "OBJECT", Key: "ADDRESS", Value: "STRING"},
+		{Owner: "OBJECT", Key: "NONCE", Value: "INT"},
+		{Owner: "OBJECT", Key: "BALANCE", Value: "BIGINT"},
+		{Owner: "SUB_BALANCE", Key: "AMOUNT", Value: "BIGINT"},
 	},
 }
