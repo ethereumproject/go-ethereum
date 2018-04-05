@@ -795,7 +795,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		}
 
 		removals := [][]byte{}
-		removeRemovals := func(removals [][]byte) {
+		deleteRemovalsFn := func(removals [][]byte) {
 			for _, r := range removals {
 				if e := ldb.Delete(r); e != nil {
 					glog.Fatal(e)
@@ -815,7 +815,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 				// Prevent removals from getting too massive in case it's a big rollback
 				// 100000 is a guess at a big but not-too-big memory allowance
 				if len(removals) > 100000 {
-					removeRemovals(removals)
+					deleteRemovalsFn(removals)
 					removals = [][]byte{}
 				}
 			}
@@ -824,7 +824,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		if e := it.Error(); e != nil {
 			return e
 		}
-		removeRemovals(removals)
+		deleteRemovalsFn(removals)
 	}
 
 	bc.mu.Unlock()
