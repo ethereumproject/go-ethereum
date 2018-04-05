@@ -230,10 +230,12 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	// Initialize indexes db if enabled
-	// Blockchain will be assigned the db and atx enabled after blockchain is intialized below.
+	// Blockchain will be assigned the db and atx enabled after blockchain is initialized below.
 	var indexesDb ethdb.Database
 	if config.UseAddrTxIndex {
 		// TODO: these are arbitrary numbers I just made up. Optimize?
+		// The reason these numbers are different than the atxi-build command is because for "appending" (vs. building)
+		// the atxi database should require far fewer resources since application performance is limited primarily by block import (chaindata db).
 		ethdb.SetCacheRatio("chaindata", 0.95)
 		ethdb.SetHandleRatio("chaindata", 0.95)
 		ethdb.SetCacheRatio("indexes", 0.05)
