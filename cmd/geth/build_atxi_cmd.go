@@ -42,6 +42,8 @@ var buildAddrTxIndexCommand = cli.Command{
 
 func buildAddrTxIndexCmd(ctx *cli.Context) error {
 
+	// Divide global cache availability equally between chaindata (pre-existing blockdata) and
+	// address-transaction database. This ratio is arbitrary and could potentially be optimized or delegated to be user configurable.
 	ethdb.SetCacheRatio("chaindata", 0.5)
 	ethdb.SetHandleRatio("chaindata", 1)
 	ethdb.SetCacheRatio("indexes", 0.5)
