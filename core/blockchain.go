@@ -794,9 +794,9 @@ func (bc *BlockChain) SetHead(head uint64) error {
 			glog.Fatal("could not cast indexes db to level db")
 		}
 
-		removals := [][]byte{}
-		deleteRemovalsFn := func(removals [][]byte) {
-			for _, r := range removals {
+		var removals [][]byte
+		deleteRemovalsFn := func(rs [][]byte) {
+			for _, r := range rs {
 				if e := ldb.Delete(r); e != nil {
 					glog.Fatal(e)
 				}
