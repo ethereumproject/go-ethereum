@@ -1,6 +1,9 @@
 package core
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/ethereumproject/go-ethereum/core/assets"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
@@ -14,20 +17,18 @@ func init() {
 
 	var err error
 
-	mainnetJSONData, err := assets.DEFAULTS.Open("/core/config/mainnet.json")
-	if err != nil {
-		glog.Fatal("Error opening mainnet default JSON:", err)
+	open := func(path string) (io.ReadCloser, error) {
+		file, err := assets.DEFAULTS.Open(path)
+		if err != nil {
+			err := fmt.Errorf("Error opening '%s' default JSON:", path, err)
+		}
+		return file, err
 	}
-	mordenJSONData, err := assets.DEFAULTS.Open("/core/config/morden.json")
-	if err != nil {
-		glog.Fatal("Error opening morden default JSON:", err)
-	}
-
-	DefaultConfigMainnet, err = parseExternalChainConfig(mainnetJSONData)
+	DefaultConfigMainnet, err = parseExternalChainConfig("/core/config/mainnet.json", open)
 	if err != nil {
 		glog.Fatal("Error parsing mainnet defaults from JSON:", err)
 	}
-	DefaultConfigMorden, err = parseExternalChainConfig(mordenJSONData)
+	DefaultConfigMorden, err = parseExternalChainConfig("/core/config/morden.json", open)
 	if err != nil {
 		glog.Fatal("Error parsing morden defaults from JSON:", err)
 	}

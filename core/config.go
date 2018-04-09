@@ -417,8 +417,14 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
-func parseExternalChainConfig(f io.Reader) (*SufficientChainConfig, error) {
+func parseExternalChainConfig(path string, open func(string) (io.ReadCloser, error)) (*SufficientChainConfig, error) {
 	var config = &SufficientChainConfig{}
+	f, err := open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read chain configuration file: %s", err)
+	}
+	defer f.Close()
+
 	if err := json.NewDecoder(f).Decode(config); err != nil {
 		return nil, fmt.Errorf("%v: %s", f, err)
 	}
@@ -458,13 +464,7 @@ func ReadExternalChainConfigFromFile(incomingPath string) (*SufficientChainConfi
 		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
 	}
 
-	f, err := os.Open(flaggedExternalChainConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
-	}
-	defer f.Close()
-
-	config, err := parseExternalChainConfig(f)
+	config, err := parseExternalChainConfig(flaggedExternalChainConfigPath, func(path string) (io.ReadCloser, error) { return os.Open(path) })
 	if err != nil {
 		return nil, err
 	}
