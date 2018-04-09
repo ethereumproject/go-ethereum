@@ -418,9 +418,8 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
-func parseExternalChainConfig(path string, open func(string) (io.ReadCloser, error)) (*SufficientChainConfig, error) {
+func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadCloser, error)) (*SufficientChainConfig, error) {
 	var config = &SufficientChainConfig{}
-	includes := []string{path}
 	processed := []string{}
 
 	contains := func(highstack []string, needle string) bool {
@@ -432,22 +431,43 @@ func parseExternalChainConfig(path string, open func(string) (io.ReadCloser, err
 		return false
 	}
 
-	for len(includes) > 0 {
-		if !contains(processed, includes[0]) {
-			f, err := open(includes[0])
-			if err != nil {
-				return nil, fmt.Errorf("failed to read chain configuration file: %s", err)
-			}
-
-			if err := json.NewDecoder(f).Decode(config); err != nil {
-				return nil, fmt.Errorf("%v: %s", f, err)
-			}
-			f.Close()
+	var processFile func(path, parent string) error
+	processFile = func(path, parent string) error {
+		if !filepath.IsAbs(path) {
+			baseDir := filepath.Dir(parent)
+			path = filepath.Join(baseDir, path)
+			fmt.Println("path: ", path)
 		}
+		if !contains(processed, path) {
+			processed = append(processed, path)
 
-		processed = append(processed, includes[0])
-		includes = append(includes[1:], config.Include...)
-		config.Include = nil
+			f, err := open(path)
+			if err != nil {
+				return fmt.Errorf("failed to read chain configuration file: %s", err)
+			}
+			defer f.Close()
+			if err := json.NewDecoder(f).Decode(config); err != nil {
+				return fmt.Errorf("%v: %s", f, err)
+			}
+
+			includes := make([]string, len(config.Include))
+			copy(includes, config.Include)
+			config.Include = nil
+
+			for _, include := range includes {
+				fmt.Println(include)
+				err := processFile(include, path)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	err := processFile(mainConfigFile, ".")
+	if err != nil {
+		return nil, err
 	}
 
 	// Make JSON 'id' -> 'identity' (for backwards compatibility)
