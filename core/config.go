@@ -63,6 +63,7 @@ type SufficientChainConfig struct {
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
 	ParsedBootstrap []*discover.Node `json:"-"`
+	Include         []string         `json:"include"` // config files to include
 }
 
 // StateConfig hold variable data for statedb.
@@ -419,14 +420,34 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 
 func parseExternalChainConfig(path string, open func(string) (io.ReadCloser, error)) (*SufficientChainConfig, error) {
 	var config = &SufficientChainConfig{}
-	f, err := open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read chain configuration file: %s", err)
-	}
-	defer f.Close()
+	includes := []string{path}
+	processed := []string{}
 
-	if err := json.NewDecoder(f).Decode(config); err != nil {
-		return nil, fmt.Errorf("%v: %s", f, err)
+	contains := func(highstack []string, needle string) bool {
+		for _, v := range highstack {
+			if needle == v {
+				return true
+			}
+		}
+		return false
+	}
+
+	for len(includes) > 0 {
+		if !contains(processed, includes[0]) {
+			f, err := open(includes[0])
+			if err != nil {
+				return nil, fmt.Errorf("failed to read chain configuration file: %s", err)
+			}
+
+			if err := json.NewDecoder(f).Decode(config); err != nil {
+				return nil, fmt.Errorf("%v: %s", f, err)
+			}
+			f.Close()
+		}
+
+		processed = append(processed, includes[0])
+		includes = append(includes[1:], config.Include...)
+		config.Include = nil
 	}
 
 	// Make JSON 'id' -> 'identity' (for backwards compatibility)
