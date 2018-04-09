@@ -436,7 +436,6 @@ func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadC
 		if !filepath.IsAbs(path) {
 			baseDir := filepath.Dir(parent)
 			path = filepath.Join(baseDir, path)
-			fmt.Println("path: ", path)
 		}
 		if !contains(processed, path) {
 			processed = append(processed, path)
@@ -455,7 +454,6 @@ func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadC
 			config.Include = nil
 
 			for _, include := range includes {
-				fmt.Println(include)
 				err := processFile(include, path)
 				if err != nil {
 					return err
