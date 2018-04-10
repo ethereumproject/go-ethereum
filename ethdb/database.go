@@ -21,6 +21,8 @@ import (
 
 	"strconv"
 
+	"sync"
+
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -28,7 +30,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"sync"
 )
 
 var OpenFileLimit = 64
@@ -88,7 +89,6 @@ func NewLDBDatabase(file string, cache int, handles int) (*LDBDatabase, error) {
 		db:   db,
 	}, nil
 }
-
 
 // Path returns the path to the database directory.
 func (db *LDBDatabase) Path() string {

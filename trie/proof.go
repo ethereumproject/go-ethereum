@@ -20,11 +20,12 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/ethereumproject/go-ethereum/rlp"
-	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/rlp"
 )
+
 // Prove constructs a merkle proof for key. The result contains all
 // encoded nodes on the path to the value at key. The value itself is
 // also included in the last node and can be retrieved by verifying

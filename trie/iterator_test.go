@@ -19,11 +19,12 @@ package trie
 import (
 	"testing"
 
+	"bytes"
+	"fmt"
+	"math/rand"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"fmt"
-	"bytes"
-	"math/rand"
 )
 
 func TestIterator(t *testing.T) {

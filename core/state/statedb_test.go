@@ -29,9 +29,9 @@ import (
 	"testing/quick"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"gopkg.in/check.v1"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 // Tests that updating a state trie does not leak any database writes prior to

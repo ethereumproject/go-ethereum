@@ -2,10 +2,11 @@ package eth
 
 import (
 	"bytes"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/logger"
 	"strings"
 	"testing"
+
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/logger"
 )
 
 func TestMlogWireDelegateError(t *testing.T) {

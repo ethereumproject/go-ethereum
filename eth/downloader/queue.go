@@ -27,10 +27,10 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
-	"github.com/ethereumproject/go-ethereum/logger"
 )
 
 var blockCacheLimit = 8192 // Maximum number of blocks to cache before throttling the download

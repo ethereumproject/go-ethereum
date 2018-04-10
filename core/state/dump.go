@@ -25,9 +25,10 @@ import (
 	"sort"
 	"sync"
 
+	"fmt"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"fmt"
 	"github.com/ethereumproject/go-ethereum/trie"
 )
 

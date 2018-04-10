@@ -138,4 +138,3 @@ func (ch addLogChange) undo(s *StateDB) {
 func (ch addPreimageChange) undo(s *StateDB) {
 	delete(s.preimages, ch.hash)
 }
-

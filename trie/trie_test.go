@@ -18,20 +18,21 @@ package trie
 
 import (
 	"bytes"
-	"testing"
-	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/ethdb"
 	"encoding/binary"
-	"reflect"
-	"testing/quick"
-	"os"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"math/big"
 	"math/rand"
-	"errors"
-	"io/ioutil"
+	"os"
+	"reflect"
+	"testing"
+	"testing/quick"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
