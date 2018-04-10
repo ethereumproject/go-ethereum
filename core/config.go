@@ -408,6 +408,24 @@ func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 	return nil
 }
 
+// GetLatestRequiredHash returns the latest requiredHash from chain config for a given blocknumber n (eg. bc head).
+// It does NOT depend on forks being sorted.
+func (c *ChainConfig) GetLatestRequiredHashFork(n *big.Int) (f *Fork) {
+	lastBlockN := new(big.Int)
+	for _, ff := range c.Forks {
+		if ff.RequiredHash.IsEmpty() {
+			continue
+		}
+		// If this fork is chronologically later than lastSet fork with required hash AND given block n is greater than
+		// the fork.
+		if ff.Block.Cmp(lastBlockN) > 0 && n.Cmp(ff.Block) >= 0 {
+			f = ff
+			lastBlockN = ff.Block
+		}
+	}
+	return
+}
+
 func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
 	feature, _, configured := c.GetFeature(blockNumber, "eip155")
 	if configured {
