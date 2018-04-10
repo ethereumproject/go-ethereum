@@ -79,8 +79,8 @@ OPTIONS:
 
 var (
 	// Errors.
-	ErrInvalidFlag        = errors.New("invalid flag or context value")
-	ErrInvalidChainID     = errors.New("invalid chainID")
+	ErrInvalidFlag = errors.New("invalid flag or context value")
+
 	ErrDirectoryStructure = errors.New("error in directory structure")
 	ErrStackFail          = errors.New("error in stack protocol")
 
@@ -188,7 +188,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 		if chainIdentitiesBlacklist[chainFlagVal] {
 			glog.Fatalf(`%v: %v: reserved word
 					reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes',
-					please use a different identifier`, ErrInvalidFlag, ErrInvalidChainID)
+					please use a different identifier`, ErrInvalidFlag, core.ErrInvalidChainID)
 			identity = ""
 			return identity
 		}
@@ -219,7 +219,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 		identity = chainFlagVal
 		return identity
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
-		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
+		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, core.ErrInvalidChainID)
 		identity = ""
 		return identity
 	}
@@ -724,7 +724,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	// Ensure JSON 'id' value matches name of parent chain subdir.
 	if config.Identity != chainIdentity {
-		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, ErrInvalidChainID, config.Identity, chainIdentity)
+		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, core.ErrInvalidChainID, config.Identity, chainIdentity)
 	}
 
 	// Set statedb StartingNonce from external config, if specified (is optional)

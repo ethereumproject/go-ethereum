@@ -47,6 +47,8 @@ var (
 	ErrChainConfigNotFound     = errors.New("chain config not found")
 	ErrChainConfigForkNotFound = errors.New("chain config fork not found")
 
+	ErrInvalidChainID = errors.New("invalid chainID")
+
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
 )
