@@ -81,7 +81,7 @@ func StartNode(stack *node.Node) {
 
 	// mlog
 	nodeInfo := stack.Server().NodeInfo()
-	cconf := cacheChainConfig
+	cconf := CacheChainConfig
 	if cconf == nil {
 		Fatalf("Nil chain configuration")
 	}
@@ -636,7 +636,7 @@ func rollback(ctx *cli.Context) error {
 func dumpChainConfig(ctx *cli.Context) error {
 
 	chainIdentity := mustMakeChainIdentity(ctx)
-	if !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity]) {
+	if !(ChainIdentitiesMain[chainIdentity] || ChainIdentitiesMorden[chainIdentity]) {
 		glog.Fatal("Dump config should only be used with default chain configurations (mainnet or morden).")
 	}
 

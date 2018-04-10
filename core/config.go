@@ -51,7 +51,44 @@ var (
 
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
+
+	// Chain identities.
+	ChainIdentitiesBlacklist = map[string]bool{
+		"chaindata": true,
+		"dapp":      true,
+		"keystore":  true,
+		"nodekey":   true,
+		"nodes":     true,
+	}
+	ChainIdentitiesMain = map[string]bool{
+		"main":    true,
+		"mainnet": true,
+	}
+	ChainIdentitiesMorden = map[string]bool{
+		"morden":  true,
+		"testnet": true,
+	}
+
+	cacheChainIdentity string
+	cacheChainConfig   *SufficientChainConfig
 )
+
+func SetCacheChainIdentity(s string) {
+	cacheChainIdentity = s
+}
+
+func GetCacheChainIdentity() string {
+	return cacheChainIdentity
+}
+
+func SetCacheChainConfig(c *SufficientChainConfig) *SufficientChainConfig {
+	cacheChainConfig = c
+	return cacheChainConfig
+}
+
+func GetCacheChainConfig() *SufficientChainConfig {
+	return cacheChainConfig
+}
 
 // SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
 type SufficientChainConfig struct {
