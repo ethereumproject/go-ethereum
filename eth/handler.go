@@ -279,32 +279,35 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	// Drop connections on opposite side of network split
-	var fork *core.Fork
-	for i := range pm.chainConfig.Forks {
-		fork = pm.chainConfig.Forks[i]
-		if _, height := p.Head(); height.Cmp(fork.Block) < 0 {
-			break
+	// Drop connections incongruent with any network split or checkpoint that's relevant
+	// Check for latest relevant required hash based on our status.
+	var headN *big.Int
+	headB := pm.blockchain.GetBlock(head)
+	if headB != nil {
+		headN = headB.Number()
+	}
+	latestReqHashFork := pm.chainConfig.GetLatestRequiredHashFork(headN) // returns nil if no applicable fork with required hash
+	// Only request network checkpoint val(s) if we don't already have the block this peer reports as their head.
+	pHead, _ := p.Head()
+	if latestReqHashFork != nil && pm.blockchain.GetBlock(pHead) == nil {
+		// Request the peer's fork block header for extra-dat
+		if err := p.RequestHeadersByNumber(latestReqHashFork.Block.Uint64(), 1, 0, false); err != nil {
+			glog.V(logger.Debug).Infof("%v: error requesting headers by number ", p)
+			return err
 		}
-		if !fork.RequiredHash.IsEmpty() {
-			// Request the peer's fork block header for extra-dat
-			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
-				glog.V(logger.Debug).Infof("%v: error requesting headers by number ", p)
-				return err
+		// Start a timer to disconnect if the peer doesn't reply in time
+		// FIXME: un-hardcode timeout
+		p.timeout = time.AfterFunc(5*time.Second, func() {
+			glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
+			pm.removePeer(p.id)
+		})
+		// Make sure it's cleaned up if the peer dies off
+		defer func() {
+			if p.timeout != nil {
+				p.timeout.Stop()
+				p.timeout = nil
 			}
-			// Start a timer to disconnect if the peer doesn't reply in time
-			p.timeout = time.AfterFunc((5 * time.Second), func() {
-				glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
-				pm.removePeer(p.id)
-			})
-			// Make sure it's cleaned up if the peer dies off
-			defer func() {
-				if p.timeout != nil {
-					p.timeout.Stop()
-					p.timeout = nil
-				}
-			}()
-		}
+		}()
 	}
 	// main loop. handle incoming messages.
 	for {
