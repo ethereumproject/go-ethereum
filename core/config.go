@@ -63,6 +63,7 @@ type SufficientChainConfig struct {
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
 	ParsedBootstrap []*discover.Node `json:"-"`
+	Include         []string         `json:"include"` // config files to include
 }
 
 // StateConfig hold variable data for statedb.
@@ -417,10 +418,54 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
-func parseExternalChainConfig(f io.Reader) (*SufficientChainConfig, error) {
+func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadCloser, error)) (*SufficientChainConfig, error) {
 	var config = &SufficientChainConfig{}
-	if err := json.NewDecoder(f).Decode(config); err != nil {
-		return nil, fmt.Errorf("%v: %s", f, err)
+	processed := []string{}
+
+	contains := func(highstack []string, needle string) bool {
+		for _, v := range highstack {
+			if needle == v {
+				return true
+			}
+		}
+		return false
+	}
+
+	var processFile func(path, parent string) error
+	processFile = func(path, parent string) error {
+		if !filepath.IsAbs(path) {
+			baseDir := filepath.Dir(parent)
+			path = filepath.Join(baseDir, path)
+		}
+		if !contains(processed, path) {
+			processed = append(processed, path)
+
+			f, err := open(path)
+			if err != nil {
+				return fmt.Errorf("failed to read chain configuration file: %s", err)
+			}
+			defer f.Close()
+			if err := json.NewDecoder(f).Decode(config); err != nil {
+				return fmt.Errorf("%v: %s", f, err)
+			}
+
+			includes := make([]string, len(config.Include))
+			copy(includes, config.Include)
+			config.Include = nil
+
+			for _, include := range includes {
+				err := processFile(include, path)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	err := processFile(mainConfigFile, ".")
+	if err != nil {
+		return nil, err
 	}
 
 	// Make JSON 'id' -> 'identity' (for backwards compatibility)
@@ -458,13 +503,7 @@ func ReadExternalChainConfigFromFile(incomingPath string) (*SufficientChainConfi
 		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
 	}
 
-	f, err := os.Open(flaggedExternalChainConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
-	}
-	defer f.Close()
-
-	config, err := parseExternalChainConfig(f)
+	config, err := parseExternalChainConfig(flaggedExternalChainConfigPath, func(path string) (io.ReadCloser, error) { return os.Open(path) })
 	if err != nil {
 		return nil, err
 	}
