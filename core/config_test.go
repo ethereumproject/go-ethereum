@@ -584,7 +584,7 @@ func TestChainConfig_GetLastRequiredHashFork(t *testing.T) {
 		t.Errorf("got: %v, want: %v", got, want)
 	}
 
-	// should use dao fork, not checkpoint since (peer) "head" has not reached checkpoint
+	// should use dao fork, not checkpoint since block n has not reached checkpoint
 	got, want = c.GetLatestRequiredHashFork(big.NewInt(1920001)), daoFork
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got: %v, want: %v", got, want)
