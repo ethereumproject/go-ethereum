@@ -421,6 +421,14 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
+func resolvePath(path, parent string) string {
+	if !filepath.IsAbs(path) {
+		baseDir := filepath.Dir(parent)
+		path = filepath.Join(baseDir, path)
+	}
+	return path
+}
+
 func parseAllocationFile(config *SufficientChainConfig, open func(string) (io.ReadCloser, error), currentFile string) error {
 	if config.Genesis == nil || config.Genesis.AllocFile == "" {
 		return nil
@@ -429,7 +437,8 @@ func parseAllocationFile(config *SufficientChainConfig, open func(string) (io.Re
 	if len(config.Genesis.Alloc) > 0 {
 		return fmt.Errorf("error processing %s: \"alloc\" values already set, but \"alloc_file\" is provided", currentFile)
 	}
-	csvFile, err := open(config.Genesis.AllocFile)
+	path := resolvePath(config.Genesis.AllocFile, currentFile)
+	csvFile, err := open(path)
 	if err != nil {
 		return fmt.Errorf("failed to read allocation file: %v", err)
 	}
@@ -470,10 +479,7 @@ func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadC
 
 	var processFile func(path, parent string) error
 	processFile = func(path, parent string) error {
-		if !filepath.IsAbs(path) {
-			baseDir := filepath.Dir(parent)
-			path = filepath.Join(baseDir, path)
-		}
+		path = resolvePath(path, parent)
 		if !contains(processed, path) {
 			processed = append(processed, path)
 
