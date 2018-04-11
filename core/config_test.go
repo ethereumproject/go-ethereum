@@ -559,13 +559,13 @@ func TestChainConfig_GetLastRequiredHashFork(t *testing.T) {
 	}
 
 	if got == nil {
-		t.Fatalf("got: %v, want: %s", got, want)
+		t.Fatalf("got: %v, want: %s", got, want.Name)
 	}
 	if got.RequiredHash.Hex() != "0x94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f" {
 		t.Errorf("got: %v, want: %s", got, got.RequiredHash.Hex())
 	}
 	if got.Block.Cmp(big.NewInt(1920000)) != 0 {
-		t.Errorf("got: %v, want: %v", got.Block, 1920000)
+		t.Errorf("got: %d, want: %d", got.Block, 1920000)
 	}
 
 	// create new "checkpoint" fork for testing
