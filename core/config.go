@@ -443,6 +443,9 @@ func parseAllocationFile(config *SufficientChainConfig, open func(string) (io.Re
 		return fmt.Errorf("failed to read allocation file: %v", err)
 	}
 	defer csvFile.Close()
+
+	config.Genesis.Alloc = make(map[hex]*GenesisDumpAlloc)
+
 	reader := csv.NewReader(csvFile)
 	line := 1
 	for {
