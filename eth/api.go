@@ -1647,20 +1647,20 @@ func (api *PrivateAdminAPI) ImportChain(file string) (bool, error) {
 
 // PublicDebugAPI is the collection of Etheruem APIs exposed over the public
 // debugging endpoint.
-type PublicDebugAPI struct {
+type PublicGethAPI struct {
 	eth *Ethereum
 }
 
 // NewPublicDebugAPI creates a new API definition for the public debug methods
 // of the Ethereum service.
-func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
-	return &PublicDebugAPI{eth: eth}
+func NewPublicGethAPI(eth *Ethereum) *PublicGethAPI {
+	return &PublicGethAPI{eth: eth}
 }
 
 // AddressTransactions gets transactions for a given address.
 // Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
 // Returns a slice of strings of transactions hashes.
-func (api *PublicDebugAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
+func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
 	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
 	db, inUse := api.eth.BlockChain().GetAddTxIndex()
@@ -1686,6 +1686,18 @@ func (api *PublicDebugAPI) GetAddressTransactions(address common.Address, blockS
 		list = []string{}
 	}
 	return list, nil
+}
+
+// PublicDebugAPI is the collection of Etheruem APIs exposed over the public
+// debugging endpoint.
+type PublicDebugAPI struct {
+	eth *Ethereum
+}
+
+// NewPublicDebugAPI creates a new API definition for the public debug methods
+// of the Ethereum service.
+func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
+	return &PublicDebugAPI{eth: eth}
 }
 
 // DumpBlock retrieves the entire state of the database at a given block.

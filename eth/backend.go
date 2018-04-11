@@ -377,6 +377,11 @@ func (s *Ethereum) APIs() []rpc.API {
 			Namespace: "admin",
 			Version:   "1.0",
 			Service:   ethreg.NewPrivateRegistarAPI(s.chainConfig, s.blockchain, s.chainDb, s.txPool, s.accountManager),
+		}, {
+			Namespace: "geth",
+			Version:   "1.0",
+			Service:   NewPublicGethAPI(s),
+			Public:    true,
 		},
 	}
 }

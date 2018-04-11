@@ -27,6 +27,7 @@ var Modules = map[string]string{
 	"rpc":      RPC_JS,
 	"shh":      Shh_JS,
 	"txpool":   TxPool_JS,
+	"geth":     Geth_JS,
 }
 
 const Admin_JS = `
@@ -146,6 +147,22 @@ web3._extend({
 			getter: 'admin_datadir'
 		})
 	]
+});
+`
+
+const Geth_JS = `
+web3._extend({
+	property: 'geth',
+	methods:
+	[
+		new web3._extend.Method({
+			name: 'getAddressTransactions',
+			call: 'geth_getAddressTransactions',
+			params: 8,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, null, null, null, null, null, null]
+		})
+	],
+	properties: []
 });
 `
 
