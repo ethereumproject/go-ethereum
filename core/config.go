@@ -17,6 +17,7 @@
 package core
 
 import (
+	"encoding/csv"
 	hexlib "encoding/hex"
 	"encoding/json"
 	"errors"
@@ -85,6 +86,8 @@ type GenesisDump struct {
 
 	// Alloc maps accounts by their address.
 	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
+	// Alloc file contains CSV representation of Alloc
+	AllocFile string `json:"alloc_file"`
 }
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.
@@ -418,6 +421,40 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
+func parseAllocationFile(config *SufficientChainConfig, open func(string) (io.ReadCloser, error), currentFile string) error {
+	if config.Genesis == nil || config.Genesis.AllocFile == "" {
+		return nil
+	}
+
+	if len(config.Genesis.Alloc) > 0 {
+		return fmt.Errorf("error processing %s: \"alloc\" values already set, but \"alloc_file\" is provided", currentFile)
+	}
+	csvFile, err := open(config.Genesis.AllocFile)
+	if err != nil {
+		return fmt.Errorf("failed to read allocation file: %v", err)
+	}
+	defer csvFile.Close()
+	reader := csv.NewReader(csvFile)
+	line := 1
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return fmt.Errorf("error while reading allocation file: %v", err)
+		}
+		if len(row) != 2 {
+			return fmt.Errorf("invalid number of values in line %d: expected 2, got %d", line, len(row))
+		}
+		line++
+
+		config.Genesis.Alloc[hex(row[0])] = &GenesisDumpAlloc{Balance: row[1]}
+	}
+
+	config.Genesis.AllocFile = ""
+	return nil
+}
+
 func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadCloser, error)) (*SufficientChainConfig, error) {
 	var config = &SufficientChainConfig{}
 	processed := []string{}
@@ -449,6 +486,10 @@ func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadC
 				return fmt.Errorf("%v: %s", f, err)
 			}
 
+			if err := parseAllocationFile(config, open, path); err != nil {
+				return err
+			}
+
 			includes := make([]string, len(config.Include))
 			copy(includes, config.Include)
 			config.Include = nil
@@ -459,6 +500,7 @@ func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadC
 					return err
 				}
 			}
+
 		}
 		return nil
 	}
