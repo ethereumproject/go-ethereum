@@ -550,6 +550,39 @@ func TestChainConfig_GetSigner(t *testing.T) {
 
 }
 
+func TestResolvePath(t *testing.T) {
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{
+			args: []string{"./a/b/config.csv", "."},
+			want: "a/b/config.csv",
+		},
+		{
+			args: []string{"./a/b/config.csv", ""},
+			want: "a/b/config.csv",
+		},
+		{
+			args: []string{"./a/b/config.csv", "./a/b/config.json"},
+			want: "a/b/a/b/config.csv",
+		},
+		{
+			args: []string{"config.csv", "a/b"},
+			want: "a/config.csv", // since resolvePath expects b|config.csv to be adjacent (neighboring filepaths), ie. 'b' should be a file
+		},
+		{
+			args: []string{"config.csv", "a/b/config.json"},
+			want: "a/b/config.csv",
+		},
+	}
+	for i, c := range cases {
+		if got := resolvePath(c.args[0], c.args[1]); got != c.want {
+			t.Errorf("[%d] got: %v, want: %v", i, got, c.want)
+		}
+	}
+}
+
 func makeOKSufficientChainConfig(dump *GenesisDump, config *ChainConfig) *SufficientChainConfig {
 	// Setup.
 	whole := &SufficientChainConfig{}
