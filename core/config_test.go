@@ -1,7 +1,10 @@
 package core
 
 import (
+	"io"
 	"math/big"
+	"os"
+	"strings"
 	"testing"
 
 	"path/filepath"
@@ -758,5 +761,15 @@ func TestSufficientChainConfig_IsValid(t *testing.T) {
 				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
 			}
 		}
+	}
+}
+
+func TestGenesisAllocationError(t *testing.T) {
+	_, err := parseExternalChainConfig("testdata/test.json", func(path string) (io.ReadCloser, error) { return os.Open(path) })
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "\"alloc\" values already set") {
+		t.Error("invalid error message")
 	}
 }
