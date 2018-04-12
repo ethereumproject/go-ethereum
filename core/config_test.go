@@ -557,29 +557,71 @@ func TestResolvePath(t *testing.T) {
 	}{
 		{
 			args: []string{"./a/b/config.csv", "."},
-			want: "a/b/config.csv",
+			want: filepath.Clean("a/b/config.csv"),
 		},
 		{
 			args: []string{"./a/b/config.csv", ""},
-			want: "a/b/config.csv",
+			want: filepath.Clean("a/b/config.csv"),
 		},
 		{
 			args: []string{"./a/b/config.csv", "./a/b/config.json"},
-			want: "a/b/a/b/config.csv",
+			want: filepath.Clean("a/b/a/b/config.csv"),
 		},
 		{
 			args: []string{"config.csv", "a/b"},
-			want: "a/config.csv", // since resolvePath expects b|config.csv to be adjacent (neighboring filepaths), ie. 'b' should be a file
+			want: filepath.Clean("a/config.csv"), // since resolvePath expects b|config.csv to be adjacent (neighboring filepaths), ie. 'b' should be a file
 		},
 		{
 			args: []string{"config.csv", "a/b/config.json"},
-			want: "a/b/config.csv",
+			want: filepath.Clean("a/b/config.csv"),
+		},
+		{
+			args: []string{"test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"test.txt", "./some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"./test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"./test.txt", "./some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "/some/dir/conf.json"},
+			want: filepath.Clean("/some/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "some/dir/.././conf.json"},
+			want: filepath.Clean("test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "conf.json"},
+			want: filepath.Clean("../test.txt"),
+		},
+		{
+			args: []string{"../../../../a/b/c/d/test.txt", "conf.json"},
+			want: filepath.Clean("../../../../a/b/c/d/test.txt"),
+		},
+		{
+			args: []string{"../../../../a/b/c/d/test.txt", "a/b/c/d/conf.json"},
+			want: filepath.Clean("a/b/c/d/test.txt"),
 		},
 	}
-	for i, c := range cases {
-		if got := resolvePath(c.args[0], c.args[1]); got != c.want {
-			t.Errorf("[%d] got: %v, want: %v", i, got, c.want)
-		}
+	for _, c := range cases {
+		t.Run(c.args[0]+"+"+c.args[1], func(t *testing.T) {
+			if got := resolvePath(c.args[0], c.args[1]); got != c.want {
+				t.Errorf("got: %v, want: %v", got, c.want)
+			}
+		})
 	}
 }
 
