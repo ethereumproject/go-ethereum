@@ -52,4 +52,3 @@ type MissingNodeError struct {
 func (err *MissingNodeError) Error() string {
 	return fmt.Sprintf("missing trie node %x (path %x)", err.NodeHash, err.Path)
 }
-

@@ -36,7 +36,7 @@ const (
 	notificationBufferSize = 10000 // max buffered notifications before codec is closed
 
 	MetadataApi     = "rpc"
-	DefaultIPCApis  = "admin,debug,eth,miner,net,personal,shh,txpool,web3"
+	DefaultIPCApis  = "admin,debug,eth,miner,net,personal,shh,txpool,web3,geth"
 	DefaultHTTPApis = "eth,net,web3"
 )
 

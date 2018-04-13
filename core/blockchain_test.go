@@ -37,6 +37,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
+	"io/ioutil"
+	"strings"
 )
 
 func init() {
@@ -884,6 +886,207 @@ func TestFastVsFullChains(t *testing.T) {
 	}
 }
 
+func TestFastVsFullChainsATXI(t *testing.T) {
+	archiveDir, e := ioutil.TempDir("", "archive-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	fastDir, e := ioutil.TempDir("", "fast-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer os.RemoveAll(archiveDir)
+	defer os.RemoveAll(fastDir)
+
+	// Create the dbs
+	//
+	archiveDb, err := ethdb.NewLDBDatabase(archiveDir, 10, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fastDb, err := ethdb.NewLDBDatabase(fastDir, 10, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	MinGasLimit = big.NewInt(125000)
+
+	key1, err := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key2, err := crypto.HexToECDSA("8a1f9a8f95be41cd7ccb6168179afb4504aefe388d1e14474d32c45c72ce7b7a")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var (
+		addr1  = crypto.PubkeyToAddress(key1.PublicKey)
+		addr2  = crypto.PubkeyToAddress(key2.PublicKey)
+		signer = types.NewChainIdSigner(big.NewInt(63))
+		dbs    = []ethdb.Database{archiveDb, fastDb}
+		config = MakeDiehardChainConfig()
+	)
+
+	for i, db := range dbs {
+		t1, err := types.NewTransaction(0, addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t2, err := types.NewTransaction(1, addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t3, err := types.NewTransaction(0, addr1, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		genesis := WriteGenesisBlockForTesting(db,
+			GenesisAccount{addr1, big.NewInt(1000000)},
+			GenesisAccount{addr2, big.NewInt(1000000)},
+		)
+		blocks, receipts := GenerateChain(config, genesis, db, 3, func(i int, gen *BlockGen) {
+			if i == 0 {
+				gen.AddTx(t1)
+			}
+			if i == 1 {
+				gen.AddTx(t2)
+			}
+			if i == 2 {
+				gen.AddTx(t3)
+			}
+		})
+
+		blockchain, err := NewBlockChain(db, config, FakePow{}, new(event.TypeMux))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// turn on atxi
+		blockchain.SetAddTxIndex(db, true)
+		if i == 0 {
+			if n, err := blockchain.InsertChain(blocks); err != nil {
+				t.Fatalf("failed to process block %d: %v", n, err)
+			}
+		} else {
+			headers := make([]*types.Header, len(blocks))
+			for i, block := range blocks {
+				headers[i] = block.Header()
+			}
+			if n, err := blockchain.InsertHeaderChain(headers, 1); err != nil {
+				t.Fatalf("failed to insert header %d: %v", n, err)
+			}
+			if n, err := blockchain.InsertReceiptChain(blocks, receipts); err != nil {
+				t.Fatalf("failed to insert receipt %d: %v", n, err)
+			}
+		}
+
+		out := GetAddrTxs(db, addr1, 0, 0, "", "", -1, -1, false)
+		if len(out) != 3 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 3)
+		}
+		out = GetAddrTxs(db, addr1, 0, 0, "from", "", -1, -1, false)
+		if len(out) != 2 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 2)
+		}
+		out = GetAddrTxs(db, addr1, 0, 0, "to", "", -1, -1, false)
+		if len(out) != 1 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 1)
+		}
+		out = GetAddrTxs(db, addr2, 0, 0, "", "", -1, -1, false)
+		if len(out) != 3 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 3)
+		}
+		out = GetAddrTxs(db, addr2, 3, 3, "", "", -1, -1, false)
+		if len(out) != 1 {
+			t.Errorf("[%d] got: %v, want: %v", i, len(out), 1)
+		}
+	}
+}
+
+func TestRmAddrTx(t *testing.T) {
+	archiveDir, e := ioutil.TempDir("", "archive-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer os.RemoveAll(archiveDir)
+
+	// Create the dbs
+	//
+	db, err := ethdb.NewLDBDatabase(archiveDir, 10, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	MinGasLimit = big.NewInt(125000)
+
+	key1, err := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key2, err := crypto.HexToECDSA("8a1f9a8f95be41cd7ccb6168179afb4504aefe388d1e14474d32c45c72ce7b7a")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var (
+		addr1  = crypto.PubkeyToAddress(key1.PublicKey)
+		addr2  = crypto.PubkeyToAddress(key2.PublicKey)
+		signer = types.NewChainIdSigner(big.NewInt(63))
+		config = MakeDiehardChainConfig()
+	)
+
+	t1, err := types.NewTransaction(0, addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t2, err := types.NewTransaction(1, addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t3, err := types.NewTransaction(0, addr1, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	genesis := WriteGenesisBlockForTesting(db,
+		GenesisAccount{addr1, big.NewInt(1000000)},
+		GenesisAccount{addr2, big.NewInt(1000000)},
+	)
+	blocks, _ := GenerateChain(config, genesis, db, 3, func(i int, gen *BlockGen) {
+		if i == 0 {
+			gen.AddTx(t1)
+		}
+		if i == 1 {
+			gen.AddTx(t2)
+		}
+		if i == 2 {
+			gen.AddTx(t3)
+		}
+	})
+
+	blockchain, err := NewBlockChain(db, config, FakePow{}, new(event.TypeMux))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// turn on atxi
+	blockchain.SetAddTxIndex(db, true)
+
+	if n, err := blockchain.InsertChain(blocks); err != nil {
+		t.Fatalf("failed to process block %d: %v", n, err)
+	}
+
+	out := GetAddrTxs(db, addr1, 0, 0, "", "", -1, -1, false)
+	if len(out) != 3 {
+		t.Errorf("got: %v, want: %v", len(out), 3)
+	}
+	if err := RmAddrTx(db, t1); err != nil {
+		t.Fatal(err)
+	}
+	out = GetAddrTxs(db, addr1, 0, 0, "", "", -1, -1, false)
+	if len(out) != 2 {
+		t.Errorf("got: %v, want: %v", len(out), 2)
+	}
+}
+
 // Tests that various import methods move the chain head pointers to the correct
 // positions.
 func TestLightVsFastVsFullChainHeads(t *testing.T) {
@@ -986,6 +1189,28 @@ func TestLightVsFastVsFullChainHeads(t *testing.T) {
 
 // Tests that chain reorganisations handle transaction removals and reinsertions.
 func TestChainTxReorgs(t *testing.T) {
+	db, err := ethdb.NewMemDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testChainTxReorgs(t, db, false)
+}
+
+func TestChainTxReorgsAtxi(t *testing.T) {
+	p, err := ioutil.TempDir("", "test-reorg-atxi-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	db, err := ethdb.NewLDBDatabase(p, 10, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testChainTxReorgs(t, db, true)
+}
+
+func testChainTxReorgs(t *testing.T, db ethdb.Database, withATXI bool) {
 	MinGasLimit = big.NewInt(125000)
 
 	key1, err := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
@@ -997,10 +1222,6 @@ func TestChainTxReorgs(t *testing.T) {
 		t.Fatal(err)
 	}
 	key3, err := crypto.HexToECDSA("49a7b37aa6f6645917e7b807e9d1c00d4fa71f18343b0d4122a4d2df64dd6fee")
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := ethdb.NewMemDatabase()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1017,39 +1238,47 @@ func TestChainTxReorgs(t *testing.T) {
 		GenesisAccount{addr3, big.NewInt(1000000)},
 	)
 	// Create two transactions shared between the chains:
+	// addr1 -> addr2
 	//  - postponed: transaction included at a later block in the forked chain
 	//  - swapped: transaction included at the same block number in the forked chain
-	postponed, err := types.NewTransaction(0, addr1, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+	postponed, err := types.NewTransaction(0, addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	swapped, err := types.NewTransaction(1, addr1, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
+	swapped, err := types.NewTransaction(1, addr2, big.NewInt(1001), TxGas, nil, nil).WithSigner(signer).SignECDSA(key1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create two transactions that will be dropped by the forked chain:
+	// addr2 -> addr3
 	//  - pastDrop: transaction dropped retroactively from a past block
 	//  - freshDrop: transaction dropped exactly at the block where the reorg is detected
 	var pastDrop, freshDrop *types.Transaction
 
 	// Create three transactions that will be added in the forked chain:
+	// addr3 -> addr1
 	//  - pastAdd:   transaction added before the reorganization is detected
 	//  - freshAdd:  transaction added at the exact block the reorg is detected
 	//  - futureAdd: transaction added after the reorg has already finished
 	var pastAdd, freshAdd, futureAdd *types.Transaction
 
+	// ATXI tallies, (means) will be removed
+	// addr1: 2f+3t
+	// addr2: 2t+(2f)
+	// addr3: (2t)+3f
+
 	chainConfig := MakeDiehardChainConfig()
 	chain, _ := GenerateChain(chainConfig, genesis, db, 3, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
-			pastDrop, _ = types.NewTransaction(gen.TxNonce(addr2), addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
+			pastDrop, _ = types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1002), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
 
 			gen.AddTx(pastDrop)  // This transaction will be dropped in the fork from below the split point
 			gen.AddTx(postponed) // This transaction will be postponed till block #3 in the fork
 
 		case 2:
-			freshDrop, _ = types.NewTransaction(gen.TxNonce(addr2), addr2, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
+			freshDrop, _ = types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1003), TxGas, nil, nil).WithSigner(signer).SignECDSA(key2)
 
 			gen.AddTx(freshDrop) // This transaction will be dropped in the fork from exactly at the split point
 			gen.AddTx(swapped)   // This transaction will be swapped out at the exact height
@@ -1064,6 +1293,9 @@ func TestChainTxReorgs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if withATXI {
+		blockchain.SetAddTxIndex(db, true)
+	}
 	if i, err := blockchain.InsertChain(chain); err != nil {
 		t.Fatalf("failed to insert original chain[%d]: %v", i, err)
 	}
@@ -1072,18 +1304,18 @@ func TestChainTxReorgs(t *testing.T) {
 	chain, _ = GenerateChain(chainConfig, genesis, db, 5, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
-			pastAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
+			pastAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr1, big.NewInt(1004), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
 			gen.AddTx(pastAdd) // This transaction needs to be injected during reorg
 
 		case 2:
 			gen.AddTx(postponed) // This transaction was postponed from block #1 in the original chain
 			gen.AddTx(swapped)   // This transaction was swapped from the exact current spot in the original chain
 
-			freshAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
+			freshAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr1, big.NewInt(1005), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
 			gen.AddTx(freshAdd) // This transaction will be added exactly at reorg time
 
 		case 3:
-			futureAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr3, big.NewInt(1000), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
+			futureAdd, _ = types.NewTransaction(gen.TxNonce(addr3), addr1, big.NewInt(1006), TxGas, nil, nil).WithSigner(signer).SignECDSA(key3)
 			gen.AddTx(futureAdd) // This transaction will be added after a full reorg
 		}
 	})
@@ -1091,8 +1323,14 @@ func TestChainTxReorgs(t *testing.T) {
 		t.Fatalf("failed to insert forked chain: %v", err)
 	}
 
+	// Conveniently grouped
+	txsRemoved := types.Transactions{pastDrop, freshDrop}
+	txsAdded := types.Transactions{pastAdd, freshAdd, futureAdd}
+	txsShared := types.Transactions{postponed, swapped}
+	txsAll := types.Transactions{pastDrop, freshDrop, pastAdd, freshAdd, futureAdd, postponed, swapped}
+
 	// removed tx
-	for i, tx := range (types.Transactions{pastDrop, freshDrop}) {
+	for i, tx := range txsRemoved {
 		if txn, _, _, _ := GetTransaction(db, tx.Hash()); txn != nil {
 			t.Errorf("drop %d: tx %v found while shouldn't have been", i, txn)
 		}
@@ -1101,7 +1339,7 @@ func TestChainTxReorgs(t *testing.T) {
 		}
 	}
 	// added tx
-	for i, tx := range (types.Transactions{pastAdd, freshAdd, futureAdd}) {
+	for i, tx := range txsAdded {
 		if txn, _, _, _ := GetTransaction(db, tx.Hash()); txn == nil {
 			t.Errorf("add %d: expected tx to be found", i)
 		}
@@ -1110,13 +1348,60 @@ func TestChainTxReorgs(t *testing.T) {
 		}
 	}
 	// shared tx
-	for i, tx := range (types.Transactions{postponed, swapped}) {
+	for i, tx := range txsShared {
 		if txn, _, _, _ := GetTransaction(db, tx.Hash()); txn == nil {
 			t.Errorf("share %d: expected tx to be found", i)
 		}
 		if GetReceipt(db, tx.Hash()) == nil {
 			t.Errorf("share %d: expected receipt to be found", i)
 		}
+	}
+
+	// ATXI checks
+	if !withATXI {
+		return
+	}
+	txsh1 := GetAddrTxs(db, addr1, 0, 0, "", "", -1, -1, false)
+	txsh2 := GetAddrTxs(db, addr2, 0, 0, "", "", -1, -1, false)
+	txsh3 := GetAddrTxs(db, addr3, 0, 0, "", "", -1, -1, false)
+
+	allAtxis := txsh1
+	allAtxis = append(allAtxis, txsh2...)
+	allAtxis = append(allAtxis, txsh3...)
+
+	// Ensure a transaction exists for each atxi hash
+	for _, x := range allAtxis {
+		if tx, _, _, _ := GetTransaction(db, common.HexToHash(x)); tx == nil {
+			t.Error("atxi not removed")
+		}
+	}
+
+	// Ensure no duplicate tx hashes returned
+DUPECHECK:
+	for i, l := range [][]string{txsh1, txsh2, txsh3} {
+		j := strings.Join(l, "")
+		for _, h := range l {
+			if strings.Count(j, h[:8]) > 1 {
+				// show offending tx
+				offendingTxN := new(big.Int)
+				for _, x := range txsAll {
+					if x.Hash().Hex() == h {
+						offendingTxN.Set(x.Value()) // use unique value as a way to identify offender
+						break
+					}
+				}
+				t.Log(strings.Join(l, "\n"))
+				t.Errorf("[%d] duplicate tx hash (%v)", i, offendingTxN)
+				break DUPECHECK
+			}
+		}
+
+	}
+
+	// Check magnitude; 2 atxis per canonical tx (to & from)
+	wantMag := (len(txsAdded) + len(txsShared)) * 2
+	if len(allAtxis) != wantMag {
+		t.Errorf("got: %v, want: %v", len(allAtxis), wantMag)
 	}
 }
 

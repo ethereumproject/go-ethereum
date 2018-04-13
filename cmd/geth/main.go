@@ -52,7 +52,7 @@ var makeDagCommand = cli.Command{
 	Usage:   "Generate ethash dag (for testing)",
 	Description: `
 		The makedag command generates an ethash DAG in /tmp/dag.
-	
+
 		This command exists to support the system testing project.
 		Regular users do not need to execute it.
 				`,
@@ -136,6 +136,7 @@ func makeCLIApp() (app *cli.App) {
 		gpuBenchCommand,
 		versionCommand,
 		makeMlogDocCommand,
+		buildAddrTxIndexCommand,
 	}
 
 	app.Flags = []cli.Flag{
@@ -153,6 +154,7 @@ func makeCLIApp() (app *cli.App) {
 		ChainIdentityFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,
+		AddrTxIndexFlag,
 		CacheFlag,
 		LightKDFFlag,
 		JSpathFlag,

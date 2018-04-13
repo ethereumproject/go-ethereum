@@ -25,11 +25,6 @@ import (
 )
 
 // AppHelpTemplate is the test template for the default, global app help topic.
-//var x = cli.Command{}
-//x.Usage
-//x.UsageText
-//x.ArgsUsage
-//x.Subcommands
 var AppHelpTemplate = `NAME:
    {{.App.Name}} - {{.App.Usage}}
 
@@ -40,7 +35,7 @@ VERSION:
    {{.App.Version}}{{if .CommandAndFlagGroups}}
 
 COMMANDS AND FLAGS:
-------------------------------------------------------------------------
+
 {{range .CommandAndFlagGroups}}{{.Name}}
 ------------------------------------------------------------------------
   {{if .Commands}}{{range .Commands}}
@@ -93,12 +88,14 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 		Commands: []cli.Command{
 			accountCommand,
 			walletCommand,
+			buildAddrTxIndexCommand,
 		},
 		Flags: []cli.Flag{
 			KeyStoreDirFlag,
 			UnlockedAccountFlag,
 			PasswordFileFlag,
 			AccountsIndexFlag,
+			AddrTxIndexFlag,
 		},
 	},
 	{
@@ -205,6 +202,10 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 		Flags: []cli.Flag{
 			WhisperEnabledFlag,
 			NatspecEnabledFlag,
+			DisplayFlag,
+			DisplayFormatFlag,
+			NeckbeardFlag,
+			AddrTxIndexFlag,
 		},
 	},
 	{

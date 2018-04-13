@@ -345,8 +345,8 @@ func (p *peer) String() string {
 // peerSet represents the collection of active peer participating in the chain
 // download procedure.
 type peerSet struct {
-	peers       map[string]*peer
-	lock        sync.RWMutex
+	peers map[string]*peer
+	lock  sync.RWMutex
 }
 
 // newPeerSet creates a new peer set top track the active download sources.
