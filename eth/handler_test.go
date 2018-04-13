@@ -82,6 +82,59 @@ func TestGetBlockHeaders62(t *testing.T) {
 	testGetBlockHeaders(t, 62)
 }
 
+func TestShouldRequestRequiredHashHeader(t *testing.T) {
+	pm := newTestProtocolManagerMust(t, false, downloader.MaxHashFetch+15, nil, nil)
+
+	fb := pm.blockchain.GetBlockByNumber(uint64(downloader.MaxHashFetch))
+	_, head, _ := pm.blockchain.Status()
+
+	cc := pm.blockchain.Config()
+	cc.Forks = append(cc.Forks, &core.Fork{Name: "checkpoint", Block: fb.Number(), RequiredHash: fb.Hash()})
+
+	cases := []struct {
+		name      string
+		localHead common.Hash
+		peerHead  common.Hash
+		wantN     uint64
+		wantB     bool
+	}{
+		{
+			name:      "peer above local (unknown), local below fork",
+			localHead: pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
+			peerHead:  common.Hash{}, // unknown
+			wantN:     0,
+			wantB:     false,
+		},
+		{
+			name:      "peer above local (unknown), local above fork",
+			localHead: head,
+			peerHead:  common.Hash{}, // unknown
+			wantN:     fb.NumberU64(),
+			wantB:     true,
+		},
+		{
+			name:      "peer at or below local, local below fork",
+			localHead: pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
+			peerHead:  pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
+			wantN:     0,
+			wantB:     false,
+		},
+		{
+			name:      "peer at or below local, local above fork",
+			localHead: head,
+			peerHead:  pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
+			wantN:     fb.NumberU64(),
+			wantB:     false,
+		},
+	}
+
+	for _, c := range cases {
+		if n, got := pm.shouldRequestRequiredHashHeader(c.localHead, c.peerHead); n != c.wantN || got != c.wantB {
+			t.Errorf("%s -> wantN: %v, gotN: %v, wantB: %v, gotB: %v", c.name, c.wantN, n, c.wantB, got)
+		}
+	}
+}
+
 func TestGetBlockHeaders63(t *testing.T) { testGetBlockHeaders(t, 63) }
 
 func testGetBlockHeaders(t *testing.T, protocol int) {
