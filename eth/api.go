@@ -1349,12 +1349,14 @@ func (s *PrivateAccountAPI) EcRecover(data, sig hexutil.Bytes) (common.Address, 
 
 // Sign signs the given hash using the key that matches the address. The key must be
 // unlocked in order to sign the hash.
-func (s *PublicTransactionPoolAPI) Sign(addr common.Address, data []byte) (string, error) {
-	signature, err := s.am.Sign(addr, signHash(data))
-	if err == nil {
-		signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+func (s *PublicBlockChainAPI) Sign(addr common.Address, data hexutil.Bytes) (hexutil.Bytes, error) {
+	signed := signHash(data)
+	signature, err := s.am.Sign(addr, signed)
+	if err != nil {
+		return nil, err
 	}
-	return common.ToHex(signature), err
+	signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	return signature, err
 }
 
 // SignTransactionArgs represents the arguments to sign a transaction.
