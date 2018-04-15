@@ -236,7 +236,7 @@ func (cdb *cacheDB) find(a Account) (Account, error) {
 			return acc, e
 		}
 		// no other possible way
-		if (a.Address == common.Address{}) {
+		if a.Address.IsEmpty() {
 			return Account{}, ErrNoMatch
 		}
 	}
@@ -498,7 +498,7 @@ func processKeyFile(wg *sync.WaitGroup, path string, fi os.FileInfo, i int, numF
 		case err != nil:
 			glog.V(logger.Debug).Infof("(%v/%v) can't decode key %s: %v", i, numFiles, path, err)
 			errs <- err
-		case (keyJSON.Address == common.Address{}):
+		case keyJSON.Address.IsEmpty():
 			glog.V(logger.Debug).Infof("(%v/%v) can't decode key %s: missing or zero address", i, numFiles, path)
 			errs <- fmt.Errorf("(%v/%v) can't decode key %s: missing or zero address", i, numFiles, path)
 		default:

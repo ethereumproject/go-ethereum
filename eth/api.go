@@ -543,6 +543,7 @@ type PublicBlockChainAPI struct {
 	config                  *core.ChainConfig
 	bc                      *core.BlockChain
 	chainDb                 ethdb.Database
+	indexesDb               ethdb.Database
 	eventMux                *event.TypeMux
 	muNewBlockSubscriptions sync.Mutex                             // protects newBlocksSubscriptions
 	newBlockSubscriptions   map[string]func(core.ChainEvent) error // callbacks for new block subscriptions
@@ -1642,6 +1643,49 @@ func (api *PrivateAdminAPI) ImportChain(file string) (bool, error) {
 		blocks = blocks[:0]
 	}
 	return true, nil
+}
+
+// PublicDebugAPI is the collection of Etheruem APIs exposed over the public
+// debugging endpoint.
+type PublicGethAPI struct {
+	eth *Ethereum
+}
+
+// NewPublicDebugAPI creates a new API definition for the public debug methods
+// of the Ethereum service.
+func NewPublicGethAPI(eth *Ethereum) *PublicGethAPI {
+	return &PublicGethAPI{eth: eth}
+}
+
+// AddressTransactions gets transactions for a given address.
+// Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
+// Returns a slice of strings of transactions hashes.
+func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
+	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
+
+	db, inUse := api.eth.BlockChain().GetAddTxIndex()
+	if !inUse {
+		return nil, errors.New("addr-tx indexing not enabled")
+	}
+	// Use human-friendly abbreviations, per https://github.com/ethereumproject/go-ethereum/pull/475#issuecomment-366065122
+	// so 't' => to, 'f' => from, 'tf|ft' => either/both. Same pattern for txKindOf.
+	// _t_o OR _f_rom
+	if toOrFrom == "tf" || toOrFrom == "ft" {
+		toOrFrom = "b"
+	}
+	// _s_tandard OR _c_ontract
+	if txKindOf == "sc" || txKindOf == "cs" {
+		txKindOf = "b"
+	}
+
+	list = core.GetAddrTxs(db, address, blockStartN, blockEndN, toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+
+	// Since list is a slice, it can be nil, which returns 'null'.
+	// Should return empty 'array' if no txs found.
+	if list == nil {
+		list = []string{}
+	}
+	return list, nil
 }
 
 // PublicDebugAPI is the collection of Etheruem APIs exposed over the public

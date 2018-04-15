@@ -274,8 +274,8 @@ func (s Transactions) GetRlp(i int) []byte {
 }
 
 // Returns a new set t which is the difference between a to b
-func TxDifference(a, b Transactions) (keep Transactions) {
-	keep = make(Transactions, 0, len(a))
+func TxDifference(a, b Transactions) (diff Transactions) {
+	diff = make(Transactions, 0, len(a))
 
 	remove := make(map[common.Hash]struct{})
 	for _, tx := range b {
@@ -284,11 +284,11 @@ func TxDifference(a, b Transactions) (keep Transactions) {
 
 	for _, tx := range a {
 		if _, ok := remove[tx.Hash()]; !ok {
-			keep = append(keep, tx)
+			diff = append(diff, tx)
 		}
 	}
 
-	return keep
+	return diff
 }
 
 // TxByNonce implements the sort interface to allow sorting a list of transactions

@@ -98,6 +98,10 @@ var (
 		Name:  "light-kdf,lightkdf",
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",
 	}
+	AddrTxIndexFlag = cli.BoolFlag{
+		Name:  "atxi,add-tx-index",
+		Usage: "Toggle indexes for transactions by address. Pre-existing chaindata can be indexed with command 'atxi-build'",
+	}
 	// Network Split settings
 	ETFChain = cli.BoolFlag{
 		Name:  "etf",

@@ -1,7 +1,10 @@
 package core
 
 import (
+	"io"
 	"math/big"
+	"os"
+	"strings"
 	"testing"
 
 	"path/filepath"
@@ -550,6 +553,81 @@ func TestChainConfig_GetSigner(t *testing.T) {
 
 }
 
+func TestResolvePath(t *testing.T) {
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{
+			args: []string{"./a/b/config.csv", "."},
+			want: filepath.Clean("a/b/config.csv"),
+		},
+		{
+			args: []string{"./a/b/config.csv", ""},
+			want: filepath.Clean("a/b/config.csv"),
+		},
+		{
+			args: []string{"./a/b/config.csv", "./a/b/config.json"},
+			want: filepath.Clean("a/b/a/b/config.csv"),
+		},
+		{
+			args: []string{"config.csv", "a/b"},
+			want: filepath.Clean("a/config.csv"), // since resolvePath expects b|config.csv to be adjacent (neighboring filepaths), ie. 'b' should be a file
+		},
+		{
+			args: []string{"config.csv", "a/b/config.json"},
+			want: filepath.Clean("a/b/config.csv"),
+		},
+		{
+			args: []string{"test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"test.txt", "./some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"./test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"./test.txt", "./some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "/some/dir/conf.json"},
+			want: filepath.Clean("/some/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "some/dir/.././conf.json"},
+			want: filepath.Clean("test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "conf.json"},
+			want: filepath.Clean("../test.txt"),
+		},
+		{
+			args: []string{"../../../../a/b/c/d/test.txt", "conf.json"},
+			want: filepath.Clean("../../../../a/b/c/d/test.txt"),
+		},
+		{
+			args: []string{"../../../../a/b/c/d/test.txt", "a/b/c/d/conf.json"},
+			want: filepath.Clean("a/b/c/d/test.txt"),
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.args[0]+"+"+c.args[1], func(t *testing.T) {
+			if got := resolvePath(c.args[0], c.args[1]); got != c.want {
+				t.Errorf("got: %v, want: %v", got, c.want)
+			}
+		})
+	}
+}
+
 func makeOKSufficientChainConfig(dump *GenesisDump, config *ChainConfig) *SufficientChainConfig {
 	// Setup.
 	whole := &SufficientChainConfig{}
@@ -683,5 +761,15 @@ func TestSufficientChainConfig_IsValid(t *testing.T) {
 				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
 			}
 		}
+	}
+}
+
+func TestGenesisAllocationError(t *testing.T) {
+	_, err := parseExternalChainConfig("testdata/test.json", func(path string) (io.ReadCloser, error) { return os.Open(path) })
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "\"alloc\" values already set") {
+		t.Error("invalid error message")
 	}
 }

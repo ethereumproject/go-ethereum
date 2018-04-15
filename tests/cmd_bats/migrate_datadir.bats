@@ -209,7 +209,9 @@ teardown() {
 	cp $BATS_TEST_DIRNAME/../../core/config/mainnet.json $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
 	cp $BATS_TEST_DIRNAME/../../core/config/mainnet_genesis.json $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/kitty_genesis.json
 	cp $BATS_TEST_DIRNAME/../../core/config/mainnet_bootnodes.json $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/kitty_bootnodes.json
+	cp $BATS_TEST_DIRNAME/../../core/config/mainnet_genesis_alloc.csv $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/kitty_genesis_alloc.csv
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
+	sed -i.bak s/mainnet/kitty/ $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/kitty_genesis.json
 
 	run $GETH_CMD --fast --verbosity 5 --chain kitty --ipc-disable --exec='exit' console
 	echo "$output"

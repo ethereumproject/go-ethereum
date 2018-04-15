@@ -81,6 +81,8 @@ type Config struct {
 	MinerThreads   int
 	SolcPath       string
 
+	UseAddrTxIndex bool
+
 	GpoMinGasPrice          *big.Int
 	GpoMaxGasPrice          *big.Int
 	GpoFullBlockRatio       int
@@ -98,8 +100,9 @@ type Ethereum struct {
 	shutdownChan chan bool
 
 	// DB interfaces
-	chainDb ethdb.Database // Block chain database
-	dappDb  ethdb.Database // Dapp database
+	chainDb   ethdb.Database // Block chain database
+	dappDb    ethdb.Database // Dapp database
+	indexesDb ethdb.Database // Indexes database (optional -- eg. add-tx indexes)
 
 	// Handlers
 	txPool          *core.TxPool
@@ -226,6 +229,24 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		eth.pow = ethash.New()
 	}
 
+	// Initialize indexes db if enabled
+	// Blockchain will be assigned the db and atx enabled after blockchain is initialized below.
+	var indexesDb ethdb.Database
+	if config.UseAddrTxIndex {
+		// TODO: these are arbitrary numbers I just made up. Optimize?
+		// The reason these numbers are different than the atxi-build command is because for "appending" (vs. building)
+		// the atxi database should require far fewer resources since application performance is limited primarily by block import (chaindata db).
+		ethdb.SetCacheRatio("chaindata", 0.95)
+		ethdb.SetHandleRatio("chaindata", 0.95)
+		ethdb.SetCacheRatio("indexes", 0.05)
+		ethdb.SetHandleRatio("indexes", 0.05)
+		indexesDb, err = ctx.OpenDatabase("indexes", config.DatabaseCache, config.DatabaseCache)
+		if err != nil {
+			return nil, err
+		}
+		eth.indexesDb = indexesDb
+	}
+
 	// load the genesis block or write a new one if no genesis
 	// block is present in the database.
 	genesis := core.GetBlock(chainDb, core.GetCanonicalHash(chainDb, 0))
@@ -263,6 +284,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		}
 		return nil, err
 	}
+	// Configure enabled atxi for blockchain
+	if config.UseAddrTxIndex {
+		eth.blockchain.SetAddTxIndex(eth.indexesDb, true)
+	}
+
 	eth.gpo = NewGasPriceOracle(eth)
 
 	newPool := core.NewTxPool(eth.chainConfig, eth.EventMux(), eth.blockchain.State, eth.blockchain.GasLimit)
@@ -351,6 +377,11 @@ func (s *Ethereum) APIs() []rpc.API {
 			Namespace: "admin",
 			Version:   "1.0",
 			Service:   ethreg.NewPrivateRegistarAPI(s.chainConfig, s.blockchain, s.chainDb, s.txPool, s.accountManager),
+		}, {
+			Namespace: "geth",
+			Version:   "1.0",
+			Service:   NewPublicGethAPI(s),
+			Public:    true,
 		},
 	}
 }
@@ -361,7 +392,7 @@ func (s *Ethereum) ResetWithGenesisBlock(gb *types.Block) {
 
 func (s *Ethereum) Etherbase() (eb common.Address, err error) {
 	eb = s.etherbase
-	if (eb == common.Address{}) {
+	if eb.IsEmpty() {
 		firstAccount, err := s.AccountManager().AccountByIndex(0)
 		eb = firstAccount.Address
 		if err != nil {
