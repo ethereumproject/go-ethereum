@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -72,7 +71,7 @@ func Fatalf(format string, args ...interface{}) {
 	os.Exit(1)
 }
 
-func StartNode(stack *node.Node) {
+func StartNode(stack *node.Node) error {
 	var startTime time.Time
 	if err := stack.Start(); err != nil {
 		Fatalf("Error starting protocol stack: %v", err)
@@ -165,36 +164,13 @@ func StartNode(stack *node.Node) {
 		}
 		glog.Fatal("Forced quit.")
 	}()
-}
 
-func configWatchdog() {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer watcher.Close()
+	configWatcher, err := NewConfigWatchdog("")
+	configWatcher.Start()
 
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case event := <-watcher.Events:
-				log.Println("event:", event)
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("modified file:", event.Name)
-				}
-			case err := <-watcher.Errors:
-				log.Println("error:", err)
-			}
-		}
-	}()
+	stack.co
 
-	err = watcher.Add("/tmp/foo")
-	if err != nil {
-		log.Fatal(err)
-	}
-	<-done
-
+	return err
 }
 
 // Chain imports a blockchain.
@@ -740,12 +716,14 @@ func dumpChainConfig(ctx *cli.Context) error {
 // miner.
 func startNode(ctx *cli.Context, stack *node.Node) *eth.Ethereum {
 	// Start up the node itself
-	StartNode(stack)
+	if err := StartNode(stack); err != nil {
+		glog.Fatal("Failed to initialize node: ", err)
+	}
 
 	// Unlock any account specifically requested
 	var ethereum *eth.Ethereum
 	if err := stack.Service(&ethereum); err != nil {
-		glog.Fatal("ethereum service not running: ", err)
+		glog.Fatal("Ethereum service not running: ", err)
 	}
 
 	// Start auxiliary services if enabled
