@@ -71,7 +71,7 @@ func Fatalf(format string, args ...interface{}) {
 	os.Exit(1)
 }
 
-func StartNode(stack *node.Node) error {
+func StartNode(stack *node.Node) {
 	var startTime time.Time
 	if err := stack.Start(); err != nil {
 		Fatalf("Error starting protocol stack: %v", err)
@@ -164,13 +164,6 @@ func StartNode(stack *node.Node) error {
 		}
 		glog.Fatal("Forced quit.")
 	}()
-
-	configWatcher, err := NewConfigWatchdog("")
-	configWatcher.Start()
-
-	stack.co
-
-	return err
 }
 
 // Chain imports a blockchain.
@@ -716,9 +709,7 @@ func dumpChainConfig(ctx *cli.Context) error {
 // miner.
 func startNode(ctx *cli.Context, stack *node.Node) *eth.Ethereum {
 	// Start up the node itself
-	if err := StartNode(stack); err != nil {
-		glog.Fatal("Failed to initialize node: ", err)
-	}
+	StartNode(stack)
 
 	// Unlock any account specifically requested
 	var ethereum *eth.Ethereum

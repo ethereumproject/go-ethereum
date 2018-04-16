@@ -9,19 +9,19 @@ import (
 type configWatchdog struct {
 	path    string
 	watcher *fsnotify.Watcher
+	notify  chan struct{}
 }
 
 // NewConfigWatchdog creates new file watcher for config
 // directory
 func NewConfigWatchdog(path string) (*configWatchdog, error) {
-	cw := new(configWatchdog)
-	cw.path = path
 	watcher, err := fsnotify.NewWatcher()
-	cw.watcher = watcher
+	if err != nil {
+		return nil, err
+	}
+	err = watcher.Add(path)
 
-	err = cw.watcher.Add(cw.path)
-
-	return cw, err
+	return &configWatchdog{path, watcher, make(chan struct{})}, err
 }
 
 // Start config directory watching
@@ -33,6 +33,7 @@ func (cw *configWatchdog) Start() {
 				log.Println("event:", event)
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("modified file:", event.Name)
+					//cw.notify <- event
 				}
 			case err := <-cw.watcher.Errors:
 				log.Println("error:", err)
@@ -44,4 +45,9 @@ func (cw *configWatchdog) Start() {
 // Stop config directory watching
 func (cw *configWatchdog) Stop() error {
 	return cw.watcher.Close()
+}
+
+// GetNotifyChan returns channel notifications about config changes
+func (cw *configWatchdog) GetNotifyChan() chan struct{} {
+	return cw.notify
 }

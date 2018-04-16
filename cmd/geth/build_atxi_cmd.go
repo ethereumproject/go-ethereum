@@ -1,14 +1,15 @@
 package main
 
 import (
+	"os"
+	"time"
+
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
-	"os"
-	"time"
 )
 
 var buildAddrTxIndexCommand = cli.Command{

@@ -345,14 +345,17 @@ func main() {
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
+	//_, err := core.NewConfigWatchdog("")
+	//if err != nil {
+	//	return err
+	//}
+
 	n := MakeSystemNode(Version, ctx)
 	ethe := startNode(ctx, n)
-
 	if ctx.GlobalString(LogStatusFlag.Name) != "off" {
 		dispatchStatusLogs(ctx, ethe)
 	}
 	logLoggingConfiguration(ctx)
-
 	n.Wait()
 
 	return nil

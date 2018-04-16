@@ -33,6 +33,7 @@ import (
 	"strconv"
 
 	"encoding/binary"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
