@@ -76,7 +76,7 @@ bats_tests_steps: &bats_tests_steps
             go build -tags="sputnikvm netgo" -ldflags "$EXT_LD_FLAGS -X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
             mkdir -p $GOPATH/bin
             mv ./geth $GOPATH/bin/
-            bats cmd/geth
+            bats tests/cmd_bats
       - persist_to_workspace:
           root: ~/
           paths:
