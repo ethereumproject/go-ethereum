@@ -294,6 +294,15 @@ func (s *PrivateMinerAPI) StopAutoDAG() bool {
 	return true
 }
 
+// StopAutoDAG stops auto DAG generation
+func (s *PrivateMinerAPI) SetExtra(b hexutil.Bytes) bool {
+	if len(b) > types.HeaderExtraMax {
+		return false
+	}
+	miner.HeaderExtra = b
+	return true
+}
+
 // MakeDAG creates the new DAG for the given block number
 func (s *PrivateMinerAPI) MakeDAG(blockNr rpc.BlockNumber) (bool, error) {
 	if err := ethash.MakeDAG(uint64(blockNr.Int64()), ""); err != nil {
