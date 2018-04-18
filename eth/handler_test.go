@@ -129,7 +129,7 @@ func TestShouldRequestRequiredHashHeader(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		if n, got := pm.shouldRequestRequiredHashHeader(c.localHead, c.peerHead); n != c.wantN || got != c.wantB {
+		if n, got := pm.getRequiredHashBlockNumber(c.localHead, c.peerHead); n != c.wantN || got != c.wantB {
 			t.Errorf("%s -> wantN: %v, gotN: %v, wantB: %v, gotB: %v", c.name, c.wantN, n, c.wantB, got)
 		}
 	}

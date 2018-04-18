@@ -280,7 +280,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	pm.syncTransactions(p)
 
 	pHead, _ := p.Head()
-	if headerN, doCheck := pm.shouldRequestRequiredHashHeader(head, pHead); doCheck {
+	if headerN, doValidate := pm.getRequiredHashBlockNumber(head, pHead); doValidate {
 		// Request the peer's fork block header for extra-dat
 		if err := p.RequestHeadersByNumber(headerN, 1, 0, false); err != nil {
 			glog.V(logger.Debug).Infof("%v: error requesting headers by number ", p)
@@ -310,7 +310,9 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 }
 
-func (pm *ProtocolManager) shouldRequestRequiredHashHeader(localHead, peerHead common.Hash) (uint64, bool) {
+// getRequiredHashBlockNumber returns block number of most relevant fork with requiredHash
+// and information is the block validation required.
+func (pm *ProtocolManager) getRequiredHashBlockNumber(localHead, peerHead common.Hash) (blockNumber uint64, validate bool) {
 	// Drop connections incongruent with any network split or checkpoint that's relevant
 	// Check for latest relevant required hash based on our status.
 	//var headN = new(big.Int)
@@ -320,16 +322,15 @@ func (pm *ProtocolManager) shouldRequestRequiredHashHeader(localHead, peerHead c
 		headN = headB.Number()
 	}
 	latestReqHashFork := pm.chainConfig.GetLatestRequiredHashFork(headN) // returns nil if no applicable fork with required hash
+
 	// If our local sync progress has not yet reached a height at which a fork with a required hash would be relevant,
 	// we can skip this check. This allows the client to be fork agnostic until a configured fork(s) is reached.
-	if latestReqHashFork == nil {
-		return 0, false
-	}
 	// If we already have the peer's head, the peer is on the right chain, so we can skip required hash validation.
-	if pm.blockchain.GetBlock(peerHead) != nil {
-		return latestReqHashFork.Block.Uint64(), false
+	if latestReqHashFork != nil {
+		validate = pm.blockchain.GetBlock(peerHead) == nil
+		blockNumber = latestReqHashFork.Block.Uint64()
 	}
-	return latestReqHashFork.Block.Uint64(), true
+	return
 }
 
 // handleMsg is invoked whenever an inbound message is received from a remote
