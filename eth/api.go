@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/common/compiler"
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -296,6 +297,7 @@ func (s *PrivateMinerAPI) StopAutoDAG() bool {
 
 // StopAutoDAG stops auto DAG generation
 func (s *PrivateMinerAPI) SetExtra(b hexutil.Bytes) bool {
+	// types.HeaderExtraMax is the size limit for Header.Extra
 	if len(b) > types.HeaderExtraMax {
 		return false
 	}
