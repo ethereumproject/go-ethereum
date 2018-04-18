@@ -223,7 +223,7 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	}
 
 	// 3.3 testnet uses subdir '/testnet'
-	if chainIdentitiesMorden[chainIdentity] {
+	if core.ChainIdentitiesMorden[chainIdentity] {
 		exTestDir := filepath.Join(subdirPath, "../testnet")
 		exTestDirInfo, e := os.Stat(exTestDir)
 		if e != nil && os.IsNotExist(e) {

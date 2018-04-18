@@ -82,6 +82,59 @@ func TestGetBlockHeaders62(t *testing.T) {
 	testGetBlockHeaders(t, 62)
 }
 
+func TestShouldRequestRequiredHashHeader(t *testing.T) {
+	pm := newTestProtocolManagerMust(t, false, downloader.MaxHashFetch+15, nil, nil)
+
+	fb := pm.blockchain.GetBlockByNumber(uint64(downloader.MaxHashFetch))
+	_, head, _ := pm.blockchain.Status()
+
+	cc := pm.blockchain.Config()
+	cc.Forks = append(cc.Forks, &core.Fork{Name: "checkpoint", Block: fb.Number(), RequiredHash: fb.Hash()})
+
+	cases := []struct {
+		name      string
+		localHead common.Hash
+		peerHead  common.Hash
+		wantN     uint64
+		wantB     bool
+	}{
+		{
+			name:      "peer above local (unknown), local below fork",
+			localHead: pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
+			peerHead:  common.Hash{}, // unknown
+			wantN:     0,
+			wantB:     false,
+		},
+		{
+			name:      "peer above local (unknown), local above fork",
+			localHead: head,
+			peerHead:  common.Hash{}, // unknown
+			wantN:     fb.NumberU64(),
+			wantB:     true,
+		},
+		{
+			name:      "peer at or below local, local below fork",
+			localHead: pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
+			peerHead:  pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
+			wantN:     0,
+			wantB:     false,
+		},
+		{
+			name:      "peer at or below local, local above fork",
+			localHead: head,
+			peerHead:  pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
+			wantN:     fb.NumberU64(),
+			wantB:     false,
+		},
+	}
+
+	for _, c := range cases {
+		if n, got := pm.getRequiredHashBlockNumber(c.localHead, c.peerHead); n != c.wantN || got != c.wantB {
+			t.Errorf("%s -> wantN: %v, gotN: %v, wantB: %v, gotB: %v", c.name, c.wantN, n, c.wantB, got)
+		}
+	}
+}
+
 func TestGetBlockHeaders63(t *testing.T) { testGetBlockHeaders(t, 63) }
 
 func testGetBlockHeaders(t *testing.T, protocol int) {
@@ -207,11 +260,11 @@ func testGetBlockHeaders(t *testing.T, protocol int) {
 			headers = append(headers, pm.blockchain.GetBlock(hash).Header())
 		}
 		// Send the hash request and verify the response
-		s, _ := p2p.Send(peer.app, 0x03, tt.query)
+		s, _ := p2p.Send(peer.app, GetBlockHeadersMsg, tt.query)
 		if s == 0 {
 			t.Errorf("got: %v, want: >0", s)
 		}
-		if err := p2p.ExpectMsg(peer.app, 0x04, headers); err != nil {
+		if err := p2p.ExpectMsg(peer.app, BlockHeadersMsg, headers); err != nil {
 			t.Errorf("test %d: headers mismatch: %v", i, err)
 		}
 		// If the test used number origins, repeat with hashes as the too
@@ -219,11 +272,11 @@ func testGetBlockHeaders(t *testing.T, protocol int) {
 			if origin := pm.blockchain.GetBlockByNumber(tt.query.Origin.Number); origin != nil {
 				tt.query.Origin.Hash, tt.query.Origin.Number = origin.Hash(), 0
 
-				s, _ := p2p.Send(peer.app, 0x03, tt.query)
+				s, _ := p2p.Send(peer.app, GetBlockHeadersMsg, tt.query)
 				if s == 0 {
 					t.Errorf("got: %v, want: >0", s)
 				}
-				if err := p2p.ExpectMsg(peer.app, 0x04, headers); err != nil {
+				if err := p2p.ExpectMsg(peer.app, BlockHeadersMsg, headers); err != nil {
 					t.Errorf("test %d: headers mismatch: %v", i, err)
 				}
 			}
@@ -296,11 +349,11 @@ func testGetBlockBodies(t *testing.T, protocol int) {
 			}
 		}
 		// Send the hash request and verify the response
-		s, _ := p2p.Send(peer.app, 0x05, hashes)
+		s, _ := p2p.Send(peer.app, GetBlockBodiesMsg, hashes)
 		if s == 0 {
 			t.Errorf("got: %v, want: >0", s)
 		}
-		if err := p2p.ExpectMsg(peer.app, 0x06, bodies); err != nil {
+		if err := p2p.ExpectMsg(peer.app, BlockBodiesMsg, bodies); err != nil {
 			t.Errorf("test %d: bodies mismatch: %v", i, err)
 		}
 	}
@@ -356,7 +409,7 @@ func testGetNodeData(t *testing.T, protocol int) {
 			hashes = append(hashes, common.BytesToHash(key))
 		}
 	}
-	s, _ := p2p.Send(peer.app, 0x0d, hashes)
+	s, _ := p2p.Send(peer.app, GetNodeDataMsg, hashes)
 	if s == 0 {
 		t.Errorf("got: %v, want: >0", s)
 	}
@@ -364,7 +417,7 @@ func testGetNodeData(t *testing.T, protocol int) {
 	if err != nil {
 		t.Fatalf("failed to read node data response: %v", err)
 	}
-	if msg.Code != 0x0e {
+	if msg.Code != NodeDataMsg {
 		t.Fatalf("response packet code mismatch: have %x, want %x", msg.Code, 0x0c)
 	}
 	var data [][]byte
@@ -452,11 +505,11 @@ func testGetReceipt(t *testing.T, protocol int) {
 		receipts = append(receipts, core.GetBlockReceipts(pm.chaindb, block.Hash()))
 	}
 	// Send the hash request and verify the response
-	s, _ := p2p.Send(peer.app, 0x0f, hashes)
+	s, _ := p2p.Send(peer.app, GetReceiptsMsg, hashes)
 	if s <= 0 {
 		t.Errorf("got: %v, want: >0", s)
 	}
-	if err := p2p.ExpectMsg(peer.app, 0x10, receipts); err != nil {
+	if err := p2p.ExpectMsg(peer.app, ReceiptsMsg, receipts); err != nil {
 		t.Errorf("receipts mismatch: %v", err)
 	}
 }

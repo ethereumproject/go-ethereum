@@ -143,7 +143,7 @@ func TestMustMakeChainDataDir(t *testing.T) {
 
 	for _, c := range cases {
 		// Unset cache.
-		cacheChainIdentity = ""
+		core.SetCacheChainIdentity("")
 
 		setupFlags(t)
 
@@ -194,7 +194,7 @@ func TestGetChainIdentityValue(t *testing.T) {
 
 	for _, c := range cases {
 		// Unset cache.
-		cacheChainIdentity = ""
+		core.SetCacheChainIdentity("")
 
 		setupFlags(t)
 

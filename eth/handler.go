@@ -279,33 +279,28 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	// Drop connections on opposite side of network split
-	var fork *core.Fork
-	for i := range pm.chainConfig.Forks {
-		fork = pm.chainConfig.Forks[i]
-		if _, height := p.Head(); height.Cmp(fork.Block) < 0 {
-			break
+	pHead, _ := p.Head()
+	if headerN, doValidate := pm.getRequiredHashBlockNumber(head, pHead); doValidate {
+		// Request the peer's fork block header for extra-dat
+		if err := p.RequestHeadersByNumber(headerN, 1, 0, false); err != nil {
+			glog.V(logger.Debug).Infof("%v: error requesting headers by number ", p)
+			return err
 		}
-		if !fork.RequiredHash.IsEmpty() {
-			// Request the peer's fork block header for extra-dat
-			if err := p.RequestHeadersByNumber(fork.Block.Uint64(), 1, 0, false); err != nil {
-				glog.V(logger.Debug).Infof("%v: error requesting headers by number ", p)
-				return err
+		// Start a timer to disconnect if the peer doesn't reply in time
+		// FIXME: un-hardcode timeout
+		p.timeout = time.AfterFunc(5*time.Second, func() {
+			glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
+			pm.removePeer(p.id)
+		})
+		// Make sure it's cleaned up if the peer dies off
+		defer func() {
+			if p.timeout != nil {
+				p.timeout.Stop()
+				p.timeout = nil
 			}
-			// Start a timer to disconnect if the peer doesn't reply in time
-			p.timeout = time.AfterFunc((5 * time.Second), func() {
-				glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
-				pm.removePeer(p.id)
-			})
-			// Make sure it's cleaned up if the peer dies off
-			defer func() {
-				if p.timeout != nil {
-					p.timeout.Stop()
-					p.timeout = nil
-				}
-			}()
-		}
+		}()
 	}
+
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
@@ -313,6 +308,29 @@ func (pm *ProtocolManager) handle(p *peer) error {
 			return err
 		}
 	}
+}
+
+// getRequiredHashBlockNumber returns block number of most relevant fork with requiredHash
+// and information is the block validation required.
+func (pm *ProtocolManager) getRequiredHashBlockNumber(localHead, peerHead common.Hash) (blockNumber uint64, validate bool) {
+	// Drop connections incongruent with any network split or checkpoint that's relevant
+	// Check for latest relevant required hash based on our status.
+	//var headN = new(big.Int)
+	var headN *big.Int
+	headB := pm.blockchain.GetBlock(localHead)
+	if headB != nil {
+		headN = headB.Number()
+	}
+	latestReqHashFork := pm.chainConfig.GetLatestRequiredHashFork(headN) // returns nil if no applicable fork with required hash
+
+	// If our local sync progress has not yet reached a height at which a fork with a required hash would be relevant,
+	// we can skip this check. This allows the client to be fork agnostic until a configured fork(s) is reached.
+	// If we already have the peer's head, the peer is on the right chain, so we can skip required hash validation.
+	if latestReqHashFork != nil {
+		validate = pm.blockchain.GetBlock(peerHead) == nil
+		blockNumber = latestReqHashFork.Block.Uint64()
+	}
+	return
 }
 
 // handleMsg is invoked whenever an inbound message is received from a remote
