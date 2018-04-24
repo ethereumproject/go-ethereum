@@ -169,14 +169,14 @@ teardown() {
 # Test `dump` command.
 # All tests copy testdata/testdatadir to $DATA_DIR to ensure we're consistently testing against a not-only-init'ed chaindb.
 @test "dump [noargs] | exit >0" {
-	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
+	cp -a $BATS_TEST_DIRNAME/testdata/testdatadir/. $DATA_DIR/
 	run $GETH_CMD --data-dir $DATA_DIR dump
 	echo "$output"
 	[ "$status" -gt 0 ]
 	[[ "$output" == *"invalid"* ]] # invalid use
 }
 @test "dump 0 [noaddress] | exit 0" {
-	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
+	cp -a $BATS_TEST_DIRNAME/testdata/testdatadir/. $DATA_DIR/
 	run $GETH_CMD --data-dir $DATA_DIR dump 0
 	echo "$output"
 	[ "$status" -eq 0 ]
@@ -188,7 +188,7 @@ teardown() {
 	[[ "$output" == *"253319000000000000000"* ]] # random address balance existing in genesis
 }
 @test "dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181 | exit 0" {
-	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
+	cp -a $BATS_TEST_DIRNAME/testdata/testdatadir/. $DATA_DIR/
 	run $GETH_CMD --data-dir $DATA_DIR dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181
 	echo "$output"
 	[ "$status" -eq 0 ]
@@ -200,7 +200,7 @@ teardown() {
 	[[ "$output" == *"1000000000000000000000"* ]] # address balance
 }
 @test "dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f | exit 0" {
-	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
+	cp -a $BATS_TEST_DIRNAME/testdata/testdatadir/. $DATA_DIR/
 	run $GETH_CMD --data-dir $DATA_DIR dump 0 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f
 	echo "$output"
 	[ "$status" -eq 0 ]
@@ -217,7 +217,7 @@ teardown() {
 }
 
 @test "dump 0,1 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f | exit 0" {
-	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
+	cp -a $BATS_TEST_DIRNAME/testdata/testdatadir/. $DATA_DIR/
 	run $GETH_CMD --data-dir $DATA_DIR dump 0,1 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f
 	echo "$output"
 	[ "$status" -eq 0 ]
@@ -235,7 +235,7 @@ teardown() {
 	[[ "$output" == *"1507000000000000000000"* ]] # address balance
 }
 @test "dump 0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f | exit 0" {
-	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
+	cp -a $BATS_TEST_DIRNAME/testdata/testdatadir/. $DATA_DIR/
 	run $GETH_CMD --data-dir $DATA_DIR dump 0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3 fff7ac99c8e4feb60c9750054bdc14ce1857f181,0xffe8cbc1681e5e9db74a0f93f8ed25897519120f
 	echo "$output"
 	[ "$status" -eq 0 ]

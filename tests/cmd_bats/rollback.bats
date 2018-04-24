@@ -4,7 +4,7 @@
 
 setup() {
 	DATA_DIR=`mktemp -d`
-	cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
+	cp -a $BATS_TEST_DIRNAME/testdata/testdatadir/. $DATA_DIR/
 }
 
 teardown() {

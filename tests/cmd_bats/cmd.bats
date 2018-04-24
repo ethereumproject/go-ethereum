@@ -11,7 +11,7 @@ teardown() {
 }
 
 @test "reset command" {
-    cp -a $BATS_TEST_DIRNAME/../../cmd/geth/testdata/testdatadir/. $DATA_DIR/
+    cp -a $BATS_TEST_DIRNAME/testdata/testdatadir/. $DATA_DIR/
 
     # Ensure chaindata dir exists before proof of removal.
     [ -d $DATA_DIR/mainnet/chaindata ]

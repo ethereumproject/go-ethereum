@@ -248,7 +248,7 @@ teardown() {
 	# Ensure non-default nonce 43 (42 is default).
 	# Ensure chain subdir is determined by config `id`
 	mkdir -p "$DATA_DIR"/customnet
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-ok-custom.json $DATA_DIR/customnet/chain.json
+	cp $BATS_TEST_DIRNAME/testdata/chain_config_dump-ok-custom.json $DATA_DIR/customnet/chain.json
 	sed -i.bak s/mainnet/customnet/ $DATA_DIR/customnet/chain.json
 	run $GETH_CMD --datadir $DATA_DIR --chain=customnet  --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).hash' console
 	echo "$output"
@@ -293,7 +293,7 @@ teardown() {
 # - external chain configuration should require JSON to parse
 @test "--chain kitty @ chain_config_dump-invalid-comment.json | exit !=0" {
 	mkdir -p $DATA_DIR/kitty
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-comment.json $DATA_DIR/kitty/chain.json
+	cp $BATS_TEST_DIRNAME/testdata/chain_config_dump-invalid-comment.json $DATA_DIR/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 	run $GETH_CMD --datadir $DATA_DIR --chain=kitty --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
@@ -305,7 +305,7 @@ teardown() {
 # - external chain configuration should require JSON to parse
 @test "--chain kitty testdata/chain_config_dump-invalid-coinbase.json | exit !=0" {
 	mkdir -p $DATA_DIR/kitty
-	cp $BATS_TEST_DIRNAME/../../cmd/geth/testdata/chain_config_dump-invalid-coinbase.json $DATA_DIR/kitty/chain.json
+	cp $BATS_TEST_DIRNAME/testdata/chain_config_dump-invalid-coinbase.json $DATA_DIR/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR/kitty/chain.json
 	run $GETH_CMD --datadir $DATA_DIR --chain kitty  --maxpeers 0 --nodiscover --nat none --ipcdisable --exec 'eth.getBlock(0).nonce' console
 	echo "$output"
