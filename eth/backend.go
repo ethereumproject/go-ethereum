@@ -302,6 +302,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 
+	watchdog, err := core.NewConfigWatchdog()
+	watchdog.Start()
+	watchdog.Subscribe(eth.protocolManager.SetChainConfig)
+
 	return eth, nil
 }
 

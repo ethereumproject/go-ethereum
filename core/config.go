@@ -606,12 +606,15 @@ func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadC
 	return config, nil
 }
 
+// This nasty little variable memoize the last (= the only one) configuration file path.
+var flaggedExternalChainConfigPath string
+
 // ReadExternalChainConfigFromFile reads a flagged external json file for blockchain configuration.
 // It returns a valid and full ("hard") configuration or an error.
 func ReadExternalChainConfigFromFile(incomingPath string) (*SufficientChainConfig, error) {
 
 	// ensure flag arg cleanliness
-	flaggedExternalChainConfigPath := filepath.Clean(incomingPath)
+	flaggedExternalChainConfigPath = filepath.Clean(incomingPath)
 
 	// ensure file exists and that it is NOT a directory
 	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {

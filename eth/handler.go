@@ -63,6 +63,7 @@ type ProtocolManager struct {
 	blockchain  *core.BlockChain
 	chaindb     ethdb.Database
 	chainConfig *core.ChainConfig
+	configMutex sync.RWMutex
 
 	downloader *downloader.Downloader
 	fetcher    *fetcher.Fetcher
@@ -321,7 +322,7 @@ func (pm *ProtocolManager) getRequiredHashBlockNumber(localHead, peerHead common
 	if headB != nil {
 		headN = headB.Number()
 	}
-	latestReqHashFork := pm.chainConfig.GetLatestRequiredHashFork(headN) // returns nil if no applicable fork with required hash
+	latestReqHashFork := pm.getChainConfig().GetLatestRequiredHashFork(headN) // returns nil if no applicable fork with required hash
 
 	// If our local sync progress has not yet reached a height at which a fork with a required hash would be relevant,
 	// we can skip this check. This allows the client to be fork agnostic until a configured fork(s) is reached.
@@ -456,7 +457,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 				p.timeout.Stop()
 				p.timeout = nil
 			}
-			if err = pm.chainConfig.HeaderCheck(headers[0]); err != nil {
+			if err = pm.getChainConfig().HeaderCheck(headers[0]); err != nil {
 				pm.removePeer(p.id)
 				return err
 			}
@@ -837,4 +838,17 @@ func (self *ProtocolManager) NodeInfo() *EthNodeInfo {
 		Genesis:    self.blockchain.Genesis().Hash(),
 		Head:       self.blockchain.CurrentBlock().Hash(),
 	}
+}
+
+// getChainConfig thread-safely returns copy of chainConfig pointer
+func (pm *ProtocolManager) getChainConfig() *core.ChainConfig {
+	pm.configMutex.RLock()
+	defer pm.configMutex.RUnlock()
+	return pm.chainConfig
+}
+
+func (pm *ProtocolManager) SetChainConfig(newConfig *core.SufficientChainConfig) {
+	pm.configMutex.Lock()
+	defer pm.configMutex.Unlock()
+	pm.chainConfig = newConfig.ChainConfig
 }

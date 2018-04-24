@@ -2,26 +2,29 @@ package core
 
 import (
 	"log"
+	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 type configWatchdog struct {
-	path    string
-	watcher *fsnotify.Watcher
-	notify  chan struct{}
+	path      string
+	watcher   *fsnotify.Watcher
+	observers []func(*SufficientChainConfig)
 }
 
 // NewConfigWatchdog creates new file watcher for config
 // directory
-func NewConfigWatchdog(path string) (*configWatchdog, error) {
+func NewConfigWatchdog() (*configWatchdog, error) {
+	path := flaggedExternalChainConfigPath // pull the package-level variable
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
 	}
-	err = watcher.Add(path)
+	// monitor entire directory - we assume, that files can be included only from this directory
+	err = watcher.Add(filepath.Dir(path))
 
-	return &configWatchdog{path, watcher, make(chan struct{})}, err
+	return &configWatchdog{path, watcher, nil}, err
 }
 
 // Start config directory watching
@@ -33,7 +36,14 @@ func (cw *configWatchdog) Start() {
 				log.Println("event:", event)
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("modified file:", event.Name)
-					//cw.notify <- event
+					newConfig, err := ReadExternalChainConfigFromFile(cw.path)
+					if err != nil {
+						log.Println("configuration error:", err)
+						continue
+					}
+					for _, observer := range cw.observers {
+						observer(newConfig)
+					}
 				}
 			case err := <-cw.watcher.Errors:
 				log.Println("error:", err)
@@ -47,7 +57,6 @@ func (cw *configWatchdog) Stop() error {
 	return cw.watcher.Close()
 }
 
-// GetNotifyChan returns channel notifications about config changes
-func (cw *configWatchdog) GetNotifyChan() chan struct{} {
-	return cw.notify
+func (cw *configWatchdog) Subscribe(observer func(*SufficientChainConfig)) {
+	cw.observers = append(cw.observers, observer)
 }
