@@ -24,6 +24,9 @@ var (
 	// os.Stdout is used.
 	Output = colorable.NewColorableStdout()
 
+	// StderrOutput defines the output for errors.
+	StderrOutput = colorable.NewColorableStderr()
+
 	// colorsCache is used to reduce the count of created Color objects and
 	// allows to reuse already created objects with required Attribute.
 	colorsCache   = make(map[Attribute]*Color)
