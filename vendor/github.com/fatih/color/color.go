@@ -23,8 +23,6 @@ var (
 	// Output defines the standard output of the print functions. By default
 	// os.Stdout is used.
 	Output = colorable.NewColorableStdout()
-
-	// StderrOutput defines the output for errors.
 	StderrOutput = colorable.NewColorableStderr()
 
 	// colorsCache is used to reduce the count of created Color objects and
