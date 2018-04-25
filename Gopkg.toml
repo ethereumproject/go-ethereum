@@ -118,5 +118,7 @@
   name = "github.com/ethereumproject/benchmark"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/fatih/color"
+  # TODO(tzdybal): monitor https://github.com/fatih/color/pull/87
+  source = "github.com/achilleas-k/color"
+  branch = "expose-colorised-stderr"
