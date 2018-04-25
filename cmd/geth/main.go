@@ -141,6 +141,7 @@ func makeCLIApp() (app *cli.App) {
 
 	app.Flags = []cli.Flag{
 		AccountsIndexFlag,
+		AddrTxIndexFlag,
 		AutoDAGFlag,
 		BacktraceAtFlag,
 		BlockchainVersionFlag,
@@ -167,9 +168,6 @@ func makeCLIApp() (app *cli.App) {
 		IPCApiFlag,
 		IPCDisabledFlag,
 		IPCPathFlag,
-		AddrTxIndexFlag,
-		CacheFlag,
-		LightKDFFlag,
 		JSpathFlag,
 		KeyStoreDirFlag,
 		LightKDFFlag,
@@ -213,6 +211,7 @@ func makeCLIApp() (app *cli.App) {
 		TargetGasLimitFlag,
 		TestNetFlag,
 		UnlockedAccountFlag,
+		Unused1,
 		VModuleFlag,
 		VerbosityFlag,
 		WSAllowedOriginsFlag,
@@ -221,7 +220,6 @@ func makeCLIApp() (app *cli.App) {
 		WSListenAddrFlag,
 		WSPortFlag,
 		WhisperEnabledFlag,
-		Unused1,
 	}
 
 	app.Before = func(ctx *cli.Context) error {
