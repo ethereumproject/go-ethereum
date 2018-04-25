@@ -59,7 +59,7 @@
   branch = "master"
   name = "github.com/ethereumproject/sputnikvm-ffi"
   packages = ["go/sputnikvm"]
-  revision = "68bcac0a08ca8ed7d8f2ace4b4aca72176544770"
+  revision = "a6c914124a94151706443826c8124896ab1473bc"
 
 [[projects]]
   branch = "expose-colorised-stderr"
