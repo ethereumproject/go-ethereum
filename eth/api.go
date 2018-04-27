@@ -1773,6 +1773,13 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 	return fmt.Sprintf("0x%x", hash), nil
 }
 
+func (api *PublicDebugAPI) SetHead(number uint64) (bool, error) {
+	if e := api.eth.BlockChain().SetHead(number); e != nil {
+		return false, e
+	}
+	return true, nil
+}
+
 // Metrics return all available registered metrics for the client.
 // See https://github.com/ethereumproject/go-ethereum/wiki/Metrics-and-Monitoring for prophetic documentation.
 func (api *PublicDebugAPI) Metrics(raw bool) (map[string]interface{}, error) {
