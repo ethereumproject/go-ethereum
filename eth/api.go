@@ -504,12 +504,13 @@ func (s *PrivateAccountAPI) LockAccount(addr common.Address) bool {
 // The key used to calculate the signature is decrypted with the given password.
 //
 // https://github.com/ethereum/go-ethereum/wiki/Management-APIs#personal_sign
-func (s *PrivateAccountAPI) Sign(data []byte, addr common.Address, passwd string) (string, error) {
+func (s *PrivateAccountAPI) Sign(data hexutil.Bytes, addr common.Address, passwd string) (hexutil.Bytes, error) {
 	signature, err := s.am.SignWithPassphrase(addr, passwd, signHash(data))
-	if err == nil {
-		signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	if err != nil {
+		return nil, err
 	}
-	return common.ToHex(signature), nil
+	signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	return signature, nil
 }
 
 // SendTransaction will create a transaction from the given arguments and
@@ -1328,14 +1329,44 @@ func signHash(data []byte) []byte {
 	return crypto.Keccak256([]byte(msg))
 }
 
+// EcRecover returns the address for the account that was used to create the signature.
+// Note, this function is compatible with eth_sign and personal_sign. As such it recovers
+// the address of:
+// hash = keccak256("\x19Ethereum Signed Message:\n"${message length}${message})
+// addr = ecrecover(hash, signature)
+//
+// Note, the signature must conform to the secp256k1 curve R, S and V values, where
+// the V value must be be 27 or 28 for legacy reasons.
+//
+// https://github.com/ethereum/go-ethereum/wiki/Management-APIs#personal_ecRecover
+func (s *PrivateAccountAPI) EcRecover(data, sig hexutil.Bytes) (common.Address, error) {
+	if len(sig) != 65 {
+		return common.Address{}, fmt.Errorf("signature must be 65 bytes long")
+	}
+	if sig[64] != 27 && sig[64] != 28 {
+		return common.Address{}, fmt.Errorf("invalid Ethereum signature (V is not 27 or 28)")
+	}
+	sig[64] -= 27 // Transform yellow paper V from 27/28 to 0/1
+
+	rpk, err := crypto.Ecrecover(signHash(data), sig)
+	if err != nil {
+		return common.Address{}, err
+	}
+	pubKey := crypto.ToECDSAPub(rpk)
+	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
+	return recoveredAddr, nil
+}
+
 // Sign signs the given hash using the key that matches the address. The key must be
 // unlocked in order to sign the hash.
-func (s *PublicTransactionPoolAPI) Sign(addr common.Address, data []byte) (string, error) {
-	signature, err := s.am.Sign(addr, signHash(data))
-	if err == nil {
-		signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+func (s *PublicBlockChainAPI) Sign(addr common.Address, data hexutil.Bytes) (hexutil.Bytes, error) {
+	signed := signHash(data)
+	signature, err := s.am.Sign(addr, signed)
+	if err != nil {
+		return nil, err
 	}
-	return common.ToHex(signature), err
+	signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	return signature, err
 }
 
 // SignTransactionArgs represents the arguments to sign a transaction.

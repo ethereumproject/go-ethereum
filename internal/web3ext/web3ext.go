@@ -382,6 +382,12 @@ web3._extend({
 			call: 'personal_sendTransaction',
 			params: 2,
 			inputFormatter: [web3._extend.formatters.inputTransactionFormatter, null]
+		}),
+		new web3._extend.Method({
+			name: 'ecRecover',
+			call: 'personal_ecRecover',
+			params: 2,
+			inputFormatter: [null, null]
 		})
 	]
 });
