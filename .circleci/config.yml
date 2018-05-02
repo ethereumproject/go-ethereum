@@ -1,7 +1,7 @@
 sputnik_vm_steps: &sputnik_vm_steps
   steps:
     - restore_cache:
-        key: v7-toolchain-{{ arch }}
+        key: v8-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - run:
@@ -20,7 +20,7 @@ sputnik_vm_steps: &sputnik_vm_steps
 deploy_steps: &deploy_steps
   steps:
     - restore_cache:
-        key: v7-toolchain-{{ arch }}
+        key: v8-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - deploy:
@@ -35,7 +35,7 @@ deploy_steps: &deploy_steps
 unit_tests_steps: &unit_tests_steps
   steps:
     - restore_cache:
-        key: v7-toolchain-{{ arch }}
+        key: v8-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - run:
@@ -52,13 +52,12 @@ unit_tests_steps: &unit_tests_steps
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           go env
           go test -tags="sputnikvm netgo deterministic" ./...
-          go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
           schroedinger -t 5 -f ./schroedinger-tests.txt
 
 bats_tests_steps: &bats_tests_steps
     steps:
       - restore_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
       - attach_workspace:
           at: ~/
       - run:
@@ -90,7 +89,7 @@ jobs:
       xcode: "9.0"
     steps:
       - restore_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
       - run:
           name: Prepare directories
           command: |
@@ -113,13 +112,14 @@ jobs:
               go version
               brew install bats
               brew install gpg2
+              go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
             fi
       - persist_to_workspace:
           root: ~/
           paths:
             - go/src/github.com/ethereumproject/*
       - save_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
           paths:
             - /usr/local/bin/bats
             - /usr/local/bin/go
@@ -132,13 +132,14 @@ jobs:
             - ~/.cargo
             - ~/.rustup
             - ~/janusbin
+            - ~/go/bin
 
   linux_env_setup:
     docker:
       - image: circleci/golang:1.9
     steps:
       - restore_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
       - run:
           name: Prepare directories
           command: |
@@ -159,18 +160,20 @@ jobs:
             if [ ! -x ~/janusbin/janus ]; then
               cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
             fi
+            go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
       - persist_to_workspace:
           root: ~/
           paths:
             - go/src/github.com/ethereumproject/*
       - save_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
           paths:
             - ~/bin
             - ~/libexec
             - ~/.cargo
             - ~/.rustup
             - ~/janusbin
+            - ~/go/bin
 
   mac_sputnik_vm:
     macos:
