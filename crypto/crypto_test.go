@@ -90,7 +90,7 @@ func TestSign(t *testing.T) {
 		t.Errorf("Sign error: %s", err)
 	}
 	if len(sig) != 65 {
-		t.Error("wrong len sig", len(sig))
+		t.Error("wrong signature length", len(sig))
 	}
 	recoveredPub, err := Ecrecover(msg, sig)
 	if err != nil {
