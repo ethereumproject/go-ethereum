@@ -19,10 +19,10 @@ package trie
 import (
 	"testing"
 
+	"bytes"
+	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"fmt"
-	"bytes"
 	"math/rand"
 )
 

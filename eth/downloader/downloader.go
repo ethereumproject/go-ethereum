@@ -32,9 +32,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/metrics"
 )
 
 const (
@@ -65,12 +65,12 @@ var (
 	maxHeadersProcess = 2048      // Number of header download results to import at once into the chain
 	maxResultsProcess = 2048      // Number of content download results to import at once into the chain
 
-	fsHeaderCheckFrequency = 100  // Verification frequency of the downloaded headers during fast sync
-	fsHeaderSafetyNet      = 2048 // Number of headers to discard in case a chain violation is detected
-	fsHeaderForceVerify    = 24   // Number of headers to verify before and after the pivot to accept it
-	fsPivotInterval        = 512  // Number of headers out of which to randomize the pivot point
-	fsMinFullBlocks        = 1024 // Number of blocks to retrieve fully even in fast sync
-	fsCriticalTrials uint32      = 10   // Number of times to retry in the cricical section before bailing
+	fsHeaderCheckFrequency        = 100  // Verification frequency of the downloaded headers during fast sync
+	fsHeaderSafetyNet             = 2048 // Number of headers to discard in case a chain violation is detected
+	fsHeaderForceVerify           = 24   // Number of headers to verify before and after the pivot to accept it
+	fsPivotInterval               = 512  // Number of headers out of which to randomize the pivot point
+	fsMinFullBlocks               = 1024 // Number of blocks to retrieve fully even in fast sync
+	fsCriticalTrials       uint32 = 10   // Number of times to retry in the cricical section before bailing
 )
 
 var (
@@ -129,7 +129,7 @@ type Downloader struct {
 	stateDB ethdb.Database
 
 	fsPivotLock  *types.Header // Pivot header on critical section entry (cannot change between retries)
-	fsPivotFails uint32           // Number of fast sync failures in the critical section
+	fsPivotFails uint32        // Number of fast sync failures in the critical section
 
 	rttEstimate   uint64 // Round trip time to target for download requests
 	rttConfidence uint64 // Confidence in the estimated RTT (unit: millionths to allow atomic ops)
@@ -1412,8 +1412,8 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 		items := int(math.Min(float64(len(results)), float64(maxResultsProcess)))
 		first, last := results[0].Header, results[items-1].Header
 		glog.V(logger.Debug).Infoln("Inserting downloaded chain", "items", len(results),
-			"firstnum", first.Number, "firsthash", first.Hash(),
-			"lastnum", last.Number, "lasthash", last.Hash(),
+			"firstnum", first.Number, "firsthash", first.Hash().Hex(),
+			"lastnum", last.Number, "lasthash", last.Hash().Hex(),
 		)
 		blocks := make([]*types.Block, items)
 		for i, result := range results[:items] {

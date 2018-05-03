@@ -111,7 +111,7 @@
         ]
     },
 	"include" : [
-		"morden_genesis.json",
-		"morden_bootnodes.json"
+		"test_genesis.json",
+		"test_bootnodes.json"
 	]
 }

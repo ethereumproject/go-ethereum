@@ -27,6 +27,7 @@ var Modules = map[string]string{
 	"rpc":      RPC_JS,
 	"shh":      Shh_JS,
 	"txpool":   TxPool_JS,
+	"geth":     Geth_JS,
 }
 
 const Admin_JS = `
@@ -149,6 +150,22 @@ web3._extend({
 });
 `
 
+const Geth_JS = `
+web3._extend({
+	property: 'geth',
+	methods:
+	[
+		new web3._extend.Method({
+			name: 'getAddressTransactions',
+			call: 'geth_getAddressTransactions',
+			params: 8,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, null, null, null, null, null, null]
+		})
+	],
+	properties: []
+});
+`
+
 const Debug_JS = `
 web3._extend({
 	property: 'debug',
@@ -206,6 +223,12 @@ web3._extend({
 			name: 'accountExist',
 			call: 'debug_accountExist',
 			params: 2
+		}),
+		new web3._extend.Method({
+			name: 'getAddressTransactions',
+			call: 'debug_getAddressTransactions',
+			params: 8,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, null, null, null, null, null, null]
 		})
 	],
 	properties: []
@@ -353,6 +376,18 @@ web3._extend({
 			call: 'personal_signAndSendTransaction',
 			params: 2,
 			inputFormatter: [web3._extend.formatters.inputTransactionFormatter, null]
+		}),
+		new web3._extend.Method({
+			name: 'sendTransaction',
+			call: 'personal_sendTransaction',
+			params: 2,
+			inputFormatter: [web3._extend.formatters.inputTransactionFormatter, null]
+		}),
+		new web3._extend.Method({
+			name: 'ecRecover',
+			call: 'personal_ecRecover',
+			params: 2,
+			inputFormatter: [null, null]
 		})
 	]
 });

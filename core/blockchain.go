@@ -32,6 +32,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"encoding/binary"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -109,6 +110,9 @@ type BlockChain struct {
 	pow       pow.PoW
 	processor Processor // block processor interface
 	validator Validator // block and state validator interface
+
+	useAddTxIndex bool
+	indexesDb     ethdb.Database
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -212,6 +216,17 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 
 func (self *BlockChain) GetEventMux() *event.TypeMux {
 	return self.eventMux
+}
+
+// SetAddTxIndex sets the db and in-use var for atx indexing.
+func (self *BlockChain) SetAddTxIndex(db ethdb.Database, tf bool) {
+	self.useAddTxIndex = tf
+	self.indexesDb = db
+}
+
+// GetAddTxIndex return indexes db and if atx index in use.
+func (self *BlockChain) GetAddTxIndex() (ethdb.Database, bool) {
+	return self.indexesDb, self.useAddTxIndex
 }
 
 func (self *BlockChain) getProcInterrupt() bool {
@@ -773,6 +788,45 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
 	}
 
+	if bc.useAddTxIndex {
+		ldb, ok := bc.indexesDb.(*ethdb.LDBDatabase)
+		if !ok {
+			glog.Fatal("could not cast indexes db to level db")
+		}
+
+		var removals [][]byte
+		deleteRemovalsFn := func(rs [][]byte) {
+			for _, r := range rs {
+				if e := ldb.Delete(r); e != nil {
+					glog.Fatal(e)
+				}
+			}
+		}
+
+		pre := ethdb.NewBytesPrefix(txAddressIndexPrefix)
+		it := ldb.NewIteratorRange(pre)
+
+		for it.Next() {
+			key := it.Key()
+			_, bn, _, _, _ := resolveAddrTxBytes(key)
+			n := binary.LittleEndian.Uint64(bn)
+			if n > head {
+				removals = append(removals, key)
+				// Prevent removals from getting too massive in case it's a big rollback
+				// 100000 is a guess at a big but not-too-big memory allowance
+				if len(removals) > 100000 {
+					deleteRemovalsFn(removals)
+					removals = [][]byte{}
+				}
+			}
+		}
+		it.Release()
+		if e := it.Error(); e != nil {
+			return e
+		}
+		deleteRemovalsFn(removals)
+	}
+
 	bc.mu.Unlock()
 	return bc.LoadLastState(false)
 }
@@ -1231,6 +1285,12 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 				glog.Fatal(errs[index])
 				return
 			}
+			// Store the addr-tx indexes if enabled
+			if self.useAddTxIndex {
+				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+					glog.Fatalf("failed to write block add-tx indexes", err)
+				}
+			}
 			atomic.AddInt32(&stats.processed, 1)
 		}
 	}
@@ -1274,6 +1334,42 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 		time.Since(start), last.Number(), first.Hash().Bytes()[:4], last.Hash().Bytes()[:4])
 
 	return 0, nil
+}
+
+// WriteBlockAddrTxIndexesBatch builds indexes for a given range of blocks N. It writes batches at increment 'step'.
+// If any error occurs during db writing it will be returned immediately.
+// It's sole implementation is the command 'atxi-build', since we must use individual block atxi indexing during
+// sync and import in order to ensure we're on the canonical chain for each block.
+func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN, stepN uint64) (txsCount int, err error) {
+	block := self.GetBlockByNumber(startBlockN)
+	batch := indexDb.NewBatch()
+
+	blockProcessedCount := uint64(0)
+	blockProcessedHead := func() uint64 {
+		return startBlockN + blockProcessedCount
+	}
+
+	for block != nil && blockProcessedHead() <= stopBlockN {
+		txP, err := putBlockAddrTxsToBatch(batch, block)
+		if err != nil {
+			return txsCount, err
+		}
+		txsCount += txP
+		blockProcessedCount++
+
+		// Write on stepN mod
+		if blockProcessedCount%stepN == 0 {
+			if err := batch.Write(); err != nil {
+				return txsCount, err
+			} else {
+				batch = indexDb.NewBatch()
+			}
+		}
+		block = self.GetBlockByNumber(blockProcessedHead())
+	}
+
+	// This will put the last batch
+	return txsCount, batch.Write()
 }
 
 // WriteBlock writes the block to the chain.
@@ -1523,6 +1619,12 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			if err := WriteMipmapBloom(self.chainDb, block.NumberU64(), receipts); err != nil {
 				return i, err
 			}
+			// Store the addr-tx indexes if enabled
+			if self.useAddTxIndex {
+				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+					glog.Fatalf("failed to write block add-tx indexes", err)
+				}
+			}
 		case SideStatTy:
 			if glog.V(logger.Detail) {
 				glog.Infof("inserted forked block #%d (TD=%v) (%d TXs %d UNCs) [%s]. Took %v\n", block.Number(), block.Difficulty(), len(block.Transactions()), len(block.Uncles()), block.Hash().Hex(), time.Since(bstart))
@@ -1655,6 +1757,17 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		).Send(mlogBlockchain)
 	}
 
+	// Remove all atxis from old chain; indexes should only reflect canonical
+	if self.useAddTxIndex {
+		for _, block := range oldChain {
+			for _, tx := range block.Transactions() {
+				if err := RmAddrTx(self.indexesDb, tx); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	var addedTxs types.Transactions
 	// insert blocks. Order does not matter. Last block will be written in ImportChain itself which creates the new head properly
 	for _, block := range newChain {
@@ -1663,6 +1776,12 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		// write canonical receipts and transactions
 		if err := WriteTransactions(self.chainDb, block); err != nil {
 			return err
+		}
+		// Store the addr-tx indexes if enabled
+		if self.useAddTxIndex {
+			if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+				return err
+			}
 		}
 		receipts := GetBlockReceipts(self.chainDb, block.Hash())
 		// write receipts

@@ -79,32 +79,12 @@ OPTIONS:
 
 var (
 	// Errors.
-	ErrInvalidFlag        = errors.New("invalid flag or context value")
-	ErrInvalidChainID     = errors.New("invalid chainID")
+	ErrInvalidFlag = errors.New("invalid flag or context value")
+
 	ErrDirectoryStructure = errors.New("error in directory structure")
 	ErrStackFail          = errors.New("error in stack protocol")
 
-	// Chain identities.
-	chainIdentitiesBlacklist = map[string]bool{
-		"chaindata": true,
-		"dapp":      true,
-		"keystore":  true,
-		"nodekey":   true,
-		"nodes":     true,
-	}
-	chainIdentitiesMain = map[string]bool{
-		"main":    true,
-		"mainnet": true,
-	}
-	chainIdentitiesMorden = map[string]bool{
-		"morden":  true,
-		"testnet": true,
-	}
-
 	devModeDataDirPath = filepath.Join(os.TempDir(), "/ethereum_dev_mode")
-
-	cacheChainIdentity string
-	cacheChainConfig   *core.SufficientChainConfig
 )
 
 // chainIsMorden allows either
@@ -114,14 +94,14 @@ func chainIsMorden(ctx *cli.Context) bool {
 	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
 		return true
 	}
-	if _, ok := chainIdentitiesMorden[cacheChainIdentity]; ok {
+	if _, ok := core.ChainIdentitiesMorden[core.GetCacheChainIdentity()]; ok {
 		return ok
 	}
-	if _, ok := chainIdentitiesMorden[ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx))]; ok {
+	if _, ok := core.ChainIdentitiesMorden[ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx))]; ok {
 		return ok
 	}
-	if cacheChainConfig != nil {
-		if _, ok := chainIdentitiesMorden[cacheChainConfig.Identity]; ok {
+	if c := core.GetCacheChainConfig(); c != nil {
+		if _, ok := core.ChainIdentitiesMorden[c.Identity]; ok {
 			return ok
 		}
 	}
@@ -155,8 +135,8 @@ func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePat
 // It returns one of valid strings: ["mainnet", "morden", or --chain="flaggedCustom"]
 func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 
-	if cacheChainIdentity != "" {
-		return cacheChainIdentity
+	if id := core.GetCacheChainIdentity(); id != "" {
+		return id
 	}
 
 	if ctx.GlobalIsSet(aliasableName(TestNetFlag.Name, ctx)) && ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
@@ -166,7 +146,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 	}
 
 	defer func() {
-		cacheChainIdentity = identity
+		core.SetCacheChainIdentity(identity)
 	}()
 
 	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
@@ -180,15 +160,15 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 	}
 	// If --chain is in use.
 	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
-		if chainIdentitiesMain[chainFlagVal] {
+		if core.ChainIdentitiesMain[chainFlagVal] {
 			identity = core.DefaultConfigMainnet.Identity
 			return identity
 		}
 		// Check for disallowed values.
-		if chainIdentitiesBlacklist[chainFlagVal] {
+		if core.ChainIdentitiesBlacklist[chainFlagVal] {
 			glog.Fatalf(`%v: %v: reserved word
 					reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes',
-					please use a different identifier`, ErrInvalidFlag, ErrInvalidChainID)
+					please use a different identifier`, ErrInvalidFlag, core.ErrInvalidChainID)
 			identity = ""
 			return identity
 		}
@@ -204,7 +184,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 				}
 				// In edge case of using a config file for default configuration (decided by 'identity'),
 				// set global context and override config file.
-				if chainIdentitiesMorden[c.Identity] || chainIdentitiesMain[c.Identity] {
+				if core.ChainIdentitiesMorden[c.Identity] || core.ChainIdentitiesMain[c.Identity] {
 					if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), c.Identity); e != nil {
 						glog.Fatalf("Could not set global context chain identity to morden, error: %v", e)
 					}
@@ -219,7 +199,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 		identity = chainFlagVal
 		return identity
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
-		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, ErrInvalidChainID)
+		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, core.ErrInvalidChainID)
 		identity = ""
 		return identity
 	}
@@ -533,7 +513,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 // should attempt to migration from old (<=3.3) directory schema to new.
 func shouldAttemptDirMigration(ctx *cli.Context) bool {
 	if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
-		if chainVal := mustMakeChainIdentity(ctx); chainIdentitiesMain[chainVal] || chainIdentitiesMorden[chainVal] {
+		if chainVal := mustMakeChainIdentity(ctx); core.ChainIdentitiesMain[chainVal] || core.ChainIdentitiesMorden[chainVal] {
 			return true
 		}
 	}
@@ -601,6 +581,7 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 	ethConf := &eth.Config{
 		ChainConfig:             sconf.ChainConfig,
 		Genesis:                 sconf.Genesis,
+		UseAddrTxIndex:          ctx.GlobalBool(aliasableName(AddrTxIndexFlag.Name, ctx)),
 		FastSync:                ctx.GlobalBool(aliasableName(FastSyncFlag.Name, ctx)),
 		BlockChainVersion:       ctx.GlobalInt(aliasableName(BlockchainVersionFlag.Name, ctx)),
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
@@ -655,8 +636,8 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 // reading a file a couple of times was more efficient than storing a global.
 func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig {
 
-	if cacheChainConfig != nil {
-		return cacheChainConfig
+	if c := core.GetCacheChainConfig(); c != nil {
+		return c
 	}
 
 	config := &core.SufficientChainConfig{}
@@ -679,13 +660,13 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 			}
 			config.Network = i
 		}
-		cacheChainConfig = config
+		core.SetCacheChainConfig(config)
 	}()
 
 	chainIdentity := mustMakeChainIdentity(ctx)
 
 	// If chain identity is either of defaults (via config file or flag), use defaults.
-	if chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity] {
+	if core.ChainIdentitiesMain[chainIdentity] || core.ChainIdentitiesMorden[chainIdentity] {
 		// Initialise chain configuration before handling migrations or setting up node.
 		config.Identity = chainIdentity
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
@@ -724,7 +705,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	// Ensure JSON 'id' value matches name of parent chain subdir.
 	if config.Identity != chainIdentity {
-		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, ErrInvalidChainID, config.Identity, chainIdentity)
+		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, core.ErrInvalidChainID, config.Identity, chainIdentity)
 	}
 
 	// Set statedb StartingNonce from external config, if specified (is optional)
@@ -739,7 +720,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
 	chainIdentity := mustMakeChainIdentity(ctx)
-	chainIsCustom := !(chainIdentitiesMain[chainIdentity] || chainIdentitiesMorden[chainIdentity])
+	chainIsCustom := !(core.ChainIdentitiesMain[chainIdentity] || core.ChainIdentitiesMorden[chainIdentity])
 
 	// File logs.
 	// TODO: uglify V logs? provide more detail for debugging? normal users won't see this.
@@ -799,16 +780,30 @@ func MustMakeChainConfigFromDefaults(ctx *cli.Context) *core.ChainConfig {
 // MakeChainDatabase open an LevelDB using the flags passed to the client and will hard crash if it fails.
 func MakeChainDatabase(ctx *cli.Context) ethdb.Database {
 	var (
-		datadir = MustMakeChainDataDir(ctx)
-		cache   = ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx))
-		handles = MakeDatabaseHandles()
+		chaindir = MustMakeChainDataDir(ctx)
+		cache    = ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx))
+		handles  = MakeDatabaseHandles()
 	)
 
-	chainDb, err := ethdb.NewLDBDatabase(filepath.Join(datadir, "chaindata"), cache, handles)
+	chainDb, err := ethdb.NewLDBDatabase(filepath.Join(chaindir, "chaindata"), cache, handles)
 	if err != nil {
 		glog.Fatal("Could not open database: ", err)
 	}
 	return chainDb
+}
+
+func MakeIndexDatabase(ctx *cli.Context) ethdb.Database {
+	var (
+		chaindir = MustMakeChainDataDir(ctx)
+		cache    = ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx))
+		handles  = MakeDatabaseHandles()
+	)
+
+	indexesDb, err := ethdb.NewLDBDatabase(filepath.Join(chaindir, "indexes"), cache, handles)
+	if err != nil {
+		glog.Fatal("Could not open database: ", err)
+	}
+	return indexesDb
 }
 
 // MakeChain creates a chain manager from set command line flags.

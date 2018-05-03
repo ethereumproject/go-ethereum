@@ -152,4 +152,3 @@ func (m cachedTrie) CommitTo(dbw trie.DatabaseWriter) (common.Hash, error) {
 	}
 	return root, err
 }
-

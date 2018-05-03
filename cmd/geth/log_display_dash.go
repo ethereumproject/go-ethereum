@@ -98,8 +98,8 @@ func tuiDrawDash(e *eth.Ethereum) {
 		cid := e.ChainConfig().GetChainID()
 		cnet := e.NetVersion()
 		cname := ""
-		if cacheChainIdentity != "" {
-			cname = cacheChainIdentity
+		if id := core.GetCacheChainIdentity(); id != "" {
+			cname = id
 		}
 		headerInfo.Text = fmt.Sprintf(" Mode=%s Chain=%v(%d) Chain Id=%d \n"+
 			" local_head ◼ n=%d ⬡=%s txs=%d time=%v ago",

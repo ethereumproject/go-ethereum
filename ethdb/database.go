@@ -28,12 +28,13 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	ldbutil "github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 )
 
 var OpenFileLimit = 64
 
-// cacheRatio specifies how the total alloted cache is distributed between the
+// cacheRatio specifies how the total allotted cache is distributed between the
 // various system databases.
 var cacheRatio = map[string]float64{
 	"dapp":      0.0,
@@ -45,6 +46,14 @@ var cacheRatio = map[string]float64{
 var handleRatio = map[string]float64{
 	"dapp":      0.0,
 	"chaindata": 1.0,
+}
+
+func SetCacheRatio(db string, ratio float64) {
+	cacheRatio[db] = ratio
+}
+
+func SetHandleRatio(db string, ratio float64) {
+	handleRatio[db] = ratio
 }
 
 type LDBDatabase struct {
@@ -89,7 +98,6 @@ func NewLDBDatabase(file string, cache int, handles int) (*LDBDatabase, error) {
 	}, nil
 }
 
-
 // Path returns the path to the database directory.
 func (db *LDBDatabase) Path() string {
 	return db.file
@@ -122,6 +130,14 @@ func (self *LDBDatabase) Delete(key []byte) error {
 
 func (self *LDBDatabase) NewIterator() iterator.Iterator {
 	return self.db.NewIterator(nil, nil)
+}
+
+func (self *LDBDatabase) NewIteratorRange(slice *ldbutil.Range) iterator.Iterator {
+	return self.db.NewIterator(slice, nil)
+}
+
+func NewBytesPrefix(prefix []byte) *ldbutil.Range {
+	return ldbutil.BytesPrefix(prefix)
 }
 
 func (self *LDBDatabase) Close() {

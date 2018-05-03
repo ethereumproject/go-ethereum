@@ -24,12 +24,12 @@ import (
 	"sync"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 // The starting nonce determines the default nonce when new accounts are being
@@ -62,9 +62,9 @@ type revision struct {
 // * Contracts
 // * Accounts
 type StateDB struct {
-	db            Database
-	trie          Trie
-	pastTries     []*trie.SecureTrie
+	db        Database
+	trie      Trie
+	pastTries []*trie.SecureTrie
 
 	// DB error.
 	// State objects are used by the consensus core and VM which are
@@ -616,4 +616,3 @@ func (db *StateDB) ForEachStorage(addr common.Address, cb func(key, value common
 		}
 	}
 }
-

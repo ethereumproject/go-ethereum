@@ -17,6 +17,7 @@
 package core
 
 import (
+	"encoding/csv"
 	hexlib "encoding/hex"
 	"encoding/json"
 	"errors"
@@ -47,9 +48,48 @@ var (
 	ErrChainConfigNotFound     = errors.New("chain config not found")
 	ErrChainConfigForkNotFound = errors.New("chain config fork not found")
 
+	ErrInvalidChainID = errors.New("invalid chainID")
+
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
+
+	// Chain identities.
+	ChainIdentitiesBlacklist = map[string]bool{
+		"chaindata": true,
+		"dapp":      true,
+		"keystore":  true,
+		"nodekey":   true,
+		"nodes":     true,
+	}
+	ChainIdentitiesMain = map[string]bool{
+		"main":    true,
+		"mainnet": true,
+	}
+	ChainIdentitiesMorden = map[string]bool{
+		"morden":  true,
+		"testnet": true,
+	}
+
+	cacheChainIdentity string
+	cacheChainConfig   *SufficientChainConfig
 )
+
+func SetCacheChainIdentity(s string) {
+	cacheChainIdentity = s
+}
+
+func GetCacheChainIdentity() string {
+	return cacheChainIdentity
+}
+
+func SetCacheChainConfig(c *SufficientChainConfig) *SufficientChainConfig {
+	cacheChainConfig = c
+	return cacheChainConfig
+}
+
+func GetCacheChainConfig() *SufficientChainConfig {
+	return cacheChainConfig
+}
 
 // SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
 type SufficientChainConfig struct {
@@ -63,6 +103,7 @@ type SufficientChainConfig struct {
 	ChainConfig     *ChainConfig     `json:"chainConfig"`
 	Bootstrap       []string         `json:"bootstrap"`
 	ParsedBootstrap []*discover.Node `json:"-"`
+	Include         []string         `json:"include"` // config files to include
 }
 
 // StateConfig hold variable data for statedb.
@@ -84,6 +125,8 @@ type GenesisDump struct {
 
 	// Alloc maps accounts by their address.
 	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
+	// Alloc file contains CSV representation of Alloc
+	AllocFile string `json:"alloc_file"`
 }
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.
@@ -368,6 +411,24 @@ func (c *ChainConfig) HeaderCheck(h *types.Header) error {
 	return nil
 }
 
+// GetLatestRequiredHash returns the latest requiredHash from chain config for a given blocknumber n (eg. bc head).
+// It does NOT depend on forks being sorted.
+func (c *ChainConfig) GetLatestRequiredHashFork(n *big.Int) (f *Fork) {
+	lastBlockN := new(big.Int)
+	for _, ff := range c.Forks {
+		if ff.RequiredHash.IsEmpty() {
+			continue
+		}
+		// If this fork is chronologically later than lastSet fork with required hash AND given block n is greater than
+		// the fork.
+		if ff.Block.Cmp(lastBlockN) > 0 && n.Cmp(ff.Block) >= 0 {
+			f = ff
+			lastBlockN = ff.Block
+		}
+	}
+	return
+}
+
 func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
 	feature, _, configured := c.GetFeature(blockNumber, "eip155")
 	if configured {
@@ -417,10 +478,111 @@ func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
 	return nil
 }
 
-func parseExternalChainConfig(f io.Reader) (*SufficientChainConfig, error) {
+// resolvePath builds a path based on adjacentPath's directory.
+// It assumes that adjacentPath is the path of a file or immediate parent directory, and that
+// 'path' is either an absolute path or a path relative to the adjacentPath.
+func resolvePath(path, parentOrAdjacentPath string) string {
+	if !filepath.IsAbs(path) {
+		baseDir := filepath.Dir(parentOrAdjacentPath)
+		path = filepath.Join(baseDir, path)
+	}
+	return path
+}
+
+func parseAllocationFile(config *SufficientChainConfig, open func(string) (io.ReadCloser, error), currentFile string) error {
+	if config.Genesis == nil || config.Genesis.AllocFile == "" {
+		return nil
+	}
+
+	if len(config.Genesis.Alloc) > 0 {
+		return fmt.Errorf("error processing %s: \"alloc\" values already set, but \"alloc_file\" is provided", currentFile)
+	}
+	path := resolvePath(config.Genesis.AllocFile, currentFile)
+	csvFile, err := open(path)
+	if err != nil {
+		return fmt.Errorf("failed to read allocation file: %v", err)
+	}
+	defer csvFile.Close()
+
+	config.Genesis.Alloc = make(map[hex]*GenesisDumpAlloc)
+
+	reader := csv.NewReader(csvFile)
+	line := 1
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return fmt.Errorf("error while reading allocation file: %v", err)
+		}
+		if len(row) != 2 {
+			return fmt.Errorf("invalid number of values in line %d: expected 2, got %d", line, len(row))
+		}
+		line++
+
+		config.Genesis.Alloc[hex(row[0])] = &GenesisDumpAlloc{Balance: row[1]}
+	}
+
+	config.Genesis.AllocFile = ""
+	return nil
+}
+
+func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadCloser, error)) (*SufficientChainConfig, error) {
 	var config = &SufficientChainConfig{}
-	if err := json.NewDecoder(f).Decode(config); err != nil {
-		return nil, fmt.Errorf("%v: %s", f, err)
+	var processed []string
+
+	contains := func(hayStack []string, needle string) bool {
+		for _, v := range hayStack {
+			if needle == v {
+				return true
+			}
+		}
+		return false
+	}
+
+	var processFile func(path, parent string) error
+	processFile = func(path, parent string) (err error) {
+		path = resolvePath(path, parent)
+		if contains(processed, path) {
+			return nil
+		}
+		processed = append(processed, path)
+
+		f, err := open(path)
+		// return file close error as named return if another error is not already being returned
+		defer func() {
+			if closeErr := f.Close(); err == nil {
+				err = closeErr
+			}
+		}()
+		if err != nil {
+			return fmt.Errorf("failed to read chain configuration file: %s", err)
+		}
+		if err := json.NewDecoder(f).Decode(config); err != nil {
+			return fmt.Errorf("%v: %s", f, err)
+		}
+
+		// read csv alloc file
+		if err := parseAllocationFile(config, open, path); err != nil {
+			return err
+		}
+
+		includes := make([]string, len(config.Include))
+		copy(includes, config.Include)
+		config.Include = nil
+
+		for _, include := range includes {
+			err := processFile(include, path)
+			if err != nil {
+				return err
+			}
+		}
+		return
+	}
+
+	err := processFile(mainConfigFile, ".")
+	if err != nil {
+		return nil, err
 	}
 
 	// Make JSON 'id' -> 'identity' (for backwards compatibility)
@@ -458,13 +620,7 @@ func ReadExternalChainConfigFromFile(incomingPath string) (*SufficientChainConfi
 		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
 	}
 
-	f, err := os.Open(flaggedExternalChainConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read external chain configuration file: %s", err)
-	}
-	defer f.Close()
-
-	config, err := parseExternalChainConfig(f)
+	config, err := parseExternalChainConfig(flaggedExternalChainConfigPath, func(path string) (io.ReadCloser, error) { return os.Open(path) })
 	if err != nil {
 		return nil, err
 	}

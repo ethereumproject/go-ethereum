@@ -201,7 +201,6 @@ func decodeRef(buf []byte, cachegen uint16) (node, []byte, error) {
 	}
 }
 
-
 // wraps a decoding error with information about the path to the
 // invalid child node (for debugging encoding issues).
 type decodeError struct {
