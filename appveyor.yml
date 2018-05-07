@@ -15,6 +15,9 @@ install:
   - ps: $env:VERSION_BASE = "$(janus.exe version -format='v%M.%m.x')"
   - ps: $env:VERSION = "$(janus.exe version -format='TAG_OR_NIGHTLY')"
 
+  # Install schroedinger.
+  - go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
+
   # Install Rust.
   - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - rustup-init -yv --default-toolchain stable --default-host x86_64-pc-windows-gnu
@@ -36,7 +39,8 @@ install:
   - go env
   - go get golang.org/x/sys/windows
 build_script:
-  - go test -tags=sputnikvm ./...
+  - go test -tags="sputnikvm deterministic" ./...
+  - schroedinger.exe -t 5 -f .\schroedinger-tests.txt
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" github.com/ethereumproject/go-ethereum/cmd/geth
   - ps: >-
       .\geth.exe version | Where {$_ -match "^Version: "} | %{$actual=($_ -split "\s+")[1];If($actual -ne $env:VERSION){"Expected: `"$env:VERSION`", got: `"$ACTUAL`""; exit 1}} 
