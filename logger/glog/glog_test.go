@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -719,6 +720,7 @@ func testRotation(t *testing.T) {
 
 	// execute rotation
 	sb := &syncBuffer{}
+	atomic.StoreInt64(&rotationTime, 0) // make sure, that rotation is executed
 	sb.rotateOld(logDate)
 
 	// make assertions
@@ -760,7 +762,7 @@ func testRotation(t *testing.T) {
 			if maxTimestamp != "" && file.Mode().IsRegular() {
 				timestamp := extractTimestamp(file.Name(), preffix)
 				if strings.Compare(timestamp, maxTimestamp) < 0 {
-					t.Errorf("Old file not removed properly: %s\n", file.Name())
+					t.Errorf("Old file not removed properly: %s, %v\n", file.Name(), maxTimestamp)
 				}
 			}
 		}
