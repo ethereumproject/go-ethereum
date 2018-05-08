@@ -112,8 +112,8 @@ Loop:
 			key := common.BigToHash(ret.StorageKey())
 			if statedb.Exist(address) {
 				value := statedb.GetState(address, key).Big()
-				key := ret.StorageKey()
-				vm.CommitAccountStorage(address, key, value)
+				sKey := ret.StorageKey()
+				vm.CommitAccountStorage(address, sKey, value)
 				break
 			}
 			vm.CommitNonexist(address)
