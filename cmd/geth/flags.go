@@ -83,7 +83,7 @@ var (
 	CacheFlag = cli.IntFlag{
 		Name:  "cache",
 		Usage: "Megabytes of memory allocated to internal caching (min 16MB / database forced)",
-		Value: 128,
+		Value: 1024,
 	}
 	BlockchainVersionFlag = cli.IntFlag{
 		Name:  "blockchain-version,blockchainversion",
