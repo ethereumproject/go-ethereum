@@ -34,11 +34,10 @@ import (
 const (
 	defaultDialTimeout = 15 * time.Second
 
-	// Maximum number of concurrently handshaking inbound connections.
-	maxAcceptConns = 50
-
-	// Maximum number of concurrently dialing outbound connections.
-	maxActiveDialTasks = 16
+	// Connectivity defaults.
+	maxActiveDialTasks     = 16
+	defaultMaxPendingPeers = 50
+	defaultDialRatio       = 3
 
 	// Maximum time allowed for reading a complete message.
 	// This is effectively the amount of time a connection can be idle.
@@ -65,6 +64,11 @@ type Config struct {
 	// handshake phase, counted separately for inbound and outbound connections.
 	// Zero defaults to preset values.
 	MaxPendingPeers int
+
+	// DialRatio controls the ratio of inbound to dialed connections.
+	// Example: a DialRatio of 2 allows 1/2 of connections to be dialed.
+	// Setting DialRatio to zero defaults it to 3.
+	DialRatio int
 
 	// Discovery specifies whether the peer discovery mechanism should be started
 	// or not. Disabling is usually useful for protocol debugging (manual topology).
@@ -308,6 +312,7 @@ func (srv *Server) Start() (err error) {
 	}
 	srv.running = true
 	glog.V(logger.Info).Infoln("Starting Server")
+	glog.D(logger.Warn).Infoln("Starting server...")
 
 	// static fields
 	if srv.PrivateKey == nil {
@@ -339,10 +344,7 @@ func (srv *Server) Start() (err error) {
 		srv.ntab = ntab
 	}
 
-	dynPeers := (srv.MaxPeers + 1) / 2
-	if !srv.Discovery {
-		dynPeers = 0
-	}
+	dynPeers := srv.maxDialedConns()
 	dialer := newDialState(srv.StaticNodes, srv.ntab, dynPeers)
 
 	// handshake
@@ -358,6 +360,7 @@ func (srv *Server) Start() (err error) {
 	}
 	if srv.NoDial && srv.ListenAddr == "" {
 		glog.V(logger.Warn).Infoln("I will be kind-of useless, neither dialing nor listening.")
+		glog.V(logger.Warn).Warnln("Server will be kind of useless, neither dialing nor listening.")
 	}
 
 	srv.loopWG.Add(1)
@@ -398,6 +401,7 @@ func (srv *Server) run(dialstate dialer) {
 	defer srv.loopWG.Done()
 	var (
 		peers        = make(map[discover.NodeID]*Peer)
+		inboundCount = 0
 		trusted      = make(map[discover.NodeID]bool, len(srv.TrustedNodes))
 		taskdone     = make(chan task, maxActiveDialTasks)
 		runningTasks []task
@@ -475,19 +479,22 @@ running:
 			}
 			glog.V(logger.Detail).Infoln("<-posthandshake:", c)
 			// TODO: track in-progress inbound node IDs (pre-Peer) to avoid dialing them.
-			c.cont <- srv.encHandshakeChecks(peers, c)
+			c.cont <- srv.encHandshakeChecks(peers, inboundCount, c)
 		case c := <-srv.addpeer:
 			// At this point the connection is past the protocol handshake.
 			// Its capabilities are known and the remote identity is verified.
 			glog.V(logger.Detail).Infoln("<-addpeer:", c)
-			err := srv.protoHandshakeChecks(peers, c)
+			err := srv.protoHandshakeChecks(peers, inboundCount, c)
 			if err != nil {
 				glog.V(logger.Detail).Infof("Not adding %v as peer: %v", c, err)
 			} else {
 				// The handshakes are done and it passed all checks.
 				p := newPeer(c, srv.Protocols)
-				peers[c.id] = p
 				go srv.runPeer(p)
+				peers[c.id] = p
+				if p.Inbound() {
+					inboundCount++
+				}
 			}
 			// The dialer logic relies on the assumption that
 			// dial tasks complete after the peer has been added or
@@ -497,6 +504,9 @@ running:
 			// A peer disconnected.
 			glog.V(logger.Detail).Infoln("<-delpeer:", p)
 			delete(peers, p.ID())
+			if p.Inbound() {
+				inboundCount--
+			}
 		}
 	}
 
@@ -519,19 +529,21 @@ running:
 	}
 }
 
-func (srv *Server) protoHandshakeChecks(peers map[discover.NodeID]*Peer, c *conn) error {
+func (srv *Server) protoHandshakeChecks(peers map[discover.NodeID]*Peer, inboundCount int, c *conn) error {
 	// Drop connections with no matching protocols.
 	if len(srv.Protocols) > 0 && countMatchingProtocols(srv.Protocols, c.caps) == 0 {
 		return DiscUselessPeer
 	}
 	// Repeat the encryption handshake checks because the
 	// peer set might have changed between the handshakes.
-	return srv.encHandshakeChecks(peers, c)
+	return srv.encHandshakeChecks(peers, inboundCount, c)
 }
 
-func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, c *conn) error {
+func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, inboundCount int, c *conn) error {
 	switch {
 	case !c.is(trustedConn|staticDialedConn) && len(peers) >= srv.MaxPeers:
+		return DiscTooManyPeers
+	case !c.is(trustedConn) && c.is(inboundConn) && inboundCount >= srv.maxInboundConns():
 		return DiscTooManyPeers
 	case peers[c.id] != nil:
 		return DiscAlreadyConnected
@@ -540,6 +552,21 @@ func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, c *conn) 
 	default:
 		return nil
 	}
+}
+
+func (srv *Server) maxInboundConns() int {
+	return srv.MaxPeers - srv.maxDialedConns()
+}
+
+func (srv *Server) maxDialedConns() int {
+	if !srv.Discovery || srv.NoDial {
+		return 0
+	}
+	r := srv.DialRatio
+	if r == 0 {
+		r = defaultDialRatio
+	}
+	return srv.MaxPeers / r
 }
 
 type tempError interface {
@@ -552,10 +579,7 @@ func (srv *Server) listenLoop() {
 	defer srv.loopWG.Done()
 	glog.V(logger.Info).Infoln("Listening on", srv.listener.Addr())
 
-	// This channel acts as a semaphore limiting
-	// active inbound connections that are lingering pre-handshake.
-	// If all slots are taken, no further connections are accepted.
-	tokens := maxAcceptConns
+	tokens := defaultMaxPendingPeers
 	if srv.MaxPendingPeers > 0 {
 		tokens = srv.MaxPendingPeers
 	}
@@ -611,36 +635,36 @@ func (srv *Server) setupConn(fd net.Conn, flags connFlag, dialDest *discover.Nod
 	// Run the encryption handshake.
 	var err error
 	if c.id, err = c.doEncHandshake(srv.PrivateKey, dialDest); err != nil {
-		glog.V(logger.Debug).Infof("%v faild enc handshake: %v", c, err)
+		glog.V(logger.Debug).Warnf("%v faild enc handshake: %v", c, err)
 		c.close(err)
 		return
 	}
 	// For dialed connections, check that the remote public key matches.
 	if dialDest != nil && c.id != dialDest.ID {
 		c.close(DiscUnexpectedIdentity)
-		glog.V(logger.Debug).Infof("%v dialed identity mismatch, want %x", c, dialDest.ID[:8])
+		glog.V(logger.Debug).Warnf("%v dialed identity mismatch, want %x", c, dialDest.ID[:8])
 		return
 	}
 	if err := srv.checkpoint(c, srv.posthandshake); err != nil {
-		glog.V(logger.Debug).Infof("%v failed checkpoint posthandshake: %v", c, err)
+		glog.V(logger.Debug).Warnf("%v failed checkpoint posthandshake: %v", c, err)
 		c.close(err)
 		return
 	}
 	// Run the protocol handshake
 	phs, err := c.doProtoHandshake(srv.ourHandshake)
 	if err != nil {
-		glog.V(logger.Debug).Infof("%v failed proto handshake: %v", c, err)
+		glog.V(logger.Debug).Warnf("%v failed proto handshake: %v", c, err)
 		c.close(err)
 		return
 	}
 	if phs.ID != c.id {
-		glog.V(logger.Debug).Infof("%v wrong proto handshake identity: %x", c, phs.ID[:8])
+		glog.V(logger.Debug).Warnf("%v wrong proto handshake identity: %x", c, phs.ID[:8])
 		c.close(DiscUnexpectedIdentity)
 		return
 	}
 	c.caps, c.name = phs.Caps, phs.Name
 	if err := srv.checkpoint(c, srv.addpeer); err != nil {
-		glog.V(logger.Debug).Infof("%v failed checkpoint addpeer: %v", c, err)
+		glog.V(logger.Debug).Warnf("%v failed checkpoint addpeer: %v", c, err)
 		c.close(err)
 		return
 	}
@@ -669,12 +693,12 @@ func (srv *Server) checkpoint(c *conn, stage chan<- *conn) error {
 // the peer.
 func (srv *Server) runPeer(p *Peer) {
 	if logger.MlogEnabled() {
-		mlogServer.Send(mlogServerPeerAdded.SetDetailValues(
+		mlogServerPeerAdded.AssignDetails(
 			srv.PeerCount(),
 			p.ID().String(),
 			p.RemoteAddr().String(),
 			p.Name(),
-		))
+		).Send(mlogServer)
 	}
 
 	glog.V(logger.Debug).Infof("Added %v\n", p)
@@ -694,11 +718,11 @@ func (srv *Server) runPeer(p *Peer) {
 	srv.delpeer <- p
 
 	if logger.MlogEnabled() {
-		mlogServer.Send(mlogServerPeerRemove.SetDetailValues(
+		mlogServerPeerRemove.AssignDetails(
 			srv.PeerCount(),
 			p.ID().String(),
 			discreason.String(),
-		))
+		).Send(mlogServer)
 	}
 
 	glog.V(logger.Debug).Infof("Removed %v (%v)\n", p, discreason)

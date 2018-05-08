@@ -1,6 +1,7 @@
 // Go support for leveled logs, analogous to https://code.google.com/p/google-glog/
 //
 // Copyright 2013 Google Inc. All Rights Reserved.
+// Modifications copyright 2017 ETC Dev Team. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,37 +67,137 @@
 //		where pattern is a literal file name or "glob" pattern matching
 //		and N is a V level. For instance,
 //
-//			-vmodule=gopher.go=3
+//	-vmodule=gopher.go=3
 //		sets the V level to 3 in all Go files named "gopher.go".
 //
-//			-vmodule=foo=3
+//	-vmodule=foo=3
 //		sets V to 3 in all files of any packages whose import path ends in "foo".
 //
-//			-vmodule=foo/*=3
+//	-vmodule=foo/*=3
 //		sets V to 3 in all files of any packages whose import path contains "foo".
+//
+// This fork of original golang/glog adds log rotation functionality.
+// Logs are rotated after reaching file size limit or age limit. Additionally
+// limiting total amount of logs is supported (also by both size and age).
+// To keep it simple, log-rotation is configured with package-level variables:
+//  - MaxSize - maximum file size (in bytes) - default value: 1024 * 1024 * 1800
+//  - MinSize - minimum file size (in bytes) - default 0 (even empty file can be rotated)
+//  - MaxTotalSize - maximum size of all files (in bytes) - default 0 (do not remove old files)
+//  - RotationInterval - how often log should be rotated - default Never
+//  - MaxAge - maximum age (time.Duration) of log file - default 0 (do not remove old files)
+//  - Compress - whether to GZIP compress rotated logs - default - false
+//
+// Default values provide backward-compatibility with golang/glog. If compression is used,
+// all files except the current one are compressed with GZIP.
+//
+// Rotation works like this:
+//  - if MaxSize or RotationInterval is reached, and file size is > MinSize,
+//    current file became old file, and new file is created as a current log file
+//  - all log files older than MaxAge are removed
+//  - if compression is enabled, the old file is compressed
+//  - size of all log files in log_dir is recalculated (to handle external removals of files, etc)
+//  - oldest log files are removed until total size of log files doesn't exceed  MaxTotalSize-MaxSize
+// For sanity, this action is executed only when current file is needs to be rotated
+//
 package glog
 
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	stdLog "log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/fatih/color"
 )
+
+// DefaultVerbosity establishes the default verbosity Level for
+// to-file (debug) logging.
+var DefaultVerbosity = 5
+
+// DefaultDisplay establishes the default verbosity Level for
+// display (stderr) logging.
+var DefaultDisplay = 3
+
+// DefaultToStdErr establishes the default bool toggling whether logging
+// should be directed ONLY to stderr.
+var DefaultToStdErr = false
+
+// DefaultAlsoToStdErr establishes the default bool toggling whether logging
+// should be written to BOTH file and stderr.
+var DefaultAlsoToStdErr = false
+
+// DefaultLogDirName establishes the default directory name for debug (V) logs.
+// Log files will be written inside this dir.
+// By default, this directory will be created if it does not exist within the context's chain directory, eg.
+// <datadir>/<chain>/log/.
+var DefaultLogDirName = "log"
+
+// MinSize is a minimum file size qualifying for rotation. This variable can be used
+// to avoid rotation of empty or almost emtpy files.
+var MinSize uint64
+
+// MaxTotalSize is a maximum size of all log files.
+var MaxTotalSize uint64
+
+// Interval is a type for rotation interval specification
+type Interval uint8
+
+// These constants identify the interval for log rotation.
+const (
+	Never Interval = iota
+	Hourly
+	Daily
+	Weekly
+	Monthly
+)
+
+func ParseInterval(str string) (Interval, error) {
+	mapping := map[string]Interval{
+		"never":   Never,
+		"hourly":  Hourly,
+		"daily":   Daily,
+		"weekly":  Weekly,
+		"monthly": Monthly,
+	}
+
+	interval, ok := mapping[strings.ToLower(str)]
+	if !ok {
+		return Never, fmt.Errorf("invalid interval value '%s'", str)
+	}
+	return interval, nil
+}
+
+// RotationInterval determines how often log rotation should take place
+var RotationInterval = Never
+
+// MaxAge defines the maximum age of the oldest log file. All log files older
+// than MaxAge will be removed.
+var MaxAge time.Duration
+
+// Compress determines whether to compress rotated logs with GZIP or not.
+var Compress bool
 
 // severity identifies the sort of log: info, warning etc. It also implements
 // the flag.Value interface. The -stderrthreshold flag is of type severity and
 // should be modified only through the flag.Value interface. The values match
 // the corresponding constants in C++.
+// Severity is determined by the method called upon receiver Verbose,
+// eg. glog.V(logger.Debug).Warnf("this log's severity is %v", warningLog)
+// eg. glog.V(logger.Error).Infof("This log's severity is %v", infoLog)
 type severity int32 // sync/atomic int32
 
 // These constants identify the log levels in order of increasing severity.
@@ -111,6 +212,9 @@ const (
 )
 
 const severityChar = "IWEF"
+
+const severityColorReset = "\x1b[0m"                                        // reset both foreground and background
+var severityColor = []string{"\x1b[2m", "\x1b[33m", "\x1b[31m", "\x1b[35m"} // info:dim warn:yellow, error:red, fatal:magenta
 
 var severityName = []string{
 	infoLog:    "INFO",
@@ -138,6 +242,10 @@ func SetV(v int) {
 	logging.verbosity.set(Level(v))
 }
 
+func SetD(v int) {
+	display.verbosity.set(Level(v))
+}
+
 // SetToStderr sets the global output style
 func SetToStderr(toStderr bool) {
 	logging.mu.Lock()
@@ -149,6 +257,7 @@ func SetToStderr(toStderr bool) {
 // for logging to both FS and stderr.
 func SetAlsoToStderr(to bool) {
 	logging.mu.Lock()
+
 	logging.alsoToStderr = to
 	logging.mu.Unlock()
 }
@@ -166,6 +275,10 @@ func GetVModule() *moduleSpec {
 // GetVerbosity returns the global verbosity level flag.
 func GetVerbosity() *Level {
 	return &logging.verbosity
+}
+
+func GetDisplayable() *Level {
+	return &display.verbosity
 }
 
 // get returns the value of the severity.
@@ -411,7 +524,7 @@ func (t *TraceLocation) Get() interface{} {
 	return nil
 }
 
-var errTraceSyntax = errors.New("syntax error: expect file.go:234")
+var errTraceSyntax = errors.New("syntax error: expect 'file.go:234'")
 
 // Syntax: -log_backtrace_at=gopherflakes.go:234
 // Note that unlike vmodule the file extension is included here.
@@ -454,27 +567,16 @@ type flushSyncWriter interface {
 	io.Writer
 }
 
-func init() {
-	//flag.BoolVar(&logging.toStderr, "logtostderr", false, "log to standard error instead of files")
-	//flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", false, "log to standard error as well as files")
-	//flag.Var(&logging.verbosity, "v", "log level for V logs")
-	//flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this threshold go to stderr")
-	//flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
-	//flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
+type logTName string
 
-	// Default stderrThreshold is ERROR.
-	logging.stderrThreshold = errorLog
-	logging.setVState(3, nil, false)
-	go logging.flushDaemon()
-}
-
-// Flush flushes all pending log I/O.
-func Flush() {
-	logging.lockAndFlushAll()
-}
+const (
+	fileLog    logTName = "file"
+	displayLog logTName = "display"
+)
 
 // loggingT collects all the global state of the logging setup.
 type loggingT struct {
+	logTName
 	// Boolean flags. Not handled atomically because the flag.Value interface
 	// does not let us avoid the =true, and that shorthand is necessary for
 	// compatibility. TODO: does this matter enough to fix? Seems unlikely.
@@ -511,6 +613,20 @@ type loggingT struct {
 	// safely using atomic.LoadInt32.
 	vmodule   moduleSpec // The state of the -vmodule flag.
 	verbosity Level      // V logging level, the value of the -v flag/
+
+	// severityTraceThreshold determines the minimum severity at which
+	// file traces will be logged in the header. See severity const iota above.
+	// Only severities at or above this number will be logged with a trace,
+	// eg. at severityTraceThreshold = 2, then only severities errorLog and fatalLog
+	// will log with traces.
+	severityTraceThreshold severity
+
+	// verbosityTraceThreshold determines the minimum verbosity at which
+	// file traces will be logged in the header.
+	// Only levels at or above this number will be logged with a trace,
+	// eg. at verbosityTraceThreshold = 5, then only verbosities Debug, Detail, and Ridiculousness
+	// will log with traces.
+	verbosityTraceThreshold Level
 }
 
 // buffer holds a byte Buffer for reuse. The zero value is ready for use.
@@ -521,25 +637,99 @@ type buffer struct {
 }
 
 var logging loggingT
+var display loggingT
+
+func init() {
+	//flag.BoolVar(&logging.toStderr, "logtostderr", false, "log to standard error instead of files")
+	//flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", false, "log to standard error as well as files")
+	//flag.Var(&logging.verbosity, "v", "log level for V logs")
+	//flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this threshold go to stderr")
+	//flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
+	//flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line file:N, emit a stack trace")
+
+	logging.logTName = fileLog
+	// Default stderrThreshold is ERROR.
+	// This makes V(logger.Error) logs print ALSO to stderr.
+	logging.stderrThreshold = errorLog
+
+	// Establish defaults for trace thresholds.
+	logging.verbosityTraceThreshold.set(0)
+	logging.severityTraceThreshold.set(2)
+
+	// Default for verbosity.
+	logging.setVState(Level(DefaultVerbosity), nil, false)
+	go logging.flushDaemon()
+
+	display.logTName = displayLog
+	// Renders anything at or below (Warn...) level Info to stderr, which
+	// is set by default anyway.
+	display.stderrThreshold = infoLog
+
+	// toStderr makes it ONLY print to stderr, not to file
+	display.toStderr = true
+
+	// Should never reach... unless we get real fancy with D(levels)
+	display.verbosityTraceThreshold.set(5)
+	// Only includes traces for severity=fatal logs for display.
+	// This should never be reached; fatal logs should ALWAYS be logged to file,
+	// and they will also be written to stderr (anything Error and above is).
+	// Keep in mind severities are "upside-down" from verbosities; so here 3=error, 4=fatal, and 0=info
+	// and that here severity>=3 will meet the threshold.
+	display.severityTraceThreshold.set(2)
+	// Set display verbosity default Info. So it will render
+	// all Fatal, Error, Warn, and Info log levels.
+	// Please don't use Fatal for display; again, Fatal logs should only go through file logging
+	// (they will be printed to stderr anyway).
+	display.setVState(Level(DefaultDisplay), nil, false)
+	go display.flushDaemon()
+}
+
+// Flush flushes all pending log I/O.
+func Flush() {
+	logging.lockAndFlushAll()
+	display.lockAndFlushAll()
+}
+
+// traceThreshold determines the arbitrary level for log lines to be printed
+// with caller trace information in the header.
+func (l *loggingT) traceThreshold(s severity) bool {
+	return s >= l.severityTraceThreshold || l.verbosity >= l.verbosityTraceThreshold
+}
+
+// GetVTraceThreshold gets the current verbosity trace threshold for logging.
+func GetVTraceThreshold() *Level {
+	return &logging.verbosityTraceThreshold
+}
+
+// SetVTraceThreshold sets the current verbosity trace threshold for logging.
+func SetVTraceThreshold(v int) {
+	logging.mu.Lock()
+	defer logging.mu.Unlock()
+
+	l := logging.verbosity.get()
+	logging.verbosity.set(0)
+	logging.verbosityTraceThreshold.set(Level(v))
+	logging.verbosity.set(l)
+}
 
 // setVState sets a consistent state for V logging.
 // l.mu is held.
 func (l *loggingT) setVState(verbosity Level, filter []modulePat, setFilter bool) {
 	// Turn verbosity off so V will not fire while we are in transition.
-	logging.verbosity.set(0)
+	l.verbosity.set(0)
 	// Ditto for filter length.
-	atomic.StoreInt32(&logging.filterLength, 0)
+	atomic.StoreInt32(&l.filterLength, 0)
 
 	// Set the new filters and wipe the pc->Level map if the filter has changed.
 	if setFilter {
-		logging.vmodule.filter = filter
-		logging.vmap = make(map[uintptr]Level)
+		l.vmodule.filter = filter
+		l.vmap = make(map[uintptr]Level)
 	}
 
 	// Things are consistent now, so enable filtering and verbosity.
 	// They are enabled in order opposite to that in V.
-	atomic.StoreInt32(&logging.filterLength, int32(len(filter)))
-	logging.verbosity.set(verbosity)
+	atomic.StoreInt32(&l.filterLength, int32(len(filter)))
+	l.verbosity.set(verbosity)
 }
 
 // getBuffer returns a new, ready-to-use buffer.
@@ -621,28 +811,67 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 
 	// Avoid Fprintf, for speed. The format is so simple that we can do it quickly by hand.
 	// It's worth about 3X. Fprintf is hard.
-	_, month, day := now.Date()
+	year, month, day := now.Date()
 	hour, minute, second := now.Clock()
 	// Lmmdd hh:mm:ss.uuuuuu threadid file:line]
-	buf.tmp[0] = severityChar[s]
-	buf.twoDigits(1, int(month))
-	buf.twoDigits(3, day)
-	buf.tmp[5] = ' '
-	buf.twoDigits(6, hour)
-	buf.tmp[8] = ':'
-	buf.twoDigits(9, minute)
-	buf.tmp[11] = ':'
-	buf.twoDigits(12, second)
-	buf.tmp[14] = '.'
-	buf.nDigits(6, 15, now.Nanosecond()/1000, '0')
-	buf.tmp[21] = ' '
-	buf.Write(buf.tmp[:22])
-	buf.WriteString(file)
-	buf.tmp[0] = ':'
-	n := buf.someDigits(1, line)
-	buf.tmp[n+1] = ']'
-	buf.tmp[n+2] = ' '
-	buf.Write(buf.tmp[:n+3])
+
+	//buf.nDigits(8, 0, severityColor[s],'')
+
+	// If to-file (debuggable) logs.
+	if l.logTName == fileLog {
+		buf.tmp[0] = severityChar[s]
+		buf.Write(buf.tmp[:1])
+		buf.twoDigits(0, int(month))
+		buf.twoDigits(2, day)
+		buf.tmp[4] = ' '
+		buf.twoDigits(5, hour)
+		buf.tmp[7] = ':'
+		buf.twoDigits(8, minute)
+		buf.tmp[10] = ':'
+		buf.twoDigits(11, second)
+		// Only keep nanoseconds for file logs
+		buf.tmp[13] = '.'
+		buf.nDigits(6, 14, now.Nanosecond()/1000, '0')
+		buf.Write(buf.tmp[:20])
+		buf.WriteString(" ")
+
+		if l.traceThreshold(s) {
+			buf.WriteString(file)
+			buf.tmp[0] = ':'
+			n := buf.someDigits(1, line)
+			buf.tmp[n+1] = ']'
+			buf.tmp[n+2] = ' '
+			buf.Write(buf.tmp[:n+3])
+		}
+	} else {
+		// Write dim.
+		buf.WriteString(severityColor[infoLog])
+
+		buf.nDigits(4, 0, year, '_')
+		buf.nDigits(4, 0, year, '_')
+		buf.tmp[4] = '-'
+		buf.twoDigits(5, int(month))
+		buf.tmp[7] = '-'
+		buf.twoDigits(8, day)
+		buf.tmp[10] = ' '
+		buf.twoDigits(11, hour)
+		buf.tmp[13] = ':'
+		buf.twoDigits(14, minute)
+		buf.tmp[16] = ':'
+		buf.twoDigits(17, second)
+		buf.Write(buf.tmp[:19])
+
+		buf.WriteString(severityColorReset + " ")
+		if l.traceThreshold(s) {
+			buf.WriteString(severityColor[s])
+			buf.Write([]byte{'['})
+			buf.WriteString(severityName[s])
+			buf.Write([]byte{']'})
+			buf.WriteString(severityColorReset)
+			buf.Write([]byte{' '})
+		}
+	}
+
 	return buf
 }
 
@@ -737,14 +966,14 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 	}
 	data := buf.Bytes()
 	if l.toStderr {
-		os.Stderr.Write(data)
+		color.Error.Write(data)
 	} else {
 		if alsoToStderr || l.alsoToStderr || s >= l.stderrThreshold.get() {
-			os.Stderr.Write(data)
+			color.Error.Write(data)
 		}
 		if l.file[s] == nil {
 			if err := l.createFiles(s); err != nil {
-				os.Stderr.Write(data) // Make sure the message appears somewhere.
+				color.Error.Write(data) // Make sure the message appears somewhere.
 				l.exit(err)
 			}
 		}
@@ -774,7 +1003,7 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 		// If -logtostderr has been specified, the loop below will do that anyway
 		// as the first stack in the full dump.
 		if !l.toStderr {
-			os.Stderr.Write(stacks(false))
+			color.Error.Write(stacks(false))
 		}
 		// Write the stack trace for all goroutines to the files.
 		trace := stacks(true)
@@ -809,7 +1038,7 @@ func timeoutFlush(timeout time.Duration) {
 	select {
 	case <-done:
 	case <-time.After(timeout):
-		fmt.Fprintln(os.Stderr, "glog: Flush took longer than", timeout)
+		fmt.Fprintln(color.Error, "glog: Flush took longer than", timeout)
 	}
 }
 
@@ -842,7 +1071,7 @@ var logExitFunc func(error)
 // It flushes the logs and exits the program; there's no point in hanging around.
 // l.mu is held.
 func (l *loggingT) exit(err error) {
-	fmt.Fprintf(os.Stderr, "log: exiting because of error: %s\n", err)
+	fmt.Fprintf(color.Error, "log: exiting because of error: %s\n", err)
 	// If logExitFunc is set, we do that instead of exiting.
 	if logExitFunc != nil {
 		logExitFunc(err)
@@ -860,6 +1089,7 @@ type syncBuffer struct {
 	logger *loggingT
 	*bufio.Writer
 	file   *os.File
+	time   time.Time
 	sev    severity
 	nbytes uint64 // The number of bytes written to this file
 }
@@ -869,10 +1099,12 @@ func (sb *syncBuffer) Sync() error {
 }
 
 func (sb *syncBuffer) Write(p []byte) (n int, err error) {
-	if sb.nbytes+uint64(len(p)) >= MaxSize {
-		if err := sb.rotateFile(time.Now()); err != nil {
+	now := time.Now()
+	if sb.shouldRotate(len(p), now) {
+		if err := sb.rotateCurrent(now); err != nil {
 			sb.logger.exit(err)
 		}
+		go sb.rotateOld(now)
 	}
 	n, err = sb.Writer.Write(p)
 	sb.nbytes += uint64(n)
@@ -882,8 +1114,34 @@ func (sb *syncBuffer) Write(p []byte) (n int, err error) {
 	return
 }
 
-// rotateFile closes the syncBuffer's file and starts a new one.
-func (sb *syncBuffer) rotateFile(now time.Time) error {
+// shouldRotate checks if we need to rotate the current log file
+func (sb *syncBuffer) shouldRotate(len int, now time.Time) bool {
+	newLen := sb.nbytes + uint64(len)
+	if newLen <= MinSize {
+		return false
+	} else if MaxSize > 0 && newLen >= MaxSize {
+		return true
+	}
+
+	switch RotationInterval {
+	case Never:
+		return false
+	case Hourly:
+		return sb.time.Hour() != now.Hour()
+	case Daily:
+		return sb.time.Day() != now.Day()
+	case Weekly:
+		yearLog, weekLog := sb.time.ISOWeek()
+		yearNow, weekNow := now.ISOWeek()
+		return !(yearLog == yearNow && weekLog == weekNow)
+	case Monthly:
+		return sb.time.Month() != now.Month()
+	}
+	return false
+}
+
+// rotateCurrent closes the syncBuffer's file and starts a new one.
+func (sb *syncBuffer) rotateCurrent(now time.Time) error {
 	if sb.file != nil {
 		sb.Flush()
 		sb.file.Close()
@@ -891,6 +1149,7 @@ func (sb *syncBuffer) rotateFile(now time.Time) error {
 	var err error
 	sb.file, _, err = create(severityName[sb.sev], now)
 	sb.nbytes = 0
+	sb.time = time.Now()
 	if err != nil {
 		return err
 	}
@@ -906,6 +1165,220 @@ func (sb *syncBuffer) rotateFile(now time.Time) error {
 	n, err := sb.file.Write(buf.Bytes())
 	sb.nbytes += uint64(n)
 	return err
+}
+
+// converts plain log file to gzipped log file. New file is created
+func gzipFile(name string) error {
+	gzipped, err := os.Create(name + ".gz")
+	defer gzipped.Close()
+	if err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(gzipped)
+	gzipWriter := gzip.NewWriter(writer)
+
+	plain, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	reader := bufio.NewReader(plain)
+
+	// copy from plain text file to gzipped output
+	_, err = io.Copy(gzipWriter, reader)
+	_ = plain.Close()
+	if err != nil {
+		return err
+	}
+	if err = gzipWriter.Close(); err != nil {
+		return err
+	}
+	if err = writer.Flush(); err != nil {
+		return err
+	}
+	if err = gzipped.Sync(); err != nil {
+		return err
+	}
+	if err = gzipped.Close(); err != nil {
+		return err
+	}
+
+	return os.Remove(name)
+}
+
+var rotationTime int64
+
+func (sb *syncBuffer) rotateOld(now time.Time) {
+	nanos := now.UnixNano()
+	if atomic.CompareAndSwapInt64(&rotationTime, 0, nanos) {
+		logs, err := getLogFiles()
+		if err != nil {
+			Fatal(err)
+		}
+
+		logs = sb.excludeActive(logs)
+
+		logs, err = removeOutdated(logs, now)
+		if err != nil {
+			Fatal(err)
+		}
+
+		logs, err = compressOrphans(logs)
+		if err != nil {
+			Fatal(err)
+		}
+
+		if MaxTotalSize > MaxSize {
+			totalSize := getTotalSize(logs)
+			for i := 0; i < len(logs) && totalSize > MaxTotalSize-MaxSize; i++ {
+				err := os.Remove(filepath.Join(logs[i].dir, logs[i].name))
+				if err != nil {
+					Fatal(err)
+				}
+				totalSize -= logs[i].size
+			}
+		}
+
+		if current := atomic.SwapInt64(&rotationTime, 0); current > nanos {
+			go sb.rotateOld(time.Unix(0, current))
+		}
+	} else {
+		atomic.StoreInt64(&rotationTime, nanos)
+	}
+}
+
+type logFile struct {
+	dir       string
+	name      string
+	size      uint64
+	timestamp string
+}
+
+// getLogFiles returns log files, ordered from oldest to newest
+func getLogFiles() (logFiles []logFile, err error) {
+	prefix := fmt.Sprintf("%s.%s.%s.log.", program, host, userName)
+	for _, logDir := range logDirs {
+		files, err := ioutil.ReadDir(logDir)
+		if err == nil {
+			files = filterLogFiles(files, prefix)
+			for _, file := range files {
+				logFiles = append(logFiles, logFile{
+					dir:       logDir,
+					name:      file.Name(),
+					size:      uint64(file.Size()),
+					timestamp: extractTimestamp(file.Name(), prefix),
+				})
+			}
+			sort.Slice(logFiles, func(i, j int) bool {
+				return logFiles[i].timestamp < logFiles[j].timestamp
+			})
+			return logFiles, nil
+		}
+	}
+	return nil, errors.New("log: no log dirs")
+}
+
+func (sb *syncBuffer) excludeActive(logs []logFile) []logFile {
+	filtered := logs[:0]
+	current := sb.getCurrentLogs()
+	for _, log := range logs {
+		active := false
+		fullName := filepath.Join(log.dir, log.name)
+		for _, latest := range current {
+			if fullName == latest {
+				active = true
+			}
+		}
+		if !active {
+			filtered = append(filtered, log)
+		}
+	}
+	return filtered
+}
+
+// getCurrentLogs returns list of log files currently in use by the syncBuffer
+func (sb *syncBuffer) getCurrentLogs() (logs []string) {
+	if sb.logger == nil {
+		return nil
+	}
+	for _, buffer := range sb.logger.file {
+		if buffer != nil && buffer.(*syncBuffer).file != nil {
+			path, err := filepath.Abs(buffer.(*syncBuffer).file.Name())
+			if err == nil {
+				logs = append(logs, path)
+			}
+		}
+	}
+	return logs
+}
+
+func extractTimestamp(logFile, prefix string) string {
+	if len(logFile) <= len(prefix) {
+		return ""
+	}
+	splits := strings.SplitN(logFile[len(prefix):], ".", 3)
+	if len(splits) == 3 {
+		return splits[1]
+	} else {
+		return ""
+	}
+}
+
+func filterLogFiles(files []os.FileInfo, prefix string) []os.FileInfo {
+	filtered := files[:0]
+	for _, file := range files {
+		if !file.IsDir() && strings.HasPrefix(file.Name(), prefix) {
+			filtered = append(filtered, file)
+		}
+	}
+	return filtered
+}
+
+func removeOutdated(logs []logFile, now time.Time) ([]logFile, error) {
+	if MaxAge == 0 {
+		return logs, nil
+	}
+	t := now.Add(-1 * MaxAge)
+	timestamp := fmt.Sprintf("%04d%02d%02d-%02d%02d%02d",
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		t.Hour(),
+		t.Minute(),
+		t.Second(),
+	)
+
+	remaining := logs[:0]
+	for _, log := range logs {
+		if log.timestamp <= timestamp {
+			if err := os.Remove(filepath.Join(log.dir, log.name)); err != nil {
+				return nil, err
+			}
+		} else {
+			remaining = append(remaining, log)
+		}
+	}
+	return remaining, nil
+}
+
+// compress all uncompressed log files, except the currently used log file
+func compressOrphans(logs []logFile) ([]logFile, error) {
+	for i, log := range logs {
+		fullName := filepath.Join(log.dir, log.name)
+		if !strings.HasSuffix(log.name, ".gz") {
+			if err := gzipFile(fullName); err != nil {
+				return nil, err
+			}
+			logs[i].name += ".gz"
+		}
+	}
+	return logs, nil
+}
+
+func getTotalSize(logs []logFile) (size uint64) {
+	for _, log := range logs {
+		size += log.size
+	}
+	return
 }
 
 // bufferSize sizes the buffer associated with each log file. It's large
@@ -924,7 +1397,7 @@ func (l *loggingT) createFiles(sev severity) error {
 			logger: l,
 			sev:    s,
 		}
-		if err := sb.rotateFile(now); err != nil {
+		if err := sb.rotateCurrent(now); err != nil {
 			return err
 		}
 		l.file[s] = sb
@@ -955,6 +1428,12 @@ func (l *loggingT) flushAll() {
 	for s := fatalLog; s >= infoLog; s-- {
 		file := l.file[s]
 		if file != nil {
+			// if e := file.Flush(); e != nil {
+			// 	stdLog.Fatalln(e)
+			// }
+			// if e := file.Sync(); e != nil {
+			// 	stdLog.Fatalln(e)
+			// }
 			file.Flush() // ignore error
 			file.Sync()  // ignore error
 		}
@@ -1005,6 +1484,7 @@ func (lb logBridge) Write(b []byte) (n int, err error) {
 	}
 	// printWithFileLine with alsoToStderr=true, so standard log messages
 	// always appear on standard error.
+
 	logging.printWithFileLine(severity(lb), file, line, true, text)
 	return len(b), nil
 }
@@ -1032,6 +1512,7 @@ func (l *loggingT) setV(pc uintptr) Level {
 // Verbose is a boolean type that implements Infof (like Printf) etc.
 // See the documentation of V for more information.
 type Verbose bool
+type Displayable bool
 
 // V reports whether verbosity at the call site is at least the requested level.
 // The returned value is a boolean of type Verbose, which implements Info, Infoln
@@ -1055,7 +1536,6 @@ func V(level Level) Verbose {
 	if logging.verbosity.get() >= level {
 		return Verbose(true)
 	}
-
 	// It's off globally but it vmodule may still be set.
 	// Here is another cheap but safe test to see if vmodule is enabled.
 	if atomic.LoadInt32(&logging.filterLength) > 0 {
@@ -1076,6 +1556,71 @@ func V(level Level) Verbose {
 	return Verbose(false)
 }
 
+func D(level Level) Displayable {
+	// This function tries hard to be cheap unless there's work to do.
+	// The fast path is two atomic loads and compares.
+
+	// Here is a cheap but safe test to see if V logging is enabled globally.
+	if display.verbosity.get() >= level {
+		return Displayable(true)
+	}
+	// It's off globally but it vmodule may still be set.
+	// Here is another cheap but safe test to see if vmodule is enabled.
+	if atomic.LoadInt32(&display.filterLength) > 0 {
+		// Now we need a proper lock to use the logging structure. The pcs field
+		// is shared so we must lock before accessing it. This is fairly expensive,
+		// but if V logging is enabled we're slow anyway.
+		display.mu.Lock()
+		defer display.mu.Unlock()
+		if runtime.Callers(2, display.pcs[:]) == 0 {
+			return Displayable(false)
+		}
+		v, ok := display.vmap[logging.pcs[0]]
+		if !ok {
+			v = display.setV(logging.pcs[0])
+		}
+		return Displayable(v >= level)
+	}
+	return Displayable(false)
+}
+
+func (d Displayable) Infoln(args ...interface{}) {
+	if d {
+		display.println(infoLog, args...)
+	}
+}
+
+func (d Displayable) Infof(format string, args ...interface{}) {
+	if d {
+		display.printfmt(infoLog, format, args...)
+	}
+}
+
+func (d Displayable) Warnln(args ...interface{}) {
+	if d {
+		display.println(warningLog, args...)
+	}
+}
+
+func (d Displayable) Warnf(format string, args ...interface{}) {
+	if d {
+		display.printfmt(warningLog, format, args...)
+	}
+}
+
+func (d Displayable) Errorln(args ...interface{}) {
+	if d {
+		display.println(errorLog, args...)
+	}
+}
+
+func (d Displayable) Errorf(format string, args ...interface{}) {
+	if d {
+		display.printfmt(errorLog, format, args...)
+	}
+}
+
+// INFO
 // Info is equivalent to the global Info function, guarded by the value of v.
 // See the documentation of V for usage.
 func (v Verbose) Info(args ...interface{}) {
@@ -1097,6 +1642,56 @@ func (v Verbose) Infoln(args ...interface{}) {
 func (v Verbose) Infof(format string, args ...interface{}) {
 	if v {
 		logging.printfmt(infoLog, format, args...)
+	}
+}
+
+// WARN
+// Warn is equivalent to the global Warn function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warn(args ...interface{}) {
+	if v {
+		logging.print(warningLog, args...)
+	}
+}
+
+// Warnln is equivalent to the global Warnln function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warnln(args ...interface{}) {
+	if v {
+		logging.println(warningLog, args...)
+	}
+}
+
+// Warnf is equivalent to the global Warnf function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Warnf(format string, args ...interface{}) {
+	if v {
+		logging.printfmt(warningLog, format, args...)
+	}
+}
+
+// ERROR
+// Error is equivalent to the global Error function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Error(args ...interface{}) {
+	if v {
+		logging.print(errorLog, args...)
+	}
+}
+
+// Errorln is equivalent to the global Errorln function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Errorln(args ...interface{}) {
+	if v {
+		logging.println(errorLog, args...)
+	}
+}
+
+// Errorf is equivalent to the global Errorf function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v Verbose) Errorf(format string, args ...interface{}) {
+	if v {
+		logging.printfmt(errorLog, format, args...)
 	}
 }
 

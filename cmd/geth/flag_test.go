@@ -9,9 +9,12 @@ import (
 
 	"reflect"
 
+	"os/exec"
+
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -32,6 +35,11 @@ type flags []struct {
 }
 
 var gFlags flags
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 func makeTmpDataDir(t *testing.T) {
 	ogHome = common.HomeDir()
@@ -129,19 +137,13 @@ func TestMustMakeChainDataDir(t *testing.T) {
 		{[]string{"--chain", "testnet"}, filepath.Join(dd, "morden"), nil},
 		{[]string{"--chain", "kitty"}, filepath.Join(dd, "kitty"), nil},
 
-		// Passed when  run individually, but fails when run as go test. This is not a code problem.
-		{[]string{"--chain", "kitty/cat"}, filepath.Join(dd, funkyName), ErrInvalidChainID},
+		{[]string{"--chain", "kitty/cat"}, filepath.Join(dd, "kitty", "cat"), nil},
 		{[]string{"--chain", funkyName}, filepath.Join(dd, funkyName), nil},
 	}
 
 	for _, c := range cases {
 		// Unset cache.
-		cacheChainIdentity = ""
-
-		if c.err != nil {
-			t.Log("skipping test for erroring use case (will pass, but go test doesn't like glog)")
-			continue
-		}
+		core.SetCacheChainIdentity("")
 
 		setupFlags(t)
 
@@ -150,6 +152,7 @@ func TestMustMakeChainDataDir(t *testing.T) {
 				t.Fatal(e)
 			} else {
 				// don't compare the errors for now, this is enough
+				t.Log("got expected error/+usage info: ok\n(checks cli context flag parsing requires an argument)")
 				continue
 			}
 		}
@@ -183,24 +186,15 @@ func TestGetChainIdentityValue(t *testing.T) {
 
 		// Custom.
 		{[]string{"--chain", "kitty"}, "kitty"},
+		{[]string{"--chain", "kitty/cat"}, filepath.Join("kitty", "cat")},
 
 		// Blacklisted.
 		{[]string{"--chain", "chaindata"}, ""},
-		{[]string{"--chain", "dapp"}, ""},
-
-		// Invalid.
-		// These pass when test is run individually, but go test doesn't like error out.
-		{[]string{"--chain", "kitty/cat"}, ""},
 	}
 
 	for _, c := range cases {
 		// Unset cache.
-		cacheChainIdentity = ""
-
-		if c.want == "" {
-			t.Log("skipping test for erroring use case (will pass, but go test doesn't like glog)")
-			continue
-		}
+		core.SetCacheChainIdentity("")
 
 		setupFlags(t)
 
@@ -209,8 +203,25 @@ func TestGetChainIdentityValue(t *testing.T) {
 		}
 		context = cli.NewContext(app, set, nil)
 
-		if got := mustMakeChainIdentity(context); c.want != got {
-			t.Fatalf("[%v] want: %v, got: %v", c.flags, c.want, got)
+		if c.want != "" {
+			got := mustMakeChainIdentity(context)
+			if c.want != got {
+				t.Fatalf("[%v] want: %v, got: %v", c.flags, c.want, got)
+			}
+		} else {
+			// https://stackoverflow.com/questions/26225513/how-to-test-os-exit-scenarios-in-go
+			if os.Getenv("DOES_GLOG_FATAL") == "1" {
+				mustMakeChainIdentity(context)
+				return
+			}
+			cmd := exec.Command(os.Args[0], "-test.run=TestGetChainIdentityValue")
+			cmd.Env = append(os.Environ(), "DOES_GLOG_FATAL=1")
+			err := cmd.Run()
+			if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+				t.Log("expected osexit=1: ok", c.flags)
+				return
+			}
+			t.Fatalf("process ran with err %v, want exit status 1", err)
 		}
 
 	}

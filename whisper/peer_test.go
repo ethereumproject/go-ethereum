@@ -187,7 +187,7 @@ func TestPeerDeliver(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to wrap message: %v", err)
 	}
-	if err := p2p.Send(tester.stream, messagesCode, []*Envelope{envelope}); err != nil {
+	if _, err := p2p.Send(tester.stream, messagesCode, []*Envelope{envelope}); err != nil {
 		t.Fatalf("failed to transfer message: %v", err)
 	}
 	// Check that the message is delivered upstream
@@ -197,7 +197,7 @@ func TestPeerDeliver(t *testing.T) {
 		t.Fatalf("message delivery timeout")
 	}
 	// Check that a resend is not delivered
-	if err := p2p.Send(tester.stream, messagesCode, []*Envelope{envelope}); err != nil {
+	if _, err := p2p.Send(tester.stream, messagesCode, []*Envelope{envelope}); err != nil {
 		t.Fatalf("failed to transfer message: %v", err)
 	}
 	select {

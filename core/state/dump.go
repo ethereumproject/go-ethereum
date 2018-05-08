@@ -25,8 +25,10 @@ import (
 	"sort"
 	"sync"
 
+	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/ethereumproject/go-ethereum/trie"
 )
 
 type DumpAccount struct {
@@ -55,13 +57,12 @@ func lookupAddress(addr common.Address, addresses []common.Address) bool {
 }
 
 func (self *StateDB) RawDump(addresses []common.Address) Dump {
-
 	dump := Dump{
-		Root:     common.Bytes2Hex(self.trie.Root()),
+		Root:     fmt.Sprintf("%x", self.trie.Hash()),
 		Accounts: make(map[string]DumpAccount),
 	}
 
-	it := self.trie.Iterator()
+	it := trie.NewIterator(self.trie.NodeIterator(nil))
 	for it.Next() {
 		addr := self.trie.GetKey(it.Key)
 		addrA := common.BytesToAddress(addr)
@@ -88,7 +89,7 @@ func (self *StateDB) RawDump(addresses []common.Address) Dump {
 			Code:     common.Bytes2Hex(obj.Code(self.db)),
 			Storage:  make(map[string]string),
 		}
-		storageIt := obj.getTrie(self.db).Iterator()
+		storageIt := trie.NewIterator(obj.getTrie(self.db).NodeIterator(nil))
 		for storageIt.Next() {
 			account.Storage[common.Bytes2Hex(self.trie.GetKey(storageIt.Key))] = common.Bytes2Hex(storageIt.Value)
 		}
@@ -159,7 +160,7 @@ func (self *Zipper) UnZipBytes(data []byte) (result []byte, err error) {
 }
 
 func iterator(sdb *StateDB, addresses []common.Address, c chan *AddressedRawAccount) {
-	it := sdb.trie.Iterator()
+	it := trie.NewIterator(sdb.trie.NodeIterator(nil))
 	for it.Next() {
 		addr := sdb.trie.GetKey(it.Key)
 		addrA := common.BytesToAddress(addr)
@@ -188,7 +189,7 @@ func iterator(sdb *StateDB, addresses []common.Address, c chan *AddressedRawAcco
 				Storage:  make(map[string]string)},
 			Addr: common.Bytes2Hex(addr),
 		}
-		storageIt := obj.getTrie(sdb.db).Iterator()
+		storageIt := trie.NewIterator(obj.getTrie(sdb.db).NodeIterator(nil))
 		for storageIt.Next() {
 			account.Storage[common.Bytes2Hex(sdb.trie.GetKey(storageIt.Key))] = common.Bytes2Hex(storageIt.Value)
 		}
@@ -395,7 +396,7 @@ func (self *StateDB) SortedDump(addresses []common.Address, prefix string, inden
 		return
 	}
 
-	fwr := writer(common.Bytes2Hex(self.trie.Root()), true, prefix, indent, out)
+	fwr := writer(common.Bytes2Hex(self.trie.Hash().Bytes()), true, prefix, indent, out)
 
 	keys := make([]string, 0, len(accounts))
 	for k := range accounts {
@@ -421,7 +422,7 @@ func (self *StateDB) SortedDump(addresses []common.Address, prefix string, inden
 }
 
 func (self *StateDB) UnsortedDump(addresses []common.Address, prefix string, indent string, out io.Writer) (err error) {
-	fwr := writer(common.Bytes2Hex(self.trie.Root()), false, prefix, indent, out)
+	fwr := writer(common.Bytes2Hex(self.trie.Hash().Bytes()), false, prefix, indent, out)
 	return self.UnsortedRawDump(addresses, fwr)
 }
 

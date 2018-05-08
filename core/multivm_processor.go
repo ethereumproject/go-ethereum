@@ -5,7 +5,6 @@ package core
 import (
 	"math/big"
 
-	"github.com/ethereumproject/sputnikvm-ffi/go/sputnikvm"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -13,9 +12,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/sputnikvm-ffi/go/sputnikvm"
 )
 
 const SputnikVMExists = true
+
 var UseSputnikVM = false
 
 // Apply a transaction using the SputnikVM processor with the given
@@ -29,21 +30,21 @@ func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, s
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	vmtx := sputnikvm.Transaction {
-		Caller: from,
+	vmtx := sputnikvm.Transaction{
+		Caller:   from,
 		GasPrice: tx.GasPrice(),
 		GasLimit: tx.Gas(),
-		Address: tx.To(),
-		Value: tx.Value(),
-		Input: tx.Data(),
-		Nonce: new(big.Int).SetUint64(tx.Nonce()),
+		Address:  tx.To(),
+		Value:    tx.Value(),
+		Input:    tx.Data(),
+		Nonce:    new(big.Int).SetUint64(tx.Nonce()),
 	}
-	vmheader := sputnikvm.HeaderParams {
+	vmheader := sputnikvm.HeaderParams{
 		Beneficiary: header.Coinbase,
-		Timestamp: header.Time.Uint64(),
-		Number: header.Number,
-		Difficulty: header.Difficulty,
-		GasLimit: header.GasLimit,
+		Timestamp:   header.Time.Uint64(),
+		Number:      header.Number,
+		Difficulty:  header.Difficulty,
+		GasLimit:    header.GasLimit,
 	}
 
 	currentNumber := header.Number
@@ -52,14 +53,37 @@ func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, s
 	eip160Fork := config.ForkByName("Diehard")
 
 	var vm *sputnikvm.VM
-	if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
-		vm = sputnikvm.NewEIP160(&vmtx, &vmheader)
-	} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
-		vm = sputnikvm.NewEIP150(&vmtx, &vmheader)
-	} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
-		vm = sputnikvm.NewHomestead(&vmtx, &vmheader)
+	if state.StartingNonce == 0 {
+		if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
+			vm = sputnikvm.NewEIP160(&vmtx, &vmheader)
+		} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
+			vm = sputnikvm.NewEIP150(&vmtx, &vmheader)
+		} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
+			vm = sputnikvm.NewHomestead(&vmtx, &vmheader)
+		} else {
+			vm = sputnikvm.NewFrontier(&vmtx, &vmheader)
+		}
+	} else if state.StartingNonce == 1048576 {
+		if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
+			vm = sputnikvm.NewMordenEIP160(&vmtx, &vmheader)
+		} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
+			vm = sputnikvm.NewMordenEIP150(&vmtx, &vmheader)
+		} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
+			vm = sputnikvm.NewMordenHomestead(&vmtx, &vmheader)
+		} else {
+			vm = sputnikvm.NewMordenFrontier(&vmtx, &vmheader)
+		}
 	} else {
-		vm = sputnikvm.NewFrontier(&vmtx, &vmheader)
+		sputnikvm.SetCustomInitialNonce(big.NewInt(int64(state.StartingNonce)))
+		if eip160Fork.Block != nil && currentNumber.Cmp(eip160Fork.Block) >= 0 {
+			vm = sputnikvm.NewCustomEIP160(&vmtx, &vmheader)
+		} else if eip150Fork.Block != nil && currentNumber.Cmp(eip150Fork.Block) >= 0 {
+			vm = sputnikvm.NewCustomEIP150(&vmtx, &vmheader)
+		} else if homesteadFork.Block != nil && currentNumber.Cmp(homesteadFork.Block) >= 0 {
+			vm = sputnikvm.NewCustomHomestead(&vmtx, &vmheader)
+		} else {
+			vm = sputnikvm.NewCustomFrontier(&vmtx, &vmheader)
+		}
 	}
 
 Loop:
@@ -144,12 +168,12 @@ Loop:
 	}
 	for _, log := range vm.Logs() {
 		statelog := evm.NewLog(log.Address, log.Topics, log.Data, header.Number.Uint64())
-		statedb.AddLog(statelog)
+		statedb.AddLog(*statelog)
 	}
 	usedGas := vm.UsedGas()
 	totalUsedGas.Add(totalUsedGas, usedGas)
 
-	receipt := types.NewReceipt(statedb.IntermediateRoot().Bytes(), totalUsedGas)
+	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), totalUsedGas)
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
 	if MessageCreatesContract(tx) {

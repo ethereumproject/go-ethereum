@@ -18,10 +18,18 @@ package tests
 
 import (
 	"math/big"
+	mrand "math/rand"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
+}
 
 func TestBcValidBlockTests(t *testing.T) {
 	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcValidBlockTest.json"), BlockSkipTests)
@@ -45,6 +53,11 @@ func TestBcUncleTests(t *testing.T) {
 }
 
 func TestBcForkUncleTests(t *testing.T) {
+	// This test case depends on code that is non-deterministic by purpose - it's a protection against
+	// selfish miners. By seeding random number generator here, just before test, with constant seed,
+	// we ensure that correct path is selected - randomised chain reorganization action is not executed.
+	// This enable to deterministically test non-deterministic code.
+	mrand.Seed(123)
 	err := RunBlockTest(big.NewInt(1000000), big.NewInt(100000), filepath.Join(blockTestDir, "bcForkUncle.json"), BlockSkipTests)
 	if err != nil {
 		t.Fatal(err)

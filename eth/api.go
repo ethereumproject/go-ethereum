@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/common/compiler"
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -84,7 +85,7 @@ func stateAndBlockByNumber(m *miner.Miner, bc *core.BlockChain, blockNr rpc.Bloc
 	if block == nil {
 		return nil, nil, nil
 	}
-	stateDb, err := state.New(block.Root(), chainDb)
+	stateDb, err := state.New(block.Root(), state.NewDatabase(chainDb))
 	return stateDb, block, err
 }
 
@@ -294,6 +295,16 @@ func (s *PrivateMinerAPI) StopAutoDAG() bool {
 	return true
 }
 
+// StopAutoDAG stops auto DAG generation
+func (s *PrivateMinerAPI) SetExtra(b hexutil.Bytes) bool {
+	// types.HeaderExtraMax is the size limit for Header.Extra
+	if len(b) > types.HeaderExtraMax {
+		return false
+	}
+	miner.HeaderExtra = b
+	return true
+}
+
 // MakeDAG creates the new DAG for the given block number
 func (s *PrivateMinerAPI) MakeDAG(blockNr rpc.BlockNumber) (bool, error) {
 	if err := ethash.MakeDAG(uint64(blockNr.Int64()), ""); err != nil {
@@ -484,10 +495,28 @@ func (s *PrivateAccountAPI) LockAccount(addr common.Address) bool {
 	return s.am.Lock(addr) == nil
 }
 
-// SignAndSendTransaction will create a transaction from the given arguments and
+// Sign calculates an Ethereum ECDSA signature for:
+// keccack256("\x19Ethereum Signed Message:\n" + len(message) + message))
+//
+// Note, the produced signature conforms to the secp256k1 curve R, S and V values,
+// where the V value will be 27 or 28 for legacy reasons.
+//
+// The key used to calculate the signature is decrypted with the given password.
+//
+// https://github.com/ethereum/go-ethereum/wiki/Management-APIs#personal_sign
+func (s *PrivateAccountAPI) Sign(data hexutil.Bytes, addr common.Address, passwd string) (hexutil.Bytes, error) {
+	signature, err := s.am.SignWithPassphrase(addr, passwd, signHash(data))
+	if err != nil {
+		return nil, err
+	}
+	signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	return signature, nil
+}
+
+// SendTransaction will create a transaction from the given arguments and
 // tries to sign it with the key associated with args.To. If the given passwd isn't
 // able to decrypt the key it fails.
-func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
+func (s *PrivateAccountAPI) SendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
 	args = prepareSendTxArgs(args, s.gpo)
 
 	s.txMu.Lock()
@@ -514,12 +543,19 @@ func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd strin
 	return submitTransaction(s.bc, s.txPool, tx, signature)
 }
 
+// SignAndSendTransaction was renamed to SendTransaction. This method is deprecated
+// and will be removed in the future. It primary goal is to give clients time to update.
+func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd string) (common.Hash, error) {
+	return s.SendTransaction(args, passwd)
+}
+
 // PublicBlockChainAPI provides an API to access the Ethereum blockchain.
 // It offers only methods that operate on public data that is freely available to anyone.
 type PublicBlockChainAPI struct {
 	config                  *core.ChainConfig
 	bc                      *core.BlockChain
 	chainDb                 ethdb.Database
+	indexesDb               ethdb.Database
 	eventMux                *event.TypeMux
 	muNewBlockSubscriptions sync.Mutex                             // protects newBlocksSubscriptions
 	newBlockSubscriptions   map[string]func(core.ChainEvent) error // callbacks for new block subscriptions
@@ -1287,11 +1323,56 @@ func (s *PublicTransactionPoolAPI) SendRawTransaction(encodedTx string) (string,
 	return tx.Hash().Hex(), nil
 }
 
+// signHash is a helper function that calculates a hash for the given message that can be
+// safely used to calculate a signature from.
+//
+// The hash is calculated as
+//   keccak256("\x19Ethereum Signed Message:\n"${message length}${message}).
+//
+// This gives context to the signed message and prevents signing of transactions.
+func signHash(data []byte) []byte {
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), data)
+	return crypto.Keccak256([]byte(msg))
+}
+
+// EcRecover returns the address for the account that was used to create the signature.
+// Note, this function is compatible with eth_sign and personal_sign. As such it recovers
+// the address of:
+// hash = keccak256("\x19Ethereum Signed Message:\n"${message length}${message})
+// addr = ecrecover(hash, signature)
+//
+// Note, the signature must conform to the secp256k1 curve R, S and V values, where
+// the V value must be be 27 or 28 for legacy reasons.
+//
+// https://github.com/ethereum/go-ethereum/wiki/Management-APIs#personal_ecRecover
+func (s *PrivateAccountAPI) EcRecover(data, sig hexutil.Bytes) (common.Address, error) {
+	if len(sig) != 65 {
+		return common.Address{}, fmt.Errorf("signature must be 65 bytes long")
+	}
+	if sig[64] != 27 && sig[64] != 28 {
+		return common.Address{}, fmt.Errorf("invalid Ethereum signature (V is not 27 or 28)")
+	}
+	sig[64] -= 27 // Transform yellow paper V from 27/28 to 0/1
+
+	rpk, err := crypto.Ecrecover(signHash(data), sig)
+	if err != nil {
+		return common.Address{}, err
+	}
+	pubKey := crypto.ToECDSAPub(rpk)
+	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
+	return recoveredAddr, nil
+}
+
 // Sign signs the given hash using the key that matches the address. The key must be
 // unlocked in order to sign the hash.
-func (s *PublicTransactionPoolAPI) Sign(addr common.Address, hash common.Hash) (string, error) {
-	signature, error := s.am.Sign(addr, hash[:])
-	return common.ToHex(signature), error
+func (s *PublicBlockChainAPI) Sign(addr common.Address, data hexutil.Bytes) (hexutil.Bytes, error) {
+	signed := signHash(data)
+	signature, err := s.am.Sign(addr, signed)
+	if err != nil {
+		return nil, err
+	}
+	signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	return signature, err
 }
 
 // SignTransactionArgs represents the arguments to sign a transaction.
@@ -1614,6 +1695,49 @@ func (api *PrivateAdminAPI) ImportChain(file string) (bool, error) {
 
 // PublicDebugAPI is the collection of Etheruem APIs exposed over the public
 // debugging endpoint.
+type PublicGethAPI struct {
+	eth *Ethereum
+}
+
+// NewPublicDebugAPI creates a new API definition for the public debug methods
+// of the Ethereum service.
+func NewPublicGethAPI(eth *Ethereum) *PublicGethAPI {
+	return &PublicGethAPI{eth: eth}
+}
+
+// AddressTransactions gets transactions for a given address.
+// Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
+// Returns a slice of strings of transactions hashes.
+func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
+	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
+
+	db, inUse := api.eth.BlockChain().GetAddTxIndex()
+	if !inUse {
+		return nil, errors.New("addr-tx indexing not enabled")
+	}
+	// Use human-friendly abbreviations, per https://github.com/ethereumproject/go-ethereum/pull/475#issuecomment-366065122
+	// so 't' => to, 'f' => from, 'tf|ft' => either/both. Same pattern for txKindOf.
+	// _t_o OR _f_rom
+	if toOrFrom == "tf" || toOrFrom == "ft" {
+		toOrFrom = "b"
+	}
+	// _s_tandard OR _c_ontract
+	if txKindOf == "sc" || txKindOf == "cs" {
+		txKindOf = "b"
+	}
+
+	list = core.GetAddrTxs(db, address, blockStartN, blockEndN, toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+
+	// Since list is a slice, it can be nil, which returns 'null'.
+	// Should return empty 'array' if no txs found.
+	if list == nil {
+		list = []string{}
+	}
+	return list, nil
+}
+
+// PublicDebugAPI is the collection of Etheruem APIs exposed over the public
+// debugging endpoint.
 type PublicDebugAPI struct {
 	eth *Ethereum
 }
@@ -1684,6 +1808,13 @@ func (api *PublicDebugAPI) SeedHash(number uint64) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("0x%x", hash), nil
+}
+
+func (api *PublicDebugAPI) SetHead(number uint64) (bool, error) {
+	if e := api.eth.BlockChain().SetHead(number); e != nil {
+		return false, e
+	}
+	return true, nil
 }
 
 // Metrics return all available registered metrics for the client.
@@ -1763,9 +1894,15 @@ func (api *PublicDebugAPI) Verbosity(n uint64) (int, error) {
 	}
 	if nint <= logger.Detail || nint == logger.Ridiculousness {
 		glog.SetV(nint)
-		return int(*glog.GetVerbosity()), nil
+		i := int(*glog.GetVerbosity())
+		glog.V(logger.Warn).Infof("Set verbosity: %d", i)
+		glog.D(logger.Warn).Warnf("Set verbosity: %d", i)
+		return i, nil
 	}
-	return -1, errors.New("invalid logging level")
+	e := errors.New("invalid logging level")
+	glog.V(logger.Warn).Errorf("Set verbosity failed: %d (%v)", nint, e)
+	glog.D(logger.Error).Errorf("Set verbosity failed: %d (%v)", nint, e)
+	return -1, e
 }
 
 // Vmodule implements api method debug_vmodule, enabling setting
@@ -1775,7 +1912,15 @@ func (api *PublicDebugAPI) Vmodule(s string) (string, error) {
 		return glog.GetVModule().String(), nil
 	}
 	err := glog.GetVModule().Set(s)
-	return glog.GetVModule().String(), err
+	ns := glog.GetVModule().String()
+	if err != nil {
+		glog.V(logger.Warn).Infof("Set vmodule: '%s'", ns)
+		glog.D(logger.Warn).Warnf("Set vmodule: '%s'", ns)
+	} else {
+		glog.V(logger.Warn).Infof("Set vmodule failed: '%s' (%v)", ns, err)
+		glog.D(logger.Warn).Warnf("Set vmodule: '%s' (%v)", ns, err)
+	}
+	return ns, err
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM

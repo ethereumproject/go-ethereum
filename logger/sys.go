@@ -19,7 +19,11 @@ package logger
 import (
 	"fmt"
 	"sync"
+	"time"
 )
+
+// mlogLogRollIntervalDefault determines how often mlog files should roll
+const mlogLogRollIntervalDefault = 30 * time.Minute
 
 type stdMsg struct {
 	level LogLevel
@@ -77,8 +81,19 @@ func dispatchLoop() {
 		go sysLoop(sys, in, &systemWG)
 	}
 
+	var tick = time.NewTicker(mlogLogRollIntervalDefault)
+
 	for {
 		select {
+		// HACK: quick and dirty, but cheap, way to get mlog file rotation
+		case <-tick.C:
+			for _, s := range systems {
+				if c, ok := s.(*MLogSystem); ok {
+					if l := c.GetLogger(); l != nil {
+						l.SetOutput(c.NewFile())
+					}
+				}
+			}
 		case msg := <-logMessageC:
 			for _, c := range systemIn {
 				c <- msg

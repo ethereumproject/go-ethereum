@@ -5621,10 +5621,18 @@ var methods = function () {
         inputFormatter: [formatters.inputAddressFormatter]
     });
 
+	var sign = new Method({
+        name: 'sign',
+        call: 'personal_sign',
+        params: 3,
+        inputFormatter: [null, formatters.inputAddressFormatter, null]
+    });
+
     return [
         newAccount,
         unlockAccount,
-        lockAccount
+        lockAccount,        
+        sign
     ];
 };
 

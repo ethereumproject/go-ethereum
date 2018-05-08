@@ -24,6 +24,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -80,6 +81,8 @@ type Config struct {
 	MinerThreads   int
 	SolcPath       string
 
+	UseAddrTxIndex bool
+
 	GpoMinGasPrice          *big.Int
 	GpoMaxGasPrice          *big.Int
 	GpoFullBlockRatio       int
@@ -97,8 +100,9 @@ type Ethereum struct {
 	shutdownChan chan bool
 
 	// DB interfaces
-	chainDb ethdb.Database // Block chain database
-	dappDb  ethdb.Database // Dapp database
+	chainDb   ethdb.Database // Block chain database
+	dappDb    ethdb.Database // Dapp database
+	indexesDb ethdb.Database // Indexes database (optional -- eg. add-tx indexes)
 
 	// Handlers
 	txPool          *core.TxPool
@@ -153,6 +157,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	glog.V(logger.Info).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", ProtocolVersions, config.NetworkId, config.ChainConfig.GetChainID())
+	glog.D(logger.Warn).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", logger.ColorGreen(fmt.Sprintf("%v", ProtocolVersions)), logger.ColorGreen(strconv.Itoa(config.NetworkId)), logger.ColorGreen(func() string {
+		cid := config.ChainConfig.GetChainID().String()
+		if cid == "0" {
+			cid = "not set"
+		}
+		return cid
+	}()))
 
 	// Load up any custom genesis block if requested
 	if config.Genesis != nil {
@@ -218,6 +229,24 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		eth.pow = ethash.New()
 	}
 
+	// Initialize indexes db if enabled
+	// Blockchain will be assigned the db and atx enabled after blockchain is initialized below.
+	var indexesDb ethdb.Database
+	if config.UseAddrTxIndex {
+		// TODO: these are arbitrary numbers I just made up. Optimize?
+		// The reason these numbers are different than the atxi-build command is because for "appending" (vs. building)
+		// the atxi database should require far fewer resources since application performance is limited primarily by block import (chaindata db).
+		ethdb.SetCacheRatio("chaindata", 0.95)
+		ethdb.SetHandleRatio("chaindata", 0.95)
+		ethdb.SetCacheRatio("indexes", 0.05)
+		ethdb.SetHandleRatio("indexes", 0.05)
+		indexesDb, err = ctx.OpenDatabase("indexes", config.DatabaseCache, config.DatabaseCache)
+		if err != nil {
+			return nil, err
+		}
+		eth.indexesDb = indexesDb
+	}
+
 	// load the genesis block or write a new one if no genesis
 	// block is present in the database.
 	genesis := core.GetBlock(chainDb, core.GetCanonicalHash(chainDb, 0))
@@ -226,17 +255,21 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		if err != nil {
 			return nil, err
 		}
-		glog.V(logger.Info).Infof("Successfully wrote default ethereum mainnet genesis block: %s", genesis.Hash().Hex())
+		glog.V(logger.Info).Infof("Successfully wrote default ethereum mainnet genesis block: %s", logger.ColorGreen(genesis.Hash().Hex()))
+		glog.D(logger.Warn).Infof("Wrote mainnet genesis block: %s", logger.ColorGreen(genesis.Hash().Hex()))
 	}
 
 	// Log genesis block information.
+	var genName string
 	if fmt.Sprintf("%x", genesis.Hash()) == "0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303" {
-		glog.V(logger.Info).Infof("Successfully established morden testnet genesis block: \x1b[36m%s\x1b[39m", genesis.Hash().Hex())
+		genName = "morden testnet"
 	} else if fmt.Sprintf("%x", genesis.Hash()) == "d4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3" {
-		glog.V(logger.Info).Infof("Successfully established mainnet genesis block: \x1b[36m%s\x1b[39m", genesis.Hash().Hex())
+		genName = "mainnet"
 	} else {
-		glog.V(logger.Info).Infof("Successfully established custom genesis block: \x1b[36m%s\x1b[39m", genesis.Hash().Hex())
+		genName = "custom"
 	}
+	glog.V(logger.Info).Infof("Successfully established %s genesis block: %s", genName, genesis.Hash().Hex())
+	glog.D(logger.Warn).Infof("Genesis block: %s (%s)", logger.ColorGreen(genesis.Hash().Hex()), genName)
 
 	if config.ChainConfig == nil {
 		return nil, errors.New("missing chain config")
@@ -251,6 +284,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		}
 		return nil, err
 	}
+	// Configure enabled atxi for blockchain
+	if config.UseAddrTxIndex {
+		eth.blockchain.SetAddTxIndex(eth.indexesDb, true)
+	}
+
 	eth.gpo = NewGasPriceOracle(eth)
 
 	newPool := core.NewTxPool(eth.chainConfig, eth.EventMux(), eth.blockchain.State, eth.blockchain.GasLimit)
@@ -339,6 +377,11 @@ func (s *Ethereum) APIs() []rpc.API {
 			Namespace: "admin",
 			Version:   "1.0",
 			Service:   ethreg.NewPrivateRegistarAPI(s.chainConfig, s.blockchain, s.chainDb, s.txPool, s.accountManager),
+		}, {
+			Namespace: "geth",
+			Version:   "1.0",
+			Service:   NewPublicGethAPI(s),
+			Public:    true,
 		},
 	}
 }
@@ -349,7 +392,7 @@ func (s *Ethereum) ResetWithGenesisBlock(gb *types.Block) {
 
 func (s *Ethereum) Etherbase() (eb common.Address, err error) {
 	eb = s.etherbase
-	if (eb == common.Address{}) {
+	if eb.IsEmpty() {
 		firstAccount, err := s.AccountManager().AccountByIndex(0)
 		eb = firstAccount.Address
 		if err != nil {
@@ -378,6 +421,7 @@ func (s *Ethereum) DappDb() ethdb.Database             { return s.dappDb }
 func (s *Ethereum) IsListening() bool                  { return true } // Always listening
 func (s *Ethereum) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
 func (s *Ethereum) NetVersion() int                    { return s.netVersionId }
+func (s *Ethereum) ChainConfig() *core.ChainConfig     { return s.chainConfig }
 func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 
 // Protocols implements node.Service, returning all the currently configured

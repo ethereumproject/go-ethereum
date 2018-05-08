@@ -124,7 +124,7 @@ func TestCallRPCError(t *testing.T) {
 
 	res, err := callRPC(ctx, client)
 	if err == nil || errorMsg != err.Error() {
-		t.Fatal("Expected '%s', got '%s': ", errorMsg, err.Error())
+		t.Fatalf("Expected '%s', got '%s': ", errorMsg, err.Error())
 	}
 
 	if res != nil {

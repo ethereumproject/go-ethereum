@@ -22,12 +22,19 @@ import (
 	"net"
 	"reflect"
 	"testing"
+
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 type Service struct{}
 
 type Args struct {
 	S string
+}
+
+func init() {
+	glog.SetD(0)
+	glog.SetV(0)
 }
 
 func (s *Service) NoArgsRets() {

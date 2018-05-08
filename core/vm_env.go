@@ -83,7 +83,7 @@ func (self *VMEnv) GetHash(n uint64) common.Hash {
 }
 
 func (self *VMEnv) AddLog(log *vm.Log) {
-	self.state.AddLog(log)
+	self.state.AddLog(*log)
 }
 func (self *VMEnv) CanTransfer(from common.Address, balance *big.Int) bool {
 	return self.state.GetBalance(from).Cmp(balance) >= 0

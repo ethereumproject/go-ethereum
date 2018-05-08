@@ -20,13 +20,27 @@ import (
 	"context"
 	"sync"
 
+	"math/big"
+
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/rpc"
 )
 
-type DoneEvent struct{}
-type StartEvent struct{}
-type FailedEvent struct{ Err error }
+type DoneEvent struct {
+	Peer *peer
+	Hash common.Hash
+	TD   *big.Int
+}
+type StartEvent struct {
+	Peer *peer
+	Hash common.Hash
+	TD   *big.Int
+}
+type FailedEvent struct {
+	Peer *peer
+	Err  error
+}
 
 // PublicDownloaderAPI provides an API which gives information about the current synchronisation status.
 // It offers only methods that operates on data that can be available to anyone without security risks.

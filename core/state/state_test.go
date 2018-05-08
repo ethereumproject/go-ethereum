@@ -29,6 +29,7 @@ import (
 )
 
 type StateSuite struct {
+	db    *ethdb.MemDatabase
 	state *StateDB
 }
 
@@ -48,7 +49,7 @@ func (s *StateSuite) TestDump(c *checker.C) {
 	// write some of them to the trie
 	s.state.updateStateObject(obj1)
 	s.state.updateStateObject(obj2)
-	s.state.Commit()
+	s.state.CommitTo(s.db, false)
 
 	// check that dump contains the state objects that are in trie
 	got := string(s.state.Dump([]common.Address{}))
@@ -87,23 +88,20 @@ func (s *StateSuite) TestDump(c *checker.C) {
 }
 
 func (s *StateSuite) SetUpTest(c *checker.C) {
-	db, _ := ethdb.NewMemDatabase()
-	s.state, _ = New(common.Hash{}, db)
+	s.db, _ = ethdb.NewMemDatabase()
+	s.state, _ = New(common.Hash{}, NewDatabase(s.db))
 }
 
-func TestNull(t *testing.T) {
-	db, _ := ethdb.NewMemDatabase()
-	state, _ := New(common.Hash{}, db)
-
+func (s *StateSuite) TestNull(c *checker.C) {
 	address := common.HexToAddress("0x823140710bf13990e4500136726d8b55")
-	state.CreateAccount(address)
+	s.state.CreateAccount(address)
 	//value := common.FromHex("0x823140710bf13990e4500136726d8b55")
 	var value common.Hash
-	state.SetState(address, common.Hash{}, value)
-	state.Commit()
-	value = state.GetState(address, common.Hash{})
+	s.state.SetState(address, common.Hash{}, value)
+	s.state.CommitTo(s.db, false)
+	value = s.state.GetState(address, common.Hash{})
 	if !common.EmptyHash(value) {
-		t.Errorf("expected empty hash. got %x", value)
+		c.Errorf("expected empty hash. got %x", value)
 	}
 }
 
@@ -129,17 +127,15 @@ func (s *StateSuite) TestSnapshot(c *checker.C) {
 	c.Assert(data1, checker.DeepEquals, res)
 }
 
-func TestSnapshotEmpty(t *testing.T) {
-	db, _ := ethdb.NewMemDatabase()
-	state, _ := New(common.Hash{}, db)
-	state.RevertToSnapshot(state.Snapshot())
+func (s *StateSuite) TestSnapshotEmpty(c *checker.C) {
+	s.state.RevertToSnapshot(s.state.Snapshot())
 }
 
 // use testing instead of checker because checker does not support
 // printing/logging in tests (-check.vv does not work)
 func TestSnapshot2(t *testing.T) {
 	db, _ := ethdb.NewMemDatabase()
-	state, _ := New(common.Hash{}, db)
+	state, _ := New(common.Hash{}, NewDatabase(db))
 
 	stateobjaddr0 := toAddr([]byte("so0"))
 	stateobjaddr1 := toAddr([]byte("so1"))
@@ -152,7 +148,7 @@ func TestSnapshot2(t *testing.T) {
 	state.SetState(stateobjaddr1, storageaddr, data1)
 
 	// db, trie are already non-empty values
-	so0 := state.GetStateObject(stateobjaddr0)
+	so0 := state.getStateObject(stateobjaddr0)
 	so0.SetBalance(big.NewInt(42))
 	so0.SetNonce(43)
 	so0.SetCode(crypto.Keccak256Hash([]byte{'c', 'a', 'f', 'e'}), []byte{'c', 'a', 'f', 'e'})
@@ -160,11 +156,11 @@ func TestSnapshot2(t *testing.T) {
 	so0.deleted = false
 	state.setStateObject(so0)
 
-	root, _ := state.Commit()
+	root, _ := state.CommitTo(db, false)
 	state.Reset(root)
 
 	// and one with deleted == true
-	so1 := state.GetStateObject(stateobjaddr1)
+	so1 := state.getStateObject(stateobjaddr1)
 	so1.SetBalance(big.NewInt(52))
 	so1.SetNonce(53)
 	so1.SetCode(crypto.Keccak256Hash([]byte{'c', 'a', 'f', 'e', '2'}), []byte{'c', 'a', 'f', 'e', '2'})
@@ -172,7 +168,7 @@ func TestSnapshot2(t *testing.T) {
 	so1.deleted = true
 	state.setStateObject(so1)
 
-	so1 = state.GetStateObject(stateobjaddr1)
+	so1 = state.getStateObject(stateobjaddr1)
 	if so1 != nil {
 		t.Fatalf("deleted object not nil when getting")
 	}
@@ -180,15 +176,15 @@ func TestSnapshot2(t *testing.T) {
 	snapshot := state.Snapshot()
 	state.RevertToSnapshot(snapshot)
 
-	so0Restored := state.GetStateObject(stateobjaddr0)
+	so0Restored := state.getStateObject(stateobjaddr0)
 	// Update lazily-loaded values before comparing.
-	so0Restored.GetState(db, storageaddr)
-	so0Restored.Code(db)
+	so0Restored.GetState(state.db, storageaddr)
+	so0Restored.Code(state.db)
 	// non-deleted is equal (restored)
 	compareStateObjects(so0Restored, so0, t)
 
 	// deleted should be nil, both before and after restore of state copy
-	so1Restored := state.GetStateObject(stateobjaddr1)
+	so1Restored := state.getStateObject(stateobjaddr1)
 	if so1Restored != nil {
 		t.Fatalf("deleted object not nil after restoring snapshot: %+v", so1Restored)
 	}

@@ -42,7 +42,7 @@ const (
 	miningLogAtDepth = 5
 )
 
-// Agent can register themself with the worker
+// Agent can register itself with the worker
 type Agent interface {
 	Work() chan<- *Work
 	SetReturnCh(chan<- *Result)
@@ -262,12 +262,12 @@ func (self *worker) wait() {
 
 			if self.fullValidation {
 				if _, err := self.chain.InsertChain(types.Blocks{block}); err != nil {
-					log.Println("mine: ignoring invalid block #%d (%x) received:", block.Number(), block.Hash(), err)
+					log.Printf("mine: ignoring invalid block #%d (%x) received: %v\n", block.Number(), block.Hash(), err)
 					continue
 				}
 				go self.mux.Post(core.NewMinedBlockEvent{Block: block})
 			} else {
-				work.state.Commit()
+				work.state.CommitTo(self.chainDb, false)
 				parent := self.chain.GetBlock(block.ParentHash())
 				if parent == nil {
 					glog.V(logger.Error).Infoln("Invalid block found during mining")
@@ -333,12 +333,12 @@ func (self *worker) wait() {
 				work.localMinedBlocks = newLocalMinedBlock(block.Number().Uint64(), work.localMinedBlocks)
 			}
 			if logger.MlogEnabled() {
-				mlogMiner.Send(mlogMinerMineBlock.SetDetailValues(
+				mlogMinerMineBlock.AssignDetails(
 					block.Number(),
 					block.Hash().Hex(),
 					staleOrConfirmMsg,
 					miningLogAtDepth,
-				))
+				).Send(mlogMiner)
 			}
 			glog.V(logger.Info).Infof("🔨  Mined %sblock (#%v / %x). %s", stale, block.Number(), block.Hash().Bytes()[:4], confirm)
 
@@ -438,9 +438,9 @@ func (self *worker) logLocalMinedBlocks(current, previous *Work) {
 			inspectBlockNum := checkBlockNum - miningLogAtDepth
 			if self.isBlockLocallyMined(current, inspectBlockNum) {
 				if logger.MlogEnabled() {
-					mlogMiner.Send(mlogMinerConfirmMinedBlock.SetDetailValues(
+					mlogMinerConfirmMinedBlock.AssignDetails(
 						inspectBlockNum,
-					))
+					).Send(mlogMiner)
 				}
 				glog.V(logger.Info).Infof("🔨 🔗  Mined %d blocks back: block #%v", miningLogAtDepth, inspectBlockNum)
 			}
@@ -556,7 +556,7 @@ func (self *worker) commitNewWork() {
 	if atomic.LoadInt32(&self.mining) == 1 {
 		// commit state root after all state transitions.
 		core.AccumulateRewards(work.config, work.state, header, uncles)
-		header.Root = work.state.IntermediateRoot()
+		header.Root = work.state.IntermediateRoot(false)
 	}
 
 	// create the new block whose nonce will be mined.
@@ -566,12 +566,12 @@ func (self *worker) commitNewWork() {
 	if atomic.LoadInt32(&self.mining) == 1 {
 		elapsed := time.Since(tstart)
 		if logger.MlogEnabled() {
-			mlogMiner.Send(mlogMinerCommitWorkBlock.SetDetailValues(
+			mlogMinerCommitWorkBlock.AssignDetails(
 				work.Block.Number(),
 				work.tcount,
 				len(uncles),
 				elapsed,
-			))
+			).Send(mlogMiner)
 		}
 		glog.V(logger.Info).Infof("commit new work on block %v with %d txs & %d uncles. Took %v\n", work.Block.Number(), work.tcount, len(uncles), elapsed)
 		self.logLocalMinedBlocks(work, previous)
@@ -584,11 +584,11 @@ func (self *worker) commitUncle(work *Work, uncle *types.Header) error {
 	var e error
 	if logger.MlogEnabled() {
 		defer func() {
-			mlogMiner.Send(mlogMinerCommitUncle.SetDetailValues(
+			mlogMinerCommitUncle.AssignDetails(
 				uncle.Number,
 				hash.Hex(),
 				e,
-			))
+			).Send(mlogMiner)
 		}()
 	}
 	if work.uncles.Has(hash) {
@@ -696,11 +696,11 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, g
 
 	if logger.MlogEnabled() {
 		defer func() {
-			mlogMiner.Send(mlogMinerCommitTx.SetDetailValues(
+			mlogMinerCommitTx.AssignDetails(
 				env.header.Number,
 				tx.Hash().Hex(),
 				err,
-			))
+			).Send(mlogMiner)
 		}()
 	}
 

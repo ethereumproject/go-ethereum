@@ -17,8 +17,8 @@
 package trie
 
 import (
+	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
@@ -70,8 +70,8 @@ func NewSecure(root common.Hash, db Database, cachelimit uint16) (*SecureTrie, e
 // The value bytes must not be modified by the caller.
 func (t *SecureTrie) Get(key []byte) []byte {
 	res, err := t.TryGet(key)
-	if err != nil && glog.V(logger.Error) {
-		glog.Errorf("Unhandled trie error: %v", err)
+	if err != nil {
+		glog.Errorln(fmt.Sprintf("Unhandled trie error: %v", err))
 	}
 	return res
 }
@@ -90,8 +90,8 @@ func (t *SecureTrie) TryGet(key []byte) ([]byte, error) {
 // The value bytes must not be modified by the caller while they are
 // stored in the trie.
 func (t *SecureTrie) Update(key, value []byte) {
-	if err := t.TryUpdate(key, value); err != nil && glog.V(logger.Error) {
-		glog.Errorf("Unhandled trie error: %v", err)
+	if err := t.TryUpdate(key, value); err != nil {
+		glog.Errorln(fmt.Sprintf("Unhandled trie error: %v", err))
 	}
 }
 
@@ -115,8 +115,8 @@ func (t *SecureTrie) TryUpdate(key, value []byte) error {
 
 // Delete removes any existing value for key from the trie.
 func (t *SecureTrie) Delete(key []byte) {
-	if err := t.TryDelete(key); err != nil && glog.V(logger.Error) {
-		glog.Errorf("Unhandled trie error: %v", err)
+	if err := t.TryDelete(key); err != nil {
+		glog.Errorln(fmt.Sprintf("Unhandled trie error: %v", err))
 	}
 }
 
@@ -155,12 +155,15 @@ func (t *SecureTrie) Root() []byte {
 	return t.trie.Root()
 }
 
-func (t *SecureTrie) Iterator() *Iterator {
-	return t.trie.Iterator()
+func (t *SecureTrie) Copy() *SecureTrie {
+	cpy := *t
+	return &cpy
 }
 
-func (t *SecureTrie) NodeIterator() *NodeIterator {
-	return NewNodeIterator(&t.trie)
+// NodeIterator returns an iterator that returns nodes of the underlying trie. Iteration
+// starts at the key after the given start key.
+func (t *SecureTrie) NodeIterator(start []byte) NodeIterator {
+	return t.trie.NodeIterator(start)
 }
 
 // CommitTo writes all nodes and the secure hash pre-images to the given database.
@@ -195,10 +198,10 @@ func (t *SecureTrie) secKey(key []byte) []byte {
 // invalid on the next call to hashKey or secKey.
 func (t *SecureTrie) hashKey(key []byte) []byte {
 	h := newHasher(0, 0)
-	h.sha.Reset()
-	h.sha.Write(key)
-	buf := h.sha.Sum(t.hashKeyBuf[:0])
-	returnHasherToPool(h)
+	calculator := h.newCalculator()
+	calculator.sha.Write(key)
+	buf := calculator.sha.Sum(t.hashKeyBuf[:0])
+	h.returnCalculator(calculator)
 	return buf
 }
 

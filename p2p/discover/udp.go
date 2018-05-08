@@ -28,6 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p/distip"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
@@ -159,8 +160,16 @@ func makeEndpoint(addr *net.UDPAddr, tcpPort uint16) rpcEndpoint {
 	return rpcEndpoint{IP: ip, UDP: uint16(addr.Port), TCP: tcpPort}
 }
 
-func nodeFromRPC(rn rpcNode) (*Node, error) {
-	// TODO: don't accept localhost, LAN addresses from internet hosts
+func (t *udp) nodeFromRPC(sender *net.UDPAddr, rn rpcNode) (*Node, error) {
+	if rn.UDP <= 1024 {
+		return nil, errors.New("low port")
+	}
+	if err := distip.CheckRelayIP(sender.IP, rn.IP); err != nil {
+		return nil, err
+	}
+	if t.netrestrict != nil && !t.netrestrict.Contains(rn.IP) {
+		return nil, errors.New("not contained in netrestrict whitelist")
+	}
 	n := NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
 	err := n.validateComplete()
 	return n, err
@@ -184,6 +193,7 @@ type conn interface {
 // udp implements the RPC protocol.
 type udp struct {
 	conn        conn
+	netrestrict *distip.Netlist
 	priv        *ecdsa.PrivateKey
 	ourEndpoint rpcEndpoint
 
@@ -247,6 +257,7 @@ func ListenUDP(priv *ecdsa.PrivateKey, laddr string, natm nat.Interface, nodeDBP
 		return nil, err
 	}
 	glog.V(logger.Info).Infoln("Listening,", tab.self)
+	glog.D(logger.Warn).Infoln("UDP listening. Client enode:", logger.ColorGreen(tab.self.String()))
 	return tab, nil
 }
 
@@ -313,7 +324,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		reply := r.(*neighbors)
 		for _, rn := range reply.Nodes {
 			nreceived++
-			if n, err := nodeFromRPC(rn); err == nil {
+			if n, err := t.nodeFromRPC(toaddr, rn); err == nil {
 				nodes = append(nodes, n)
 			}
 		}
@@ -338,9 +349,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		var okNodes []*Node
 		for _, n := range nodes {
 			if isReserved(n.IP) {
-				if glog.V(logger.Debug) {
-					glog.Infof("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
-				}
+				glog.V(logger.Detail).Warnf("%v: removing from neighbors: toaddr: %v, id: %v, ip: %v", errReservedAddress, toaddr, n.ID, n.IP)
 				continue
 			}
 			okNodes = append(okNodes, n)
@@ -510,25 +519,25 @@ func (t *udp) send(toaddr *net.UDPAddr, ptype byte, req interface{}) error {
 		switch ptype {
 		// @sorpass: again, performance penalty?
 		case pingPacket:
-			mlogDiscover.Send(mlogPingSendTo.SetDetailValues(
+			mlogPingSendTo.AssignDetails(
 				toaddr.String(),
 				len(packet),
-			))
+			).Send(mlogDiscover)
 		case pongPacket:
-			mlogDiscover.Send(mlogPongSendTo.SetDetailValues(
+			mlogPongSendTo.AssignDetails(
 				toaddr.String(),
 				len(packet),
-			))
+			).Send(mlogDiscover)
 		case findnodePacket:
-			mlogDiscover.Send(mlogFindNodeSendTo.SetDetailValues(
+			mlogFindNodeSendTo.AssignDetails(
 				toaddr.String(),
 				len(packet),
-			))
+			).Send(mlogDiscover)
 		case neighborsPacket:
-			mlogDiscover.Send(mlogNeighborsSendTo.SetDetailValues(
+			mlogNeighborsSendTo.AssignDetails(
 				toaddr.String(),
 				len(packet),
-			))
+			).Send(mlogDiscover)
 		}
 	}
 	if glog.V(logger.Detail) {
@@ -607,29 +616,29 @@ func (t *udp) handlePacket(from *net.UDPAddr, buf []byte) error {
 		// since packet is an interface with 1 method: handle.
 		switch p := fmt.Sprintf("%T", packet); p {
 		case "*discover.ping":
-			mlogDiscover.Send(mlogPingHandleFrom.SetDetailValues(
+			mlogPingHandleFrom.AssignDetails(
 				from.String(),
 				fromID.String(),
 				len(buf),
-			))
+			).Send(mlogDiscover)
 		case "*discover.pong":
-			mlogDiscover.Send(mlogPongHandleFrom.SetDetailValues(
+			mlogPongHandleFrom.AssignDetails(
 				from.String(),
 				fromID.String(),
 				len(buf),
-			))
+			).Send(mlogDiscover)
 		case "*discover.findnode":
-			mlogDiscover.Send(mlogFindNodeHandleFrom.SetDetailValues(
+			mlogFindNodeHandleFrom.AssignDetails(
 				from.String(),
 				fromID.String(),
 				len(buf),
-			))
+			).Send(mlogDiscover)
 		case "*discover.neighbors":
-			mlogDiscover.Send(mlogNeighborsHandleFrom.SetDetailValues(
+			mlogNeighborsHandleFrom.AssignDetails(
 				from.String(),
 				fromID.String(),
 				len(buf),
-			))
+			).Send(mlogDiscover)
 		}
 	}
 	if glog.V(logger.Detail) {

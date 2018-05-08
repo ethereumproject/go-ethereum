@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// +build !deterministic
+
 package fetcher
 
 import (
@@ -32,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var (
@@ -43,6 +46,9 @@ var (
 )
 
 func init() {
+	glog.SetV(0)
+	glog.SetD(0)
+
 	var err error
 	testKey, err = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	if err != nil {
@@ -55,14 +61,14 @@ func init() {
 		panic(err)
 	}
 
-	statedb, err := state.New(common.Hash{}, testdb)
+	statedb, err := state.New(common.Hash{}, state.NewDatabase(testdb))
 	if err != nil {
 		panic(err)
 	}
 
 	obj := statedb.GetOrNewStateObject(testAddress)
 	obj.SetBalance(big.NewInt(1000000000))
-	root, err := statedb.Commit()
+	root, err := statedb.CommitTo(testdb, false)
 	if err != nil {
 		panic(fmt.Sprintf("cannot write state: %v", err))
 	}

@@ -16,7 +16,7 @@
 
 // This file 'mlog' is home to the 'discover' package implementation of mlog.
 // All available mlog lines should be established here as variables and documented.
-// For each instance of an mlog call, the respective MLogT variable SetDetailValues()
+// For each instance of an mlog call, the respective MLogT variable AssignDetails()
 // method should be called with per-use instance details.
 
 package discover
@@ -30,7 +30,7 @@ var mlogDiscover = logger.MLogRegisterAvailable("discover", mLogLines)
 // mLogLines is a private slice of all available mlog LINES.
 // May be used for automatic mlog docmentation generator, or
 // for API usage/display/documentation otherwise.
-var mLogLines = []logger.MLogT{
+var mLogLines = []*logger.MLogT{
 	mlogPingHandleFrom,
 	mlogPingSendTo,
 	mlogPongHandleFrom,
@@ -45,103 +45,103 @@ var mLogLines = []logger.MLogT{
 
 // PING
 // mlogPingHandleFrom is called once for each ping request from a node FROM
-var mlogPingHandleFrom = logger.MLogT{
+var mlogPingHandleFrom = &logger.MLogT{
 	Description: "Called once for each received PING request from peer FROM.",
 	Receiver:    "PING",
 	Verb:        "HANDLE",
 	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
-		{"FROM", "UDP_ADDRESS", "STRING"},
-		{"FROM", "ID", "STRING"},
-		{"PING", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "FROM", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FROM", Key: "ID", Value: "STRING"},
+		{Owner: "PING", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
-var mlogPingSendTo = logger.MLogT{
+var mlogPingSendTo = &logger.MLogT{
 	Description: "Called once for each outgoing PING request to peer TO.",
 	Receiver:    "PING",
 	Verb:        "SEND",
 	Subject:     "TO",
 	Details: []logger.MLogDetailT{
-		{"TO", "UDP_ADDRESS", "STRING"},
-		{"PING", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "TO", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "PING", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
 // PONG
 // mlogPongHandleFrom is called once for each pong request from a node FROM
-var mlogPongHandleFrom = logger.MLogT{
+var mlogPongHandleFrom = &logger.MLogT{
 	Description: "Called once for each received PONG request from peer FROM.",
 	Receiver:    "PONG",
 	Verb:        "HANDLE",
 	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
-		{"FROM", "UDP_ADDRESS", "STRING"},
-		{"FROM", "ID", "STRING"},
-		{"PONG", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "FROM", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FROM", Key: "ID", Value: "STRING"},
+		{Owner: "PONG", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
 // mlogPingHandleFrom is called once for each ping request from a node FROM
-var mlogPongSendTo = logger.MLogT{
+var mlogPongSendTo = &logger.MLogT{
 	Description: "Called once for each outgoing PONG request to peer TO.",
 	Receiver:    "PONG",
 	Verb:        "SEND",
 	Subject:     "TO",
 	Details: []logger.MLogDetailT{
-		{"TO", "UDP_ADDRESS", "STRING"},
-		{"PONG", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "TO", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "PONG", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
 // FINDNODE
 // mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
-var mlogFindNodeHandleFrom = logger.MLogT{
+var mlogFindNodeHandleFrom = &logger.MLogT{
 	Description: "Called once for each received FIND_NODE request from peer FROM.",
 	Receiver:    "FINDNODE",
 	Verb:        "HANDLE",
 	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
-		{"FROM", "UDP_ADDRESS", "STRING"},
-		{"FROM", "ID", "STRING"},
-		{"FINDNODE", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "FROM", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FROM", Key: "ID", Value: "STRING"},
+		{Owner: "FINDNODE", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
 // mlogFindNodeHandleFrom is called once for each findnode request from a node FROM
-var mlogFindNodeSendTo = logger.MLogT{
+var mlogFindNodeSendTo = &logger.MLogT{
 	Description: "Called once for each received FIND_NODE request from peer FROM.",
 	Receiver:    "FINDNODE",
 	Verb:        "SEND",
 	Subject:     "TO",
 	Details: []logger.MLogDetailT{
-		{"TO", "UDP_ADDRESS", "STRING"},
-		{"FINDNODE", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "TO", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FINDNODE", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
 // NEIGHBORS
 // mlogNeighborsHandleFrom is called once for each neighbors request from a node FROM
-var mlogNeighborsHandleFrom = logger.MLogT{
+var mlogNeighborsHandleFrom = &logger.MLogT{
 	Description: `Called once for each received NEIGHBORS request from peer FROM.`,
 	Receiver:    "NEIGHBORS",
 	Verb:        "HANDLE",
 	Subject:     "FROM",
 	Details: []logger.MLogDetailT{
-		{"FROM", "UDP_ADDRESS", "STRING"},
-		{"FROM", "ID", "STRING"},
-		{"NEIGHBORS", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "FROM", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "FROM", Key: "ID", Value: "STRING"},
+		{Owner: "NEIGHBORS", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }
 
 // mlogFindNodeSendNeighbors is called once for each sent NEIGHBORS request
-var mlogNeighborsSendTo = logger.MLogT{
+var mlogNeighborsSendTo = &logger.MLogT{
 	Description: `Called once for each outgoing NEIGHBORS request to peer TO.`,
 	Receiver:    "NEIGHBORS",
 	Verb:        "SEND",
 	Subject:     "TO",
 	Details: []logger.MLogDetailT{
-		{"TO", "UDP_ADDRESS", "STRING"},
-		{"NEIGHBORS", "BYTES_TRANSFERRED", "INT"},
+		{Owner: "TO", Key: "UDP_ADDRESS", Value: "STRING"},
+		{Owner: "NEIGHBORS", Key: "BYTES_TRANSFERRED", Value: "INT"},
 	},
 }

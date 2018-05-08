@@ -29,6 +29,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"reflect"
+	"strconv"
+
+	"encoding/binary"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -42,7 +46,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
 	"github.com/hashicorp/golang-lru"
-	"reflect"
 )
 
 var (
@@ -107,6 +110,9 @@ type BlockChain struct {
 	pow       pow.PoW
 	processor Processor // block processor interface
 	validator Validator // block and state validator interface
+
+	useAddTxIndex bool
+	indexesDb     ethdb.Database
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -134,7 +140,7 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error
-	bc.hc, err = NewHeaderChain(chainDb, config, gv, bc.getProcInterrupt)
+	bc.hc, err = NewHeaderChain(chainDb, config, mux, gv, bc.getProcInterrupt)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +188,7 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error
-	bc.hc, err = NewHeaderChain(chainDb, config, gv, bc.getProcInterrupt)
+	bc.hc, err = NewHeaderChain(chainDb, config, mux, gv, bc.getProcInterrupt)
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +212,21 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 	// // Take ownership of this particular state
 	//go bc.update()
 	return bc, nil
+}
+
+func (self *BlockChain) GetEventMux() *event.TypeMux {
+	return self.eventMux
+}
+
+// SetAddTxIndex sets the db and in-use var for atx indexing.
+func (self *BlockChain) SetAddTxIndex(db ethdb.Database, tf bool) {
+	self.useAddTxIndex = tf
+	self.indexesDb = db
+}
+
+// GetAddTxIndex return indexes db and if atx index in use.
+func (self *BlockChain) GetAddTxIndex() (ethdb.Database, bool) {
+	return self.indexesDb, self.useAddTxIndex
 }
 
 func (self *BlockChain) getProcInterrupt() bool {
@@ -420,7 +441,6 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	// a vulnerability.
 	// Random increments are only implemented with using an interval > 1.
 	randomizeIncrement := func(i int) int {
-		mrand.Seed(time.Now().UTC().UnixNano())
 		halfIncrement := i / 2
 		ri := mrand.Int63n(int64(halfIncrement))
 		if ri%2 == 0 {
@@ -445,11 +465,12 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 	}
 
 	// Set up logging for block recovery progress.
-	ticker := time.NewTicker(time.Second * 2)
+	ticker := time.NewTicker(time.Second * 3)
 	defer ticker.Stop()
 	go func() {
 		for range ticker.C {
-			glog.V(logger.Info).Infof("Recovered checkpoints through block #%d", checkpoint)
+			glog.V(logger.Info).Warnf("Recovered checkpoints through block #%d", checkpoint)
+			glog.D(logger.Warn).Warnf("Recovered checkpoints through block #%d", checkpoint)
 		}
 	}()
 
@@ -468,10 +489,10 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 		if checkpointBlockNext == nil {
 			// Traverse in small steps (increment =1) from last known big step (increment >1) checkpoint.
 			if increment > 1 && i-increment > 1 {
-				glog.V(logger.Debug).Infof("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i-increment, 1)
+				glog.V(logger.Debug).Warnf("Reached nil block #%d, retrying recovery beginning from #%d, incrementing +%d", i, i-increment, 1)
 				return self.Recovery(i-increment, 1) // hone in
 			}
-			glog.V(logger.Debug).Infof("No block data available for block #%d", uint64(i))
+			glog.V(logger.Debug).Warnf("No block data available for block #%d", uint64(i))
 			break
 		}
 
@@ -498,14 +519,14 @@ func (self *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 			}
 			continue
 		}
-		glog.V(logger.Error).Infof("WARNING: Found unhealthy block #%d (%v): \n\n%v", i, ee, checkpointBlockNext)
+		glog.V(logger.Error).Errorf("Found unhealthy block #%d (%v): \n\n%v", i, ee, checkpointBlockNext)
 		if increment == 1 {
 			break
 		}
 		return self.Recovery(i-increment, 1)
 	}
 	if checkpoint > 0 {
-		glog.V(logger.Warn).Infof("WARNING: Found recoverable blockchain data through block #%d", checkpoint)
+		glog.V(logger.Warn).Warnf("Found recoverable blockchain data through block #%d", checkpoint)
 	}
 	return checkpoint
 }
@@ -530,7 +551,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		defer self.mu.Lock()
 
 		if recoveredHeight == 0 {
-			glog.V(logger.Warn).Infoln("WARNING: No recoverable data found, resetting to genesis.")
+			glog.V(logger.Error).Errorln("No recoverable data found, resetting to genesis.")
 			return self.Reset()
 		}
 		// Remove all block header and canonical data above recoveredHeight
@@ -543,7 +564,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	if head == (common.Hash{}) {
 		// Corrupt or empty database, init from scratch
 		if !dryrun {
-			glog.V(logger.Warn).Infoln("WARNING: Empty database, attempting chain reset with recovery.")
+			glog.V(logger.Warn).Errorln("Empty database, attempting chain reset with recovery.")
 			return recoverOrReset()
 		}
 		return errors.New("empty HeadBlockHash")
@@ -556,7 +577,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		if !dryrun {
-			glog.V(logger.Warn).Infof("WARNING: Head block missing, hash: %x\nAttempting chain reset with recovery.", head)
+			glog.V(logger.Warn).Errorf("Head block missing, hash: %x\nAttempting chain reset with recovery.", head)
 			return recoverOrReset()
 		}
 		return errors.New("nil currentBlock")
@@ -568,7 +589,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		glog.V(logger.Info).Infof("Validating currentBlock: %v", currentBlock.Number())
 		if e := self.blockIsInvalid(currentBlock); e != nil {
 			if !dryrun {
-				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head full block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), e)
+				glog.V(logger.Warn).Errorf("Found unhealthy head full block #%d (%x): %v \nAttempting chain reset with recovery.", currentBlock.Number(), currentBlock.Hash(), e)
 				return recoverOrReset()
 			}
 			return fmt.Errorf("invalid currentBlock: %v", e)
@@ -590,7 +611,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	// Ensure total difficulty exists and is valid for current header.
 	if td := currentHeader.Difficulty; td == nil || td.Sign() < 1 {
 		if !dryrun {
-			glog.V(logger.Warn).Infof("WARNING: Found current header #%d with invalid TD=%v\nAttempting chain reset with recovery...", currentHeader.Number, td)
+			glog.V(logger.Warn).Errorf("Found current header #%d with invalid TD=%v\nAttempting chain reset with recovery...", currentHeader.Number, td)
 			return recoverOrReset()
 		}
 		return fmt.Errorf("invalid TD=%v for currentHeader=#%d", td, currentHeader.Number)
@@ -612,7 +633,7 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 		glog.V(logger.Info).Infof("Validating currentFastBlock: %v", self.currentFastBlock.Number())
 		if e := self.blockIsInvalid(self.currentFastBlock); e != nil {
 			if !dryrun {
-				glog.V(logger.Warn).Infof("WARNING: Found unhealthy head fast block #%d [%x]: %v \nAttempting chain reset with recovery.", self.currentFastBlock.Number(), self.currentFastBlock.Hash(), e)
+				glog.V(logger.Warn).Errorf("Found unhealthy head fast block #%d (%x): %v \nAttempting chain reset with recovery.", self.currentFastBlock.Number(), self.currentFastBlock.Hash(), e)
 				return recoverOrReset()
 			}
 			return fmt.Errorf("invalid currentFastBlock: %v", e)
@@ -644,19 +665,19 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	aboveHighestApparentHead := highestApparentHead + 2048
 
 	if b := self.GetBlockByNumber(aboveHighestApparentHead); b != nil {
-		glog.V(logger.Warn).Infof("WARNING: Found block data beyond apparent head (head=%d, found=%d)", highestApparentHead, aboveHighestApparentHead)
+		glog.V(logger.Warn).Errorf("Found block data beyond apparent head (head=%d, found=%d)", highestApparentHead, aboveHighestApparentHead)
 		return recoverOrReset()
 	}
 
 	// Check head block number congruent to hash.
 	if b := self.GetBlockByNumber(self.currentBlock.NumberU64()); b != nil && b.Header() != nil && b.Header().Hash() != self.currentBlock.Hash() {
-		glog.V(logger.Error).Infof("WARNING: Found head block number and hash mismatch: number=%d, hash=%x", self.currentBlock.NumberU64(), self.currentBlock.Hash())
+		glog.V(logger.Error).Errorf("Found head block number and hash mismatch: number=%d, hash=%x", self.currentBlock.NumberU64(), self.currentBlock.Hash())
 		return recoverOrReset()
 	}
 
 	// Check head header number congruent to hash.
 	if h := self.hc.GetHeaderByNumber(self.hc.CurrentHeader().Number.Uint64()); h != nil && self.hc.GetHeader(h.Hash()) != h {
-		glog.V(logger.Error).Infof("WARNING: Found head header number and hash mismatch: number=%d, hash=%x", self.hc.CurrentHeader().Number.Uint64(), self.hc.CurrentHeader().Hash())
+		glog.V(logger.Error).Errorf("Found head header number and hash mismatch: number=%d, hash=%x", self.hc.CurrentHeader().Number.Uint64(), self.hc.CurrentHeader().Hash())
 		return recoverOrReset()
 	}
 
@@ -668,12 +689,13 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	}
 	// If the current header is behind head full block OR fast block, we should reset to the height of last OK header.
 	if self.hc.CurrentHeader().Number.Cmp(highestCurrentBlockFastOrFull) < 0 {
-		glog.V(logger.Warn).Infof("WARNING: Found header height below block height, attempting reset with recovery...")
+		glog.V(logger.Error).Errorf("Found header height below block height, attempting reset with recovery...")
 		return recoverOrReset()
 	}
 
 	// Initialize a statedb cache to ensure singleton account bloom filter generation
-	statedb, err := state.New(self.currentBlock.Root(), self.chainDb)
+	//statedb, err := state.New(self.currentBlock.Root(), state.NewDatabase(self.chainDb))
+	statedb, err := state.New(self.currentBlock.Root(), state.NewDatabase(self.chainDb))
 	if err != nil {
 		return err
 	}
@@ -684,9 +706,21 @@ func (self *BlockChain) LoadLastState(dryrun bool) error {
 	headerTd := self.GetTd(self.hc.CurrentHeader().Hash())
 	blockTd := self.GetTd(self.currentBlock.Hash())
 	fastTd := self.GetTd(self.currentFastBlock.Hash())
-	glog.V(logger.Info).Infof("Last header: #%d [%x…] TD=%v", self.hc.CurrentHeader().Number, self.hc.CurrentHeader().Hash().Bytes()[:4], headerTd)
-	glog.V(logger.Info).Infof("Last block: #%d [%x…] TD=%v", self.currentBlock.Number(), self.currentBlock.Hash().Bytes()[:4], blockTd)
-	glog.V(logger.Info).Infof("Fast block: #%d [%x…] TD=%v", self.currentFastBlock.Number(), self.currentFastBlock.Hash().Bytes()[:4], fastTd)
+	glog.V(logger.Warn).Infof("Last header: #%d [%x…] TD=%v", self.hc.CurrentHeader().Number, self.hc.CurrentHeader().Hash().Bytes()[:4], headerTd)
+	glog.V(logger.Warn).Infof("Last block: #%d [%x…] TD=%v", self.currentBlock.Number(), self.currentBlock.Hash().Bytes()[:4], blockTd)
+	glog.V(logger.Warn).Infof("Fast block: #%d [%x…] TD=%v", self.currentFastBlock.Number(), self.currentFastBlock.Hash().Bytes()[:4], fastTd)
+	glog.D(logger.Warn).Infof("Local head header:     #%s [%s…] TD=%s",
+		logger.ColorGreen(strconv.FormatUint(self.hc.CurrentHeader().Number.Uint64(), 10)),
+		logger.ColorGreen(self.hc.CurrentHeader().Hash().Hex()[:8]),
+		logger.ColorGreen(fmt.Sprintf("%v", headerTd)))
+	glog.D(logger.Warn).Infof("Local head full block: #%s [%s…] TD=%s",
+		logger.ColorGreen(strconv.FormatUint(self.currentBlock.Number().Uint64(), 10)),
+		logger.ColorGreen(self.currentBlock.Hash().Hex()[:8]),
+		logger.ColorGreen(fmt.Sprintf("%v", blockTd)))
+	glog.D(logger.Warn).Infof("Local head fast block: #%s [%s…] TD=%s",
+		logger.ColorGreen(strconv.FormatUint(self.currentFastBlock.Number().Uint64(), 10)),
+		logger.ColorGreen(self.currentFastBlock.Hash().Hex()[:8]),
+		logger.ColorGreen(fmt.Sprintf("%v", fastTd)))
 
 	return nil
 }
@@ -730,7 +764,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		bc.currentBlock = bc.GetBlock(currentHeader.Hash())
 	}
 	if bc.currentBlock != nil {
-		if _, err := state.New(bc.currentBlock.Root(), bc.chainDb); err != nil {
+		if _, err := state.New(bc.currentBlock.Root(), state.NewDatabase(bc.chainDb)); err != nil {
 			// Rewound state missing, rolled back to before pivot, reset to genesis
 			bc.currentBlock = nil
 		}
@@ -752,6 +786,45 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	}
 	if err := WriteHeadFastBlockHash(bc.chainDb, bc.currentFastBlock.Hash()); err != nil {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
+	}
+
+	if bc.useAddTxIndex {
+		ldb, ok := bc.indexesDb.(*ethdb.LDBDatabase)
+		if !ok {
+			glog.Fatal("could not cast indexes db to level db")
+		}
+
+		var removals [][]byte
+		deleteRemovalsFn := func(rs [][]byte) {
+			for _, r := range rs {
+				if e := ldb.Delete(r); e != nil {
+					glog.Fatal(e)
+				}
+			}
+		}
+
+		pre := ethdb.NewBytesPrefix(txAddressIndexPrefix)
+		it := ldb.NewIteratorRange(pre)
+
+		for it.Next() {
+			key := it.Key()
+			_, bn, _, _, _ := resolveAddrTxBytes(key)
+			n := binary.LittleEndian.Uint64(bn)
+			if n > head {
+				removals = append(removals, key)
+				// Prevent removals from getting too massive in case it's a big rollback
+				// 100000 is a guess at a big but not-too-big memory allowance
+				if len(removals) > 100000 {
+					deleteRemovalsFn(removals)
+					removals = [][]byte{}
+				}
+			}
+		}
+		it.Release()
+		if e := it.Error(); e != nil {
+			return e
+		}
+		deleteRemovalsFn(removals)
 	}
 
 	bc.mu.Unlock()
@@ -858,7 +931,7 @@ func (self *BlockChain) State() (*state.StateDB, error) {
 
 // StateAt returns a new mutable state based on a particular point in time.
 func (self *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
-	return self.stateCache.New(root)
+	return state.New(root, state.NewDatabase(self.chainDb))
 }
 
 // Reset purges the entire blockchain, restoring it to its genesis state.
@@ -1009,7 +1082,7 @@ func (bc *BlockChain) HasBlockAndState(hash common.Hash) bool {
 		return false
 	}
 	// Ensure the associated state is also present
-	_, err := state.New(block.Root(), bc.chainDb)
+	_, err := state.New(block.Root(), state.NewDatabase(bc.chainDb))
 	return err == nil
 }
 
@@ -1212,6 +1285,12 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 				glog.Fatal(errs[index])
 				return
 			}
+			// Store the addr-tx indexes if enabled
+			if self.useAddTxIndex {
+				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+					glog.Fatalf("failed to write block add-tx indexes", err)
+				}
+			}
 			atomic.AddInt32(&stats.processed, 1)
 		}
 	}
@@ -1257,6 +1336,42 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 	return 0, nil
 }
 
+// WriteBlockAddrTxIndexesBatch builds indexes for a given range of blocks N. It writes batches at increment 'step'.
+// If any error occurs during db writing it will be returned immediately.
+// It's sole implementation is the command 'atxi-build', since we must use individual block atxi indexing during
+// sync and import in order to ensure we're on the canonical chain for each block.
+func (self *BlockChain) WriteBlockAddrTxIndexesBatch(indexDb ethdb.Database, startBlockN, stopBlockN, stepN uint64) (txsCount int, err error) {
+	block := self.GetBlockByNumber(startBlockN)
+	batch := indexDb.NewBatch()
+
+	blockProcessedCount := uint64(0)
+	blockProcessedHead := func() uint64 {
+		return startBlockN + blockProcessedCount
+	}
+
+	for block != nil && blockProcessedHead() <= stopBlockN {
+		txP, err := putBlockAddrTxsToBatch(batch, block)
+		if err != nil {
+			return txsCount, err
+		}
+		txsCount += txP
+		blockProcessedCount++
+
+		// Write on stepN mod
+		if blockProcessedCount%stepN == 0 {
+			if err := batch.Write(); err != nil {
+				return txsCount, err
+			} else {
+				batch = indexDb.NewBatch()
+			}
+		}
+		block = self.GetBlockByNumber(blockProcessedHead())
+	}
+
+	// This will put the last batch
+	return txsCount, batch.Write()
+}
+
 // WriteBlock writes the block to the chain.
 func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err error) {
 
@@ -1276,7 +1391,7 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 			if parent != nil {
 				parentTimeDiff = new(big.Int).Sub(block.Time(), parent.Time())
 			}
-			mlogBlockchain.Send(mlogBlockchainWriteBlock.SetDetailValues(
+			mlogBlockchainWriteBlock.AssignDetails(
 				mlogWriteStatus,
 				err,
 				block.Number(),
@@ -1290,7 +1405,7 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 				len(block.Uncles()),
 				block.ReceivedAt,
 				parentTimeDiff,
-			))
+			).Send(mlogBlockchain)
 		}()
 	}
 
@@ -1386,6 +1501,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 	defer close(nonceAbort)
 
 	txcount := 0
+	var latestBlockTime time.Time
 	for i, block := range chain {
 		if atomic.LoadInt32(&self.procInterrupt) == 1 {
 			glog.V(logger.Debug).Infoln("Premature abort during block chain processing")
@@ -1464,7 +1580,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			return i, err
 		}
 		// Write state changes to database
-		_, err = self.stateCache.Commit()
+		_, err = self.stateCache.CommitTo(self.chainDb, false)
 		if err != nil {
 			return i, err
 		}
@@ -1482,6 +1598,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 		if err != nil {
 			return i, err
 		}
+		latestBlockTime = time.Unix(block.Time().Int64(), 0)
 
 		switch status {
 		case CanonStatTy:
@@ -1502,6 +1619,12 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			if err := WriteMipmapBloom(self.chainDb, block.NumberU64(), receipts); err != nil {
 				return i, err
 			}
+			// Store the addr-tx indexes if enabled
+			if self.useAddTxIndex {
+				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+					glog.Fatalf("failed to write block add-tx indexes", err)
+				}
+			}
 		case SideStatTy:
 			if glog.V(logger.Detail) {
 				glog.Infof("inserted forked block #%d (TD=%v) (%d TXs %d UNCs) [%s]. Took %v\n", block.Number(), block.Difficulty(), len(block.Transactions()), len(block.Uncles()), block.Hash().Hex(), time.Since(bstart))
@@ -1511,11 +1634,21 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 		stats.processed++
 	}
 
-	if (stats.queued > 0 || stats.processed > 0 || stats.ignored > 0) && bool(glog.V(logger.Info)) {
+	if stats.queued > 0 || stats.processed > 0 || stats.ignored > 0 {
 		tend := time.Since(tstart)
 		start, end := chain[0], chain[len(chain)-1]
+		events = append(events, ChainInsertEvent{
+			stats.processed,
+			stats.queued,
+			stats.ignored,
+			txcount,
+			end.NumberU64(),
+			end.Hash(),
+			tend,
+			latestBlockTime,
+		})
 		if logger.MlogEnabled() {
-			mlogBlockchain.Send(mlogBlockchainInsertBlocks.SetDetailValues(
+			mlogBlockchainInsertBlocks.AssignDetails(
 				stats.processed,
 				stats.queued,
 				stats.ignored,
@@ -1524,7 +1657,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 				start.Hash().Hex(),
 				end.Hash().Hex(),
 				tend,
-			))
+			).Send(mlogBlockchain)
 		}
 		glog.V(logger.Info).Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%s / %s]\n",
 			stats.processed,
@@ -1616,12 +1749,23 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		glog.Infof("Chain split detected @ [%s]. Reorganising chain from #%v %s to %s", commonHash.Hex(), numSplit, oldStart.Hash().Hex(), newStart.Hash().Hex())
 	}
 	if logger.MlogEnabled() {
-		mlogBlockchain.Send(mlogBlockchainReorgBlocks.SetDetailValues(
+		mlogBlockchainReorgBlocks.AssignDetails(
 			commonHash.Hex(),
 			numSplit,
 			oldStart.Hash().Hex(),
 			newStart.Hash().Hex(),
-		))
+		).Send(mlogBlockchain)
+	}
+
+	// Remove all atxis from old chain; indexes should only reflect canonical
+	if self.useAddTxIndex {
+		for _, block := range oldChain {
+			for _, tx := range block.Transactions() {
+				if err := RmAddrTx(self.indexesDb, tx); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	var addedTxs types.Transactions
@@ -1632,6 +1776,12 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		// write canonical receipts and transactions
 		if err := WriteTransactions(self.chainDb, block); err != nil {
 			return err
+		}
+		// Store the addr-tx indexes if enabled
+		if self.useAddTxIndex {
+			if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
+				return err
+			}
 		}
 		receipts := GetBlockReceipts(self.chainDb, block.Hash())
 		// write receipts

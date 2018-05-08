@@ -30,19 +30,27 @@ import (
 )
 
 // MaxSize is the maximum size of a log file in bytes.
-var MaxSize uint64 = 1024 * 1024 * 1800
+var MaxSize uint64 = 1024 * 1800
 
 // logDirs lists the candidate directories for new log files.
 var logDirs []string
 
 // If non-empty, overrides the choice of directory in which to write logs.
 // See createLogDirs for the full list of possible destinations.
-//var logDir = flag.String("log_dir", "", "If non-empty, write log files in this directory")
+// var logDir = flag.String("log-dir", "", "If non-empty, write log files in this directory")
 
 var logDir *string = new(string)
 
 func SetLogDir(str string) {
 	*logDir = str
+}
+
+func GetLogDir() string {
+	return *logDir
+}
+
+func GetLogDirs() []string {
+	return logDirs
 }
 
 func createLogDirs() {

@@ -19,25 +19,25 @@
 package logger
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"math/big"
 	"os"
 	"os/user"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
-type mlogFormat uint
+type mlogFormatT uint
 
 const (
-	mLOGPlain mlogFormat = iota + 1
+	mLOGPlain mlogFormatT = iota + 1
 	mLOGKV
 	MLOGJSON
 )
@@ -45,17 +45,17 @@ const (
 var (
 	// If non-empty, overrides the choice of directory in which to write logs.
 	// See createLogDirs for the full list of possible destinations.
-	mLogDir    *string    = new(string)
-	mLogFormat mlogFormat = mLOGKV
+	mLogDir    = new(string)
+	mLogFormat = MLOGJSON
 
 	errMLogComponentUnavailable = errors.New("provided component name is unavailable")
 	ErrUnkownMLogFormat         = errors.New("unknown mlog format")
 
 	// MLogRegistryAvailable contains all available mlog components submitted by any package
 	// with MLogRegisterAvailable.
-	MLogRegistryAvailable = make(map[mlogComponent][]MLogT)
+	mLogRegistryAvailable = make(map[mlogComponent][]*MLogT)
 	// MLogRegistryActive contains all registered mlog component and their respective loggers.
-	MLogRegistryActive = make(map[mlogComponent]*Logger)
+	mLogRegistryActive = make(map[mlogComponent]*Logger)
 	mlogRegLock        sync.RWMutex
 
 	// Abstract literals (for documentation examples, labels)
@@ -63,12 +63,14 @@ var (
 		"INT":            int(0),
 		"BIGINT":         new(big.Int),
 		"STRING":         "string",
+		"BOOL":           true,
 		"QUOTEDSTRING":   "string with spaces",
 		"STRING_OR_NULL": nil,
 		"DURATION":       time.Minute + time.Second*3 + time.Millisecond*42,
+		"OBJECT":         common.GetClientSessionIdentity(),
 	}
 
-	MLogStringToFormat = map[string]mlogFormat{
+	MLogStringToFormat = map[string]mlogFormatT{
 		"plain": mLOGPlain,
 		"kv":    mLOGKV,
 		"json":  MLOGJSON,
@@ -77,11 +79,25 @@ var (
 	// Global var set to false if "--mlog=off", used to simply/
 	// speed-up checks to avoid performance penalty if mlog is
 	// off.
-	isMlogEnabled bool = true
+	isMlogEnabled bool
 )
+
+func (f mlogFormatT) String() string {
+	switch f {
+	case MLOGJSON:
+		return "json"
+	case mLOGKV:
+		return "kv"
+	case mLOGPlain:
+		return "plain"
+	}
+	panic(ErrUnkownMLogFormat)
+}
 
 // MLogT defines an mlog LINE
 type MLogT struct {
+	sync.Mutex
+	// TODO: can remove these json tags, since we have a custom MarshalJSON fn
 	Description string        `json:"-"`
 	Receiver    string        `json:"receiver"`
 	Verb        string        `json:"verb"`
@@ -125,10 +141,8 @@ func init() {
 	userName = strings.Replace(userName, `\`, "_", -1)
 }
 
-// Getters.
-func SetMlogEnabled(b bool) bool {
+func SetMlogEnabled(b bool) {
 	isMlogEnabled = b
-	return isMlogEnabled
 }
 
 func MlogEnabled() bool {
@@ -138,12 +152,37 @@ func MlogEnabled() bool {
 // MLogRegisterAvailable is called for each log component variable from a package/mlog.go file
 // as they set up their mlog vars.
 // It registers an mlog component as Available.
-func MLogRegisterAvailable(name string, lines []MLogT) mlogComponent {
+func MLogRegisterAvailable(name string, lines []*MLogT) mlogComponent {
 	c := mlogComponent(name)
 	mlogRegLock.Lock()
-	MLogRegistryAvailable[c] = lines
+	mLogRegistryAvailable[c] = lines
 	mlogRegLock.Unlock()
 	return c
+}
+
+// GetMlogRegistryAvailable returns copy of all registered components mapping
+func GetMLogRegistryAvailable() map[mlogComponent][]*MLogT {
+	mlogRegLock.RLock()
+	defer mlogRegLock.RUnlock()
+
+	ret := make(map[mlogComponent][]*MLogT)
+	for k, v := range mLogRegistryAvailable {
+		ret[k] = make([]*MLogT, len(v))
+		copy(ret[k], v)
+	}
+	return ret
+}
+
+// GetMlogRegistryActive returns copy of all active components mapping
+func GetMLogRegistryActive() map[mlogComponent]*Logger {
+	mlogRegLock.RLock()
+	defer mlogRegLock.RUnlock()
+
+	ret := make(map[mlogComponent]*Logger)
+	for k, v := range mLogRegistryActive {
+		ret[k] = v
+	}
+	return ret
 }
 
 // MLogRegisterComponentsFromContext receives a comma-separated string of
@@ -151,15 +190,37 @@ func MLogRegisterAvailable(name string, lines []MLogT) mlogComponent {
 // It returns an error if the specified mlog component is unavailable.
 // For each available component, the desires mlog components are registered as active,
 // creating new loggers for each.
+// If the string begins with '!', the function will remove the following components from the
+// default list
 func MLogRegisterComponentsFromContext(s string) error {
+	// negation
+	var negation bool
+	if strings.HasPrefix(s, "!") {
+		negation = true
+		s = strings.TrimPrefix(s, "!")
+	}
 	ss := strings.Split(s, ",")
-	for _, c := range ss {
-		ct := strings.TrimSpace(c)
-		if MLogRegistryAvailable[mlogComponent(ct)] != nil {
+
+	registry := GetMLogRegistryAvailable()
+
+	if !negation {
+		for _, c := range ss {
+			ct := strings.TrimSpace(c)
+			if _, ok := registry[mlogComponent(ct)]; !ok {
+				return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
+			}
 			MLogRegisterActive(mlogComponent(ct))
-			continue
 		}
-		return fmt.Errorf("%v: '%s'", errMLogComponentUnavailable, ct)
+		return nil
+	}
+	// Register all
+	for c := range registry {
+		MLogRegisterActive(c)
+	}
+	// then remove
+	for _, u := range ss {
+		ct := strings.TrimSpace(u)
+		mlogRegisterInactive(mlogComponent(ct))
 	}
 	return nil
 }
@@ -168,25 +229,31 @@ func MLogRegisterComponentsFromContext(s string) error {
 // Only registered loggers will write to mlog file.
 func MLogRegisterActive(component mlogComponent) {
 	mlogRegLock.Lock()
-	MLogRegistryActive[component] = NewLogger(string(component))
+	mLogRegistryActive[component] = NewLogger(string(component))
+	mlogRegLock.Unlock()
+}
+
+func mlogRegisterInactive(component mlogComponent) {
+	mlogRegLock.Lock()
+	delete(mLogRegistryActive, component) // noop if nil
 	mlogRegLock.Unlock()
 }
 
 // SendMLog writes enabled component mlogs to file if the component is registered active.
-func (c mlogComponent) Send(msg MLogT) {
+func (msg *MLogT) Send(c mlogComponent) {
 	mlogRegLock.RLock()
-	if l, exists := MLogRegistryActive[c]; exists {
-		l.SendFormatted(GetMLogFormat(), 1, msg)
+	if l, exists := mLogRegistryActive[c]; exists {
+		l.SendFormatted(GetMLogFormat(), 1, msg, c)
 	}
 	mlogRegLock.RUnlock()
 }
 
-func (l *Logger) SendFormatted(format mlogFormat, level LogLevel, msg MLogT) {
+func (l *Logger) SendFormatted(format mlogFormatT, level LogLevel, msg *MLogT, c mlogComponent) {
 	switch format {
 	case mLOGKV:
 		l.Sendln(level, msg.FormatKV())
 	case MLOGJSON:
-		logMessageC <- stdMsg{level, string(msg.FormatJSON())}
+		logMessageC <- stdMsg{level, string(msg.FormatJSON(c))}
 	case mLOGPlain:
 		l.Sendln(level, string(msg.FormatPlain()))
 	//case MLOGDocumentation:
@@ -202,8 +269,17 @@ func SetMLogDir(str string) {
 	*mLogDir = str
 }
 
-func SetMLogFormat(format mlogFormat) {
+func GetMLogDir() string {
+	m := *mLogDir
+	return m
+}
+
+func SetMLogFormat(format mlogFormatT) {
 	mLogFormat = format
+}
+
+func GetMLogFormat() mlogFormatT {
+	return mLogFormat
 }
 
 func SetMLogFormatFromString(formatString string) error {
@@ -213,10 +289,6 @@ func SetMLogFormatFromString(formatString string) error {
 		SetMLogFormat(f)
 	}
 	return nil
-}
-
-func GetMLogFormat() mlogFormat {
-	return mLogFormat
 }
 
 func createLogDirs() error {
@@ -238,10 +310,9 @@ func shortHostname(hostname string) string {
 // logName returns a new log file name containing tag, with start time t, and
 // the name for the symlink for tag.
 func logName(t time.Time) (name, link string) {
-	name = fmt.Sprintf("%s.%s.%s.mlog.%04d%02d%02d-%02d%02d%02d.%d",
+	name = fmt.Sprintf("%s.mlog.%s.%04d%02d%02d-%02d%02d%02d.%d.log",
 		program,
-		host,
-		userName,
+		common.SessionID,
 		t.Year(),
 		t.Month(),
 		t.Day(),
@@ -275,18 +346,6 @@ func CreateMLogFile(t time.Time) (f *os.File, filename string, err error) {
 	os.Remove(symlink)        // ignore err
 	os.Symlink(name, symlink) // ignore err
 
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "Log file created at: %s\n", t.Format("2006/01/02 15:04:05"))
-	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
-	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	cmps := []string{}
-	for k := range MLogRegistryActive {
-		cmps = append(cmps, string(k))
-	}
-	fmt.Fprintf(&buf, "Registered components: %v\n", cmps) // no need for fancy formatting
-	fmt.Fprintln(&buf, glog.Separator("-"))
-	f.Write(buf.Bytes())
-
 	return f, fname, nil
 }
 
@@ -303,14 +362,16 @@ func (m *MLogT) placeholderize() {
 	}
 }
 
-func (m *MLogT) FormatJSON() []byte {
-	b, _ := m.MarshalJSON()
+func (m *MLogT) FormatJSON(c mlogComponent) []byte {
+	b, _ := m.MarshalJSON(c)
 	return b
 }
 
 func (m *MLogT) FormatKV() (out string) {
+	m.Lock()
+	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s session=%s", m.Receiver, m.Verb, m.Subject, common.SessionID)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -323,8 +384,10 @@ func (m *MLogT) FormatKV() (out string) {
 }
 
 func (m *MLogT) FormatPlain() (out string) {
+	m.Lock()
+	defer m.Unlock()
 	m.placeholderize()
-	out = fmt.Sprintf("%s %s %s", m.Receiver, m.Verb, m.Subject)
+	out = fmt.Sprintf("%s %s %s %s", m.Receiver, m.Verb, m.Subject, common.SessionID)
 	for _, d := range m.Details {
 		v := fmt.Sprintf("%v", d.Value)
 		// quote strings which contains spaces
@@ -336,29 +399,21 @@ func (m *MLogT) FormatPlain() (out string) {
 	return out
 }
 
-func (m *MLogT) MarshalJSON() ([]byte, error) {
+func (m *MLogT) MarshalJSON(c mlogComponent) ([]byte, error) {
+	m.Lock()
+	defer m.Unlock()
 	var obj = make(map[string]interface{})
 	obj["event"] = m.EventName()
 	obj["ts"] = time.Now()
+	obj["session"] = common.SessionID
+	obj["component"] = string(c)
 	for _, d := range m.Details {
 		obj[d.EventName()] = d.Value
 	}
 	return json.Marshal(obj)
 }
 
-// Format usage print available mlog vars formatted for stderr help/usage instructions.
-func (m *MLogT) FormatUsage() (out string) {
-	// eg. BLOCKCHAIN WRITE BLOCK
-	out += fmt.Sprintf("\n%s %s %s", m.Receiver, m.Verb, m.Subject)
-	for _, d := range m.Details {
-		// eg. $BLOCK.HASH=<STRING>
-		out += fmt.Sprintf(" $%s.%s=%s", d.Owner, d.Key, d.Value)
-	}
-	out += fmt.Sprintf("\n  > %s", m.Description)
-	return out
-}
-
-func (m *MLogT) FormatJSONExample() []byte {
+func (m *MLogT) FormatJSONExample(c mlogComponent) []byte {
 	mm := &MLogT{
 		Receiver: m.Receiver,
 		Verb:     m.Verb,
@@ -367,7 +422,7 @@ func (m *MLogT) FormatJSONExample() []byte {
 	var dets []MLogDetailT
 	for _, d := range m.Details {
 		ex := mlogInterfaceExamples[d.Value.(string)]
-		// Type of var not matched to interfaceexample
+		// Type of var not matched to interface example
 		if ex == "" {
 			continue
 		}
@@ -378,7 +433,7 @@ func (m *MLogT) FormatJSONExample() []byte {
 		})
 	}
 	mm.Details = dets
-	b, _ := mm.MarshalJSON()
+	b, _ := mm.MarshalJSON(c)
 	return b
 }
 
@@ -388,7 +443,7 @@ func (m *MLogT) FormatDocumentation(cmp mlogComponent) (out string) {
 
 	// Get the json example before converting to abstract literal format, eg STRING -> $STRING
 	// This keeps the interface example dictionary as a separate concern.
-	exJSON := string(m.FormatJSONExample())
+	exJSON := string(m.FormatJSONExample(cmp))
 
 	// Set up arbitrary documentation abstract literal format
 	docDetails := []MLogDetailT{}
@@ -468,22 +523,23 @@ func (m *MLogDetailT) AsDocumentation() *MLogDetailT {
 	return m
 }
 
-// SetDetailValues is a setter function for setting values for pre-existing details.
+// AssignDetails is a setter function for setting values for pre-existing details.
 // It accepts a variadic number of empty interfaces.
 // If the number of arguments does not match  the number of established details
 // for the receiving MLogT, it will fatal error.
 // Arguments MUST be provided in the order in which they should be applied to the
 // slice of existing details.
-func (m MLogT) SetDetailValues(detailVals ...interface{}) MLogT {
-
+func (m *MLogT) AssignDetails(detailVals ...interface{}) *MLogT {
 	// Check for congruence between argument length and registered details.
 	if len(detailVals) != len(m.Details) {
-		glog.Fatal("mlog: wrong number of details set, want: ", len(m.Details), "got:", len(detailVals))
+		glog.Fatal(m.EventName(), "wrong number of details set, want: ", len(m.Details), "got:", len(detailVals))
 	}
 
+	m.Lock()
 	for i, detailval := range detailVals {
 		m.Details[i].Value = detailval
 	}
+	m.Unlock()
 
 	return m
 }
