@@ -70,8 +70,8 @@
   name = "github.com/rcrowley/go-metrics"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/rjeczalik/notify"
+  revision = "c31e5f2cb22b3e4ef3f882f413847669bf2652b9"
 
 [[constraint]]
   branch = "master"
