@@ -119,8 +119,9 @@ Loop:
 			vm.CommitNonexist(address)
 		case sputnikvm.RequireBlockhash:
 			number := ret.BlockNumber()
-			hash := bc.GetBlockByNumber(number.Uint64()).Hash()
-			vm.CommitBlockhash(number, hash)
+			if block := bc.GetBlockByNumber(number.Uint64()); block != nil && block.Number().Cmp(number) == 0 {
+				vm.CommitBlockhash(number, block.Hash())
+			}
 		}
 	}
 
