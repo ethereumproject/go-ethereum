@@ -112,14 +112,17 @@ Loop:
 			key := common.BigToHash(ret.StorageKey())
 			if statedb.Exist(address) {
 				value := statedb.GetState(address, key).Big()
-				key := ret.StorageKey()
-				vm.CommitAccountStorage(address, key, value)
+				sKey := ret.StorageKey()
+				vm.CommitAccountStorage(address, sKey, value)
 				break
 			}
 			vm.CommitNonexist(address)
 		case sputnikvm.RequireBlockhash:
 			number := ret.BlockNumber()
-			hash := bc.GetBlockByNumber(number.Uint64()).Hash()
+			hash := common.Hash{}
+			if block := bc.GetBlockByNumber(number.Uint64()); block != nil && block.Number().Cmp(number) == 0 {
+				hash = block.Hash()
+			}
 			vm.CommitBlockhash(number, hash)
 		}
 	}
