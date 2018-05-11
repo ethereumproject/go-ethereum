@@ -42,19 +42,6 @@ setup() {
     [[ "$output" =~ $regex_signature_success ]]
 }
 
-# This is a failing test. It also fails using ETH/Foundation/Multi geth, although
-# the wiki documentation in all cases cites using "Schoolbus" as an example of arbitrary signable data.
-# Turns out, you have to use 0x-prefixed hex data (hex string 'deadbeef' will also fail).
-@test "personal_sign3" {
-		skip "Contrary to documentation, data to sign must be 0x-prefixed hex format."
-    run $GETH_CMD \
-				--password=<(echo $tesetacc_pass) \
-        --exec="personal.sign('Schoolbus', '"$testacc"', '"$tesetacc_pass"');" console 2> /dev/null
-		echo "$output"
-		[ "$status" -eq 0 ]
-    [[ "$output" =~ $regex_signature_success ]]
-	}
-
 @test "personal_listAccounts" {
     run $GETH_CMD \
 				--password=<(echo $tesetacc_pass) \
