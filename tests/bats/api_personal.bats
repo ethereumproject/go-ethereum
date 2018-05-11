@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 # Current build.
-: ${GETH_CMD:=$GOPATH/bin/geth --datadir $GETH_TMP_DATA_DIR \
+: ${GETH_CMD:=$GOPATH/bin/geth --datadir $BATS_TMPDIR \
 		--lightkdf \
 		--verbosity 0 \
 		--display 0 \
@@ -14,16 +14,15 @@
 # : ${GETH_CMD:=$GOPATH/bin/mgeth --datadir $GETH_TMP_DATA_DIR --lightkdf --verbosity 0 --port 33333}
 
 setup() {
-	GETH_TMP_DATA_DIR=`mktemp -d`
-	mkdir "$GETH_TMP_DATA_DIR/mainnet"
+	# GETH_TMP_DATA_DIR=`mktemp -d`
+	# mkdir "$BATS_TMPDIR/mainnet"
   testacc=f466859ead1932d743d622cb74fc058882e8648a
 	tesetacc_pass=foobar
 	regex_signature_success='0x[0-9a-f]{130}'
 }
 
-teardown() {
-	rm -rf $GETH_TMP_DATA_DIR
-}
+# teardown() {
+# }
 
 @test "personal_sign1" {
     run $GETH_CMD \
@@ -42,6 +41,19 @@ teardown() {
 		[ "$status" -eq 0 ]
     [[ "$output" =~ $regex_signature_success ]]
 }
+
+# This is a failing test. It also fails using ETH/Foundation/Multi geth, although
+# the wiki documentation in all cases cites using "Schoolbus" as an example of arbitrary signable data.
+# Turns out, you have to use 0x-prefixed hex data (hex string 'deadbeef' will also fail).
+@test "personal_sign3" {
+		skip "Contrary to documentation, data to sign must be 0x-prefixed hex format."
+    run $GETH_CMD \
+				--password=<(echo $tesetacc_pass) \
+        --exec="personal.sign('Schoolbus', '"$testacc"', '"$tesetacc_pass"');" console 2> /dev/null
+		echo "$output"
+		[ "$status" -eq 0 ]
+    [[ "$output" =~ $regex_signature_success ]]
+	}
 
 @test "personal_listAccounts" {
     run $GETH_CMD \
