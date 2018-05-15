@@ -1,0 +1,46 @@
+
+#### debug.printBlock
+
+debug.printBlock(blockNumber)
+
+Prints information about the block such as size, total difficulty, as well as header fields properly formatted.
+
+See [web3.eth.getBlock](https://github.com/ethereumproject/wiki/wiki/JavaScript-API#web3ethgetblock) for more details on block fields and lookup by number or hash.
+
+##### Returns
+
+formatted string representation of the block
+
+##### Example
+
+```
+> debug.printBlock(131805)
+BLOCK(be465b020fdbedc4063756f0912b5a89bbb4735bd1d1df84363e05ade0195cb1): Size: 531.00 B TD: 643485290485 {
+NoNonce: ee48752c3a0bfe3d85339451a5f3f411c21c8170353e450985e1faab0a9ac4cc
+Header:
+[
+
+ParentHash:         ea4dcb53fe575e23742aa30266722a15429b7ba3d33ba8c87012881d7a77e81e
+UncleHash:          1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347
+Coinbase:           a4d8e9cae4d04b093aac82e6cd355b6b963fb7ff
+Root:               1f892bfd6f8fb2ec69f30c8799e371c24ebc5a9d55558640de1fb7ca8787d26d
+TxSha               56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421
+ReceiptSha:         56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421
+Bloom:              00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+Difficulty:         12292710
+Number:             131805
+GasLimit:           3141592
+GasUsed:            0
+Time:               1429487725
+Extra:              ΞTHΞЯSPHΞЯΞ
+MixDigest:          4cf6d2c4022dfab72af44e9a58d7ac9f7238ffce31d4da72ed6ec9eda60e1850
+Nonce:              3f9e9ce6a261381c
+]
+Transactions:
+[]
+Uncles:
+[]
+}
+
+
+```
