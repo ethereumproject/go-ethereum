@@ -62,11 +62,10 @@
   revision = "a6c914124a94151706443826c8124896ab1473bc"
 
 [[projects]]
-  branch = "expose-colorised-stderr"
   name = "github.com/fatih/color"
   packages = ["."]
-  revision = "fccafd9e876be44d0d7b380a3b03aeb661c1e231"
-  source = "github.com/achilleas-k/color"
+  revision = "5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4"
+  version = "v1.7.0"
 
 [[projects]]
   name = "github.com/gizak/termui"
@@ -323,6 +322,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0e5acc1fadbb0cba1c111f4b6280a5e4e9fa3ccfc133fd5f49eb1f5c48235847"
+  inputs-digest = "6d6381c7de7cbf2986147f08741e9bf5d526e3d1b21dfb7d9c66851a803eddb2"
   solver-name = "gps-cdcl"
   solver-version = 1
