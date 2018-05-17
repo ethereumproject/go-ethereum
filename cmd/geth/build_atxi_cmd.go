@@ -7,6 +7,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
+	"math"
 	"os"
 	"time"
 )
@@ -40,36 +41,12 @@ var buildAddrTxIndexCommand = cli.Command{
 	},
 }
 
-func buildAddrTxIndexCmd(ctx *cli.Context) error {
-
-	// Divide global cache availability equally between chaindata (pre-existing blockdata) and
-	// address-transaction database. This ratio is arbitrary and could potentially be optimized or delegated to be user configurable.
-	ethdb.SetCacheRatio("chaindata", 0.5)
-	ethdb.SetHandleRatio("chaindata", 1)
-	ethdb.SetCacheRatio("indexes", 0.5)
-	ethdb.SetHandleRatio("indexes", 1)
-
-	startIndex := uint64(ctx.Int("start"))
-	var stopIndex uint64
-
-	indexDb := MakeIndexDatabase(ctx)
-	if indexDb == nil {
-		glog.Fatalln("indexes db is nil")
-	}
-	defer indexDb.Close()
-
+func buildAddrTxIndex(bc *core.BlockChain, chainDB, indexDB ethdb.Database, startIndex, stopIndex, step uint64) error {
 	// Use persistent placeholder in case start not spec'd
-	if !ctx.IsSet("start") {
-		startIndex = core.GetATXIBookmark(indexDb)
+	if startIndex == math.MaxUint64 {
+		startIndex = core.GetATXIBookmark(indexDB)
 	}
 
-	bc, chainDB := MakeChain(ctx)
-	if bc == nil || chainDB == nil {
-		glog.Fatalln("bc or cdb is nil")
-	}
-	defer chainDB.Close()
-
-	stopIndex = uint64(ctx.Int("stop"))
 	if stopIndex == 0 {
 		stopIndex = bc.CurrentBlock().NumberU64()
 		if n := bc.CurrentFastBlock().NumberU64(); n > stopIndex {
@@ -92,42 +69,41 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 		glog.Fatalln(blockIndex, "block is nil")
 	}
 
-	var inc = uint64(ctx.Int("step"))
 	startTime := time.Now()
 	totalTxCount := uint64(0)
-	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", inc, "| This may take a while.")
+	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", step, "| This may take a while.")
 	breaker := false
-	for i := startIndex; i <= stopIndex; i = i + inc {
-		if i+inc > stopIndex {
-			inc = stopIndex - i
+	for i := startIndex; i <= stopIndex; i = i + step {
+		if i+step > stopIndex {
+			step = stopIndex - i
 			breaker = true
 		}
 
 		stepStartTime := time.Now()
 
-		// It may seem weird to pass i, i+inc, and inc, but its just a "coincidence"
-		// The function could accepts a smaller step for batch putting (in this case, inc),
-		// or a larger stopBlock (i+inc), but this is just how this cmd is using the fn now
+		// It may seem weird to pass i, i+step, and step, but its just a "coincidence"
+		// The function could accepts a smaller step for batch putting (in this case, step),
+		// or a larger stopBlock (i+step), but this is just how this cmd is using the fn now
 		// We could mess around a little with exploring batch optimization...
-		txsCount, err := bc.WriteBlockAddrTxIndexesBatch(indexDb, i, i+inc, inc)
+		txsCount, err := bc.WriteBlockAddrTxIndexesBatch(indexDB, i, i+step, step)
 		if err != nil {
 			return err
 		}
 		totalTxCount += uint64(txsCount)
 
-		if err := core.SetATXIBookmark(indexDb, i+inc); err != nil {
+		if err := core.SetATXIBookmark(indexDB, i+step); err != nil {
 			glog.Fatalln(err)
 		}
 
-		glog.D(logger.Error).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+inc, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(inc)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
-		glog.V(logger.Info).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+inc, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(inc)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
+		glog.D(logger.Error).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
+		glog.V(logger.Info).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
 
 		if breaker {
 			break
 		}
 	}
 
-	if err := core.SetATXIBookmark(indexDb, stopIndex); err != nil {
+	if err := core.SetATXIBookmark(indexDB, stopIndex); err != nil {
 		glog.Fatalln(err)
 	}
 
@@ -142,5 +118,37 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 		totalTxCount,
 		totalTxsF/took.Seconds(),
 	)
+
 	return nil
+}
+
+func buildAddrTxIndexCmd(ctx *cli.Context) error {
+
+	// Divide global cache availability equally between chaindata (pre-existing blockdata) and
+	// address-transaction database. This ratio is arbitrary and could potentially be optimized or delegated to be user configurable.
+	ethdb.SetCacheRatio("chaindata", 0.5)
+	ethdb.SetHandleRatio("chaindata", 1)
+	ethdb.SetCacheRatio("indexes", 0.5)
+	ethdb.SetHandleRatio("indexes", 1)
+
+	var startIndex uint64 = math.MaxUint64
+	if ctx.IsSet("start") {
+		startIndex = uint64(ctx.Int("start"))
+	}
+	stopIndex := uint64(ctx.Int("stop"))
+	step := uint64(ctx.Int("step"))
+
+	indexDB := MakeIndexDatabase(ctx)
+	if indexDB == nil {
+		glog.Fatalln("can't open index database")
+	}
+	defer indexDB.Close()
+
+	bc, chainDB := MakeChain(ctx)
+	if bc == nil || chainDB == nil {
+		glog.Fatalln("can't open chain database")
+	}
+	defer chainDB.Close()
+
+	return buildAddrTxIndex(bc, chainDB, indexDB, startIndex, stopIndex, step)
 }
