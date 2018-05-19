@@ -1730,17 +1730,17 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 	return list, nil
 }
 
-func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) error {
+func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) (bool, error) {
 	glog.V(logger.Debug).Infoln("RPC call: debug_buildATXI %d %d %d", start, stop, step)
 
 	indexDB, inUse := api.eth.BlockChain().GetAddTxIndex()
 	if !inUse {
-		return errors.New("addr-tx indexing not enabled")
+		return false, errors.New("addr-tx indexing not enabled")
 	}
 
 	go core.BuildAddrTxIndex(api.eth.BlockChain(), api.eth.ChainDb(), indexDB, start, stop, step)
 
-	return nil
+	return true, nil
 }
 
 // PublicDebugAPI is the collection of Etheruem APIs exposed over the public
