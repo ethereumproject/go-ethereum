@@ -160,6 +160,12 @@ web3._extend({
 			call: 'geth_getAddressTransactions',
 			params: 8,
 			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, null, null, null, null, null, null]
+		}),
+		new web3._extend.Method({
+			name: 'buildATXI',
+			call: 'geth_buildATXI',
+			params: 3,
+			inputFormatter: [null, null, null]
 		})
 	],
 	properties: []
