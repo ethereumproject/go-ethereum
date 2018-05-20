@@ -165,7 +165,11 @@ web3._extend({
 			name: 'buildATXI',
 			call: 'geth_buildATXI',
 			params: 3,
-			inputFormatter: [null, null, null]
+		}),
+		new web3._extend.Method({
+			name: 'getATXIBuildStatus',
+			call: 'geth_getATXIBuildStatus',
+			params: 0,
 		})
 	],
 	properties: []

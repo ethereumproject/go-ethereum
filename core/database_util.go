@@ -61,6 +61,10 @@ var (
 
 	preimagePrefix = "secure-key-" // preimagePrefix + hash -> preimage
 	lookupPrefix   = []byte("l")   // lookupPrefix + hash -> transaction/receipt lookup metadata
+
+	atxiStartBlock   = uint64(math.MaxUint64)
+	atxiStopBlock    = uint64(math.MaxUint64)
+	atxiCurrentBlock = uint64(math.MaxUint64)
 )
 
 // TxLookupEntry is a positional metadata to help looking up the data content of
@@ -289,23 +293,33 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 	}
 
 	if stopIndex < startIndex {
+		// TODO(tzdybal) - return error instead of dying
 		glog.Fatalln("start must be prior to (smaller than) or equal to stop, got start=", startIndex, "stop=", stopIndex)
 	}
 	if startIndex == stopIndex {
+		// TODO(tzdybal) - return error instead of dying
 		glog.D(logger.Error).Infoln("atxi is up to date, exiting")
 		os.Exit(0)
+	}
+
+	if atxiStartBlock != uint64(math.MaxUint64) && atxiCurrentBlock < atxiStopBlock {
+		return fmt.Errorf("ATXI build process is already running (first block: %d, last block: %d, current block: %d\n)", atxiStartBlock, atxiStopBlock, atxiCurrentBlock)
 	}
 
 	var block *types.Block
 	blockIndex := startIndex
 	block = bc.GetBlockByNumber(blockIndex)
 	if block == nil {
+		// TODO(tzdybal) - return error instead of dying
 		glog.Fatalln(blockIndex, "block is nil")
 	}
 
 	startTime := time.Now()
 	totalTxCount := uint64(0)
 	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", step, "| This may take a while.")
+	atxiCurrentBlock = startIndex
+	atxiStartBlock = startIndex
+	atxiStopBlock = stopIndex
 	breaker := false
 	for i := startIndex; i <= stopIndex; i = i + step {
 		if i+step > stopIndex {
@@ -326,8 +340,10 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 		totalTxCount += uint64(txsCount)
 
 		if err := SetATXIBookmark(indexDB, i+step); err != nil {
+			// TODO(tzdybal) - return error instead of dying
 			glog.Fatalln(err)
 		}
+		atxiCurrentBlock = i + step
 
 		glog.D(logger.Error).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
 		glog.V(logger.Info).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
@@ -354,6 +370,10 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 	)
 
 	return nil
+}
+
+func GetATXIBuildStatus() (uint64, uint64, uint64) {
+	return atxiStartBlock, atxiStopBlock, atxiCurrentBlock
 }
 
 // GetAddrTxs gets the indexed transactions for a given account address.
