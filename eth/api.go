@@ -1743,6 +1743,21 @@ func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) (bool, error) {
 	return true, nil
 }
 
+type ATXIStatus struct {
+	Start, Stop, Current uint64
+}
+
+func (api *PublicGethAPI) GetATXIBuildStatus() (*ATXIStatus, error) {
+	_, inUse := api.eth.BlockChain().GetAddTxIndex()
+	if !inUse {
+		return nil, errors.New("addr-tx indexing not enabled")
+	}
+
+	var status ATXIStatus
+	status.Start, status.Stop, status.Current = core.GetATXIBuildStatus()
+	return &status, nil
+}
+
 // PublicDebugAPI is the collection of Etheruem APIs exposed over the public
 // debugging endpoint.
 type PublicDebugAPI struct {
