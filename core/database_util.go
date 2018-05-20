@@ -321,7 +321,7 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 	atxiStartBlock = startIndex
 	atxiStopBlock = stopIndex
 	breaker := false
-	for i := startIndex; i <= stopIndex; i = i + step {
+	for i := startIndex; i < stopIndex; i = i + step {
 		if i+step > stopIndex {
 			step = stopIndex - i
 			breaker = true
