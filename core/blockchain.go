@@ -825,6 +825,13 @@ func (bc *BlockChain) SetHead(head uint64) error {
 			return e
 		}
 		deleteRemovalsFn(removals)
+
+		// update atxi bookmark to lower head in the case that its progress was higher than the new head
+		if i := GetATXIBookmark(bc.indexesDb); i > head {
+			if err := SetATXIBookmark(bc.indexesDb, head); err != nil {
+				return err
+			}
+		}
 	}
 
 	bc.mu.Unlock()
@@ -1290,6 +1297,14 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
 					glog.Fatalf("failed to write block add-tx indexes", err)
 				}
+				// if buildATXI has been in use (via RPC) and is NOT finished, current < stop
+				// if buildATXI has been in use (via RPC) and IS finished, current == stop
+				// else if builtATXI has not been in use (via RPC), then current == stop == 0
+				if atxiCurrentBlock == atxiStopBlock {
+					if err := SetATXIBookmark(self.indexesDb, block.NumberU64()); err != nil {
+						glog.Fatalln(err)
+					}
+				}
 			}
 			atomic.AddInt32(&stats.processed, 1)
 		}
@@ -1622,7 +1637,15 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 			// Store the addr-tx indexes if enabled
 			if self.useAddrTxIndex {
 				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
-					glog.Fatalf("failed to write block add-tx indexes", err)
+					return i, fmt.Errorf("failed to write block add-tx indexes: %v", err)
+				}
+				// if buildATXI has been in use (via RPC) and is NOT finished, current < stop
+				// if buildATXI has been in use (via RPC) and IS finished, current == stop
+				// else if builtATXI has not been in use (via RPC), then current == stop == 0
+				if atxiCurrentBlock == atxiStopBlock {
+					if err := SetATXIBookmark(self.indexesDb, block.NumberU64()); err != nil {
+						return i, err
+					}
 				}
 			}
 		case SideStatTy:
@@ -1781,6 +1804,14 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		if self.useAddrTxIndex {
 			if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
 				return err
+			}
+			// if buildATXI has been in use (via RPC) and is NOT finished, current < stop
+			// if buildATXI has been in use (via RPC) and IS finished, current == stop
+			// else if builtATXI has not been in use (via RPC), then current == stop == 0
+			if atxiCurrentBlock == atxiStopBlock {
+				if err := SetATXIBookmark(self.indexesDb, block.NumberU64()); err != nil {
+					return err
+				}
 			}
 		}
 		receipts := GetBlockReceipts(self.chainDb, block.Hash())
