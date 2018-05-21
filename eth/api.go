@@ -1755,6 +1755,9 @@ func (api *PublicGethAPI) GetATXIBuildStatus() (*ATXIStatus, error) {
 
 	var status ATXIStatus
 	status.Start, status.Stop, status.Current = core.GetATXIBuildStatus()
+	if status.Start == status.Current {
+		return nil, nil
+	}
 	return &status, nil
 }
 
