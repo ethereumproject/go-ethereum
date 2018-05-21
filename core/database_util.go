@@ -337,11 +337,11 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 		}
 		totalTxCount += uint64(txsCount)
 
-		if err := SetATXIBookmark(indexDB, i+step); err != nil {
+		atxiCurrentBlock = i + step
+		if err := SetATXIBookmark(indexDB, atxiCurrentBlock); err != nil {
 			// TODO(tzdybal) - return error instead of dying
 			glog.Fatalln(err)
 		}
-		atxiCurrentBlock = i + step
 
 		glog.D(logger.Error).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
 		glog.V(logger.Info).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
