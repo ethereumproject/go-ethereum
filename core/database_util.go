@@ -352,6 +352,7 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 	}
 
 	if err := SetATXIBookmark(indexDB, stopIndex); err != nil {
+		// TODO(whilei) - return error instead of dying
 		glog.Fatalln(err)
 	}
 
