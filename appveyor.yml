@@ -43,7 +43,7 @@ build_script:
   - schroedinger.exe -t 5 -f .\schroedinger-tests.txt
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" github.com/ethereumproject/go-ethereum/cmd/geth
   - ps: >-
-      .\geth.exe version | Where {$_ -match "^Version: "} | %{$actual=($_ -split "\s+")[1];If($actual -ne $env:VERSION){"Expected: `"$env:VERSION`", got: `"$ACTUAL`""; exit 1}} 
+      .\geth.exe version | Where {$_ -match "^Version: "} | %{$actual=($_ -split "\s+")[1];If($actual -ne $env:VERSION){"Expected: `"$env:VERSION`", got: `"$ACTUAL`""; exit 1}}
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
 before_deploy:
   # Set up GCP upload.
@@ -55,4 +55,3 @@ deploy_script:
       If (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true')) {
         janus.exe deploy -to="builds.etcdevteam.com/go-ethereum/$env:VERSION_BASE/" -files="./*.zip" -key="./.gcloud.json"
       }
-
