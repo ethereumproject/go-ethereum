@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"os"
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -299,7 +298,6 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 	if startIndex == stopIndex {
 		// TODO(tzdybal) - return error instead of dying
 		glog.D(logger.Error).Infoln("atxi is up to date, exiting")
-		os.Exit(0)
 	}
 
 	if atxiStartBlock != uint64(math.MaxUint64) && atxiCurrentBlock < atxiStopBlock {
