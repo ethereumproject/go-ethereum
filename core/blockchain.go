@@ -111,8 +111,8 @@ type BlockChain struct {
 	processor Processor // block processor interface
 	validator Validator // block and state validator interface
 
-	useAddTxIndex bool
-	indexesDb     ethdb.Database
+	useAddrTxIndex bool
+	indexesDb      ethdb.Database
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -220,13 +220,13 @@ func (self *BlockChain) GetEventMux() *event.TypeMux {
 
 // SetAddTxIndex sets the db and in-use var for atx indexing.
 func (self *BlockChain) SetAddTxIndex(db ethdb.Database, tf bool) {
-	self.useAddTxIndex = tf
+	self.useAddrTxIndex = tf
 	self.indexesDb = db
 }
 
 // GetAddTxIndex return indexes db and if atx index in use.
 func (self *BlockChain) GetAddTxIndex() (ethdb.Database, bool) {
-	return self.indexesDb, self.useAddTxIndex
+	return self.indexesDb, self.useAddrTxIndex
 }
 
 func (self *BlockChain) getProcInterrupt() bool {
@@ -788,7 +788,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
 	}
 
-	if bc.useAddTxIndex {
+	if bc.useAddrTxIndex {
 		ldb, ok := bc.indexesDb.(*ethdb.LDBDatabase)
 		if !ok {
 			glog.Fatal("could not cast indexes db to level db")
@@ -1286,7 +1286,7 @@ func (self *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain
 				return
 			}
 			// Store the addr-tx indexes if enabled
-			if self.useAddTxIndex {
+			if self.useAddrTxIndex {
 				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
 					glog.Fatalf("failed to write block add-tx indexes", err)
 				}
@@ -1620,7 +1620,7 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err err
 				return i, err
 			}
 			// Store the addr-tx indexes if enabled
-			if self.useAddTxIndex {
+			if self.useAddrTxIndex {
 				if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
 					glog.Fatalf("failed to write block add-tx indexes", err)
 				}
@@ -1758,7 +1758,7 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	}
 
 	// Remove all atxis from old chain; indexes should only reflect canonical
-	if self.useAddTxIndex {
+	if self.useAddrTxIndex {
 		for _, block := range oldChain {
 			for _, tx := range block.Transactions() {
 				if err := RmAddrTx(self.indexesDb, tx); err != nil {
@@ -1778,7 +1778,7 @@ func (self *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 			return err
 		}
 		// Store the addr-tx indexes if enabled
-		if self.useAddTxIndex {
+		if self.useAddrTxIndex {
 			if err := WriteBlockAddTxIndexes(self.indexesDb, block); err != nil {
 				return err
 			}
