@@ -352,9 +352,13 @@ func logIfUnsafeConfiguration(ctx *cli.Context) {
 			for _, v := range vs {
 				v(glog.Separator("-"))
 				v("*")
-				v(`WARNING: Unsafe use of --%s and exposed RPC API [ currently: %s ].
+				v(fmt.Sprintf(`
+
+WARNING: Unsafe use of --%s and exposed RPC API [ currently: %s ].
 It's unsafe to unlock an account while exposing ANY of the following RPC APIs: %s
-You can use the flag --%s to enable only certain RPC API modules if necessary.`, UnlockedAccountFlag.Name, rpcapis, unsafeRPCAPIs, RPCApiFlag.Name)
+You can use the --%s flag to enable only certain RPC API modules if necessary.
+
+`, UnlockedAccountFlag.Name, rpcapis, unsafeRPCAPIs, aliasableName(RPCApiFlag.Name, ctx)))
 				v("*")
 				v(glog.Separator("-"))
 			}
