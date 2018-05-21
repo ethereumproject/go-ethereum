@@ -300,10 +300,6 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 		glog.D(logger.Error).Infoln("atxi is up to date, exiting")
 	}
 
-	if atxiStartBlock != uint64(math.MaxUint64) && atxiCurrentBlock < atxiStopBlock {
-		return fmt.Errorf("ATXI build process is already running (first block: %d, last block: %d, current block: %d\n)", atxiStartBlock, atxiStopBlock, atxiCurrentBlock)
-	}
-
 	var block *types.Block
 	blockIndex := startIndex
 	block = bc.GetBlockByNumber(blockIndex)

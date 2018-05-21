@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"os"
 	"runtime"
@@ -1736,6 +1737,11 @@ func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) (bool, error) {
 	indexDB, inUse := api.eth.BlockChain().GetAddTxIndex()
 	if !inUse {
 		return false, errors.New("addr-tx indexing not enabled")
+	}
+
+	atxiStartBlock, atxiStopBlock, atxiCurrentBlock := core.GetATXIBuildStatus()
+	if atxiStartBlock != uint64(math.MaxUint64) && atxiCurrentBlock < atxiStopBlock {
+		return false, fmt.Errorf("ATXI build process is already running (first block: %d, last block: %d, current block: %d\n)", atxiStartBlock, atxiStopBlock, atxiCurrentBlock)
 	}
 
 	go core.BuildAddrTxIndex(api.eth.BlockChain(), api.eth.ChainDb(), indexDB, start, stop, step)
