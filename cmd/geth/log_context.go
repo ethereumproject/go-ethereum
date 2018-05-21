@@ -331,3 +331,36 @@ func logLoggingConfiguration(ctx *cli.Context) {
 	}
 
 }
+
+func logIfUnsafeConfiguration(ctx *cli.Context) {
+	// If RPC APIs include ANY of eth,personal,admin AND an account is unlocked, that's unsafe because
+	// anyone can use the unlocked account to sign and send transactions over the RPC API.
+	//
+	rpcapis := ctx.GlobalString(aliasableName(RPCApiFlag.Name, ctx))
+	unsafeRPCAPIs := []string{"eth", "personal", "admin"}
+	stringContainsAny := func(s string, anyof []string) bool {
+		for _, ss := range anyof {
+			if strings.Contains(s, ss) {
+				return true
+			}
+		}
+		return false
+	}
+	// check for EITHER --password or --unlock to be on the safe side, along with any of the sensitive RPC APIs enabled
+	if (ctx.GlobalIsSet(UnlockedAccountFlag.Name) || ctx.GlobalIsSet(PasswordFileFlag.Name)) && ctx.GlobalBool(RPCEnabledFlag.Name) && stringContainsAny(rpcapis, unsafeRPCAPIs) {
+		func(vs []func(...interface{})) {
+			for _, v := range vs {
+				v(glog.Separator("-"))
+				v("*")
+				v(`WARNING: Unsafe use of --%s and exposed RPC API [ currently: %s ].
+It's unsafe to unlock an account while exposing ANY of the following RPC APIs: %s
+You can use the flag --%s to enable only certain RPC API modules if necessary.`, UnlockedAccountFlag.Name, rpcapis, unsafeRPCAPIs, RPCApiFlag.Name)
+				v("*")
+				v(glog.Separator("-"))
+			}
+		}([]func(...interface{}){
+			glog.V(logger.Warn).Warnln,
+			glog.D(logger.Warn).Warnln,
+		})
+	}
+}

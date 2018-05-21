@@ -766,6 +766,9 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	}
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
+
+	// If unsafe usage, WARNING!
+	logIfUnsafeConfiguration(ctx)
 }
 
 // MustMakeChainConfigFromDefaults reads the chain configuration from hardcode.
