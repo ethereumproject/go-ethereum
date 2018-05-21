@@ -1731,7 +1731,7 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 }
 
 func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) (bool, error) {
-	glog.V(logger.Debug).Infoln("RPC call: debug_buildATXI %d %d %d", start, stop, step)
+	glog.V(logger.Debug).Infoln("RPC call: geth_buildATXI %d %d %d", start, stop, step)
 
 	indexDB, inUse := api.eth.BlockChain().GetAddTxIndex()
 	if !inUse {
