@@ -171,7 +171,7 @@ web3._extend({
 			name: 'buildATXI',
 			call: 'geth_buildATXI',
 			params: 3,
-			inputFormatter: [web3._extend.formatters.inputAddressFormatter, web3._extend.formatters.inputAddressFormatter, web3._extend.formatters.inputAddressFormatter]
+			inputFormatter: [web3._extend.formatters.inputDefaultBlockNumberFormatter, web3._extend.formatters.inputDefaultBlockNumberFormatter, null]
 		}),
 		new web3._extend.Method({
 			name: 'getATXIBuildStatus',
