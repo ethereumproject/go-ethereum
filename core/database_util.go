@@ -284,8 +284,10 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 	if startIndex == math.MaxUint64 {
 		startIndex = GetATXIBookmark(indexDB)
 	}
-
-	if stopIndex == 0 {
+	if step == math.MaxUint64 {
+		step = 10000
+	}
+	if stopIndex == 0 || stopIndex == math.MaxUint64 {
 		stopIndex = bc.CurrentBlock().NumberU64()
 		if n := bc.CurrentFastBlock().NumberU64(); n > stopIndex {
 			stopIndex = n

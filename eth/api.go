@@ -1731,8 +1731,17 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 	return list, nil
 }
 
-func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) (bool, error) {
-	glog.V(logger.Debug).Infoln("RPC call: geth_buildATXI %d %d %d", start, stop, step)
+func (api *PublicGethAPI) BuildATXI(start, stop, step rpc.BlockNumber) (bool, error) {
+	glog.V(logger.Debug).Infoln("RPC call: geth_buildATXI %v %v %v", start, stop, step)
+
+	convert := func(number rpc.BlockNumber) uint64 {
+		switch number {
+		case rpc.LatestBlockNumber, rpc.PendingBlockNumber:
+			return math.MaxUint64
+		default:
+			return uint64(number.Int64())
+		}
+	}
 
 	indexDB, inUse := api.eth.BlockChain().GetAddTxIndex()
 	if !inUse {
@@ -1744,7 +1753,7 @@ func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) (bool, error) {
 		return false, fmt.Errorf("ATXI build process is already running (first block: %d, last block: %d, current block: %d\n)", atxiStartBlock, atxiStopBlock, atxiCurrentBlock)
 	}
 
-	go core.BuildAddrTxIndex(api.eth.BlockChain(), api.eth.ChainDb(), indexDB, start, stop, step)
+	go core.BuildAddrTxIndex(api.eth.BlockChain(), api.eth.ChainDb(), indexDB, convert(start), convert(stop), convert(step))
 
 	return true, nil
 }
