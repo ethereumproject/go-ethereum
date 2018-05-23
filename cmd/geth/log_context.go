@@ -14,6 +14,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"net"
 )
 
 const defaultStatusLog = "sync=60s"
@@ -338,6 +340,13 @@ func logIfUnsafeConfiguration(ctx *cli.Context) {
 	//
 	rpcapis := ctx.GlobalString(aliasableName(RPCApiFlag.Name, ctx))
 	unsafeRPCAPIs := []string{"eth", "personal", "admin"}
+	safeRPCListenAddrsWhitelist := [][2]net.IP{
+		discover.Ipv4ReservedRangeThis,
+		discover.Ipv4ReservedRangeLoopback,
+		discover.Ipv4ReservedRangePrivateNetwork,
+		discover.Ipv4ReservedRangeLocalPrivate2,
+		discover.Ipv6ReservedRangeLoopback,
+	}
 	stringContainsAny := func(s string, anyof []string) bool {
 		for _, ss := range anyof {
 			if strings.Contains(s, ss) {
@@ -346,8 +355,31 @@ func logIfUnsafeConfiguration(ctx *cli.Context) {
 		}
 		return false
 	}
+
+	possibleUnlockCondition := ctx.GlobalIsSet(UnlockedAccountFlag.Name) || ctx.GlobalIsSet(PasswordFileFlag.Name)
+	rpcEnabledCondition := ctx.GlobalBool(RPCEnabledFlag.Name)
+	rpcAPICondition := stringContainsAny(rpcapis, unsafeRPCAPIs)
+
+	// rpc listen addr is considered "safe", which is to be probably not exposed to the internet
+	rpcListenAddrCondition := func(configuredRPCListenAddr string) bool {
+		// listening on all interfaces, UNSAFE
+		if configuredRPCListenAddr == "*" {
+			return true
+		}
+		ip := net.ParseIP(configuredRPCListenAddr)
+		for _, n := range safeRPCListenAddrsWhitelist {
+			if ok, err := discover.IpBetween(n[0], n[1], ip); ok && err == nil {
+				return false
+			}
+		}
+		// parsed listen ip was NOT in the whitelist
+		return true
+	}(ctx.GlobalString(aliasableName(RPCListenAddrFlag.Name, ctx)))
+
+	unsafeCondition := possibleUnlockCondition && rpcEnabledCondition && rpcAPICondition && rpcListenAddrCondition
+
 	// check for EITHER --password or --unlock to be on the safe side, along with any of the sensitive RPC APIs enabled
-	if (ctx.GlobalIsSet(UnlockedAccountFlag.Name) || ctx.GlobalIsSet(PasswordFileFlag.Name)) && ctx.GlobalBool(RPCEnabledFlag.Name) && stringContainsAny(rpcapis, unsafeRPCAPIs) {
+	if unsafeCondition {
 		func(vs []func(...interface{})) {
 			for _, v := range vs {
 				v(glog.Separator("-"))
