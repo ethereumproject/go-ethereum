@@ -1739,8 +1739,8 @@ func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) (bool, error) {
 		return false, errors.New("addr-tx indexing not enabled")
 	}
 
-	atxiStartBlock, atxiStopBlock, atxiCurrentBlock := core.GetATXIBuildStatus()
-	if atxiStartBlock != uint64(math.MaxUint64) && atxiCurrentBlock < atxiStopBlock {
+	atxiStartBlock, atxiStopBlock, atxiCurrentBlock, atxiLastError := core.GetATXIBuildStatus()
+	if atxiStartBlock != uint64(math.MaxUint64) && atxiCurrentBlock < atxiStopBlock && atxiLastError == nil {
 		return false, fmt.Errorf("ATXI build process is already running (first block: %d, last block: %d, current block: %d\n)", atxiStartBlock, atxiStopBlock, atxiCurrentBlock)
 	}
 
@@ -1750,7 +1750,10 @@ func (api *PublicGethAPI) BuildATXI(start, stop, step uint64) (bool, error) {
 }
 
 type ATXIStatus struct {
-	Start, Stop, Current uint64
+	Start     uint64
+	Stop      uint64
+	Current   uint64
+	LastError error
 }
 
 func (api *PublicGethAPI) GetATXIBuildStatus() (*ATXIStatus, error) {
@@ -1760,7 +1763,7 @@ func (api *PublicGethAPI) GetATXIBuildStatus() (*ATXIStatus, error) {
 	}
 
 	var status ATXIStatus
-	status.Start, status.Stop, status.Current = core.GetATXIBuildStatus()
+	status.Start, status.Stop, status.Current, status.LastError = core.GetATXIBuildStatus()
 	if status.Start == status.Current {
 		return nil, nil
 	}
