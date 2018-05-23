@@ -366,6 +366,9 @@ func logIfUnsafeConfiguration(ctx *cli.Context) {
 		if configuredRPCListenAddr == "*" {
 			return true
 		}
+		if strings.Contains(configuredRPCListenAddr, "localhost") {
+			return false
+		}
 		ip := net.ParseIP(configuredRPCListenAddr)
 		for _, n := range safeRPCListenAddrsWhitelist {
 			if ok, err := discover.IpBetween(n[0], n[1], ip); ok && err == nil {
@@ -387,11 +390,18 @@ func logIfUnsafeConfiguration(ctx *cli.Context) {
 				v(fmt.Sprintf(`
 
 > WARNING: Unsafe use of --%s and exposed RPC API [ currently: %s ].
-> It's UNSAFE to unlock an account while exposing ANY of the following RPC APIs: %s
+> It's UNSAFE to unlock an account while exposing ANY of the following RPC APIs: %s to the internet.
 > 	Anyone from the internet will be able to transfer funds from an unlocked account without any password.
-> You can use the --%s flag to enable only certain RPC API modules if necessary.
+> You can use the --%s flag to enable specific RPC API modules if necessary, 
+> and/or restrict the exposed RPC listen address with the --%s flag.
 
-`, UnlockedAccountFlag.Name, rpcapis, unsafeRPCAPIs, aliasableName(RPCApiFlag.Name, ctx)))
+`,
+					UnlockedAccountFlag.Name,
+					rpcapis,
+					unsafeRPCAPIs,
+					aliasableName(RPCApiFlag.Name, ctx),
+					aliasableName(RPCListenAddrFlag.Name, ctx),
+				))
 				v("*")
 				v(glog.Separator("-"))
 			}
