@@ -64,6 +64,7 @@ var (
 	atxiStartBlock   = uint64(math.MaxUint64)
 	atxiStopBlock    = uint64(math.MaxUint64)
 	atxiCurrentBlock = uint64(math.MaxUint64)
+	atxiLastError    = error(nil)
 )
 
 // TxLookupEntry is a positional metadata to help looking up the data content of
@@ -291,26 +292,24 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 		}
 	}
 
-	if stopIndex < startIndex {
-		// TODO(tzdybal) - return error instead of dying
-		glog.Fatalln("start must be prior to (smaller than) or equal to stop, got start=", startIndex, "stop=", stopIndex)
-	}
-	if startIndex == stopIndex {
-		// TODO(tzdybal) - return error instead of dying
-		glog.D(logger.Error).Infoln("atxi is up to date, exiting")
+	if stopIndex <= startIndex {
+		atxiLastError = fmt.Errorf("start must be prior to (smaller than) or equal to stop, got start=%d stop=%d", startIndex, stopIndex)
+		return atxiLastError
 	}
 
 	var block *types.Block
 	blockIndex := startIndex
 	block = bc.GetBlockByNumber(blockIndex)
 	if block == nil {
-		// TODO(tzdybal) - return error instead of dying
-		glog.Fatalln(blockIndex, "block is nil")
+		err := fmt.Errorf("block %d is nil", blockIndex)
+		atxiLastError = err
+		glog.Error(err)
 	}
 
 	startTime := time.Now()
 	totalTxCount := uint64(0)
 	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", step, "| This may take a while.")
+	atxiLastError = nil
 	atxiCurrentBlock = startIndex
 	atxiStartBlock = startIndex
 	atxiStopBlock = stopIndex
@@ -329,14 +328,15 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 		// We could mess around a little with exploring batch optimization...
 		txsCount, err := bc.WriteBlockAddrTxIndexesBatch(indexDB, i, i+step, step)
 		if err != nil {
+			atxiLastError = err
 			return err
 		}
 		totalTxCount += uint64(txsCount)
 
 		atxiCurrentBlock = i + step
 		if err := SetATXIBookmark(indexDB, atxiCurrentBlock); err != nil {
-			// TODO(tzdybal) - return error instead of dying
-			glog.Fatalln(err)
+			atxiLastError = err
+			return err
 		}
 
 		glog.D(logger.Error).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
@@ -348,8 +348,8 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 	}
 
 	if err := SetATXIBookmark(indexDB, stopIndex); err != nil {
-		// TODO(whilei) - return error instead of dying
-		glog.Fatalln(err)
+		atxiLastError = err
+		return err
 	}
 
 	// Print summary
@@ -364,11 +364,12 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 		totalTxsF/took.Seconds(),
 	)
 
+	atxiLastError = nil
 	return nil
 }
 
-func GetATXIBuildStatus() (uint64, uint64, uint64) {
-	return atxiStartBlock, atxiStopBlock, atxiCurrentBlock
+func GetATXIBuildStatus() (uint64, uint64, uint64, error) {
+	return atxiStartBlock, atxiStopBlock, atxiCurrentBlock, atxiLastError
 }
 
 // GetAddrTxs gets the indexed transactions for a given account address.
