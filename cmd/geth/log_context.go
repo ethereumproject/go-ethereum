@@ -389,11 +389,13 @@ func logIfUnsafeConfiguration(ctx *cli.Context) {
 				v("*")
 				v(fmt.Sprintf(`
 
-> WARNING: Unsafe use of --%s and exposed RPC API [ currently: %s ].
-> It's UNSAFE to unlock an account while exposing ANY of the following RPC APIs: %s to the internet.
-> 	Anyone from the internet will be able to transfer funds from an unlocked account without any password.
-> You can use the --%s flag to enable specific RPC API modules if necessary, 
-> and/or restrict the exposed RPC listen address with the --%s flag.
+>    !!!  WARNING: Unsafe use of --%s and exposed RPC API [ currently: %s ].  !!!  
+> 
+>    It's UNSAFE to unlock an account while exposing ANY of the following RPC APIs: %s to the internet.
+>    Anyone from the internet will be able to transfer funds from an unlocked account without any password.
+> 
+>    You can use the --%s flag to enable specific RPC API modules if necessary, 
+>    and/or restrict the exposed RPC listen address with the --%s flag.
 
 `,
 					UnlockedAccountFlag.Name,
@@ -409,5 +411,9 @@ func logIfUnsafeConfiguration(ctx *cli.Context) {
 			glog.V(logger.Warn).Warnln,
 			glog.D(logger.Warn).Warnln,
 		})
+		if !askForConfirmation("Do you really wish to proceed?") {
+			os.Exit(0)
+		}
 	}
+
 }
