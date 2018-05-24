@@ -962,7 +962,7 @@ func TestFastVsFullChainsATXI(t *testing.T) {
 			t.Fatal(err)
 		}
 		// turn on atxi
-		blockchain.SetAtxi(db, true)
+		blockchain.SetAtxi(&AtxiT{Db: db})
 		if i == 0 {
 			if n, err := blockchain.InsertChain(blocks); err != nil {
 				t.Fatalf("failed to process block %d: %v", n, err)
@@ -1068,7 +1068,7 @@ func TestRmAddrTx(t *testing.T) {
 		t.Fatal(err)
 	}
 	// turn on atxi
-	blockchain.SetAtxi(db, true)
+	blockchain.SetAtxi(&AtxiT{Db: db})
 
 	if n, err := blockchain.InsertChain(blocks); err != nil {
 		t.Fatalf("failed to process block %d: %v", n, err)
@@ -1294,7 +1294,7 @@ func testChainTxReorgs(t *testing.T, db ethdb.Database, withATXI bool) {
 		t.Fatal(err)
 	}
 	if withATXI {
-		blockchain.SetAtxi(db, true)
+		blockchain.SetAtxi(&AtxiT{Db: db})
 	}
 	if i, err := blockchain.InsertChain(chain); err != nil {
 		t.Fatalf("failed to insert original chain[%d]: %v", i, err)
