@@ -159,13 +159,13 @@ web3._extend({
 			name: 'getAddressTransactions',
 			call: 'geth_getAddressTransactions',
 			params: 8,
-			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, null, null, null, null, null, null]
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, web3._extend.formatters.inputDefaultBlockNumberFormatter, null, null, null, null, null]
 		}),
 		new web3._extend.Method({
 			name: 'getAddressTransactions',
 			call: 'geth_getTransactionsByAddress',
 			params: 8,
-			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, null, null, null, null, null, null]
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, web3._extend.formatters.inputDefaultBlockNumberFormatter, null, null, null, null, null]
 		}),
 		new web3._extend.Method({
 			name: 'buildATXI',

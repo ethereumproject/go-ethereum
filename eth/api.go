@@ -1703,7 +1703,7 @@ func NewPublicGethAPI(eth *Ethereum) *PublicGethAPI {
 // AddressTransactions gets transactions for a given address.
 // Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
 // Returns a slice of strings of transactions hashes.
-func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
+func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN rpc.BlockNumber, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
 	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
 	atxi := api.eth.BlockChain().GetAtxi()
@@ -1721,7 +1721,11 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 		txKindOf = "b"
 	}
 
-	list = core.GetAddrTxs(atxi.Db, address, blockStartN, blockEndN, toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+	if blockEndN == rpc.LatestBlockNumber || blockEndN == rpc.PendingBlockNumber {
+		blockEndN = 0
+	}
+
+	list = core.GetAddrTxs(atxi.Db, address, blockStartN, uint64(blockEndN.Int64()), toOrFrom, txKindOf, pagStart, pagEnd, reverse)
 
 	// Since list is a slice, it can be nil, which returns 'null'.
 	// Should return empty 'array' if no txs found.
