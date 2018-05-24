@@ -104,7 +104,7 @@ var (
 	}
 	AddrTxIndexAutoBuildFlag = cli.BoolFlag{
 		Name:  "atxi.autobuild,atxi.auto-build",
-		Usage: "Begins automatic concurrent indexes building process that runs alongside normally running geth.",
+		Usage: "Begins automatic concurrent indexes building process that runs alongside a normally running geth.",
 	}
 	// Network Split settings
 	ETFChain = cli.BoolFlag{

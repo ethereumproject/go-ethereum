@@ -96,6 +96,7 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 			PasswordFileFlag,
 			AccountsIndexFlag,
 			AddrTxIndexFlag,
+			AddrTxIndexAutoBuildFlag,
 		},
 	},
 	{
@@ -205,7 +206,6 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 			DisplayFlag,
 			DisplayFormatFlag,
 			NeckbeardFlag,
-			AddrTxIndexFlag,
 		},
 	},
 	{
