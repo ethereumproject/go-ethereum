@@ -1706,8 +1706,8 @@ func NewPublicGethAPI(eth *Ethereum) *PublicGethAPI {
 func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
 	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
-	db, inUse := api.eth.BlockChain().GetAddTxIndex()
-	if !inUse {
+	atxi := api.eth.BlockChain().GetAtxi()
+	if atxi == nil {
 		return nil, errors.New("addr-tx indexing not enabled")
 	}
 	// Use human-friendly abbreviations, per https://github.com/ethereumproject/go-ethereum/pull/475#issuecomment-366065122
@@ -1721,7 +1721,7 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 		txKindOf = "b"
 	}
 
-	list = core.GetAddrTxs(db, address, blockStartN, blockEndN, toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+	list = core.GetAddrTxs(atxi.Db, address, blockStartN, blockEndN, toOrFrom, txKindOf, pagStart, pagEnd, reverse)
 
 	// Since list is a slice, it can be nil, which returns 'null'.
 	// Should return empty 'array' if no txs found.
@@ -1743,40 +1743,44 @@ func (api *PublicGethAPI) BuildATXI(start, stop, step rpc.BlockNumber) (bool, er
 		}
 	}
 
-	indexDB, inUse := api.eth.BlockChain().GetAddTxIndex()
-	if !inUse {
+	atxi := api.eth.BlockChain().GetAtxi()
+	if atxi == nil {
 		return false, errors.New("addr-tx indexing not enabled")
 	}
-
-	atxiStartBlock, atxiStopBlock, atxiCurrentBlock, atxiLastError := core.GetATXIBuildStatus()
-	if atxiStartBlock != uint64(math.MaxUint64) && atxiCurrentBlock < atxiStopBlock && atxiLastError == nil {
-		return false, fmt.Errorf("ATXI build process is already running (first block: %d, last block: %d, current block: %d\n)", atxiStartBlock, atxiStopBlock, atxiCurrentBlock)
+	if atxi.AutoMode {
+		return false, errors.New("addr-tx indexing already running via the auto build mode")
 	}
 
-	go core.BuildAddrTxIndex(api.eth.BlockChain(), api.eth.ChainDb(), indexDB, convert(start), convert(stop), convert(step))
+	progress, err := api.eth.BlockChain().GetATXIBuildProgress()
+	if err != nil {
+		return false, err
+	}
+	if progress != nil && progress.Start != uint64(math.MaxUint64) && progress.Current < progress.Stop && progress.LastError == nil {
+		return false, fmt.Errorf("ATXI build process is already running (first block: %d, last block: %d, current block: %d\n)", progress.Start, progress.Stop, progress.Current)
+	}
+
+	go core.BuildAddrTxIndex(api.eth.BlockChain(), api.eth.ChainDb(), atxi.Db, convert(start), convert(stop), convert(step))
 
 	return true, nil
 }
 
-type ATXIStatus struct {
-	Start     uint64
-	Stop      uint64
-	Current   uint64
-	LastError error
-}
-
-func (api *PublicGethAPI) GetATXIBuildStatus() (*ATXIStatus, error) {
-	_, inUse := api.eth.BlockChain().GetAddTxIndex()
-	if !inUse {
+func (api *PublicGethAPI) GetATXIBuildStatus() (*core.AtxiProgressT, error) {
+	atxi := api.eth.BlockChain().GetAtxi()
+	if atxi == nil {
 		return nil, errors.New("addr-tx indexing not enabled")
 	}
+	if atxi.Progress == nil {
+		return nil, errors.New("no progress available for unstarted atxi indexing process")
+	}
 
-	var status ATXIStatus
-	status.Start, status.Stop, status.Current, status.LastError = core.GetATXIBuildStatus()
-	if status.Start == status.Current {
+	progress, err := api.eth.BlockChain().GetATXIBuildProgress()
+	if err != nil {
+		return nil, err
+	}
+	if progress.Start == progress.Current {
 		return nil, nil
 	}
-	return &status, nil
+	return progress, nil
 }
 
 // PublicDebugAPI is the collection of Etheruem APIs exposed over the public
