@@ -20,18 +20,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"math"
-	"math/big"
-	"time"
-
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"sort"
-	"strings"
+	"math/big"
 )
 
 var (
@@ -50,9 +45,6 @@ var (
 	receiptsPrefix      = []byte("receipts-")
 	blockReceiptsPrefix = []byte("receipts-block-")
 
-	txAddressIndexPrefix = []byte("atx-")
-	txAddressBookmarkKey = []byte("ATXIBookmark")
-
 	mipmapPre    = []byte("mipmap-log-bloom-")
 	MIPMapLevels = []uint64{1000000, 500000, 100000, 50000, 1000}
 
@@ -60,11 +52,6 @@ var (
 
 	preimagePrefix = "secure-key-" // preimagePrefix + hash -> preimage
 	lookupPrefix   = []byte("l")   // lookupPrefix + hash -> transaction/receipt lookup metadata
-
-	atxiStartBlock   = uint64(math.MaxUint64)
-	atxiStopBlock    = uint64(math.MaxUint64)
-	atxiCurrentBlock = uint64(math.MaxUint64)
-	atxiLastError    = error(nil)
 )
 
 // TxLookupEntry is a positional metadata to help looking up the data content of
@@ -73,21 +60,6 @@ type TxLookupEntry struct {
 	BlockHash  common.Hash
 	BlockIndex uint64
 	Index      uint64
-}
-
-func GetATXIBookmark(db ethdb.Database) uint64 {
-	v, err := db.Get(txAddressBookmarkKey)
-	if err != nil || v == nil {
-		return 0
-	}
-	i := binary.LittleEndian.Uint64(v)
-	return i
-}
-
-func SetATXIBookmark(db ethdb.Database, i uint64) error {
-	bn := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bn, i)
-	return db.Put(txAddressBookmarkKey, bn)
 }
 
 // GetCanonicalHash retrieves a hash assigned to a canonical block number.
@@ -161,38 +133,6 @@ func GetBodyRLP(db ethdb.Database, hash common.Hash) rlp.RawValue {
 	return data
 }
 
-// formatAddrTxIterator formats the index key prefix iterator, eg. atx-<address>
-func formatAddrTxIterator(address common.Address) (iteratorPrefix []byte) {
-	iteratorPrefix = append(iteratorPrefix, txAddressIndexPrefix...)
-	iteratorPrefix = append(iteratorPrefix, address.Bytes()...)
-	return
-}
-
-// formatAddrTxBytesIndex formats the index key, eg. atx-<addr><blockNumber><t|f><s|c|><txhash>
-// The values for these arguments should be of determinate length and format, see test TestFormatAndResolveAddrTxBytesKey
-// for example.
-func formatAddrTxBytesIndex(address, blockNumber, direction, kindof, txhash []byte) (key []byte) {
-	key = make([]byte, 0, 66) // 66 is the total capacity of the key = prefix(4)+addr(20)+blockNumber(8)+dir(1)+kindof(1)+txhash(32)
-	key = append(key, txAddressIndexPrefix...)
-	key = append(key, address...)
-	key = append(key, blockNumber...)
-	key = append(key, direction...)
-	key = append(key, kindof...)
-	key = append(key, txhash...)
-	return
-}
-
-// resolveAddrTxBytes resolves the index key to individual []byte values
-func resolveAddrTxBytes(key []byte) (address, blockNumber, direction, kindof, txhash []byte) {
-	// prefix = key[:4]
-	address = key[4:24]      // common.AddressLength = 20
-	blockNumber = key[24:32] // uint64 via little endian
-	direction = key[32:33]   // == key[32] (1 byte)
-	kindof = key[33:34]
-	txhash = key[34:]
-	return
-}
-
 // GetBody retrieves the block body (transactons, uncles) corresponding to the
 // hash, nil if none found.
 func GetBody(db ethdb.Database, hash common.Hash) *types.Body {
@@ -206,328 +146,6 @@ func GetBody(db ethdb.Database, hash common.Hash) *types.Body {
 		return nil
 	}
 	return body
-}
-
-// WriteBlockAddTxIndexes writes atx-indexes for a given block.
-func WriteBlockAddTxIndexes(indexDb ethdb.Database, block *types.Block) error {
-	batch := indexDb.NewBatch()
-	if _, err := putBlockAddrTxsToBatch(batch, block); err != nil {
-		return err
-	}
-	return batch.Write()
-}
-
-// putBlockAddrTxsToBatch formats and puts keys for a given block to a db Batch.
-// Batch can be written afterward if no errors, ie. batch.Write()
-func putBlockAddrTxsToBatch(putBatch ethdb.Batch, block *types.Block) (txsCount int, err error) {
-	for _, tx := range block.Transactions() {
-		txsCount++
-
-		from, err := tx.From()
-		if err != nil {
-			return txsCount, err
-		}
-		to := tx.To()
-		// s: standard
-		// c: contract
-		txKindOf := []byte("s")
-		if to == nil || to.IsEmpty() {
-			to = &common.Address{}
-			txKindOf = []byte("c")
-		}
-
-		// Note that len 8 because uint64 guaranteed <= 8 bytes.
-		bn := make([]byte, 8)
-		binary.LittleEndian.PutUint64(bn, block.NumberU64())
-
-		if err := putBatch.Put(formatAddrTxBytesIndex(from.Bytes(), bn, []byte("f"), txKindOf, tx.Hash().Bytes()), nil); err != nil {
-			return txsCount, err
-		}
-		if err := putBatch.Put(formatAddrTxBytesIndex(to.Bytes(), bn, []byte("t"), txKindOf, tx.Hash().Bytes()), nil); err != nil {
-			return txsCount, err
-		}
-	}
-	return txsCount, nil
-}
-
-type atxi struct {
-	blockN uint64
-	tx     string
-}
-type sortableAtxis []atxi
-
-// Len implements sort.Sort interface.
-func (s sortableAtxis) Len() int {
-	return len(s)
-}
-
-// Less implements sort.Sort interface.
-// By default newer transactions by blockNumber are first.
-func (s sortableAtxis) Less(i, j int) bool {
-	return s[i].blockN > s[j].blockN
-}
-
-// Swap implements sort.Sort interface.
-func (s sortableAtxis) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s sortableAtxis) TxStrings() []string {
-	var out = make([]string, 0, len(s))
-	for _, str := range s {
-		out = append(out, str.tx)
-	}
-	return out
-}
-
-func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startIndex, stopIndex, step uint64) error {
-	// Use persistent placeholder in case start not spec'd
-	if startIndex == math.MaxUint64 {
-		startIndex = GetATXIBookmark(indexDB)
-	}
-	if step == math.MaxUint64 {
-		step = 10000
-	}
-	if stopIndex == 0 || stopIndex == math.MaxUint64 {
-		stopIndex = bc.CurrentBlock().NumberU64()
-		if n := bc.CurrentFastBlock().NumberU64(); n > stopIndex {
-			stopIndex = n
-		}
-	}
-
-	if stopIndex <= startIndex {
-		atxiLastError = fmt.Errorf("start must be prior to (smaller than) or equal to stop, got start=%d stop=%d", startIndex, stopIndex)
-		return atxiLastError
-	}
-
-	var block *types.Block
-	blockIndex := startIndex
-	block = bc.GetBlockByNumber(blockIndex)
-	if block == nil {
-		err := fmt.Errorf("block %d is nil", blockIndex)
-		atxiLastError = err
-		glog.Error(err)
-	}
-
-	startTime := time.Now()
-	totalTxCount := uint64(0)
-	glog.D(logger.Error).Infoln("Address/tx indexing (atxi) start:", startIndex, "stop:", stopIndex, "step:", step, "| This may take a while.")
-	atxiLastError = nil
-	atxiCurrentBlock = startIndex
-	atxiStartBlock = startIndex
-	atxiStopBlock = stopIndex
-	breaker := false
-	for i := startIndex; i < stopIndex; i = i + step {
-		if i+step > stopIndex {
-			step = stopIndex - i
-			breaker = true
-		}
-
-		stepStartTime := time.Now()
-
-		// It may seem weird to pass i, i+step, and step, but its just a "coincidence"
-		// The function could accepts a smaller step for batch putting (in this case, step),
-		// or a larger stopBlock (i+step), but this is just how this cmd is using the fn now
-		// We could mess around a little with exploring batch optimization...
-		txsCount, err := bc.WriteBlockAddrTxIndexesBatch(indexDB, i, i+step, step)
-		if err != nil {
-			atxiLastError = err
-			return err
-		}
-		totalTxCount += uint64(txsCount)
-
-		atxiCurrentBlock = i + step
-		if err := SetATXIBookmark(indexDB, atxiCurrentBlock); err != nil {
-			atxiLastError = err
-			return err
-		}
-
-		glog.D(logger.Error).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
-		glog.V(logger.Info).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
-
-		if breaker {
-			break
-		}
-	}
-
-	if err := SetATXIBookmark(indexDB, stopIndex); err != nil {
-		atxiLastError = err
-		return err
-	}
-
-	// Print summary
-	totalBlocksF := float64(stopIndex - startIndex)
-	totalTxsF := float64(totalTxCount)
-	took := time.Since(startTime)
-	glog.D(logger.Error).Infof(`Finished atxi-build in %v: %d blocks (~ %.2f blocks/sec), %d txs (~ %.2f txs/sec)`,
-		took.Round(time.Second),
-		stopIndex-startIndex,
-		totalBlocksF/took.Seconds(),
-		totalTxCount,
-		totalTxsF/took.Seconds(),
-	)
-
-	atxiLastError = nil
-	return nil
-}
-
-func GetATXIBuildStatus() (uint64, uint64, uint64, error) {
-	return atxiStartBlock, atxiStopBlock, atxiCurrentBlock, atxiLastError
-}
-
-// GetAddrTxs gets the indexed transactions for a given account address.
-// 'reverse' means "oldest first"
-func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string, kindof string, paginationStart int, paginationEnd int, reverse bool) []string {
-	if len(direction) > 0 && !strings.Contains("btf", direction[:1]) {
-		glog.Fatal("Address transactions list signature requires direction param to be empty string or [b|t|f] prefix (eg. both, to, or from)")
-	}
-	if len(kindof) > 0 && !strings.Contains("bsc", kindof[:1]) {
-		glog.Fatal("Address transactions list signature requires 'kind of' param to be empty string or [s|c] prefix (eg. both, standard, or contract)")
-	}
-
-	// Have to cast to LevelDB to use iterator. Yuck.
-	ldb, ok := db.(*ethdb.LDBDatabase)
-	if !ok {
-		return nil
-	}
-
-	// This will be the returnable.
-	var hashes []string
-
-	// Map direction -> byte
-	var wantDirectionB byte = 'b'
-	if len(direction) > 0 {
-		wantDirectionB = direction[0]
-	}
-	var wantKindOf byte = 'b'
-	if len(kindof) > 0 {
-		wantKindOf = kindof[0]
-	}
-
-	// Create address prefix for iteration.
-	prefix := ethdb.NewBytesPrefix(formatAddrTxIterator(address))
-	it := ldb.NewIteratorRange(prefix)
-
-	var atxis sortableAtxis
-
-	for it.Next() {
-		key := it.Key()
-
-		_, blockNum, torf, k, txh := resolveAddrTxBytes(key)
-
-		bn := binary.LittleEndian.Uint64(blockNum)
-
-		// If atxi is smaller than blockstart, skip
-		if blockStartN > 0 && bn < blockStartN {
-			continue
-		}
-		// If atxi is greater than blockend, skip
-		if blockEndN > 0 && bn > blockEndN {
-			continue
-		}
-		// Ensure matching direction if spec'd
-		if wantDirectionB != 'b' && wantDirectionB != torf[0] {
-			continue
-		}
-		// Ensure filter for/agnostic transaction kind of (contract, standard, both)
-		if wantKindOf != 'b' && wantKindOf != k[0] {
-			continue
-		}
-		if len(hashes) > 0 {
-
-		}
-		tx := common.ToHex(txh)
-		atxis = append(atxis, atxi{blockN: bn, tx: tx})
-	}
-	it.Release()
-	if e := it.Error(); e != nil {
-		glog.Fatalln(e)
-	}
-
-	handleSorting := func(s sortableAtxis) sortableAtxis {
-		if len(s) <= 1 {
-			return s
-		}
-		sort.Sort(s) // newest txs (by blockNumber) latest
-		if reverse {
-			for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-				s[i], s[j] = s[j], s[i]
-			}
-		}
-		if paginationStart < 0 {
-			paginationStart = 0
-		}
-		if paginationEnd < 0 {
-			paginationEnd = len(s)
-		}
-		return s[paginationStart:paginationEnd]
-	}
-
-	return handleSorting(atxis).TxStrings()
-}
-
-// RmAddrTx removes all atxi indexes for a given tx in case of a transaction removal, eg.
-// in the case of chain reorg.
-// It isn't an elegant function, but not a top priority for optimization because of
-// expected infrequency of it's being called.
-func RmAddrTx(db ethdb.Database, tx *types.Transaction) error {
-	if tx == nil {
-		return nil
-	}
-
-	ldb, ok := db.(*ethdb.LDBDatabase)
-	if !ok {
-		return nil
-	}
-
-	txH := tx.Hash()
-	from, err := tx.From()
-	if err != nil {
-		return err
-	}
-
-	removals := [][]byte{}
-
-	// TODO: not DRY, could be refactored
-	pre := ethdb.NewBytesPrefix(formatAddrTxIterator(from))
-	it := ldb.NewIteratorRange(pre)
-	for it.Next() {
-		key := it.Key()
-		_, _, _, _, txh := resolveAddrTxBytes(key)
-		if bytes.Compare(txH.Bytes(), txh) == 0 {
-			removals = append(removals, key)
-			break // because there can be only one
-		}
-	}
-	it.Release()
-	if e := it.Error(); e != nil {
-		return e
-	}
-
-	to := tx.To()
-	if to != nil {
-		toRef := *to
-		pre := ethdb.NewBytesPrefix(formatAddrTxIterator(toRef))
-		it := ldb.NewIteratorRange(pre)
-		for it.Next() {
-			key := it.Key()
-			_, _, _, _, txh := resolveAddrTxBytes(key)
-			if bytes.Compare(txH.Bytes(), txh) == 0 {
-				removals = append(removals, key)
-				break // because there can be only one
-			}
-		}
-		it.Release()
-		if e := it.Error(); e != nil {
-			return e
-		}
-	}
-
-	for _, r := range removals {
-		if err := db.Delete(r); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // GetTd retrieves a block's total difficulty corresponding to the hash, nil if

@@ -64,5 +64,6 @@ func buildAddrTxIndexCmd(ctx *cli.Context) error {
 	}
 	defer chainDB.Close()
 
+	bc.SetAtxi(&core.AtxiT{Db: indexDB, AutoMode: false, Progress: &core.AtxiProgressT{}})
 	return core.BuildAddrTxIndex(bc, chainDB, indexDB, startIndex, stopIndex, step)
 }

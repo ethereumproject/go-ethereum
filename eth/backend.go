@@ -286,7 +286,9 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 	// Configure enabled atxi for blockchain
 	if config.UseAddrTxIndex {
-		eth.blockchain.SetAddTxIndex(eth.indexesDb, true)
+		eth.blockchain.SetAtxi(&core.AtxiT{
+			Db: eth.indexesDb,
+		})
 	}
 
 	eth.gpo = NewGasPriceOracle(eth)
