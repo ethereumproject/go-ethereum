@@ -22,7 +22,7 @@ setup: ## Install all the build and lint dependencies
 	dep ensure
 	gometalinter --install
 
-build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cmd/rlpdump cmd/geth ## Build a local snapshot binary versions of all commands
+build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cmd/rlpdump cmd/geth ## Build a local snapshot binary version of all commands
 	@ls -ld $(BINARY)/*
 
 cmd/geth: ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)

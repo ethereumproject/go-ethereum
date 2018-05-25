@@ -259,7 +259,7 @@ teardown() {
 
 		# Set up custom net config.
 	mkdir -p $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty
-	cp "$BATS_TEST_DIRNAME/testdata/chain_config_dump-invalid-coinbase.json" $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
+	cp "$GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth/testdata/chain_config_dump-invalid-coinbase.json" $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
 
 	run $GETH_CMD --fast --verbosity 5 --chain kitty --exec='exit' console
