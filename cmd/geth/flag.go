@@ -765,6 +765,8 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 		glog.D(logger.Warn).Infof("State starting nonce: %s", logger.ColorGreen(sn))
 	}
 
+	glog.V(logger.Info).Infof("Using %d configured bootnodes", len(config.ParsedBootstrap))
+	glog.D(logger.Warn).Infof("Using %d configured bootnodes", len(config.ParsedBootstrap))
 	glog.V(logger.Info).Info(glog.Separator("-"))
 }
 
