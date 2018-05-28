@@ -1410,7 +1410,7 @@ func testSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	go func() {
 		defer pending.Done()
 		if err := tester.sync("peer-half", nil, mode); err != nil {
-			panic(fmt.Sprintf("failed to synchronise blocks: %v", err))
+			t.Fatal(fmt.Sprintf("failed to synchronise blocks: %v", err))
 		}
 	}()
 	<-starting
@@ -1427,7 +1427,7 @@ func testSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	go func() {
 		defer pending.Done()
 		if err := tester.sync("peer-full", nil, mode); err != nil {
-			panic(fmt.Sprintf("failed to synchronise blocks: %v", err))
+			t.Fatal(fmt.Sprintf("failed to synchronise blocks: %v", err))
 		}
 	}()
 	<-starting
@@ -1483,7 +1483,7 @@ func testForkedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	go func() {
 		defer pending.Done()
 		if err := tester.sync("fork A", nil, mode); err != nil {
-			panic(fmt.Sprintf("failed to synchronise blocks: %v", err))
+			t.Fatal(fmt.Sprintf("failed to synchronise blocks: %v", err))
 		}
 	}()
 	<-starting
@@ -1503,7 +1503,7 @@ func testForkedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	go func() {
 		defer pending.Done()
 		if err := tester.sync("fork B", nil, mode); err != nil {
-			panic(fmt.Sprintf("failed to synchronise blocks: %v", err))
+			t.Fatal(fmt.Sprintf("failed to synchronise blocks: %v", err))
 		}
 	}()
 	<-starting
@@ -1581,7 +1581,7 @@ func testFailedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	go func() {
 		defer pending.Done()
 		if err := tester.sync("valid", nil, mode); err != nil {
-			panic(fmt.Sprintf("failed to synchronise blocks: %v", err))
+			t.Fatal(fmt.Sprintf("failed to synchronise blocks: %v", err))
 		}
 	}()
 	<-starting
@@ -1659,7 +1659,7 @@ func testFakedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 	go func() {
 		defer pending.Done()
 		if err := tester.sync("valid", nil, mode); err != nil {
-			panic(fmt.Sprintf("failed to synchronise blocks: %v", err))
+			t.Fatal(fmt.Sprintf("failed to synchronise blocks: %v", err))
 		}
 	}()
 	<-starting
