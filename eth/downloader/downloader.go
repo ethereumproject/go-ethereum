@@ -943,7 +943,7 @@ func (d *Downloader) fetchHeaders(p *peer, from uint64) error {
 // immediately to the header processor to keep the rest of the pipeline full even
 // in the case of header stalls.
 //
-// The method returs the entire filled skeleton and also the number of headers
+// The method returns the entire filled skeleton and also the number of headers
 // already forwarded for processing.
 func (d *Downloader) fillHeaderSkeleton(from uint64, skeleton []*types.Header) ([]*types.Header, int, error) {
 	glog.V(logger.Debug).Infof("Filling up skeleton from #%d", from)
