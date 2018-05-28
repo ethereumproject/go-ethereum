@@ -294,6 +294,9 @@ func (s *stateSync) loop() error {
 		case <-s.cancel:
 			return errCancelStateFetch
 
+		case <-s.d.cancelCh:
+			return errCancelStateFetch
+
 		case req := <-s.deliver:
 			// Response, disconnect or timeout triggered, drop the peer if stalling
 			glog.V(logger.Debug).Infoln("Received node data response", "peer", req.peer.id, "count", len(req.response), "dropped", req.dropped, "timeout", !req.dropped && req.timedOut())
@@ -348,6 +351,7 @@ func (s *stateSync) assignTasks() {
 			case s.d.trackStateReq <- req:
 				req.peer.FetchNodeData(req.items)
 			case <-s.cancel:
+			case <-s.d.cancelCh:
 			}
 		}
 	}

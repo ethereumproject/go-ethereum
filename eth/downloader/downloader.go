@@ -1439,10 +1439,19 @@ func (d *Downloader) processFastSyncContent(latest *types.Header) error {
 	)
 	for {
 		// Wait for the next batch of downloaded data to be available, and if the pivot
-		// block became stale, move the goalpost.
+		// block became stale, move the goalpost
 		results := d.queue.Results(oldPivot == nil) // Block if we're not monitoring pivot staleness
-		if len(results) == 0 && oldPivot == nil {
-			return stateSync.Cancel()
+		if len(results) == 0 {
+			// If pivot sync is done, stop
+			if oldPivot == nil {
+				return stateSync.Cancel()
+			}
+			// If sync failed, stop
+			select {
+			case <-d.cancelCh:
+				return stateSync.Cancel()
+			default:
+			}
 		}
 		if d.chainInsertHook != nil {
 			d.chainInsertHook(results)
