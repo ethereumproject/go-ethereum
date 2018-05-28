@@ -47,12 +47,12 @@ var (
 	MaxReceiptFetch = 256 // Amount of transaction receipts to allow fetching per request
 	MaxStateFetch   = 384 // Amount of node state values to allow fetching per request
 
-	MaxForkAncestry  = 3 * EpochDuration // Maximum chain reorganisation
-	rttMinEstimate   = 2 * time.Second   // Minimum round-trip time to target for download requests
-	rttMaxEstimate   = 20 * time.Second  // Maximum rount-trip time to target for download requests
-	rttMinConfidence = 0.1               // Worse confidence factor in our estimated RTT value
-	ttlScaling       = 3                 // Constant scaling factor for RTT -> TTL conversion
-	ttlLimit         = time.Minute       // Maximum TTL allowance to prevent reaching crazy timeouts
+	MaxForkAncestry  uint64 = 3 * EpochDuration // Maximum chain reorganisation
+	rttMinEstimate          = 2 * time.Second   // Minimum round-trip time to target for download requests
+	rttMaxEstimate          = 20 * time.Second  // Maximum rount-trip time to target for download requests
+	rttMinConfidence        = 0.1               // Worse confidence factor in our estimated RTT value
+	ttlScaling              = 3                 // Constant scaling factor for RTT -> TTL conversion
+	ttlLimit                = time.Minute       // Maximum TTL allowance to prevent reaching crazy timeouts
 
 	qosTuningPeers   = 5    // Number of peers to tune based on (best peers)
 	qosConfidenceCap = 10   // Number of peers above which not to modify RTT confidence
@@ -376,7 +376,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 		d.dropPeer(id)
 
 	default:
-		glog.V(logger.Core).Errorf("Peer %s: sync: %s", id, err)
+		glog.V(logger.Core).Warnln("Peer %s: sync: %s", id, err)
 	}
 	return err
 }
@@ -882,7 +882,7 @@ func (d *Downloader) fetchHeaders(p *peer, from uint64, pivot uint64) error {
 			if packet.Items() == 0 {
 				// Don't abort header fetches while the pivot is downloading
 				if atomic.LoadInt32(&d.committed) == 0 && pivot <= from {
-					glog.V(logger.Warn).Errorln("No headers, waiting for pivot commit")
+					glog.V(logger.Warn).Warnln("No headers, waiting for pivot commit")
 					select {
 					case <-time.After(fsHeaderContCheck):
 						getHeaders(from)
@@ -892,7 +892,7 @@ func (d *Downloader) fetchHeaders(p *peer, from uint64, pivot uint64) error {
 					}
 				}
 				// Pivot done (or not in fast sync) and no more headers, terminate the process
-				glog.V(logger.Warn).Errorln("No more headers available")
+				glog.V(logger.Warn).Warnln("No more headers available")
 				select {
 				case d.headerProcCh <- nil:
 					return nil
