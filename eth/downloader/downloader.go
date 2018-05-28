@@ -524,6 +524,8 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 			}
 		}
 	}
+	glog.V(logger.Debug).Infof("Fast syncing until pivot block #%d", pivot)
+
 	d.committed = 1
 	if d.mode == FastSync && pivot != 0 {
 		d.committed = 0
@@ -1628,7 +1630,15 @@ func (d *Downloader) qosTuner() {
 		atomic.StoreUint64(&d.rttConfidence, conf)
 
 		// Log the new QoS values and sleep until the next RTT
-		glog.V(logger.Debug).Infoln("Recalculated downloader QoS values", "rtt", rtt, "confidence", float64(conf)/1000000.0, "ttl", d.requestTTL())
+		ttl := d.requestTTL()
+		if logger.MlogEnabled() {
+			mlogDownloaderTuneQOS.AssignDetails(
+				rtt,
+				float64(conf)/1000000.0,
+				ttl,
+			).Send(mlogDownloader)
+		}
+		glog.V(logger.Debug).Infof("Quality of service: rtt %v, conf %.3f, ttl %v", rtt, float64(conf)/1000000.0, ttl)
 		select {
 		case <-d.quitCh:
 			return
