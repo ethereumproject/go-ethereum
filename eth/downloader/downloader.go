@@ -175,7 +175,7 @@ type Downloader struct {
 // LightChain encapsulates functions required to synchronise a light chain.
 type LightChain interface {
 	// HasHeader verifies a header's presence in the local chain.
-	HasHeader(common.Hash, uint64) bool
+	HasHeader(common.Hash) bool
 
 	// GetHeaderByHash retrieves a header from the local chain.
 	GetHeaderByHash(common.Hash) *types.Header
@@ -184,7 +184,7 @@ type LightChain interface {
 	CurrentHeader() *types.Header
 
 	// GetTd returns the total difficulty of a local block.
-	GetTd(common.Hash, uint64) *big.Int
+	GetTd(common.Hash) *big.Int
 
 	// InsertHeaderChain inserts a batch of headers into the local chain.
 	InsertHeaderChain([]*types.Header, int) (int, error)
@@ -198,7 +198,7 @@ type BlockChain interface {
 	LightChain
 
 	// HasBlockAndState verifies block and associated states' presence in the local chain.
-	HasBlockAndState(common.Hash, uint64) bool
+	HasBlockAndState(common.Hash) bool
 
 	// GetBlockByHash retrieves a block from the local chain.
 	GetBlockByHash(common.Hash) *types.Block
@@ -726,7 +726,7 @@ func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 					continue
 				}
 				// Otherwise check if we already know the header or not
-				if (d.mode == FullSync && d.blockchain.HasBlockAndState(headers[i].Hash(), headers[i].Number.Uint64())) || (d.mode != FullSync && d.lightchain.HasHeader(headers[i].Hash(), headers[i].Number.Uint64())) {
+				if (d.mode == FullSync && d.blockchain.HasBlockAndState(headers[i].Hash())) || (d.mode != FullSync && d.lightchain.HasHeader(headers[i].Hash())) {
 					number, hash = headers[i].Number.Uint64(), headers[i].Hash()
 
 					// If every header is known, even future ones, the peer straight out lied about its head
@@ -791,7 +791,7 @@ func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 				arrived = true
 
 				// Modify the search interval based on the response
-				if (d.mode == FullSync && !d.blockchain.HasBlockAndState(headers[0].Hash(), headers[0].Number.Uint64())) || (d.mode != FullSync && !d.lightchain.HasHeader(headers[0].Hash(), headers[0].Number.Uint64())) {
+				if (d.mode == FullSync && !d.blockchain.HasBlockAndState(headers[0].Hash())) || (d.mode != FullSync && !d.lightchain.HasHeader(headers[0].Hash())) {
 					end = check
 					break
 				}
@@ -1273,7 +1273,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 				// R: Nothing to give
 				if d.mode != LightSync {
 					head := d.blockchain.CurrentBlock()
-					if !gotHeaders && td.Cmp(d.blockchain.GetTd(head.Hash(), head.NumberU64())) > 0 {
+					if !gotHeaders && td.Cmp(d.blockchain.GetTd(head.Hash())) > 0 {
 						return errStallingPeer
 					}
 				}
@@ -1286,7 +1286,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 				// peer gave us something useful, we're already happy/progressed (above check).
 				if d.mode == FastSync || d.mode == LightSync {
 					head := d.lightchain.CurrentHeader()
-					if td.Cmp(d.lightchain.GetTd(head.Hash(), head.Number.Uint64())) > 0 {
+					if td.Cmp(d.lightchain.GetTd(head.Hash())) > 0 {
 						return errStallingPeer
 					}
 				}
@@ -1316,7 +1316,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 					// Collect the yet unknown headers to mark them as uncertain
 					unknown := make([]*types.Header, 0, len(headers))
 					for _, header := range chunk {
-						if !d.lightchain.HasHeader(header.Hash(), header.Number.Uint64()) {
+						if !d.lightchain.HasHeader(header.Hash()) {
 							unknown = append(unknown, header)
 						}
 					}

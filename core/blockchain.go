@@ -116,6 +116,14 @@ type BlockChain struct {
 	indexesDb     ethdb.Database
 }
 
+func (bc *BlockChain) GetHeaderByHash(h common.Hash) *types.Header {
+	return bc.hc.GetHeader(h)
+}
+
+func (bc *BlockChain) GetBlockByHash(h common.Hash) *types.Block {
+	return bc.GetBlock(h)
+}
+
 // NewBlockChain returns a fully initialised block chain using information
 // available in the database. It initialises the default Ethereum Validator and
 // Processor.
