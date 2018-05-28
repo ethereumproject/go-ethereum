@@ -1435,8 +1435,10 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	if tdCompare == 0 {
 		// Reduces the vulnerability to selfish mining.
 		// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
-		reorg = mrand.Float64() < 0.5
+		// Split same-difficulty blocks by number, then at random
+		reorg = block.NumberU64() < self.currentBlock.NumberU64() || (block.NumberU64() == self.currentBlock.NumberU64() && mrand.Float64() < 0.5)
 	}
+
 	if reorg {
 		// Reorganise the chain if the parent is not the head block
 		if block.ParentHash() != self.currentBlock.Hash() {
