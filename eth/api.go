@@ -1700,6 +1700,12 @@ func NewPublicGethAPI(eth *Ethereum) *PublicGethAPI {
 	return &PublicGethAPI{eth: eth}
 }
 
+// GetTransactionsByAddress is an alias for GetAddressTransactions which aligns more closely
+// with established eth_transaction api namespace
+func (api *PublicGethAPI) GetTransactionsByAddress(address common.Address, blockStartN uint64, blockEndN rpc.BlockNumber, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
+	return api.GetAddressTransactions(address, blockStartN, blockEndN, toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+}
+
 // AddressTransactions gets transactions for a given address.
 // Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
 // Returns a slice of strings of transactions hashes.
