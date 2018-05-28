@@ -162,7 +162,7 @@ web3._extend({
 			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, web3._extend.formatters.inputDefaultBlockNumberFormatter, null, null, null, null, null]
 		}),
 		new web3._extend.Method({
-			name: 'getAddressTransactions',
+			name: 'getTransactionsByAddress',
 			call: 'geth_getTransactionsByAddress',
 			params: 8,
 			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, web3._extend.formatters.inputDefaultBlockNumberFormatter, null, null, null, null, null]
