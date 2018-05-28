@@ -25,15 +25,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/trie"
-	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/trie"
 )
 
 var (
@@ -43,7 +41,7 @@ var (
 
 // Reduce some of the parameters to make the tester faster.
 func init() {
-	MaxForkAncestry = uint64(10000)
+	MaxForkAncestry = 10000
 	blockCacheItems = 1024
 	fsHeaderContCheck = 500 * time.Millisecond
 }
@@ -76,7 +74,8 @@ type downloadTester struct {
 // newTester creates a new downloader test mocker.
 func newTester() *downloadTester {
 	testdb, _ := ethdb.NewMemDatabase()
-	genesis := core.GenesisBlockForTesting(testdb, testAddress, big.NewInt(1000000000))
+	genesis := core.WriteGenesisBlockForTesting(testdb, core.GenesisAccount{Address: testAddress, Balance: big.NewInt(1000000000)})
+	//genesis := core.GenesisBlockForTesting(testdb, testAddress, big.NewInt(1000000000))
 
 	tester := &downloadTester{
 		genesis:           genesis,
@@ -107,7 +106,7 @@ func newTester() *downloadTester {
 // reassembly.
 func (dl *downloadTester) makeChain(n int, seed byte, parent *types.Block, parentReceipts types.Receipts, heavy bool) ([]common.Hash, map[common.Hash]*types.Header, map[common.Hash]*types.Block, map[common.Hash]types.Receipts) {
 	// Generate the block chain
-	blocks, receipts := core.GenerateChain(params.TestChainConfig, parent, ethash.NewFaker(), dl.peerDb, n, func(i int, block *core.BlockGen) {
+	blocks, receipts := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, parent, dl.peerDb, n, func(i int, block *core.BlockGen) {
 		block.SetCoinbase(common.Address{seed})
 
 		// If a heavy chain is requested, delay blocks to raise difficulty
@@ -116,8 +115,7 @@ func (dl *downloadTester) makeChain(n int, seed byte, parent *types.Block, paren
 		}
 		// If the block number is multiple of 3, send a bonus transaction to the miner
 		if parent == dl.genesis && i%3 == 0 {
-			signer := types.MakeSigner(params.TestChainConfig, block.Number())
-			tx, err := types.SignTx(types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), params.TxGas, nil, nil), signer, testKey)
+			tx, err := types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), core.TxGas, nil, nil).SignECDSA(testKey)
 			if err != nil {
 				panic(err)
 			}
@@ -217,12 +215,12 @@ func (dl *downloadTester) sync(id string, td *big.Int, mode SyncMode) error {
 }
 
 // HasHeader checks if a header is present in the testers canonical chain.
-func (dl *downloadTester) HasHeader(hash common.Hash, number uint64) bool {
+func (dl *downloadTester) HasHeader(hash common.Hash) bool {
 	return dl.GetHeaderByHash(hash) != nil
 }
 
 // HasBlockAndState checks if a block and associated state is present in the testers canonical chain.
-func (dl *downloadTester) HasBlockAndState(hash common.Hash, number uint64) bool {
+func (dl *downloadTester) HasBlockAndState(hash common.Hash) bool {
 	block := dl.GetBlockByHash(hash)
 	if block == nil {
 		return false
@@ -292,14 +290,14 @@ func (dl *downloadTester) CurrentFastBlock() *types.Block {
 func (dl *downloadTester) FastSyncCommitHead(hash common.Hash) error {
 	// For now only check that the state trie is correct
 	if block := dl.GetBlockByHash(hash); block != nil {
-		_, err := trie.NewSecure(block.Root(), trie.NewDatabase(dl.stateDb), 0)
+		_, err := trie.NewSecure(block.Root(), dl.stateDb, 0)
 		return err
 	}
 	return fmt.Errorf("non existent block: %x", hash[:4])
 }
 
 // GetTd retrieves the block's total difficulty from the canonical chain.
-func (dl *downloadTester) GetTd(hash common.Hash, number uint64) *big.Int {
+func (dl *downloadTester) GetTd(hash common.Hash) *big.Int {
 	dl.lock.RLock()
 	defer dl.lock.RUnlock()
 
@@ -402,8 +400,21 @@ func (dl *downloadTester) newPeer(id string, version int, hashes []common.Hash, 
 func (dl *downloadTester) newSlowPeer(id string, version int, hashes []common.Hash, headers map[common.Hash]*types.Header, blocks map[common.Hash]*types.Block, receipts map[common.Hash]types.Receipts, delay time.Duration) error {
 	dl.lock.Lock()
 	defer dl.lock.Unlock()
-
-	var err = dl.downloader.RegisterPeer(id, version, &downloadTesterPeer{dl: dl, id: id, delay: delay})
+	name := "slow peer"
+	p := &downloadTesterPeer{
+		id:    id,
+		dl:    dl,
+		delay: delay,
+	}
+	var err error
+	switch version {
+	case 62:
+		err = dl.downloader.RegisterPeer(id, version, name, p.Head, p.RequestHeadersByHash, p.RequestHeadersByNumber, p.RequestBodies, nil, nil)
+	case 63:
+		err = dl.downloader.RegisterPeer(id, version, name, p.Head, p.RequestHeadersByHash, p.RequestHeadersByNumber, p.RequestBodies, p.RequestReceipts, p.RequestNodeData)
+	case 64:
+		err = dl.downloader.RegisterPeer(id, version, name, p.Head, p.RequestHeadersByHash, p.RequestHeadersByNumber, p.RequestBodies, p.RequestReceipts, p.RequestNodeData)
+	}
 	if err == nil {
 		// Assign the owned hashes, headers and blocks to the peer (deep copy)
 		dl.peerHashes[id] = make([]common.Hash, len(hashes))
@@ -1386,8 +1397,8 @@ func testSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		<-progress
 	}
 	// Retrieve the sync progress and ensure they are zero (pristine sync)
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock != 0 || progress.HighestBlock != 0 {
-		t.Fatalf("Pristine progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, 0, 0)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current != 0 || height != 0 {
+		t.Fatalf("Pristine progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, 0, 0, 0)
 	}
 	// Synchronise half the blocks and check initial progress
 	tester.newPeer("peer-half", protocol, hashes[targetBlocks/2:], headers, blocks, receipts)
@@ -1401,8 +1412,8 @@ func testSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		}
 	}()
 	<-starting
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock != 0 || progress.HighestBlock != uint64(targetBlocks/2+1) {
-		t.Fatalf("Initial progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, 0, targetBlocks/2+1)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current != 0 || height != uint64(targetBlocks/2+1) {
+		t.Fatalf("Initial progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, 0, 0, targetBlocks/2+1)
 	}
 	progress <- struct{}{}
 	pending.Wait()
@@ -1418,15 +1429,15 @@ func testSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		}
 	}()
 	<-starting
-	if progress := tester.downloader.Progress(); progress.StartingBlock != uint64(targetBlocks/2+1) || progress.CurrentBlock != uint64(targetBlocks/2+1) || progress.HighestBlock != uint64(targetBlocks) {
-		t.Fatalf("Completing progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, targetBlocks/2+1, targetBlocks/2+1, targetBlocks)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != uint64(targetBlocks/2+1) || current != uint64(targetBlocks/2+1) || height != uint64(targetBlocks) {
+		t.Fatalf("Completing progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, targetBlocks/2+1, targetBlocks/2+1, targetBlocks)
 	}
 	progress <- struct{}{}
 	pending.Wait()
 
 	// Check final progress after successful sync
-	if progress := tester.downloader.Progress(); progress.StartingBlock != uint64(targetBlocks/2+1) || progress.CurrentBlock != uint64(targetBlocks) || progress.HighestBlock != uint64(targetBlocks) {
-		t.Fatalf("Final progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, targetBlocks/2+1, targetBlocks, targetBlocks)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != uint64(targetBlocks/2+1) || current != uint64(targetBlocks) || height != uint64(targetBlocks) {
+		t.Fatalf("Final progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, targetBlocks/2+1, targetBlocks, targetBlocks)
 	}
 }
 
@@ -1459,8 +1470,8 @@ func testForkedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		<-progress
 	}
 	// Retrieve the sync progress and ensure they are zero (pristine sync)
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock != 0 || progress.HighestBlock != 0 {
-		t.Fatalf("Pristine progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, 0, 0)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current != 0 || height != 0 {
+		t.Fatalf("Pristine progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, 0, 0, 0)
 	}
 	// Synchronise with one of the forks and check progress
 	tester.newPeer("fork A", protocol, hashesA, headersA, blocksA, receiptsA)
@@ -1474,8 +1485,8 @@ func testForkedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		}
 	}()
 	<-starting
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock != 0 || progress.HighestBlock != uint64(len(hashesA)-1) {
-		t.Fatalf("Initial progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, 0, len(hashesA)-1)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current != 0 || height != uint64(len(hashesA)-1) {
+		t.Fatalf("Initial progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, 0, 0, len(hashesA)-1)
 	}
 	progress <- struct{}{}
 	pending.Wait()
@@ -1494,15 +1505,15 @@ func testForkedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		}
 	}()
 	<-starting
-	if progress := tester.downloader.Progress(); progress.StartingBlock != uint64(common) || progress.CurrentBlock != uint64(len(hashesA)-1) || progress.HighestBlock != uint64(len(hashesB)-1) {
-		t.Fatalf("Forking progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, common, len(hashesA)-1, len(hashesB)-1)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != uint64(common) || current != uint64(len(hashesA)-1) || height != uint64(len(hashesB)-1) {
+		t.Fatalf("Forking progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, common, len(hashesA)-1, len(hashesB)-1)
 	}
 	progress <- struct{}{}
 	pending.Wait()
 
 	// Check final progress after successful sync
-	if progress := tester.downloader.Progress(); progress.StartingBlock != uint64(common) || progress.CurrentBlock != uint64(len(hashesB)-1) || progress.HighestBlock != uint64(len(hashesB)-1) {
-		t.Fatalf("Final progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, common, len(hashesB)-1, len(hashesB)-1)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != uint64(common) || current != uint64(len(hashesB)-1) || height != uint64(len(hashesB)-1) {
+		t.Fatalf("Final progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, common, len(hashesB)-1, len(hashesB)-1)
 	}
 }
 
@@ -1535,8 +1546,8 @@ func testFailedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		<-progress
 	}
 	// Retrieve the sync progress and ensure they are zero (pristine sync)
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock != 0 || progress.HighestBlock != 0 {
-		t.Fatalf("Pristine progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, 0, 0)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current != 0 || height != 0 {
+		t.Fatalf("Pristine progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, 0, 0, 0)
 	}
 	// Attempt a full sync with a faulty peer
 	tester.newPeer("faulty", protocol, hashes, headers, blocks, receipts)
@@ -1555,8 +1566,8 @@ func testFailedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		}
 	}()
 	<-starting
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock != 0 || progress.HighestBlock != uint64(targetBlocks) {
-		t.Fatalf("Initial progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, 0, targetBlocks)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current != 0 || height != uint64(targetBlocks) {
+		t.Fatalf("Initial progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, 0, 0, targetBlocks)
 	}
 	progress <- struct{}{}
 	pending.Wait()
@@ -1572,15 +1583,15 @@ func testFailedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		}
 	}()
 	<-starting
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock > uint64(targetBlocks/2) || progress.HighestBlock != uint64(targetBlocks) {
-		t.Fatalf("Completing progress mismatch: have %v/%v/%v, want %v/0-%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, targetBlocks/2, targetBlocks)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current > uint64(targetBlocks/2) || height != uint64(targetBlocks) {
+		t.Fatalf("Completing progress mismatch: have %v/%v/%v, want %v/0-%v/%v", start, current, height, 0, targetBlocks/2, targetBlocks)
 	}
 	progress <- struct{}{}
 	pending.Wait()
 
 	// Check final progress after successful sync
-	if progress := tester.downloader.Progress(); progress.StartingBlock > uint64(targetBlocks/2) || progress.CurrentBlock != uint64(targetBlocks) || progress.HighestBlock != uint64(targetBlocks) {
-		t.Fatalf("Final progress mismatch: have %v/%v/%v, want 0-%v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, targetBlocks/2, targetBlocks, targetBlocks)
+	if start, current, height, _, _ := tester.downloader.Progress(); start > uint64(targetBlocks/2) || current != uint64(targetBlocks) || height != uint64(targetBlocks) {
+		t.Fatalf("Final progress mismatch: have %v/%v/%v, want 0-%v/%v/%v", start, current, height, targetBlocks/2, targetBlocks, targetBlocks)
 	}
 }
 
@@ -1612,8 +1623,8 @@ func testFakedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		<-progress
 	}
 	// Retrieve the sync progress and ensure they are zero (pristine sync)
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock != 0 || progress.HighestBlock != 0 {
-		t.Fatalf("Pristine progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, 0, 0)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current != 0 || height != 0 {
+		t.Fatalf("Pristine progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, 0, 0, 0)
 	}
 	//  Create and sync with an attacker that promises a higher chain than available
 	tester.newPeer("attack", protocol, hashes, headers, blocks, receipts)
@@ -1633,8 +1644,8 @@ func testFakedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		}
 	}()
 	<-starting
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock != 0 || progress.HighestBlock != uint64(targetBlocks+3) {
-		t.Fatalf("Initial progress mismatch: have %v/%v/%v, want %v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, 0, targetBlocks+3)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current != 0 || height != uint64(targetBlocks+3) {
+		t.Fatalf("Initial progress mismatch: have %v/%v/%v, want %v/%v/%v", start, current, height, 0, 0, targetBlocks+3)
 	}
 	progress <- struct{}{}
 	pending.Wait()
@@ -1650,15 +1661,15 @@ func testFakedSyncProgress(t *testing.T, protocol int, mode SyncMode) {
 		}
 	}()
 	<-starting
-	if progress := tester.downloader.Progress(); progress.StartingBlock != 0 || progress.CurrentBlock > uint64(targetBlocks) || progress.HighestBlock != uint64(targetBlocks) {
-		t.Fatalf("Completing progress mismatch: have %v/%v/%v, want %v/0-%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, 0, targetBlocks, targetBlocks)
+	if start, current, height, _, _ := tester.downloader.Progress(); start != 0 || current > uint64(targetBlocks) || height != uint64(targetBlocks) {
+		t.Fatalf("Completing progress mismatch: have %v/%v/%v, want %v/0-%v/%v", start, current, height, 0, targetBlocks, targetBlocks)
 	}
 	progress <- struct{}{}
 	pending.Wait()
 
 	// Check final progress after successful sync
-	if progress := tester.downloader.Progress(); progress.StartingBlock > uint64(targetBlocks) || progress.CurrentBlock != uint64(targetBlocks) || progress.HighestBlock != uint64(targetBlocks) {
-		t.Fatalf("Final progress mismatch: have %v/%v/%v, want 0-%v/%v/%v", progress.StartingBlock, progress.CurrentBlock, progress.HighestBlock, targetBlocks, targetBlocks, targetBlocks)
+	if start, current, height, _, _ := tester.downloader.Progress(); start > uint64(targetBlocks) || current != uint64(targetBlocks) || height != uint64(targetBlocks) {
+		t.Fatalf("Final progress mismatch: have %v/%v/%v, want 0-%v/%v/%v", start, current, height, targetBlocks, targetBlocks, targetBlocks)
 	}
 }
 
@@ -1686,22 +1697,23 @@ func TestDeliverHeadersHang(t *testing.T) {
 }
 
 type floodingTestPeer struct {
-	peer   Peer
+	peer   peer
 	tester *downloadTester
 }
 
-func (ftp *floodingTestPeer) Head() (common.Hash, *big.Int) { return ftp.peer.Head() }
+func (ftp *floodingTestPeer) Head() (common.Hash, *big.Int) { return ftp.peer.currentHead() }
 func (ftp *floodingTestPeer) RequestHeadersByHash(hash common.Hash, count int, skip int, reverse bool) error {
-	return ftp.peer.RequestHeadersByHash(hash, count, skip, reverse)
+	//return ftp.peer.RequestHeadersByHash(hash, count, skip, reverse)
+	return ftp.peer.getRelHeaders(hash, count, skip, reverse)
 }
 func (ftp *floodingTestPeer) RequestBodies(hashes []common.Hash) error {
-	return ftp.peer.RequestBodies(hashes)
+	return ftp.peer.getBlockBodies(hashes)
 }
 func (ftp *floodingTestPeer) RequestReceipts(hashes []common.Hash) error {
-	return ftp.peer.RequestReceipts(hashes)
+	return ftp.peer.getReceipts(hashes)
 }
 func (ftp *floodingTestPeer) RequestNodeData(hashes []common.Hash) error {
-	return ftp.peer.RequestNodeData(hashes)
+	return ftp.peer.getNodeData(hashes)
 }
 
 func (ftp *floodingTestPeer) RequestHeadersByNumber(from uint64, count, skip int, reverse bool) error {
@@ -1714,7 +1726,7 @@ func (ftp *floodingTestPeer) RequestHeadersByNumber(from uint64, count, skip int
 		}()
 	}
 	// Deliver the actual requested headers.
-	go ftp.peer.RequestHeadersByNumber(from, count, skip, reverse)
+	go ftp.peer.getAbsHeaders(from, count, skip, reverse)
 	// None of the extra deliveries should block.
 	timeout := time.After(60 * time.Second)
 	for i := 0; i < cap(deliveriesDone); i++ {
@@ -1741,10 +1753,11 @@ func testDeliverHeadersHang(t *testing.T, protocol int, mode SyncMode) {
 		tester.newPeer("peer", protocol, hashes, headers, blocks, receipts)
 		// Whenever the downloader requests headers, flood it with
 		// a lot of unrequested header deliveries.
-		tester.downloader.peers.peers["peer"].peer = &floodingTestPeer{
-			tester.downloader.peers.peers["peer"].peer,
+		ftp := &floodingTestPeer{
+			*tester.downloader.peers.peers["peer"],
 			tester,
 		}
+		tester.downloader.peers.peers["peer"] = &ftp.peer
 		if err := tester.sync("peer", nil, mode); err != nil {
 			t.Errorf("sync failed: %v", err)
 		}
