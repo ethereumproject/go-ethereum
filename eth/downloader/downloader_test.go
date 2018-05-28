@@ -1749,10 +1749,12 @@ func testDeliverHeadersHang(t *testing.T, protocol int, mode SyncMode) {
 
 	hashes, headers, blocks, receipts := master.makeChain(5, 0, master.genesis, nil, false)
 	for i := 0; i < 200; i++ {
+
 		tester := newTester()
 		tester.peerDb = master.peerDb
 
 		tester.newPeer("peer", protocol, hashes, headers, blocks, receipts)
+		tester.downloader.peers.lock.Lock()
 		// Whenever the downloader requests headers, flood it with
 		// a lot of unrequested header deliveries.
 		ftp := &floodingTestPeer{
@@ -1760,9 +1762,13 @@ func testDeliverHeadersHang(t *testing.T, protocol int, mode SyncMode) {
 			tester,
 		}
 		tester.downloader.peers.peers["peer"] = &ftp.peer
+		tester.downloader.peers.lock.Unlock()
 		if err := tester.sync("peer", nil, mode); err != nil {
 			t.Errorf("sync failed: %v", err)
 		}
 		tester.terminate()
+
+		// Flush all goroutines to prevent messing with subsequent tests
+		//tester.downloader.peers.peers["peer"]
 	}
 }
