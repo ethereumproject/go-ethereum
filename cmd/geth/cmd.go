@@ -44,6 +44,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
+	"math"
 )
 
 const (
@@ -718,11 +719,20 @@ func startNode(ctx *cli.Context, stack *node.Node) *eth.Ethereum {
 	}
 
 	// Start auxiliary services if enabled
+	if ctx.GlobalBool(aliasableName(AddrTxIndexFlag.Name, ctx)) && ctx.GlobalBool(aliasableName(AddrTxIndexAutoBuildFlag.Name, ctx)) {
+		a := ethereum.BlockChain().GetAtxi()
+		if a == nil {
+			panic("somehow atxi did not get enabled in backend setup. this is not expected")
+		}
+		a.AutoMode = true
+		go core.BuildAddrTxIndex(ethereum.BlockChain(), ethereum.ChainDb(), a.Db, math.MaxUint64, math.MaxUint64, 10000)
+	}
 	if ctx.GlobalBool(aliasableName(MiningEnabledFlag.Name, ctx)) {
 		if err := ethereum.StartMining(ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)), ctx.GlobalString(aliasableName(MiningGPUFlag.Name, ctx))); err != nil {
 			glog.Fatalf("Failed to start mining: %v", err)
 		}
 	}
+
 	return ethereum
 }
 

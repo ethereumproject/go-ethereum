@@ -11,8 +11,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"math"
+	"os"
+	"os/signal"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -195,7 +198,12 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 		err := fmt.Errorf("block %d is nil", blockIndex)
 		bc.atxi.Progress.LastError = err
 		glog.Error(err)
+		return err
 	}
+	// sigc is a single-val channel for listening to program interrupt
+	var sigc = make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigc)
 
 	startTime := time.Now()
 	totalTxCount := uint64(0)
@@ -234,6 +242,14 @@ func BuildAddrTxIndex(bc *BlockChain, chainDB, indexDB ethdb.Database, startInde
 
 		glog.D(logger.Error).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
 		glog.V(logger.Info).Infof("atxi-build: block %d / %d txs: %d took: %v %.2f bps %.2f txps", i+step, stopIndex, txsCount, time.Since(stepStartTime).Round(time.Millisecond), float64(step)/time.Since(stepStartTime).Seconds(), float64(txsCount)/time.Since(stepStartTime).Seconds())
+
+		// Listen for interrupts, nonblocking
+		select {
+		case s := <-sigc:
+			glog.D(logger.Info).Warnln("atxi build", "got interrupt:", s, "quitting")
+			return nil
+		default:
+		}
 
 		if breaker {
 			break
