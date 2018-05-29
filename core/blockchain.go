@@ -112,8 +112,7 @@ type BlockChain struct {
 	processor Processor // block processor interface
 	validator Validator // block and state validator interface
 
-	useAddTxIndex bool
-	indexesDb     ethdb.Database
+	atxi *AtxiT
 }
 
 func (bc *BlockChain) GetHeaderByHash(h common.Hash) *types.Header {
@@ -228,15 +227,14 @@ func (bc *BlockChain) GetEventMux() *event.TypeMux {
 	return bc.eventMux
 }
 
-// SetAddTxIndex sets the db and in-use var for atx indexing.
-func (bc *BlockChain) SetAddTxIndex(db ethdb.Database, tf bool) {
-	bc.useAddTxIndex = tf
-	bc.indexesDb = db
+// SetAtxi sets the db and in-use var for atx indexing.
+func (bc *BlockChain) SetAtxi(a *AtxiT) {
+	bc.atxi = a
 }
 
-// GetAddTxIndex return indexes db and if atx index in use.
-func (bc *BlockChain) GetAddTxIndex() (ethdb.Database, bool) {
-	return bc.indexesDb, bc.useAddTxIndex
+// GetAtxi return indexes db and if atx index in use.
+func (bc *BlockChain) GetAtxi() *AtxiT {
+	return bc.atxi
 }
 
 func (bc *BlockChain) getProcInterrupt() bool {
@@ -798,8 +796,8 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		glog.Fatalf("failed to reset head fast block hash: %v", err)
 	}
 
-	if bc.useAddTxIndex {
-		ldb, ok := bc.indexesDb.(*ethdb.LDBDatabase)
+	if bc.atxi != nil && bc.atxi.AutoMode {
+		ldb, ok := bc.atxi.Db.(*ethdb.LDBDatabase)
 		if !ok {
 			glog.Fatal("could not cast indexes db to level db")
 		}
@@ -835,6 +833,15 @@ func (bc *BlockChain) SetHead(head uint64) error {
 			return e
 		}
 		deleteRemovalsFn(removals)
+
+		// update atxi bookmark to lower head in the case that its progress was higher than the new head
+		if bc.atxi != nil && bc.atxi.AutoMode {
+			if i := bc.atxi.GetATXIBookmark(); i > head {
+				if err := bc.atxi.SetATXIBookmark(head); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	bc.mu.Unlock()
@@ -1296,9 +1303,17 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				return
 			}
 			// Store the addr-tx indexes if enabled
-			if bc.useAddTxIndex {
-				if err := WriteBlockAddTxIndexes(bc.indexesDb, block); err != nil {
+			if bc.atxi != nil {
+				if err := WriteBlockAddTxIndexes(bc.atxi.Db, block); err != nil {
 					glog.Fatalf("failed to write block add-tx indexes", err)
+				}
+				// if buildATXI has been in use (via RPC) and is NOT finished, current < stop
+				// if buildATXI has been in use (via RPC) and IS finished, current == stop
+				// else if builtATXI has not been in use (via RPC), then current == stop == 0
+				if bc.atxi.AutoMode && bc.atxi.Progress.Current == bc.atxi.Progress.Stop {
+					if err := bc.atxi.SetATXIBookmark(block.NumberU64()); err != nil {
+						glog.Fatalln(err)
+					}
 				}
 			}
 			atomic.AddInt32(&stats.processed, 1)
@@ -1632,9 +1647,17 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 				return i, err
 			}
 			// Store the addr-tx indexes if enabled
-			if bc.useAddTxIndex {
-				if err := WriteBlockAddTxIndexes(bc.indexesDb, block); err != nil {
-					glog.Fatalf("failed to write block add-tx indexes", err)
+			if bc.atxi != nil {
+				if err := WriteBlockAddTxIndexes(bc.atxi.Db, block); err != nil {
+					return i, fmt.Errorf("failed to write block add-tx indexes: %v", err)
+				}
+				// if buildATXI has been in use (via RPC) and is NOT finished, current < stop
+				// if buildATXI has been in use (via RPC) and IS finished, current == stop
+				// else if builtATXI has not been in use (via RPC), then current == stop == 0
+				if bc.atxi.AutoMode && bc.atxi.Progress.Current == bc.atxi.Progress.Stop {
+					if err := bc.atxi.SetATXIBookmark(block.NumberU64()); err != nil {
+						return i, err
+					}
 				}
 			}
 		case SideStatTy:
@@ -1770,10 +1793,11 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	}
 
 	// Remove all atxis from old chain; indexes should only reflect canonical
-	if bc.useAddTxIndex {
+	// Doesn't matter whether automode or not, they should be removed.
+	if bc.atxi != nil {
 		for _, block := range oldChain {
 			for _, tx := range block.Transactions() {
-				if err := RmAddrTx(bc.indexesDb, tx); err != nil {
+				if err := RmAddrTx(bc.atxi.Db, tx); err != nil {
 					return err
 				}
 			}
@@ -1790,9 +1814,17 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 			return err
 		}
 		// Store the addr-tx indexes if enabled
-		if bc.useAddTxIndex {
-			if err := WriteBlockAddTxIndexes(bc.indexesDb, block); err != nil {
+		if bc.atxi != nil {
+			if err := WriteBlockAddTxIndexes(bc.atxi.Db, block); err != nil {
 				return err
+			}
+			// if buildATXI has been in use (via RPC) and is NOT finished, current < stop
+			// if buildATXI has been in use (via RPC) and IS finished, current == stop
+			// else if builtATXI has not been in use (via RPC), then current == stop == 0
+			if bc.atxi.AutoMode && bc.atxi.Progress.Current == bc.atxi.Progress.Stop {
+				if err := bc.atxi.SetATXIBookmark(block.NumberU64()); err != nil {
+					return err
+				}
 			}
 		}
 		receipts := GetBlockReceipts(bc.chainDb, block.Hash())

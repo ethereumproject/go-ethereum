@@ -102,6 +102,10 @@ var (
 		Name:  "atxi,add-tx-index",
 		Usage: "Toggle indexes for transactions by address. Pre-existing chaindata can be indexed with command 'atxi-build'",
 	}
+	AddrTxIndexAutoBuildFlag = cli.BoolFlag{
+		Name:  "atxi.autobuild,atxi.auto-build",
+		Usage: "Begins automatic concurrent indexes building process that runs alongside a normally running geth.",
+	}
 	// Network Split settings
 	ETFChain = cli.BoolFlag{
 		Name:  "etf",

@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"os"
 	"runtime"
@@ -1699,14 +1700,20 @@ func NewPublicGethAPI(eth *Ethereum) *PublicGethAPI {
 	return &PublicGethAPI{eth: eth}
 }
 
+// GetTransactionsByAddress is an alias for GetAddressTransactions which aligns more closely
+// with established eth_transaction api namespace
+func (api *PublicGethAPI) GetTransactionsByAddress(address common.Address, blockStartN uint64, blockEndN rpc.BlockNumber, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
+	return api.GetAddressTransactions(address, blockStartN, blockEndN, toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+}
+
 // AddressTransactions gets transactions for a given address.
 // Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
 // Returns a slice of strings of transactions hashes.
-func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN uint64, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
+func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN rpc.BlockNumber, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
 	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
-	db, inUse := api.eth.BlockChain().GetAddTxIndex()
-	if !inUse {
+	atxi := api.eth.BlockChain().GetAtxi()
+	if atxi == nil {
 		return nil, errors.New("addr-tx indexing not enabled")
 	}
 	// Use human-friendly abbreviations, per https://github.com/ethereumproject/go-ethereum/pull/475#issuecomment-366065122
@@ -1720,7 +1727,11 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 		txKindOf = "b"
 	}
 
-	list = core.GetAddrTxs(db, address, blockStartN, blockEndN, toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+	if blockEndN == rpc.LatestBlockNumber || blockEndN == rpc.PendingBlockNumber {
+		blockEndN = 0
+	}
+
+	list = core.GetAddrTxs(atxi.Db, address, blockStartN, uint64(blockEndN.Int64()), toOrFrom, txKindOf, pagStart, pagEnd, reverse)
 
 	// Since list is a slice, it can be nil, which returns 'null'.
 	// Should return empty 'array' if no txs found.
@@ -1728,6 +1739,58 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 		list = []string{}
 	}
 	return list, nil
+}
+
+func (api *PublicGethAPI) BuildATXI(start, stop, step rpc.BlockNumber) (bool, error) {
+	glog.V(logger.Debug).Infoln("RPC call: geth_buildATXI %v %v %v", start, stop, step)
+
+	convert := func(number rpc.BlockNumber) uint64 {
+		switch number {
+		case rpc.LatestBlockNumber, rpc.PendingBlockNumber:
+			return math.MaxUint64
+		default:
+			return uint64(number.Int64())
+		}
+	}
+
+	atxi := api.eth.BlockChain().GetAtxi()
+	if atxi == nil {
+		return false, errors.New("addr-tx indexing not enabled")
+	}
+	if atxi.AutoMode {
+		return false, errors.New("addr-tx indexing already running via the auto build mode")
+	}
+
+	progress, err := api.eth.BlockChain().GetATXIBuildProgress()
+	if err != nil {
+		return false, err
+	}
+	if progress != nil && progress.Start != uint64(math.MaxUint64) && progress.Current < progress.Stop && progress.LastError == nil {
+		return false, fmt.Errorf("ATXI build process is already running (first block: %d, last block: %d, current block: %d\n)", progress.Start, progress.Stop, progress.Current)
+	}
+
+	go core.BuildAddrTxIndex(api.eth.BlockChain(), api.eth.ChainDb(), atxi.Db, convert(start), convert(stop), convert(step))
+
+	return true, nil
+}
+
+func (api *PublicGethAPI) GetATXIBuildStatus() (*core.AtxiProgressT, error) {
+	atxi := api.eth.BlockChain().GetAtxi()
+	if atxi == nil {
+		return nil, errors.New("addr-tx indexing not enabled")
+	}
+	if atxi.Progress == nil {
+		return nil, errors.New("no progress available for unstarted atxi indexing process")
+	}
+
+	progress, err := api.eth.BlockChain().GetATXIBuildProgress()
+	if err != nil {
+		return nil, err
+	}
+	if progress.Start == progress.Current {
+		return nil, nil
+	}
+	return progress, nil
 }
 
 // PublicDebugAPI is the collection of Etheruem APIs exposed over the public

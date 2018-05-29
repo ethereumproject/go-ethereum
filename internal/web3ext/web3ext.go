@@ -159,7 +159,24 @@ web3._extend({
 			name: 'getAddressTransactions',
 			call: 'geth_getAddressTransactions',
 			params: 8,
-			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, null, null, null, null, null, null]
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, web3._extend.formatters.inputDefaultBlockNumberFormatter, null, null, null, null, null]
+		}),
+		new web3._extend.Method({
+			name: 'getTransactionsByAddress',
+			call: 'geth_getTransactionsByAddress',
+			params: 8,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, web3._extend.formatters.inputDefaultBlockNumberFormatter, null, null, null, null, null]
+		}),
+		new web3._extend.Method({
+			name: 'buildATXI',
+			call: 'geth_buildATXI',
+			params: 3,
+			inputFormatter: [web3._extend.formatters.inputDefaultBlockNumberFormatter, web3._extend.formatters.inputDefaultBlockNumberFormatter, null]
+		}),
+		new web3._extend.Method({
+			name: 'getATXIBuildStatus',
+			call: 'geth_getATXIBuildStatus',
+			params: 0,
 		})
 	],
 	properties: []
@@ -223,12 +240,6 @@ web3._extend({
 			name: 'accountExist',
 			call: 'debug_accountExist',
 			params: 2
-		}),
-		new web3._extend.Method({
-			name: 'getAddressTransactions',
-			call: 'debug_getAddressTransactions',
-			params: 8,
-			inputFormatter: [web3._extend.formatters.inputAddressFormatter, null, null, null, null, null, null, null]
 		})
 	],
 	properties: []
