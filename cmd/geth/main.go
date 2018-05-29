@@ -34,7 +34,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/metrics"
-	"math"
 )
 
 // Version is the application revision identifier. It can be set with the linker
@@ -353,15 +352,6 @@ func geth(ctx *cli.Context) error {
 		dispatchStatusLogs(ctx, ethe)
 	}
 	logLoggingConfiguration(ctx)
-
-	if ctx.GlobalBool(aliasableName(AddrTxIndexFlag.Name, ctx)) && ctx.GlobalBool(aliasableName(AddrTxIndexAutoBuildFlag.Name, ctx)) {
-		a := ethe.BlockChain().GetAtxi()
-		if a == nil {
-			panic("somehow atxi did not get enabled in backend setup. this is not expected")
-		}
-		a.AutoMode = true
-		go core.BuildAddrTxIndex(ethe.BlockChain(), ethe.ChainDb(), a.Db, math.MaxUint64, math.MaxUint64, 10000)
-	}
 
 	n.Wait()
 
