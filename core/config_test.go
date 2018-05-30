@@ -550,26 +550,36 @@ func TestChainConfigGetSet(t *testing.T) {
 	}
 }
 
-func TestChainConfig_GetLastRequiredHashFork(t *testing.T) {
+func TestChainConfig_GetLatestRequiredHashFork(t *testing.T) {
 	c := getDefaultChainConfigSorted()
+
+	checkGotWantDefaults := func(got *Fork, want *Fork, hash string, n *big.Int) {
+		// sanity check
+		if want == nil {
+			t.Fatal("nil want hard fork")
+		}
+
+		if got == nil {
+			t.Fatalf("got: %v, want: %s", got, want.Name)
+		}
+		if got.RequiredHash.Hex() != hash {
+			t.Errorf("got: %v, want: %s", got, got.RequiredHash.Hex())
+		}
+		if got.Block.Cmp(n) != 0 {
+			t.Errorf("got: %d, want: %d", got.Block, 1920000)
+		}
+	}
 
 	daoFork := c.ForkByName("The DAO Hard Fork")
 	got, want := c.GetLatestRequiredHashFork(big.NewInt(1920000)), daoFork
+	checkGotWantDefaults(got, want, "0x94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f", big.NewInt(1920000))
 
-	// sanity check
-	if want == nil {
-		t.Fatal("nil want hard fork")
-	}
+	dbdFork := c.ForkByName("Defuse Difficulty Bomb")
+	got, want = c.GetLatestRequiredHashFork(big.NewInt(5900000)), dbdFork
+	checkGotWantDefaults(got, want, "0x52bc7bbcf1d9251f3f3541ef8c138ee4deacf14e5d66f9614a9bf95d19611bd4", big.NewInt(5900000))
 
-	if got == nil {
-		t.Fatalf("got: %v, want: %s", got, want.Name)
-	}
-	if got.RequiredHash.Hex() != "0x94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f" {
-		t.Errorf("got: %v, want: %s", got, got.RequiredHash.Hex())
-	}
-	if got.Block.Cmp(big.NewInt(1920000)) != 0 {
-		t.Errorf("got: %d, want: %d", got.Block, 1920000)
-	}
+	got, want = c.GetLatestRequiredHashFork(big.NewInt(5900200)), dbdFork
+	checkGotWantDefaults(got, want, "0x52bc7bbcf1d9251f3f3541ef8c138ee4deacf14e5d66f9614a9bf95d19611bd4", big.NewInt(5900000))
 
 	// create new "checkpoint" fork for testing
 	checkpoint := &Fork{
