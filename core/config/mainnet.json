@@ -73,7 +73,7 @@
             {
                 "name": "Gotham",
                 "block": 5000000,
-                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "requiredHash": "0xb2f55d12af971452c3669669380e03040ff01fabb64afec6bfddb3052dbd0117",
                 "features": [
                     {
                         "id": "reward",
@@ -87,6 +87,7 @@
             {
                 "name": "Defuse Difficulty Bomb",
                 "block": 5900000,
+                "requiredHash": "0x52bc7bbcf1d9251f3f3541ef8c138ee4deacf14e5d66f9614a9bf95d19611bd4",
                 "features": [
                     {
                         "id": "difficulty",
