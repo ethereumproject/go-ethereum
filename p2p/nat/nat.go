@@ -106,12 +106,12 @@ func Map(m Interface, c chan struct{}, protocol string, extport, intport int, na
 		glog.V(logger.Debug).Infof("Deleting port mapping: %s %d -> %d (%s) using %s\n", protocol, extport, intport, name, m)
 		m.DeleteMapping(protocol, extport, intport)
 	}()
-	handleIfAddMappingErr := func(successLabel string, err error) {
+	handleIfAddMappingErr := func(label string, err error) {
 		if err == nil {
-			glog.V(logger.Info).Infof("%s %s:%d -> %d (%s) using %s\n", successLabel, protocol, extport, intport, name, m)
-			glog.D(logger.Warn).Infof("%s %s:%s -> %s (%s) using %s\n", successLabel, logger.ColorGreen(protocol), logger.ColorGreen(strconv.Itoa(extport)), logger.ColorGreen(strconv.Itoa(intport)), name, m)
+			glog.V(logger.Debug).Infof("%s %s:%d -> %d (%s) using %s\n", label, protocol, extport, intport, name, m)
+			glog.D(logger.Info).Infof("%s %s:%s -> %s (%s) using %s\n", label, logger.ColorGreen(protocol), logger.ColorGreen(strconv.Itoa(extport)), logger.ColorGreen(strconv.Itoa(intport)), name, m)
 		} else {
-			glog.V(logger.Warn).Errorf("Network port %s:%d could not be mapped: %v\n", protocol, intport, err)
+			glog.V(logger.Debug).Infoln("%s: Network port %s:%d could not be mapped: %v\n", label, protocol, intport, err)
 		}
 	}
 	err := m.AddMapping(protocol, intport, extport, name, mapTimeout)
@@ -123,7 +123,7 @@ func Map(m Interface, c chan struct{}, protocol string, extport, intport int, na
 				return
 			}
 		case <-refresh.C:
-			glog.V(logger.Detail).Infof("Refresh port mapping %s:%d -> %d (%s) using %s\n", protocol, extport, intport, name, m)
+			glog.V(logger.Debug).Infof("Refresh port mapping %s:%d -> %d (%s) using %s\n", protocol, extport, intport, name, m)
 			err := m.AddMapping(protocol, intport, extport, name, mapTimeout)
 			handleIfAddMappingErr("Refresh port mapping", err)
 			refresh.Reset(mapUpdateInterval)
