@@ -63,7 +63,7 @@ func greenParenify(s string) string {
 func redParenify(s string) string {
 	return logger.ColorRed("⟪") + s + logger.ColorRed("⟫")
 }
-func prefix(ev interface{}) string {
+func prefix(ev interface{}, e *eth.Ethereum) string {
 	//s := "⋮⫟⫠⫶|"⇶⇉⇣⇣⥥⤹↙⤹⎯⏐↵↳⤶⤷⤵↔
 	switch d := ev.(type) {
 	case downloader.StartEvent:
@@ -76,7 +76,7 @@ func prefix(ev interface{}) string {
 		downloadingFrom = ""
 		return logger.ColorRed(`⤷  `)
 	default:
-		if downloadingFrom != "" {
+		if downloadingFrom != "" && e.Downloader().Synchronising() {
 			return logger.ColorYellow(`⇣  `)
 		}
 	}
@@ -92,7 +92,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.ChainInsertEvent:
-					glog.D(logger.Info).Infof(prefix(d)+chainIcon+" Insert "+logger.ColorGreen("blocks")+"=%s "+logger.ColorGreen("◼")+"=%s "+logger.ColorGreen("took")+"=%s",
+					glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Insert "+logger.ColorGreen("blocks")+"=%s "+logger.ColorGreen("◼")+"=%s "+logger.ColorGreen("took")+"=%s",
 						greenParenify(fmt.Sprintf("processed=%4d queued=%4d ignored=%4d txs=%4d", d.Processed, d.Queued, d.Ignored, d.TxCount)),
 						greenParenify(fmt.Sprintf("n=%8d hash=%s… time=%v ago", d.LastNumber, d.LastHash.Hex()[:9], time.Since(d.LatestBlockTime).Round(time.Millisecond))),
 						greenParenify(fmt.Sprintf("%v", d.Elasped.Round(time.Millisecond))),
@@ -111,7 +111,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.ChainSideEvent:
-					glog.D(logger.Info).Infof(prefix(d)+forkIcon+" Insert "+logger.ColorGreen("forked block")+"=%s", greenParenify(fmt.Sprintf("n=%8d hash=%s…", d.Block.NumberU64(), d.Block.Hash().Hex()[:9])))
+					glog.D(logger.Info).Infof(prefix(d, e)+forkIcon+" Insert "+logger.ColorGreen("forked block")+"=%s", greenParenify(fmt.Sprintf("n=%8d hash=%s…", d.Block.NumberU64(), d.Block.Hash().Hex()[:9])))
 				}
 			},
 		},
@@ -123,7 +123,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.HeaderChainInsertEvent:
-					glog.D(logger.Info).Infof(prefix(d)+headerIcon+" Insert "+logger.ColorGreen("headers")+"=%s "+logger.ColorGreen("❐")+"=%s"+logger.ColorGreen("took")+"=%s",
+					glog.D(logger.Info).Infof(prefix(d, e)+headerIcon+" Insert "+logger.ColorGreen("headers")+"=%s "+logger.ColorGreen("❐")+"=%s"+logger.ColorGreen("took")+"=%s",
 						greenParenify(fmt.Sprintf("processed=%4d ignored=%4d", d.Processed, d.Ignored)),
 						greenParenify(fmt.Sprintf("n=%4d hash=%s…", d.LastNumber, d.LastHash.Hex()[:9])),
 						greenParenify(fmt.Sprintf("%v", d.Elasped.Round(time.Microsecond))),
@@ -142,7 +142,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.NewMinedBlockEvent:
-					glog.D(logger.Info).Infof(prefix(d) + minedIcon + " Mined " + logger.ColorGreen("◼") + "=" + greenParenify(fmt.Sprintf("n=%8d hash=%s… coinbase=%s… txs=%3d uncles=%d",
+					glog.D(logger.Info).Infof(prefix(d, e) + minedIcon + " Mined " + logger.ColorGreen("◼") + "=" + greenParenify(fmt.Sprintf("n=%8d hash=%s… coinbase=%s… txs=%3d uncles=%d",
 						d.Block.NumberU64(),
 						d.Block.Hash().Hex()[:9],
 						d.Block.Coinbase().Hex()[:9],
@@ -160,7 +160,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.StartEvent:
-					s := prefix(d) + downloaderIconStart + " Start " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
+					s := prefix(d, e) + downloaderIconStart + " Start " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
 					glog.D(logger.Info).Warnln(s)
 				}
 			},
@@ -173,7 +173,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.DoneEvent:
-					s := prefix(d) + downloaderIconDone + " Done  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
+					s := prefix(d, e) + downloaderIconDone + " Done  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
 					glog.D(logger.Info).Warnln(s)
 				}
 			},
@@ -186,7 +186,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.FailedEvent:
-					s := prefix(d) + downloaderIconFail + " Fail  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " " + logger.ColorRed("err") + "=" + redParenify(d.Err.Error())
+					s := prefix(d, e) + downloaderIconFail + " Fail  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " " + logger.ColorRed("err") + "=" + redParenify(d.Err.Error())
 					glog.D(logger.Info).Warnln(s)
 				}
 			},
