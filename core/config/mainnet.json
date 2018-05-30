@@ -34,7 +34,7 @@
             {
                 "name": "GasReprice",
                 "block": 2500000,
-                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "requiredHash": "0xca12c63534f565899681965528d536c52cb05b7c48e269c2a6cb77ad864d878a",
                 "features": [
                     {
                         "id": "gastable",
@@ -47,7 +47,7 @@
             {
                 "name": "Diehard",
                 "block": 3000000,
-                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "requiredHash": "0x20a2817ab5545ae3c7aed17e534cffc813040b15e4e095c1eb687b85ff5e5305",
                 "features": [
                     {
                         "id": "eip155",
