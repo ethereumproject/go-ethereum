@@ -229,7 +229,7 @@ func New(mode SyncMode, stateDb ethdb.Database, mux *event.TypeMux, chain BlockC
 	dl := &Downloader{
 		mode:           mode,
 		stateDB:        stateDb,
-		mux:            mux,
+		mux:            mux, // inherited from protocolManager, which inherits from Ethereum
 		queue:          newQueue(),
 		peers:          newPeerSet(),
 		rttEstimate:    uint64(rttMaxEstimate),
