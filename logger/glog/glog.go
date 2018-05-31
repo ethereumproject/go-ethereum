@@ -845,10 +845,7 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 		}
 	} else {
 		// Write dim.
-		//buf.WriteString(severityColor[infoLog])
-		buf.WriteString(color.Set(color.FgYellow).)
-
-		color.Yell
+		buf.WriteString(severityColor[infoLog])
 
 		buf.nDigits(4, 0, year, '_')
 		buf.nDigits(4, 0, year, '_')
