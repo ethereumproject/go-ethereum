@@ -63,6 +63,7 @@ type Config struct {
 	NetworkId int // Network ID to use for selecting peers to connect to
 	Genesis   *core.GenesisDump
 	FastSync  bool // Enables the state download based fast synchronisation algorithm
+	MaxPeers  int
 
 	BlockChainVersion  int
 	SkipBcVersionCheck bool // e.g. blockchain export
@@ -299,6 +300,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.FastSync, config.NetworkId, eth.eventMux, eth.txPool, eth.pow, eth.blockchain, chainDb); err != nil {
 		return nil, err
 	}
+	eth.protocolManager.downloader.GetPeers().SetMax(config.MaxPeers)
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.pow)
 	if err = eth.miner.SetGasPrice(config.GasPrice); err != nil {
 		return nil, err

@@ -32,6 +32,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
+	"runtime"
 )
 
 const (
@@ -447,6 +448,7 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 }
 
 func (d *Downloader) monitorPeer(p *peer) {
+	start := time.Now()
 	tick := time.Tick(10 * time.Second)
 	sub := d.mux.Subscribe(DoneEvent{}, FailedEvent{})
 	for {
@@ -462,6 +464,45 @@ func (d *Downloader) monitorPeer(p *peer) {
 				p.receiptStarted.Format("15:04:05"),
 				p.rtt,
 			)
+			var lastFetchAgo time.Duration
+			var latestFetch time.Time
+			for _, t := range []time.Time{p.blockStarted, p.headerStarted, p.stateStarted, p.receiptStarted} {
+				if t.IsZero() {
+					continue
+				}
+				if t.After(latestFetch) {
+					latestFetch = t
+				}
+			}
+
+			// estimate round trip plus processing on our end
+			patienceDidEnd := func(since, wait time.Duration) {
+				glog.D(logger.Warn).Warnf("DL monitor: dropping: lost patience (since=%v/wait=%v) with %s", since, wait, p.String())
+				d.dropPeer(p.id) // also cancels dl
+			}
+
+			scalePatienceWithConfidence := func(t time.Duration) time.Duration {
+				return time.Duration(t.Seconds() * (float64(d.peers.max/runtime.NumCPU()) / (float64(d.rttConfidence))))
+			}
+
+			if lastFetchAgo > 0 && !latestFetch.IsZero() {
+				wait := p.rtt
+				if rtt := d.requestRTT(); rtt > wait {
+					wait = rtt
+				}
+				if wait > 0 {
+					wait = scalePatienceWithConfidence(wait)
+					if lastFetchAgo > wait {
+						patienceDidEnd(lastFetchAgo, wait)
+					}
+				}
+			} else {
+				wait := scalePatienceWithConfidence(d.requestTTL())
+				if s := time.Since(start); s > wait {
+					patienceDidEnd(lastFetchAgo, wait)
+				}
+			}
+
 		case <-sub.Chan():
 			glog.D(logger.Warn).Warnf("DL monitor: canceling (sub) %s != %s", d.cancelPeer, p.id)
 			return
