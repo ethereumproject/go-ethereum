@@ -331,6 +331,9 @@ func (t *udp) pollNeighbors(tab *Table) {
 
 				for _, k := range keys {
 					i := strings.Index(k, "@")
+					if i < 1 || i > len(keys)-3 {
+						continue
+					}
 					toid, toaddr := k[:i], k[i+1:]
 
 					hextoid, err := HexID(toid)
