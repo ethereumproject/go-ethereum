@@ -202,6 +202,11 @@ func (pm *ProtocolManager) removePeer(id string) {
 		return
 	}
 	glog.V(logger.Debug).Infoln("Removing peer", id)
+	pm.eventMux.Post(PMHandlerRemoveEvent{
+		PMPeersLen: pm.peers.Len(),
+		PMBestPeer: pm.peers.BestPeer(),
+		Peer:       peer,
+	})
 
 	// Unregister the peer from the downloader and Ethereum peer set
 	pm.downloader.UnregisterPeer(id)
@@ -294,6 +299,12 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	if err := pm.peers.Register(p); err != nil {
 		glog.V(logger.Error).Errorf("handler: %s ->addpeer err=%v", p, err)
 		return err
+	} else {
+		pm.eventMux.Post(PMHandlerAddEvent{
+			PMPeersLen: pm.peers.Len(),
+			PMBestPeer: pm.peers.BestPeer(),
+			Peer:       p,
+		})
 	}
 	defer pm.removePeer(p.id)
 
