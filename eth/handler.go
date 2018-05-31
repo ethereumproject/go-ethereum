@@ -497,12 +497,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 			if err = pm.chainConfig.HeaderCheck(headers[0]); err != nil {
 				pm.removePeer(p.id)
 				return err
-			} else {
-				// Start a timer to disconnect if the peer doesn't reply in time
-				p.timeout = time.AfterFunc(5*time.Second, func() {
-					glog.V(logger.Debug).Infof("%v: removing known ok peers; onwards to new friends", p)
-					pm.disconnectPeer(p.id)
-				})
 			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
 			headers = pm.fetcher.FilterHeaders(p.id, headers, time.Now())
