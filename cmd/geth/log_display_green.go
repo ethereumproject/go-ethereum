@@ -64,7 +64,7 @@ func redParenify(s string) string {
 	return logger.ColorRed("⟪") + s + logger.ColorRed("⟫")
 }
 func yellowParenify(s string) string {
-	return logger.ColorYellow("⟪") + s + logger.ColorRed("⟫")
+	return logger.ColorYellow("⟪") + s + logger.ColorYellow("⟫")
 }
 func prefix(ev interface{}, e *eth.Ethereum) string {
 	//s := "⋮⫟⫠⫶|"⇶⇉⇣⇣⥥⤹↙⤹⎯⏐↵↳⤶⤷⤵↔
