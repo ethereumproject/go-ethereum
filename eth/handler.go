@@ -38,6 +38,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
+
+	kf "github.com/rotblauer/go-kf"
+	"path/filepath"
 )
 
 const (
@@ -211,6 +214,25 @@ func (pm *ProtocolManager) removePeer(id string) {
 	}
 }
 
+func (pm *ProtocolManager) disconnectPeer(id string) {
+	// Short circuit if the peer was already removed
+	peer := pm.peers.Peer(id)
+	if peer == nil {
+		return
+	}
+	glog.V(logger.Debug).Infoln("Removing peer", id)
+
+	// Unregister the peer from the downloader and Ethereum peer set
+	pm.downloader.UnregisterPeer(id)
+	if err := pm.peers.Unregister(id); err != nil {
+		glog.V(logger.Error).Infoln("Removal failed:", err)
+	}
+	// Hard disconnect at the networking layer
+	if peer != nil {
+		peer.Peer.Disconnect(p2p.DiscTooManyPeers)
+	}
+}
+
 func (pm *ProtocolManager) Start() {
 	// broadcast transactions
 	pm.txSub = pm.eventMux.Subscribe(core.TxPreEvent{})
@@ -320,24 +342,24 @@ func (pm *ProtocolManager) handle(p *peer) error {
 // getRequiredHashBlockNumber returns block number of most relevant fork with requiredHash
 // and information is the block validation required.
 func (pm *ProtocolManager) getRequiredHashBlockNumber(localHead, peerHead common.Hash) (blockNumber uint64, validate bool) {
-	// Drop connections incongruent with any network split or checkpoint that's relevant
-	// Check for latest relevant required hash based on our status.
-	//var headN = new(big.Int)
-	var headN *big.Int
-	headB := pm.blockchain.GetBlock(localHead)
-	if headB != nil {
-		headN = headB.Number()
-	}
-	latestReqHashFork := pm.chainConfig.GetLatestRequiredHashFork(headN) // returns nil if no applicable fork with required hash
-
-	// If our local sync progress has not yet reached a height at which a fork with a required hash would be relevant,
-	// we can skip this check. This allows the client to be fork agnostic until a configured fork(s) is reached.
-	// If we already have the peer's head, the peer is on the right chain, so we can skip required hash validation.
-	if latestReqHashFork != nil {
-		validate = pm.blockchain.GetBlock(peerHead) == nil
-		blockNumber = latestReqHashFork.Block.Uint64()
-	}
-	return
+	//// Drop connections incongruent with any network split or checkpoint that's relevant
+	//// Check for latest relevant required hash based on our status.
+	////var headN = new(big.Int)
+	//var headN *big.Int
+	//headB := pm.blockchain.GetBlock(localHead)
+	//if headB != nil {
+	//	headN = headB.Number()
+	//}
+	//latestReqHashFork := pm.chainConfig.GetLatestRequiredHashFork(headN) // returns nil if no applicable fork with required hash
+	//
+	//// If our local sync progress has not yet reached a height at which a fork with a required hash would be relevant,
+	//// we can skip this check. This allows the client to be fork agnostic until a configured fork(s) is reached.
+	//// If we already have the peer's head, the peer is on the right chain, so we can skip required hash validation.
+	//if latestReqHashFork != nil {
+	//	validate = pm.blockchain.GetBlock(peerHead) == nil
+	//	blockNumber = latestReqHashFork.Block.Uint64()
+	//}
+	return big.NewInt(1920000).Uint64(), true
 }
 
 // handleMsg is invoked whenever an inbound message is received from a remote
@@ -463,9 +485,38 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 				p.timeout.Stop()
 				p.timeout = nil
 			}
+
 			if err = pm.chainConfig.HeaderCheck(headers[0]); err != nil {
 				pm.removePeer(p.id)
+				s, e := kf.NewStore(&kf.StoreConfig{
+					BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
+					Locking: true,
+					KV:      true,
+				})
+				if e != nil {
+					glog.V(logger.Error).Errorln("error opening KF", e)
+				} else {
+					s.Set(filepath.Join("reqHash", "FAIL", p.ID().String()), []byte(p.Name()))
+					s.Close()
+				}
 				return err
+			} else {
+				s, e := kf.NewStore(&kf.StoreConfig{
+					BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
+					Locking: true,
+					KV:      true,
+				})
+				if e != nil {
+					glog.V(logger.Error).Errorln("error opening KF", e)
+				} else {
+					s.Set(filepath.Join("reqHash", "OK", p.ID().String()), []byte(p.Name()))
+					s.Close()
+				}
+				// Start a timer to disconnect if the peer doesn't reply in time
+				p.timeout = time.AfterFunc(10*time.Minute, func() {
+					glog.V(logger.Debug).Infof("%v: removing known ok peers; onwards to new friends", p)
+					pm.disconnectPeer(p.id)
+				})
 			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
 			headers = pm.fetcher.FilterHeaders(headers, time.Now())

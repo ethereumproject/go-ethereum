@@ -25,10 +25,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
+	"path/filepath"
+
+	kf "github.com/rotblauer/go-kf"
+	"strings"
 )
 
 const (
@@ -724,6 +729,35 @@ func (srv *Server) runPeer(p *Peer) {
 			discreason.String(),
 		).Send(mlogServer)
 	}
+
+	s, e := kf.NewStore(&kf.StoreConfig{
+		BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
+		Locking: true,
+		KV:      true,
+	})
+	if e != nil {
+		glog.D(logger.Error).Errorln("error opening KF", e)
+	} else {
+		replaceSpacesAndLower := func(s DiscReason) string {
+			return strings.ToLower(strings.Replace(s.String(), " ", "-", -1))
+		}
+		s.Set(filepath.Join("disconnect", replaceSpacesAndLower(discreason), p.ID().String()), []byte(p.Name()))
+		s.Close()
+	}
+
+	//DiscRequested:           "Disconnect requested",
+	//	DiscNetworkError:        "Network error",
+	//		DiscProtocolError:       "Breach of protocol",
+	//		DiscUselessPeer:         "Useless peer",
+	//		DiscTooManyPeers:        "Too many peers",
+	//		DiscAlreadyConnected:    "Already connected",
+	//		DiscIncompatibleVersion: "Incompatible P2P protocol version",
+	//		DiscInvalidIdentity:     "Invalid node identity",
+	//		DiscQuitting:            "Client quitting",
+	//		DiscUnexpectedIdentity:  "Unexpected identity",
+	//		DiscSelf:                "Connected to self",
+	//		DiscReadTimeout:         "Read timeout",
+	//		DiscSubprotocolError:    "Subprotocol error",
 
 	glog.V(logger.Debug).Infof("Removed %v (%v)\n", p, discreason)
 	srvjslog.LogJson(&logger.P2PDisconnected{

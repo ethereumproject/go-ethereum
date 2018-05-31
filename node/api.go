@@ -22,9 +22,16 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/rpc"
+	"math/rand"
+	"path/filepath"
+	"time"
+
+	kf "github.com/rotblauer/go-kf"
 )
 
 // PrivateAdminAPI is the collection of administrative API methods exposed only
@@ -53,6 +60,157 @@ func (api *PrivateAdminAPI) AddPeer(url string) (bool, error) {
 		return false, fmt.Errorf("invalid enode: %v", err)
 	}
 	server.AddPeer(node)
+	return true, nil
+}
+
+func (api *PrivateAdminAPI) QueryUnknownPeers() (bool, error) {
+	go func() {
+		tick := time.Tick(6 * time.Second)
+		refreshMemTick := time.Tick(30 * time.Minute)
+		var refreshing bool
+		var unchecked = []string{}
+		// matching should be smaller
+		appendIfMissing := func(slice []string, s string) []string {
+			for _, ele := range slice {
+				if ele == s {
+					return slice
+				}
+			}
+			return append(slice, s)
+		}
+		uniq := func(removeFrom []string, matching []string) (unique []string) {
+			unique = []string{}
+			//glog.V(logger.Error).Errorln("unique", len(unique))
+			for _, s := range removeFrom {
+				var match bool
+				for _, m := range matching {
+					if strings.Contains(s, m) {
+						match = true
+						break
+						//if i == 0 {
+						//	unique = unique[0:]
+						//} else if i == len(removeFrom)-1 {
+						//	unique = unique[:i]
+						//} else {
+						//	unique = append(unique[:i], unique[i+1:]...)
+						//}
+						//continue outer
+					}
+				}
+				if !match {
+					unique = append(unique, s)
+				}
+			}
+			return unique
+		}
+		doRefresh := func() {
+			refreshing = true
+			s, e := kf.NewStore(&kf.StoreConfig{
+				BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
+				Locking: true,
+				KV:      true,
+			})
+			if e != nil {
+				glog.V(logger.Error).Errorln("error opening KF", e)
+				return
+			}
+			defer s.Close()
+			nodesReportingNeighbors, e := s.GetKeys("findnode")
+			if e != nil {
+				panic(e.Error())
+			}
+			glog.V(logger.Error).Errorln("nodesReportingNeighbors", len(nodesReportingNeighbors))
+			for _, n := range nodesReportingNeighbors {
+				v, e := s.GetValue(filepath.Join("findnode", n))
+				if e != nil {
+					glog.V(logger.Error).Errorln("error getting neighbors data", e)
+					return
+				}
+				// split lines, each has a reported neighbor
+				vs := strings.Split(string(v), "\n")
+				//glog.V(logger.Error).Errorln("vs", len(vs))
+				for _, v := range vs {
+					unchecked = appendIfMissing(unchecked, v)
+				}
+			}
+			//glog.D(logger.Info).Infof("Found %d nonunique unchecked neighbors", len(unchecked))
+			//var checker = []string{}
+			//unchecked = uniq(checker, unchecked)
+			checkedOK, e := s.GetKeys(filepath.Join("reqHash", "OK"))
+			if e != nil {
+				glog.V(logger.Error).Errorln("error ", e)
+			} else {
+				unchecked = uniq(unchecked, checkedOK)
+			}
+			checkedFAIL, e := s.GetKeys(filepath.Join("reqHash", "FAIL"))
+			if e != nil {
+				glog.V(logger.Error).Errorln("error ", e)
+			} else {
+				unchecked = uniq(unchecked, checkedFAIL)
+			}
+
+			//DiscRequested:           "Disconnect requested",
+			//	DiscNetworkError:        "Network error",
+			//		DiscProtocolError:       "Breach of protocol",
+			//		DiscUselessPeer:         "Useless peer",
+			//		DiscTooManyPeers:        "Too many peers",
+			//		DiscAlreadyConnected:    "Already connected",
+			//		DiscIncompatibleVersion: "Incompatible P2P protocol version",
+			//		DiscInvalidIdentity:     "Invalid node identity",
+			//		DiscQuitting:            "Client quitting",
+			//		DiscUnexpectedIdentity:  "Unexpected identity",
+			//		DiscSelf:                "Connected to self",
+			//		DiscReadTimeout:         "Read timeout",
+			//		DiscSubprotocolError:    "Subprotocol error",
+
+			badDisconnects := []string{
+				"breach-of-protocol",
+				"network-error",
+				"useless-peer",
+				"incompatible-p2p-protocol-version",
+				"invalid-node-identity",
+				"unexpected-identity",
+				"subprotocol-error",
+			}
+			for _, b := range badDisconnects {
+				bb := filepath.Join("disconnect", b)
+				v, e := s.GetKeys(bb)
+				if e != nil {
+					glog.V(logger.Error).Errorln("error ", e)
+					continue
+				}
+				unchecked = uniq(unchecked, v)
+			}
+			glog.D(logger.Info).Infof("Found %d unique unchecked neighbors", len(unchecked))
+			refreshing = false
+		}
+		doRefresh()
+		for {
+			select {
+			case <-tick:
+				if refreshing {
+					continue
+				}
+				if unchecked == nil {
+					panic("uncheck slice is nil")
+				}
+				l := len(unchecked)
+				if l != 0 {
+					i := rand.Intn(l)
+					p := unchecked[i]
+					ok, e := api.AddPeer(p)
+					if e != nil {
+						glog.D(logger.Info).Infoln("Add peer", p, "err: ", e)
+						continue
+					}
+					glog.D(logger.Info).Infoln("Add peer", p, ok)
+				}
+
+			case <-refreshMemTick:
+				doRefresh()
+			}
+		}
+	}()
 	return true, nil
 }
 
