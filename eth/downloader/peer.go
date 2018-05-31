@@ -31,6 +31,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/icrowley/fake"
 )
 
@@ -266,6 +268,11 @@ func (p *peer) setIdle(started time.Time, delivered int, throughput *float64, id
 
 	*throughput = (1-measurementImpact)*(*throughput) + measurementImpact*measured
 	p.rtt = time.Duration((1-measurementImpact)*float64(p.rtt) + measurementImpact*float64(elapsed))
+
+	glog.V(logger.Debug).Infoln("Peer throughput measurements updated:",
+		"hps", p.headerThroughput, "bps", p.blockThroughput,
+		"rps", p.receiptThroughput, "sps", p.stateThroughput,
+		"miss", len(p.lacking), "rtt", p.rtt)
 }
 
 // HeaderCapacity retrieves the peers header download allowance based on its
@@ -395,9 +402,8 @@ func (ps *peerSet) Register(p *peer) error {
 
 	// Register the new peer with some meaningful defaults
 	ps.lock.Lock()
-	defer ps.lock.Unlock()
-
 	if _, ok := ps.peers[p.id]; ok {
+		defer ps.lock.Unlock()
 		return errAlreadyRegistered
 	}
 	if len(ps.peers) > 0 {
@@ -425,12 +431,15 @@ func (ps *peerSet) Register(p *peer) error {
 // actions to/from that particular entity.
 func (ps *peerSet) Unregister(id string) error {
 	ps.lock.Lock()
-	defer ps.lock.Unlock()
-
-	if _, ok := ps.peers[id]; !ok {
+	p, ok := ps.peers[id]
+	if !ok {
+		defer ps.lock.Unlock()
 		return errNotRegistered
 	}
 	delete(ps.peers, id)
+	ps.lock.Unlock()
+
+	ps.peerDropFeed.Send(p)
 	return nil
 }
 

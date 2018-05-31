@@ -29,6 +29,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/icrowley/fake"
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -67,6 +68,8 @@ type peer struct {
 
 	knownTxs    *set.Set // Set of transaction hashes known to be known by this peer
 	knownBlocks *set.Set // Set of block hashes known to be known by this peer
+
+	nick string
 }
 
 func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
@@ -79,6 +82,7 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		id:          fmt.Sprintf("%x", id[:8]),
 		knownTxs:    set.New(),
 		knownBlocks: set.New(),
+		nick:        fake.FirstName() + " " + fake.LastName(),
 	}
 }
 
@@ -208,7 +212,7 @@ func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 // RequestHeaders is a wrapper around the header query functions to fetch a
 // single header. It is used solely by the fetcher.
 func (p *peer) RequestOneHeader(hash common.Hash) error {
-	glog.V(logger.Debug).Infof("%v fetching a single header: %x", p, hash)
+	glog.V(logger.Debug).Infof("fetching from: %v req=singleheader hash=%x", p, hash)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Hash: hash}, Amount: uint64(1), Skip: uint64(0), Reverse: false}
 	s, e := p2p.Send(p.rw, GetBlockHeadersMsg, d)
 	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
@@ -218,7 +222,7 @@ func (p *peer) RequestOneHeader(hash common.Hash) error {
 // RequestHeadersByHash fetches a batch of blocks' headers corresponding to the
 // specified header query, based on the hash of an origin block.
 func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, reverse bool) error {
-	glog.V(logger.Debug).Infof("%v fetching %d headers from %x, skipping %d (reverse = %v)", p, amount, origin[:4], skip, reverse)
+	glog.V(logger.Debug).Infof("fetching from: %v req=headersbyhash n=%d origin=%x, skipping=%d reverse=%v", p, amount, origin[:4], skip, reverse)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Hash: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse}
 	s, e := p2p.Send(p.rw, GetBlockHeadersMsg, d)
 	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
@@ -228,7 +232,7 @@ func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, re
 // RequestHeadersByNumber fetches a batch of blocks' headers corresponding to the
 // specified header query, based on the number of an origin block.
 func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, reverse bool) error {
-	glog.V(logger.Debug).Infof("%v fetching %d headers from #%d, skipping %d (reverse = %v)", p, amount, origin, skip, reverse)
+	glog.V(logger.Debug).Infof("fetching from: %v %d req=headersbynumber n=%d, skipping=%d reverse=%v", p, amount, origin, skip, reverse)
 	d := &getBlockHeadersData{Origin: hashOrNumber{Number: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse}
 	s, e := p2p.Send(p.rw, GetBlockHeadersMsg, d)
 	mlogWireDelegate(p, "send", GetBlockHeadersMsg, s, d, nil)
@@ -238,7 +242,7 @@ func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, rever
 // RequestBodies fetches a batch of blocks' bodies corresponding to the hashes
 // specified.
 func (p *peer) RequestBodies(hashes []common.Hash) error {
-	glog.V(logger.Debug).Infof("%v fetching %d block bodies first=%s", p, len(hashes), hashes[0].Hex())
+	glog.V(logger.Debug).Infof("fetching from: %v req=blockbodies n=%d first=%s", p, len(hashes), hashes[0].Hex())
 	s, e := p2p.Send(p.rw, GetBlockBodiesMsg, hashes)
 	mlogWireDelegate(p, "send", GetBlockBodiesMsg, s, hashes, nil)
 	return e
@@ -247,7 +251,7 @@ func (p *peer) RequestBodies(hashes []common.Hash) error {
 // RequestNodeData fetches a batch of arbitrary data from a node's known state
 // data, corresponding to the specified hashes.
 func (p *peer) RequestNodeData(hashes []common.Hash) error {
-	glog.V(logger.Debug).Infof("%v fetching %v state data first=%s", p, len(hashes), hashes[0].Hex())
+	glog.V(logger.Debug).Infof("fetching from: %v req=statedata n=%d first=%s", p, len(hashes), hashes[0].Hex())
 	s, e := p2p.Send(p.rw, GetNodeDataMsg, hashes)
 	mlogWireDelegate(p, "send", GetNodeDataMsg, s, hashes, nil)
 	return e
@@ -255,7 +259,7 @@ func (p *peer) RequestNodeData(hashes []common.Hash) error {
 
 // RequestReceipts fetches a batch of transaction receipts from a remote node.
 func (p *peer) RequestReceipts(hashes []common.Hash) error {
-	glog.V(logger.Debug).Infof("%v fetching %v receipts first=%s", p, len(hashes), hashes[0].Hex())
+	glog.V(logger.Debug).Infof("fetching from: %v req=receipts n=%d first=%s", p, len(hashes), hashes[0].Hex())
 	s, e := p2p.Send(p.rw, GetReceiptsMsg, hashes)
 	mlogWireDelegate(p, "send", GetReceiptsMsg, s, hashes, nil)
 	return e
@@ -352,9 +356,11 @@ func (p *peer) readStatus(network int, status *statusData, genesis common.Hash) 
 
 // String implements fmt.Stringer.
 func (p *peer) String() string {
-	return fmt.Sprintf("Peer %s [%s]", p.id,
-		fmt.Sprintf("eth/%2d", p.version),
-	)
+	// id is %x[:8]
+	return fmt.Sprintf("Peer %s@[%s] id=%s eth/%2d", p.nick, p.Name(), p.id, p.version)
+	//return fmt.Sprintf("Peer %s [%s]", p.id,
+	//	fmt.Sprintf("eth/%2d", p.version),
+	//)
 }
 
 // peerSet represents the collection of active peers currently participating in

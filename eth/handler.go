@@ -278,21 +278,21 @@ func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *p
 // handle is the callback invoked to manage the life cycle of an eth peer. When
 // this function terminates, the peer is disconnected.
 func (pm *ProtocolManager) handle(p *peer) error {
-	glog.V(logger.Debug).Infof("%v: peer connected [%s]", p, p.Name())
+	glog.V(logger.Debug).Infof("handler: %s ->connected", p)
 
 	// Execute the Ethereum handshake
 	td, head, genesis := pm.blockchain.Status()
 	if err := p.Handshake(pm.networkId, td, head, genesis); err != nil {
-		glog.V(logger.Debug).Infof("%v: handshake failed: %v", p, err)
+		glog.V(logger.Debug).Infof("handler: %s ->handshakefailed err=%v", p, err)
 		return err
 	}
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
 		rw.Init(p.version)
 	}
 	// Register the peer locally
-	glog.V(logger.Detail).Infof("%v: adding peer", p)
+	glog.V(logger.Debug).Infof("handler: %s ->addpeer", p)
 	if err := pm.peers.Register(p); err != nil {
-		glog.V(logger.Error).Errorf("%v: addition failed: %v", p, err)
+		glog.V(logger.Error).Errorf("handler: %s ->addpeer err=%v", p, err)
 		return err
 	}
 	defer pm.removePeer(p.id)
@@ -312,13 +312,13 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	if headerN, doValidate := pm.getRequiredHashBlockNumber(head, pHead); doValidate {
 		// Request the peer's fork block header for extra-dat
 		if err := p.RequestHeadersByNumber(headerN, 1, 0, false); err != nil {
-			glog.V(logger.Debug).Infof("%v: error requesting headers by number ", p)
+			glog.V(logger.Debug).Infof("handler: %s ->headersbynumber err=%v", p, err)
 			return err
 		}
 		// Start a timer to disconnect if the peer doesn't reply in time
 		// FIXME: un-hardcode timeout
 		p.timeout = time.AfterFunc(5*time.Second, func() {
-			glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
+			glog.V(logger.Debug).Infof("handler: %s ->headersbynumber err='timed out fork-check, dropping'", p)
 			pm.removePeer(p.id)
 		})
 		// Make sure it's cleaned up if the peer dies off
@@ -333,7 +333,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			glog.V(logger.Debug).Infof("%v: message handling failed: %v", p, err)
+			glog.V(logger.Debug).Infof("handler: %s ->msghandlefailed err=%v", p, err)
 			return err
 		}
 	}
@@ -772,9 +772,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 			// scenario should easily be covered by the fetcher.
 			currentBlock := pm.blockchain.CurrentBlock()
 			if localTd := pm.blockchain.GetTd(currentBlock.Hash()); trueTD.Cmp(localTd) > 0 {
-				glog.V(logger.Info).Infof("Peer %s: localTD=%v (<) peerTrueTD=%v, synchronising", p.id, localTd, trueTD)
 				if !pm.downloader.Synchronising() {
-					go pm.synchronise(p)
+					glog.V(logger.Info).Infof("Peer %s: localTD=%v (<) peerTrueTD=%v, synchronising", p.id, localTd, trueTD)
+					go func() {
+						defer pm.synchronise(pm.peers.BestPeer())
+						if e := pm.synchronise(p); e != nil && e == downloader.ErrBusy {
+
+						}
+					}()
 				}
 			} else {
 				glog.V(logger.Detail).Infof("Peer %s: localTD=%v (>=) peerTrueTD=%v, NOT synchronising", p.id, localTd, trueTD)

@@ -172,16 +172,33 @@ func (api *PrivateAdminAPI) QueryUnknownPeers() (bool, error) {
 				"unexpected-identity",
 				"subprotocol-error",
 			}
+			conns := []string{}
+			countsBad := []int{}
 			for _, b := range badDisconnects {
 				bb := filepath.Join("disconnect", b)
 				v, e := s.GetKeys(bb)
 				if e != nil {
-					glog.V(logger.Error).Errorln("error ", e)
+					glog.V(logger.Error).Errorln("error ", e, b)
 					continue
 				}
+				conns = append(conns, b)
+				countsBad = append(countsBad, len(v))
 				unchecked = uniq(unchecked, v)
 			}
-			glog.D(logger.Info).Infof("Found %d unique unchecked neighbors", len(unchecked))
+			str := fmt.Sprintf(`REFRESH PEERS: 
+totalUnique=%d 
+reqOK=%d 
+reqF=%d
+`,
+				len(unchecked),
+				len(checkedOK),
+				len(checkedFAIL),
+			)
+			for i, s := range conns {
+				str += fmt.Sprintf(`disconnect.%s=%d
+`, s, countsBad[i])
+			}
+			glog.D(logger.Warn).Warnln(str)
 			refreshing = false
 		}
 		doRefresh()

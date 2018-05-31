@@ -544,6 +544,20 @@ func (srv *Server) protoHandshakeChecks(peers map[discover.NodeID]*Peer, inbound
 	return srv.encHandshakeChecks(peers, inboundCount, c)
 }
 
+//func (srv *Server) randomPeer(peers map[discover.NodeID]*Peer) *Peer {
+//	l := len(peers)
+//	if l != 0 {
+//		randomDropper := rand.Intn(l)
+//		c := 0
+//		for _, p := range peers {
+//			if c == randomDropper {
+//				return p
+//			}
+//		}
+//	}
+//	return nil
+//}
+
 func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, inboundCount int, c *conn) error {
 	switch {
 	case !c.is(trustedConn|staticDialedConn) && len(peers) >= srv.MaxPeers:
@@ -706,7 +720,7 @@ func (srv *Server) runPeer(p *Peer) {
 		).Send(mlogServer)
 	}
 
-	glog.V(logger.Debug).Infof("Added %v\n", p)
+	glog.V(logger.Debug).Infof("srv.runPeer: %s", p)
 	srvjslog.LogJson(&logger.P2PConnected{
 		RemoteId:            p.ID().String(),
 		RemoteAddress:       p.RemoteAddr().String(),
@@ -759,7 +773,7 @@ func (srv *Server) runPeer(p *Peer) {
 	//		DiscReadTimeout:         "Read timeout",
 	//		DiscSubprotocolError:    "Subprotocol error",
 
-	glog.V(logger.Debug).Infof("Removed %v (%v)\n", p, discreason)
+	glog.V(logger.Debug).Infof("removed: %s reason=%v\n", p, discreason)
 	srvjslog.LogJson(&logger.P2PDisconnected{
 		RemoteId:       p.ID().String(),
 		NumConnections: srv.PeerCount(),

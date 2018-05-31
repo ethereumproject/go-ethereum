@@ -70,7 +70,7 @@ var (
 )
 
 var (
-	errBusy                    = errors.New("busy")
+	ErrBusy                    = errors.New("busy")
 	errUnknownPeer             = errors.New("peer is unknown or unhealthy")
 	errBadPeer                 = errors.New("action from bad peer ignored")
 	errStallingPeer            = errors.New("peer is stalling")
@@ -356,7 +356,7 @@ func (d *Downloader) UnregisterPeer(id string) error {
 	d.cancelLock.RUnlock()
 
 	if master {
-		d.Cancel()
+		d.cancel()
 	}
 	return nil
 }
@@ -368,7 +368,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 	switch err {
 	case nil:
 		glog.V(logger.Core).Infof("Peer %s: sync complete", id)
-	case errBusy:
+	case ErrBusy:
 		glog.V(logger.Debug).Warnln("sync busy")
 	case errTimeout, errBadPeer, errStallingPeer,
 		errEmptyHeaderSet, errPeersUnavailable, errTooOld,
@@ -392,7 +392,7 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	}
 	// Make sure only one goroutine is ever allowed past this point at once
 	if !atomic.CompareAndSwapInt32(&d.synchronising, 0, 1) {
-		return errBusy
+		return ErrBusy
 	}
 	defer atomic.StoreInt32(&d.synchronising, 0)
 
@@ -445,10 +445,38 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	return d.syncWithPeer(p, hash, td)
 }
 
+//func (d *Downloader) monitorPeer(p *peer) {
+//	tick := time.Tick(10 * time.Second)
+//	for {
+//		select {
+//		case <-tick:
+//			glog.D(logger.Warn).Warnf("DL monitor: %s (h/s/r/b)(idle=[%d/%d/%d/%d] thru=[%.2f/%.2f/%.2f/%.2f] start[%s/%s/%s/%s] rtt=%v", p,
+//				p.headerIdle, p.blockIdle, p.stateIdle, p.receiptIdle,
+//				p.headerThroughput, p.blockThroughput, p.stateThroughput, p.receiptThroughput,
+//				// Mon Jan 2 15:04:05 -0700 MST 2006
+//				p.blockStarted.Format("15:04:05"),
+//				p.headerStarted.Format("15:04:05"),
+//				p.stateStarted.Format("15:04:05"),
+//				p.receiptStarted.Format("15:04:05"),
+//				p.rtt,
+//			)
+//			//if d.cancelCh == nil {
+//			//	glog.D(logger.Warn).Warnf("DL monitor: canceling cancelCh nil")
+//			//	break
+//			//}
+//			if d.cancelPeer != p.id {
+//				glog.D(logger.Warn).Warnf("DL monitor: canceling %s != %s", d.cancelPeer, p.id)
+//				break
+//			}
+//		}
+//	}
+//}
+
 // syncWithPeer starts a block synchronization based on the hash chain from the
 // specified peer and head hash.
 func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err error) {
 	d.mux.Post(StartEvent{p, hash, td})
+	//go d.monitorPeer(p)
 	defer func() {
 		// reset on error
 		if err != nil {
@@ -457,6 +485,10 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 			d.mux.Post(DoneEvent{p, hash, td})
 		}
 	}()
+	if p.version < 62 {
+		glog.V(logger.Debug).Warnf("download: peer %q protocol %d too old", p.id, p.version)
+		return errTooOld
+	}
 
 	var pivot uint64
 
@@ -491,11 +523,6 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 		}
 	}(time.Now())
 
-	if p.version < 62 {
-		glog.V(logger.Debug).Warnf("download: peer %q protocol %d too old", p.id, p.version)
-		return errTooOld
-	}
-
 	// Look up the sync boundaries: the common ancestor and the target block
 	latest, err := d.fetchHeight(p)
 	if err != nil {
@@ -525,8 +552,6 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 			}
 		}
 	}
-	glog.V(logger.Debug).Infof("Fast syncing until pivot block #%d", pivot)
-
 	d.committed = 1
 	if d.mode == FastSync && pivot != 0 {
 		d.committed = 0
@@ -578,8 +603,10 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 	return err
 }
 
-// Cancel cancels all of the operations and resets the queue.
-func (d *Downloader) Cancel() {
+// cancel aborts all of the operations and resets the queue. However, cancel does
+// not wait for the running download goroutines to finish. This method should be
+// used when cancelling the downloads from inside the downloader.
+func (d *Downloader) cancel() {
 	// Close the current cancel channel
 	d.cancelLock.Lock()
 	if d.cancelCh != nil {
@@ -591,6 +618,12 @@ func (d *Downloader) Cancel() {
 		}
 	}
 	d.cancelLock.Unlock()
+}
+
+// Cancel aborts all of the operations and waits for all download goroutines to
+// finish before returning.
+func (d *Downloader) Cancel() {
+	d.cancel()
 	d.cancelWg.Wait()
 }
 
@@ -623,7 +656,8 @@ func (d *Downloader) fetchHeight(p *peer) (*types.Header, error) {
 	// It is equivalent to NewTimer(d).C.
 	// The underlying Timer is not recovered by the garbage collector until the timer fires.
 	// If efficiency is a concern, use NewTimer instead and call Timer.Stop if the timer is no longer needed.
-	timeout := time.After(d.requestTTL())
+	ttl := d.requestTTL()
+	timeout := time.After(ttl)
 	for {
 		select {
 		case <-d.cancelCh:
@@ -644,7 +678,7 @@ func (d *Downloader) fetchHeight(p *peer) (*types.Header, error) {
 			return headers[0], nil
 
 		case <-timeout:
-			glog.V(logger.Debug).Infof("%v: head header timeout", p)
+			glog.V(logger.Debug).Infof("%v: head header timeout", p, ttl)
 			return nil, errTimeout
 
 		case <-d.bodyCh:
