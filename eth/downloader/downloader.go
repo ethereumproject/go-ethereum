@@ -443,38 +443,13 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	if p == nil {
 		return errUnknownPeer
 	}
-	return d.syncWithPeer(p, hash, td)
-}
-
-func (d *Downloader) monitorPeer(p *peer) {
-	tick := time.Tick(10 * time.Second)
-	sub := d.mux.Subscribe(DoneEvent{}, FailedEvent{})
-	for {
-		select {
-		case <-tick:
-			glog.D(logger.Warn).Warnf("DL monitor: %s (h/s/r/b)(idle=[%d/%d/%d/%d] thru=[%.2f/%.2f/%.2f/%.2f] start[%s/%s/%s/%s] rtt=%v", p,
-				p.headerIdle, p.blockIdle, p.stateIdle, p.receiptIdle,
-				p.headerThroughput, p.blockThroughput, p.stateThroughput, p.receiptThroughput,
-				// Mon Jan 2 15:04:05 -0700 MST 2006
-				p.blockStarted.Format("15:04:05"),
-				p.headerStarted.Format("15:04:05"),
-				p.stateStarted.Format("15:04:05"),
-				p.receiptStarted.Format("15:04:05"),
-				p.rtt,
-			)
-
-		case <-sub.Chan():
-			glog.D(logger.Warn).Warnf("DL monitor: canceling (sub) %s != %s", d.cancelPeer, p.id)
-			return
-		}
-	}
+	return d.syncWithPeer(p, hash, td) // 2
 }
 
 // syncWithPeer starts a block synchronization based on the hash chain from the
 // specified peer and head hash.
 func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err error) {
 	d.mux.Post(StartEvent{p, hash, td})
-	go d.monitorPeer(p)
 	defer func() {
 		// reset on error
 		if err != nil {
