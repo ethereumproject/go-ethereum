@@ -83,7 +83,7 @@ var (
 	errInvalidBlock            = errors.New("retrieved block is invalid")
 	errInvalidBody             = errors.New("retrieved block body is invalid")
 	errInvalidReceipt          = errors.New("retrieved receipt is invalid")
-	errCancelBlockFetch        = errors.New("block download canceled (requested)")
+	errCancelBlockFetch        = errors.New("block fetch canceled (requested)")
 	errCancelHeaderFetch       = errors.New("block header download canceled (requested)")
 	errCancelBodyFetch         = errors.New("block body download canceled (requested)")
 	errCancelReceiptFetch      = errors.New("receipt download canceled (requested)")
