@@ -579,10 +579,6 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 // Cancel cancels all of the operations and resets the queue.
 func (d *Downloader) Cancel() {
 	// Gets called twice; #360, then #447
-	//_, file, no, ok := runtime.Caller(1)
-	//if ok {
-	//	glog.D(logger.Debug).Warnf("called from %s#%d\n", file, no)
-	//}
 	// Close the current cancel channel
 	d.cancelLock.Lock()
 	if d.cancelCh != nil {
@@ -594,9 +590,7 @@ func (d *Downloader) Cancel() {
 		}
 	}
 	d.cancelLock.Unlock()
-	//glog.D(logger.Debug).Warnln("Waiting for dl cancelWg...")
 	d.cancelWg.Wait()
-	//glog.D(logger.Debug).Warnln("Finished    dl cancelWg...")
 }
 
 // Terminate interrupts the downloader, canceling all pending operations.
