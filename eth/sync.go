@@ -161,10 +161,10 @@ func (pm *ProtocolManager) syncer() {
 }
 
 // synchronise tries to sync up our local block chain with a remote peer.
-func (pm *ProtocolManager) synchronise(peer *peer) error {
+func (pm *ProtocolManager) synchronise(peer *peer) {
 	// Short circuit if no peers are available
 	if peer == nil {
-		return nil
+		return
 	}
 
 	// Make sure the peer's TD is higher than our own
@@ -176,7 +176,7 @@ func (pm *ProtocolManager) synchronise(peer *peer) error {
 	}
 	pHead, pTd := peer.Head()
 	if pTd.Cmp(td) <= 0 {
-		return nil
+		return
 	}
 
 	// Otherwise try to sync with the downloader
@@ -185,8 +185,8 @@ func (pm *ProtocolManager) synchronise(peer *peer) error {
 		mode = downloader.FastSync
 	}
 	if err := pm.downloader.Synchronise(peer.id, pHead, pTd, mode); err != nil {
-		glog.V(logger.Info).Infoln("downloader failed to syncronise", "mode=", mode, "peer=", peer.String())
-		return err
+		glog.V(logger.Info).Infoln("downloader failed to synchronise", "mode=", mode, "peer=", peer.String())
+		return
 	}
 	atomic.StoreUint32(&pm.synced, 1) // Mark initial sync done
 
@@ -198,5 +198,5 @@ func (pm *ProtocolManager) synchronise(peer *peer) error {
 			atomic.StoreUint32(&pm.fastSync, 0)
 		}
 	}
-	return nil
+	return
 }
