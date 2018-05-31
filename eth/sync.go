@@ -198,5 +198,4 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 			atomic.StoreUint32(&pm.fastSync, 0)
 		}
 	}
-	return
 }
