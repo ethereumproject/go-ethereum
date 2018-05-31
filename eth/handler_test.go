@@ -36,11 +36,11 @@ func TestProtocolCompatibility(t *testing.T) {
 	// Define the compatibility chart
 	tests := []struct {
 		version    uint
-		fastSync   bool
+		mode       downloader.SyncMode
 		compatible bool
 	}{
-		{61, false, true}, {62, false, true}, {63, false, true},
-		{61, true, false}, {62, true, false}, {63, true, true},
+		{61, downloader.FullSync, true}, {62, downloader.FullSync, true}, {63, downloader.FullSync, true},
+		{61, downloader.FastSync, false}, {62, downloader.FastSync, false}, {63, downloader.FastSync, true},
 	}
 	// Make sure anything we screw up is restored
 	backup := ProtocolVersions
@@ -50,7 +50,7 @@ func TestProtocolCompatibility(t *testing.T) {
 	for i, tt := range tests {
 		ProtocolVersions = []uint{tt.version}
 
-		pm, err := newTestProtocolManager(tt.fastSync, 0, nil, nil)
+		pm, _, err := newTestProtocolManager(tt.mode, 0, nil, nil)
 		if pm != nil {
 			defer pm.Stop()
 		}
@@ -61,84 +61,11 @@ func TestProtocolCompatibility(t *testing.T) {
 }
 
 // Tests that block headers can be retrieved from a remote chain based on user queries.
-func TestGetBlockHeaders62(t *testing.T) {
-	core.DefaultConfigMorden.ChainConfig.Forks = []*core.Fork{
-		{
-			Name:  "Homestead",
-			Block: big.NewInt(0),
-			Features: []*core.ForkFeature{
-				{
-					ID: "homestead",
-					Options: core.ChainFeatureConfigOptions{
-						"difficulty": `{
-							"name": "homestead",
-							"options": {}
-						}`,
-					},
-				},
-			},
-		},
-	}
-	testGetBlockHeaders(t, 62)
-}
-
-func TestShouldRequestRequiredHashHeader(t *testing.T) {
-	pm := newTestProtocolManagerMust(t, false, downloader.MaxHashFetch+15, nil, nil)
-
-	fb := pm.blockchain.GetBlockByNumber(uint64(downloader.MaxHashFetch))
-	_, head, _ := pm.blockchain.Status()
-
-	cc := pm.blockchain.Config()
-	cc.Forks = append(cc.Forks, &core.Fork{Name: "checkpoint", Block: fb.Number(), RequiredHash: fb.Hash()})
-
-	cases := []struct {
-		name      string
-		localHead common.Hash
-		peerHead  common.Hash
-		wantN     uint64
-		wantB     bool
-	}{
-		{
-			name:      "peer above local (unknown), local below fork",
-			localHead: pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
-			peerHead:  common.Hash{}, // unknown
-			wantN:     0,
-			wantB:     false,
-		},
-		{
-			name:      "peer above local (unknown), local above fork",
-			localHead: head,
-			peerHead:  common.Hash{}, // unknown
-			wantN:     fb.NumberU64(),
-			wantB:     true,
-		},
-		{
-			name:      "peer at or below local, local below fork",
-			localHead: pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
-			peerHead:  pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
-			wantN:     0,
-			wantB:     false,
-		},
-		{
-			name:      "peer at or below local, local above fork",
-			localHead: head,
-			peerHead:  pm.blockchain.GetBlockByNumber(fb.NumberU64() - 1).Hash(),
-			wantN:     fb.NumberU64(),
-			wantB:     false,
-		},
-	}
-
-	for _, c := range cases {
-		if n, got := pm.getRequiredHashBlockNumber(c.localHead, c.peerHead); n != c.wantN || got != c.wantB {
-			t.Errorf("%s -> wantN: %v, gotN: %v, wantB: %v, gotB: %v", c.name, c.wantN, n, c.wantB, got)
-		}
-	}
-}
-
+func TestGetBlockHeaders62(t *testing.T) { testGetBlockHeaders(t, 62) }
 func TestGetBlockHeaders63(t *testing.T) { testGetBlockHeaders(t, 63) }
 
 func testGetBlockHeaders(t *testing.T, protocol int) {
-	pm := newTestProtocolManagerMust(t, false, downloader.MaxHashFetch+15, nil, nil)
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, downloader.MaxHashFetch+15, nil, nil)
 	peer, _ := newTestPeer("peer", protocol, pm, true)
 	defer peer.close()
 
