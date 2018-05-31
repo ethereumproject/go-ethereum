@@ -38,9 +38,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
-
-	kf "github.com/rotblauer/go-kf"
-	"path/filepath"
 )
 
 const (
@@ -499,32 +496,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 
 			if err = pm.chainConfig.HeaderCheck(headers[0]); err != nil {
 				pm.removePeer(p.id)
-				s, e := kf.NewStore(&kf.StoreConfig{
-					BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
-					Locking: true,
-					KV:      true,
-				})
-				if e != nil {
-					glog.V(logger.Error).Errorln("error opening KF", e)
-				} else {
-					s.Set(filepath.Join("reqHash", "FAIL", p.ID().String()), []byte(p.Name()))
-					s.Close()
-				}
 				return err
 			} else {
-				s, e := kf.NewStore(&kf.StoreConfig{
-					BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
-					Locking: true,
-					KV:      true,
-				})
-				if e != nil {
-					glog.V(logger.Error).Errorln("error opening KF", e)
-				} else {
-					s.Set(filepath.Join("reqHash", "OK", p.ID().String()), []byte(p.Name()))
-					s.Close()
-				}
 				// Start a timer to disconnect if the peer doesn't reply in time
-				p.timeout = time.AfterFunc(10*time.Minute, func() {
+				p.timeout = time.AfterFunc(5*time.Second, func() {
 					glog.V(logger.Debug).Infof("%v: removing known ok peers; onwards to new friends", p)
 					pm.disconnectPeer(p.id)
 				})
