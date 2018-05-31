@@ -845,7 +845,10 @@ func (l *loggingT) formatHeader(s severity, file string, line int) *buffer {
 		}
 	} else {
 		// Write dim.
-		buf.WriteString(severityColor[infoLog])
+		//buf.WriteString(severityColor[infoLog])
+		buf.WriteString(color.Set(color.FgYellow).)
+
+		color.Yell
 
 		buf.nDigits(4, 0, year, '_')
 		buf.nDigits(4, 0, year, '_')
@@ -964,6 +967,7 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 			buf.Write(stacks(false))
 		}
 	}
+	l.traceLocation
 	data := buf.Bytes()
 	if l.toStderr {
 		color.Error.Write(data)

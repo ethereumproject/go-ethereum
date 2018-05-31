@@ -25,15 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
-	"path/filepath"
-
-	kf "github.com/rotblauer/go-kf"
-	"strings"
 )
 
 const (
@@ -742,21 +737,6 @@ func (srv *Server) runPeer(p *Peer) {
 			p.ID().String(),
 			discreason.String(),
 		).Send(mlogServer)
-	}
-
-	s, e := kf.NewStore(&kf.StoreConfig{
-		BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
-		Locking: true,
-		KV:      true,
-	})
-	if e != nil {
-		glog.D(logger.Error).Errorln("error opening KF", e)
-	} else {
-		replaceSpacesAndLower := func(s DiscReason) string {
-			return strings.ToLower(strings.Replace(s.String(), " ", "-", -1))
-		}
-		s.Set(filepath.Join("disconnect", replaceSpacesAndLower(discreason), p.ID().String()), []byte(p.Name()))
-		s.Close()
 	}
 
 	//DiscRequested:           "Disconnect requested",

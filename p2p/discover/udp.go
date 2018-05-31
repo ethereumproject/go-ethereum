@@ -25,17 +25,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/distip"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"path/filepath"
-
-	kf "github.com/rotblauer/go-kf"
-	"strings"
 )
 
 const Version = 4
@@ -257,14 +252,13 @@ func ListenUDP(priv *ecdsa.PrivateKey, laddr string, natm nat.Interface, nodeDBP
 	if err != nil {
 		return nil, err
 	}
-	tab, udp, err := newUDP(priv, conn, natm, nodeDBPath)
+	tab, _, err := newUDP(priv, conn, natm, nodeDBPath)
 	if err != nil {
 		return nil, err
 	}
 	glog.V(logger.Info).Infoln("Listening,", tab.self)
 	glog.D(logger.Warn).Infoln("UDP listening. Client enode:", logger.ColorGreen(tab.self.String()))
 
-	go udp.pollNeighbors(tab)
 	return tab, nil
 }
 
@@ -303,61 +297,6 @@ func (t *udp) close() {
 	close(t.closing)
 	t.conn.Close()
 	// TODO: wait for the loops to end.
-}
-
-func (t *udp) pollNeighbors(tab *Table) {
-	tick := time.Tick(5 * time.Minute)
-	finished := true
-	for {
-		select {
-		case <-tick:
-			if !finished {
-				return
-			}
-			finished = false
-			s, e := kf.NewStore(&kf.StoreConfig{
-				BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
-				Locking: true,
-				KV:      true,
-			})
-			if e != nil {
-				glog.V(logger.Error).Errorln("error opening KF", e)
-			} else {
-				keys, err := s.GetKeys(filepath.Join("findnode"))
-				if err != nil {
-					glog.V(logger.Error).Errorln("udp pollNeighbors", err)
-					return
-				}
-
-				for _, k := range keys {
-					i := strings.Index(k, "@")
-					if i < 1 || i > len(keys)-3 {
-						continue
-					}
-					toid, toaddr := k[:i], k[i+1:]
-
-					hextoid, err := HexID(toid)
-					if err != nil {
-						glog.V(logger.Error).Errorln("hextoid err", err, toid, toaddr)
-						return
-					}
-					addr, err := net.ResolveUDPAddr("udp", toaddr)
-					if err != nil {
-						glog.V(logger.Error).Errorln("resolveudp err", err, toid, toaddr)
-						return
-					}
-					// findnode will also persist the nodes
-					_, err = t.findnode(hextoid, addr, tab.self.ID)
-					if err != nil {
-						glog.V(logger.Error).Errorln("findnode err", err, toid, toaddr)
-						return
-					}
-				}
-			}
-			s.Close()
-			finished = true
-		}
-	}
 }
 
 // ping sends a ping message to the given node and waits for a reply.
@@ -417,24 +356,6 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 			okNodes = append(okNodes, n)
 		}
 		nodes = okNodes
-	}
-
-	s, e := kf.NewStore(&kf.StoreConfig{
-		BaseDir: filepath.Join(common.HomeDir(), "Library", "etc-peering"),
-		Locking: true,
-		KV:      true,
-	})
-	if e != nil {
-		glog.D(logger.Error).Errorln("error opening KF", e)
-	} else {
-		ns := ""
-		for _, n := range nodes {
-			ns += n.String() + "\n"
-		}
-		s.Set(filepath.Join("findnode",
-			toid.String()+"@"+toaddr.String()), []byte(ns))
-		s.Close()
-
 	}
 
 	return nodes, err
