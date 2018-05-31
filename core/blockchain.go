@@ -295,7 +295,7 @@ func (bc *BlockChain) blockIsInvalid(b *types.Block) error {
 				}
 				// Note that we're confirming that blockchain "has" this block;
 				// later we'll use "has-with-state" to differentiate fast/full blocks, and want to be sure
-				// that not only is the hash valid, but also that only the state is missing if HasBlockAndState returns false.
+				// that not only is the hash valid, but also that only the state is missing if HasBlock returns false.
 				if !bc.HasBlock(b.Hash()) {
 					return fmt.Errorf("blockchain cannot find block with hash=%x", b.Hash())
 				}
