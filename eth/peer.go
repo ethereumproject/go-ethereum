@@ -97,6 +97,10 @@ func (p *peer) Info() *PeerInfo {
 	}
 }
 
+func (p *peer) Nick() string {
+	return p.nick
+}
+
 // Head retrieves a copy of the current head hash and total difficulty of the
 // peer.
 func (p *peer) Head() (hash common.Hash, td *big.Int) {
