@@ -356,7 +356,7 @@ func (d *Downloader) UnregisterPeer(id string) error {
 	d.cancelLock.RUnlock()
 
 	if master {
-		d.Cancel()
+		d.cancel()
 	}
 	return nil
 }
