@@ -399,6 +399,7 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	// Post a user notification of the sync (only once per session)
 	if atomic.CompareAndSwapInt32(&d.notified, 0, 1) {
 		glog.V(logger.Info).Infoln("Block synchronisation started")
+		glog.D(logger.Info).Infoln("Block synchronisation started")
 	}
 	// Reset the queue, peer set and wake channels to clean any internal leftover state
 	d.queue.Reset()
@@ -445,38 +446,34 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	return d.syncWithPeer(p, hash, td)
 }
 
-//func (d *Downloader) monitorPeer(p *peer) {
-//	tick := time.Tick(10 * time.Second)
-//	for {
-//		select {
-//		case <-tick:
-//			glog.D(logger.Warn).Warnf("DL monitor: %s (h/s/r/b)(idle=[%d/%d/%d/%d] thru=[%.2f/%.2f/%.2f/%.2f] start[%s/%s/%s/%s] rtt=%v", p,
-//				p.headerIdle, p.blockIdle, p.stateIdle, p.receiptIdle,
-//				p.headerThroughput, p.blockThroughput, p.stateThroughput, p.receiptThroughput,
-//				// Mon Jan 2 15:04:05 -0700 MST 2006
-//				p.blockStarted.Format("15:04:05"),
-//				p.headerStarted.Format("15:04:05"),
-//				p.stateStarted.Format("15:04:05"),
-//				p.receiptStarted.Format("15:04:05"),
-//				p.rtt,
-//			)
-//			//if d.cancelCh == nil {
-//			//	glog.D(logger.Warn).Warnf("DL monitor: canceling cancelCh nil")
-//			//	break
-//			//}
-//			if d.cancelPeer != p.id {
-//				glog.D(logger.Warn).Warnf("DL monitor: canceling %s != %s", d.cancelPeer, p.id)
-//				break
-//			}
-//		}
-//	}
-//}
+func (d *Downloader) monitorPeer(p *peer) {
+	tick := time.Tick(10 * time.Second)
+	sub := d.mux.Subscribe(DoneEvent{}, FailedEvent{})
+	for {
+		select {
+		case <-tick:
+			glog.D(logger.Warn).Warnf("DL monitor: %s (h/s/r/b)(idle=[%d/%d/%d/%d] thru=[%.2f/%.2f/%.2f/%.2f] start[%s/%s/%s/%s] rtt=%v", p,
+				p.headerIdle, p.blockIdle, p.stateIdle, p.receiptIdle,
+				p.headerThroughput, p.blockThroughput, p.stateThroughput, p.receiptThroughput,
+				// Mon Jan 2 15:04:05 -0700 MST 2006
+				p.blockStarted.Format("15:04:05"),
+				p.headerStarted.Format("15:04:05"),
+				p.stateStarted.Format("15:04:05"),
+				p.receiptStarted.Format("15:04:05"),
+				p.rtt,
+			)
+		case <-sub.Chan():
+			glog.D(logger.Warn).Warnf("DL monitor: canceling (sub) %s != %s", d.cancelPeer, p.id)
+			return
+		}
+	}
+}
 
 // syncWithPeer starts a block synchronization based on the hash chain from the
 // specified peer and head hash.
 func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err error) {
 	d.mux.Post(StartEvent{p, hash, td})
-	//go d.monitorPeer(p)
+	go d.monitorPeer(p)
 	defer func() {
 		// reset on error
 		if err != nil {
