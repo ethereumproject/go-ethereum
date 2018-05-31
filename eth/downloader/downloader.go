@@ -623,7 +623,8 @@ func (d *Downloader) fetchHeight(p *peer) (*types.Header, error) {
 	// The underlying Timer is not recovered by the garbage collector until the timer fires.
 	// If efficiency is a concern, use NewTimer instead and call Timer.Stop if the timer is no longer needed.
 	ttl := d.requestTTL()
-	timeout := time.After(ttl)
+	timer := time.NewTimer(ttl)
+	defer timer.Stop()
 	for {
 		select {
 		case <-d.cancelCh:
@@ -643,7 +644,7 @@ func (d *Downloader) fetchHeight(p *peer) (*types.Header, error) {
 			}
 			return headers[0], nil
 
-		case <-timeout:
+		case <-timer.C:
 			glog.V(logger.Debug).Infof("%v: head header timeout", p, ttl)
 			return nil, errTimeout
 
