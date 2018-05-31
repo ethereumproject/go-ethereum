@@ -218,9 +218,9 @@ var severityColor = []string{"\x1b[2m", "\x1b[33m", "\x1b[31m", "\x1b[35m"} // i
 
 var severityName = []string{
 	infoLog:    "INFO",
-	warningLog: "WARNING",
-	errorLog:   "ERROR",
-	fatalLog:   "FATAL",
+	warningLog: "WARN",
+	errorLog:   "ERR-",
+	fatalLog:   "FAIL",
 }
 
 // these path prefixes are trimmed for display, but not when
