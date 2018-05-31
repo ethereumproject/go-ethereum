@@ -356,7 +356,7 @@ func (d *Downloader) UnregisterPeer(id string) error {
 	d.cancelLock.RUnlock()
 
 	if master {
-		d.cancel()
+		d.Cancel() // 1
 	}
 	return nil
 }
@@ -601,10 +601,13 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 	return err
 }
 
-// cancel aborts all of the operations and resets the queue. However, cancel does
-// not wait for the running download goroutines to finish. This method should be
-// used when cancelling the downloads from inside the downloader.
-func (d *Downloader) cancel() {
+// Cancel cancels all of the operations and resets the queue.
+func (d *Downloader) Cancel() {
+	// Gets called twice; #360, then #447
+	//_, file, no, ok := runtime.Caller(1)
+	//if ok {
+	//	glog.D(logger.Debug).Warnf("called from %s#%d\n", file, no)
+	//}
 	// Close the current cancel channel
 	d.cancelLock.Lock()
 	if d.cancelCh != nil {
@@ -616,13 +619,9 @@ func (d *Downloader) cancel() {
 		}
 	}
 	d.cancelLock.Unlock()
-}
-
-// Cancel aborts all of the operations and waits for all download goroutines to
-// finish before returning.
-func (d *Downloader) Cancel() {
-	d.cancel()
+	//glog.D(logger.Debug).Warnln("Waiting for dl cancelWg...")
 	d.cancelWg.Wait()
+	//glog.D(logger.Debug).Warnln("Finished    dl cancelWg...")
 }
 
 // Terminate interrupts the downloader, canceling all pending operations.
