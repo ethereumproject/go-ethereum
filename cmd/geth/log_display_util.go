@@ -19,6 +19,8 @@ const (
 	logEventDownloaderStart
 	logEventDownloaderDone
 	logEventDownloaderFailed
+	logEventPMHandlerAdd
+	logEventPMHandlerRemove
 	logEventInterval
 	logEventBefore
 	logEventAfter
