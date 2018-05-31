@@ -63,6 +63,9 @@ func greenParenify(s string) string {
 func redParenify(s string) string {
 	return logger.ColorRed("⟪") + s + logger.ColorRed("⟫")
 }
+func yellowParenify(s string) string {
+	return logger.ColorYellow("⟪") + s + logger.ColorRed("⟫")
+}
 func prefix(ev interface{}, e *eth.Ethereum) string {
 	//s := "⋮⫟⫠⫶|"⇶⇉⇣⇣⥥⤹↙⤹⎯⏐↵↳⤶⤷⤵↔
 	switch d := ev.(type) {
@@ -161,7 +164,7 @@ var greenDisplaySystem = displayEventHandlers{
 				switch d := evData.(type) {
 				case downloader.StartEvent:
 					s := prefix(d, e) + downloaderIconStart + " Start " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
-					glog.D(logger.Info).Warnln(s)
+					glog.D(logger.Info).Infoln(s)
 				}
 			},
 		},
@@ -174,7 +177,7 @@ var greenDisplaySystem = displayEventHandlers{
 				switch d := evData.(type) {
 				case downloader.DoneEvent:
 					s := prefix(d, e) + downloaderIconDone + " Done  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
-					glog.D(logger.Info).Warnln(s)
+					glog.D(logger.Info).Infoln(s)
 				}
 			},
 		},
@@ -186,7 +189,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.FailedEvent:
-					s := prefix(d, e) + downloaderIconFail + " Fail  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " " + logger.ColorRed("err") + "=" + redParenify(d.Err.Error())
+					s := prefix(d, e) + downloaderIconFail + " Fail  " + yellowParenify(fmt.Sprintf("%s", d.Peer)) + " " + logger.ColorRed("err") + "=" + redParenify(d.Err.Error())
 					glog.D(logger.Info).Warnln(s)
 				}
 			},
