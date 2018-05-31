@@ -1409,8 +1409,8 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 	// Retrieve the a batch of results to import
 	first, last := results[0].Header, results[len(results)-1].Header
 	glog.V(logger.Debug).Infoln("Inserting downloaded chain", "items", len(results),
-		"firstnum", first.Number, "firsthash", first.Hash(),
-		"lastnum", last.Number, "lasthash", last.Hash(),
+		"firstnum", first.Number, "firsthash", first.Hash().Hex()[:9],
+		"lastnum", last.Number, "lasthash", last.Hash().Hex()[:9],
 	)
 	blocks := make([]*types.Block, len(results))
 	for i, result := range results {
