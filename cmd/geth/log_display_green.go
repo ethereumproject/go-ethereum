@@ -177,7 +177,6 @@ var greenDisplaySystem = displayEventHandlers{
 				switch d := evData.(type) {
 				case downloader.DoneEvent:
 					s := prefix(d, e) + downloaderIconDone + " Done  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
-					time.Sleep(1 * time.Second) // it's nice to have the last insert blocks event preceed this event
 					glog.D(logger.Info).Infoln(s)
 				}
 			},
