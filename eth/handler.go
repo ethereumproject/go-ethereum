@@ -63,6 +63,7 @@ type ProtocolManager struct {
 	blockchain  *core.BlockChain
 	chaindb     ethdb.Database
 	chainConfig *core.ChainConfig
+	maxPeers    int
 
 	downloader *downloader.Downloader
 	fetcher    *fetcher.Fetcher
@@ -205,6 +206,9 @@ func (pm *ProtocolManager) removePeer(id string) {
 }
 
 func (pm *ProtocolManager) Start() {
+func (pm *ProtocolManager) Start(maxPeers int) {
+	pm.maxPeers = maxPeers
+
 	// broadcast transactions
 	pm.txSub = pm.eventMux.Subscribe(core.TxPreEvent{})
 	go pm.txBroadcastLoop()
@@ -249,7 +253,12 @@ func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *p
 // handle is the callback invoked to manage the life cycle of an eth peer. When
 // this function terminates, the peer is disconnected.
 func (pm *ProtocolManager) handle(p *peer) error {
-	glog.V(logger.Debug).Infof("%v: peer connected [%s]", p, p.Name())
+	// Ignore maxPeers if this is a trusted peer
+	if l := pm.peers.Len(); l >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
+		glog.D(logger.Error).Errorln("handler dropping pm.peers.len=", l, "pm.maxPeers=", pm.maxPeers, )
+		return p2p.DiscTooManyPeers
+	}
+	glog.V(logger.Debug).Infof("handler: %s ->connected", p)
 
 	// Execute the Ethereum handshake
 	td, head, genesis := pm.blockchain.Status()

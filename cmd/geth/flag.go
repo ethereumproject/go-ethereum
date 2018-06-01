@@ -587,6 +587,7 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
 		DatabaseHandles:         MakeDatabaseHandles(),
 		NetworkId:               sconf.Network,
+		MaxPeers:                ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)),
 		AccountManager:          accman,
 		Etherbase:               MakeEtherbase(accman, ctx),
 		MinerThreads:            ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)),
