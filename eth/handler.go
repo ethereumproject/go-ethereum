@@ -43,6 +43,14 @@ import (
 const (
 	softResponseLimit = 2 * 1024 * 1024 // Target maximum size of returned blocks, headers or node data.
 	estHeaderRlpSize  = 500             // Approximate size of an RLP encoded block header
+
+	// txChanSize is the size of channel listening to NewTxsEvent.
+	// The number is referenced from the size of tx pool.
+	txChanSize = 4096
+)
+
+var (
+	daoChallengeTimeout = 15 * time.Second // Time allowance for a node to reply to the DAO handshake challenge
 )
 
 // errIncompatibleConfig is returned if the requested protocols and configs are
@@ -54,7 +62,7 @@ func errResp(code errCode, format string, v ...interface{}) error {
 }
 
 type ProtocolManager struct {
-	networkId int
+	networkId uint64
 
 	fastSync uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
 	synced   uint32 // Flag whether we're considered synchronised (enables transaction processing)
@@ -90,7 +98,7 @@ type ProtocolManager struct {
 
 // NewProtocolManager returns a new ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the ethereum network.
-func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, mux *event.TypeMux, txpool txPool, pow pow.PoW, blockchain *core.BlockChain, chaindb ethdb.Database) (*ProtocolManager, error) {
+func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, networkId uint64, mux *event.TypeMux, txpool txPool, pow pow.PoW, blockchain *core.BlockChain, chaindb ethdb.Database) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkId:   networkId,
@@ -106,12 +114,12 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 		quitSync:    make(chan struct{}),
 	}
 	// Figure out whether to allow fast sync or not
-	if fastSync && blockchain.CurrentBlock().NumberU64() > 0 {
+	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
 		glog.V(logger.Warn).Infoln("Blockchain not empty, fast sync disabled")
 		glog.D(logger.Warn).Warnln("Blockchain not empty. Fast sync disabled.")
-		fastSync = false
+		mode = downloader.FullSync
 	}
-	if fastSync {
+	if mode == downloader.FastSync {
 		manager.fastSync = uint32(1)
 		glog.D(logger.Warn).Infoln("Fast sync mode enabled.")
 	}
@@ -119,7 +127,7 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 	manager.SubProtocols = make([]p2p.Protocol, 0, len(ProtocolVersions))
 	for i, version := range ProtocolVersions {
 		// Skip protocol version if incompatible with the mode of operation
-		if fastSync && version < eth63 {
+		if mode == downloader.FastSync && version < eth63 {
 			continue
 		}
 		// Compatible; initialise the sub-protocol
@@ -154,17 +162,7 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 		return nil, errIncompatibleConfig
 	}
 	// Construct the different synchronisation mechanisms
-	//manager.downloader = downloader.New(chaindb, manager.eventMux, blockchain.HasHeader, blockchain.HasBlockAndState, blockchain.GetHeader,
-	//	blockchain.GetBlock, blockchain.CurrentHeader, blockchain.CurrentBlock, blockchain.CurrentFastBlock, blockchain.FastSyncCommitHead,
-	//	blockchain.GetTd, blockchain.InsertHeaderChain, manager.insertChain, blockchain.InsertReceiptChain, blockchain.Rollback,
-	//	manager.removePeer)
-
-	// func New(mode SyncMode, stateDb ethdb.Database, mux *event.TypeMux, chain BlockChain, lightchain LightChain, dropPeer peerDropFn) *Downloader
-	m := downloader.FullSync
-	if manager.fastSync == 1 {
-		m = downloader.FastSync
-	}
-	manager.downloader = downloader.New(m, chaindb, manager.eventMux, blockchain, nil, manager.removePeer)
+	manager.downloader = downloader.New(mode, chaindb, manager.eventMux, blockchain, nil, manager.removePeer)
 
 	validator := func(header *types.Header) error {
 		return manager.blockchain.Validator().ValidateHeader(header, manager.blockchain.GetHeader(header.ParentHash), true)
@@ -173,6 +171,10 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 		return blockchain.CurrentBlock().NumberU64()
 	}
 	inserter := func(blocks types.Blocks) (int, error) {
+		if atomic.LoadUint32(&manager.fastSync) == 1 {
+			glog.V(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
+			glog.D(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
+		}
 		atomic.StoreUint32(&manager.synced, 1) // Mark initial sync done on any fetcher import
 		return manager.insertChain(blocks)
 	}
@@ -314,7 +316,6 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	defer pm.removePeer(p.id)
 
 	// Register the peer in the downloader. If the downloader considers it banned, we disconnect
-	// TODO Causing error in tests
 	if err := pm.downloader.RegisterPeer(p.id, p.version, p.Name(), p.Head,
 		p.RequestHeadersByHash, p.RequestHeadersByNumber, p.RequestBodies,
 		p.RequestReceipts, p.RequestNodeData); err != nil {
@@ -333,15 +334,15 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		}
 		// Start a timer to disconnect if the peer doesn't reply in time
 		// FIXME: un-hardcode timeout
-		p.timeout = time.AfterFunc(5*time.Second, func() {
+		p.forkDrop = time.AfterFunc(daoChallengeTimeout, func() {
 			glog.V(logger.Debug).Infof("handler: %s ->headersbynumber err='timed out fork-check, dropping'", p)
 			pm.removePeer(p.id)
 		})
 		// Make sure it's cleaned up if the peer dies off
 		defer func() {
-			if p.timeout != nil {
-				p.timeout.Stop()
-				p.timeout = nil
+			if p.forkDrop != nil {
+				p.forkDrop.Stop()
+				p.forkDrop = nil
 			}
 		}()
 	}
@@ -487,19 +488,19 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 		// empty header response, it might be that the peer is a light client which only keeps
 		// the last 256 block headers. Besides it does not prevent network attacks. See #313 for
 		// an explaination.
-		if len(headers) == 0 && p.timeout != nil {
+		if len(headers) == 0 && p.forkDrop != nil {
 			// Disable the fork drop timeout
-			p.timeout.Stop()
-			p.timeout = nil
+			p.forkDrop.Stop()
+			p.forkDrop = nil
 			return nil
 		}
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
 		filter := len(headers) == 1
 		if filter {
-			if p.timeout != nil {
+			if p.forkDrop != nil {
 				// Disable the fork drop timeout
-				p.timeout.Stop()
-				p.timeout = nil
+				p.forkDrop.Stop()
+				p.forkDrop = nil
 			}
 
 			if err = pm.chainConfig.HeaderCheck(headers[0]); err != nil {
@@ -878,7 +879,7 @@ type EthNodeInfo struct {
 // NodeInfo retrieves some protocol metadata about the running host node.
 func (self *ProtocolManager) NodeInfo() *EthNodeInfo {
 	return &EthNodeInfo{
-		Network:    self.networkId,
+		Network:    int(self.networkId),
 		Difficulty: self.blockchain.GetTd(self.blockchain.CurrentBlock().Hash()),
 		Genesis:    self.blockchain.Genesis().Hash(),
 		Head:       self.blockchain.CurrentBlock().Hash(),
