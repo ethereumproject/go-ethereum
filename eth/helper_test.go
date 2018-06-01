@@ -73,8 +73,8 @@ func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core
 	if err != nil {
 		return nil, err
 	}
-	pm.Start()
 	return pm, nil
+	pm.Start(1000)
 }
 
 // newTestProtocolManagerMust creates a new protocol manager for testing purposes,

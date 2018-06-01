@@ -357,7 +357,6 @@ func (p *peer) String() string {
 // download procedure.
 type peerSet struct {
 	peers        map[string]*peer
-	max          int
 	newPeerFeed  event.Feed
 	peerDropFeed event.Feed
 	lock         sync.RWMutex
@@ -378,10 +377,6 @@ func (ps *peerSet) SubscribeNewPeers(ch chan<- *peer) event.Subscription {
 // SubscribePeerDrops subscribes to peer departure events.
 func (ps *peerSet) SubscribePeerDrops(ch chan<- *peer) event.Subscription {
 	return ps.peerDropFeed.Subscribe(ch)
-}
-
-func (ps *peerSet) SetMax(i int) {
-	ps.max = i
 }
 
 // Reset iterates over the current peer set, and resets each of the known peers

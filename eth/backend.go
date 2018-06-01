@@ -96,6 +96,7 @@ type Config struct {
 }
 
 type Ethereum struct {
+	config      *Config
 	chainConfig *core.ChainConfig
 	// Channel for shutting down the ethereum
 	shutdownChan chan bool
@@ -195,6 +196,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	glog.V(logger.Info).Infof("Blockchain DB Version: %d", config.BlockChainVersion)
 
 	eth := &Ethereum{
+		config:                  config,
 		shutdownChan:            make(chan bool),
 		chainDb:                 chainDb,
 		dappDb:                  dappDb,
@@ -440,7 +442,7 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 	if s.AutoDAG {
 		s.StartAutoDAG()
 	}
-	s.protocolManager.Start()
+	s.protocolManager.Start(s.config.MaxPeers)
 	s.netRPCService = NewPublicNetAPI(srvr, s.NetVersion())
 	return nil
 }
