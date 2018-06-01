@@ -14,6 +14,8 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"net"
 )
 
 const defaultStatusLog = "sync=60s"
@@ -328,6 +330,90 @@ func logLoggingConfiguration(ctx *cli.Context) {
 	} else {
 		glog.V(logger.Warn).Warnf("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())
 		glog.D(logger.Warn).Warnf("Machine log config: mlog=%s", logger.ColorYellow("off"))
+	}
+
+}
+
+func logIfUnsafeConfiguration(ctx *cli.Context) {
+	// If RPC APIs include ANY of eth,personal,admin AND an account is unlocked, that's unsafe because
+	// anyone can use the unlocked account to sign and send transactions over the RPC API.
+	//
+	rpcapis := ctx.GlobalString(aliasableName(RPCApiFlag.Name, ctx))
+	unsafeRPCAPIs := []string{"eth", "personal", "admin"}
+	safeRPCListenAddrsWhitelist := [][2]net.IP{
+		discover.Ipv4ReservedRangeThis,
+		discover.Ipv4ReservedRangeLoopback,
+		discover.Ipv4ReservedRangePrivateNetwork,
+		discover.Ipv4ReservedRangeLocalPrivate2,
+		discover.Ipv6ReservedRangeLoopback,
+	}
+	stringContainsAny := func(s string, anyof []string) bool {
+		for _, ss := range anyof {
+			if strings.Contains(s, ss) {
+				return true
+			}
+		}
+		return false
+	}
+
+	possibleUnlockCondition := ctx.GlobalIsSet(UnlockedAccountFlag.Name) || ctx.GlobalIsSet(PasswordFileFlag.Name)
+	rpcEnabledCondition := ctx.GlobalBool(RPCEnabledFlag.Name)
+	rpcAPICondition := stringContainsAny(rpcapis, unsafeRPCAPIs)
+
+	// rpc listen addr is considered "safe", which is to be probably not exposed to the internet
+	rpcListenAddrCondition := func(configuredRPCListenAddr string) bool {
+		// listening on all interfaces, UNSAFE
+		if configuredRPCListenAddr == "*" {
+			return true
+		}
+		if strings.Contains(configuredRPCListenAddr, "localhost") {
+			return false
+		}
+		ip := net.ParseIP(configuredRPCListenAddr)
+		for _, n := range safeRPCListenAddrsWhitelist {
+			if ok, err := discover.IpBetween(n[0], n[1], ip); ok && err == nil {
+				return false
+			}
+		}
+		// parsed listen ip was NOT in the whitelist
+		return true
+	}(ctx.GlobalString(aliasableName(RPCListenAddrFlag.Name, ctx)))
+
+	unsafeCondition := possibleUnlockCondition && rpcEnabledCondition && rpcAPICondition && rpcListenAddrCondition
+
+	// check for EITHER --password or --unlock to be on the safe side, along with any of the sensitive RPC APIs enabled
+	if unsafeCondition {
+		func(vs []func(...interface{})) {
+			for _, v := range vs {
+				v(glog.Separator("-"))
+				v("*")
+				v(fmt.Sprintf(`
+
+>    !!!  WARNING: Unsafe use of --%s and exposed RPC API [ currently: %s ].  !!!  
+> 
+>    It's UNSAFE to unlock an account while exposing ANY of the following RPC APIs: %s to the internet.
+>    Anyone from the internet will be able to transfer funds from an unlocked account without any password.
+> 
+>    You can use the --%s flag to enable specific RPC API modules if necessary, 
+>    and/or restrict the exposed RPC listen address with the --%s flag.
+
+`,
+					UnlockedAccountFlag.Name,
+					rpcapis,
+					unsafeRPCAPIs,
+					aliasableName(RPCApiFlag.Name, ctx),
+					aliasableName(RPCListenAddrFlag.Name, ctx),
+				))
+				v("*")
+				v(glog.Separator("-"))
+			}
+		}([]func(...interface{}){
+			glog.V(logger.Warn).Warnln,
+			glog.D(logger.Warn).Warnln,
+		})
+		if !askForConfirmation("Do you really wish to proceed?") {
+			os.Exit(0)
+		}
 	}
 
 }
