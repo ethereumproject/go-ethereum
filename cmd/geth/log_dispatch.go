@@ -35,7 +35,7 @@ var lsModeName = []string{
 	"Discover",
 	"Sync",
 	"Fast",
-	"Imported",
+	"Import",
 }
 
 func (m lsMode) String() string {

@@ -177,6 +177,7 @@ var greenDisplaySystem = displayEventHandlers{
 				switch d := evData.(type) {
 				case downloader.DoneEvent:
 					s := prefix(d, e) + downloaderIconDone + " Done  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
+					time.Sleep(1 * time.Second) // it's nice to have the last insert blocks event preceed this event
 					glog.D(logger.Info).Infoln(s)
 				}
 			},
@@ -199,9 +200,16 @@ var greenDisplaySystem = displayEventHandlers{
 		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
-				if time.Since(chainEventLastSent) > time.Duration(time.Second*time.Duration(int32(tickerInterval.Seconds()/2))) {
+				if time.Since(chainEventLastSent) > time.Duration(time.Second*time.Duration(int32(tickerInterval.Seconds()))) {
 					currentBlockNumber = PrintStatusGreen(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 				}
+			},
+		},
+	},
+	{
+		eventT: logEventBefore,
+		handlers: displayEventHandlerFns{
+			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 			},
 		},
 	},
@@ -324,6 +332,9 @@ var PrintStatusGreen = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 		domOrHeight = dominoGraph
 		qosDisplayable = ""
 	}
+	if currentMode == lsModeDiscover {
+		blocksprocesseddisplay = ""
+	}
 
 	// Log to ERROR.
 	headDisplay := greenParenify(localHeadHeight + " " + localHeadHex)
@@ -338,6 +349,6 @@ var PrintStatusGreen = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 
 	// This allows maximum user optionality for desired integration with rest of event-based logging.
 	glog.D(logger.Warn).Infof("%s "+modeIcon+"%s %s "+logger.ColorGreen("✌︎︎︎")+"%s %s %s",
-		currentMode, headDisplay, blocksprocesseddisplay, peerDisplay, domOrHeight, qosDisplayable)
+		logger.ColorBlue(currentMode.String()), headDisplay, blocksprocesseddisplay, peerDisplay, domOrHeight, qosDisplayable)
 	return current
 }
