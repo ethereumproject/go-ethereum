@@ -33,6 +33,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/trie"
 )
 
@@ -46,6 +47,8 @@ func init() {
 	MaxForkAncestry = 10000
 	blockCacheItems = 1024
 	fsHeaderContCheck = 500 * time.Millisecond
+	glog.SetD(0)
+	glog.SetV(0)
 }
 
 // downloadTester is a test simulator for mocking out local block chain.
