@@ -345,8 +345,10 @@ func (p *peer) String() string {
 // peerSet represents the collection of active peer participating in the chain
 // download procedure.
 type peerSet struct {
-	peers map[string]*peer
-	lock  sync.RWMutex
+	peers        map[string]*peer
+	newPeerFeed  event.Feed
+	peerDropFeed event.Feed
+	lock         sync.RWMutex
 }
 
 // newPeerSet creates a new peer set top track the active download sources.
@@ -354,6 +356,16 @@ func newPeerSet() *peerSet {
 	return &peerSet{
 		peers: make(map[string]*peer),
 	}
+}
+
+// SubscribeNewPeers subscribes to peer arrival events.
+func (ps *peerSet) SubscribeNewPeers(ch chan<- *peer) event.Subscription {
+	return ps.newPeerFeed.Subscribe(ch)
+}
+
+// SubscribePeerDrops subscribes to peer departure events.
+func (ps *peerSet) SubscribePeerDrops(ch chan<- *peer) event.Subscription {
+	return ps.peerDropFeed.Subscribe(ch)
 }
 
 // Reset iterates over the current peer set, and resets each of the known peers
