@@ -23,7 +23,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"runtime"
 )
 
 var (
@@ -33,14 +32,7 @@ var (
 
 // Call executes within the given contract
 func Call(env vm.Environment, caller vm.ContractRef, addr common.Address, input []byte, gas, gasPrice, value *big.Int) (ret []byte, err error) {
-	ch := env.Db().GetCodeHash(addr)
-	if fmt.Sprintf("%x", ch[:4]) == "fabf2cf3" {
-		_, file, no, ok := runtime.Caller(1)
-		if ok {
-			fmt.Printf("called from %s#%d\n", file, no)
-		}
-	}
-	ret, _, err = exec(env, caller, &addr, &addr, ch, input, env.Db().GetCode(addr), gas, gasPrice, value)
+	ret, _, err = exec(env, caller, &addr, &addr, env.Db().GetCodeHash(addr), input, env.Db().GetCode(addr), gas, gasPrice, value)
 	return ret, err
 }
 
@@ -121,12 +113,6 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	contract.SetCallCode(codeAddr, codeHash, code)
 	defer contract.Finalise()
 
-	if fmt.Sprintf("%x", contract.CodeHash[:4]) == "fabf2cf3" {
-		_, file, no, ok := runtime.Caller(1)
-		if ok {
-			fmt.Printf("called from %s#%d\n", file, no)
-		}
-	}
 	ret, err = evm.Run(contract, input)
 	// if the contract creation ran successfully and no errors were returned
 	// calculate the gas required to store the code. If the code could not

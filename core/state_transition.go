@@ -24,7 +24,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"runtime"
 )
 
 var (
@@ -251,15 +250,7 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	} else {
 		// Increment the nonce for the next transaction
 		self.state.SetNonce(sender.Address(), self.state.GetNonce(sender.Address())+1)
-		addr := self.to().Address()
-		ch := vmenv.Db().GetCodeHash(addr)
-		if fmt.Sprintf("%x", ch[:4]) == "fabf2cf3" {
-			_, file, no, ok := runtime.Caller(1)
-			if ok {
-				fmt.Printf("called from %s#%d\n", file, no)
-			}
-		}
-		ret, err = vmenv.Call(sender, addr, self.data, self.gas, self.gasPrice, self.value)
+		ret, err = vmenv.Call(sender, self.to().Address(), self.data, self.gas, self.gasPrice, self.value)
 		if err != nil {
 			glog.V(logger.Core).Infoln("VM call err:", err)
 		}

@@ -19,12 +19,10 @@ package core
 import (
 	"math/big"
 
-	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
-	"runtime"
 )
 
 // GetHashFn returns a function for which the VM env can query block hashes through
@@ -104,13 +102,6 @@ func (self *VMEnv) Transfer(from, to vm.Account, amount *big.Int) {
 }
 
 func (self *VMEnv) Call(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	ch := self.Db().GetCodeHash(addr)
-	if fmt.Sprintf("%x", ch[:4]) == "fabf2cf3" {
-		_, file, no, ok := runtime.Caller(1)
-		if ok {
-			fmt.Printf("called from %s#%d\n", file, no)
-		}
-	}
 	return Call(self, me, addr, data, gas, price, value)
 }
 func (self *VMEnv) CallCode(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {

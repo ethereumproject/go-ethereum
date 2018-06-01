@@ -819,14 +819,6 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 	// Execute the call and return
 	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
 	gp := new(core.GasPool).AddGas(common.MaxBig)
-	addr := args.To
-	ch := vmenv.Db().GetCodeHash(*addr)
-	if fmt.Sprintf("%x", ch[:4]) == "fabf2cf3" {
-		_, file, no, ok := runtime.Caller(1)
-		if ok {
-			fmt.Printf("called from %s#%d\n", file, no)
-		}
-	}
 
 	res, requiredGas, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
 	if len(res) == 0 { // backwards compatibility
@@ -838,13 +830,6 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 // Call executes the given transaction on the state for the given block number.
 // It doesn't make and changes in the state/blockchain and is useful to execute and retrieve values.
 func (s *PublicBlockChainAPI) Call(args CallArgs, blockNr rpc.BlockNumber) (string, error) {
-
-	_, file, no, ok := runtime.Caller(1)
-	if ok {
-		fmt.Printf("called from %s#%d\n", file, no)
-	}
-	// called from /usr/local/Cellar/go/1.9.2/libexec/src/runtime/asm_amd64.s#512
-
 	result, _, err := s.doCall(args, blockNr)
 	return result, err
 }
