@@ -129,7 +129,7 @@ func newTester() *fetcherTester {
 		blocks: map[common.Hash]*types.Block{genesis.Hash(): genesis},
 		drops:  make(map[string]bool),
 	}
-	tester.fetcher = New(tester.getBlock, tester.verifyBlock, tester.broadcastBlock, tester.chainHeight, tester.insertChain, tester.dropPeer)
+	tester.fetcher = New(tester.getBlock, tester.verifyHeader, tester.broadcastBlock, tester.chainHeight, tester.insertChain, tester.dropPeer)
 	tester.fetcher.Start()
 
 	return tester
@@ -143,8 +143,8 @@ func (f *fetcherTester) getBlock(hash common.Hash) *types.Block {
 	return f.blocks[hash]
 }
 
-// verifyBlock is a nop placeholder for the block header verification.
-func (f *fetcherTester) verifyBlock(block *types.Block, parent *types.Block) error {
+// verifyHeader is a nop placeholder for the block header verification.
+func (f *fetcherTester) verifyHeader(header *types.Header) error {
 	return nil
 }
 
