@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/event"
 )
 
 const (
@@ -345,8 +346,10 @@ func (p *peer) String() string {
 // peerSet represents the collection of active peer participating in the chain
 // download procedure.
 type peerSet struct {
-	peers map[string]*peer
-	lock  sync.RWMutex
+	peers        map[string]*peer
+	newPeerFeed  event.Feed
+	peerDropFeed event.Feed
+	lock         sync.RWMutex
 }
 
 // newPeerSet creates a new peer set top track the active download sources.
@@ -354,6 +357,16 @@ func newPeerSet() *peerSet {
 	return &peerSet{
 		peers: make(map[string]*peer),
 	}
+}
+
+// SubscribeNewPeers subscribes to peer arrival events.
+func (ps *peerSet) SubscribeNewPeers(ch chan<- *peer) event.Subscription {
+	return ps.newPeerFeed.Subscribe(ch)
+}
+
+// SubscribePeerDrops subscribes to peer departure events.
+func (ps *peerSet) SubscribePeerDrops(ch chan<- *peer) event.Subscription {
+	return ps.peerDropFeed.Subscribe(ch)
 }
 
 // Reset iterates over the current peer set, and resets each of the known peers
@@ -542,10 +555,10 @@ func (ps *peerSet) idlePeers(minProtocol, maxProtocol int, idleCheck func(*peer)
 	return idle, total
 }
 
-// medianRTT returns the median RTT of te peerset, considering only the tuning
+// medianRTT returns the median RTT of the peerset, considering only the tuning
 // peers if there are more peers available.
 func (ps *peerSet) medianRTT() time.Duration {
-	// Gather all the currnetly measured round trip times
+	// Gather all the currently measured round trip times
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 

@@ -153,10 +153,17 @@ func NewProtocolManager(config *core.ChainConfig, fastSync bool, networkId int, 
 		return nil, errIncompatibleConfig
 	}
 	// Construct the different synchronisation mechanisms
-	manager.downloader = downloader.New(chaindb, manager.eventMux, blockchain.HasHeader, blockchain.HasBlockAndState, blockchain.GetHeader,
-		blockchain.GetBlock, blockchain.CurrentHeader, blockchain.CurrentBlock, blockchain.CurrentFastBlock, blockchain.FastSyncCommitHead,
-		blockchain.GetTd, blockchain.InsertHeaderChain, manager.insertChain, blockchain.InsertReceiptChain, blockchain.Rollback,
-		manager.removePeer)
+	//manager.downloader = downloader.New(chaindb, manager.eventMux, blockchain.HasHeader, blockchain.HasBlockAndState, blockchain.GetHeader,
+	//	blockchain.GetBlock, blockchain.CurrentHeader, blockchain.CurrentBlock, blockchain.CurrentFastBlock, blockchain.FastSyncCommitHead,
+	//	blockchain.GetTd, blockchain.InsertHeaderChain, manager.insertChain, blockchain.InsertReceiptChain, blockchain.Rollback,
+	//	manager.removePeer)
+
+	// func New(mode SyncMode, stateDb ethdb.Database, mux *event.TypeMux, chain BlockChain, lightchain LightChain, dropPeer peerDropFn) *Downloader
+	m := downloader.FullSync
+	if manager.fastSync == 1 {
+		m = downloader.FastSync
+	}
+	manager.downloader = downloader.New(m, chaindb, manager.eventMux, blockchain, nil, manager.removePeer)
 
 	validator := func(block *types.Block, parent *types.Block) error {
 		return core.ValidateHeader(config, pow, block.Header(), parent.Header(), true, false)
