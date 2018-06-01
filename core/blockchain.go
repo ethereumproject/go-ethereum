@@ -381,7 +381,6 @@ func (bc *BlockChain) blockIsInvalid(b *types.Block) error {
 	// fullBlockCheck ensures state exists for parent and current blocks.
 	fullBlockCheck := func(b *types.Block) error {
 		parent := bc.GetBlock(b.ParentHash())
-		// == bc.HasBlock
 		if parent == nil {
 			return ParentError(b.ParentHash())
 		}
@@ -702,7 +701,6 @@ func (bc *BlockChain) LoadLastState(dryrun bool) error {
 	}
 
 	// Initialize a statedb cache to ensure singleton account bloom filter generation
-	//statedb, err := state.New(bc.currentBlock.Root(), state.NewDatabase(bc.chainDb))
 	statedb, err := state.New(bc.currentBlock.Root(), state.NewDatabase(bc.chainDb))
 	if err != nil {
 		return err
@@ -1586,9 +1584,6 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 		// error if it fails.
 		switch {
 		case i == 0:
-			//if bc.stateCache == nil {
-			//	panic("statecache nil")
-			//}
 			err = bc.stateCache.Reset(bc.GetBlock(block.ParentHash()).Root())
 		default:
 			err = bc.stateCache.Reset(chain[i-1].Root())
