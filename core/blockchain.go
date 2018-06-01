@@ -33,6 +33,7 @@ import (
 	"strconv"
 
 	"encoding/binary"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -112,6 +113,14 @@ type BlockChain struct {
 	validator Validator // block and state validator interface
 
 	atxi *AtxiT
+}
+
+func (self *BlockChain) GetHeaderByHash(h common.Hash) *types.Header {
+	return self.hc.GetHeader(h)
+}
+
+func (self *BlockChain) GetBlockByHash(h common.Hash) *types.Block {
+	return self.GetBlock(h)
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -213,6 +222,7 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 	return bc, nil
 }
 
+// GetEventMux returns the blockchain's event mux
 func (self *BlockChain) GetEventMux() *event.TypeMux {
 	return self.eventMux
 }
@@ -285,7 +295,7 @@ func (self *BlockChain) blockIsInvalid(b *types.Block) error {
 				}
 				// Note that we're confirming that blockchain "has" this block;
 				// later we'll use "has-with-state" to differentiate fast/full blocks, and want to be sure
-				// that not only is the hash valid, but also that only the state is missing if HasBlockAndState returns false.
+				// that not only is the hash valid, but also that only the state is missing if HasBlock returns false.
 				if !self.HasBlock(b.Hash()) {
 					return fmt.Errorf("blockchain cannot find block with hash=%x", b.Hash())
 				}
@@ -1450,8 +1460,10 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	if tdCompare == 0 {
 		// Reduces the vulnerability to selfish mining.
 		// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
-		reorg = mrand.Float64() < 0.5
+		// Split same-difficulty blocks by number, then at random
+		reorg = block.NumberU64() < self.currentBlock.NumberU64() || (block.NumberU64() == self.currentBlock.NumberU64() && mrand.Float64() < 0.5)
 	}
+
 	if reorg {
 		// Reorganise the chain if the parent is not the head block
 		if block.ParentHash() != self.currentBlock.Hash() {
