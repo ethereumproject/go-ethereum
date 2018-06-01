@@ -380,7 +380,6 @@ func (hc *HeaderChain) GetBlockHashesFromHash(hash common.Hash, max uint64) []co
 		return nil
 	}
 	// Iterate the headers until enough is collected or the genesis reached
-	panic(fmt.Sprintf("max cap %d", max))
 	chain := make([]common.Hash, 0, max)
 	for i := uint64(0); i < max; i++ {
 		next := header.ParentHash
