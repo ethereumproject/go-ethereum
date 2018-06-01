@@ -30,7 +30,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/p2p"
-	"math"
 )
 
 // Tests that protocol versions and modes of operations are matched up properly.
