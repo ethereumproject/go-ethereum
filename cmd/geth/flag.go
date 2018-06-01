@@ -773,6 +773,9 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	glog.D(logger.Warn).Infof("Use Sputnik EVM: %s", logger.ColorGreen(fmt.Sprintf("%v", core.UseSputnikVM)))
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
+
+	// If unsafe usage, WARNING!
+	logIfUnsafeConfiguration(ctx)
 }
 
 // MustMakeChainConfigFromDefaults reads the chain configuration from hardcode.
