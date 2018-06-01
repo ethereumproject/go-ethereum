@@ -50,15 +50,40 @@ var dominoes = []string{"🁣", "🁤", "🁥", "🁦", "🁭", "🁴", "🁻", 
 var chainIcon = "◼⋯⋯" + logger.ColorGreen("◼")
 var forkIcon = "◼⋯⦦" + logger.ColorGreen("◼")
 var headerIcon = "◼⋯⋯" + logger.ColorGreen("❐")
-var downloaderIcon = "◼⋯⋯" + logger.ColorGreen("⬇")
+var downloaderIconStart = "◼⋯⋯" + logger.ColorGreen("⬇")
+var downloaderIconDone = "◼⋯⋯" + logger.ColorGreen("✔︎")
+var downloaderIconFail = "◼⋯⋯" + logger.ColorRed("✕")
 var minedIcon = "◼⋯⋯" + logger.ColorGreen("⟠")
 var lsModeDiscoverSpinners = []string{"➫", "➬", "➭"}
+var downloadingFrom = ""
 
 func greenParenify(s string) string {
 	return logger.ColorGreen("⟪") + s + logger.ColorGreen("⟫")
 }
 func redParenify(s string) string {
 	return logger.ColorRed("⟪") + s + logger.ColorRed("⟫")
+}
+func yellowParenify(s string) string {
+	return logger.ColorYellow("⟪") + s + logger.ColorYellow("⟫")
+}
+func prefix(ev interface{}, e *eth.Ethereum) string {
+	//s := "⋮⫟⫠⫶|"⇶⇉⇣⇣⥥⤹↙⤹⎯⏐↵↳⤶⤷⤵↔
+	switch d := ev.(type) {
+	case downloader.StartEvent:
+		downloadingFrom = d.Peer.String()
+		return logger.ColorGreen(`⤹  `)
+	case downloader.DoneEvent:
+		downloadingFrom = ""
+		return logger.ColorGreen(`⤷  `)
+	case downloader.FailedEvent:
+		downloadingFrom = ""
+		return logger.ColorRed(`⤷  `)
+	default:
+		if downloadingFrom != "" && e.Downloader().Synchronising() {
+			return logger.ColorYellow(`⇣  `)
+		}
+	}
+	return ""
 }
 
 // greenDisplaySystem is "spec'd" in PR #423 and is a little fancier/more detailed and colorful than basic.
@@ -70,7 +95,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.ChainInsertEvent:
-					glog.D(logger.Info).Infof(chainIcon+" Insert "+logger.ColorGreen("blocks")+"=%s "+logger.ColorGreen("◼")+"=%s "+logger.ColorGreen("took")+"=%s",
+					glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Insert "+logger.ColorGreen("blocks")+"=%s "+logger.ColorGreen("◼")+"=%s "+logger.ColorGreen("took")+"=%s",
 						greenParenify(fmt.Sprintf("processed=%4d queued=%4d ignored=%4d txs=%4d", d.Processed, d.Queued, d.Ignored, d.TxCount)),
 						greenParenify(fmt.Sprintf("n=%8d hash=%s… time=%v ago", d.LastNumber, d.LastHash.Hex()[:9], time.Since(d.LatestBlockTime).Round(time.Millisecond))),
 						greenParenify(fmt.Sprintf("%v", d.Elasped.Round(time.Millisecond))),
@@ -89,7 +114,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.ChainSideEvent:
-					glog.D(logger.Info).Infof(forkIcon+" Insert "+logger.ColorGreen("forked block")+"=%s", greenParenify(fmt.Sprintf("n=%8d hash=%s…", d.Block.NumberU64(), d.Block.Hash().Hex()[:9])))
+					glog.D(logger.Info).Infof(prefix(d, e)+forkIcon+" Insert "+logger.ColorGreen("forked block")+"=%s", greenParenify(fmt.Sprintf("n=%8d hash=%s…", d.Block.NumberU64(), d.Block.Hash().Hex()[:9])))
 				}
 			},
 		},
@@ -101,7 +126,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.HeaderChainInsertEvent:
-					glog.D(logger.Info).Infof(headerIcon+" Insert "+logger.ColorGreen("headers")+"=%s "+logger.ColorGreen("❐")+"=%s"+logger.ColorGreen("took")+"=%s",
+					glog.D(logger.Info).Infof(prefix(d, e)+headerIcon+" Insert "+logger.ColorGreen("headers")+"=%s "+logger.ColorGreen("❐")+"=%s"+logger.ColorGreen("took")+"=%s",
 						greenParenify(fmt.Sprintf("processed=%4d ignored=%4d", d.Processed, d.Ignored)),
 						greenParenify(fmt.Sprintf("n=%4d hash=%s…", d.LastNumber, d.LastHash.Hex()[:9])),
 						greenParenify(fmt.Sprintf("%v", d.Elasped.Round(time.Microsecond))),
@@ -120,7 +145,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.NewMinedBlockEvent:
-					glog.D(logger.Info).Infof(minedIcon + " Mined " + logger.ColorGreen("◼") + "=" + greenParenify(fmt.Sprintf("n=%8d hash=%s… coinbase=%s… txs=%3d uncles=%d",
+					glog.D(logger.Info).Infof(prefix(d, e) + minedIcon + " Mined " + logger.ColorGreen("◼") + "=" + greenParenify(fmt.Sprintf("n=%8d hash=%s… coinbase=%s… txs=%3d uncles=%d",
 						d.Block.NumberU64(),
 						d.Block.Hash().Hex()[:9],
 						d.Block.Coinbase().Hex()[:9],
@@ -138,8 +163,8 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.StartEvent:
-					s := downloaderIcon + " Start " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
-					glog.D(logger.Info).Warnln(s)
+					s := prefix(d, e) + downloaderIconStart + " Start " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
+					glog.D(logger.Info).Infoln(s)
 				}
 			},
 		},
@@ -151,8 +176,9 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.DoneEvent:
-					s := downloaderIcon + " Done  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
-					glog.D(logger.Info).Warnln(s)
+					s := prefix(d, e) + downloaderIconDone + " Done  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " hash=" + greenParenify(d.Hash.Hex()[:9]+"…") + " TD=" + greenParenify(fmt.Sprintf("%v", d.TD))
+					time.Sleep(1 * time.Second) // it's nice to have the last insert blocks event preceed this event
+					glog.D(logger.Info).Infoln(s)
 				}
 			},
 		},
@@ -164,7 +190,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.FailedEvent:
-					s := downloaderIcon + " Fail  " + greenParenify(fmt.Sprintf("%s", d.Peer)) + " " + logger.ColorRed("err") + "=" + redParenify(d.Err.Error())
+					s := prefix(d, e) + downloaderIconFail + " Fail  " + yellowParenify(fmt.Sprintf("%s", d.Peer)) + " " + logger.ColorRed("err") + "=" + redParenify(d.Err.Error())
 					glog.D(logger.Info).Warnln(s)
 				}
 			},
@@ -174,9 +200,16 @@ var greenDisplaySystem = displayEventHandlers{
 		eventT: logEventInterval,
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
-				if time.Since(chainEventLastSent) > time.Duration(time.Second*time.Duration(int32(tickerInterval.Seconds()/2))) {
+				if time.Since(chainEventLastSent) > time.Duration(time.Second*time.Duration(int32(tickerInterval.Seconds()))) {
 					currentBlockNumber = PrintStatusGreen(e, tickerInterval, ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)))
 				}
+			},
+		},
+	},
+	{
+		eventT: logEventBefore,
+		handlers: displayEventHandlerFns{
+			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 			},
 		},
 	},
@@ -299,6 +332,9 @@ var PrintStatusGreen = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 		domOrHeight = dominoGraph
 		qosDisplayable = ""
 	}
+	if currentMode == lsModeDiscover {
+		blocksprocesseddisplay = ""
+	}
 
 	// Log to ERROR.
 	headDisplay := greenParenify(localHeadHeight + " " + localHeadHex)
@@ -313,6 +349,6 @@ var PrintStatusGreen = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 
 	// This allows maximum user optionality for desired integration with rest of event-based logging.
 	glog.D(logger.Warn).Infof("%s "+modeIcon+"%s %s "+logger.ColorGreen("✌︎︎︎")+"%s %s %s",
-		currentMode, headDisplay, blocksprocesseddisplay, peerDisplay, domOrHeight, qosDisplayable)
+		logger.ColorBlue(currentMode.String()), headDisplay, blocksprocesseddisplay, peerDisplay, domOrHeight, qosDisplayable)
 	return current
 }

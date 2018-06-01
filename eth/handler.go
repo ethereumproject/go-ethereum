@@ -43,6 +43,14 @@ import (
 const (
 	softResponseLimit = 2 * 1024 * 1024 // Target maximum size of returned blocks, headers or node data.
 	estHeaderRlpSize  = 500             // Approximate size of an RLP encoded block header
+
+	// txChanSize is the size of channel listening to NewTxsEvent.
+	// The number is referenced from the size of tx pool.
+	txChanSize = 4096
+)
+
+var (
+	daoChallengeTimeout = 15 * time.Second // Time allowance for a node to reply to the DAO handshake challenge
 )
 
 // errIncompatibleConfig is returned if the requested protocols and configs are
@@ -163,6 +171,10 @@ func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, netw
 		return blockchain.CurrentBlock().NumberU64()
 	}
 	inserter := func(blocks types.Blocks) (int, error) {
+		if atomic.LoadUint32(&manager.fastSync) == 1 {
+			glog.V(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
+			glog.D(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
+		}
 		atomic.StoreUint32(&manager.synced, 1) // Mark initial sync done on any fetcher import
 		return manager.insertChain(blocks)
 	}
@@ -207,7 +219,25 @@ func (pm *ProtocolManager) removePeer(id string) {
 	}
 }
 
-func (pm *ProtocolManager) Start() {
+func (pm *ProtocolManager) disconnectPeer(id string) {
+	// Short circuit if the peer was already removed
+	peer := pm.peers.Peer(id)
+	if peer == nil {
+		return
+	}
+	glog.V(logger.Debug).Infoln("Removing peer", id)
+
+	// Unregister the peer from the downloader and Ethereum peer set
+	pm.downloader.UnregisterPeer(id)
+	if err := pm.peers.Unregister(id); err != nil {
+		glog.V(logger.Error).Infoln("Removal failed:", err)
+	}
+	// Hard disconnect at the networking layer
+	if peer != nil {
+		peer.Peer.Disconnect(p2p.DiscTooManyPeers)
+	}
+}
+
 func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.maxPeers = maxPeers
 
@@ -265,16 +295,16 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// Execute the Ethereum handshake
 	td, head, genesis := pm.blockchain.Status()
 	if err := p.Handshake(pm.networkId, td, head, genesis); err != nil {
-		glog.V(logger.Debug).Infof("%v: handshake failed: %v", p, err)
+		glog.V(logger.Debug).Infof("handler: %s ->handshakefailed err=%v", p, err)
 		return err
 	}
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
 		rw.Init(p.version)
 	}
 	// Register the peer locally
-	glog.V(logger.Detail).Infof("%v: adding peer", p)
+	glog.V(logger.Debug).Infof("handler: %s ->addpeer", p)
 	if err := pm.peers.Register(p); err != nil {
-		glog.V(logger.Error).Errorf("%v: addition failed: %v", p, err)
+		glog.V(logger.Error).Errorf("handler: %s ->addpeer err=%v", p, err)
 		return err
 	} else {
 		pm.eventMux.Post(PMHandlerAddEvent{
@@ -286,7 +316,6 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	defer pm.removePeer(p.id)
 
 	// Register the peer in the downloader. If the downloader considers it banned, we disconnect
-	// TODO Causing error in tests
 	if err := pm.downloader.RegisterPeer(p.id, p.version, p.Name(), p.Head,
 		p.RequestHeadersByHash, p.RequestHeadersByNumber, p.RequestBodies,
 		p.RequestReceipts, p.RequestNodeData); err != nil {
@@ -300,20 +329,20 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	if headerN, doValidate := pm.getRequiredHashBlockNumber(head, pHead); doValidate {
 		// Request the peer's fork block header for extra-dat
 		if err := p.RequestHeadersByNumber(headerN, 1, 0, false); err != nil {
-			glog.V(logger.Debug).Infof("%v: error requesting headers by number ", p)
+			glog.V(logger.Debug).Infof("handler: %s ->headersbynumber err=%v", p, err)
 			return err
 		}
 		// Start a timer to disconnect if the peer doesn't reply in time
 		// FIXME: un-hardcode timeout
-		p.timeout = time.AfterFunc(5*time.Second, func() {
-			glog.V(logger.Debug).Infof("%v: timed out fork-check, dropping", p)
+		p.forkDrop = time.AfterFunc(daoChallengeTimeout, func() {
+			glog.V(logger.Debug).Infof("handler: %s ->headersbynumber err='timed out fork-check, dropping'", p)
 			pm.removePeer(p.id)
 		})
 		// Make sure it's cleaned up if the peer dies off
 		defer func() {
-			if p.timeout != nil {
-				p.timeout.Stop()
-				p.timeout = nil
+			if p.forkDrop != nil {
+				p.forkDrop.Stop()
+				p.forkDrop = nil
 			}
 		}()
 	}
@@ -321,7 +350,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			glog.V(logger.Debug).Infof("%v: message handling failed: %v", p, err)
+			glog.V(logger.Debug).Infof("handler: %s ->msghandlefailed err=%v", p, err)
 			return err
 		}
 	}
@@ -459,26 +488,27 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 		// empty header response, it might be that the peer is a light client which only keeps
 		// the last 256 block headers. Besides it does not prevent network attacks. See #313 for
 		// an explaination.
-		if len(headers) == 0 && p.timeout != nil {
+		if len(headers) == 0 && p.forkDrop != nil {
 			// Disable the fork drop timeout
-			p.timeout.Stop()
-			p.timeout = nil
+			p.forkDrop.Stop()
+			p.forkDrop = nil
 			return nil
 		}
 		// Filter out any explicitly requested headers, deliver the rest to the downloader
 		filter := len(headers) == 1
 		if filter {
-			if p.timeout != nil {
+			if p.forkDrop != nil {
 				// Disable the fork drop timeout
-				p.timeout.Stop()
-				p.timeout = nil
+				p.forkDrop.Stop()
+				p.forkDrop = nil
 			}
+
 			if err = pm.chainConfig.HeaderCheck(headers[0]); err != nil {
 				pm.removePeer(p.id)
 				return err
 			}
 			// Irrelevant of the fork checks, send the header to the fetcher just in case
-			headers = pm.fetcher.FilterHeaders(headers, time.Now())
+			headers = pm.fetcher.FilterHeaders(p.id, headers, time.Now())
 		}
 		if len(headers) > 0 || !filter {
 			err := pm.downloader.DeliverHeaders(p.id, headers)
@@ -538,12 +568,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 		// Filter out any explicitly requested bodies, deliver the rest to the downloader
 		filter := len(transactions) > 0 || len(uncles) > 0
 		if filter {
-			transactions, uncles = pm.fetcher.FilterBodies(transactions, uncles, time.Now())
+			transactions, uncles = pm.fetcher.FilterBodies(p.id, transactions, uncles, time.Now())
 		}
 		if len(transactions) > 0 || len(uncles) > 0 || !filter {
 			if e := pm.downloader.DeliverBodies(p.id, transactions, uncles); e != nil {
 				glog.V(logger.Debug).Infoln(e)
-
 			}
 		}
 
@@ -731,8 +760,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 			// scenario should easily be covered by the fetcher.
 			currentBlock := pm.blockchain.CurrentBlock()
 			if localTd := pm.blockchain.GetTd(currentBlock.Hash()); trueTD.Cmp(localTd) > 0 {
-				glog.V(logger.Info).Infof("Peer %s: localTD=%v (<) peerTrueTD=%v, synchronising", p.id, localTd, trueTD)
 				if !pm.downloader.Synchronising() {
+					glog.V(logger.Info).Infof("Peer %s: localTD=%v (<) peerTrueTD=%v, synchronising", p.id, localTd, trueTD)
+					//go pm.synchronise(pm.peers.BestPeer())
 					go pm.synchronise(p)
 				}
 			} else {
@@ -849,7 +879,7 @@ type EthNodeInfo struct {
 // NodeInfo retrieves some protocol metadata about the running host node.
 func (self *ProtocolManager) NodeInfo() *EthNodeInfo {
 	return &EthNodeInfo{
-		Network:    self.networkId,
+		Network:    int(self.networkId),
 		Difficulty: self.blockchain.GetTd(self.blockchain.CurrentBlock().Hash()),
 		Genesis:    self.blockchain.Genesis().Hash(),
 		Head:       self.blockchain.CurrentBlock().Hash(),
