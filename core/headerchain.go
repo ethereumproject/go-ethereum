@@ -26,7 +26,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"fmt"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
