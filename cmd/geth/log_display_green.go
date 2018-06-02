@@ -79,12 +79,10 @@ func prefix(ev interface{}, e *eth.Ethereum) string {
 	case downloader.FailedEvent:
 		downloadingFrom = ""
 		return logger.ColorRed(`⤷  `)
-	case fetcher.FetcherInsertBlockEvent:
-		return ""
+	case downloader.InsertChainEvent:
+		return logger.ColorYellow(`⇣  `)
+	//case fetcher.FetcherInsertBlockEvent:
 	default:
-		if downloadingFrom != "" && e.Downloader().Synchronising() {
-			return logger.ColorYellow(`⇣  `)
-		}
 	}
 	return ""
 }
@@ -92,19 +90,20 @@ func prefix(ev interface{}, e *eth.Ethereum) string {
 // greenDisplaySystem is "spec'd" in PR #423 and is a little fancier/more detailed and colorful than basic.
 var greenDisplaySystem = displayEventHandlers{
 	{
-		eventT: logEventChainInsert,
-		ev:     core.ChainInsertEvent{},
+		eventT: logEventDownloaderInsertChain,
+		ev:     downloader.InsertChainEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
-				case core.ChainInsertEvent:
-					if !e.Downloader().Synchronising() {
-						return
+				case downloader.InsertChainEvent:
+					colorFn, colorParenFn := logger.ColorGreen, greenParenify
+					if d.Processed == 0 {
+						colorFn, colorParenFn = logger.ColorYellow, yellowParenify
 					}
-					glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Insert "+logger.ColorGreen("blocks")+"=%s "+logger.ColorGreen("◼")+"=%s "+logger.ColorGreen("took")+"=%s",
-						greenParenify(fmt.Sprintf("processed=%4d queued=%4d ignored=%4d txs=%4d", d.Processed, d.Queued, d.Ignored, d.TxCount)),
-						greenParenify(fmt.Sprintf("n=%8d hash=%s… time=%v ago", d.LastNumber, d.LastHash.Hex()[:9], time.Since(d.LatestBlockTime).Round(time.Millisecond))),
-						greenParenify(fmt.Sprintf("%v", d.Elasped.Round(time.Millisecond))),
+					glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Insert "+colorFn("blocks")+"=%s "+colorFn("◼")+"=%s "+colorFn("took")+"=%s",
+						colorParenFn(fmt.Sprintf("processed=%4d queued=%4d ignored=%4d txs=%4d", d.Processed, d.Queued, d.Ignored, d.TxCount)),
+						colorParenFn(fmt.Sprintf("n=%8d hash=%s… time=%v ago", d.LastNumber, d.LastHash.Hex()[:9], time.Since(d.LatestBlockTime).Round(time.Millisecond))),
+						colorParenFn(fmt.Sprintf("%v", d.Elasped.Round(time.Millisecond))),
 					)
 					if bool(glog.D(logger.Info)) {
 						chainEventLastSent = time.Now()
@@ -121,17 +120,13 @@ var greenDisplaySystem = displayEventHandlers{
 				switch d := evData.(type) {
 				case fetcher.FetcherInsertBlockEvent:
 					glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Import "+logger.ColorGreen("◼")+"=%s "+"peer=%s",
-						greenParenify(fmt.Sprintf("n=%8d hash=%s time=%v ago",
+						greenParenify(fmt.Sprintf("n=%8d hash=%s miner=%s time=%v ago",
 							d.Block.NumberU64(),
 							d.Block.Hash().Hex()[:9],
+							d.Block.Coinbase().Hex()[:9],
 							time.Since(time.Unix(d.Block.Time().Int64(), 0)).Round(time.Millisecond))),
 						greenParenify(d.Peer),
 					)
-					//glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Insert "+logger.ColorGreen("blocks")+"=%s "+logger.ColorGreen("◼")+"=%s "+logger.ColorGreen("took")+"=%s",
-					//	greenParenify(fmt.Sprintf("processed=%4d queued=%4d ignored=%4d txs=%4d", d.Processed, d.Queued, d.Ignored, d.TxCount)),
-					//	greenParenify(fmt.Sprintf("n=%8d hash=%s… time=%v ago", d.LastNumber, d.LastHash.Hex()[:9], time.Since(d.LatestBlockTime).Round(time.Millisecond))),
-					//	greenParenify(fmt.Sprintf("%v", d.Elasped.Round(time.Millisecond))),
-					//)
 					if bool(glog.D(logger.Info)) {
 						chainEventLastSent = time.Now()
 					}
@@ -221,7 +216,7 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case downloader.FailedEvent:
-					s := prefix(d, e) + downloaderIconFail + " Fail  " + yellowParenify(fmt.Sprintf("%s", d.Peer)) + " " + logger.ColorRed("err") + "=" + redParenify(d.Err.Error())
+					s := prefix(d, e) + downloaderIconFail + " Fail  " + redParenify(fmt.Sprintf("%s", d.Peer)) + " " + logger.ColorRed("err") + "=" + redParenify(d.Err.Error())
 					glog.D(logger.Info).Warnln(s)
 				}
 			},
