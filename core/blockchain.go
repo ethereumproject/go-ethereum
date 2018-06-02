@@ -115,6 +115,12 @@ type BlockChain struct {
 	atxi *AtxiT
 }
 
+type ChainInsertResult struct {
+	ChainInsertEvent
+	Index int
+	Error error
+}
+
 func (bc *BlockChain) GetHeaderByHash(h common.Hash) *types.Header {
 	return bc.hc.GetHeader(h)
 }
@@ -1489,8 +1495,8 @@ func (bc *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err er
 
 // InsertChain inserts the given chain into the canonical chain or, otherwise, create a fork.
 // If the err return is not nil then chainIndex points to the cause in chain.
-func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error) {
-	// EPROJECT
+func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
+	res = &ChainInsertResult{} // initialize
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
 		if chain[i].NumberU64() != chain[i-1].NumberU64()+1 || chain[i].ParentHash() != chain[i-1].Hash() {
@@ -1498,8 +1504,9 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 			glog.V(logger.Error).Infof("Non contiguous block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
 				"parent", chain[i].ParentHash(), "prevnumber", chain[i-1].Number(), "prevhash", chain[i-1].Hash())
 
-			return 0, fmt.Errorf("non contiguous insert: item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),
+			res.Error = fmt.Errorf("non contiguous insert: item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),
 				chain[i-1].Hash().Bytes()[:4], i, chain[i].NumberU64(), chain[i].Hash().Bytes()[:4], chain[i].ParentHash().Bytes()[:4])
+			return
 		}
 	}
 
@@ -1528,6 +1535,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 	txcount := 0
 	var latestBlockTime time.Time
 	for i, block := range chain {
+		res.Index = i
 		if atomic.LoadInt32(&bc.procInterrupt) == 1 {
 			glog.V(logger.Debug).Infoln("Premature abort during block chain processing")
 			break
@@ -1541,12 +1549,15 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 			nonceChecked[r.index] = true
 			if !r.valid {
 				block := chain[r.index]
-				return r.index, &BlockNonceErr{Hash: block.Hash(), Number: block.Number(), Nonce: block.Nonce()}
+				res.Index = r.index
+				res.Error = &BlockNonceErr{Hash: block.Hash(), Number: block.Number(), Nonce: block.Nonce()}
+				return
 			}
 		}
 
 		if err := bc.config.HeaderCheck(block.Header()); err != nil {
-			return i, err
+			res.Error = err
+			return
 		}
 
 		// Stage 1 validation of the block using the chain's validator
@@ -1564,7 +1575,8 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 				// if given.
 				max := big.NewInt(time.Now().Unix() + maxTimeFutureBlocks)
 				if block.Time().Cmp(max) == 1 {
-					return i, fmt.Errorf("%v: BlockFutureErr, %v > %v", BlockFutureErr, block.Time(), max)
+					res.Error = fmt.Errorf("%v: BlockFutureErr, %v > %v", BlockFutureErr, block.Time(), max)
+					return
 				}
 				bc.futureBlocks.Add(block.Hash(), block)
 				stats.queued++
@@ -1577,7 +1589,8 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 				continue
 			}
 
-			return i, err
+			res.Error = err
+			return
 		}
 
 		// Create a new statedb using the parent block and report an
@@ -1588,37 +1601,43 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 		default:
 			err = bc.stateCache.Reset(chain[i-1].Root())
 		}
+		res.Error = err
 		if err != nil {
-			return i, err
+			return
 		}
 		// Process block using the parent state as reference point.
 		receipts, logs, usedGas, err := bc.processor.Process(block, bc.stateCache)
 		if err != nil {
-			return i, err
+			res.Error = err
+			return
 		}
 		// Validate the state using the default validator
 		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, usedGas)
 		if err != nil {
-			return i, err
+			res.Error = err
+			return
 		}
 		// Write state changes to database
 		_, err = bc.stateCache.CommitTo(bc.chainDb, false)
 		if err != nil {
-			return i, err
+			res.Error = err
+			return
 		}
 
 		// coalesce logs for later processing
 		coalescedLogs = append(coalescedLogs, logs...)
 
 		if err := WriteBlockReceipts(bc.chainDb, block.Hash(), receipts); err != nil {
-			return i, err
+			res.Error = err
+			return
 		}
 
 		txcount += len(block.Transactions())
 		// write the block to the chain and get the status
 		status, err := bc.WriteBlock(block)
 		if err != nil {
-			return i, err
+			res.Error = err
+			return
 		}
 		latestBlockTime = time.Unix(block.Time().Int64(), 0)
 
@@ -1631,27 +1650,32 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 
 			// This puts transactions in a extra db for rpc
 			if err := WriteTransactions(bc.chainDb, block); err != nil {
-				return i, err
+				res.Error = err
+				return
 			}
 			// store the receipts
 			if err := WriteReceipts(bc.chainDb, receipts); err != nil {
-				return i, err
+				res.Error = err
+				return
 			}
 			// Write map map bloom filters
 			if err := WriteMipmapBloom(bc.chainDb, block.NumberU64(), receipts); err != nil {
-				return i, err
+				res.Error = err
+				return
 			}
 			// Store the addr-tx indexes if enabled
 			if bc.atxi != nil {
 				if err := WriteBlockAddTxIndexes(bc.atxi.Db, block); err != nil {
-					return i, fmt.Errorf("failed to write block add-tx indexes: %v", err)
+					res.Error = fmt.Errorf("failed to write block add-tx indexes: %v", err)
+					return
 				}
 				// if buildATXI has been in use (via RPC) and is NOT finished, current < stop
 				// if buildATXI has been in use (via RPC) and IS finished, current == stop
 				// else if builtATXI has not been in use (via RPC), then current == stop == 0
 				if bc.atxi.AutoMode && bc.atxi.Progress.Current == bc.atxi.Progress.Stop {
 					if err := bc.atxi.SetATXIBookmark(block.NumberU64()); err != nil {
-						return i, err
+						res.Error = err
+						return
 					}
 				}
 			}
@@ -1664,19 +1688,23 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 		stats.processed++
 	}
 
+	ev := ChainInsertEvent{
+		Processed: stats.processed,
+		Queued:    stats.queued,
+		Ignored:   stats.ignored,
+		TxCount:   txcount,
+	}
+	r := &ChainInsertResult{ChainInsertEvent: ev}
+	r.Index = 0
+
 	if stats.queued > 0 || stats.processed > 0 || stats.ignored > 0 {
 		tend := time.Since(tstart)
 		start, end := chain[0], chain[len(chain)-1]
-		events = append(events, ChainInsertEvent{
-			stats.processed,
-			stats.queued,
-			stats.ignored,
-			txcount,
-			end.NumberU64(),
-			end.Hash(),
-			tend,
-			latestBlockTime,
-		})
+		r.LastNumber = end.NumberU64()
+		r.LastHash = end.Hash()
+		r.Elasped = tend
+		r.LatestBlockTime = latestBlockTime
+		events = append(events, r.ChainInsertEvent)
 		if logger.MlogEnabled() {
 			mlogBlockchainInsertBlocks.AssignDetails(
 				stats.processed,
@@ -1701,7 +1729,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (chainIndex int, err error
 	}
 	go bc.postChainEvents(events, coalescedLogs)
 
-	return 0, nil
+	return r
 }
 
 // reorgs takes two blocks, an old chain and a new chain and will reconstruct the blocks and inserts them
@@ -1900,8 +1928,8 @@ func (bc *BlockChain) update() {
 
 		if len(blocks) > 0 {
 			types.BlockBy(types.Number).Sort(blocks)
-			if i, err := bc.InsertChain(blocks); err != nil {
-				log.Printf("periodic future chain update on block #%d [%s]:  %s", blocks[i].Number(), blocks[i].Hash().Hex(), err)
+			if res := bc.InsertChain(blocks); res.Error != nil {
+				log.Printf("periodic future chain update on block #%d [%s]:  %s", blocks[res.Index].Number(), blocks[res.Index].Hash().Hex(), res.Error)
 			}
 		}
 	}

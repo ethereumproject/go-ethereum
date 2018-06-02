@@ -171,7 +171,7 @@ func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, netw
 	heighter := func() uint64 {
 		return blockchain.CurrentBlock().NumberU64()
 	}
-	inserter := func(blocks types.Blocks) (int, error) {
+	inserter := func(blocks types.Blocks) *core.ChainInsertResult {
 		if atomic.LoadUint32(&manager.fastSync) == 1 {
 			glog.V(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
 			glog.D(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
@@ -188,12 +188,13 @@ func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, netw
 	return manager, nil
 }
 
-func (pm *ProtocolManager) insertChain(blocks types.Blocks) (i int, err error) {
-	i, err = pm.blockchain.InsertChain(blocks)
+func (pm *ProtocolManager) insertChain(blocks types.Blocks) *core.ChainInsertResult {
+	res := pm.blockchain.InsertChain(blocks)
+	err := res.Error
 	if err != nil && pm.badBlockReportingEnabled && core.IsValidateError(err) {
-		go sendBadBlockReport(blocks[i], err)
+		go sendBadBlockReport(blocks[res.Index], err)
 	}
-	return i, err
+	return res
 }
 
 func (pm *ProtocolManager) removePeer(id string) {

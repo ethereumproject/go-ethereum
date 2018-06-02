@@ -66,7 +66,7 @@ type blockBroadcasterFn func(block *types.Block, propagate bool)
 type chainHeightFn func() uint64
 
 // chainInsertFn is a callback type to insert a batch of blocks into the local chain.
-type chainInsertFn func(types.Blocks) (int, error)
+type chainInsertFn func(types.Blocks) *core.ChainInsertResult
 
 // peerDropFn is a callback type for dropping a peer detected as malicious.
 type peerDropFn func(id string)
@@ -721,9 +721,9 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 			return
 		}
 		// Run the actual import and log any issues
-		if _, err := f.insertChain(types.Blocks{block}); err != nil {
-			glog.V(logger.Warn).Infof("Peer %s: block #%d [%s] import failed: %v", peer, block.NumberU64(), hash.Hex(), err)
-			glog.D(logger.Warn).Warnf("Peer %s: block #%d [%s] import failed: %v", peer, block.NumberU64(), hash.Hex(), err)
+		if res := f.insertChain(types.Blocks{block}); res.Error != nil {
+			glog.V(logger.Warn).Infof("Peer %s: block #%d [%s] import failed: %v", peer, block.NumberU64(), hash.Hex(), res.Error)
+			glog.D(logger.Warn).Warnf("Peer %s: block #%d [%s] import failed: %v", peer, block.NumberU64(), hash.Hex(), res.Error)
 			return
 		} else {
 			f.mux.Post(FetcherInsertBlockEvent{Peer: peer, Block: block})

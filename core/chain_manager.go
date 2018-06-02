@@ -304,8 +304,8 @@ func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *Block
 	if full {
 		// Full block-chain requested
 		blocks := makeBlockChain(config, genesis, n, db, canonicalSeed)
-		_, err := blockchain.InsertChain(blocks)
-		return db, blockchain, err
+		res := blockchain.InsertChain(blocks)
+		return db, blockchain, res.Error
 	}
 	// Header-only chain requested
 	headers := makeHeaderChain(config, genesis.Header(), n, db, canonicalSeed)
