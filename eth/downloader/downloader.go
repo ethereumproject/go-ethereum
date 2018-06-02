@@ -364,20 +364,24 @@ func (d *Downloader) UnregisterPeer(id string) error {
 	// Unregister the peer from the active peer set and revoke any fetch tasks
 	glog.V(logger.Detail).Infoln("Unregistering peer", id)
 	err = d.peers.Unregister(id)
+
+	defer func() {
+		// If this peer was the master peer, abort sync immediately
+		d.cancelLock.RLock()
+		master := id == d.cancelPeer
+		d.cancelLock.RUnlock()
+
+		if master {
+			d.cancel()
+		}
+	}()
+
 	if err != nil {
 		glog.V(logger.Error).Errorln("Unregister failed:", err)
 		return err
 	}
 	d.queue.Revoke(id)
 
-	// If this peer was the master peer, abort sync immediately
-	d.cancelLock.RLock()
-	master := id == d.cancelPeer
-	d.cancelLock.RUnlock()
-
-	if master {
-		d.cancel()
-	}
 	return nil
 }
 
