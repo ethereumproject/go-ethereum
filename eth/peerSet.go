@@ -35,6 +35,7 @@ func (ps *peerSet) Register(p *peer) error {
 		return errAlreadyRegistered
 	}
 	ps.peers[p.id] = p
+	go p.broadcast()
 	return nil
 }
 
@@ -44,10 +45,13 @@ func (ps *peerSet) Unregister(id string) error {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
-	if _, ok := ps.peers[id]; !ok {
+	p, ok := ps.peers[id]
+	if !ok {
 		return errNotRegistered
 	}
 	delete(ps.peers, id)
+	p.close()
+
 	return nil
 }
 

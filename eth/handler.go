@@ -814,14 +814,14 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 		// Send the block to a subset of our peers
 		transfer := peers[:int(math.Sqrt(float64(len(peers))))]
 		for _, peer := range transfer {
-			peer.SendNewBlock(block, td)
+			peer.AsyncSendNewBlock(block, td)
 		}
 		glog.V(logger.Detail).Infof("propagated block %x to %d peers in %v", hash[:4], len(transfer), time.Since(block.ReceivedAt))
 	}
 	// Otherwise if the block is indeed in our own chain, announce it
-	if pm.blockchain.HasBlock(hash) {
+	if pm.blockchain.HasBlock(block.Hash()) {
 		for _, peer := range peers {
-			peer.SendNewBlockHashes([]common.Hash{hash}, []uint64{block.NumberU64()})
+			peer.AsyncSendNewBlockHash(block)
 		}
 		glog.V(logger.Detail).Infof("announced block %x to %d peers in %v", hash[:4], len(peers), time.Since(block.ReceivedAt))
 	}
@@ -834,7 +834,7 @@ func (pm *ProtocolManager) BroadcastTx(hash common.Hash, tx *types.Transaction) 
 	peers := pm.peers.PeersWithoutTx(hash)
 	//FIXME include this again: peers = peers[:int(math.Sqrt(float64(len(peers))))]
 	for _, peer := range peers {
-		peer.SendTransactions(types.Transactions{tx})
+		peer.AsyncSendTransactions(types.Transactions{tx})
 	}
 	glog.V(logger.Detail).Infof("broadcast tx [%s] to %d peers", tx.Hash().Hex(), len(peers))
 }
