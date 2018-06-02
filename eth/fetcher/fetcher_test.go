@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
@@ -129,7 +130,7 @@ func newTester() *fetcherTester {
 		blocks: map[common.Hash]*types.Block{genesis.Hash(): genesis},
 		drops:  make(map[string]bool),
 	}
-	tester.fetcher = New(tester.getBlock, tester.verifyHeader, tester.broadcastBlock, tester.chainHeight, tester.insertChain, tester.dropPeer)
+	tester.fetcher = New(new(event.TypeMux), tester.getBlock, tester.verifyHeader, tester.broadcastBlock, tester.chainHeight, tester.insertChain, tester.dropPeer)
 	tester.fetcher.Start()
 
 	return tester
@@ -161,24 +162,28 @@ func (f *fetcherTester) chainHeight() uint64 {
 }
 
 // insertChain injects a new blocks into the simulated chain.
-func (f *fetcherTester) insertChain(blocks types.Blocks) (int, error) {
+func (f *fetcherTester) insertChain(blocks types.Blocks) (res *core.ChainInsertResult) {
+	res = &core.ChainInsertResult{}
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
 	for i, block := range blocks {
 		// Make sure the parent in known
 		if _, ok := f.blocks[block.ParentHash()]; !ok {
-			return i, errors.New("unknown parent")
+			res.Index = i
+			res.Error = errors.New("unknown parent")
+			return
 		}
 		// Discard any new blocks if the same height already exists
 		if block.NumberU64() <= f.blocks[f.hashes[len(f.hashes)-1]].NumberU64() {
-			return i, nil
+			res.Index = i
+			return
 		}
 		// Otherwise build our current chain
 		f.hashes = append(f.hashes, block.Hash())
 		f.blocks[block.Hash()] = block
 	}
-	return 0, nil
+	return
 }
 
 // dropPeer is an emulator for the peer removal, simply accumulating the various
@@ -534,7 +539,7 @@ func testImportDeduplication(t *testing.T, protocol int) {
 	bodyFetcher := tester.makeBodyFetcher("valid", blocks, 0)
 
 	counter := uint32(0)
-	tester.fetcher.insertChain = func(blocks types.Blocks) (int, error) {
+	tester.fetcher.insertChain = func(blocks types.Blocks) *core.ChainInsertResult {
 		atomic.AddUint32(&counter, uint32(len(blocks)))
 		return tester.insertChain(blocks)
 	}

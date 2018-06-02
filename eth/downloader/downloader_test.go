@@ -315,17 +315,22 @@ func (dl *downloadTester) GetTd(hash common.Hash) *big.Int {
 }
 
 // InsertHeaderChain injects a new batch of headers into the simulated chain.
-func (dl *downloadTester) InsertHeaderChain(headers []*types.Header, checkFreq int) (int, error) {
+func (dl *downloadTester) InsertHeaderChain(headers []*types.Header, checkFreq int) (res *core.HeaderChainInsertResult) {
+	res = &core.HeaderChainInsertResult{}
+
 	dl.lock.Lock()
 	defer dl.lock.Unlock()
 
 	// Do a quick check, as the blockchain.InsertHeaderChain doesn't insert anything in case of errors
 	if _, ok := dl.ownHeaders[headers[0].ParentHash]; !ok {
-		return 0, errors.New("unknown parent")
+		res.Error = errors.New("unknown parent")
+		return
 	}
 	for i := 1; i < len(headers); i++ {
 		if headers[i].ParentHash != headers[i-1].Hash() {
-			return i, errors.New("unknown parent")
+			res.Error = errors.New("unknown parent")
+			res.Index = i
+			return
 		}
 	}
 	// Do a full insert if pre-checks passed
@@ -334,25 +339,34 @@ func (dl *downloadTester) InsertHeaderChain(headers []*types.Header, checkFreq i
 			continue
 		}
 		if _, ok := dl.ownHeaders[header.ParentHash]; !ok {
-			return i, errors.New("unknown parent")
+			res.Index = i
+			res.Error = errors.New("unknown parent")
+			return
 		}
 		dl.ownHashes = append(dl.ownHashes, header.Hash())
 		dl.ownHeaders[header.Hash()] = header
 		dl.ownChainTd[header.Hash()] = new(big.Int).Add(dl.ownChainTd[header.ParentHash], header.Difficulty)
 	}
-	return len(headers), nil
+	res.Index = len(headers)
+	return
 }
 
 // InsertChain injects a new batch of blocks into the simulated chain.
-func (dl *downloadTester) InsertChain(blocks types.Blocks) (int, error) {
+func (dl *downloadTester) InsertChain(blocks types.Blocks) (res *core.ChainInsertResult) {
+	res = &core.ChainInsertResult{}
+
 	dl.lock.Lock()
 	defer dl.lock.Unlock()
 
 	for i, block := range blocks {
 		if parent, ok := dl.ownBlocks[block.ParentHash()]; !ok {
-			return i, errors.New("unknown parent")
+			res.Index = i
+			res.Error = errors.New("unknown parent")
+			return
 		} else if _, err := dl.stateDb.Get(parent.Root().Bytes()); err != nil {
-			return i, fmt.Errorf("unknown parent state %x: %v", parent.Root(), err)
+			res.Index = i
+			res.Error = fmt.Errorf("unknown parent state %x: %v", parent.Root(), err)
+			return
 		}
 		if _, ok := dl.ownHeaders[block.Hash()]; !ok {
 			dl.ownHashes = append(dl.ownHashes, block.Hash())
@@ -362,25 +376,32 @@ func (dl *downloadTester) InsertChain(blocks types.Blocks) (int, error) {
 		dl.stateDb.Put(block.Root().Bytes(), []byte{0x00})
 		dl.ownChainTd[block.Hash()] = new(big.Int).Add(dl.ownChainTd[block.ParentHash()], block.Difficulty())
 	}
-	return len(blocks), nil
+	res.Index = len(blocks)
+	return
 }
 
 // InsertReceiptChain injects a new batch of receipts into the simulated chain.
-func (dl *downloadTester) InsertReceiptChain(blocks types.Blocks, receipts []types.Receipts) (int, error) {
+func (dl *downloadTester) InsertReceiptChain(blocks types.Blocks, receipts []types.Receipts) (res *core.ReceiptChainInsertResult) {
+	res = &core.ReceiptChainInsertResult{}
 	dl.lock.Lock()
 	defer dl.lock.Unlock()
 
 	for i := 0; i < len(blocks) && i < len(receipts); i++ {
 		if _, ok := dl.ownHeaders[blocks[i].Hash()]; !ok {
-			return i, errors.New("unknown owner")
+			res.Index = i
+			res.Error = errors.New("unknown owner")
+			return
 		}
 		if _, ok := dl.ownBlocks[blocks[i].ParentHash()]; !ok {
-			return i, errors.New("unknown parent")
+			res.Index = i
+			res.Error = errors.New("unknown parent")
+			return
 		}
 		dl.ownBlocks[blocks[i].Hash()] = blocks[i]
 		dl.ownReceipts[blocks[i].Hash()] = receipts[i]
 	}
-	return len(blocks), nil
+	res.Index = len(blocks)
+	return
 }
 
 // Rollback removes some recently added elements from the chain.

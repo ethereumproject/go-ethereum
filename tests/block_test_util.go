@@ -270,12 +270,12 @@ func (t *BlockTest) TryBlocksInsert(blockchain *core.BlockChain) ([]btBlock, err
 
 		// RLP decoding worked, try to insert into chain:
 		blocks := types.Blocks{cb}
-		if i, err := blockchain.InsertChain(blocks); err != nil {
+		if res := blockchain.InsertChain(blocks); res.Error != nil {
 			if b.BlockHeader == nil {
 				// block supposed to be invalid, continue with next
 				continue
 			}
-			return nil, fmt.Errorf("abort on block #%d (%x): %s", blocks[i].Number(), blocks[i].Hash(), err)
+			return nil, fmt.Errorf("abort on block #%d (%x): %s", blocks[res.Index].Number(), blocks[res.Index].Hash(), res.Error)
 		}
 		if b.BlockHeader == nil {
 			return nil, fmt.Errorf("Block insertion should have failed")

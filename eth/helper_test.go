@@ -66,8 +66,8 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 	)
 
 	chain, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, genesis, db, blocks, generator)
-	if _, err := blockchain.InsertChain(chain); err != nil {
-		panic(err)
+	if res := blockchain.InsertChain(chain); res.Error != nil {
+		panic(res.Error)
 	}
 
 	pm, err := NewProtocolManager(chainConfig, mode, NetworkId, evmux, &testTxPool{added: newtx}, pow, blockchain, db)
