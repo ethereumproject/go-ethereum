@@ -579,6 +579,20 @@ func (srv *Server) protoHandshakeChecks(peers map[discover.NodeID]*Peer, inbound
 	return srv.encHandshakeChecks(peers, inboundCount, c)
 }
 
+//func (srv *Server) randomPeer(peers map[discover.NodeID]*Peer) *Peer {
+//	l := len(peers)
+//	if l != 0 {
+//		randomDropper := rand.Intn(l)
+//		c := 0
+//		for _, p := range peers {
+//			if c == randomDropper {
+//				return p
+//			}
+//		}
+//	}
+//	return nil
+//}
+
 func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, inboundCount int, c *conn) error {
 	switch {
 	case !c.is(trustedConn|staticDialedConn) && len(peers) >= srv.MaxPeers:

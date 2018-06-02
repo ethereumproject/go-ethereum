@@ -83,7 +83,7 @@ var (
 
 // Timeouts
 const (
-	respTimeout = 500 * time.Millisecond
+	respTimeout = 1000 * time.Millisecond
 	expiration  = 20 * time.Second
 
 	ntpFailureThreshold = 32               // Continuous timeouts after which to check NTP
@@ -258,6 +258,7 @@ func ListenUDP(priv *ecdsa.PrivateKey, laddr string, natm nat.Interface, nodeDBP
 	}
 	glog.V(logger.Info).Infoln("Listening,", tab.self)
 	glog.D(logger.Warn).Infoln("UDP listening. Client enode:", logger.ColorGreen(tab.self.String()))
+
 	return tab, nil
 }
 
