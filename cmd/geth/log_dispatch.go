@@ -202,6 +202,12 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsertSide)
 				case core.HeaderChainInsertEvent:
 					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventHeaderChainInsert)
+				//case eth.PMHandlerAddEvent:
+				//	handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerAdd)
+				//	lastEvent = logEventPMHandlerAdd
+				//case eth.PMHandlerRemoveEvent:
+				//	handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerRemove)
+				//	lastEvent = logEventPMHandlerRemove
 				case core.NewMinedBlockEvent:
 					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventMinedBlock)
 				default:
