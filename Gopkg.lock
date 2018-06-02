@@ -14,12 +14,6 @@
   version = "v1.3.1"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/corpix/uarand"
-  packages = ["."]
-  revision = "2b8494104d86337cdd41d0a49cbed8e4583c0ab4"
-
-[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -84,12 +78,6 @@
   name = "github.com/ianlancetaylor/demangle"
   packages = ["."]
   revision = "4883227f66371e02c4948937d3e2be1664d9be38"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/icrowley/fake"
-  packages = ["."]
-  revision = "4178557ae428460c3780a381c824a1f3aceb6325"
 
 [[projects]]
   name = "github.com/jackpal/go-nat-pmp"
@@ -242,6 +230,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "44f2492fb8af4f37c1e266d90440c35c2a8dd527a7ca93b9075d7c2f4d478057"
+  inputs-digest = "6d6381c7de7cbf2986147f08741e9bf5d526e3d1b21dfb7d9c66851a803eddb2"
   solver-name = "gps-cdcl"
   solver-version = 1
