@@ -1376,7 +1376,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 
 	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
 		glog.V(logger.Debug).Infoln("premature abort during receipt chain processing")
-		mustWriteFastBlockHead()
+		//mustWriteFastBlockHead()
 		return
 	}
 
