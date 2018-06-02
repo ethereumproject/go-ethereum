@@ -274,15 +274,21 @@ func (s *stateSync) Cancel() error {
 // receive data from peers, rather those are buffered up in the downloader and
 // pushed here async. The reason is to decouple processing from data receipt
 // and timeouts.
-func (s *stateSync) loop() error {
+func (s *stateSync) loop() (err error) {
 	// Listen for new peer events to assign tasks to them
 	newPeer := make(chan *peer, 1024)
 	peerSub := s.d.peers.SubscribeNewPeers(newPeer)
 	defer peerSub.Unsubscribe()
+	defer func() {
+		cerr := s.commit(true)
+		if err == nil {
+			err = cerr
+		}
+	}()
 
 	// Keep assigning new tasks until the sync completes or aborts
 	for s.sched.Pending() > 0 {
-		if err := s.commit(false); err != nil {
+		if err = s.commit(false); err != nil {
 			return err
 		}
 		s.assignTasks()
@@ -314,7 +320,7 @@ func (s *stateSync) loop() error {
 			req.peer.SetNodeDataIdle(len(req.response))
 		}
 	}
-	return s.commit(true)
+	return nil
 }
 
 func (s *stateSync) commit(force bool) error {
@@ -323,7 +329,9 @@ func (s *stateSync) commit(force bool) error {
 	}
 	start := time.Now()
 	b := s.d.stateDB.NewBatch()
-	s.sched.Commit(b)
+	if written, err := s.sched.Commit(b); written == 0 || err != nil {
+		return err
+	}
 	if err := b.Write(); err != nil {
 		return fmt.Errorf("DB write error: %v", err)
 	}
@@ -415,7 +423,7 @@ func (s *stateSync) process(req *stateReq) error {
 		case trie.ErrAlreadyProcessed:
 			duplicate++
 		default:
-			return fmt.Errorf("invalid state node %s: %v", hash.Str(), err)
+			return fmt.Errorf("invalid state node %s: %v", hash.Hex(), err)
 		}
 		if _, ok := req.tasks[hash]; ok {
 			delete(req.tasks, hash)
@@ -433,7 +441,7 @@ func (s *stateSync) process(req *stateReq) error {
 		// If we've requested the node too many times already, it may be a malicious
 		// sync where nobody has the right data. Abort.
 		if len(task.attempts) >= npeers {
-			return fmt.Errorf("state node %s failed with all peers (%d tries, %d peers)", hash.Str(), len(task.attempts), npeers)
+			return fmt.Errorf("state node %s failed with all peers (%d tries, %d peers)", hash.Hex(), len(task.attempts), npeers)
 		}
 		// Missing item, place into the retry queue.
 		s.tasks[hash] = task
