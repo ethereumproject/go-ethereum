@@ -33,7 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/icrowley/fake"
 )
 
 const (
@@ -91,7 +90,6 @@ type peer struct {
 
 	version int // Eth protocol version number to switch strategies
 	name    string
-	nick    string
 	lock    sync.RWMutex
 }
 
@@ -114,7 +112,6 @@ func newPeer(id string, version int, name string, currentHead currentHeadRetriev
 
 		version: version,
 		name:    name,
-		nick:    fake.FirstName() + " " + fake.LastName(),
 	}
 }
 
@@ -342,7 +339,7 @@ func (p *peer) String() string {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	return fmt.Sprintf("Peer %s@[%s] id=%s eth/%d", p.nick, p.name, p.id, p.version)
+	return fmt.Sprintf("peer:%s@[%s] eth/%d", p.id, p.name, p.version)
 	//	strings.Join([]string{
 	//	fmt.Sprintf("hs %3.2f/s", p.headerThroughput),
 	//	fmt.Sprintf("bs %3.2f/s", p.blockThroughput),
