@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	minDesiredPeerCount = 5 // Amount of peers desired to start syncing
+	forceSyncCycle      = 10 * time.Second // Time interval to force syncs, even if few peers are available
+	minDesiredPeerCount = 5                // Amount of peers desired to start syncing
 
 	// This is the target size for the packs of transactions sent by txsyncLoop.
 	// A pack can get larger than this if a single transactions exceeds this size.
@@ -128,34 +129,30 @@ func (pm *ProtocolManager) txsyncLoop() {
 // syncer is responsible for periodically synchronising with the network, both
 // downloading hashes and blocks as well as handling the announcement handler.
 func (pm *ProtocolManager) syncer() {
+	// Start and ensure cleanup of sync mechanisms
 	pm.fetcher.Start()
 	defer pm.fetcher.Stop()
 	defer pm.downloader.Terminate()
 
-	sync := func() { pm.synchronise(pm.peers.BestPeer()) }
+	// Wait for different events to fire synchronisation operations
+	forceSync := time.NewTicker(forceSyncCycle)
+	defer forceSync.Stop()
+
 	for {
-		batchTimer := time.AfterFunc(10*time.Second, sync)
-		for {
-			select {
-			case <-pm.noMorePeers:
-				batchTimer.Stop()
-				return
-
-			case <-pm.newPeerCh:
-				if pm.peers.Len() < minDesiredPeerCount {
-					continue
-				}
-
-				if batchTimer.Stop() {
-					go sync()
-				}
-
-			case <-batchTimer.C:
-
+		select {
+		case <-pm.newPeerCh:
+			// Make sure we have peers to select from, then sync
+			if pm.peers.Len() < minDesiredPeerCount {
+				break
 			}
-			// sync launched
+			go pm.synchronise(pm.peers.BestPeer())
 
-			break
+		case <-forceSync.C:
+			// Force a sync even if not enough peers are present
+			go pm.synchronise(pm.peers.BestPeer())
+
+		case <-pm.noMorePeers:
+			return
 		}
 	}
 }
