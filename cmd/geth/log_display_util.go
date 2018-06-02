@@ -21,6 +21,7 @@ const (
 	logEventDownloaderFailed
 	logEventPMHandlerAdd
 	logEventPMHandlerRemove
+	logEventDownloaderInsertChain
 	logEventFetcherInsert
 	logEventInterval
 	logEventBefore

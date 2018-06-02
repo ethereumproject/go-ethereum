@@ -182,10 +182,13 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 		switch d.(type) {
 		case downloader.StartEvent:
 			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderStart)
+		case downloader.InsertChainEvent:
+			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderInsertChain)
 		case downloader.DoneEvent:
 			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderDone)
 		case downloader.FailedEvent:
 			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderFailed)
+
 		}
 	}
 
@@ -205,10 +208,8 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventHeaderChainInsert)
 				//case eth.PMHandlerAddEvent:
 				//	handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerAdd)
-				//	lastEvent = logEventPMHandlerAdd
 				//case eth.PMHandlerRemoveEvent:
 				//	handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerRemove)
-				//	lastEvent = logEventPMHandlerRemove
 				case fetcher.FetcherInsertBlockEvent:
 					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventFetcherInsert)
 				case core.NewMinedBlockEvent:

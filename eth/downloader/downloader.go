@@ -1423,6 +1423,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 		glog.V(logger.Debug).Infoln("Downloaded item processing failed", "number", results[res.Index].Header.Number, "hash", results[res.Index].Header.Hash(), "err", res.Error)
 		return errInvalidChain
 	}
+	d.mux.Post(InsertChainEvent(res.ChainInsertEvent))
 	return nil
 }
 
