@@ -22,6 +22,7 @@ const (
 	logEventPMHandlerAdd
 	logEventPMHandlerRemove
 	logEventDownloaderInsertChain
+	logEventDownloaderInsertReceiptChain
 	logEventFetcherInsert
 	logEventInterval
 	logEventBefore

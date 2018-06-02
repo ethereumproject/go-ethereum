@@ -218,7 +218,7 @@ type BlockChain interface {
 	InsertChain(types.Blocks) *core.ChainInsertResult
 
 	// InsertReceiptChain inserts a batch of receipts into the local chain.
-	InsertReceiptChain(types.Blocks, []types.Receipts) (int, error)
+	InsertReceiptChain(types.Blocks, []types.Receipts) *core.ReceiptChainInsertResult
 }
 
 // New creates a new downloader to fetch hashes and blocks from remote peers.
@@ -1423,7 +1423,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 		glog.V(logger.Debug).Infoln("Downloaded item processing failed", "number", results[res.Index].Header.Number, "hash", results[res.Index].Header.Hash(), "err", res.Error)
 		return errInvalidChain
 	}
-	d.mux.Post(InsertChainEvent(res.ChainInsertEvent))
+	d.mux.Post(InsertChainEvent{res.ChainInsertEvent})
 	return nil
 }
 
@@ -1563,23 +1563,28 @@ func (d *Downloader) commitFastSyncData(results []*fetchResult, stateSync *state
 		blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles)
 		receipts[i] = result.Receipts
 	}
-	if index, err := d.blockchain.InsertReceiptChain(blocks, receipts); err != nil {
-		glog.V(logger.Debug).Infoln("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
+	res := d.blockchain.InsertReceiptChain(blocks, receipts)
+	if res.Error != nil {
+		glog.V(logger.Debug).Infoln("Downloaded item processing failed", "number", results[res.Index].Header.Number, "hash", results[res.Index].Header.Hash(), "err", res.Error)
 		return errInvalidChain
 	}
+	d.mux.Post(InsertReceiptChainEvent{ReceiptChainInsertEvent: res.ReceiptChainInsertEvent, Pivot: false})
 	return nil
 }
 
 func (d *Downloader) commitPivotBlock(result *fetchResult) error {
 	block := types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles)
 	glog.V(logger.Debug).Infoln("Committing fast sync pivot as new head", "number", block.Number(), "hash", block.Hash())
-	if _, err := d.blockchain.InsertReceiptChain([]*types.Block{block}, []types.Receipts{result.Receipts}); err != nil {
-		return err
+	res := d.blockchain.InsertReceiptChain([]*types.Block{block}, []types.Receipts{result.Receipts})
+	if res.Error != nil {
+		return res.Error
 	}
 	if err := d.blockchain.FastSyncCommitHead(block.Hash()); err != nil {
 		return err
 	}
 	atomic.StoreInt32(&d.committed, 1)
+	// TODO(whilei): pass error in Receipt and Full chain events through
+	d.mux.Post(InsertReceiptChainEvent{ReceiptChainInsertEvent: res.ReceiptChainInsertEvent, Pivot: false})
 	return nil
 }
 

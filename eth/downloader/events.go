@@ -1,17 +1,14 @@
 package downloader
 
 import (
-	"github.com/ethereumproject/go-ethereum/common"
-	"time"
+	"github.com/ethereumproject/go-ethereum/core"
 )
 
 type InsertChainEvent struct {
-	Processed       int
-	Queued          int
-	Ignored         int
-	TxCount         int
-	LastNumber      uint64
-	LastHash        common.Hash
-	Elasped         time.Duration
-	LatestBlockTime time.Time
+	core.ChainInsertEvent
+}
+
+type InsertReceiptChainEvent struct {
+	core.ReceiptChainInsertEvent
+	Pivot bool
 }

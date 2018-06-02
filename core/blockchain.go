@@ -121,6 +121,12 @@ type ChainInsertResult struct {
 	Error error
 }
 
+type ReceiptChainInsertResult struct {
+	ReceiptChainInsertEvent
+	Index int
+	Error error
+}
+
 func (bc *BlockChain) GetHeaderByHash(h common.Hash) *types.Header {
 	return bc.hc.GetHeader(h)
 }
@@ -1208,7 +1214,9 @@ func (bc *BlockChain) Rollback(chain []common.Hash) {
 
 // InsertReceiptChain attempts to complete an already existing header chain with
 // transaction and receipt data.
-func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain []types.Receipts) (int, error) {
+func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain []types.Receipts) (res *ReceiptChainInsertResult) {
+	res = &ReceiptChainInsertResult{}
+
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -1338,31 +1346,50 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 	if failed > 0 {
 		for i, err := range errs {
 			if err != nil {
-				return i, err
+				res.Index = i
+				res.Error = err
+				return
 			}
 		}
 	}
+
+	mustWriteFastBlockHead := func() {
+		// TODO(whilei): can this be moved into the if procInterrupt conditional? to not lose fast place if ill-timed interruption
+		// -> trying it out...
+		// Update the head fast sync block if better
+		bc.mu.Lock()
+		head := blockChain[len(errs)-1]
+		if bc.GetTd(bc.currentFastBlock.Hash()).Cmp(bc.GetTd(head.Hash())) < 0 {
+			if err := WriteHeadFastBlockHash(bc.chainDb, head.Hash()); err != nil {
+				glog.Fatalf("failed to update head fast block hash: %v", err)
+			}
+			bc.currentFastBlock = head
+		}
+		bc.mu.Unlock()
+	}
+
 	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
 		glog.V(logger.Debug).Infoln("premature abort during receipt chain processing")
-		return 0, nil
+		mustWriteFastBlockHead()
+		return
 	}
-	// Update the head fast sync block if better
-	bc.mu.Lock()
-	head := blockChain[len(errs)-1]
-	if bc.GetTd(bc.currentFastBlock.Hash()).Cmp(bc.GetTd(head.Hash())) < 0 {
-		if err := WriteHeadFastBlockHash(bc.chainDb, head.Hash()); err != nil {
-			glog.Fatalf("failed to update head fast block hash: %v", err)
-		}
-		bc.currentFastBlock = head
-	}
-	bc.mu.Unlock()
+
+	mustWriteFastBlockHead()
 
 	// Report some public statistics so the user has a clue what's going on
 	first, last := blockChain[0], blockChain[len(blockChain)-1]
-	glog.V(logger.Info).Infof("imported %d receipt(s) (%d ignored) in %v. #%d [%x… / %x…]", stats.processed, stats.ignored,
-		time.Since(start), last.Number(), first.Hash().Bytes()[:4], last.Hash().Bytes()[:4])
+	res.Processed = int(stats.processed)
+	res.Ignored = int(stats.ignored)
+	res.Elasped = time.Since(start)
+	res.FirstHash = first.Hash()
+	res.FirstNumber = first.NumberU64()
+	res.LastHash = last.Hash()
+	res.LastNumber = last.NumberU64()
 
-	return 0, nil
+	glog.V(logger.Info).Infof("imported %d receipt(s) (%d ignored) in %v. #%d [%x… / %x…]", res.Processed, res.Ignored,
+		res.Elasped, res.LastNumber, res.FirstHash.Bytes()[:4], res.LastHash.Bytes()[:4])
+
+	return res
 }
 
 // WriteBlockAddrTxIndexesBatch builds indexes for a given range of blocks N. It writes batches at increment 'step'.

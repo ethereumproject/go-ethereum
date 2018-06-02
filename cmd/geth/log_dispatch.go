@@ -178,20 +178,6 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 		ethEvents = e.EventMux().Subscribe(handledEvents...)
 	}
 
-	handleDownloaderEvent := func(d interface{}) {
-		switch d.(type) {
-		case downloader.StartEvent:
-			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderStart)
-		case downloader.InsertChainEvent:
-			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderInsertChain)
-		case downloader.DoneEvent:
-			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderDone)
-		case downloader.FailedEvent:
-			handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderFailed)
-
-		}
-	}
-
 	// Run any "setup" if configured
 	handles.runAllIfAny(ctx, e, nil, tickerInterval, logEventBefore)
 
@@ -199,23 +185,42 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 		go func() {
 			for ev := range ethEvents.Chan() {
 				updateLogStatusModeHandler(ctx, e, nil, tickerInterval)
-				switch ev.Data.(type) {
+				switch d := ev.Data.(type) {
+
+				// downloader events
+				case downloader.StartEvent:
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderStart)
+				case downloader.InsertChainEvent:
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderInsertChain)
+				case downloader.InsertReceiptChainEvent:
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderInsertReceiptChain)
+				case downloader.DoneEvent:
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderDone)
+				case downloader.FailedEvent:
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderFailed)
+
+				// core events
 				case core.ChainInsertEvent:
-					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsert)
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventChainInsert)
 				case core.ChainSideEvent:
-					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventChainInsertSide)
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventChainInsertSide)
 				case core.HeaderChainInsertEvent:
-					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventHeaderChainInsert)
-				//case eth.PMHandlerAddEvent:
-				//	handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerAdd)
-				//case eth.PMHandlerRemoveEvent:
-				//	handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerRemove)
-				case fetcher.FetcherInsertBlockEvent:
-					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventFetcherInsert)
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventHeaderChainInsert)
 				case core.NewMinedBlockEvent:
 					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventMinedBlock)
+
+				// eth/protocol handler events
+				case eth.PMHandlerAddEvent:
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerAdd)
+				case eth.PMHandlerRemoveEvent:
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerRemove)
+
+				// fetcher events
+				case fetcher.FetcherInsertBlockEvent:
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventFetcherInsert)
+
 				default:
-					handleDownloaderEvent(ev.Data)
+
 				}
 			}
 		}()
