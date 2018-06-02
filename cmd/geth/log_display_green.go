@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"github.com/ethereumproject/go-ethereum/eth/fetcher"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
@@ -78,6 +79,8 @@ func prefix(ev interface{}, e *eth.Ethereum) string {
 	case downloader.FailedEvent:
 		downloadingFrom = ""
 		return logger.ColorRed(`⤷  `)
+	case fetcher.FetcherInsertBlockEvent:
+		return ""
 	default:
 		if downloadingFrom != "" && e.Downloader().Synchronising() {
 			return logger.ColorYellow(`⇣  `)
@@ -95,11 +98,40 @@ var greenDisplaySystem = displayEventHandlers{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.ChainInsertEvent:
+					if !e.Downloader().Synchronising() {
+						return
+					}
 					glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Insert "+logger.ColorGreen("blocks")+"=%s "+logger.ColorGreen("◼")+"=%s "+logger.ColorGreen("took")+"=%s",
 						greenParenify(fmt.Sprintf("processed=%4d queued=%4d ignored=%4d txs=%4d", d.Processed, d.Queued, d.Ignored, d.TxCount)),
 						greenParenify(fmt.Sprintf("n=%8d hash=%s… time=%v ago", d.LastNumber, d.LastHash.Hex()[:9], time.Since(d.LatestBlockTime).Round(time.Millisecond))),
 						greenParenify(fmt.Sprintf("%v", d.Elasped.Round(time.Millisecond))),
 					)
+					if bool(glog.D(logger.Info)) {
+						chainEventLastSent = time.Now()
+					}
+				}
+			},
+		},
+	},
+	{
+		eventT: logEventFetcherInsert,
+		ev:     fetcher.FetcherInsertBlockEvent{},
+		handlers: displayEventHandlerFns{
+			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
+				switch d := evData.(type) {
+				case fetcher.FetcherInsertBlockEvent:
+					glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Import "+logger.ColorGreen("◼")+"=%s "+"peer=%s",
+						greenParenify(fmt.Sprintf("n=%8d hash=%s time=%v ago",
+							d.Block.NumberU64(),
+							d.Block.Hash().Hex()[:9],
+							time.Since(time.Unix(d.Block.Time().Int64(), 0)).Round(time.Millisecond))),
+						greenParenify(d.Peer),
+					)
+					//glog.D(logger.Info).Infof(prefix(d, e)+chainIcon+" Insert "+logger.ColorGreen("blocks")+"=%s "+logger.ColorGreen("◼")+"=%s "+logger.ColorGreen("took")+"=%s",
+					//	greenParenify(fmt.Sprintf("processed=%4d queued=%4d ignored=%4d txs=%4d", d.Processed, d.Queued, d.Ignored, d.TxCount)),
+					//	greenParenify(fmt.Sprintf("n=%8d hash=%s… time=%v ago", d.LastNumber, d.LastHash.Hex()[:9], time.Since(d.LatestBlockTime).Round(time.Millisecond))),
+					//	greenParenify(fmt.Sprintf("%v", d.Elasped.Round(time.Millisecond))),
+					//)
 					if bool(glog.D(logger.Info)) {
 						chainEventLastSent = time.Now()
 					}

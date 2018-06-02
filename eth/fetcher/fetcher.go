@@ -26,6 +26,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
@@ -120,6 +121,9 @@ type Fetcher struct {
 	done chan common.Hash
 	quit chan struct{}
 
+	// Mux
+	mux *event.TypeMux
+
 	// Announce states
 	announces  map[string]int              // Per peer announce counts to prevent memory exhaustion
 	announced  map[common.Hash][]*announce // Announced blocks, scheduled for fetching
@@ -149,8 +153,9 @@ type Fetcher struct {
 }
 
 // New creates a block fetcher to retrieve blocks based on hash announcements.
-func New(getBlock blockRetrievalFn, verifyHeader headerVerifierFn, broadcastBlock blockBroadcasterFn, chainHeight chainHeightFn, insertChain chainInsertFn, dropPeer peerDropFn) *Fetcher {
+func New(mux *event.TypeMux, getBlock blockRetrievalFn, verifyHeader headerVerifierFn, broadcastBlock blockBroadcasterFn, chainHeight chainHeightFn, insertChain chainInsertFn, dropPeer peerDropFn) *Fetcher {
 	return &Fetcher{
+		mux:            mux,
 		notify:         make(chan *announce),
 		inject:         make(chan *inject),
 		blockFilter:    make(chan chan []*types.Block),
@@ -718,7 +723,10 @@ func (f *Fetcher) insert(peer string, block *types.Block) {
 		// Run the actual import and log any issues
 		if _, err := f.insertChain(types.Blocks{block}); err != nil {
 			glog.V(logger.Warn).Infof("Peer %s: block #%d [%s] import failed: %v", peer, block.NumberU64(), hash.Hex(), err)
+			glog.D(logger.Warn).Warnf("Peer %s: block #%d [%s] import failed: %v", peer, block.NumberU64(), hash.Hex(), err)
 			return
+		} else {
+			f.mux.Post(FetcherInsertBlockEvent{Peer: peer, Block: block})
 		}
 		// If import succeeded, broadcast the block
 		metrics.FetchAnnounceTimer.UpdateSince(block.ReceivedAt)

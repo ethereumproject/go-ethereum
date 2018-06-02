@@ -179,7 +179,7 @@ func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, netw
 		atomic.StoreUint32(&manager.synced, 1) // Mark initial sync done on any fetcher import
 		return manager.insertChain(blocks)
 	}
-	manager.fetcher = fetcher.New(blockchain.GetBlock, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
+	manager.fetcher = fetcher.New(mux, blockchain.GetBlock, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 
 	if blockchain.Genesis().Hash().Hex() == defaultGenesisHash && networkId == 1 {
 		manager.badBlockReportingEnabled = false

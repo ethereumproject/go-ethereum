@@ -10,6 +10,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/eth/downloader"
+	"github.com/ethereumproject/go-ethereum/eth/fetcher"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
@@ -208,6 +209,8 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 				//case eth.PMHandlerRemoveEvent:
 				//	handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventPMHandlerRemove)
 				//	lastEvent = logEventPMHandlerRemove
+				case fetcher.FetcherInsertBlockEvent:
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventFetcherInsert)
 				case core.NewMinedBlockEvent:
 					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventMinedBlock)
 				default:
