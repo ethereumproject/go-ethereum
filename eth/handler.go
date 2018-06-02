@@ -65,8 +65,8 @@ func errResp(code errCode, format string, v ...interface{}) error {
 type ProtocolManager struct {
 	networkId uint64
 
-	fastSync uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
-	synced   uint32 // Flag whether we're considered synchronised (enables transaction processing)
+	fastSync   uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
+	acceptsTxs uint32 // Flag whether we're considered synchronised (enables transaction processing)
 
 	txpool      txPool
 	blockchain  *core.BlockChain
@@ -176,7 +176,7 @@ func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, netw
 			glog.V(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
 			glog.D(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
 		}
-		atomic.StoreUint32(&manager.synced, 1) // Mark initial sync done on any fetcher import
+		atomic.StoreUint32(&manager.acceptsTxs, 1) // Mark initial sync done on any fetcher import
 		return manager.insertChain(blocks)
 	}
 	manager.fetcher = fetcher.New(mux, blockchain.GetBlock, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
@@ -767,7 +767,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 
 	case msg.Code == TxMsg:
 		// Transactions arrived, make sure we have a valid and fresh chain to handle them
-		if atomic.LoadUint32(&pm.synced) == 0 {
+		if atomic.LoadUint32(&pm.acceptsTxs) == 0 {
 			mlogWireDelegate(p, "receive", TxMsg, intSize, []*types.Transaction{}, errors.New("not synced"))
 			break
 		}

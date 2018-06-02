@@ -188,7 +188,7 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 		glog.V(logger.Info).Infoln("downloader failed to synchronise", "mode=", mode, "peer=", peer.String())
 		return
 	}
-	atomic.StoreUint32(&pm.synced, 1) // Mark initial sync done
+	atomic.StoreUint32(&pm.acceptsTxs, 1) // Mark initial sync done
 
 	// If fast sync was enabled, and we synced up, disable it
 	if atomic.LoadUint32(&pm.fastSync) == 1 {
