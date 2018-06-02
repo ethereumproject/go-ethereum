@@ -127,6 +127,12 @@ type ReceiptChainInsertResult struct {
 	Error error
 }
 
+type HeaderChainInsertResult struct {
+	HeaderChainInsertEvent
+	Index int
+	Error error
+}
+
 func (bc *BlockChain) GetHeaderByHash(h common.Hash) *types.Header {
 	return bc.hc.GetHeader(h)
 }
@@ -1970,7 +1976,7 @@ func (bc *BlockChain) update() {
 // should be done or not. The reason behind the optional check is because some
 // of the header retrieval mechanisms already need to verify nonces, as well as
 // because nonces can be verified sparsely, not needing to check each.
-func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
+func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) *HeaderChainInsertResult {
 	// Make sure only one thread manipulates the chain at once
 	bc.chainmu.Lock()
 	defer bc.chainmu.Unlock()

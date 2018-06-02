@@ -240,7 +240,9 @@ type WhCallback func(*types.Header) error
 // should be done or not. The reason behind the optional check is because some
 // of the header retrieval mechanisms already need to verfy nonces, as well as
 // because nonces can be verified sparsely, not needing to check each.
-func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, writeHeader WhCallback) (int, error) {
+func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, writeHeader WhCallback) (res *HeaderChainInsertResult) {
+	res = &HeaderChainInsertResult{}
+
 	// Collect some import statistics to report on
 	var events []interface{}
 	stats := struct{ processed, ignored int }{}
@@ -318,7 +320,9 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 	if failed > 0 {
 		for i, err := range errs {
 			if err != nil {
-				return i, err
+				res.Index = i
+				res.Error = err
+				return
 			}
 		}
 	}
@@ -337,15 +341,27 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 			continue
 		}
 		if err := writeHeader(header); err != nil {
-			return i, err
+			res.Index = i
+			res.Error = err
+			return
 		}
 		stats.processed++
 	}
 	// Report some public statistics so the user has a clue what's going on
 	first, last := chain[0], chain[len(chain)-1]
 	elapsed := time.Since(start)
-	glog.V(logger.Info).Infof("imported %d header(s) (%d ignored) in %v. #%v [%x… / %x…]", stats.processed, stats.ignored,
-		elapsed, last.Number, first.Hash().Bytes()[:4], last.Hash().Bytes()[:4])
+
+	hv := HeaderChainInsertEvent{
+		Processed:  stats.processed,
+		Ignored:    stats.ignored,
+		LastNumber: last.Number.Uint64(),
+		LastHash:   last.Hash(),
+		Elasped:    elapsed,
+	}
+	res.HeaderChainInsertEvent = hv
+
+	glog.V(logger.Info).Infof("imported %d header(s) (%d ignored) in %v. #%v [%x… / %x…]", res.Processed, res.Ignored,
+		res.Elasped, res.LastNumber, first.Hash().Bytes()[:4], res.LastHash.Bytes()[:4])
 
 	if logger.MlogEnabled() {
 		mlogHeaderchainInsertHeaders.AssignDetails(
@@ -357,17 +373,10 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 			elapsed,
 		).Send(mlogHeaderchain)
 	}
-
-	events = append(events, HeaderChainInsertEvent{
-		Processed:  stats.processed,
-		Ignored:    stats.ignored,
-		LastNumber: last.Number.Uint64(),
-		LastHash:   last.Hash(),
-		Elasped:    elapsed,
-	})
+	events = append(events, hv)
 	go hc.postChainEvents(events)
 
-	return 0, nil
+	return res
 }
 
 // GetBlockHashesFromHash retrieves a number of block hashes starting at a given

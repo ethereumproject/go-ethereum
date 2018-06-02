@@ -189,7 +189,7 @@ type LightChain interface {
 	GetTd(common.Hash) *big.Int
 
 	// InsertHeaderChain inserts a batch of headers into the local chain.
-	InsertHeaderChain([]*types.Header, int) (int, error)
+	InsertHeaderChain([]*types.Header, int) *core.HeaderChainInsertResult
 
 	// Rollback removes a few recently added elements from the local chain.
 	Rollback([]common.Hash)
@@ -1328,14 +1328,17 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 					if chunk[len(chunk)-1].Number.Uint64()+uint64(fsHeaderForceVerify) > pivot {
 						frequency = 1
 					}
-					if n, err := d.lightchain.InsertHeaderChain(chunk, frequency); err != nil {
+					res := d.lightchain.InsertHeaderChain(chunk, frequency)
+					// TODO(whilei): again, send error to events
+					if res.Error != nil {
 						// If some headers were inserted, add them too to the rollback list
-						if n > 0 {
-							rollback = append(rollback, chunk[:n]...)
+						if res.Index > 0 {
+							rollback = append(rollback, chunk[:res.Index]...)
 						}
-						glog.V(logger.Debug).Infoln("Invalid header encountered", "number", chunk[n].Number, "hash", chunk[n].Hash(), "err", err)
+						glog.V(logger.Debug).Infoln("Invalid header encountered", "number", chunk[res.Index].Number, "hash", chunk[res.Index].Hash(), "err", res.Error)
 						return errInvalidChain
 					}
+					go d.mux.Post(InsertHeaderChainEvent{res.HeaderChainInsertEvent})
 					// All verifications passed, store newly found uncertain headers
 					rollback = append(rollback, unknown...)
 					if len(rollback) > fsHeaderSafetyNet {
