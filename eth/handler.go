@@ -207,7 +207,6 @@ func (pm *ProtocolManager) removePeer(id string) {
 	}
 }
 
-func (pm *ProtocolManager) Start() {
 func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.maxPeers = maxPeers
 
@@ -849,7 +848,7 @@ type EthNodeInfo struct {
 // NodeInfo retrieves some protocol metadata about the running host node.
 func (self *ProtocolManager) NodeInfo() *EthNodeInfo {
 	return &EthNodeInfo{
-		Network:    self.networkId,
+		Network:    int(self.networkId),
 		Difficulty: self.blockchain.GetTd(self.blockchain.CurrentBlock().Hash()),
 		Genesis:    self.blockchain.Genesis().Hash(),
 		Head:       self.blockchain.CurrentBlock().Hash(),
