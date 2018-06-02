@@ -12,18 +12,20 @@ import (
 type logEventType int
 
 const (
-	logEventChainInsert logEventType = iota
-	logEventChainInsertSide
-	logEventHeaderChainInsert
-	logEventMinedBlock
+	logEventCoreChainInsert logEventType = iota
+	logEventCoreChainInsertSide
+	logEventCoreHeaderChainInsert
+	logEventCoreReceiptChainInsert
+	logEventCoreMinedBlock
 	logEventDownloaderStart
 	logEventDownloaderDone
 	logEventDownloaderFailed
-	logEventPMHandlerAdd
-	logEventPMHandlerRemove
 	logEventDownloaderInsertChain
 	logEventDownloaderInsertReceiptChain
+	logEventDownloaderInsertHeaderChain
 	logEventFetcherInsert
+	logEventPMHandlerAdd
+	logEventPMHandlerRemove
 	logEventInterval
 	logEventBefore
 	logEventAfter

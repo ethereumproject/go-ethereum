@@ -1384,17 +1384,22 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 
 	// Report some public statistics so the user has a clue what's going on
 	first, last := blockChain[0], blockChain[len(blockChain)-1]
-	res.Processed = int(stats.processed)
-	res.Ignored = int(stats.ignored)
-	res.Elasped = time.Since(start)
-	res.FirstHash = first.Hash()
-	res.FirstNumber = first.NumberU64()
-	res.LastHash = last.Hash()
-	res.LastNumber = last.NumberU64()
+
+	re := ReceiptChainInsertEvent{
+		Processed:         int(stats.processed),
+		Ignored:           int(stats.ignored),
+		Elasped:           time.Since(start),
+		FirstHash:         first.Hash(),
+		FirstNumber:       first.NumberU64(),
+		LastHash:          last.Hash(),
+		LastNumber:        last.NumberU64(),
+		LatestReceiptTime: time.Unix(last.Time().Int64(), 0),
+	}
+	res.ReceiptChainInsertEvent = re
 
 	glog.V(logger.Info).Infof("imported %d receipt(s) (%d ignored) in %v. #%d [%x… / %x…]", res.Processed, res.Ignored,
 		res.Elasped, res.LastNumber, res.FirstHash.Bytes()[:4], res.LastHash.Bytes()[:4])
-
+	go bc.eventMux.Post(re)
 	return res
 }
 

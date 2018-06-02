@@ -135,7 +135,7 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventT: logEventChainInsertSide,
+		eventT: logEventCoreChainInsertSide,
 		ev:     core.ChainSideEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
@@ -147,7 +147,7 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventT: logEventHeaderChainInsert,
+		eventT: logEventCoreHeaderChainInsert,
 		ev:     core.HeaderChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
@@ -166,7 +166,7 @@ var greenDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventT: logEventMinedBlock,
+		eventT: logEventCoreMinedBlock,
 		ev:     core.NewMinedBlockEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {

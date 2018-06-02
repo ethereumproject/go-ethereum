@@ -95,6 +95,26 @@ var (
 	errTooOld                  = errors.New("peer doesn't speak recent enough protocol version (need version >= 62)")
 )
 
+func ErrWasRequested(e error) bool {
+	switch e {
+	case errCancelBlockFetch:
+		return true
+	case errCancelHeaderFetch:
+		return true
+	case errCancelBodyFetch:
+		return true
+	case errCancelReceiptFetch:
+		return true
+	case errCancelStateFetch:
+		return true
+	case errCancelHeaderProcessing:
+		return true
+	case errCancelContentProcessing:
+		return true
+	}
+	return false
+}
+
 // SyncMode represents the synchronisation mode of the downloader.
 type SyncMode int
 
@@ -142,7 +162,6 @@ type Downloader struct {
 	// Status
 	synchroniseMock func(id string, hash common.Hash) error // Replacement for synchronise during testing
 	synchronising   int32
-	notified        int32
 	committed       int32
 
 	// Channels
@@ -397,11 +416,6 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	}
 	defer atomic.StoreInt32(&d.synchronising, 0)
 
-	// Post a user notification of the sync (only once per session)
-	if atomic.CompareAndSwapInt32(&d.notified, 0, 1) {
-		glog.V(logger.Info).Infoln("Block synchronisation started")
-		glog.D(logger.Info).Infoln("Block synchronisation started")
-	}
 	// Reset the queue, peer set and wake channels to clean any internal leftover state
 	d.queue.Reset()
 	d.peers.Reset()
@@ -1426,7 +1440,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 		glog.V(logger.Debug).Infoln("Downloaded item processing failed", "number", results[res.Index].Header.Number, "hash", results[res.Index].Header.Hash(), "err", res.Error)
 		return errInvalidChain
 	}
-	d.mux.Post(InsertChainEvent{res.ChainInsertEvent})
+	go d.mux.Post(InsertChainEvent{res.ChainInsertEvent})
 	return nil
 }
 
@@ -1571,7 +1585,8 @@ func (d *Downloader) commitFastSyncData(results []*fetchResult, stateSync *state
 		glog.V(logger.Debug).Infoln("Downloaded item processing failed", "number", results[res.Index].Header.Number, "hash", results[res.Index].Header.Hash(), "err", res.Error)
 		return errInvalidChain
 	}
-	d.mux.Post(InsertReceiptChainEvent{ReceiptChainInsertEvent: res.ReceiptChainInsertEvent, Pivot: false})
+	// TODO(whilei): pass error in Receipt and Full chain events through
+	go d.mux.Post(InsertReceiptChainEvent{ReceiptChainInsertEvent: res.ReceiptChainInsertEvent, Pivot: false})
 	return nil
 }
 
@@ -1587,7 +1602,7 @@ func (d *Downloader) commitPivotBlock(result *fetchResult) error {
 	}
 	atomic.StoreInt32(&d.committed, 1)
 	// TODO(whilei): pass error in Receipt and Full chain events through
-	d.mux.Post(InsertReceiptChainEvent{ReceiptChainInsertEvent: res.ReceiptChainInsertEvent, Pivot: false})
+	go d.mux.Post(InsertReceiptChainEvent{ReceiptChainInsertEvent: res.ReceiptChainInsertEvent, Pivot: false})
 	return nil
 }
 

@@ -82,6 +82,8 @@ func mustGetDisplaySystemFromName(s string) displayEventHandlers {
 		return greenDisplaySystem
 	case "dash":
 		return dashDisplaySystem
+	case "git":
+		return gitDisplaySystem
 	default:
 		glog.Fatalln("%v: --%v", ErrInvalidFlag, DisplayFormatFlag.Name)
 	}
@@ -194,6 +196,8 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderInsertChain)
 				case downloader.InsertReceiptChainEvent:
 					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderInsertReceiptChain)
+				case downloader.InsertHeaderChainEvent:
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderInsertHeaderChain)
 				case downloader.DoneEvent:
 					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventDownloaderDone)
 				case downloader.FailedEvent:
@@ -201,13 +205,15 @@ func runDisplayLogs(ctx *cli.Context, e *eth.Ethereum, tickerInterval time.Durat
 
 				// core events
 				case core.ChainInsertEvent:
-					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventChainInsert)
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventCoreChainInsert)
 				case core.ChainSideEvent:
-					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventChainInsertSide)
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventCoreChainInsertSide)
 				case core.HeaderChainInsertEvent:
-					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventHeaderChainInsert)
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventCoreHeaderChainInsert)
+				case core.ReceiptChainInsertEvent:
+					handles.runAllIfAny(ctx, e, d, tickerInterval, logEventCoreReceiptChainInsert)
 				case core.NewMinedBlockEvent:
-					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventMinedBlock)
+					handles.runAllIfAny(ctx, e, ev.Data, tickerInterval, logEventCoreMinedBlock)
 
 				// eth/protocol handler events
 				case eth.PMHandlerAddEvent:
