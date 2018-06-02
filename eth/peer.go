@@ -29,6 +29,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"github.com/icrowley/fake"
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -67,6 +68,8 @@ type peer struct {
 
 	knownTxs    *set.Set // Set of transaction hashes known to be known by this peer
 	knownBlocks *set.Set // Set of block hashes known to be known by this peer
+
+	nick string
 }
 
 func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
@@ -79,6 +82,7 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		id:          fmt.Sprintf("%x", id[:8]),
 		knownTxs:    set.New(),
 		knownBlocks: set.New(),
+		nick:        fake.FirstName() + " " + fake.LastName(),
 	}
 }
 
@@ -91,6 +95,10 @@ func (p *peer) Info() *PeerInfo {
 		Difficulty: td,
 		Head:       hash.Hex(),
 	}
+}
+
+func (p *peer) Nick() string {
+	return p.nick
 }
 
 // Head retrieves a copy of the current head hash and total difficulty of the
@@ -352,9 +360,9 @@ func (p *peer) readStatus(network int, status *statusData, genesis common.Hash) 
 
 // String implements fmt.Stringer.
 func (p *peer) String() string {
-	return fmt.Sprintf("Peer %s [%s]", p.id,
-		fmt.Sprintf("eth/%2d", p.version),
-	)
-}
-
+	// id is %x[:8]
+	return fmt.Sprintf("Peer %s@[%s] id=%s eth/%2d", p.nick, p.Name(), p.id, p.version)
+	//return fmt.Sprintf("Peer %s [%s]", p.id,
+	//	fmt.Sprintf("eth/%2d", p.version),
+	//)
 }

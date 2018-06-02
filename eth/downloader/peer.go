@@ -25,12 +25,12 @@ import (
 	"math"
 	"math/big"
 	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/icrowley/fake"
 )
 
 const (
@@ -88,6 +88,7 @@ type peer struct {
 
 	version int // Eth protocol version number to switch strategies
 	name    string
+	nick    string
 	lock    sync.RWMutex
 }
 
@@ -110,6 +111,7 @@ func newPeer(id string, version int, name string, currentHead currentHeadRetriev
 
 		version: version,
 		name:    name,
+		nick:    fake.FirstName() + " " + fake.LastName(),
 	}
 }
 
@@ -332,14 +334,15 @@ func (p *peer) String() string {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	return fmt.Sprintf("Peer id=%s eth/%d [%s] [%s]", p.id, p.version, p.name, strings.Join([]string{
-		fmt.Sprintf("hs %3.2f/s", p.headerThroughput),
-		fmt.Sprintf("bs %3.2f/s", p.blockThroughput),
-		fmt.Sprintf("rs %3.2f/s", p.receiptThroughput),
-		fmt.Sprintf("ss %3.2f/s", p.stateThroughput),
-		fmt.Sprintf("miss %4d", len(p.lacking)),
-		fmt.Sprintf("rtt %v", p.rtt),
-	}, ", "))
+	return fmt.Sprintf("Peer %s@[%s] id=%s eth/%d", p.nick, p.name, p.id, p.version)
+	//	strings.Join([]string{
+	//	fmt.Sprintf("hs %3.2f/s", p.headerThroughput),
+	//	fmt.Sprintf("bs %3.2f/s", p.blockThroughput),
+	//	fmt.Sprintf("rs %3.2f/s", p.receiptThroughput),
+	//	fmt.Sprintf("ss %3.2f/s", p.stateThroughput),
+	//	fmt.Sprintf("miss %4d", len(p.lacking)),
+	//	fmt.Sprintf("rtt %v", p.rtt),
+	//}, ", "))
 }
 
 // peerSet represents the collection of active peer participating in the chain
