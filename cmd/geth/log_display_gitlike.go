@@ -201,6 +201,9 @@ var gitDisplaySystem = displayEventHandlers{
 		ev:     downloader.StartEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
+				if ctx.GlobalInt(DisplayFlag.Name) < 4 {
+					return
+				}
 				switch d := evData.(type) {
 				case downloader.StartEvent:
 					masterChainColorFn := gitChainColorFn(e)
@@ -215,6 +218,9 @@ var gitDisplaySystem = displayEventHandlers{
 		ev:     downloader.DoneEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
+				if ctx.GlobalInt(DisplayFlag.Name) < 4 {
+					return
+				}
 				switch d := evData.(type) {
 				case downloader.DoneEvent:
 					masterChainColorFn := gitChainColorFn(e)
@@ -231,6 +237,9 @@ var gitDisplaySystem = displayEventHandlers{
 		ev:     downloader.FailedEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
+				if ctx.GlobalInt(DisplayFlag.Name) < 4 {
+					return
+				}
 				switch d := evData.(type) {
 				case downloader.FailedEvent:
 					masterChainColorFn := gitChainColorFn(e)
