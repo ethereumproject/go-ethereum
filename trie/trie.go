@@ -53,6 +53,11 @@ func CacheUnloads() int64 {
 	return cacheUnloadCounter.Count()
 }
 
+// LeafCallback is a callback type invoked when a trie sync reaches a
+// leaf node. It's used by state syncing to check if the leaf node requires some
+// further data syncing.
+type LeafCallback func(leaf []byte, parent common.Hash) error
+
 func init() {
 	sha3.NewKeccak256().Sum(emptyState[:0])
 }
