@@ -27,8 +27,8 @@ import (
 )
 
 // NewStateSync create a new state trie download scheduler.
-func NewStateSync(root common.Hash, database ethdb.Database) *trie.TrieSync {
-	var syncer *trie.TrieSync
+func NewStateSync(root common.Hash, database ethdb.Database) *trie.Sync {
+	var syncer *trie.Sync
 
 	callback := func(leaf []byte, parent common.Hash) error {
 		var obj struct {
