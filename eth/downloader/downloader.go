@@ -377,7 +377,7 @@ func (d *Downloader) UnregisterPeer(id string) error {
 	}()
 
 	if err != nil {
-		glog.V(logger.Error).Errorln("Unregister failed:", err)
+		glog.V(logger.Warn).Warnln("Unregister failed:", err)
 		return err
 	}
 	d.queue.Revoke(id)
@@ -420,7 +420,7 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	}
 	defer atomic.StoreInt32(&d.synchronising, 0)
 
-	// Reset the queue, peer set and wake channels to clean any internal leftover state
+	// Reset the queue, peer set, wake channels, and incoming channels to clean any internal leftover state
 	d.queue.Reset()
 	d.peers.Reset()
 
