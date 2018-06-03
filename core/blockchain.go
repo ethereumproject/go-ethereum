@@ -718,6 +718,12 @@ func (bc *BlockChain) LoadLastState(dryrun bool) error {
 		return recoverOrReset()
 	}
 
+	// If header is beyond genesis, but both current and current fast blocks are 0, maybe something has gone wrong,
+	// like a write error on previous shutdown.
+	if bc.hc.CurrentHeader().Number.Cmp(big.NewInt(0)) > 0 && highestCurrentBlockFastOrFull.Cmp(big.NewInt(0)) == 0 {
+		glog.V(logger.Error).Errorf("Found unaccompanied headerchain (headers > 0 && current|fast ==0), attempting reset with recovery...")
+	}
+
 	// Initialize a statedb cache to ensure singleton account bloom filter generation
 	statedb, err := state.New(bc.currentBlock.Root(), state.NewDatabase(bc.chainDb))
 	if err != nil {
