@@ -22,16 +22,17 @@ import (
 	"fmt"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto/sha3"
+	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/rcrowley/go-metrics"
 )
 
 var (
-	// This is the known root hash of an empty trie.
+	// emptyRoot is the known root hash of an empty trie.
 	emptyRoot = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-	// This is the known hash of an empty state trie entry.
-	emptyState common.Hash
+
+	// emptyState is the known hash of an empty state trie entry.
+	emptyState = crypto.Keccak256Hash(nil)
 )
 
 var (
@@ -57,10 +58,6 @@ func CacheUnloads() int64 {
 // leaf node. It's used by state syncing to check if the leaf node requires some
 // further data syncing.
 type LeafCallback func(leaf []byte, parent common.Hash) error
-
-func init() {
-	sha3.NewKeccak256().Sum(emptyState[:0])
-}
 
 // Database must be implemented by backing stores for the trie.
 type Database interface {
@@ -456,8 +453,7 @@ func (t *Trie) resolveHash(n hashNode, prefix []byte) (node, error) {
 	if err != nil || enc == nil {
 		return nil, &MissingNodeError{NodeHash: common.BytesToHash(n), Path: prefix}
 	}
-	dec := mustDecodeNode(n, enc, t.cachegen)
-	return dec, nil
+	return mustDecodeNode(n, enc, t.cachegen), nil
 }
 
 // Root returns the root hash of the trie.
