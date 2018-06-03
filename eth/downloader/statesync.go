@@ -214,7 +214,7 @@ func (d *Downloader) runStateSync(s *stateSync) *stateSync {
 type stateSync struct {
 	d *Downloader // Downloader instance to access and manage current peerset
 
-	sched  *state.StateSync           // State trie sync scheduler defining the tasks
+	sched  *trie.TrieSync             // State trie sync scheduler defining the tasks
 	keccak hash.Hash                  // Keccak256 hasher to verify deliveries with
 	tasks  map[common.Hash]*stateTask // Set of tasks currently queued for retrieval
 
@@ -472,6 +472,7 @@ func (s *stateSync) updateStats(written, duplicate, unexpected int, duration tim
 	s.d.syncStatsState.duplicate += uint64(duplicate)
 	s.d.syncStatsState.unexpected += uint64(unexpected)
 
+	// TODO(whilei): event it
 	if written > 0 || duplicate > 0 || unexpected > 0 {
 		glog.V(logger.Debug).Infoln("Imported new state entries", "count", written, "elapsed", duration.String(), "processed", s.d.syncStatsState.processed, "pending", s.d.syncStatsState.pending, "retry", len(s.tasks), "duplicate", s.d.syncStatsState.duplicate, "unexpected", s.d.syncStatsState.unexpected)
 	}
