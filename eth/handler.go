@@ -51,7 +51,7 @@ const (
 )
 
 var (
-	daoChallengeTimeout = 15 * time.Second // Time allowance for a node to reply to the DAO handshake challenge
+	forkChallengeTimeout = 15 * time.Second // Time allowance for a node to reply to the DAO handshake challenge
 )
 
 // errIncompatibleConfig is returned if the requested protocols and configs are
@@ -317,7 +317,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		}
 		// Start a timer to disconnect if the peer doesn't reply in time
 		// FIXME: un-hardcode timeout
-		p.forkDrop = time.AfterFunc(daoChallengeTimeout, func() {
+		p.forkDrop = time.AfterFunc(forkChallengeTimeout, func() {
 			glog.V(logger.Debug).Infof("handler: %s ->headersbynumber err='timed out fork-check, dropping'", p)
 			pm.removePeer(p.id)
 		})
@@ -344,7 +344,6 @@ func (pm *ProtocolManager) handle(p *peer) error {
 func (pm *ProtocolManager) getRequiredHashBlockNumber(localHead, peerHead common.Hash) (blockNumber uint64, validate bool) {
 	// Drop connections incongruent with any network split or checkpoint that's relevant
 	// Check for latest relevant required hash based on our status.
-	//var headN = new(big.Int)
 	var headN *big.Int
 	headB := pm.blockchain.GetBlock(localHead)
 	if headB != nil {
