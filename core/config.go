@@ -354,6 +354,9 @@ func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, 
 	var found = false
 	if num != nil && id != "" {
 		for _, f := range c.Forks {
+			if f.Block == nil {
+				continue
+			}
 			if f.Block.Cmp(num) > 0 {
 				continue
 			}
