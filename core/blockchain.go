@@ -1365,28 +1365,22 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 		}
 	}
 
-	mustWriteFastBlockHead := func() {
-		// TODO(whilei): can this be moved into the if procInterrupt conditional? to not lose fast place if ill-timed interruption
-		// -> trying it out...
-		// Update the head fast sync block if better
-		bc.mu.Lock()
-		head := blockChain[len(errs)-1]
-		if bc.GetTd(bc.currentFastBlock.Hash()).Cmp(bc.GetTd(head.Hash())) < 0 {
-			if err := WriteHeadFastBlockHash(bc.chainDb, head.Hash()); err != nil {
-				glog.Fatalf("failed to update head fast block hash: %v", err)
-			}
-			bc.currentFastBlock = head
-		}
-		bc.mu.Unlock()
-	}
-
+	// if aborted, db could be closed and the td may not be cached so don't attempt to write bookmark
 	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
 		glog.V(logger.Debug).Infoln("premature abort during receipt chain processing")
-		//mustWriteFastBlockHead()
 		return
 	}
 
-	mustWriteFastBlockHead()
+	// Update the head fast sync block if better
+	bc.mu.Lock()
+	head := blockChain[len(errs)-1]
+	if bc.GetTd(bc.currentFastBlock.Hash()).Cmp(bc.GetTd(head.Hash())) < 0 {
+		if err := WriteHeadFastBlockHash(bc.chainDb, head.Hash()); err != nil {
+			glog.Fatalf("failed to update head fast block hash: %v", err)
+		}
+		bc.currentFastBlock = head
+	}
+	bc.mu.Unlock()
 
 	// Report some public statistics so the user has a clue what's going on
 	first, last := blockChain[0], blockChain[len(blockChain)-1]
@@ -1577,7 +1571,6 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 	defer close(nonceAbort)
 
 	txcount := 0
-	var latestBlockTime time.Time
 	for i, block := range chain {
 		res.Index = i
 		if atomic.LoadInt32(&bc.procInterrupt) == 1 {
@@ -1683,7 +1676,6 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 			res.Error = err
 			return
 		}
-		latestBlockTime = time.Unix(block.Time().Int64(), 0)
 
 		switch status {
 		case CanonStatTy:
@@ -1739,16 +1731,18 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 		TxCount:   txcount,
 	}
 	r := &ChainInsertResult{ChainInsertEvent: ev}
-	r.Index = 0
-
+	r.Index = 0 // NOTE/FIXME?(whilei): it's kind of strange that it returns 0 when no error... why not len(blocks)-1?
 	if stats.queued > 0 || stats.processed > 0 || stats.ignored > 0 {
-		tend := time.Since(tstart)
+		elapsed := time.Since(tstart)
 		start, end := chain[0], chain[len(chain)-1]
+		// fn result
 		r.LastNumber = end.NumberU64()
 		r.LastHash = end.Hash()
-		r.Elasped = tend
-		r.LatestBlockTime = latestBlockTime
+		r.Elasped = elapsed
+		r.LatestBlockTime = time.Unix(end.Time().Int64(), 0)
+		// add event
 		events = append(events, r.ChainInsertEvent)
+		// mlog
 		if logger.MlogEnabled() {
 			mlogBlockchainInsertBlocks.AssignDetails(
 				stats.processed,
@@ -1758,15 +1752,16 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 				end.Number(),
 				start.Hash().Hex(),
 				end.Hash().Hex(),
-				tend,
+				elapsed,
 			).Send(mlogBlockchain)
 		}
+		// glog
 		glog.V(logger.Info).Infof("imported %d block(s) (%d queued %d ignored) including %d txs in %v. #%v [%s / %s]\n",
 			stats.processed,
 			stats.queued,
 			stats.ignored,
 			txcount,
-			tend,
+			elapsed,
 			end.Number(),
 			start.Hash().Hex(),
 			end.Hash().Hex())
