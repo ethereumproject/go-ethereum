@@ -350,14 +350,14 @@ func (self *StateDB) deleteStateObject(stateObject *StateObject) {
 func (self *StateDB) getStateObject(addr common.Address) (stateObject *StateObject) {
 	// Prefer 'live' objects.
 	self.lock.Lock()
-	if obj := self.stateObjects[addr]; obj != nil {
-		self.lock.Unlock()
+	obj := self.stateObjects[addr]
+	self.lock.Unlock()
+	if obj != nil {
 		if obj.deleted {
 			return nil
 		}
 		return obj
 	}
-	self.lock.Unlock()
 
 	// Load the object from the database.
 	enc, err := self.trie.TryGet(addr[:])
@@ -371,7 +371,7 @@ func (self *StateDB) getStateObject(addr common.Address) (stateObject *StateObje
 		return nil
 	}
 	// Insert into the live set.
-	obj := newObject(self, addr, data, self.MarkStateObjectDirty)
+	obj = newObject(self, addr, data, self.MarkStateObjectDirty)
 	self.setStateObject(obj)
 	return obj
 }
