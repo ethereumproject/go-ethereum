@@ -217,8 +217,11 @@ type LightChain interface {
 type BlockChain interface {
 	LightChain
 
-	// HasBlock verifies block and associated states' presence in the local chain.
+	// HasBlock verifies block presence in the local chain. // NOTE(whilei): https://github.com/ethereum/go-ethereum/pull/16061
 	HasBlock(common.Hash) bool
+
+	// HasBlock verifies block and associate state presence in the local chain.
+	HasBlockAndState(common.Hash) bool
 
 	// GetBlockByHash retrieves a block from the local chain.
 	GetBlockByHash(common.Hash) *types.Block
@@ -750,7 +753,7 @@ func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 					continue
 				}
 				// Otherwise check if we already know the header or not
-				if (d.mode == FullSync && d.blockchain.HasBlock(headers[i].Hash())) || (d.mode != FullSync && d.lightchain.HasHeader(headers[i].Hash())) {
+				if (d.mode == FullSync && d.blockchain.HasBlockAndState(headers[i].Hash())) || (d.mode != FullSync && d.lightchain.HasHeader(headers[i].Hash())) {
 					number, hash = headers[i].Number.Uint64(), headers[i].Hash()
 
 					// If every header is known, even future ones, the peer straight out lied about its head
@@ -815,7 +818,7 @@ func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 				arrived = true
 
 				// Modify the search interval based on the response
-				if (d.mode == FullSync && !d.blockchain.HasBlock(headers[0].Hash())) || (d.mode != FullSync && !d.lightchain.HasHeader(headers[0].Hash())) {
+				if (d.mode == FullSync && !d.blockchain.HasBlockAndState(headers[0].Hash())) || (d.mode != FullSync && !d.lightchain.HasHeader(headers[0].Hash())) {
 					end = check
 					break
 				}
