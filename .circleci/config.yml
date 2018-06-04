@@ -26,6 +26,7 @@ deploy_steps: &deploy_steps
     - deploy:
         name: Deploy to builds.etcdevteam.com
         command: |
+          if [[ $CIRCLE_PROJECT_USERNAME != ethereumproject ]]; then echo "Deployments only enabled from ethereumproject/ repo. Exiting." && exit 0; fi
           export GOPATH=$HOME/go
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
