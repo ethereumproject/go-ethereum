@@ -219,7 +219,7 @@ var severityColor = []string{"\x1b[2m", "\x1b[33m", "\x1b[31m", "\x1b[35m"} // i
 var severityName = []string{
 	infoLog:    "INFO",
 	warningLog: "WARN",
-	errorLog:   "ERR-",
+	errorLog:   "ERR ",
 	fatalLog:   "FAIL",
 }
 

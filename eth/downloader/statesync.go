@@ -472,7 +472,6 @@ func (s *stateSync) updateStats(written, duplicate, unexpected int, duration tim
 	s.d.syncStatsState.duplicate += uint64(duplicate)
 	s.d.syncStatsState.unexpected += uint64(unexpected)
 
-	// TODO(whilei): event it
 	if written > 0 || duplicate > 0 || unexpected > 0 {
 		glog.V(logger.Debug).Infoln("Imported new state entries", "count", written, "elapsed", duration.String(), "processed", s.d.syncStatsState.processed, "pending", s.d.syncStatsState.pending, "retry", len(s.tasks), "duplicate", s.d.syncStatsState.duplicate, "unexpected", s.d.syncStatsState.unexpected)
 	}

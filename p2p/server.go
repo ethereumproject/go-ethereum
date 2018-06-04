@@ -156,6 +156,7 @@ type peerOpFunc func(map[discover.NodeID]*Peer)
 
 type peerDrop struct {
 	*Peer
+	// TODO(whilei)
 	//err       error
 	//requested bool // true if signaled by the peer
 }
@@ -578,20 +579,6 @@ func (srv *Server) protoHandshakeChecks(peers map[discover.NodeID]*Peer, inbound
 	// peer set might have changed between the handshakes.
 	return srv.encHandshakeChecks(peers, inboundCount, c)
 }
-
-//func (srv *Server) randomPeer(peers map[discover.NodeID]*Peer) *Peer {
-//	l := len(peers)
-//	if l != 0 {
-//		randomDropper := rand.Intn(l)
-//		c := 0
-//		for _, p := range peers {
-//			if c == randomDropper {
-//				return p
-//			}
-//		}
-//	}
-//	return nil
-//}
 
 func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, inboundCount int, c *conn) error {
 	switch {
