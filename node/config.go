@@ -212,7 +212,12 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	if err != nil {
 		glog.Fatalf("Failed to generate node key: %v", err)
 	}
-	if err := crypto.SaveECDSA(keyfile, key); err != nil {
+	f, err := os.Create(keyfile)
+	if err != nil {
+		glog.Fatalf("failed to open node key file: %v", err)
+	}
+	defer f.Close()
+	if _, err := crypto.WriteECDSAKey(f, key); err != nil {
 		glog.V(logger.Error).Infof("Failed to persist node key: %v", err)
 	}
 	return key

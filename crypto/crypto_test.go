@@ -179,8 +179,13 @@ func TestLoadECDSAFile(t *testing.T) {
 	}
 	checkKey(key0)
 
-	// again, this time with SaveECDSA instead of manual save:
-	err = SaveECDSA(fileName1, key0)
+	// again, this time with WriteECDSAKey instead of manual save:
+	f, err := os.Create(fileName1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	_, err = WriteECDSAKey(f, key0)
 	if err != nil {
 		t.Fatal(err)
 	}

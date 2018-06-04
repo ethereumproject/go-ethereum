@@ -23,7 +23,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"os"
 
@@ -150,11 +149,11 @@ func LoadECDSA(file string) (*ecdsa.PrivateKey, error) {
 	return ToECDSA(key), nil
 }
 
-// SaveECDSA saves a secp256k1 private key to the given file with
+// WriteECDSAKey saves a secp256k1 private key to the given file with
 // restrictive permissions. The key data is saved hex-encoded.
-func SaveECDSA(file string, key *ecdsa.PrivateKey) error {
+func WriteECDSAKey(to io.Writer, key *ecdsa.PrivateKey) (int, error) {
 	k := hex.EncodeToString(FromECDSA(key))
-	return ioutil.WriteFile(file, []byte(k), 0600)
+	return to.Write([]byte(k))
 }
 
 func GenerateKey() (*ecdsa.PrivateKey, error) {

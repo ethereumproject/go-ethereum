@@ -43,6 +43,22 @@ var (
 	versionFlag = flag.Bool("version", false, "Prints the revision identifier and exit immediatily.")
 )
 
+func onlyDoGenKey() {
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		log.Fatalf("could not generate key: %s", err)
+	}
+	f, e := os.Create(*genKey)
+	defer f.Close()
+	if e != nil {
+		log.Fatalf("coult not open genkey file: %v", e)
+	}
+	if _, err := crypto.WriteECDSAKey(f, key); err != nil {
+		log.Fatal(err)
+	}
+	os.Exit(0)
+}
+
 func main() {
 	flag.Var(glog.GetVerbosity(), "verbosity", "log verbosity (0-9)")
 	flag.Var(glog.GetVModule(), "vmodule", "log verbosity pattern")
@@ -55,14 +71,8 @@ func main() {
 	}
 
 	if *genKey != "" {
-		key, err := crypto.GenerateKey()
-		if err != nil {
-			log.Fatalf("could not generate key: %s", err)
-		}
-		if err := crypto.SaveECDSA(*genKey, key); err != nil {
-			log.Fatal(err)
-		}
-		os.Exit(0)
+		// exits 0 if successful
+		onlyDoGenKey()
 	}
 
 	natm, err := nat.Parse(*natdesc)
