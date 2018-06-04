@@ -18,11 +18,13 @@ package node
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/ethereumproject/go-ethereum/crypto"
 )
@@ -120,16 +122,26 @@ func TestNodeKeyPersistency(t *testing.T) {
 	if _, err := New(&Config{DataDir: dir}); err != nil {
 		t.Fatalf("failed to create newly keyed stack: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, datadirPrivateKey)); err != nil {
+	f, err := os.Open(filepath.Join(dir, datadirPrivateKey))
+	if err != nil {
 		t.Fatalf("node key not persisted to data directory: %v", err)
+	}
+	// an unhappy workaround for FS writes taking too long,
+	// causing crypto.LoadECDSA to return UnexpectedEOF error via io.ReadFull
+	var blob1 = make([]byte, 64)
+	var readErr error
+	var start, allowedFSWriteDelay = time.Now(), 500 * time.Millisecond
+	_, readErr = io.ReadFull(f, blob1)
+	for readErr == io.ErrUnexpectedEOF && time.Since(start) < allowedFSWriteDelay {
+		_, readErr = io.ReadFull(f, blob1)
+	}
+	f.Close()
+	if readErr != nil {
+		t.Fatalf("fs failed to write/read node key file: %v", readErr)
 	}
 	key, err = crypto.LoadECDSA(filepath.Join(dir, datadirPrivateKey))
 	if err != nil {
 		t.Fatalf("failed to load freshly persisted node key: %v", err)
-	}
-	blob1, err := ioutil.ReadFile(filepath.Join(dir, datadirPrivateKey))
-	if err != nil {
-		t.Fatalf("failed to read freshly persisted node key: %v", err)
 	}
 	// Configure a new node and ensure the previously persisted key is loaded
 	if _, err := New(&Config{DataDir: dir}); err != nil {
