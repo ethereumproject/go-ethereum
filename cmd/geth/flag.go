@@ -587,6 +587,7 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 		DatabaseCache:           ctx.GlobalInt(aliasableName(CacheFlag.Name, ctx)),
 		DatabaseHandles:         MakeDatabaseHandles(),
 		NetworkId:               sconf.Network,
+		MaxPeers:                ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx)),
 		AccountManager:          accman,
 		Etherbase:               MakeEtherbase(accman, ctx),
 		MinerThreads:            ctx.GlobalInt(aliasableName(MinerThreadsFlag.Name, ctx)),
@@ -767,6 +768,10 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 
 	glog.V(logger.Info).Infof("Using %d configured bootnodes", len(config.ParsedBootstrap))
 	glog.D(logger.Warn).Infof("Using %d configured bootnodes", len(config.ParsedBootstrap))
+
+	glog.V(logger.Info).Infof("Use Sputnik EVM: %s", logger.ColorGreen(fmt.Sprintf("%v", core.UseSputnikVM)))
+	glog.D(logger.Warn).Infof("Use Sputnik EVM: %s", logger.ColorGreen(fmt.Sprintf("%v", core.UseSputnikVM)))
+
 	glog.V(logger.Info).Info(glog.Separator("-"))
 
 	// If unsafe usage, WARNING!

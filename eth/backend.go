@@ -63,6 +63,7 @@ type Config struct {
 	NetworkId int // Network ID to use for selecting peers to connect to
 	Genesis   *core.GenesisDump
 	FastSync  bool // Enables the state download based fast synchronisation algorithm
+	MaxPeers  int
 
 	BlockChainVersion  int
 	SkipBcVersionCheck bool // e.g. blockchain export
@@ -95,6 +96,7 @@ type Config struct {
 }
 
 type Ethereum struct {
+	config      *Config
 	chainConfig *core.ChainConfig
 	// Channel for shutting down the ethereum
 	shutdownChan chan bool
@@ -194,6 +196,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	glog.V(logger.Info).Infof("Blockchain DB Version: %d", config.BlockChainVersion)
 
 	eth := &Ethereum{
+		config:                  config,
 		shutdownChan:            make(chan bool),
 		chainDb:                 chainDb,
 		dappDb:                  dappDb,
@@ -296,7 +299,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	newPool := core.NewTxPool(eth.chainConfig, eth.EventMux(), eth.blockchain.State, eth.blockchain.GasLimit)
 	eth.txPool = newPool
 
-	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.FastSync, config.NetworkId, eth.eventMux, eth.txPool, eth.pow, eth.blockchain, chainDb); err != nil {
+	m := downloader.FullSync
+	if config.FastSync {
+		m = downloader.FastSync
+	}
+	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, m, uint64(config.NetworkId), eth.eventMux, eth.txPool, eth.pow, eth.blockchain, chainDb); err != nil {
 		return nil, err
 	}
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.pow)
@@ -438,7 +445,7 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 	if s.AutoDAG {
 		s.StartAutoDAG()
 	}
-	s.protocolManager.Start()
+	s.protocolManager.Start(s.config.MaxPeers)
 	s.netRPCService = NewPublicNetAPI(srvr, s.NetVersion())
 	return nil
 }

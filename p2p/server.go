@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
@@ -143,13 +144,21 @@ type Server struct {
 
 	quit          chan struct{}
 	addstatic     chan *discover.Node
+	removestatic  chan *discover.Node
 	posthandshake chan *conn
 	addpeer       chan *conn
-	delpeer       chan *Peer
+	delpeer       chan peerDrop
 	loopWG        sync.WaitGroup // loop, listenLoop
+	peerFeed      event.Feed
 }
 
 type peerOpFunc func(map[discover.NodeID]*Peer)
+
+type peerDrop struct {
+	*Peer
+	//err       error
+	//requested bool // true if signaled by the peer
+}
 
 type connFlag int
 
@@ -187,9 +196,9 @@ type transport interface {
 }
 
 func (c *conn) String() string {
-	s := c.flags.String() + " conn"
+	s := c.flags.String()
 	if (c.id != discover.NodeID{}) {
-		s += fmt.Sprintf(" %x", c.id[:8])
+		s += " " + c.id.String()[:9]
 	}
 	s += " " + c.fd.RemoteAddr().String()
 	return s
@@ -198,16 +207,16 @@ func (c *conn) String() string {
 func (f connFlag) String() string {
 	s := ""
 	if f&trustedConn != 0 {
-		s += " trusted"
+		s += "-trusted"
 	}
 	if f&dynDialedConn != 0 {
-		s += " dyn dial"
+		s += "-dyndial"
 	}
 	if f&staticDialedConn != 0 {
-		s += " static dial"
+		s += "-staticdial"
 	}
 	if f&inboundConn != 0 {
-		s += " inbound"
+		s += "-inbound"
 	}
 	if s != "" {
 		s = s[1:]
@@ -256,6 +265,19 @@ func (srv *Server) AddPeer(node *discover.Node) {
 	case srv.addstatic <- node:
 	case <-srv.quit:
 	}
+}
+
+// RemovePeer disconnects from the given node
+func (srv *Server) RemovePeer(node *discover.Node) {
+	select {
+	case srv.removestatic <- node:
+	case <-srv.quit:
+	}
+}
+
+// SubscribePeers subscribes the given channel to peer events
+func (srv *Server) SubscribeEvents(ch chan *PeerEvent) event.Subscription {
+	return srv.peerFeed.Subscribe(ch)
 }
 
 // Self returns the local node's endpoint information.
@@ -326,7 +348,7 @@ func (srv *Server) Start() (err error) {
 	}
 	srv.quit = make(chan struct{})
 	srv.addpeer = make(chan *conn)
-	srv.delpeer = make(chan *Peer)
+	srv.delpeer = make(chan peerDrop)
 	srv.posthandshake = make(chan *conn)
 	srv.addstatic = make(chan *discover.Node)
 	srv.peerOp = make(chan peerOpFunc)
@@ -395,6 +417,7 @@ type dialer interface {
 	newTasks(running int, peers map[discover.NodeID]*Peer, now time.Time) []task
 	taskDone(task, time.Time)
 	addStatic(*discover.Node)
+	removeStatic(*discover.Node)
 }
 
 func (srv *Server) run(dialstate dialer) {
@@ -459,6 +482,15 @@ running:
 			// it will keep the node connected.
 			glog.V(logger.Detail).Infoln("<-addstatic:", n)
 			dialstate.addStatic(n)
+		case n := <-srv.removestatic:
+			// This channel is used by RemovePeer to send a
+			// disconnect request to a peer and begin the
+			// stop keeping the node connected
+			glog.V(logger.Detail).Infoln("Removing static node", "node", n)
+			dialstate.removeStatic(n)
+			if p, ok := peers[n.ID]; ok {
+				p.Disconnect(DiscRequested)
+			}
 		case op := <-srv.peerOp:
 			// This channel is used by Peers and PeerCount.
 			op(peers)
@@ -479,7 +511,11 @@ running:
 			}
 			glog.V(logger.Detail).Infoln("<-posthandshake:", c)
 			// TODO: track in-progress inbound node IDs (pre-Peer) to avoid dialing them.
-			c.cont <- srv.encHandshakeChecks(peers, inboundCount, c)
+			select {
+			case c.cont <- srv.encHandshakeChecks(peers, inboundCount, c):
+			case <-srv.quit:
+				break running
+			}
 		case c := <-srv.addpeer:
 			// At this point the connection is past the protocol handshake.
 			// Its capabilities are known and the remote identity is verified.
@@ -499,7 +535,11 @@ running:
 			// The dialer logic relies on the assumption that
 			// dial tasks complete after the peer has been added or
 			// discarded. Unblock the task last.
-			c.cont <- err
+			select {
+			case c.cont <- err:
+			case <-srv.quit:
+				break running
+			}
 		case p := <-srv.delpeer:
 			// A peer disconnected.
 			glog.V(logger.Detail).Infoln("<-delpeer:", p)
@@ -538,6 +578,20 @@ func (srv *Server) protoHandshakeChecks(peers map[discover.NodeID]*Peer, inbound
 	// peer set might have changed between the handshakes.
 	return srv.encHandshakeChecks(peers, inboundCount, c)
 }
+
+//func (srv *Server) randomPeer(peers map[discover.NodeID]*Peer) *Peer {
+//	l := len(peers)
+//	if l != 0 {
+//		randomDropper := rand.Intn(l)
+//		c := 0
+//		for _, p := range peers {
+//			if c == randomDropper {
+//				return p
+//			}
+//		}
+//	}
+//	return nil
+//}
 
 func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, inboundCount int, c *conn) error {
 	switch {
@@ -701,7 +755,7 @@ func (srv *Server) runPeer(p *Peer) {
 		).Send(mlogServer)
 	}
 
-	glog.V(logger.Debug).Infof("Added %v\n", p)
+	glog.V(logger.Debug).Infof("srv.runPeer: %s", p)
 	srvjslog.LogJson(&logger.P2PConnected{
 		RemoteId:            p.ID().String(),
 		RemoteAddress:       p.RemoteAddr().String(),
@@ -712,11 +766,18 @@ func (srv *Server) runPeer(p *Peer) {
 	if srv.newPeerHook != nil {
 		srv.newPeerHook(p)
 	}
+	// broadcast peer add
+	srv.peerFeed.Send(&PeerEvent{
+		Type: PeerEventTypeAdd,
+		Peer: p.ID(),
+	})
 	discreason := p.run()
-	// Note: run waits for existing peers to be sent on srv.delpeer
-	// before returning, so this send should not select on srv.quit.
-	srv.delpeer <- p
-
+	// broadcast peer drop
+	srv.peerFeed.Send(&PeerEvent{
+		Type: PeerEventTypeDrop,
+		Peer: p.ID(),
+		//Error: err.Error(), // TODO(whilei)
+	})
 	if logger.MlogEnabled() {
 		mlogServerPeerRemove.AssignDetails(
 			srv.PeerCount(),
@@ -724,12 +785,14 @@ func (srv *Server) runPeer(p *Peer) {
 			discreason.String(),
 		).Send(mlogServer)
 	}
-
-	glog.V(logger.Debug).Infof("Removed %v (%v)\n", p, discreason)
+	glog.V(logger.Debug).Infof("removed: %s reason=%v\n", p, discreason)
 	srvjslog.LogJson(&logger.P2PDisconnected{
 		RemoteId:       p.ID().String(),
 		NumConnections: srv.PeerCount(),
 	})
+	// Note: run waits for existing peers to be sent on srv.delpeer
+	// before returning, so this send should not select on srv.quit.
+	srv.delpeer <- peerDrop{p}
 }
 
 // NodeInfo represents a short summary of the information known about the host.

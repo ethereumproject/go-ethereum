@@ -34,7 +34,7 @@ import (
 // basicDisplaySystem is the basic display system spec'd in #127.
 var basicDisplaySystem = displayEventHandlers{
 	{
-		eventT: logEventChainInsert,
+		eventT: logEventCoreChainInsert,
 		ev:     core.ChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
@@ -50,7 +50,7 @@ var basicDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventT: logEventMinedBlock,
+		eventT: logEventCoreMinedBlock,
 		ev:     core.NewMinedBlockEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
