@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/console"
@@ -366,7 +367,14 @@ func accountImport(ctx *cli.Context) error {
 	if len(keyfile) == 0 {
 		log.Fatal("keyfile must be given as argument")
 	}
-	key, err := crypto.LoadECDSA(keyfile)
+	f, err := os.Open(keyfile)
+	if err != nil {
+		return err
+	}
+	key, err := crypto.LoadECDSA(f)
+	if err := f.Close(); err != nil {
+		log.Fatalf("could not close key file: %v", err)
+	}
 	if err != nil {
 		log.Fatalf("unable to decode keyfile '%s': %v", keyfile, err)
 	}

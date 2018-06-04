@@ -173,26 +173,42 @@ func TestLoadECDSAFile(t *testing.T) {
 	ioutil.WriteFile(fileName0, []byte(testPrivHex), 0600)
 	defer os.Remove(fileName0)
 
-	key0, err := LoadECDSA(fileName0)
+	f, err := os.Open(fileName0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key0, err := LoadECDSA(f)
+	if e := f.Close(); e != nil {
+		t.Fatal(e)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
 	checkKey(key0)
 
 	// again, this time with WriteECDSAKey instead of manual save:
-	f, err := os.Create(fileName1)
+	f, err = os.Create(fileName1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
 	_, err = WriteECDSAKey(f, key0)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 	defer os.Remove(fileName1)
 
-	key1, err := LoadECDSA(fileName1)
+	f1, err := os.Open(fileName1)
 	if err != nil {
+		t.Fatal(err)
+	}
+	key1, err := LoadECDSA(f1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f1.Close(); err != nil {
 		t.Fatal(err)
 	}
 	checkKey(key1)

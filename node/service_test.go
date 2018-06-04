@@ -19,22 +19,26 @@ package node
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/afero"
 )
 
 // Tests that databases are correctly created persistent or ephemeral based on
 // the configured service context.
 func TestContextDatabases(t *testing.T) {
+	// this is a placeholder to avoid diving in to dropping afero in to more packages.
+	// TODO: move to MemMapFS
+	Afs = afero.NewOsFs()
 	// Create a temporary folder and ensure no database is contained within
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("failed to create temporary data directory: %v", err)
 	}
-	defer os.RemoveAll(dir)
+	defer Afs.RemoveAll(dir)
 
-	if _, err := os.Stat(filepath.Join(dir, "database")); err == nil {
+	if _, err := Afs.Stat(filepath.Join(dir, "database")); err == nil {
 		t.Fatalf("non-created database already exists")
 	}
 	// Request the opening/creation of a database and ensure it persists to disk
@@ -45,7 +49,7 @@ func TestContextDatabases(t *testing.T) {
 	}
 	db.Close()
 
-	if _, err := os.Stat(filepath.Join(dir, "persistent")); err != nil {
+	if _, err := Afs.Stat(filepath.Join(dir, "persistent")); err != nil {
 		t.Fatalf("persistent database doesn't exists: %v", err)
 	}
 	// Request th opening/creation of an ephemeral database and ensure it's not persisted
@@ -56,7 +60,7 @@ func TestContextDatabases(t *testing.T) {
 	}
 	db.Close()
 
-	if _, err := os.Stat(filepath.Join(dir, "ephemeral")); err == nil {
+	if _, err := Afs.Stat(filepath.Join(dir, "ephemeral")); err == nil {
 		t.Fatalf("ephemeral database exists")
 	}
 }

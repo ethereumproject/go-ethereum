@@ -87,8 +87,13 @@ func main() {
 	case *nodeKeyFile != "" && *nodeKeyHex != "":
 		log.Fatal("Options -nodekey and -nodekeyhex are mutually exclusive")
 	case *nodeKeyFile != "":
-		var err error
-		nodeKey, err = crypto.LoadECDSA(*nodeKeyFile)
+		f, err := os.Open(*nodeKeyFile)
+		nodeKey, err = crypto.LoadECDSA(f)
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Fatalf("could not close node key file: %v", err)
+			}
+		}()
 		if err != nil {
 			log.Fatalf("nodekey: %s", err)
 		}

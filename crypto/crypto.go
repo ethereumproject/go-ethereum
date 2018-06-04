@@ -21,13 +21,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
-	"os"
-
-	"encoding/hex"
-	"errors"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto/ecies"
@@ -130,14 +128,9 @@ func HexToECDSA(hexkey string) (*ecdsa.PrivateKey, error) {
 
 // LoadECDSA loads a secp256k1 private key from the given file.
 // The key data is expected to be hex-encoded.
-func LoadECDSA(file string) (*ecdsa.PrivateKey, error) {
+func LoadECDSA(in io.Reader) (*ecdsa.PrivateKey, error) {
 	buf := make([]byte, 64)
-	fd, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer fd.Close()
-	if _, err := io.ReadFull(fd, buf); err != nil {
+	if _, err := io.ReadFull(in, buf); err != nil {
 		return nil, err
 	}
 

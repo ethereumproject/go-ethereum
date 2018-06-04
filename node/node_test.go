@@ -19,7 +19,6 @@ package node
 import (
 	"errors"
 	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -28,6 +27,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/spf13/afero"
 )
 
 var (
@@ -82,12 +82,13 @@ func TestNodeLifeCycle(t *testing.T) {
 
 // Tests that if the data dir is already in use, an appropriate error is returned.
 func TestNodeUsedDataDir(t *testing.T) {
+	Afs = afero.NewMemMapFs()
 	// Create a temporary folder to use as the data directory
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("failed to create temporary data directory: %v", err)
 	}
-	defer os.RemoveAll(dir)
+	defer Afs.RemoveAll(dir)
 
 	// Create a new node based on the data directory
 	original, err := New(&Config{DataDir: dir})

@@ -20,7 +20,6 @@ package node
 import (
 	"errors"
 	"net"
-	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -85,7 +84,7 @@ type Node struct {
 func New(conf *Config) (*Node, error) {
 	// Ensure the data directory exists, failing if it cannot be created
 	if conf.DataDir != "" {
-		if err := os.MkdirAll(conf.DataDir, 0700); err != nil {
+		if err := Afs.MkdirAll(conf.DataDir, 0700); err != nil {
 			return nil, err
 		}
 	}

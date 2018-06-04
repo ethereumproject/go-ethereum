@@ -33,7 +33,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
+	"github.com/spf13/afero"
 )
+
+var tempDir = os.TempDir()
+var Afs = afero.NewOsFs()
 
 var (
 	datadirPrivateKey   = "nodekey"            // Path within the datadir to the node's private key
@@ -155,7 +159,11 @@ func (c *Config) IPCEndpoint() string {
 	// Resolve names into the data directory full paths otherwise
 	if filepath.Base(c.IPCPath) == c.IPCPath {
 		if c.DataDir == "" {
-			return filepath.Join(os.TempDir(), c.IPCPath)
+			err := Afs.Mkdir(tempDir, os.ModeTemporary)
+			if err != nil && !os.IsExist(err) {
+				glog.Fatal(err)
+			}
+			return filepath.Join(tempDir, c.IPCPath)
 		}
 		return filepath.Join(c.DataDir, c.IPCPath)
 	}
@@ -204,15 +212,24 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	}
 	// Fall back to persistent key from the data directory
 	keyfile := filepath.Join(c.DataDir, datadirPrivateKey)
-	if key, err := crypto.LoadECDSA(keyfile); err == nil {
-		return key
+	f, err := Afs.Open(keyfile)
+	if err != nil && os.IsNotExist(err) {
+		// no key file, continuing to create one
+	} else if err != nil {
+		glog.Fatalf("Failed to open key file: %v", err)
+	} else {
+		defer f.Close()
+		if key, err := crypto.LoadECDSA(f); err == nil {
+			return key
+		}
 	}
+
 	// No persistent key found, generate and store a new one
 	key, err := crypto.GenerateKey()
 	if err != nil {
 		glog.Fatalf("Failed to generate node key: %v", err)
 	}
-	f, err := os.Create(keyfile)
+	f, err = Afs.Create(keyfile)
 	if err != nil {
 		glog.Fatalf("failed to open node key file: %v", err)
 	}
@@ -241,7 +258,7 @@ func (c *Config) parsePersistentNodes(file string) []*discover.Node {
 		return nil
 	}
 	path := filepath.Join(c.DataDir, file)
-	if _, err := os.Stat(path); err != nil {
+	if _, err := Afs.Stat(path); err != nil {
 		return nil
 	}
 	// Load the nodes from the config file
