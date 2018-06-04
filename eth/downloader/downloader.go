@@ -636,7 +636,7 @@ func (d *Downloader) Terminate() {
 	d.quitLock.Unlock()
 
 	// Cancel any pending download requests
-	d.Cancel()
+	d.cancel()
 }
 
 // fetchHeight retrieves the head header of the remote peer to aid in estimating
