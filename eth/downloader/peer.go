@@ -25,6 +25,7 @@ import (
 	"math"
 	"math/big"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -266,10 +267,7 @@ func (p *peer) setIdle(started time.Time, delivered int, throughput *float64, id
 	*throughput = (1-measurementImpact)*(*throughput) + measurementImpact*measured
 	p.rtt = time.Duration((1-measurementImpact)*float64(p.rtt) + measurementImpact*float64(elapsed))
 
-	glog.V(logger.Debug).Infoln("Peer throughput measurements updated:",
-		"hps", p.headerThroughput, "bps", p.blockThroughput,
-		"rps", p.receiptThroughput, "sps", p.stateThroughput,
-		"miss", len(p.lacking), "rtt", p.rtt)
+	glog.V(logger.Debug).Infoln("Peer throughput measurements updated:", p.StringWithThroughput())
 }
 
 // HeaderCapacity retrieves the peers header download allowance based on its
@@ -347,7 +345,23 @@ func (p *peer) String() string {
 	//	fmt.Sprintf("ss %3.2f/s", p.stateThroughput),
 	//	fmt.Sprintf("miss %4d", len(p.lacking)),
 	//	fmt.Sprintf("rtt %v", p.rtt),
-	//}, ", "))
+	//}, ", ")
+	// )
+}
+
+func (p *peer) StringWithThroughput() string {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return fmt.Sprintf("peer:%s@[%s] eth/%d", p.id, p.name, p.version,
+		strings.Join([]string{
+			fmt.Sprintf("hs %3.2f/s", p.headerThroughput),
+			fmt.Sprintf("bs %3.2f/s", p.blockThroughput),
+			fmt.Sprintf("rs %3.2f/s", p.receiptThroughput),
+			fmt.Sprintf("ss %3.2f/s", p.stateThroughput),
+			fmt.Sprintf("miss %4d", len(p.lacking)),
+			fmt.Sprintf("rtt %v", p.rtt),
+		}, ", "))
 }
 
 // peerSet represents the collection of active peer participating in the chain
