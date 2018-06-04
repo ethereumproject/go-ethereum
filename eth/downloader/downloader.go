@@ -275,17 +275,6 @@ func New(mode SyncMode, stateDb ethdb.Database, mux *event.TypeMux, chain BlockC
 	return dl
 }
 
-func (d *Downloader) currentLocalChainHeight() (current uint64) {
-	current = d.lightchain.CurrentHeader().Number.Uint64() // "LightSync"
-	switch d.mode {
-	case FullSync:
-		current = d.blockchain.CurrentBlock().NumberU64()
-	case FastSync:
-		current = d.blockchain.CurrentFastBlock().NumberU64()
-	}
-	return
-}
-
 // Progress retrieves the synchronisation boundaries, specifically the origin
 // block where synchronisation started at (may have failed/suspended); the block
 // or header sync is currently at; and the latest known block which the sync targets.
@@ -298,7 +287,16 @@ func (d *Downloader) Progress() (uint64, uint64, uint64, uint64, uint64) {
 	d.syncStatsLock.RLock()
 	defer d.syncStatsLock.RUnlock()
 
-	return d.syncStatsChainOrigin, d.currentLocalChainHeight(), d.syncStatsChainHeight, d.syncStatsState.processed, d.syncStatsState.processed + d.syncStatsState.pending
+	current := uint64(0)
+	switch d.mode {
+	case FullSync:
+		current = d.blockchain.CurrentBlock().NumberU64()
+	case FastSync:
+		current = d.blockchain.CurrentFastBlock().NumberU64()
+	case LightSync:
+		current = d.blockchain.CurrentHeader().Number.Uint64()
+	}
+	return d.syncStatsChainOrigin, current, d.syncStatsChainHeight, d.syncStatsState.processed, d.syncStatsState.processed + d.syncStatsState.pending
 }
 
 func (d *Downloader) Qos() (rtt time.Duration, ttl time.Duration, conf float64) {
@@ -693,8 +691,13 @@ func (d *Downloader) fetchHeight(p *peer) (*types.Header, error) {
 func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 	glog.V(logger.Debug).Infof("%v: looking for common ancestor (remote height %d)", p, height)
 	// Figure out the valid ancestor range to prevent rewrite attacks
-	floor, ceil := int64(-1), d.currentLocalChainHeight()
+	floor, ceil := int64(-1), d.lightchain.CurrentHeader().Number.Uint64()
 
+	if d.mode == FullSync {
+		ceil = d.blockchain.CurrentBlock().NumberU64()
+	} else if d.mode == FastSync {
+		ceil = d.blockchain.CurrentFastBlock().NumberU64()
+	}
 	if ceil >= uint64(MaxForkAncestry) {
 		floor = int64(ceil - uint64(MaxForkAncestry))
 	}
