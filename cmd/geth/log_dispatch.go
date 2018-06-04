@@ -82,7 +82,7 @@ func mustGetDisplaySystemFromName(s string) displayEventHandlers {
 		return greenDisplaySystem
 	case "dash":
 		return dashDisplaySystem
-	case "git":
+	case "gitlike":
 		return gitDisplaySystem
 	default:
 		glog.Fatalln("%v: --%v", ErrInvalidFlag, DisplayFormatFlag.Name)
