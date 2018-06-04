@@ -48,7 +48,7 @@ build_script:
 before_deploy:
   # Set up GCP upload.
   - ps: >-
-      If (($env:APPVEYOR_REPO_NAME -ne 'ethereumproject/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -ne 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
+      If (($env:APPVEYOR_REPO_NAME -eq 'ethereumproject/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
         nuget install secure-file -ExcludeVersion
         secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret %GCP_PASSWD% -out .gcloud.json
       }
