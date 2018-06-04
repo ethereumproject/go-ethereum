@@ -1357,7 +1357,7 @@ func testBlockHeaderAttackerDropping(t *testing.T, protocol int) {
 		drop   bool
 	}{
 		{nil, false},                        // Sync succeeded, all is well
-		{ErrBusy, false},                    // Sync is already in progress, no problem
+		{errBusy, false},                    // Sync is already in progress, no problem
 		{errUnknownPeer, false},             // Peer is unknown, was already dropped, don't double drop
 		{errBadPeer, true},                  // Peer was deemed bad for some reason, drop it
 		{errStallingPeer, true},             // Peer was detected to be stalling, drop it

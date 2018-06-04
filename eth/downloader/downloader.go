@@ -44,7 +44,6 @@ var (
 	MaxBlockFetch   = 128 // Amount of blocks to be fetched per retrieval request
 	MaxHeaderFetch  = 192 // Amount of block headers to be fetched per retrieval request
 	MaxSkeletonSize = 128 // Number of header fetches to need for a skeleton assembly
-	MaxBodyFetch    = 128 // Amount of block bodies to be fetched per retrieval request
 	MaxReceiptFetch = 256 // Amount of transaction receipts to allow fetching per request
 	MaxStateFetch   = 384 // Amount of node state values to allow fetching per request
 
@@ -71,7 +70,7 @@ var (
 )
 
 var (
-	ErrBusy                    = errors.New("busy")
+	errBusy                    = errors.New("busy")
 	errUnknownPeer             = errors.New("peer is unknown or unhealthy")
 	errBadPeer                 = errors.New("action from bad peer ignored")
 	errStallingPeer            = errors.New("peer is stalling")
@@ -273,6 +272,17 @@ func New(mode SyncMode, stateDb ethdb.Database, mux *event.TypeMux, chain BlockC
 	return dl
 }
 
+func (d *Downloader) currentLocalChainHeight() (current uint64) {
+	current = d.lightchain.CurrentHeader().Number.Uint64() // "LightSync"
+	switch d.mode {
+	case FullSync:
+		current = d.blockchain.CurrentBlock().NumberU64()
+	case FastSync:
+		current = d.blockchain.CurrentFastBlock().NumberU64()
+	}
+	return
+}
+
 // Progress retrieves the synchronisation boundaries, specifically the origin
 // block where synchronisation started at (may have failed/suspended); the block
 // or header sync is currently at; and the latest known block which the sync targets.
@@ -285,16 +295,7 @@ func (d *Downloader) Progress() (uint64, uint64, uint64, uint64, uint64) {
 	d.syncStatsLock.RLock()
 	defer d.syncStatsLock.RUnlock()
 
-	current := uint64(0)
-	switch d.mode {
-	case FullSync:
-		current = d.blockchain.CurrentBlock().NumberU64()
-	case FastSync:
-		current = d.blockchain.CurrentFastBlock().NumberU64()
-	case LightSync:
-		current = d.blockchain.CurrentHeader().Number.Uint64()
-	}
-	return d.syncStatsChainOrigin, current, d.syncStatsChainHeight, d.syncStatsState.processed, d.syncStatsState.processed + d.syncStatsState.pending
+	return d.syncStatsChainOrigin, d.currentLocalChainHeight(), d.syncStatsChainHeight, d.syncStatsState.processed, d.syncStatsState.processed + d.syncStatsState.pending
 }
 
 func (d *Downloader) Qos() (rtt time.Duration, ttl time.Duration, conf float64) {
@@ -304,7 +305,6 @@ func (d *Downloader) Qos() (rtt time.Duration, ttl time.Duration, conf float64) 
 	return
 }
 
-// Experimental getter functions for new logging.
 func (d *Downloader) GetMode() SyncMode {
 	return d.mode
 }
@@ -392,7 +392,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 	switch err {
 	case nil:
 		glog.V(logger.Core).Infof("Peer %s: sync complete", id)
-	case ErrBusy:
+	case errBusy:
 		glog.V(logger.Debug).Warnln("sync busy")
 	case errTimeout, errBadPeer, errStallingPeer,
 		errEmptyHeaderSet, errPeersUnavailable, errTooOld,
@@ -416,7 +416,7 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	}
 	// Make sure only one goroutine is ever allowed past this point at once
 	if !atomic.CompareAndSwapInt32(&d.synchronising, 0, 1) {
-		return ErrBusy
+		return errBusy
 	}
 	defer atomic.StoreInt32(&d.synchronising, 0)
 
@@ -462,7 +462,7 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 	if p == nil {
 		return errUnknownPeer
 	}
-	return d.syncWithPeer(p, hash, td) // 2
+	return d.syncWithPeer(p, hash, td)
 }
 
 // syncWithPeer starts a block synchronization based on the hash chain from the
@@ -477,10 +477,6 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 			d.mux.Post(DoneEvent{p, hash, td})
 		}
 	}()
-	if p.version < 62 {
-		glog.V(logger.Debug).Warnf("download: peer %q protocol %d too old", p.id, p.version)
-		return errTooOld
-	}
 
 	var pivot uint64
 
@@ -514,6 +510,11 @@ func (d *Downloader) syncWithPeer(p *peer, hash common.Hash, td *big.Int) (err e
 			).Send(mlogDownloader)
 		}
 	}(time.Now())
+
+	if p.version < 62 {
+		glog.V(logger.Debug).Warnf("download: peer %q protocol %d too old", p.id, p.version)
+		return errTooOld
+	}
 
 	// Look up the sync boundaries: the common ancestor and the target block
 	latest, err := d.fetchHeight(p)
@@ -689,13 +690,8 @@ func (d *Downloader) fetchHeight(p *peer) (*types.Header, error) {
 func (d *Downloader) findAncestor(p *peer, height uint64) (uint64, error) {
 	glog.V(logger.Debug).Infof("%v: looking for common ancestor (remote height %d)", p, height)
 	// Figure out the valid ancestor range to prevent rewrite attacks
-	floor, ceil := int64(-1), d.lightchain.CurrentHeader().Number.Uint64()
+	floor, ceil := int64(-1), d.currentLocalChainHeight()
 
-	if d.mode == FullSync {
-		ceil = d.blockchain.CurrentBlock().NumberU64()
-	} else if d.mode == FastSync {
-		ceil = d.blockchain.CurrentFastBlock().NumberU64()
-	}
 	if ceil >= uint64(MaxForkAncestry) {
 		floor = int64(ceil - uint64(MaxForkAncestry))
 	}
