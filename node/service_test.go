@@ -18,7 +18,6 @@ package node
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"testing"
 
@@ -28,11 +27,11 @@ import (
 // Tests that databases are correctly created persistent or ephemeral based on
 // the configured service context.
 func TestContextDatabases(t *testing.T) {
-	// this is a placeholder to avoid diving in to dropping afero in to more packages.
+	// Using OsFS is a placeholder to sidestep having to drop afero in to more packages at this point.
 	// TODO: move to MemMapFS
 	Afs = afero.NewOsFs()
 	// Create a temporary folder and ensure no database is contained within
-	dir, err := ioutil.TempDir("", "")
+	dir, err := afero.TempDir(Afs, "", "")
 	if err != nil {
 		t.Fatalf("failed to create temporary data directory: %v", err)
 	}

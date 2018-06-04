@@ -369,7 +369,7 @@ func accountImport(ctx *cli.Context) error {
 	}
 	f, err := os.Open(keyfile)
 	if err != nil {
-		return err
+		log.Fatalf("could not open key file: %v", err)
 	}
 	key, err := crypto.LoadECDSA(f)
 	if err := f.Close(); err != nil {

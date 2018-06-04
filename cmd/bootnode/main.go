@@ -88,12 +88,11 @@ func main() {
 		log.Fatal("Options -nodekey and -nodekeyhex are mutually exclusive")
 	case *nodeKeyFile != "":
 		f, err := os.Open(*nodeKeyFile)
+		if err != nil {
+			log.Fatalf("error opening node key file: %v", err)
+		}
 		nodeKey, err = crypto.LoadECDSA(f)
-		defer func() {
-			if err := f.Close(); err != nil {
-				log.Fatalf("could not close node key file: %v", err)
-			}
-		}()
+		f.Close() // don't handle this error, it is low priority compared to ECDSA loading, and the program will return anyways
 		if err != nil {
 			log.Fatalf("nodekey: %s", err)
 		}

@@ -20,7 +20,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -36,7 +35,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-var tempDir = os.TempDir()
 var Afs = afero.NewOsFs()
 
 var (
@@ -159,7 +157,12 @@ func (c *Config) IPCEndpoint() string {
 	// Resolve names into the data directory full paths otherwise
 	if filepath.Base(c.IPCPath) == c.IPCPath {
 		if c.DataDir == "" {
-			err := Afs.Mkdir(tempDir, os.ModeTemporary)
+			// Use Afs.MkdirAll instead of afero.TempDir because with the latter,
+			// afero creates temporary™ sub dir under the normal temp dir. Not sure if bug or expected, but
+			// just using plain os temp dir is ok.
+			// Anyways, all afero ~is doing~ do should do is just mkdir -p the os-specific tmp dir path anyway
+			tempDir := os.TempDir()
+			err := Afs.MkdirAll(tempDir, os.ModeTemporary)
 			if err != nil && !os.IsExist(err) {
 				glog.Fatal(err)
 			}
@@ -213,31 +216,39 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	// Fall back to persistent key from the data directory
 	keyfile := filepath.Join(c.DataDir, datadirPrivateKey)
 	f, err := Afs.Open(keyfile)
+
+	// file doesn't exist, create one
 	if err != nil && os.IsNotExist(err) {
-		// no key file, continuing to create one
-	} else if err != nil {
-		glog.Fatalf("Failed to open key file: %v", err)
-	} else {
-		defer f.Close()
-		if key, err := crypto.LoadECDSA(f); err == nil {
-			return key
+		// No persistent key found, generate and store a new one
+		key, err := crypto.GenerateKey()
+		if err != nil {
+			glog.Fatalf("Failed to generate node key: %v", err)
 		}
+
+		f, err = Afs.Create(keyfile)
+		if err != nil {
+			glog.Fatalf("failed to open node key file: %v", err)
+		}
+		defer f.Close()
+		if _, err := crypto.WriteECDSAKey(f, key); err != nil {
+			glog.V(logger.Error).Infof("Failed to persist node key: %v", err)
+		}
+		return key
 	}
 
-	// No persistent key found, generate and store a new one
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		glog.Fatalf("Failed to generate node key: %v", err)
+	if err != nil && !os.IsNotExist(err) {
+		glog.Fatalf("could not load key file: %v", err)
+		return nil
 	}
-	f, err = Afs.Create(keyfile)
-	if err != nil {
-		glog.Fatalf("failed to open node key file: %v", err)
+
+	// file open error was nil, attempt to load key, returning any error
+	if key, err := crypto.LoadECDSA(f); err == nil {
+		f.Close()
+		return key
 	}
-	defer f.Close()
-	if _, err := crypto.WriteECDSAKey(f, key); err != nil {
-		glog.V(logger.Error).Infof("Failed to persist node key: %v", err)
-	}
-	return key
+
+	glog.Fatalf("could not load key file: %v", err)
+	return nil
 }
 
 // StaticNodes returns a list of node enode URLs configured as static nodes.
@@ -262,7 +273,7 @@ func (c *Config) parsePersistentNodes(file string) []*discover.Node {
 		return nil
 	}
 	// Load the nodes from the config file
-	blob, err := ioutil.ReadFile(path)
+	blob, err := afero.ReadFile(Afs, path)
 	if err != nil {
 		glog.V(logger.Error).Infof("Failed to access nodes: %v", err)
 		return nil

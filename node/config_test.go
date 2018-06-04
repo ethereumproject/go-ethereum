@@ -19,6 +19,7 @@ package node
 import (
 	"bytes"
 	"github.com/ethereumproject/go-ethereum/crypto"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -34,11 +35,11 @@ func init() {
 // ones or automatically generated temporary ones.
 func TestDatadirCreation(t *testing.T) {
 	// Create a temporary data dir and check that it can be used by a node
-	dir, err := afero.TempDir(Afs, tempDir, "")
+	dir := filepath.Join("path", "to", "datadir")
+	err := Afs.MkdirAll(dir, os.ModePerm) // just in mem... heh
 	if err != nil {
 		t.Fatalf("failed to create manual data dir: %v", err)
 	}
-	defer Afs.RemoveAll(dir)
 
 	if _, err := New(&Config{DataDir: dir}); err != nil {
 		t.Fatalf("failed to create stack with existing datadir: %v", err)
@@ -57,7 +58,7 @@ func TestDatadirCreation(t *testing.T) {
 	defer func() {
 		Afs = afero.NewMemMapFs()
 	}()
-	file, err := afero.TempFile(Afs, tempDir, "")
+	file, err := afero.TempFile(Afs, "", "")
 	if err != nil {
 		t.Fatalf("failed to create temporary file: %v", err)
 	}
@@ -73,8 +74,6 @@ func TestDatadirCreation(t *testing.T) {
 // platforms.
 func TestIPCPathResolution(t *testing.T) {
 
-	endpoint := filepath.Join(tempDir, "geth.ipc")
-
 	var tests = []struct {
 		DataDir  string
 		IPCPath  string
@@ -83,7 +82,7 @@ func TestIPCPathResolution(t *testing.T) {
 	}{
 		{"", "", false, ""},
 		{"data", "", false, ""},
-		{"", "geth.ipc", false, endpoint},
+		{"", "geth.ipc", false, filepath.Join(os.TempDir(), "geth.ipc")}, // test 2
 		{"data", "geth.ipc", false, "data/geth.ipc"},
 		{"data", "./geth.ipc", false, "./geth.ipc"},
 		{"data", "/geth.ipc", false, "/geth.ipc"},
@@ -96,8 +95,8 @@ func TestIPCPathResolution(t *testing.T) {
 	for i, test := range tests {
 		// Only run when platform/test match
 		if (runtime.GOOS == "windows") == test.Windows {
-			if endpoint := (&Config{DataDir: test.DataDir, IPCPath: test.IPCPath}).IPCEndpoint(); endpoint != test.Endpoint {
-				t.Errorf("test %d: IPC endpoint mismatch: have %s, want %s", i, endpoint, test.Endpoint)
+			if gotEndPoint := (&Config{DataDir: test.DataDir, IPCPath: test.IPCPath}).IPCEndpoint(); gotEndPoint != test.Endpoint {
+				t.Errorf("test %d: IPC endpoint mismatch: got: %s, want: %s", i, gotEndPoint, test.Endpoint)
 			}
 		}
 	}
@@ -106,14 +105,7 @@ func TestIPCPathResolution(t *testing.T) {
 // Tests that node keys can be correctly created, persisted, loaded and/or made
 // ephemeral.
 func TestNodeKeyPersistency(t *testing.T) {
-	// Create a temporary folder and make sure no key is present
-	// dir, err := afero.TempDir(Afs, "", "")
-	// if err != nil {
-	// 	t.Fatalf("failed to create temporary data directory: %v", err)
-	// }
-	// defer Afs.RemoveAll(dir)
-
-	dir := tempDir
+	dir := os.TempDir()
 
 	if _, err := Afs.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
 		t.Fatalf("non-created node key already exists")
