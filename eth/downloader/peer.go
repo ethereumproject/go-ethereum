@@ -267,7 +267,10 @@ func (p *peer) setIdle(started time.Time, delivered int, throughput *float64, id
 	*throughput = (1-measurementImpact)*(*throughput) + measurementImpact*measured
 	p.rtt = time.Duration((1-measurementImpact)*float64(p.rtt) + measurementImpact*float64(elapsed))
 
-	glog.V(logger.Debug).Infoln("Peer throughput measurements updated:", p.StringWithThroughput())
+	glog.V(logger.Debug).Infoln("Peer throughput measurements updated:",
+		"hps", p.headerThroughput, "bps", p.blockThroughput,
+		"rps", p.receiptThroughput, "sps", p.stateThroughput,
+		"miss", len(p.lacking), "rtt", p.rtt)
 }
 
 // HeaderCapacity retrieves the peers header download allowance based on its
