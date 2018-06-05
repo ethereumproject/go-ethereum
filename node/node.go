@@ -19,6 +19,7 @@ package node
 
 import (
 	"errors"
+	"github.com/spf13/afero"
 	"net"
 	"path/filepath"
 	"reflect"
@@ -82,9 +83,13 @@ type Node struct {
 
 // New creates a new P2P node, ready for protocol registration.
 func New(conf *Config) (*Node, error) {
+	// initialize default, can be overridden by tests
+	if !conf.fsInMem {
+		conf.fs = afero.NewOsFs()
+	}
 	// Ensure the data directory exists, failing if it cannot be created
 	if conf.DataDir != "" {
-		if err := Afs.MkdirAll(conf.DataDir, 0700); err != nil {
+		if err := conf.fs.MkdirAll(conf.DataDir, 0700); err != nil {
 			return nil, err
 		}
 	}

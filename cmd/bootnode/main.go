@@ -43,6 +43,8 @@ var (
 	versionFlag = flag.Bool("version", false, "Prints the revision identifier and exit immediatily.")
 )
 
+// onlyDoGenKey exits 0 if successful.
+// It does the -genkey flag feature and that is all.
 func onlyDoGenKey() {
 	key, err := crypto.GenerateKey()
 	if err != nil {
@@ -92,7 +94,9 @@ func main() {
 			log.Fatalf("error opening node key file: %v", err)
 		}
 		nodeKey, err = crypto.LoadECDSA(f)
-		f.Close() // don't handle this error, it is low priority compared to ECDSA loading, and the program will return anyways
+		if err := f.Close(); err != nil {
+			log.Fatalf("error closing key file: %v", err)
+		}
 		if err != nil {
 			log.Fatalf("nodekey: %s", err)
 		}

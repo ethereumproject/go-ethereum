@@ -372,11 +372,12 @@ func accountImport(ctx *cli.Context) error {
 		log.Fatalf("could not open key file: %v", err)
 	}
 	key, err := crypto.LoadECDSA(f)
-	if err := f.Close(); err != nil {
-		log.Fatalf("could not close key file: %v", err)
-	}
 	if err != nil {
 		log.Fatalf("unable to decode keyfile '%s': %v", keyfile, err)
+	}
+	err = f.Close()
+	if err != nil {
+		log.Fatalf("could not close key file: %v", err)
 	}
 	accman := MakeAccountManager(ctx)
 	passphrase := getPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, MakePasswordList(ctx))

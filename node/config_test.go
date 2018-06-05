@@ -27,45 +27,43 @@ import (
 	"github.com/spf13/afero"
 )
 
-func init() {
-	Afs = afero.NewMemMapFs()
-}
-
 // Tests that datadirs can be successfully created, be them manually configured
 // ones or automatically generated temporary ones.
 func TestDatadirCreation(t *testing.T) {
 	// Create a temporary data dir and check that it can be used by a node
+	memFS := afero.NewMemMapFs()
+
 	dir := filepath.Join("path", "to", "datadir")
-	err := Afs.MkdirAll(dir, os.ModePerm) // just in mem... heh
+	err := memFS.MkdirAll(dir, os.ModePerm) // just in mem... heh
 	if err != nil {
 		t.Fatalf("failed to create manual data dir: %v", err)
 	}
 
-	if _, err := New(&Config{DataDir: dir}); err != nil {
+	if _, err := New(&Config{DataDir: dir, fsInMem: true, fs: memFS}); err != nil {
 		t.Fatalf("failed to create stack with existing datadir: %v", err)
 	}
 	// Generate a long non-existing datadir path and check that it gets created by a node
 	dir = filepath.Join(dir, "a", "b", "c", "d", "e", "f")
-	if _, err := New(&Config{DataDir: dir}); err != nil {
+	if _, err := New(&Config{DataDir: dir, fsInMem: true, fs: memFS}); err != nil {
 		t.Fatalf("failed to create stack with creatable datadir: %v", err)
 	}
-	if _, err := Afs.Stat(dir); err != nil {
+	if _, err := memFS.Stat(dir); err != nil {
 		t.Fatalf("freshly created datadir not accessible: %v", err)
 	}
 	// Verify that an impossible datadir fails creation
 	// Impossible here means that it would attempt to be created on top of an already existing file
-	Afs = afero.NewOsFs() // work around https://github.com/spf13/afero/issues/164
+	memFS = afero.NewOsFs() // work around https://github.com/spf13/afero/issues/164
 	defer func() {
-		Afs = afero.NewMemMapFs()
+		memFS = afero.NewMemMapFs()
 	}()
-	file, err := afero.TempFile(Afs, "", "")
+	file, err := afero.TempFile(memFS, "", "")
 	if err != nil {
 		t.Fatalf("failed to create temporary file: %v", err)
 	}
-	defer Afs.Remove(file.Name())
+	defer memFS.Remove(file.Name())
 
 	dir = filepath.Join(file.Name(), "invalid/path")
-	if n, err := New(&Config{DataDir: dir}); err == nil {
+	if n, err := New(&Config{DataDir: dir, fsInMem: true, fs: memFS}); err == nil {
 		t.Fatalf("protocol stack created with an invalid datadir: %s / %s\nabove file=%s", dir, n.DataDir(), file.Name())
 	}
 }
@@ -95,7 +93,12 @@ func TestIPCPathResolution(t *testing.T) {
 	for i, test := range tests {
 		// Only run when platform/test match
 		if (runtime.GOOS == "windows") == test.Windows {
-			if gotEndPoint := (&Config{DataDir: test.DataDir, IPCPath: test.IPCPath}).IPCEndpoint(); gotEndPoint != test.Endpoint {
+			if gotEndPoint := (&Config{
+				DataDir: test.DataDir,
+				IPCPath: test.IPCPath,
+				fsInMem: true,
+				fs:      afero.NewMemMapFs(),
+			}).IPCEndpoint(); gotEndPoint != test.Endpoint {
 				t.Errorf("test %d: IPC endpoint mismatch: got: %s, want: %s", i, gotEndPoint, test.Endpoint)
 			}
 		}
@@ -106,8 +109,9 @@ func TestIPCPathResolution(t *testing.T) {
 // ephemeral.
 func TestNodeKeyPersistency(t *testing.T) {
 	dir := os.TempDir()
+	memFS := afero.NewMemMapFs()
 
-	if _, err := Afs.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
+	if _, err := memFS.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
 		t.Fatalf("non-created node key already exists")
 	}
 	// Configure a node with a preset key and ensure it's not persisted
@@ -115,24 +119,24 @@ func TestNodeKeyPersistency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to generate one-shot node key: %v", err)
 	}
-	if _, err := New(&Config{DataDir: dir, PrivateKey: key}); err != nil {
+	if _, err := New(&Config{DataDir: dir, PrivateKey: key, fsInMem: true, fs: memFS}); err != nil {
 		t.Fatalf("failed to create empty stack: %v", err)
 	}
-	if _, err := Afs.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
+	if _, err := memFS.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
 		t.Fatalf("one-shot node key persisted to data directory")
 	}
 	// Configure a node with no preset key and ensure it is persisted this time
-	if _, err := New(&Config{DataDir: dir}); err != nil {
+	if _, err := New(&Config{DataDir: dir, fsInMem: true, fs: memFS}); err != nil {
 		t.Fatalf("failed to create newly keyed stack: %v", err)
 	}
-	if _, err := Afs.Stat(filepath.Join(dir, datadirPrivateKey)); err != nil {
+	if _, err := memFS.Stat(filepath.Join(dir, datadirPrivateKey)); err != nil {
 		t.Fatalf("node key not persisted to data directory: %v", err)
 	}
-	blob1, err := afero.ReadFile(Afs, filepath.Join(dir, datadirPrivateKey))
+	blob1, err := afero.ReadFile(memFS, filepath.Join(dir, datadirPrivateKey))
 	if err != nil {
 		t.Fatalf("failed to read freshly persisted node key: %v", err)
 	}
-	f, err := Afs.Open(filepath.Join(dir, datadirPrivateKey))
+	f, err := memFS.Open(filepath.Join(dir, datadirPrivateKey))
 	if err != nil {
 		t.Fatalf("failed to open private key file: %v", err)
 	}
@@ -144,10 +148,10 @@ func TestNodeKeyPersistency(t *testing.T) {
 		t.Fatalf("failed to close node key: %v", err)
 	}
 	// Configure a new node and ensure the previously persisted key is loaded
-	if _, err := New(&Config{DataDir: dir}); err != nil {
+	if _, err := New(&Config{DataDir: dir, fsInMem: true, fs: memFS}); err != nil {
 		t.Fatalf("failed to create previously keyed stack: %v", err)
 	}
-	blob2, err := afero.ReadFile(Afs, filepath.Join(dir, datadirPrivateKey))
+	blob2, err := afero.ReadFile(memFS, filepath.Join(dir, datadirPrivateKey))
 	if err != nil {
 		t.Fatalf("failed to read previously persisted node key: %v", err)
 	}
@@ -155,10 +159,10 @@ func TestNodeKeyPersistency(t *testing.T) {
 		t.Fatalf("persisted node key mismatch: have %x, want %x", blob2, blob1)
 	}
 	// Configure ephemeral node and ensure no key is dumped locally
-	if _, err := New(&Config{DataDir: ""}); err != nil {
+	if _, err := New(&Config{DataDir: "", fsInMem: true, fs: memFS}); err != nil {
 		t.Fatalf("failed to create ephemeral stack: %v", err)
 	}
-	if _, err := Afs.Stat(filepath.Join(".", datadirPrivateKey)); err == nil {
+	if _, err := memFS.Stat(filepath.Join(".", datadirPrivateKey)); err == nil {
 		t.Fatalf("ephemeral node key persisted to disk")
 	}
 }

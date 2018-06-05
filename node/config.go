@@ -35,8 +35,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-var Afs = afero.NewOsFs()
-
 var (
 	datadirPrivateKey   = "nodekey"            // Path within the datadir to the node's private key
 	datadirStaticNodes  = "static-nodes.json"  // Path within the datadir to the static node list
@@ -60,6 +58,20 @@ type Config struct {
 	// pipe path on Windows), whereas if it's a resolvable path name (absolute or
 	// relative), then that specific path is enforced. An empty path disables IPC.
 	IPCPath string
+
+	// fs is the abstracted file system provided by the afero package.
+	// In normal use, it is a thin wrapper around the standard os FS package,
+	// and can be swapped for an abstracted in-mem map during tests, which helps
+	// ensure test reliability by removing sometimes-laggy OS FS R/Ws.
+	// The var is currently private because it is not set to inMem outside of this package tests.
+	fs afero.Fs
+
+	// fsInMem is used, when zero-value (false), to set a default afero.OsFs during node.New()
+	// Since afero requires that a mem map var be shared at some points, we can't just
+	// set a new mem map at each node.New() call, thus the one-sided check for false,
+	// initializing a new afero.OsFs during node.New().
+	// During tests this config value should be set to true AND be accompanied by an inMem afero.FS var.
+	fsInMem bool
 
 	// This field should be a valid secp256k1 private key that will be used for both
 	// remote peer identification as well as network traffic encryption. If no key
@@ -139,6 +151,11 @@ type Config struct {
 	WSModules []string
 }
 
+func (c *Config) setInMem(fs afero.Fs) {
+	c.fsInMem = true
+	c.fs = fs
+}
+
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into
 // account the set data folders as well as the designated platform we're currently
 // running on.
@@ -157,12 +174,12 @@ func (c *Config) IPCEndpoint() string {
 	// Resolve names into the data directory full paths otherwise
 	if filepath.Base(c.IPCPath) == c.IPCPath {
 		if c.DataDir == "" {
-			// Use Afs.MkdirAll instead of afero.TempDir because with the latter,
+			// Use afs.MkdirAll instead of afero.TempDir because with the latter,
 			// afero creates temporary™ sub dir under the normal temp dir. Not sure if bug or expected, but
 			// just using plain os temp dir is ok.
 			// Anyways, all afero ~is doing~ do should do is just mkdir -p the os-specific tmp dir path anyway
 			tempDir := os.TempDir()
-			err := Afs.MkdirAll(tempDir, os.ModeTemporary)
+			err := c.fs.MkdirAll(tempDir, os.ModeTemporary)
 			if err != nil && !os.IsExist(err) {
 				glog.Fatal(err)
 			}
@@ -215,7 +232,7 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	}
 	// Fall back to persistent key from the data directory
 	keyfile := filepath.Join(c.DataDir, datadirPrivateKey)
-	f, err := Afs.Open(keyfile)
+	f, err := c.fs.Open(keyfile)
 
 	// file doesn't exist, create one
 	if err != nil && os.IsNotExist(err) {
@@ -225,7 +242,7 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 			glog.Fatalf("Failed to generate node key: %v", err)
 		}
 
-		f, err = Afs.Create(keyfile)
+		f, err = c.fs.Create(keyfile)
 		if err != nil {
 			glog.Fatalf("failed to open node key file: %v", err)
 		}
@@ -269,11 +286,11 @@ func (c *Config) parsePersistentNodes(file string) []*discover.Node {
 		return nil
 	}
 	path := filepath.Join(c.DataDir, file)
-	if _, err := Afs.Stat(path); err != nil {
+	if _, err := c.fs.Stat(path); err != nil {
 		return nil
 	}
 	// Load the nodes from the config file
-	blob, err := afero.ReadFile(Afs, path)
+	blob, err := afero.ReadFile(c.fs, path)
 	if err != nil {
 		glog.V(logger.Error).Infof("Failed to access nodes: %v", err)
 		return nil

@@ -281,9 +281,13 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 		if err != nil {
 			log.Fatalf("could not open node key file: %v", err)
 		}
-		defer f.Close() // ignore error, will fatal anyways and closing file err is low priority
-		if key, err = crypto.LoadECDSA(f); err != nil {
+		key, err = crypto.LoadECDSA(f)
+		if err != nil {
 			log.Fatalf("Option %q: %v", aliasableName(NodeKeyFileFlag.Name, ctx), err)
+		}
+		err = f.Close()
+		if err != nil {
+			log.Fatalf("could not close node key file: %v", err)
 		}
 
 	case hex != "":
