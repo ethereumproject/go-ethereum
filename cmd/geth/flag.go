@@ -277,8 +277,17 @@ func MakeNodeKey(ctx *cli.Context) *ecdsa.PrivateKey {
 		log.Fatalf("Options %q and %q are mutually exclusive", aliasableName(NodeKeyFileFlag.Name, ctx), aliasableName(NodeKeyHexFlag.Name, ctx))
 
 	case file != "":
-		if key, err = crypto.LoadECDSA(file); err != nil {
+		f, err := os.Open(file)
+		if err != nil {
+			log.Fatalf("could not open node key file: %v", err)
+		}
+		key, err = crypto.LoadECDSA(f)
+		if err != nil {
 			log.Fatalf("Option %q: %v", aliasableName(NodeKeyFileFlag.Name, ctx), err)
+		}
+		err = f.Close()
+		if err != nil {
+			log.Fatalf("could not close node key file: %v", err)
 		}
 
 	case hex != "":
