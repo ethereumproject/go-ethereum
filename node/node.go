@@ -84,8 +84,8 @@ type Node struct {
 // New creates a new P2P node, ready for protocol registration.
 func New(conf *Config) (*Node, error) {
 	// initialize default, can be overridden by tests
-	if !conf.fsInMem {
-		conf.fs = afero.NewOsFs()
+	if conf.fs == nil {
+		conf.fs = &fs{afero.NewOsFs()}
 	}
 	// Ensure the data directory exists, failing if it cannot be created
 	if conf.DataDir != "" {

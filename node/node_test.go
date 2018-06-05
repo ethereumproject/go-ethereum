@@ -42,8 +42,7 @@ func testNodeConfig() *Config {
 	return &Config{
 		PrivateKey: testNodeKey,
 		Name:       "test node",
-		fsInMem:    true,
-		fs:         afero.NewMemMapFs(),
+		fs:         &fs{afero.NewMemMapFs()},
 	}
 }
 
@@ -92,7 +91,7 @@ func TestNodeUsedDataDir(t *testing.T) {
 	defer afs.RemoveAll(dir)
 
 	// Create a new node based on the data directory
-	original, err := New(&Config{DataDir: dir, fsInMem: true, fs: afs})
+	original, err := New(&Config{DataDir: dir, fs: &fs{afs}})
 	if err != nil {
 		t.Fatalf("failed to create original protocol stack: %v", err)
 	}
@@ -102,7 +101,7 @@ func TestNodeUsedDataDir(t *testing.T) {
 	defer original.Stop()
 
 	// Create a second node based on the same data directory and ensure failure
-	duplicate, err := New(&Config{DataDir: dir, fsInMem: true, fs: afs})
+	duplicate, err := New(&Config{DataDir: dir, fs: &fs{afs}})
 	if err != nil {
 		t.Fatalf("failed to create duplicate protocol stack: %v", err)
 	}

@@ -42,6 +42,12 @@ var (
 	datadirNodeDatabase = "nodes"              // Path within the datadir to store the node infos
 )
 
+// fs wraps afero.FS, used as a type of it's own so that we can take it's address
+// and set a zero-value default.
+type fs struct {
+	afero.Fs
+}
+
 // Config represents a small collection of configuration values to fine tune the
 // P2P network layer of a protocol stack. These values can be further extended by
 // all registered services.
@@ -59,19 +65,12 @@ type Config struct {
 	// relative), then that specific path is enforced. An empty path disables IPC.
 	IPCPath string
 
-	// fs is the abstracted file system provided by the afero package.
-	// In normal use, it is a thin wrapper around the standard os FS package,
+	// fs is an abstracted file system.
+	// In normal use, it points to a thin wrapper around the standard os FS package,
 	// and can be swapped for an abstracted in-mem map during tests, which helps
 	// ensure test reliability by removing sometimes-laggy OS FS R/Ws.
 	// The var is currently private because it is not set to inMem outside of this package tests.
-	fs afero.Fs
-
-	// fsInMem is used, when zero-value (false), to set a default afero.OsFs during node.New()
-	// Since afero requires that a mem map var be shared at some points, we can't just
-	// set a new mem map at each node.New() call, thus the one-sided check for false,
-	// initializing a new afero.OsFs during node.New().
-	// During tests this config value should be set to true AND be accompanied by an inMem afero.FS var.
-	fsInMem bool
+	fs *fs
 
 	// This field should be a valid secp256k1 private key that will be used for both
 	// remote peer identification as well as network traffic encryption. If no key
@@ -151,11 +150,6 @@ type Config struct {
 	WSModules []string
 }
 
-func (c *Config) setInMem(fs afero.Fs) {
-	c.fsInMem = true
-	c.fs = fs
-}
-
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into
 // account the set data folders as well as the designated platform we're currently
 // running on.
@@ -163,6 +157,10 @@ func (c *Config) IPCEndpoint() string {
 	// Short circuit if IPC has not been enabled
 	if c.IPCPath == "" {
 		return ""
+	}
+	// just for safety, but should be already initialized
+	if c.fs == nil {
+		c.fs = &fs{afero.NewOsFs()}
 	}
 	// On windows we can only use plain top-level pipes
 	if runtime.GOOS == "windows" {
@@ -221,6 +219,10 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	// Use any specifically configured key
 	if c.PrivateKey != nil {
 		return c.PrivateKey
+	}
+	// just for safety, but should be already initialized
+	if c.fs == nil {
+		c.fs = &fs{afero.NewOsFs()}
 	}
 	// Generate ephemeral key if no datadir is being used
 	if c.DataDir == "" {
@@ -284,6 +286,10 @@ func (c *Config) parsePersistentNodes(file string) []*discover.Node {
 	// Short circuit if no node config is present
 	if c.DataDir == "" {
 		return nil
+	}
+	// just for safety, but should be already initialized
+	if c.fs == nil {
+		c.fs = &fs{afero.NewOsFs()}
 	}
 	path := filepath.Join(c.DataDir, file)
 	if _, err := c.fs.Stat(path); err != nil {
