@@ -50,7 +50,7 @@ before_deploy:
   - ps: >-
       If (($env:APPVEYOR_REPO_NAME -eq 'ethereumproject/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
         nuget install secure-file -ExcludeVersion
-        secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret %GCP_PASSWD% -out .gcloud.json
+        secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret "$env:GCP_PASSWD" -out .gcloud.json
       }
 # Deploy on APPVEYOR_REPO_BRANCH=master or APPVEYOR_REPO_TAG=true
 deploy_script:
