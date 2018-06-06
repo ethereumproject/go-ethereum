@@ -18,52 +18,57 @@ package node
 
 import (
 	"bytes"
-	"io/ioutil"
+	"github.com/ethereumproject/go-ethereum/crypto"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
-	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/spf13/afero"
 )
 
 // Tests that datadirs can be successfully created, be them manually configured
 // ones or automatically generated temporary ones.
 func TestDatadirCreation(t *testing.T) {
 	// Create a temporary data dir and check that it can be used by a node
-	dir, err := ioutil.TempDir("", "")
+	memFS := &fs{afero.NewMemMapFs()}
+
+	dir := filepath.Join("path", "to", "datadir")
+	err := memFS.MkdirAll(dir, os.ModePerm) // just in mem... heh
 	if err != nil {
 		t.Fatalf("failed to create manual data dir: %v", err)
 	}
-	defer os.RemoveAll(dir)
 
-	if _, err := New(&Config{DataDir: dir}); err != nil {
+	if _, err := New(&Config{DataDir: dir, fs: memFS}); err != nil {
 		t.Fatalf("failed to create stack with existing datadir: %v", err)
 	}
 	// Generate a long non-existing datadir path and check that it gets created by a node
 	dir = filepath.Join(dir, "a", "b", "c", "d", "e", "f")
-	if _, err := New(&Config{DataDir: dir}); err != nil {
+	if _, err := New(&Config{DataDir: dir, fs: memFS}); err != nil {
 		t.Fatalf("failed to create stack with creatable datadir: %v", err)
 	}
-	if _, err := os.Stat(dir); err != nil {
+	if _, err := memFS.Stat(dir); err != nil {
 		t.Fatalf("freshly created datadir not accessible: %v", err)
 	}
 	// Verify that an impossible datadir fails creation
-	file, err := ioutil.TempFile("", "")
+	// Impossible here means that it would attempt to be created on top of an already existing file
+	osFS := &fs{afero.NewOsFs()} // work around https://github.com/spf13/afero/issues/164
+	file, err := afero.TempFile(osFS, "", "")
 	if err != nil {
 		t.Fatalf("failed to create temporary file: %v", err)
 	}
-	defer os.Remove(file.Name())
+	defer osFS.Remove(file.Name())
 
 	dir = filepath.Join(file.Name(), "invalid/path")
-	if _, err := New(&Config{DataDir: dir}); err == nil {
-		t.Fatalf("protocol stack created with an invalid datadir")
+	if n, err := New(&Config{DataDir: dir, fs: osFS}); err == nil {
+		t.Fatalf("protocol stack created with an invalid datadir: %s / %s\nabove file=%s", dir, n.DataDir(), file.Name())
 	}
 }
 
 // Tests that IPC paths are correctly resolved to valid endpoints of different
 // platforms.
 func TestIPCPathResolution(t *testing.T) {
+
 	var tests = []struct {
 		DataDir  string
 		IPCPath  string
@@ -72,7 +77,7 @@ func TestIPCPathResolution(t *testing.T) {
 	}{
 		{"", "", false, ""},
 		{"data", "", false, ""},
-		{"", "geth.ipc", false, filepath.Join(os.TempDir(), "geth.ipc")},
+		{"", "geth.ipc", false, filepath.Join(os.TempDir(), "geth.ipc")}, // test 2
 		{"data", "geth.ipc", false, "data/geth.ipc"},
 		{"data", "./geth.ipc", false, "./geth.ipc"},
 		{"data", "/geth.ipc", false, "/geth.ipc"},
@@ -85,8 +90,12 @@ func TestIPCPathResolution(t *testing.T) {
 	for i, test := range tests {
 		// Only run when platform/test match
 		if (runtime.GOOS == "windows") == test.Windows {
-			if endpoint := (&Config{DataDir: test.DataDir, IPCPath: test.IPCPath}).IPCEndpoint(); endpoint != test.Endpoint {
-				t.Errorf("test %d: IPC endpoint mismatch: have %s, want %s", i, endpoint, test.Endpoint)
+			if gotEndPoint := (&Config{
+				DataDir: test.DataDir,
+				IPCPath: test.IPCPath,
+				fs:      &fs{afero.NewMemMapFs()},
+			}).IPCEndpoint(); gotEndPoint != test.Endpoint {
+				t.Errorf("test %d: IPC endpoint mismatch: got: %s, want: %s", i, gotEndPoint, test.Endpoint)
 			}
 		}
 	}
@@ -95,14 +104,10 @@ func TestIPCPathResolution(t *testing.T) {
 // Tests that node keys can be correctly created, persisted, loaded and/or made
 // ephemeral.
 func TestNodeKeyPersistency(t *testing.T) {
-	// Create a temporary folder and make sure no key is present
-	dir, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatalf("failed to create temporary data directory: %v", err)
-	}
-	defer os.RemoveAll(dir)
+	dir := os.TempDir()
+	memFS := &fs{afero.NewMemMapFs()}
 
-	if _, err := os.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
+	if _, err := memFS.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
 		t.Fatalf("non-created node key already exists")
 	}
 	// Configure a node with a preset key and ensure it's not persisted
@@ -110,32 +115,39 @@ func TestNodeKeyPersistency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to generate one-shot node key: %v", err)
 	}
-	if _, err := New(&Config{DataDir: dir, PrivateKey: key}); err != nil {
+	if _, err := New(&Config{DataDir: dir, PrivateKey: key, fs: memFS}); err != nil {
 		t.Fatalf("failed to create empty stack: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
+	if _, err := memFS.Stat(filepath.Join(dir, datadirPrivateKey)); err == nil {
 		t.Fatalf("one-shot node key persisted to data directory")
 	}
 	// Configure a node with no preset key and ensure it is persisted this time
-	if _, err := New(&Config{DataDir: dir}); err != nil {
+	if _, err := New(&Config{DataDir: dir, fs: memFS}); err != nil {
 		t.Fatalf("failed to create newly keyed stack: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, datadirPrivateKey)); err != nil {
+	if _, err := memFS.Stat(filepath.Join(dir, datadirPrivateKey)); err != nil {
 		t.Fatalf("node key not persisted to data directory: %v", err)
 	}
-	key, err = crypto.LoadECDSA(filepath.Join(dir, datadirPrivateKey))
-	if err != nil {
-		t.Fatalf("failed to load freshly persisted node key: %v", err)
-	}
-	blob1, err := ioutil.ReadFile(filepath.Join(dir, datadirPrivateKey))
+	blob1, err := afero.ReadFile(memFS, filepath.Join(dir, datadirPrivateKey))
 	if err != nil {
 		t.Fatalf("failed to read freshly persisted node key: %v", err)
 	}
+	f, err := memFS.Open(filepath.Join(dir, datadirPrivateKey))
+	if err != nil {
+		t.Fatalf("failed to open private key file: %v", err)
+	}
+	key, err = crypto.LoadECDSA(f)
+	if err != nil {
+		t.Fatalf("failed to load freshly persisted node key: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("failed to close node key: %v", err)
+	}
 	// Configure a new node and ensure the previously persisted key is loaded
-	if _, err := New(&Config{DataDir: dir}); err != nil {
+	if _, err := New(&Config{DataDir: dir, fs: memFS}); err != nil {
 		t.Fatalf("failed to create previously keyed stack: %v", err)
 	}
-	blob2, err := ioutil.ReadFile(filepath.Join(dir, datadirPrivateKey))
+	blob2, err := afero.ReadFile(memFS, filepath.Join(dir, datadirPrivateKey))
 	if err != nil {
 		t.Fatalf("failed to read previously persisted node key: %v", err)
 	}
@@ -143,10 +155,10 @@ func TestNodeKeyPersistency(t *testing.T) {
 		t.Fatalf("persisted node key mismatch: have %x, want %x", blob2, blob1)
 	}
 	// Configure ephemeral node and ensure no key is dumped locally
-	if _, err := New(&Config{DataDir: ""}); err != nil {
+	if _, err := New(&Config{DataDir: "", fs: memFS}); err != nil {
 		t.Fatalf("failed to create ephemeral stack: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(".", datadirPrivateKey)); err == nil {
+	if _, err := memFS.Stat(filepath.Join(".", datadirPrivateKey)); err == nil {
 		t.Fatalf("ephemeral node key persisted to disk")
 	}
 }
