@@ -192,14 +192,13 @@ func GetMLogRegistryActive() map[mlogComponent]*Logger {
 // creating new loggers for each.
 // If the string begins with '!', the function will remove the following components from the
 // default list
-func MLogRegisterComponentsFromContext(s string) error {
+func MLogRegisterComponentsFromContext(ss []string) error {
 	// negation
 	var negation bool
-	if strings.HasPrefix(s, "!") {
+	if strings.HasPrefix(ss[0], "!") {
 		negation = true
-		s = strings.TrimPrefix(s, "!")
+		ss[0] = strings.TrimPrefix(ss[0], "!")
 	}
-	ss := strings.Split(s, ",")
 
 	registry := GetMLogRegistryAvailable()
 

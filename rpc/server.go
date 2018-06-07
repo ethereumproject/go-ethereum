@@ -35,10 +35,12 @@ const (
 	stopPendingRequestTimeout = 3 * time.Second // give pending requests stopPendingRequestTimeout the time to finish when the server is stopped
 
 	notificationBufferSize = 10000 // max buffered notifications before codec is closed
+	MetadataApi            = "rpc"
+)
 
-	MetadataApi     = "rpc"
-	DefaultIPCApis  = "admin,debug,eth,miner,net,personal,shh,txpool,web3,geth"
-	DefaultHTTPApis = "eth,net,web3"
+var (
+	DefaultIPCApis  = []string{"admin", "debug", "eth", "miner", "net", "personal", "shh", "txpool", "web3", "geth"}
+	DefaultHTTPApis = []string{"eth", "net", "web3"}
 )
 
 // CodecOption specifies which type of messages this codec supports

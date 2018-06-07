@@ -267,7 +267,7 @@ func makeMLogFileLogger(ctx *cli.Context) (string, error) {
 }
 
 func mustRegisterMLogsFromContext(ctx *cli.Context) {
-	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalString(MLogComponentsFlag.Name)); e != nil {
+	if e := logger.MLogRegisterComponentsFromContext(ctx.GlobalStringSlice(MLogComponentsFlag.Name)); e != nil {
 		// print documentation if user enters unavailable mlog component
 		var components []string
 		for k := range logger.GetMLogRegistryAvailable() {

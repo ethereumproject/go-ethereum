@@ -330,12 +330,11 @@ func MakeNAT(ctx *cli.Context) nat.Interface {
 
 // MakeRPCModules splits input separated by a comma and trims excessive white
 // space from the substrings.
-func MakeRPCModules(input string) []string {
-	result := strings.Split(input, ",")
-	for i, r := range result {
-		result[i] = strings.TrimSpace(r)
+func MakeRPCModules(input []string) []string {
+	for i, r := range input {
+		input[i] = strings.TrimSpace(r)
 	}
-	return result
+	return input
 }
 
 // MakeHTTPRpcHost creates the HTTP RPC listener interface string from the set
@@ -545,11 +544,11 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 		HTTPHost:        MakeHTTPRpcHost(ctx),
 		HTTPPort:        ctx.GlobalInt(aliasableName(RPCPortFlag.Name, ctx)),
 		HTTPCors:        ctx.GlobalString(aliasableName(RPCCORSDomainFlag.Name, ctx)),
-		HTTPModules:     MakeRPCModules(ctx.GlobalString(aliasableName(RPCApiFlag.Name, ctx))),
+		HTTPModules:     MakeRPCModules(ctx.GlobalStringSlice(aliasableName(RPCApiFlag.Name, ctx))),
 		WSHost:          MakeWSRpcHost(ctx),
 		WSPort:          ctx.GlobalInt(aliasableName(WSPortFlag.Name, ctx)),
 		WSOrigins:       ctx.GlobalString(aliasableName(WSAllowedOriginsFlag.Name, ctx)),
-		WSModules:       MakeRPCModules(ctx.GlobalString(aliasableName(WSApiFlag.Name, ctx))),
+		WSModules:       MakeRPCModules(ctx.GlobalStringSlice(aliasableName(WSApiFlag.Name, ctx))),
 	}
 
 	// Configure the Whisper service

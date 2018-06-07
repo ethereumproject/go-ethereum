@@ -298,6 +298,8 @@ func writeDefaultFlagsConfig(w io.Writer, encodingType string) error {
 					cat[strings.Split(t.Name, ",")[0]] = t.Value
 				case cli.IntSliceFlag:
 					cat[strings.Split(t.Name, ",")[0]] = t.Value
+				case cli.StringSliceFlag:
+					cat[strings.Split(t.Name, ",")[0]] = t.Value
 				case DirectoryFlag:
 					cat[strings.Split(t.Name, ",")[0]] = t.Value.String()
 				case cli.GenericFlag:

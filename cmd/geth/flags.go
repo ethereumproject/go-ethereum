@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/ethereumproject/go-ethereum/logger"
 	"math/big"
 	"runtime"
 
@@ -235,11 +236,18 @@ var (
 		Usage: "Directory in which to write machine log files",
 		Value: DirectoryString{filepath.Join(common.DefaultDataDir(), "mainnet", "mlogs")},
 	}
-	MLogComponentsFlag = cli.StringFlag{
+	MLogComponentsFlag = cli.StringSliceFlag{
 		Name: "mlog-components",
 		Usage: `Set machine-readable logging components, comma-separated. 
-	Use a '!'-prefix to disabled listed components instead.`,
-		Value: "blockchain,txpool,downloader,fetcher,discover,server,state,headerchain,miner,client,wire",
+	Use an initial '!' prefix to disabled listed components instead.`,
+		// Value: "blockchain,txpool,downloader,fetcher,discover,server,state,headerchain,miner,client,wire",
+		Value: func() *cli.StringSlice {
+			s := &cli.StringSlice{}
+			for k := range logger.GetMLogRegistryAvailable() {
+				s.Set(string(k))
+			}
+			return s
+		}(),
 	}
 	BacktraceAtFlag = cli.GenericFlag{
 		Name:  "backtrace",
@@ -276,19 +284,31 @@ var (
 		Usage: "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
 		Value: "",
 	}
-	RPCApiFlag = cli.StringFlag{
+	RPCApiFlag = cli.StringSliceFlag{
 		Name:  "rpc-api,rpcapi",
 		Usage: "API's offered over the HTTP-RPC interface",
-		Value: rpc.DefaultHTTPApis,
+		Value: func() *cli.StringSlice {
+			s := &cli.StringSlice{}
+			for _, api := range rpc.DefaultHTTPApis {
+				s.Set(api)
+			}
+			return s
+		}(),
 	}
 	IPCDisabledFlag = cli.BoolFlag{
 		Name:  "ipc-disable,ipcdisable",
 		Usage: "Disable the IPC-RPC server",
 	}
-	IPCApiFlag = cli.StringFlag{
+	IPCApiFlag = cli.StringSliceFlag{
 		Name:  "ipc-api,ipcapi",
 		Usage: "API's offered over the IPC-RPC interface",
-		Value: rpc.DefaultIPCApis,
+		Value: func() *cli.StringSlice {
+			s := &cli.StringSlice{}
+			for _, api := range rpc.DefaultIPCApis {
+				s.Set(api)
+			}
+			return s
+		}(),
 	}
 	IPCPathFlag = DirectoryFlag{
 		Name:  "ipc-path,ipcpath",
@@ -309,10 +329,16 @@ var (
 		Usage: "WS-RPC server listening port",
 		Value: common.DefaultWSPort,
 	}
-	WSApiFlag = cli.StringFlag{
+	WSApiFlag = cli.StringSliceFlag{
 		Name:  "ws-api,wsapi",
 		Usage: "API's offered over the WS-RPC interface",
-		Value: rpc.DefaultHTTPApis,
+		Value: func() *cli.StringSlice {
+			s := &cli.StringSlice{}
+			for _, api := range rpc.DefaultHTTPApis {
+				s.Set(api)
+			}
+			return s
+		}(),
 	}
 	WSAllowedOriginsFlag = cli.StringFlag{
 		Name:  "ws-origins,wsorigins",
