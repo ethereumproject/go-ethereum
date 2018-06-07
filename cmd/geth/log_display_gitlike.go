@@ -284,14 +284,16 @@ var PrintStatusGit = func(e *eth.Ethereum, tickerInterval time.Duration, maxPeer
 
 	_, current, height, _, _ := e.Downloader().Progress() // origin, current, height, pulled, known
 	mode := e.Downloader().GetMode()
+
+	blockchain := e.BlockChain()
+	currentBlockHex := blockchain.CurrentBlock().Hash().Hex()
 	if mode == downloader.FastSync {
-		current = e.BlockChain().CurrentFastBlock().NumberU64()
+		fb := e.BlockChain().CurrentFastBlock()
+		current = fb.NumberU64()
+		currentBlockHex = fb.Hash().Hex()
 	}
 
 	// Get our head block
-	blockchain := e.BlockChain()
-	currentBlockHex := blockchain.CurrentBlock().Hash().Hex()
-
 	// Discover -> not synchronising (searching for peers)
 	// FullSync/FastSync -> synchronising
 	// Import -> synchronising, at full height
