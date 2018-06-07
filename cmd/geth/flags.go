@@ -421,6 +421,16 @@ var (
 	}
 )
 
+func setAppFlagsByGroup(app *cli.App, flagGroups []flagGroup) {
+	flags := []cli.Flag{}
+	for _, g := range flagGroups {
+		for _, f := range g.Flags {
+			flags = append(flags, f)
+		}
+	}
+	app.Flags = flags
+}
+
 // aliasableName check global vars for aliases flag and directoryFlag names.
 // These can be "comma,sep-arated", and ensures that if one is set (and/or not the other),
 // only one var will be returned and it will be decided in order of appearance.

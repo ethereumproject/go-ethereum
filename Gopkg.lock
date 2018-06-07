@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/BurntSushi/toml"
+  packages = ["."]
+  revision = "b26d9c308763d68093482582cea63d69be07a0f0"
+  version = "v0.3.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/Gustav-Simonsson/go-opencl"
   packages = ["cl"]
@@ -236,6 +242,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fb11e36e96a973694e730c71620a8585f7a3b4ca1e89541abd89dcbf4f067b21"
+  inputs-digest = "f69ef3c855b2b27868d8190feefda93060f4687e04bb5284c3eb6154f5b84d2f"
   solver-name = "gps-cdcl"
   solver-version = 1
