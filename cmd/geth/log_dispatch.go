@@ -71,23 +71,29 @@ func (hs displayEventHandlers) getByName(eventType logEventType) (*displayEventH
 	return nil, false
 }
 
+var displaySystems = make(map[string]displayEventHandlers)
+
+func init() {
+	displaySystems["basic"] = basicDisplaySystem
+	displaySystems["green"] = greenDisplaySystem
+	displaySystems["gitlike"] = gitDisplaySystem
+	displaySystems["dash"] = dashDisplaySystem
+}
+
 // mustGetDisplaySystemFromName parses the flag --display-fmt from context and returns an associated
 // displayEventHandlers set. This can be considered a temporary solve for handling "registering" or
 // "delegating" log interface systems.
 func mustGetDisplaySystemFromName(s string) displayEventHandlers {
-	switch s {
-	case "basic":
-		return basicDisplaySystem
-	case "green":
-		return greenDisplaySystem
-	case "dash":
-		return dashDisplaySystem
-	case "gitlike":
-		return gitDisplaySystem
-	default:
-		glog.Fatalln("%v: --%v", ErrInvalidFlag, DisplayFormatFlag.Name)
+	v, ok := displaySystems[s]
+	if !ok {
+		availables := []string{}
+		for k := range displaySystems {
+			availables = append(availables, k)
+		}
+		glog.Errorf("%v: --%v. Available values are: %s", ErrInvalidFlag, DisplayFormatFlag.Name, strings.Join(availables, ","))
+		os.Exit(1)
 	}
-	return displayEventHandlers{}
+	return v
 }
 
 // runAllIfAny runs all configured fns for a given event, if registered.
