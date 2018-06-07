@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // flagGroup is a collection of commands and/or flags belonging to a single topic.
@@ -16,6 +17,9 @@ type flagGroup struct {
 	Flags    []cli.Flag
 	Commands []cli.Command
 }
+
+type MarshalableConfig map[string]MarshalableConfigCategory
+type MarshalableConfigCategory map[string]interface{}
 
 // AppHelpFlagAndCommandGroups is the application flags, grouped by functionality.
 var AppHelpFlagAndCommandGroups = []flagGroup{
@@ -210,27 +214,46 @@ var cmdDumpAppConfig = cli.Command{
 }
 
 func dumpAppConfig(ctx *cli.Context) error {
-	// get encoding
+
+	// log.Println("args: ", ctx.Args()) // [dump-app-config --toml]
+
+	args := ctx.Args()
 	encType := ""
-	if ctx.IsSet("toml") {
+
+	if len(args) < 2 {
 		encType = "toml"
-		// TODO(whilei): add more encoders, maybe; json, yaml
-	} else if ctx.IsSet("json") {
+	}
+	if len(args) > 3 {
+		log.Fatalln(ErrInvalidFlag)
+	}
+	if encType != "toml" {
+		encType = args[1]
+	}
+	outFile := ""
+	if len(args) == 3 {
+		outFile = args[2]
+	}
+
+	// get encoding
+	// PTAL: eventually add more encoders, maybe; json, yaml
+	if strings.Contains(encType, "toml") {
+		encType = "toml"
+	} else if strings.Contains(encType, "json") {
 		log.Fatalln(errEncoderNotSupported)
-	} else if ctx.IsSet("yaml") {
+	} else if strings.Contains(encType, "yaml") {
 		log.Fatalln(errEncoderNotSupported)
 	} else {
-		encType = "toml"
+		log.Fatalln(errEncoderNotSupported)
 	}
 
 	// if no file given, just write to stderr
-	if ctx.NArg() == 0 {
+	if outFile == "" {
 		if err := writeDefaultFlagsConfig(os.Stdout, encType); err != nil {
 			log.Fatalln(err)
 		}
 	} else {
 		// otherwise write to file
-		c := filepath.Clean(ctx.Args()[0])
+		c := filepath.Clean(outFile)
 		f, err := os.Create(c)
 		if err != nil && !os.IsExist(err) {
 			log.Fatalln("could not create file:", err)
@@ -248,70 +271,44 @@ var errEncoderNotSupported = errors.New("encoding method not supported")
 
 func writeDefaultFlagsConfig(w io.Writer, encodingType string) error {
 	writeToml := func(w io.Writer) error {
+
 		encoder := toml.NewEncoder(w)
-		var flagGroupsMetaStruct = struct {
-			Config []flagGroup
-		}{}
-		c := []flagGroup{}
+
+		var c = make(MarshalableConfig)
+
 		for _, g := range AppHelpFlagAndCommandGroups {
-			imitGroup := flagGroup{
-				Name: g.Name,
-			}
-			fs := imitGroup.Flags
+
+			cat := make(map[string]interface{})
+
 			for _, f := range g.Flags {
+
+				// gotta do these damn switcher to get at the vals
 				switch t := f.(type) {
 				case cli.StringFlag:
-					fs = append(fs, cli.StringFlag{
-						Name:  t.Name,
-						Value: t.Value,
-					})
+					cat[strings.Split(t.Name, ",")[0]] = t.Value
 				case cli.BoolFlag:
-					fs = append(fs, cli.BoolFlag{
-						Name: t.Name,
-						// Value: false, // FIXME(whilei)
-					})
+					cat[strings.Split(t.Name, ",")[0]] = false
 				case cli.BoolTFlag:
-					fs = append(fs, cli.BoolTFlag{
-						Name: t.Name,
-					})
+					cat[strings.Split(t.Name, ",")[0]] = true
 				case cli.Float64Flag:
-					fs = append(fs, cli.Float64Flag{
-						Name:  t.Name,
-						Value: t.Value,
-					})
+					cat[strings.Split(t.Name, ",")[0]] = t.Value
 				case cli.DurationFlag:
-					fs = append(fs, cli.DurationFlag{
-						Name:  t.Name,
-						Value: t.Value,
-					})
+					cat[strings.Split(t.Name, ",")[0]] = t.Value
 				case cli.IntFlag:
-					fs = append(fs, cli.IntFlag{
-						Name:  t.Name,
-						Value: t.Value,
-					})
+					cat[strings.Split(t.Name, ",")[0]] = t.Value
 				case cli.IntSliceFlag:
-					fs = append(fs, cli.IntSliceFlag{
-						Name:  t.Name,
-						Value: t.Value,
-					})
+					cat[strings.Split(t.Name, ",")[0]] = t.Value
 				case DirectoryFlag:
-					fs = append(fs, DirectoryFlag{
-						Name:  t.Name,
-						Value: t.Value,
-					})
+					cat[strings.Split(t.Name, ",")[0]] = t.Value.String()
 				case cli.GenericFlag:
-					fs = append(fs, cli.GenericFlag{
-						Name:  t.Name,
-						Value: t.Value,
-					})
+					cat[strings.Split(t.Name, ",")[0]] = t.Value
 				default:
 					log.Fatalln("weird flag")
 				}
 			}
-			c = append(c)
+			c[g.Name] = cat
 		}
-		flagGroupsMetaStruct.Config = c
-		if err := encoder.Encode(flagGroupsMetaStruct); err != nil {
+		if err := encoder.Encode(c); err != nil {
 			return err
 		}
 		return nil
