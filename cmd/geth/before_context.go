@@ -9,6 +9,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -34,6 +35,18 @@ func appBeforeContext(ctx *cli.Context) error {
 			if e := cli.ShowCommandHelp(ctx, ctx.Args().First()); e != nil {
 				return e
 			}
+		}
+	}
+
+	// Read from flagged --app-config <config.toml> file,
+	// or if file exists at <datadir>/<chain>/appconfig.toml then use that.
+	if ctx.IsSet(AppConfigFileFlag.Name) {
+		p := filepath.Clean(ctx.GlobalString(AppConfigFileFlag.Name))
+		mustReadAppConfigFromFile(ctx, p)
+	} else {
+		p := filepath.Join(MustMakeChainDataDir(ctx), "appconfig.toml")
+		if _, err := os.Stat(p); err == nil {
+			mustReadAppConfigFromFile(ctx, p)
 		}
 	}
 

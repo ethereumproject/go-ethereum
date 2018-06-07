@@ -2,7 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
 	"io"
 	"log"
@@ -37,6 +40,7 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 		Flags: []cli.Flag{
 			DataDirFlag,
 			ChainIdentityFlag,
+			AppConfigFileFlag,
 			NetworkIdFlag,
 			DevModeFlag,
 			NodeNameFlag,
@@ -239,11 +243,11 @@ func dumpAppConfig(ctx *cli.Context) error {
 	if strings.Contains(encType, "toml") {
 		encType = "toml"
 	} else if strings.Contains(encType, "json") {
-		log.Fatalln(errEncoderNotSupported)
+		log.Fatalln(errEncodingNotSupported)
 	} else if strings.Contains(encType, "yaml") {
-		log.Fatalln(errEncoderNotSupported)
+		log.Fatalln(errEncodingNotSupported)
 	} else {
-		log.Fatalln(errEncoderNotSupported)
+		log.Fatalln(errEncodingNotSupported)
 	}
 
 	// if no file given, just write to stderr
@@ -267,7 +271,7 @@ func dumpAppConfig(ctx *cli.Context) error {
 	return nil
 }
 
-var errEncoderNotSupported = errors.New("encoding method not supported")
+var errEncodingNotSupported = errors.New("encoding method not supported")
 
 func writeDefaultFlagsConfig(w io.Writer, encodingType string) error {
 	writeToml := func(w io.Writer) error {
@@ -281,7 +285,10 @@ func writeDefaultFlagsConfig(w io.Writer, encodingType string) error {
 			cat := make(map[string]interface{})
 
 			for _, f := range g.Flags {
-
+				// don't set this, to avoid recursive configuration fuckups
+				if f.GetName() == AppConfigFileFlag.Name {
+					continue
+				}
 				// gotta do these damn switcher to get at the vals
 				switch t := f.(type) {
 				case cli.StringFlag:
@@ -320,5 +327,33 @@ func writeDefaultFlagsConfig(w io.Writer, encodingType string) error {
 		return writeToml(w)
 	}
 
-	return errEncoderNotSupported
+	return errEncodingNotSupported
+}
+
+func readDefaultFlagsConfig(reader io.Reader, c *MarshalableConfig, encodingType string) error {
+	if encodingType == "toml" {
+		_, err := toml.DecodeReader(reader, c)
+		return err
+	}
+	return errEncodingNotSupported
+}
+
+func mustReadAppConfigFromFile(ctx *cli.Context, ppath string) {
+	ext := strings.TrimPrefix(filepath.Ext(ppath), ".")
+	f, err := os.Open(ppath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	m := &MarshalableConfig{}
+	if err := readDefaultFlagsConfig(f, m, ext); err != nil {
+		log.Fatalln("could not decode configuration file: ", err)
+	}
+	glog.D(logger.Info).Infoln("Read config values from: ", logger.ColorGreen(ppath))
+	for _, cat := range *m {
+		for k, vv := range cat {
+			if !ctx.GlobalIsSet(k) {
+				ctx.GlobalSet(k, fmt.Sprintf("%v", vv)) // PTAL yuck...?
+			}
+		}
+	}
 }

@@ -122,8 +122,10 @@ func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, netw
 	}
 	if mode == downloader.FastSync {
 		manager.fastSync = uint32(1)
-		glog.D(logger.Warn).Infoln("Fast sync mode enabled.")
 	}
+
+	glog.D(logger.Warn).Infoln("Sync mode:", logger.ColorGreen(mode.String()))
+
 	// Initiate a sub-protocol for every implemented version we can handle
 	manager.SubProtocols = make([]p2p.Protocol, 0, len(ProtocolVersions))
 	for i, version := range ProtocolVersions {

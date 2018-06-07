@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethereumproject/go-ethereum/rpc"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -467,6 +468,10 @@ func makeNodeName(version string, ctx *cli.Context) string {
 // assembles the P2P protocol stack.
 func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 
+	// if !ctx.GlobalIsSet(AppConfigFileFlag.Name) {
+	//
+	// }
+
 	// global settings
 
 	if ctx.GlobalIsSet(aliasableName(ExtraDataFlag.Name, ctx)) {
@@ -781,6 +786,17 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 	glog.D(logger.Warn).Infof("Use Sputnik EVM: %s", logger.ColorGreen(fmt.Sprintf("%v", core.UseSputnikVM)))
 
 	glog.V(logger.Info).Info(glog.Separator("-"))
+
+	// PTAL This shit is getting unwieldy.
+	glog.D(logger.Info).Infof("RPC: %s  RPC-APIs: %s",
+		logger.ColorGreen(fmt.Sprintf("%v", ctx.GlobalBool(RPCEnabledFlag.Name))),
+		logger.ColorGreen(fmt.Sprintf("%v", rpc.DefaultHTTPApis)))
+	glog.D(logger.Info).Infof("IPC: %s  IPC-APIs: %s",
+		logger.ColorGreen(fmt.Sprintf("%v", !ctx.GlobalBool(IPCDisabledFlag.Name))),
+		logger.ColorGreen(fmt.Sprintf("%v", rpc.DefaultIPCApis)))
+	glog.D(logger.Info).Infof("WS: %s  WS-APIs: %s",
+		logger.ColorGreen(fmt.Sprintf("%v", ctx.GlobalBool(WSEnabledFlag.Name))),
+		logger.ColorGreen(fmt.Sprintf("%v", rpc.DefaultHTTPApis)))
 
 	// If unsafe usage, WARNING!
 	logIfUnsafeConfiguration(ctx)

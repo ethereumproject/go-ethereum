@@ -54,6 +54,11 @@ var (
 		Usage: `Chain identifier (default='mainnet', test='morden') or path to JSON chain configuration file (eg './path/to/chain.json').`,
 		Value: core.DefaultConfigMainnet.Identity,
 	}
+	AppConfigFileFlag = cli.StringFlag{
+		Name:  "app-config",
+		Usage: "Path to an app configuration file.",
+		Value: "",
+	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "network-id, networkid",
 		Usage: "Network identifier (integer: 1=Homestead, 2=Morden)",
