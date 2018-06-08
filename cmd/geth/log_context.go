@@ -328,8 +328,8 @@ func logLoggingConfiguration(ctx *cli.Context) {
 		glog.V(logger.Warn).Infof("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())
 		glog.D(logger.Warn).Infof("Machine log config: mlog=%s mlog-dir=%s", logger.ColorGreen(logger.GetMLogFormat().String()), logger.ColorGreen(logger.GetMLogDir()))
 	} else {
-		glog.V(logger.Warn).Warnf("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())
-		glog.D(logger.Warn).Warnf("Machine log config: mlog=%s", logger.ColorYellow("off"))
+		glog.V(logger.Warn).Infof("Machine log config: mlog=%s mlog-dir=%s", logger.GetMLogFormat().String(), logger.GetMLogDir())
+		glog.D(logger.Warn).Infof("Machine log config: mlog=%s", logger.ColorYellow("off"))
 	}
 
 }

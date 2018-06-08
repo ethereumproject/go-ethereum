@@ -60,8 +60,8 @@ func NewSimulatedBackend(accounts ...core.GenesisAccount) *SimulatedBackend {
 // Commit imports all the pending transactions as a single block and starts a
 // fresh new state.
 func (b *SimulatedBackend) Commit() {
-	if _, err := b.blockchain.InsertChain([]*types.Block{b.pendingBlock}); err != nil {
-		panic(err) // This cannot happen unless the simulator is wrong, fail in that case
+	if res := b.blockchain.InsertChain([]*types.Block{b.pendingBlock}); res.Error != nil {
+		panic(res.Error) // This cannot happen unless the simulator is wrong, fail in that case
 	}
 	b.Rollback()
 }

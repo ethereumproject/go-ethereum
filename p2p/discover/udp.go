@@ -58,16 +58,16 @@ var (
 	Ipv4ReservedRangePrivateNetwork     = [2]net.IP{net.ParseIP("10.0.0.0"), net.ParseIP("10.255.255.255")}
 	ipv4ReservedRangeProviderSubscriber = [2]net.IP{net.ParseIP("100.64.0.0"), net.ParseIP("100.127.255.255")}
 	Ipv4ReservedRangeLoopback           = [2]net.IP{net.ParseIP("127.0.0.0"), net.ParseIP("127.255.255.255")}
-	ipv4ReservedRangeLinkLocal      = [2]net.IP{net.ParseIP("169.254.0.0"), net.ParseIP("169.254.255.255")}
-	ipv4ReservedRangeLocalPrivate1  = [2]net.IP{net.ParseIP("172.16.0.0"), net.ParseIP("172.31.255.255")}
-	ipv4ReservedRangeSpecialPurpose = [2]net.IP{net.ParseIP("192.0.0.0"), net.ParseIP("192.0.0.255")}
-	ipv4ReservedRangeTestNet1       = [2]net.IP{net.ParseIP("192.0.2.0"), net.ParseIP("192.0.2.255")}
-	ipv4ReservedRange6to4           = [2]net.IP{net.ParseIP("192.88.99.0"), net.ParseIP("192.88.99.255")}
-	Ipv4ReservedRangeLocalPrivate2  = [2]net.IP{net.ParseIP("192.168.0.0"), net.ParseIP("192.168.255.255")}
-	ipv4ReservedRangeSubnets        = [2]net.IP{net.ParseIP("198.18.0.0"), net.ParseIP("198.19.255.255")}
-	ipv4ReservedRangeTestNet2       = [2]net.IP{net.ParseIP("198.51.100.0"), net.ParseIP("198.51.100.255")}
-	ipv4ReservedRangeTestNet3       = [2]net.IP{net.ParseIP("203.0.113.0"), net.ParseIP("203.0.113.255")}
-	ipv4ReservedRangeMulticast      = [2]net.IP{net.ParseIP("224.0.0.0"), net.ParseIP("239.255.255.255")}
+	ipv4ReservedRangeLinkLocal          = [2]net.IP{net.ParseIP("169.254.0.0"), net.ParseIP("169.254.255.255")}
+	ipv4ReservedRangeLocalPrivate1      = [2]net.IP{net.ParseIP("172.16.0.0"), net.ParseIP("172.31.255.255")}
+	ipv4ReservedRangeSpecialPurpose     = [2]net.IP{net.ParseIP("192.0.0.0"), net.ParseIP("192.0.0.255")}
+	ipv4ReservedRangeTestNet1           = [2]net.IP{net.ParseIP("192.0.2.0"), net.ParseIP("192.0.2.255")}
+	ipv4ReservedRange6to4               = [2]net.IP{net.ParseIP("192.88.99.0"), net.ParseIP("192.88.99.255")}
+	Ipv4ReservedRangeLocalPrivate2      = [2]net.IP{net.ParseIP("192.168.0.0"), net.ParseIP("192.168.255.255")}
+	ipv4ReservedRangeSubnets            = [2]net.IP{net.ParseIP("198.18.0.0"), net.ParseIP("198.19.255.255")}
+	ipv4ReservedRangeTestNet2           = [2]net.IP{net.ParseIP("198.51.100.0"), net.ParseIP("198.51.100.255")}
+	ipv4ReservedRangeTestNet3           = [2]net.IP{net.ParseIP("203.0.113.0"), net.ParseIP("203.0.113.255")}
+	ipv4ReservedRangeMulticast          = [2]net.IP{net.ParseIP("224.0.0.0"), net.ParseIP("239.255.255.255")}
 	ipv4ReservedRangeFuture             = [2]net.IP{net.ParseIP("240.0.0.0"), net.ParseIP("255.255.255.254")}
 	ipv4ReservedRangeLimitedBroadcast   = [2]net.IP{net.ParseIP("255.255.255.255"), net.ParseIP("255.255.255.255")}
 
@@ -258,6 +258,7 @@ func ListenUDP(priv *ecdsa.PrivateKey, laddr string, natm nat.Interface, nodeDBP
 	}
 	glog.V(logger.Info).Infoln("Listening,", tab.self)
 	glog.D(logger.Warn).Infoln("UDP listening. Client enode:", logger.ColorGreen(tab.self.String()))
+
 	return tab, nil
 }
 
