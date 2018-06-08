@@ -210,10 +210,9 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 	atomic.StoreUint32(&pm.acceptsTxs, 1) // Mark initial sync done
 
 	// If fast sync was enabled, and we synced up, disable it
-	if atomic.LoadUint32(&pm.fastSync) == 1 {
+	if atomic.CompareAndSwapUint32(&pm.fastSync, 1, 0) {
 		glog.V(logger.Info).Infoln("Fast sync complete, auto disabling")
 		glog.D(logger.Info).Infoln("Fast sync complete, auto disabling")
-		atomic.StoreUint32(&pm.fastSync, 0)
 	}
 	atomic.StoreUint32(&pm.acceptsTxs, 1) // Mark initial sync done
 	if head := pm.blockchain.CurrentBlock(); head.NumberU64() > 0 {
