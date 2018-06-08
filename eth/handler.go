@@ -754,7 +754,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) (err error) {
 			if localTd := pm.blockchain.GetTd(currentBlock.Hash()); trueTD.Cmp(localTd) > 0 {
 				if !pm.downloader.Synchronising() {
 					glog.V(logger.Info).Infof("Peer %s: localTD=%v (<) peerTrueTD=%v, synchronising", p.id, localTd, trueTD)
-					//go pm.synchronise(pm.peers.BestPeer())
 					go pm.synchronise(p)
 				}
 			} else {
