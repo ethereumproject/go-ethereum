@@ -149,7 +149,11 @@ func (pm *ProtocolManager) syncer() {
 
 		case <-forceSync.C:
 			// Force a sync even if not enough peers are present
-			go pm.synchronise(pm.peers.BestPeer())
+			if !pm.downloader.Synchronising() {
+				go pm.synchronise(pm.peers.BestPeer())
+			} else {
+				glog.V(logger.Debug).Infoln("forceSync.C: skipping call to synchronise with best peers (dl already syncing)")
+			}
 
 		case <-pm.noMorePeers:
 			return
