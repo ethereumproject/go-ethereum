@@ -367,8 +367,12 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		}
 		if paginationStart < 0 {
 			paginationStart = 0
+		} else if paginationStart > len(s) {
+			paginationStart = len(s)
 		}
 		if paginationEnd < 0 {
+			paginationEnd = len(s)
+		} else if paginationEnd > len(s) {
 			paginationEnd = len(s)
 		}
 		return s[paginationStart:paginationEnd]
