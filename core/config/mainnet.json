@@ -9,7 +9,7 @@
             {
                 "name": "Homestead",
                 "block": 1150000,
-                "requiredHash": "0x584bdb5d4e74fe97f5a5222b533fe1322fd0b6ad3eb03f02c3221984e2c0b430",
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "features": [
                     {
                         "id": "difficulty",

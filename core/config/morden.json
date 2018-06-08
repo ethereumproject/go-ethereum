@@ -11,7 +11,7 @@
             {
                 "name": "Homestead",
                 "block": 494000,
-                "requiredHash": "0x00edb1c63154096c1c42bf523676e856eb2fc90ab6f55088435c3d2178cf7343",
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "features": [
                     {
                         "id": "difficulty",
@@ -30,7 +30,7 @@
             {
                 "name": "GasReprice",
                 "block": 1783000,
-                "requiredHash": "0xf376243aeff1f256d970714c3de9fd78fa4e63cf63e32a51fe1169e375d98145",
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "features": [
                     {
                         "id": "gastable",
@@ -43,13 +43,13 @@
             {
                 "name": "The DAO Hard Fork",
                 "block": 1885000,
-                "requiredHash": "0x2206f94b53bd0a4d2b828b6b1a63e576de7abc1c106aafbfc91d9a60f13cb740",
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "features": []
             },
             {
                 "name": "Diehard",
                 "block": 1915000,
-                "requiredHash": "0xabdfd70590110cb7e290e81a8c1bcc24633c10b985cd0d8d7960c8b07b2192ee",
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "features": [
                     {
                         "id": "eip155",
@@ -75,7 +75,7 @@
             {
                 "name": "Gotham",
                 "block": 2000000,
-                "requiredHash": "0xd0d41cdd8f44b6af9281b222b5e51404fb227231756b2716fb96b24927859358",
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "features": [
                     {
                         "id": "reward",
