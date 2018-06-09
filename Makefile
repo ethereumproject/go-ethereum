@@ -25,8 +25,8 @@ setup: ## Install all the build and lint dependencies
 build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cmd/rlpdump cmd/geth ## Build a local snapshot binary version of all commands
 	@ls -ld $(BINARY)/*
 
-cmd/geth: ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
-	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh build ; else mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth ; fi
+cmd/geth: chainconfig ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
+	if [ ${WITH_SVM} = 1 ]; then ./scripts/build_sputnikvm.sh build ; else mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth ; fi
 	@echo "Done building geth."
 	@echo "Run \"$(BINARY)/geth\" to launch geth."
 
@@ -69,7 +69,7 @@ install: ## Install all packages to $GOPATH/bin
 	go install ./cmd/{abigen,bootnode,disasm,ethtest,evm,gethrpctest,rlpdump}
 	$(MAKE) install_geth
 
-install_geth: ## Install geth to $GOPATH/bin. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
+install_geth: chainconfig ## Install geth to $GOPATH/bin. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
 	$(info Installing $$GOPATH/bin/geth)
 	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh install ; else go install ${LDFLAGS} ./cmd/geth ; fi
 
@@ -105,6 +105,11 @@ test: ## Run all the tests
 
 cover: test ## Run all the tests and opens the coverage report
 	go tool cover -html=coverage.txt
+
+chainconfig: core/assets/assets.go ## Rebuild assets if source config files changed.
+
+core/assets/assets.go: core/config/*.json core/config/*.csv
+	resources -fmt -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json core/config/*.csv
 
 clean: ## Remove local snapshot binary directory
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
