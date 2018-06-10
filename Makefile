@@ -26,7 +26,12 @@ build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cm
 	@ls -ld $(BINARY)/*
 
 cmd/geth: chainconfig ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
-	if [ ${WITH_SVM} = 1 ]; then ./scripts/build_sputnikvm.sh build ; else mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth ; fi
+ifeq (${WITH_SVM}, 1)
+	./scripts/build_sputnikvm.sh build
+else
+	mkdir -p ./${BINARY}
+	go build ${LDFLAGS} -o ${BINARY}/geth -tags="netgo" ./cmd/geth
+endif
 	@echo "Done building geth."
 	@echo "Run \"$(BINARY)/geth\" to launch geth."
 
@@ -71,7 +76,11 @@ install: ## Install all packages to $GOPATH/bin
 
 install_geth: chainconfig ## Install geth to $GOPATH/bin. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
 	$(info Installing $$GOPATH/bin/geth)
-	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh install ; else go install ${LDFLAGS} ./cmd/geth ; fi
+ifeq (${WITH_SVM}, 1)
+	./scripts/build_sputnikvm.sh install
+else
+	go install ${LDFLAGS} -tags="netgo" ./cmd/geth ; fi
+endif
 
 fmt: ## gofmt and goimports all go files
 	find . -name '*.go' -not -wholename './vendor/*' -not -wholename './_vendor*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
