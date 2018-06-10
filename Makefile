@@ -122,6 +122,7 @@ core/assets/assets.go: core/config/*.json core/config/*.csv
 
 clean: ## Remove local snapshot binary directory
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
+	go clean -i ./...
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
