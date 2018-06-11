@@ -1,11 +1,12 @@
 package main
 
 import (
+	"math"
+
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
-	"math"
 )
 
 var buildAddrTxIndexCommand = cli.Command{

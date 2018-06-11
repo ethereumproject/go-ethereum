@@ -1731,7 +1731,10 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 		blockEndN = 0
 	}
 
-	list = core.GetAddrTxs(atxi.Db, address, blockStartN, uint64(blockEndN.Int64()), toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+	list, err = core.GetAddrTxs(atxi.Db, address, blockStartN, uint64(blockEndN.Int64()), toOrFrom, txKindOf, pagStart, pagEnd, reverse)
+	if err != nil {
+		return
+	}
 
 	// Since list is a slice, it can be nil, which returns 'null'.
 	// Should return empty 'array' if no txs found.

@@ -5,11 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"math"
 	"os"
 	"os/signal"
@@ -17,10 +12,17 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var (
 	errAtxiNotEnabled = errors.New("atxi not intialized")
+	errAtxiInvalidUse = errors.New("invalid parameters passed to ATXI")
 
 	txAddressIndexPrefix = []byte("atx-")
 	txAddressBookmarkKey = []byte("ATXIBookmark")
@@ -288,18 +290,33 @@ func (bc *BlockChain) GetATXIBuildProgress() (*AtxiProgressT, error) {
 
 // GetAddrTxs gets the indexed transactions for a given account address.
 // 'reverse' means "oldest first"
-func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string, kindof string, paginationStart int, paginationEnd int, reverse bool) []string {
+func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, blockEndN uint64, direction string, kindof string, paginationStart int, paginationEnd int, reverse bool) (txs []string, err error) {
+	errWithReason := func(e error, s string) error {
+		return fmt.Errorf("%v: %s", e, s)
+	}
+
+	// validate params
 	if len(direction) > 0 && !strings.Contains("btf", direction[:1]) {
-		glog.Fatal("Address transactions list signature requires direction param to be empty string or [b|t|f] prefix (eg. both, to, or from)")
+		err = errWithReason(errAtxiInvalidUse, "Address transactions list signature requires direction param to be empty string or [b|t|f] prefix (eg. both, to, or from)")
+		return
 	}
 	if len(kindof) > 0 && !strings.Contains("bsc", kindof[:1]) {
-		glog.Fatal("Address transactions list signature requires 'kind of' param to be empty string or [s|c] prefix (eg. both, standard, or contract)")
+		err = errWithReason(errAtxiInvalidUse, "Address transactions list signature requires 'kind of' param to be empty string or [s|c] prefix (eg. both, standard, or contract)")
+		return
+	}
+	if paginationStart < 0 {
+		paginationStart = 0
+	}
+	if paginationStart > paginationEnd {
+		err = errWithReason(errAtxiInvalidUse, "Pagination start must be less than or equal to pagination end params")
+		return
 	}
 
 	// Have to cast to LevelDB to use iterator. Yuck.
 	ldb, ok := db.(*ethdb.LDBDatabase)
 	if !ok {
-		return nil
+		err = errWithReason(errors.New("internal interface error; please file a bug report"), "could not cast eth db to level db")
+		return nil, nil
 	}
 
 	// This will be the returnable.
@@ -351,8 +368,9 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		atxis = append(atxis, atxi{blockN: bn, tx: tx})
 	}
 	it.Release()
-	if e := it.Error(); e != nil {
-		glog.Fatalln(e)
+	err = it.Error()
+	if err != nil {
+		return
 	}
 
 	handleSorting := func(s sortableAtxis) sortableAtxis {
@@ -365,20 +383,16 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 				s[i], s[j] = s[j], s[i]
 			}
 		}
-		if paginationStart < 0 {
-			paginationStart = 0
-		} else if paginationStart > len(s) {
+		if paginationStart > len(s) {
 			paginationStart = len(s)
 		}
-		if paginationEnd < 0 {
-			paginationEnd = len(s)
-		} else if paginationEnd > len(s) {
+		if paginationEnd < 0 || paginationEnd > len(s) {
 			paginationEnd = len(s)
 		}
 		return s[paginationStart:paginationEnd]
 	}
-
-	return handleSorting(atxis).TxStrings()
+	txs = handleSorting(atxis).TxStrings()
+	return
 }
 
 // RmAddrTx removes all atxi indexes for a given tx in case of a transaction removal, eg.
