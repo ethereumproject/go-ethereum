@@ -121,6 +121,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/fatih/color"
 )
 
@@ -218,9 +219,9 @@ var severityColor = []string{"\x1b[2m", "\x1b[33m", "\x1b[31m", "\x1b[35m"} // i
 
 var severityName = []string{
 	infoLog:    "INFO",
-	warningLog: "WARNING",
-	errorLog:   "ERROR",
-	fatalLog:   "FATAL",
+	warningLog: "WARN",
+	errorLog:   "ERR ",
+	fatalLog:   "FAIL",
 }
 
 // these path prefixes are trimmed for display, but not when
@@ -1159,8 +1160,8 @@ func (sb *syncBuffer) rotateCurrent(now time.Time) error {
 	// Write header.
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "Log file created at: %s\n", now.Format("2006/01/02 15:04:05"))
-	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
 	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	fmt.Fprintf(&buf, "Context: %s\n", common.GetClientSessionIdentity().String())
 	fmt.Fprintf(&buf, "Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg\n")
 	n, err := sb.file.Write(buf.Bytes())
 	sb.nbytes += uint64(n)

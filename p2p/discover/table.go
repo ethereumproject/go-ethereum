@@ -331,7 +331,7 @@ func (tab *Table) lookup(id NodeID, refreshIfEmpty bool) []*Node {
 				pendingQueries++
 				go func(n *Node) {
 					// Find potential neighbors to bond with
-					r, err := tab.net.findnode(n.ID, n.addr(), id)
+					theirNeighbors, err := tab.net.findnode(n.ID, n.addr(), id)
 					if err != nil {
 						// Bump the failure counter to detect and evacuate non-bonded entries
 						fails := tab.db.findFails(n.ID) + 1
@@ -343,7 +343,7 @@ func (tab *Table) lookup(id NodeID, refreshIfEmpty bool) []*Node {
 							tab.delete(n)
 						}
 					}
-					reply <- tab.bondall(r)
+					reply <- tab.bondall(theirNeighbors)
 				}(n)
 			}
 		}

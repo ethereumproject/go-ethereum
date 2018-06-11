@@ -321,7 +321,7 @@ func TestErrorDisplay(t *testing.T) {
 	display.verbosity.Set("3")
 	defer display.verbosity.Set("0")
 	D(2).Errorln("test")
-	if !displayContains(errorLog, "ERROR", t) {
+	if !displayContains(errorLog, "ERR ", t) {
 		t.Errorf("Error has wrong character: %q", displayContents(errorLog))
 	}
 	if !displayContains(warningLog, "test", t) {

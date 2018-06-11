@@ -178,7 +178,7 @@ var (
 	}
 	DisplayFormatFlag = cli.StringFlag{
 		Name:  "display-fmt",
-		Usage: "Display format (experimental). Current possible values are [basic|green|dash].",
+		Usage: "Display format (experimental). Current possible values are [basic|green|dash|gitlike].",
 		Value: "basic",
 	}
 	VModuleFlag = cli.StringFlag{

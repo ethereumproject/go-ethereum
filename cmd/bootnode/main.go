@@ -43,6 +43,24 @@ var (
 	versionFlag = flag.Bool("version", false, "Prints the revision identifier and exit immediatily.")
 )
 
+// onlyDoGenKey exits 0 if successful.
+// It does the -genkey flag feature and that is all.
+func onlyDoGenKey() {
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		log.Fatalf("could not generate key: %s", err)
+	}
+	f, e := os.Create(*genKey)
+	defer f.Close()
+	if e != nil {
+		log.Fatalf("coult not open genkey file: %v", e)
+	}
+	if _, err := crypto.WriteECDSAKey(f, key); err != nil {
+		log.Fatal(err)
+	}
+	os.Exit(0)
+}
+
 func main() {
 	flag.Var(glog.GetVerbosity(), "verbosity", "log verbosity (0-9)")
 	flag.Var(glog.GetVModule(), "vmodule", "log verbosity pattern")
@@ -55,14 +73,8 @@ func main() {
 	}
 
 	if *genKey != "" {
-		key, err := crypto.GenerateKey()
-		if err != nil {
-			log.Fatalf("could not generate key: %s", err)
-		}
-		if err := crypto.SaveECDSA(*genKey, key); err != nil {
-			log.Fatal(err)
-		}
-		os.Exit(0)
+		// exits 0 if successful
+		onlyDoGenKey()
 	}
 
 	natm, err := nat.Parse(*natdesc)
@@ -77,8 +89,14 @@ func main() {
 	case *nodeKeyFile != "" && *nodeKeyHex != "":
 		log.Fatal("Options -nodekey and -nodekeyhex are mutually exclusive")
 	case *nodeKeyFile != "":
-		var err error
-		nodeKey, err = crypto.LoadECDSA(*nodeKeyFile)
+		f, err := os.Open(*nodeKeyFile)
+		if err != nil {
+			log.Fatalf("error opening node key file: %v", err)
+		}
+		nodeKey, err = crypto.LoadECDSA(f)
+		if err := f.Close(); err != nil {
+			log.Fatalf("error closing key file: %v", err)
+		}
 		if err != nil {
 			log.Fatalf("nodekey: %s", err)
 		}

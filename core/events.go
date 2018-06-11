@@ -86,6 +86,17 @@ type ChainInsertEvent struct {
 	LatestBlockTime time.Time
 }
 
+type ReceiptChainInsertEvent struct {
+	Processed         int
+	Ignored           int
+	FirstNumber       uint64
+	FirstHash         common.Hash
+	LastNumber        uint64
+	LastHash          common.Hash
+	Elasped           time.Duration
+	LatestReceiptTime time.Time
+}
+
 type HeaderChainInsertEvent struct {
 	Processed  int
 	Ignored    int

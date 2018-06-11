@@ -218,7 +218,7 @@ var dashDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventT: logEventChainInsert,
+		eventT: logEventCoreChainInsert,
 		ev:     core.ChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {

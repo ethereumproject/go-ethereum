@@ -114,13 +114,13 @@ func testFork(t *testing.T, blockchain *BlockChain, i, n int, full bool, compara
 	)
 	if full {
 		blockChainB = makeBlockChain(blockchain2.config, blockchain2.CurrentBlock(), n, db, forkSeed)
-		if _, err := blockchain2.InsertChain(blockChainB); err != nil {
-			t.Fatalf("failed to insert forking chain: %v", err)
+		if res := blockchain2.InsertChain(blockChainB); res.Error != nil {
+			t.Fatalf("failed to insert forking chain: %v", res.Error)
 		}
 	} else {
 		headerChainB = makeHeaderChain(blockchain2.config, blockchain2.CurrentHeader(), n, db, forkSeed)
-		if _, err := blockchain2.InsertHeaderChain(headerChainB, 1); err != nil {
-			t.Fatalf("failed to insert forking chain: %v", err)
+		if res := blockchain2.InsertHeaderChain(headerChainB, 1); res.Error != nil {
+			t.Fatalf("failed to insert forking chain: %v", res.Error)
 		}
 	}
 	// Sanity check that the forked chain can be imported into the original
@@ -209,9 +209,9 @@ func loadChain(fn string, t *testing.T) (types.Blocks, error) {
 }
 
 func insertChain(done chan bool, blockchain *BlockChain, chain types.Blocks, t *testing.T) {
-	_, err := blockchain.InsertChain(chain)
-	if err != nil {
-		t.Fatal(err)
+	res := blockchain.InsertChain(chain)
+	if res.Error != nil {
+		t.Fatal(res.Error)
 	}
 	done <- true
 }
@@ -616,9 +616,9 @@ func TestInsertHeaderChainBadHash(t *testing.T) {
 		},
 	}
 
-	_, err = bc.InsertHeaderChain(headers, 1)
-	if err != ErrHashKnownBad {
-		t.Errorf("got error %#v, want %#v", err, ErrHashKnownBad)
+	res := bc.InsertHeaderChain(headers, 1)
+	if res.Error != ErrHashKnownBad {
+		t.Errorf("got error %#v, want %#v", res.Error, ErrHashKnownBad)
 	}
 }
 
@@ -640,9 +640,9 @@ func TestInsertChainBadHash(t *testing.T) {
 		},
 	}
 
-	_, err = bc.InsertChain(blocks)
-	if err != ErrHashKnownBad {
-		t.Errorf("got error %#v, want %#v", err, ErrHashKnownBad)
+	res := bc.InsertChain(blocks)
+	if res.Error != ErrHashKnownBad {
+		t.Errorf("got error %#v, want %#v", res.Error, ErrHashKnownBad)
 	}
 }
 
@@ -668,8 +668,8 @@ func testReorgBadHashes(t *testing.T, full bool) {
 	blocks := makeBlockChainWithDiff(genesis, []int{1, 2, 3, 4}, 10)
 
 	if full {
-		if _, err := bc.InsertChain(blocks); err != nil {
-			t.Fatalf("failed to import blocks: %v", err)
+		if res := bc.InsertChain(blocks); res.Error != nil {
+			t.Fatalf("failed to import blocks: %v", res.Error)
 		}
 		if bc.CurrentBlock().Hash() != blocks[3].Hash() {
 			t.Errorf("last block hash mismatch: have: %x, want %x", bc.CurrentBlock().Hash(), blocks[3].Header().Hash())
@@ -682,8 +682,8 @@ func testReorgBadHashes(t *testing.T, full bool) {
 		}
 		defer func() { bc.config.BadHashes = []*BadHash{} }()
 	} else {
-		if _, err := bc.InsertHeaderChain(headers, 1); err != nil {
-			t.Fatalf("failed to import headers: %v", err)
+		if res := bc.InsertHeaderChain(headers, 1); res.Error != nil {
+			t.Fatalf("failed to import headers: %v", res.Error)
 		}
 		if bc.CurrentHeader().Hash() != headers[3].Hash() {
 			t.Errorf("last header hash mismatch: have: %x, want %x", bc.CurrentHeader().Hash(), headers[3].Hash())
@@ -742,7 +742,8 @@ func testInsertNonceError(t *testing.T, full bool) {
 
 			blockchain.pow = failPow{failNum}
 
-			failRes, err = blockchain.InsertChain(blocks)
+			res := blockchain.InsertChain(blocks)
+			failRes, err = res.Index, res.Error
 		} else {
 			headers := makeHeaderChain(blockchain.config, blockchain.CurrentHeader(), i, db, 0)
 
@@ -753,7 +754,8 @@ func testInsertNonceError(t *testing.T, full bool) {
 			blockchain.pow = failPow{failNum}
 			blockchain.validator = NewBlockValidator(testChainConfig(), blockchain, failPow{failNum})
 
-			failRes, err = blockchain.InsertHeaderChain(headers, 1)
+			res := blockchain.InsertHeaderChain(headers, 1)
+			failRes, err = res.Index, res.Error
 		}
 		// Check that the returned error indicates the nonce failure.
 		if failRes != failAt {
@@ -833,8 +835,8 @@ func TestFastVsFullChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if n, err := archive.InsertChain(blocks); err != nil {
-		t.Fatalf("failed to process block %d: %v", n, err)
+	if res := archive.InsertChain(blocks); res.Error != nil {
+		t.Fatalf("failed to process block %d: %v", res.Index, res.Error)
 	}
 	// Fast import the chain as a non-archive node to test
 	fastDb, err := ethdb.NewMemDatabase()
@@ -851,11 +853,11 @@ func TestFastVsFullChains(t *testing.T) {
 	for i, block := range blocks {
 		headers[i] = block.Header()
 	}
-	if n, err := fast.InsertHeaderChain(headers, 1); err != nil {
-		t.Fatalf("failed to insert header %d: %v", n, err)
+	if res := fast.InsertHeaderChain(headers, 1); res.Error != nil {
+		t.Fatalf("failed to insert header %d: %v", res.Index, res.Error)
 	}
-	if n, err := fast.InsertReceiptChain(blocks, receipts); err != nil {
-		t.Fatalf("failed to insert receipt %d: %v", n, err)
+	if res := fast.InsertReceiptChain(blocks, receipts); res.Error != nil {
+		t.Fatalf("failed to insert receipt %d: %v", res.Index, res.Error)
 	}
 	// Iterate over all chain data components, and cross reference
 	for i := 0; i < len(blocks); i++ {
@@ -964,19 +966,19 @@ func TestFastVsFullChainsATXI(t *testing.T) {
 		// turn on atxi
 		blockchain.SetAtxi(&AtxiT{Db: db})
 		if i == 0 {
-			if n, err := blockchain.InsertChain(blocks); err != nil {
-				t.Fatalf("failed to process block %d: %v", n, err)
+			if res := blockchain.InsertChain(blocks); res.Error != nil {
+				t.Fatalf("failed to process block %d: %v", res.Index, res.Error)
 			}
 		} else {
 			headers := make([]*types.Header, len(blocks))
 			for i, block := range blocks {
 				headers[i] = block.Header()
 			}
-			if n, err := blockchain.InsertHeaderChain(headers, 1); err != nil {
-				t.Fatalf("failed to insert header %d: %v", n, err)
+			if res := blockchain.InsertHeaderChain(headers, 1); res.Error != nil {
+				t.Fatalf("failed to insert header %d: %v", res.Index, res.Error)
 			}
-			if n, err := blockchain.InsertReceiptChain(blocks, receipts); err != nil {
-				t.Fatalf("failed to insert receipt %d: %v", n, err)
+			if res := blockchain.InsertReceiptChain(blocks, receipts); res.Error != nil {
+				t.Fatalf("failed to insert receipt %d: %v", res.Index, res.Error)
 			}
 		}
 
@@ -1070,8 +1072,8 @@ func TestRmAddrTx(t *testing.T) {
 	// turn on atxi
 	blockchain.SetAtxi(&AtxiT{Db: db})
 
-	if n, err := blockchain.InsertChain(blocks); err != nil {
-		t.Fatalf("failed to process block %d: %v", n, err)
+	if res := blockchain.InsertChain(blocks); res.Error != nil {
+		t.Fatalf("failed to process block %d: %v", res.Index, res.Error)
 	}
 
 	out := GetAddrTxs(db, addr1, 0, 0, "", "", -1, -1, false)
@@ -1136,8 +1138,8 @@ func TestLightVsFastVsFullChainHeads(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if n, err := archive.InsertChain(blocks); err != nil {
-		t.Fatalf("failed to process block %d: %v", n, err)
+	if res := archive.InsertChain(blocks); res.Error != nil {
+		t.Fatalf("failed to process block %d: %v", res.Index, res.Error)
 	}
 	assert(t, "archive", archive, height, height, height)
 	archive.Rollback(remove)
@@ -1158,11 +1160,11 @@ func TestLightVsFastVsFullChainHeads(t *testing.T) {
 	for i, block := range blocks {
 		headers[i] = block.Header()
 	}
-	if n, err := fast.InsertHeaderChain(headers, 1); err != nil {
-		t.Fatalf("failed to insert header %d: %v", n, err)
+	if res := fast.InsertHeaderChain(headers, 1); res.Error != nil {
+		t.Fatalf("failed to insert header %d: %v", res.Index, res.Error)
 	}
-	if n, err := fast.InsertReceiptChain(blocks, receipts); err != nil {
-		t.Fatalf("failed to insert receipt %d: %v", n, err)
+	if res := fast.InsertReceiptChain(blocks, receipts); res.Error != nil {
+		t.Fatalf("failed to insert receipt %d: %v", res.Index, res.Error)
 	}
 	assert(t, "fast", fast, height, height, 0)
 	fast.Rollback(remove)
@@ -1179,8 +1181,8 @@ func TestLightVsFastVsFullChainHeads(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if n, err := light.InsertHeaderChain(headers, 1); err != nil {
-		t.Fatalf("failed to insert header %d: %v", n, err)
+	if res := light.InsertHeaderChain(headers, 1); res.Error != nil {
+		t.Fatalf("failed to insert header %d: %v", res.Index, res.Error)
 	}
 	assert(t, "light", light, height, 0, 0)
 	light.Rollback(remove)
@@ -1296,8 +1298,8 @@ func testChainTxReorgs(t *testing.T, db ethdb.Database, withATXI bool) {
 	if withATXI {
 		blockchain.SetAtxi(&AtxiT{Db: db})
 	}
-	if i, err := blockchain.InsertChain(chain); err != nil {
-		t.Fatalf("failed to insert original chain[%d]: %v", i, err)
+	if res := blockchain.InsertChain(chain); res.Error != nil {
+		t.Fatalf("failed to insert original chain[%d]: %v", res.Index, res.Error)
 	}
 
 	// overwrite the old chain
@@ -1319,8 +1321,8 @@ func testChainTxReorgs(t *testing.T, db ethdb.Database, withATXI bool) {
 			gen.AddTx(futureAdd) // This transaction will be added after a full reorg
 		}
 	})
-	if _, err := blockchain.InsertChain(chain); err != nil {
-		t.Fatalf("failed to insert forked chain: %v", err)
+	if res := blockchain.InsertChain(chain); res.Error != nil {
+		t.Fatalf("failed to insert forked chain: %v", res.Error)
 	}
 
 	// Conveniently grouped
@@ -1452,13 +1454,13 @@ func TestLogReorgs(t *testing.T) {
 			gen.AddTx(tx)
 		}
 	})
-	if _, err := blockchain.InsertChain(chain); err != nil {
-		t.Fatalf("failed to insert chain: %v", err)
+	if res := blockchain.InsertChain(chain); res.Error != nil {
+		t.Fatalf("failed to insert chain: %v", res.Error)
 	}
 
 	chain, _ = GenerateChain(chainConfig, genesis, db, 3, func(i int, gen *BlockGen) {})
-	if _, err := blockchain.InsertChain(chain); err != nil {
-		t.Fatalf("failed to insert forked chain: %v", err)
+	if res := blockchain.InsertChain(chain); res.Error != nil {
+		t.Fatalf("failed to insert forked chain: %v", res.Error)
 	}
 
 	ev := <-subs.Chan()
@@ -1499,8 +1501,8 @@ func TestReorgSideEvent(t *testing.T) {
 	}
 
 	chain, _ := GenerateChain(blockchain.config, genesis, db, 3, func(i int, gen *BlockGen) {})
-	if _, err := blockchain.InsertChain(chain); err != nil {
-		t.Fatalf("failed to insert chain: %v", err)
+	if res := blockchain.InsertChain(chain); res.Error != nil {
+		t.Fatalf("failed to insert chain: %v", res.Error)
 	}
 
 	replacementBlocks, _ := GenerateChain(blockchain.config, genesis, db, 4, func(i int, gen *BlockGen) {
@@ -1515,8 +1517,8 @@ func TestReorgSideEvent(t *testing.T) {
 	})
 
 	subs := evmux.Subscribe(ChainSideEvent{})
-	if _, err := blockchain.InsertChain(replacementBlocks); err != nil {
-		t.Fatalf("failed to insert chain: %v", err)
+	if res := blockchain.InsertChain(replacementBlocks); res.Error != nil {
+		t.Fatalf("failed to insert chain: %v", res.Error)
 	}
 
 	// first two block of the secondary chain are for a brief moment considered
@@ -1720,8 +1722,8 @@ func TestEIP155Transition(t *testing.T) {
 		}
 	})
 
-	if _, err := blockchain.InsertChain(blocks); err != nil {
-		t.Fatal(err)
+	if res := blockchain.InsertChain(blocks); res.Error != nil {
+		t.Fatal(res.Error)
 	}
 	block := blockchain.GetBlockByNumber(1)
 	if block.Transactions()[0].Protected() {
@@ -1735,8 +1737,8 @@ func TestEIP155Transition(t *testing.T) {
 	if !block.Transactions()[1].Protected() {
 		t.Error("Expected block[3].txs[1] to be replay protected")
 	}
-	if _, err := blockchain.InsertChain(blocks[4:]); err != nil {
-		t.Fatal(err)
+	if res := blockchain.InsertChain(blocks[4:]); res.Error != nil {
+		t.Fatal(res.Error)
 	}
 
 	// generate an invalid chain id transaction
@@ -1807,11 +1809,11 @@ func TestEIP155Transition(t *testing.T) {
 		}
 	})
 	errExp := "Invalid transaction chain id. Current chain id: 1 tx chain id: 2"
-	_, err = blockchain.InsertChain(blocks)
-	if err == nil {
+	res := blockchain.InsertChain(blocks)
+	if res.Error == nil {
 		t.Error("expected transaction chain id error")
-	} else if err.Error() != errExp {
-		t.Error("expected:", errExp, "got:", err)
+	} else if res.Error.Error() != errExp {
+		t.Error("expected:", errExp, "got:", res.Error)
 	}
 }
 

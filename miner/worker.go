@@ -261,8 +261,8 @@ func (self *worker) wait() {
 			work := result.Work
 
 			if self.fullValidation {
-				if _, err := self.chain.InsertChain(types.Blocks{block}); err != nil {
-					log.Printf("mine: ignoring invalid block #%d (%x) received: %v\n", block.Number(), block.Hash(), err)
+				if res := self.chain.InsertChain(types.Blocks{block}); res.Error != nil {
+					log.Printf("mine: ignoring invalid block #%d (%x) received: %v\n", block.Number(), block.Hash(), res.Error)
 					continue
 				}
 				go self.mux.Post(core.NewMinedBlockEvent{Block: block})

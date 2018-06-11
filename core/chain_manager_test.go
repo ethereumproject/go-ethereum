@@ -76,8 +76,8 @@ func ExampleGenerateChain() {
 	// Import the chain. This runs all block validation rules.
 	evmux := &event.TypeMux{}
 	blockchain, _ := NewBlockChain(db, testChainConfig(), FakePow{}, evmux)
-	if i, err := blockchain.InsertChain(chain); err != nil {
-		fmt.Printf("insert error (block %d): %v\n", chain[i].NumberU64(), err)
+	if res := blockchain.InsertChain(chain); res.Error != nil {
+		fmt.Printf("insert error (block %d): %v\n", chain[res.Index].NumberU64(), res.Error)
 		return
 	}
 

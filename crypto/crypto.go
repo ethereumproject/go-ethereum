@@ -21,14 +21,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"math/big"
-	"os"
-
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"io"
+	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto/ecies"
@@ -131,14 +128,9 @@ func HexToECDSA(hexkey string) (*ecdsa.PrivateKey, error) {
 
 // LoadECDSA loads a secp256k1 private key from the given file.
 // The key data is expected to be hex-encoded.
-func LoadECDSA(file string) (*ecdsa.PrivateKey, error) {
+func LoadECDSA(in io.Reader) (*ecdsa.PrivateKey, error) {
 	buf := make([]byte, 64)
-	fd, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer fd.Close()
-	if _, err := io.ReadFull(fd, buf); err != nil {
+	if _, err := io.ReadFull(in, buf); err != nil {
 		return nil, err
 	}
 
@@ -150,11 +142,11 @@ func LoadECDSA(file string) (*ecdsa.PrivateKey, error) {
 	return ToECDSA(key), nil
 }
 
-// SaveECDSA saves a secp256k1 private key to the given file with
+// WriteECDSAKey saves a secp256k1 private key to the given file with
 // restrictive permissions. The key data is saved hex-encoded.
-func SaveECDSA(file string, key *ecdsa.PrivateKey) error {
+func WriteECDSAKey(to io.Writer, key *ecdsa.PrivateKey) (int, error) {
 	k := hex.EncodeToString(FromECDSA(key))
-	return ioutil.WriteFile(file, []byte(k), 0600)
+	return to.Write([]byte(k))
 }
 
 func GenerateKey() (*ecdsa.PrivateKey, error) {

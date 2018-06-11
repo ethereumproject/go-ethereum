@@ -162,7 +162,7 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 	// Generate a chain of b.N blocks using the supplied block
 	// generator function.
 	genesis := WriteGenesisBlockForTesting(db, GenesisAccount{benchRootAddr, benchRootFunds})
-	chain, _ := GenerateChain(nil, genesis, db, b.N, gen)
+	chain, _ := GenerateChain(DefaultConfigMainnet.ChainConfig, genesis, db, b.N, gen)
 
 	// Time the insertion of the new chain.
 	// State and blocks are stored in the same DB.
@@ -171,7 +171,7 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 	defer chainman.Stop()
 	b.ReportAllocs()
 	b.ResetTimer()
-	if i, err := chainman.InsertChain(chain); err != nil {
-		b.Fatalf("insert error (block %d): %v\n", i, err)
+	if res := chainman.InsertChain(chain); res.Error != nil {
+		b.Fatalf("insert error (block %d): %v\n", res.Index, res.Error)
 	}
 }
