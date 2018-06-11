@@ -19,12 +19,13 @@ package node
 
 import (
 	"errors"
-	"github.com/spf13/afero"
 	"net"
 	"path/filepath"
 	"reflect"
 	"sync"
 	"syscall"
+
+	"github.com/spf13/afero"
 
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"

@@ -5,11 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"math"
 	"os"
 	"os/signal"
@@ -17,6 +12,12 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 var (

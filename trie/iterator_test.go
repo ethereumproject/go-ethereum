@@ -21,9 +21,10 @@ import (
 
 	"bytes"
 	"fmt"
+	"math/rand"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"math/rand"
 )
 
 func TestIterator(t *testing.T) {

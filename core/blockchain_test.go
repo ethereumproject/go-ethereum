@@ -26,6 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"io/ioutil"
+	"strings"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -37,8 +40,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
-	"io/ioutil"
-	"strings"
 )
 
 func init() {
