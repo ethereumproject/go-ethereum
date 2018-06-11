@@ -19,6 +19,7 @@ setup: ## Install all the build and lint dependencies
 	go get -u github.com/golang/dep/...
 	go get -u github.com/pierrre/gotestcover
 	go get -u golang.org/x/tools/cmd/cover
+	go get -u github.com/omeid/go-resources/cmd/resources
 	dep ensure
 	gometalinter --install
 
@@ -117,8 +118,11 @@ cover: test ## Run all the tests and opens the coverage report
 
 chainconfig: core/assets/assets.go ## Rebuild assets if source config files changed.
 
-core/assets/assets.go: core/config/*.json core/config/*.csv
-	resources -fmt -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json core/config/*.csv
+core/assets/assets.go: ${GOPATH}/bin/resources core/config/*.json core/config/*.csv
+	${GOPATH}/bin/resources -fmt -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json core/config/*.csv
+
+${GOPATH}/bin/resources:
+	go get -u github.com/omeid/go-resources/cmd/resources
 
 clean: ## Remove local snapshot binary directory
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
