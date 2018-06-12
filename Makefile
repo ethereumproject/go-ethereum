@@ -12,6 +12,9 @@ COMMIT=`git log --pretty=format:'%h' -n 1`
 # Choose to install geth with or without SputnikVM.
 WITH_SVM?=1
 
+# Provide default value of GOPATH, if it's not set in environment 
+export GOPATH?=${HOME}/go
+
 LDFLAGS=-ldflags "-X main.Version="`git describe --tags`
 
 setup: ## Install all the build and lint dependencies
