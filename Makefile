@@ -12,6 +12,9 @@ COMMIT=`git log --pretty=format:'%h' -n 1`
 # Choose to install geth with or without SputnikVM.
 WITH_SVM?=1
 
+# Provide default value of GOPATH, if it's not set in environment 
+export GOPATH?=${HOME}/go
+
 LDFLAGS=-ldflags "-X main.Version="`git describe --tags`
 
 setup: ## Install all the build and lint dependencies
@@ -19,14 +22,20 @@ setup: ## Install all the build and lint dependencies
 	go get -u github.com/golang/dep/...
 	go get -u github.com/pierrre/gotestcover
 	go get -u golang.org/x/tools/cmd/cover
+	go get -u github.com/omeid/go-resources/cmd/resources
 	dep ensure
 	gometalinter --install
 
 build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cmd/rlpdump cmd/geth ## Build a local snapshot binary version of all commands
 	@ls -ld $(BINARY)/*
 
-cmd/geth: ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
-	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh build ; else mkdir -p ./${BINARY} && go build ${LDFLAGS} -o ${BINARY}/geth ./cmd/geth ; fi
+cmd/geth: chainconfig ## Build a local snapshot binary version of geth. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
+ifeq (${WITH_SVM}, 1)
+	./scripts/build_sputnikvm.sh build
+else
+	mkdir -p ./${BINARY}
+	go build ${LDFLAGS} -o ${BINARY}/geth -tags="netgo" ./cmd/geth
+endif
 	@echo "Done building geth."
 	@echo "Run \"$(BINARY)/geth\" to launch geth."
 
@@ -69,9 +78,13 @@ install: ## Install all packages to $GOPATH/bin
 	go install ./cmd/{abigen,bootnode,disasm,ethtest,evm,gethrpctest,rlpdump}
 	$(MAKE) install_geth
 
-install_geth: ## Install geth to $GOPATH/bin. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
+install_geth: chainconfig ## Install geth to $GOPATH/bin. Use WITH_SVM=0 to disable building with SputnikVM (default: WITH_SVM=1)
 	$(info Installing $$GOPATH/bin/geth)
-	if [ ${WITH_SVM} == 1 ]; then ./scripts/build_sputnikvm.sh install ; else go install ${LDFLAGS} ./cmd/geth ; fi
+ifeq (${WITH_SVM}, 1)
+	./scripts/build_sputnikvm.sh install
+else
+	go install ${LDFLAGS} -tags="netgo" ./cmd/geth ; fi
+endif
 
 fmt: ## gofmt and goimports all go files
 	find . -name '*.go' -not -wholename './vendor/*' -not -wholename './_vendor*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
@@ -106,8 +119,17 @@ test: ## Run all the tests
 cover: test ## Run all the tests and opens the coverage report
 	go tool cover -html=coverage.txt
 
+chainconfig: core/assets/assets.go ## Rebuild assets if source config files changed.
+
+core/assets/assets.go: ${GOPATH}/bin/resources core/config/*.json core/config/*.csv
+	${GOPATH}/bin/resources -fmt -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json core/config/*.csv
+
+${GOPATH}/bin/resources:
+	go get -u github.com/omeid/go-resources/cmd/resources
+
 clean: ## Remove local snapshot binary directory
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
+	go clean -i ./...
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
