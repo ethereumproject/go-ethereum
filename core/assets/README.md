@@ -10,3 +10,5 @@ mkdir config/assets
 package)
 ~/gocode/src/github.com/ethereumproject/go-ethereum resourceful-json-configs *% ⟠ resources -fmt -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json core/config/*.csv
 ```
+
+When using Makefile, changes in `.json` and `.csv` files will trigger rebuilding of binary assets.
