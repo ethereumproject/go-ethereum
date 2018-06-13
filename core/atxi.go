@@ -304,12 +304,12 @@ func GetAddrTxs(db ethdb.Database, address common.Address, blockStartN uint64, b
 		err = errWithReason(errAtxiInvalidUse, "Address transactions list signature requires 'kind of' param to be empty string or [s|c] prefix (eg. both, standard, or contract)")
 		return
 	}
-	if paginationStart < 0 {
-		paginationStart = 0
-	}
-	if paginationStart > paginationEnd {
+	if paginationStart > 0 && paginationEnd > 0 && paginationStart > paginationEnd {
 		err = errWithReason(errAtxiInvalidUse, "Pagination start must be less than or equal to pagination end params")
 		return
+	}
+	if paginationStart < 0 {
+		paginationStart = 0
 	}
 
 	// Have to cast to LevelDB to use iterator. Yuck.
