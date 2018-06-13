@@ -108,7 +108,7 @@ type BlockChain struct {
 	procInterrupt int32          // interrupt signaler for block processing
 	wg            sync.WaitGroup // chain processing wait group for shutting down
 
-	pow       pow.PoW
+	engine Engine 
 	processor Processor // block processor interface
 	validator Validator // block and state validator interface
 
@@ -144,7 +144,7 @@ func (bc *BlockChain) GetBlockByHash(h common.Hash) *types.Block {
 // NewBlockChain returns a fully initialised block chain using information
 // available in the database. It initialises the default Ethereum Validator and
 // Processor.
-func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux *event.TypeMux) (*BlockChain, error) {
+func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus.Engine, mux *event.TypeMux) (*BlockChain, error) {
 	bodyCache, _ := lru.New(bodyCacheLimit)
 	bodyRLPCache, _ := lru.New(bodyCacheLimit)
 	blockCache, _ := lru.New(blockCacheLimit)
@@ -161,8 +161,8 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux
 		futureBlocks: futureBlocks,
 		pow:          pow,
 	}
-	bc.SetValidator(NewBlockValidator(config, bc, pow))
-	bc.SetProcessor(NewStateProcessor(config, bc))
+	bc.SetValidator(NewBlockValidator(config, bc, engine))
+	bc.SetProcessor(NewStateProcessor(config, bc, engine))
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error
