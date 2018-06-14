@@ -458,6 +458,270 @@ func calcDifficultyFrontier(time uint64, parent *types.Header) *big.Int {
 	return diff
 }
 
+
+// CalcDifficulty is the difficulty adjustment algorithm. It returns
+// the difficulty that a new block should have when created at time
+// given the parent block's time and difficulty.
+func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+	if config == nil {
+		glog.Fatalln("missing chain configuration, cannot calculate difficulty")
+	}
+	if parentDiff == nil {
+		parentDiff = big.NewInt(0)
+	}
+	num := new(big.Int).Add(parentNumber, common.Big1) // increment block number to current
+
+	f, fork, configured := config.GetFeature(num, "difficulty")
+	if !configured {
+		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
+	}
+	name, ok := f.GetString("type")
+	if !ok {
+		name = ""
+	} // will fall to default panic
+	switch name {
+	case "defused":
+		return calcDifficultyDefused(time, parentTime, parentNumber, parentDiff)
+	case "ecip1010":
+		if length, ok := f.GetBigInt("length"); ok {
+			explosionBlock := big.NewInt(0).Add(fork.Block, length)
+			if num.Cmp(explosionBlock) < 0 {
+				return calcDifficultyDiehard(time, parentTime, parentDiff,
+					fork.Block)
+			} else {
+				return calcDifficultyExplosion(time, parentTime, parentNumber, parentDiff,
+					fork.Block, explosionBlock)
+			}
+		} else {
+			panic(fmt.Sprintf("Length is not set for diehard difficulty at %v", num))
+		}
+	case "homestead":
+		return calcDifficultyHomestead(time, parentTime, parentNumber, parentDiff)
+	case "frontier":
+		return calcDifficultyFrontier(time, parentTime, parentNumber, parentDiff)
+	default:
+		panic(fmt.Sprintf("Unsupported difficulty '%v' for block: %v", name, num))
+	}
+}
+
+func calcDifficultyDiehard(time, parentTime uint64, parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
+	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
+	// algorithm:
+	// diff = (parent_diff +
+	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	//        ) + 2^(fixed_diff)
+
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).SetUint64(parentTime)
+
+	// holds intermediate values to make the algo easier to read & audit
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// 1 - (block_timestamp -parent_timestamp) // 10
+	x.Sub(bigTime, bigParentTime)
+	x.Div(x, big10)
+	x.Sub(common.Big1, x)
+
+	// max(1 - (block_timestamp - parent_timestamp) // 10, -99)))
+	if x.Cmp(bigMinus99) < 0 {
+		x.Set(bigMinus99)
+	}
+
+	// (parent_diff + parent_diff // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	y.Div(parentDiff, DifficultyBoundDivisor)
+	x.Mul(y, x)
+	x.Add(parentDiff, x)
+
+	// minimum difficulty can ever be (before exponential factor)
+	if x.Cmp(MinimumDifficulty) < 0 {
+		x.Set(MinimumDifficulty)
+	}
+
+	// for the exponential factor
+	fixedCount := new(big.Int).Div(diehardBlock, ExpDiffPeriod)
+
+	// the exponential factor, commonly referred to as "the bomb"
+	// diff = diff + 2^(periodCount - 2)
+	if fixedCount.Cmp(common.Big1) > 0 {
+		y.Sub(fixedCount, common.Big2)
+		y.Exp(common.Big2, y, nil)
+		x.Add(x, y)
+	}
+
+	return x
+}
+
+func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, delayBlock *big.Int, continueBlock *big.Int) *big.Int {
+	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1010.md
+	// algorithm:
+	// diff = (parent_diff +
+	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	//        ) + 2^(delayedCount - 2)
+
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).SetUint64(parentTime)
+
+	// holds intermediate values to make the algo easier to read & audit
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// 1 - (block_timestamp -parent_timestamp) // 10
+	x.Sub(bigTime, bigParentTime)
+	x.Div(x, big10)
+	x.Sub(common.Big1, x)
+
+	// max(1 - (block_timestamp - parent_timestamp) // 10, -99)))
+	if x.Cmp(bigMinus99) < 0 {
+		x.Set(bigMinus99)
+	}
+
+	// (parent_diff + parent_diff // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	y.Div(parentDiff, DifficultyBoundDivisor)
+	x.Mul(y, x)
+	x.Add(parentDiff, x)
+
+	// minimum difficulty can ever be (before exponential factor)
+	if x.Cmp(MinimumDifficulty) < 0 {
+		x.Set(MinimumDifficulty)
+	}
+
+	// for the exponential factor...
+
+	delayedCount := new(big.Int).Add(parentNumber, common.Big1)
+	delayedCount.Sub(delayedCount, continueBlock)
+	delayedCount.Add(delayedCount, delayBlock)
+	delayedCount.Div(delayedCount, ExpDiffPeriod)
+
+	// the exponential factor, commonly referred to as "the bomb"
+	// diff = diff + 2^(periodCount - 2)
+	if delayedCount.Cmp(common.Big1) > 0 {
+		y.Sub(delayedCount, common.Big2)
+		y.Exp(common.Big2, y, nil)
+		x.Add(x, y)
+	}
+
+	return x
+}
+
+func calcDifficultyDefused(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.mediawiki
+	// algorithm:
+	// diff = (parent_diff +
+	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	//        )
+
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).SetUint64(parentTime)
+
+	// holds intermediate values to make the algo easier to read & audit
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// 1 - (block_timestamp -parent_timestamp) // 10
+	x.Sub(bigTime, bigParentTime)
+	x.Div(x, big10)
+	x.Sub(common.Big1, x)
+
+	// max(1 - (block_timestamp - parent_timestamp) // 10, -99)))
+	if x.Cmp(bigMinus99) < 0 {
+		x.Set(bigMinus99)
+	}
+
+	// (parent_diff + parent_diff // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	y.Div(parentDiff, DifficultyBoundDivisor)
+	x.Mul(y, x)
+	x.Add(parentDiff, x)
+
+	// minimum difficulty can ever be (before exponential factor)
+	if x.Cmp(MinimumDifficulty) < 0 {
+		x.Set(MinimumDifficulty)
+	}
+
+	return x
+}
+
+func calcDifficultyHomestead(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.mediawiki
+	// algorithm:
+	// diff = (parent_diff +
+	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	//        ) + 2^(periodCount - 2)
+
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).SetUint64(parentTime)
+
+	// holds intermediate values to make the algo easier to read & audit
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// 1 - (block_timestamp -parent_timestamp) // 10
+	x.Sub(bigTime, bigParentTime)
+	x.Div(x, big10)
+	x.Sub(common.Big1, x)
+
+	// max(1 - (block_timestamp - parent_timestamp) // 10, -99)))
+	if x.Cmp(bigMinus99) < 0 {
+		x.Set(bigMinus99)
+	}
+
+	// (parent_diff + parent_diff // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	y.Div(parentDiff, DifficultyBoundDivisor)
+	x.Mul(y, x)
+	x.Add(parentDiff, x)
+
+	// minimum difficulty can ever be (before exponential factor)
+	if x.Cmp(MinimumDifficulty) < 0 {
+		x.Set(MinimumDifficulty)
+	}
+
+	// for the exponential factor
+	periodCount := new(big.Int).Add(parentNumber, common.Big1)
+	periodCount.Div(periodCount, ExpDiffPeriod)
+
+	// the exponential factor, commonly referred to as "the bomb"
+	// diff = diff + 2^(periodCount - 2)
+	if periodCount.Cmp(common.Big1) > 0 {
+		y.Sub(periodCount, common.Big2)
+		y.Exp(common.Big2, y, nil)
+		x.Add(x, y)
+	}
+
+	return x
+}
+
+func calcDifficultyFrontier(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+	diff := new(big.Int)
+	adjust := new(big.Int).Div(parentDiff, DifficultyBoundDivisor)
+	bigTime := new(big.Int)
+	bigParentTime := new(big.Int)
+
+	bigTime.SetUint64(time)
+	bigParentTime.SetUint64(parentTime)
+
+	if bigTime.Sub(bigTime, bigParentTime).Cmp(DurationLimit) < 0 {
+		diff.Add(parentDiff, adjust)
+	} else {
+		diff.Sub(parentDiff, adjust)
+	}
+	if diff.Cmp(MinimumDifficulty) < 0 {
+		diff.Set(MinimumDifficulty)
+	}
+
+	periodCount := new(big.Int).Add(parentNumber, common.Big1)
+	periodCount.Div(periodCount, ExpDiffPeriod)
+	if periodCount.Cmp(common.Big1) > 0 {
+		// diff = diff + 2^(periodCount - 2)
+		expDiff := periodCount.Sub(periodCount, common.Big2)
+		expDiff.Exp(common.Big2, expDiff, nil)
+		diff.Add(diff, expDiff)
+		diff = common.BigMax(diff, MinimumDifficulty)
+	}
+
+	return diff
+}
+
+
 // VerifySeal implements consensus.Engine, checking whether the given block satisfies
 // the PoW difficulty requirements.
 func (ethash *Ethash) VerifySeal(chain consensus.ChainReader, header *types.Header) error {

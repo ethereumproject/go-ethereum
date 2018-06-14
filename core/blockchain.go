@@ -181,7 +181,10 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus
 	}
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
 	for i := range config.BadHashes {
-		if header := bc.GetHeader(config.BadHashes[i].Hash); header != nil && header.Number.Cmp(config.BadHashes[i].Block) == 0 {
+		// get the canonical block corresponding to the offending header's number
+		headerByNumber := bc.GetHeaderByNumber(header.Number.Uint64())
+		// make sure the headerByNumber (if present) is in our current canonical chain
+		if headerByNumber != nil && headerByNumber.Hash() == header.Hash() {
 			glog.V(logger.Error).Infof("Found bad hash, rewinding chain to block #%d [%s]", header.Number, header.ParentHash.Hex())
 			bc.SetHead(header.Number.Uint64() - 1)
 			glog.V(logger.Error).Infoln("Chain rewind was successful, resuming normal operation")
