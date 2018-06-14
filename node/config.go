@@ -235,39 +235,38 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	// Fall back to persistent key from the data directory
 	keyfile := filepath.Join(c.DataDir, datadirPrivateKey)
 	f, err := c.fs.Open(keyfile)
-
-	// file doesn't exist, create one
-	if err != nil && os.IsNotExist(err) {
-		// No persistent key found, generate and store a new one
-		key, err := crypto.GenerateKey()
-		if err != nil {
-			glog.Fatalf("Failed to generate node key: %v", err)
-		}
-
-		f, err = c.fs.Create(keyfile)
-		if err != nil {
-			glog.Fatalf("failed to open node key file: %v", err)
-		}
+	if err == nil {
+		// file open error was nil, attempt to load key, fatal on any error
 		defer f.Close()
-		if _, err := crypto.WriteECDSAKey(f, key); err != nil {
-			glog.V(logger.Error).Infof("Failed to persist node key: %v", err)
+		key, err := crypto.LoadECDSA(f)
+		if err == nil {
+			return key
 		}
-		return key
+
+		glog.Fatalf("could not load key file: %v", err)
 	}
 
-	if err != nil && !os.IsNotExist(err) {
+	// there was an error opening an existing key file; there's nothing we can do about this
+	if !os.IsNotExist(err) {
 		glog.Fatalf("could not load key file: %v", err)
 		return nil
 	}
 
-	// file open error was nil, attempt to load key, returning any error
-	if key, err := crypto.LoadECDSA(f); err == nil {
-		f.Close()
-		return key
+	// No key file found, generate and store a new one
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		glog.Fatalf("Failed to generate node key: %v", err)
 	}
 
-	glog.Fatalf("could not load key file: %v", err)
-	return nil
+	f, err = c.fs.Create(keyfile)
+	if err != nil {
+		glog.Fatalf("failed to open node key file: %v", err)
+	}
+	defer f.Close()
+	if _, err := crypto.WriteECDSAKey(f, key); err != nil {
+		glog.V(logger.Error).Infof("Failed to persist node key: %v", err)
+	}
+	return key
 }
 
 // StaticNodes returns a list of node enode URLs configured as static nodes.
