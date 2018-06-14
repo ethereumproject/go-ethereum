@@ -93,8 +93,6 @@ type ProtocolManager struct {
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
 	wg sync.WaitGroup
-
-	badBlockReportingEnabled bool
 }
 
 // NewProtocolManager returns a new ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
@@ -176,25 +174,13 @@ func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, netw
 			glog.V(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
 			glog.D(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
 		}
-		atomic.StoreUint32(&manager.acceptsTxs, 1) // Mark initial sync done on any fetcher import
-		return manager.insertChain(blocks)
+		// Mark initial sync done on any fetcher import
+		atomic.StoreUint32(&manager.acceptsTxs, 1)
+		return manager.blockchain.InsertChain(blocks)
 	}
 	manager.fetcher = fetcher.New(mux, blockchain.GetBlock, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 
-	if blockchain.Genesis().Hash().Hex() == defaultGenesisHash && networkId == 1 {
-		manager.badBlockReportingEnabled = false
-	}
-
 	return manager, nil
-}
-
-func (pm *ProtocolManager) insertChain(blocks types.Blocks) *core.ChainInsertResult {
-	res := pm.blockchain.InsertChain(blocks)
-	err := res.Error
-	if err != nil && pm.badBlockReportingEnabled && core.IsValidateError(err) {
-		go sendBadBlockReport(blocks[res.Index], err)
-	}
-	return res
 }
 
 func (pm *ProtocolManager) removePeer(id string) {

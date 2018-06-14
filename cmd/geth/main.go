@@ -31,7 +31,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/metrics"
 )
@@ -282,12 +281,6 @@ func makeCLIApp() (app *cli.App) {
 		if s := ctx.String("metrics"); s != "" {
 			go metrics.CollectToFile(s)
 		}
-
-		// This should be the only place where reporting is enabled
-		// because it is not intended to run while testing.
-		// In addition to this check, bad block reports are sent only
-		// for chains with the main network genesis block and network id 1.
-		eth.EnableBadBlockReporting = true
 
 		// (whilei): I use `log` instead of `glog` because git diff tells me:
 		// > The output of this command is supposed to be machine-readable.
