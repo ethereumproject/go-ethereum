@@ -54,6 +54,9 @@ import (
 
 const defaultGas = uint64(90000)
 
+// TODO(tzdybal) - make it configurable parameter
+const replayTransactions = true
+
 // blockByNumber is a commonly used helper function which retrieves and returns
 // the block for the given block number, capable of handling two special blocks:
 // rpc.LatestBlockNumber and rpc.PendingBlockNumber. It returns nil when no block
@@ -820,7 +823,7 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
-	res, requiredGas, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
+	res, requiredGas, _, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
 	if len(res) == 0 { // backwards compatibility
 		return "0x", requiredGas, err
 	}
@@ -1159,14 +1162,29 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 
 	tx, _, err := getTransaction(s.chainDb, s.txPool, txHash)
 	if err != nil {
-		glog.V(logger.Debug).Infof("%v\n", err)
-		return nil, nil
+		glog.V(logger.Info).Infof("tzdybal 1 %v\n", err)
+		return nil, err
 	}
 
 	txBlock, blockIndex, index, err := getTransactionBlockData(s.chainDb, txHash)
 	if err != nil {
-		glog.V(logger.Debug).Infof("%v\n", err)
-		return nil, nil
+		glog.V(logger.Info).Infof("tzdybal 2 %v\n", err)
+		return nil, err
+	}
+
+	if replayTransactions && receipt.Status == types.TxStatusUnknown {
+		// TODO(tzdybal) - get rid of this nasty casting
+		proc := s.bc.Processor().(*core.StateProcessor)
+		statedb, err := s.bc.StateAt(s.bc.GetBlock(txBlock).Root())
+		if err != nil {
+			// TODO(tzdybal) - fetch missing state dynamically
+			return nil, err
+		}
+		glog.V(logger.Info).Infof("tzdybal: ReplayTransaction")
+		receipt, err = proc.ReplayTransaction(txHash, statedb)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var signer types.Signer = types.BasicSigner{}
@@ -1196,6 +1214,10 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 	// If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
 	if bytes.Compare(receipt.ContractAddress.Bytes(), bytes.Repeat([]byte{0}, 20)) != 0 {
 		fields["contractAddress"] = receipt.ContractAddress
+	}
+
+	if receipt.Status != types.TxStatusUnknown {
+		fields["status"] = receipt.Status
 	}
 
 	return fields, nil
@@ -2035,7 +2057,7 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
-	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	ret, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 	return &ExecutionResult{
 		Gas:         gas,
 		ReturnValue: fmt.Sprintf("%x", ret),
@@ -2056,7 +2078,7 @@ func (s *PublicDebugAPI) TraceTransaction(txHash common.Hash) (*ExecutionResult,
 	}
 
 	gp := new(core.GasPool).AddGas(tx.Gas())
-	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	ret, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 	return &ExecutionResult{
 		Gas:         gas,
 		ReturnValue: fmt.Sprintf("%x", ret),
@@ -2111,7 +2133,7 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 		}
 
 		gp := new(core.GasPool).AddGas(tx.Gas())
-		_, _, err := core.ApplyMessage(vmenv, msg, gp)
+		_, _, _, err := core.ApplyMessage(vmenv, msg, gp)
 		if err != nil {
 			return nil, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)
 		}
