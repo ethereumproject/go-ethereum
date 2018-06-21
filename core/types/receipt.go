@@ -32,7 +32,7 @@ type Receipt struct {
 	PostState         []byte
 	CumulativeGasUsed *big.Int
 	Bloom             Bloom
-	Logs              vm.Logs
+	Logs              []*types.Log
 
 	// Implementation fields
 	TxHash          common.Hash
@@ -58,7 +58,7 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 		PostState         []byte
 		CumulativeGasUsed *big.Int
 		Bloom             Bloom
-		Logs              vm.Logs
+		Logs              []*types.Log
 	}
 	if err := s.Decode(&receipt); err != nil {
 		return err
@@ -112,7 +112,7 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	}
 	// Assign the consensus fields
 	r.PostState, r.CumulativeGasUsed, r.Bloom = receipt.PostState, receipt.CumulativeGasUsed, receipt.Bloom
-	r.Logs = make(vm.Logs, len(receipt.Logs))
+	r.Logs = make([]*types.Log, len(receipt.Logs))
 	for i, log := range receipt.Logs {
 		r.Logs[i] = (*vm.Log)(log)
 	}

@@ -457,7 +457,7 @@ func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, rec
 	return nil
 }
 func (bproc) VerifyUncles(block, parent *types.Block) error { return nil }
-func (bproc) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, vm.Logs, *big.Int, error) {
+func (bproc) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, []*types.Log, *big.Int, error) {
 	return nil, nil, nil, nil
 }
 

@@ -38,7 +38,7 @@ func TestCallbacks(t *testing.T) {
 	)
 
 	blockFilter := &Filter{
-		BlockCallback: func(*types.Block, vm.Logs) {
+		BlockCallback: func(*types.Block, []*types.Log) {
 			close(blockDone)
 		},
 	}
@@ -75,9 +75,9 @@ func TestCallbacks(t *testing.T) {
 
 	mux.Post(core.ChainEvent{})
 	mux.Post(core.TxPreEvent{})
-	mux.Post(vm.Logs{&vm.Log{}})
-	mux.Post(core.RemovedLogsEvent{Logs: vm.Logs{&vm.Log{}}})
-	mux.Post(core.PendingLogsEvent{Logs: vm.Logs{&vm.Log{}}})
+	mux.Post([]*types.Log{&vm.Log{}})
+	mux.Post(core.RemovedLogsEvent{Logs: []*types.Log{&vm.Log{}}})
+	mux.Post(core.PendingLogsEvent{Logs: []*types.Log{&vm.Log{}}})
 
 	const dura = 5 * time.Second
 	failTimer := time.NewTimer(dura)

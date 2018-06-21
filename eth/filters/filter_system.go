@@ -71,7 +71,7 @@ func NewFilterSystem(mux *event.TypeMux) *FilterSystem {
 		core.RemovedLogsEvent{},
 		core.ChainEvent{},
 		core.TxPreEvent{},
-		vm.Logs(nil),
+		[]*types.Log(nil),
 	)
 	go fs.filterLoop()
 	return fs
@@ -160,7 +160,7 @@ func (fs *FilterSystem) filterLoop() {
 			}
 			fs.filterMu.RUnlock()
 
-		case vm.Logs:
+		case []*types.Log:
 			fs.filterMu.RLock()
 			for _, filter := range fs.logFilters {
 				if filter.LogCallback != nil && !filter.created.After(event.Time) {

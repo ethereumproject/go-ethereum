@@ -38,7 +38,7 @@ func init() {
 
 func makeReceipt(addr common.Address) *types.Receipt {
 	receipt := types.NewReceipt(nil, new(big.Int))
-	receipt.Logs = vm.Logs{
+	receipt.Logs = []*types.Log{
 		&vm.Log{Address: addr},
 	}
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
@@ -144,7 +144,7 @@ func TestFilters(t *testing.T) {
 		switch i {
 		case 1:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
+			receipt.Logs = []*types.Log{
 				&vm.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash1},
@@ -154,7 +154,7 @@ func TestFilters(t *testing.T) {
 			receipts = types.Receipts{receipt}
 		case 2:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
+			receipt.Logs = []*types.Log{
 				&vm.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash2},
@@ -164,7 +164,7 @@ func TestFilters(t *testing.T) {
 			receipts = types.Receipts{receipt}
 		case 998:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
+			receipt.Logs = []*types.Log{
 				&vm.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash3},
@@ -174,7 +174,7 @@ func TestFilters(t *testing.T) {
 			receipts = types.Receipts{receipt}
 		case 999:
 			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
+			receipt.Logs = []*types.Log{
 				&vm.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash4},

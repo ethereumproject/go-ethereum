@@ -153,7 +153,7 @@ func (s *PublicFilterAPI) NewBlockFilter() (string, error) {
 	s.blockQueue[id] = &hashQueue{timeout: time.Now()}
 	s.blockMu.Unlock()
 
-	filter.BlockCallback = func(block *types.Block, logs vm.Logs) {
+	filter.BlockCallback = func(block *types.Block, logs []*types.Log) {
 		s.blockMu.Lock()
 		defer s.blockMu.Unlock()
 
@@ -266,7 +266,7 @@ func (s *PublicFilterAPI) Logs(ctx context.Context, args NewFilterArgs) (rpc.Sub
 	}
 
 	notifySubscriber := func(log *vm.Log, removed bool) {
-		rpcLog := toRPCLogs(vm.Logs{log}, removed)
+		rpcLog := toRPCLogs([]*types.Log{log}, removed)
 		if err := subscription.Notify(rpcLog); err != nil {
 			subscription.Cancel()
 		}
@@ -643,11 +643,11 @@ func newFilterId() (string, error) {
 	return "0x" + hex.EncodeToString(subid[:]), nil
 }
 
-// toRPCLogs is a helper that will convert a vm.Logs array to an structure which
+// toRPCLogs is a helper that will convert a []*types.Log array to an structure which
 // can hold additional information about the logs such as whether it was deleted.
 // Additionally when nil is given it will by default instead create an empty slice
 // instead. This is required by the RPC specification.
-func toRPCLogs(logs vm.Logs, removed bool) []vmlog {
+func toRPCLogs(logs []*types.Log, removed bool) []vmlog {
 	convertedLogs := make([]vmlog, len(logs))
 	for i, log := range logs {
 		convertedLogs[i] = vmlog{Log: log, Removed: removed}
