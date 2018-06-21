@@ -48,21 +48,21 @@ func TestCallbacks(t *testing.T) {
 		},
 	}
 	logFilter := &Filter{
-		LogCallback: func(l *vm.Log, oob bool) {
+		LogCallback: func(l **types.Log, oob bool) {
 			if !oob {
 				close(logDone)
 			}
 		},
 	}
 	removedLogFilter := &Filter{
-		LogCallback: func(l *vm.Log, oob bool) {
+		LogCallback: func(l **types.Log, oob bool) {
 			if oob {
 				close(removedLogDone)
 			}
 		},
 	}
 	pendingLogFilter := &Filter{
-		LogCallback: func(*vm.Log, bool) {
+		LogCallback: func(**types.Log, bool) {
 			close(pendingLogDone)
 		},
 	}
@@ -75,9 +75,9 @@ func TestCallbacks(t *testing.T) {
 
 	mux.Post(core.ChainEvent{})
 	mux.Post(core.TxPreEvent{})
-	mux.Post([]*types.Log{&vm.Log{}})
-	mux.Post(core.RemovedLogsEvent{Logs: []*types.Log{&vm.Log{}}})
-	mux.Post(core.PendingLogsEvent{Logs: []*types.Log{&vm.Log{}}})
+	mux.Post([]*types.Log{&*types.Log{}})
+	mux.Post(core.RemovedLogsEvent{Logs: []*types.Log{&*types.Log{}}})
+	mux.Post(core.PendingLogsEvent{Logs: []*types.Log{&*types.Log{}}})
 
 	const dura = 5 * time.Second
 	failTimer := time.NewTimer(dura)

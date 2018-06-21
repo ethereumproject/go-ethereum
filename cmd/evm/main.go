@@ -261,7 +261,7 @@ func (self *VMEnv) GetHash(n uint64) common.Hash {
 	}
 	return common.Hash{}
 }
-func (self *VMEnv) AddLog(log *vm.Log) {
+func (self *VMEnv) AddLog(log **types.Log) {
 	self.state.AddLog(*log)
 }
 func (self *VMEnv) CanTransfer(from common.Address, balance *big.Int) bool {

@@ -266,7 +266,7 @@ func (self *Env) VmType() vm.Type          { return vm.StdVmTy }
 func (self *Env) GetHash(n uint64) common.Hash {
 	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 }
-func (self *Env) AddLog(log *vm.Log) {
+func (self *Env) AddLog(log **types.Log) {
 	self.state.AddLog(*log)
 }
 func (self *Env) Depth() int     { return self.depth }

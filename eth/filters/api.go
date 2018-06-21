@@ -207,7 +207,7 @@ func (s *PublicFilterAPI) NewPendingTransactionFilter() (string, error) {
 }
 
 // newLogFilter creates a new log filter.
-func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []common.Address, topics [][]common.Hash, callback func(log *vm.Log, removed bool)) (int, error) {
+func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []common.Address, topics [][]common.Hash, callback func(log **types.Log, removed bool)) (int, error) {
 	// protect filterManager.Add() and setting of filter fields
 	s.filterManager.Lock()
 	defer s.filterManager.Unlock()
@@ -226,7 +226,7 @@ func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []commo
 	filter.SetEndBlock(latest)
 	filter.SetAddresses(addresses)
 	filter.SetTopics(topics)
-	filter.LogCallback = func(log *vm.Log, removed bool) {
+	filter.LogCallback = func(log **types.Log, removed bool) {
 		if callback != nil {
 			callback(log, removed)
 		} else {
@@ -265,7 +265,7 @@ func (s *PublicFilterAPI) Logs(ctx context.Context, args NewFilterArgs) (rpc.Sub
 		return nil, err
 	}
 
-	notifySubscriber := func(log *vm.Log, removed bool) {
+	notifySubscriber := func(log **types.Log, removed bool) {
 		rpcLog := toRPCLogs([]*types.Log{log}, removed)
 		if err := subscription.Notify(rpcLog); err != nil {
 			subscription.Cancel()
@@ -579,7 +579,7 @@ func (s *PublicFilterAPI) GetFilterChanges(filterId string) interface{} {
 }
 
 type vmlog struct {
-	*vm.Log
+	**types.Log
 	Removed bool `json:"removed"`
 }
 
