@@ -129,21 +129,21 @@ Loop:
 
 	// VM execution is finished at this point. We apply changes to the statedb.
 
-	for _, account := range vm.AccountChanges() {
+	for _, account := range vm.AccountRefChanges() {
 		switch account.Typ() {
-		case sputnikvm.AccountChangeIncreaseBalance:
+		case sputnikvm.AccountRefChangeIncreaseBalance:
 			address := account.Address()
 			amount := account.ChangedAmount()
 			statedb.AddBalance(address, amount)
-		case sputnikvm.AccountChangeDecreaseBalance:
+		case sputnikvm.AccountRefChangeDecreaseBalance:
 			address := account.Address()
 			amount := account.ChangedAmount()
 			balance := new(big.Int).Sub(statedb.GetBalance(address), amount)
 			statedb.SetBalance(address, balance)
-		case sputnikvm.AccountChangeRemoved:
+		case sputnikvm.AccountRefChangeRemoved:
 			address := account.Address()
 			statedb.Suicide(address)
-		case sputnikvm.AccountChangeFull:
+		case sputnikvm.AccountRefChangeFull:
 			address := account.Address()
 			code := account.Code()
 			nonce := account.Nonce()
@@ -154,7 +154,7 @@ Loop:
 			for _, item := range account.ChangedStorage() {
 				statedb.SetState(address, common.BigToHash(item.Key), common.BigToHash(item.Value))
 			}
-		case sputnikvm.AccountChangeCreate:
+		case sputnikvm.AccountRefChangeCreate:
 			address := account.Address()
 			code := account.Code()
 			nonce := account.Nonce()

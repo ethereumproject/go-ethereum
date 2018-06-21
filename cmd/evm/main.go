@@ -267,7 +267,7 @@ func (self *VMEnv) AddLog(log **types.Log) {
 func (self *VMEnv) CanTransfer(from common.Address, balance *big.Int) bool {
 	return self.state.GetBalance(from).Cmp(balance) >= 0
 }
-func (self *VMEnv) Transfer(from, to vm.Account, amount *big.Int) {
+func (self *VMEnv) Transfer(from, to vm.AccountRef, amount *big.Int) {
 	core.Transfer(from, to, amount)
 }
 

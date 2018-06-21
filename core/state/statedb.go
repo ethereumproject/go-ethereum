@@ -171,7 +171,7 @@ func (self *StateDB) AddLog(log *types.Log) {
 	log.BlockHash = self.bhash
 	log.TxIndex = uint(self.txIndex)
 	log.Index = self.logSize
-	self.logs[self.thash] = append(self.logs[self.thash], &log)
+	self.logs[self.thash] = append(self.logs[self.thash], log)
 	self.logSize++
 }
 
@@ -198,7 +198,7 @@ func (self *StateDB) Exist(addr common.Address) bool {
 	return self.getStateObject(addr) != nil
 }
 
-func (self *StateDB) GetAccount(addr common.Address) vm.Account {
+func (self *StateDB) GetAccount(addr common.Address) vm.AccountRef {
 	return self.getStateObject(addr)
 }
 
@@ -438,7 +438,7 @@ func (self *StateDB) createObject(addr common.Address) (newobj, prev *StateObjec
 //   2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
 //
 // Carrying over the balance ensures that Ether doesn't disappear.
-func (self *StateDB) CreateAccount(addr common.Address) vm.Account {
+func (self *StateDB) CreateAccount(addr common.Address) vm.AccountRef {
 	new, prev := self.createObject(addr)
 	if prev != nil {
 		new.setBalance(prev.data.Balance)

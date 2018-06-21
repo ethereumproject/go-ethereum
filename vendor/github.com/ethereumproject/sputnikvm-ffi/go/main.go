@@ -52,6 +52,6 @@ Loop:
 	}
 	fmt.Printf("%v\n", vm.UsedGas())
 	fmt.Printf("%v\n", []*types.Log())
-	fmt.Printf("%v\n", vm.AccountChanges())
+	fmt.Printf("%v\n", vm.AccountRefChanges())
 	vm.Free()
 }

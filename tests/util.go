@@ -288,7 +288,7 @@ func (self *Env) RevertToSnapshot(snapshot int) {
 	self.state.RevertToSnapshot(snapshot)
 }
 
-func (self *Env) Transfer(from, to vm.Account, amount *big.Int) {
+func (self *Env) Transfer(from, to vm.AccountRef, amount *big.Int) {
 	if self.skipTransfer {
 		return
 	}
