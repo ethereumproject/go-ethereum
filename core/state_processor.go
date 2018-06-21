@@ -49,15 +49,15 @@ var (
 type StateProcessor struct {
 	config *params.ChainConfig
 	bc     *BlockChain
-	engine consensus.Engine
+	// engine consensus.Engine
 }
 
 // NewStateProcessor initialises a new StateProcessor.
-func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consensus.Engine) *StateProcessor {
+func NewStateProcessor(config *params.ChainConfig, bc *BlockChain) *StateProcessor {
 	return &StateProcessor{
 		config: config,
 		bc:     bc,
-		engine: engine,
+		// engine: engine,
 	}
 }
 
