@@ -115,6 +115,10 @@ type BlockChain struct {
 	atxi *AtxiT
 }
 
+func (bc *BlockChain) Engine() interface{} {
+	panic("implement me")
+}
+
 type ChainInsertResult struct {
 	ChainInsertEvent
 	Index int
