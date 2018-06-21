@@ -23,7 +23,7 @@ var UseSputnikVM = false
 // chain config and state. Note that we use the name of the chain
 // config to determine which hard fork to use so ClassicVM's gas table
 // would not be used.
-func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas *big.Int) (*types.Receipt, evm.Logs, *big.Int, error) {
+func ApplyMultiVmTransaction(config *params.ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas *big.Int) (*types.Receipt, e[]*types.Log, *big.Int, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
 
 	from, err := tx.From()
@@ -169,7 +169,7 @@ Loop:
 			panic("unreachable")
 		}
 	}
-	for _, log := range vm.Logs() {
+	for _, log := range []*types.Log() {
 		statelog := evm.NewLog(log.Address, log.Topics, log.Data, header.Number.Uint64())
 		statedb.AddLog(*statelog)
 	}
