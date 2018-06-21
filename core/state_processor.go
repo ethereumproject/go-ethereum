@@ -17,17 +17,19 @@
 package core
 
 import (
+	"bytes"
+	"errors"
 	"math/big"
 
-	"errors"
-	"fmt"
-
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
 var (
@@ -45,15 +47,17 @@ var (
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
-	config *ChainConfig
+	config *params.ChainConfig
 	bc     *BlockChain
+	engine consensus.Engine
 }
 
 // NewStateProcessor initialises a new StateProcessor.
-func NewStateProcessor(config *ChainConfig, bc *BlockChain) *StateProcessor {
+func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consensus.Engine) *StateProcessor {
 	return &StateProcessor{
 		config: config,
 		bc:     bc,
+		engine: engine,
 	}
 }
 
@@ -64,85 +68,166 @@ func NewStateProcessor(config *ChainConfig, bc *BlockChain) *StateProcessor {
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
-func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, vm.Logs, *big.Int, error) {
+func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, []*types.Log, uint64, error) {
 	var (
-		receipts     types.Receipts
-		totalUsedGas = big.NewInt(0)
-		err          error
-		header       = block.Header()
-		allLogs      vm.Logs
-		gp           = new(GasPool).AddGas(block.GasLimit())
+		receipts types.Receipts
+		usedGas  = new(uint64)
+		err      error
+		header   = block.Header()
+		allLogs  []*types.Log
+		gp       = new(GasPool).AddGas(block.GasLimit())
 	)
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
-		if tx.Protected() {
-			chainId := p.config.GetChainID()
-			if chainId.Cmp(new(big.Int)) == 0 {
-				return nil, nil, nil, fmt.Errorf("ChainID is not set for EIP-155 in chain configuration at block number: %v. \n  Tx ChainID: %v", block.Number(), tx.ChainId())
-			}
-			if tx.ChainId() == nil || tx.ChainId().Cmp(chainId) != 0 {
-				return nil, nil, nil, fmt.Errorf("Invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
-			}
-		}
-		statedb.StartRecord(tx.Hash(), block.Hash(), i)
+		// PTAL these seem like "sugary" "pre-flight" safety checks and warnings that are actually redundant to the VM processing
+		// if tx.Protected() {
+		// 	chainId := p.config.GetChainID()
+		// 	if chainId.Cmp(new(big.Int)) == 0 {
+		// 		return nil, nil, nil, fmt.Errorf("chainID is not set for EIP-155 in chain configuration at block number: %v. \n  Tx ChainID: %v", block.Number(), tx.ChainId())
+		// 	}
+		// 	if tx.ChainId() == nil || tx.ChainId().Cmp(chainId) != 0 {
+		// 		return nil, nil, nil, fmt.Errorf("invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
+		// 	}
+		// }
+		statedb.Prepare(tx.Hash(), block.Hash(), i)
 		if !UseSputnikVM {
-			receipt, logs, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
+			// (config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config)
+			receipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
 			if err != nil {
-				return nil, nil, totalUsedGas, err
+				return nil, nil, 0, err
 			}
 			receipts = append(receipts, receipt)
-			allLogs = append(allLogs, logs...)
+			allLogs = append(allLogs, receipt.Logs...)
 			continue
 		}
-		receipt, logs, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
+		receipt, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, usedGas)
 		if err != nil {
-			return nil, nil, totalUsedGas, err
+			return nil, nil, 0, err
 		}
 		receipts = append(receipts, receipt)
-		allLogs = append(allLogs, logs...)
+		allLogs = append(allLogs, receipt.Logs...)
 	}
 	AccumulateRewards(p.config, statedb, header, block.Uncles())
 
-	return receipts, allLogs, totalUsedGas, err
+	return receipts, allLogs, *usedGas, err
+}
+
+func (p *StateProcessor) ReplayTransaction(txHash common.Hash, statedb *state.StateDB, cfg vm.Config) (*types.Receipt, error) {
+	statedb = statedb.Copy()
+
+	blockHash, _, index, err := getTransactionBlockData(p.bc.chainDb, txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	block := GetBlock(p.bc.chainDb, blockHash)
+	tx := block.Transactions()[index]
+
+	var (
+		usedGas = new(uint64)
+		header  = block.Header()
+		gp      = new(GasPool).AddGas(block.GasLimit())
+	)
+
+	// PTAL again, as above
+	// if tx.Protected() {
+	// 	chainId := p.config.GetChainID()
+	// 	if chainId.Cmp(new(big.Int)) == 0 {
+	// 		return nil, fmt.Errorf("ChainID is not set for EIP-155 in chain configuration at block number: %v. \n  Tx ChainID: %v", block.Number(), tx.ChainId())
+	// 	}
+	// 	if tx.ChainId() == nil || tx.ChainId().Cmp(chainId) != 0 {
+	// 		return nil, fmt.Errorf("Invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
+	// 	}
+	// }
+	//statedb.StartRecord(tx.Hash(), block.Hash(), i)
+	if !UseSputnikVM {
+		receipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
+		if err != nil {
+			return nil, err
+		}
+		return receipt, nil
+	}
+	receipt, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, usedGas)
+	if err != nil {
+		return nil, err
+	}
+	return receipt, nil
+}
+
+// TODO(tzdybal) - refactor (duplicate from eth/api.go)
+// getTransactionBlockData fetches the meta data for the given transaction from the chain database. This is useful to
+// retrieve block information for a hash. It returns the block hash, block index and transaction index.
+func getTransactionBlockData(chainDb ethdb.Database, txHash common.Hash) (common.Hash, uint64, uint64, error) {
+	var txBlock struct {
+		BlockHash  common.Hash
+		BlockIndex uint64
+		Index      uint64
+	}
+
+	blockData, err := chainDb.Get(append(txHash.Bytes(), 0x0001))
+	if err != nil {
+		return common.Hash{}, uint64(0), uint64(0), err
+	}
+
+	reader := bytes.NewReader(blockData)
+	if err = rlp.Decode(reader, &txBlock); err != nil {
+		return common.Hash{}, uint64(0), uint64(0), err
+	}
+
+	return txBlock.BlockHash, txBlock.BlockIndex, txBlock.Index, nil
 }
 
 // ApplyTransaction attempts to apply a transaction to the given state database
-// and uses the input parameters for its environment.
-//
-// ApplyTransactions returns the generated receipts and vm logs during the
-// execution of the state transition phase.
-func ApplyTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *big.Int) (*types.Receipt, vm.Logs, *big.Int, error) {
-	tx.SetSigner(config.GetSigner(header.Number))
+// and uses the input parameters for its environment. It returns the receipt
+// for the transaction, gas used and an error if the transaction failed,
+// indicating the block was invalid.
+func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
+	// signer := types.MakeSigner(config, header.Number)
+	signer := config.GetSigner(header.Number)
+	msg, err := tx.AsMessage(signer)
 
-	_, gas, err := ApplyMessage(NewEnv(statedb, config, bc, tx, header), tx, gp)
+	// Create a new context to be used in the EVM environment
+	context := NewEVMContext(msg, header, bc, author)
+	// Create a new environment which holds all relevant information
+	// about the transaction and calling mechanisms.
+	vmenv := vm.NewEVM(context, statedb, config, cfg)
+	// Apply the transaction to the current state (included in the env)
+	_, gas, failed, err := ApplyMessage(vmenv, msg, gp)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, 0, err
 	}
-
 	// Update the state with pending changes
-	usedGas.Add(usedGas, gas)
-	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), usedGas)
-	receipt.TxHash = tx.Hash()
-	receipt.GasUsed = new(big.Int).Set(gas)
-	if MessageCreatesContract(tx) {
-		from, _ := tx.From()
-		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
+	var root []byte
+	if config.IsByzantium(header.Number) {
+		statedb.Finalise(true)
+	} else {
+		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
 	}
+	*usedGas += gas
 
-	logs := statedb.GetLogs(tx.Hash())
-	receipt.Logs = logs
+	// Create a new receipt for the transaction, storing the intermediate root and gas used by the tx
+	// based on the eip phase, we're passing wether the root touch-delete accounts.
+	// NOTE(whilei): here's a 'status' field diff
+	receipt := types.NewReceipt(root, failed, big.NewInt(0).SetUint64(*usedGas))
+	// ug := big.NewInt(0).SetUint64(*usedGas)
+	receipt.TxHash = tx.Hash()
+	receipt.GasUsed = big.NewInt(0).SetUint64(gas)
+	// if the transaction created a contract, store the creation address in the receipt.
+	if msg.To() == nil {
+		receipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())
+	}
+	// Set the receipt logs and create a bloom for filtering
+	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 
-	glog.V(logger.Debug).Infoln(receipt)
-
-	return receipt, logs, gas, err
+	return receipt, gas, err
 }
 
 // AccumulateRewards credits the coinbase of the given block with the
 // mining reward. The total reward consists of the static block reward
 // and rewards for included uncles. The coinbase of each uncle block is
 // also rewarded.
-func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *types.Header, uncles []*types.Header) {
+func AccumulateRewards(config *params.ChainConfig, statedb *state.StateDB, header *types.Header, uncles []*types.Header) {
 
 	// An uncle is a block that would be considered an orphan because its not on the longest chain (it's an alternative block at the same height as your parent).
 	// https://www.reddit.com/r/ethereum/comments/3c9jbf/wtf_are_uncles_and_why_do_they_matter/
