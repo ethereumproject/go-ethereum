@@ -50,8 +50,14 @@ type Receipt struct {
 }
 
 // NewReceipt creates a barebone transaction receipt, copying the init fields.
-func NewReceipt(root []byte, cumulativeGasUsed *big.Int) *Receipt {
-	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed)}
+func NewReceipt(root []byte, failed bool, cumulativeGasUsed *big.Int) *Receipt {
+	r := &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed)}
+	if failed {
+		r.Status = TxFailure
+	} else {
+		r.Status = TxSuccess
+	}
+	return r
 }
 
 // EncodeRLP implements rlp.Encoder, and flattens the consensus fields of a receipt
@@ -113,7 +119,7 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 		Bloom             Bloom
 		TxHash            common.Hash
 		ContractAddress   common.Address
-		Logs              []*vm.LogForStorage
+		Logs              []*LogForStorage
 		GasUsed           *big.Int
 	}
 	var receipt struct {
