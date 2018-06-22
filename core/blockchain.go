@@ -734,7 +734,6 @@ func (bc *BlockChain) LoadLastState(dryrun bool) error {
 		return err
 	}
 	bc.stateCache = statedb
-	bc.stateCache.GetAccount(common.Address{})
 
 	// Issue a status log and return
 	headerTd := bc.GetTd(bc.hc.CurrentHeader().Hash())
