@@ -162,12 +162,12 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 	// Generate a chain of b.N blocks using the supplied block
 	// generator function.
 	genesis := WriteGenesisBlockForTesting(db, GenesisAccount{benchRootAddr, benchRootFunds})
-	chain, _ := GenerateChain(DefaultConfigMainnet.ChainConfig, genesis, db, b.N, gen)
+	chain, _ := GenerateChain(params.DefaultConfigMainnet.ChainConfig, genesis, db, b.N, gen)
 
 	// Time the insertion of the new chain.
 	// State and blocks are stored in the same DB.
 	evmux := new(event.TypeMux)
-	chainman, _ := NewBlockChain(db, DefaultConfigMainnet.ChainConfig, FakePow{}, evmux)
+	chainman, _ := NewBlockChain(db, params.DefaultConfigMainnet.ChainConfig, FakePow{}, evmux)
 	defer chainman.Stop()
 	b.ReportAllocs()
 	b.ResetTimer()

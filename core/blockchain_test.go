@@ -75,7 +75,7 @@ func theBlockChain(db ethdb.Database, t *testing.T) *BlockChain {
 	}
 
 	var eventMux event.TypeMux
-	if _, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis); err != nil {
+	if _, err := WriteGenesisBlock(db, params.DefaultConfigMorden.Genesis); err != nil {
 		t.Fatal(err)
 	}
 	blockchain, err := NewBlockChain(db, testChainConfig(), pow, &eventMux)
@@ -555,7 +555,7 @@ func testReorg(t *testing.T, first, second []int, td int64, full bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
+	genesis, err := WriteGenesisBlock(db, params.DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -603,7 +603,7 @@ func TestInsertHeaderChainBadHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
+	genesis, err := WriteGenesisBlock(db, params.DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -627,7 +627,7 @@ func TestInsertChainBadHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
+	genesis, err := WriteGenesisBlock(db, params.DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -657,7 +657,7 @@ func testReorgBadHashes(t *testing.T, full bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
+	genesis, err := WriteGenesisBlock(db, params.DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -93,7 +93,7 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *params.GenesisDump) (*ty
 	return gblock, nil
 }
 
-func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...params.params.GenesisAccount) *types.Block {
+func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...params.GenesisAccount) *types.Block {
 	dump := params.GenesisDump{
 		GasLimit:   "0x47E7C4",
 		Difficulty: "0x020000",
