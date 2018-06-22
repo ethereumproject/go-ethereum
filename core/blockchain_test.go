@@ -32,7 +32,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
@@ -160,7 +159,7 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 		if err != nil {
 			return err
 		}
-		receipts, _, usedGas, err := blockchain.Processor().Process(block, statedb, vm.Config{})
+		receipts, _, usedGas, err := blockchain.Processor().Process(block, statedb)
 		if err != nil {
 			return err
 		}
@@ -458,7 +457,7 @@ func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, rec
 	return nil
 }
 func (bproc) VerifyUncles(block, parent *types.Block) error { return nil }
-func (bproc) Process(block *types.Block, statedb *state.StateDB, vmCfg vm.Config) (types.Receipts, []*types.Log, uint64, error) {
+func (bproc) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, []*types.Log, uint64, error) {
 	return nil, nil, 0, nil
 }
 
