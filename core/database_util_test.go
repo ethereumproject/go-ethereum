@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
@@ -649,8 +650,8 @@ func TestReceiptStorage(t *testing.T) {
 		PostState:         []byte{0x01},
 		CumulativeGasUsed: big.NewInt(1),
 		Logs: []*types.Log{
-			&*types.Log{Address: common.BytesToAddress([]byte{0x11})},
-			&*types.Log{Address: common.BytesToAddress([]byte{0x01, 0x11})},
+			&types.Log{Address: common.BytesToAddress([]byte{0x11})},
+			&types.Log{Address: common.BytesToAddress([]byte{0x01, 0x11})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x11, 0x11}),
 		ContractAddress: common.BytesToAddress([]byte{0x01, 0x11, 0x11}),
@@ -660,8 +661,8 @@ func TestReceiptStorage(t *testing.T) {
 		PostState:         []byte{0x02},
 		CumulativeGasUsed: big.NewInt(2),
 		Logs: []*types.Log{
-			&*types.Log{Address: common.BytesToAddress([]byte{0x22})},
-			&*types.Log{Address: common.BytesToAddress([]byte{0x02, 0x22})},
+			&types.Log{Address: common.BytesToAddress([]byte{0x22})},
+			&types.Log{Address: common.BytesToAddress([]byte{0x02, 0x22})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x22, 0x22}),
 		ContractAddress: common.BytesToAddress([]byte{0x02, 0x22, 0x22}),
@@ -708,8 +709,8 @@ func TestBlockReceiptStorage(t *testing.T) {
 		PostState:         []byte{0x01},
 		CumulativeGasUsed: big.NewInt(1),
 		Logs: []*types.Log{
-			&*types.Log{Address: common.BytesToAddress([]byte{0x11})},
-			&*types.Log{Address: common.BytesToAddress([]byte{0x01, 0x11})},
+			&types.Log{Address: common.BytesToAddress([]byte{0x11})},
+			&types.Log{Address: common.BytesToAddress([]byte{0x01, 0x11})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x11, 0x11}),
 		ContractAddress: common.BytesToAddress([]byte{0x01, 0x11, 0x11}),
@@ -719,8 +720,8 @@ func TestBlockReceiptStorage(t *testing.T) {
 		PostState:         []byte{0x02},
 		CumulativeGasUsed: big.NewInt(2),
 		Logs: []*types.Log{
-			&*types.Log{Address: common.BytesToAddress([]byte{0x22})},
-			&*types.Log{Address: common.BytesToAddress([]byte{0x02, 0x22})},
+			&types.Log{Address: common.BytesToAddress([]byte{0x22})},
+			&types.Log{Address: common.BytesToAddress([]byte{0x02, 0x22})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x22, 0x22}),
 		ContractAddress: common.BytesToAddress([]byte{0x02, 0x22, 0x22}),
@@ -761,13 +762,13 @@ func TestMipmapBloom(t *testing.T) {
 
 	receipt1 := new(types.Receipt)
 	receipt1.Logs = []*types.Log{
-		&*types.Log{Address: common.BytesToAddress([]byte("test"))},
-		&*types.Log{Address: common.BytesToAddress([]byte("address"))},
+		&types.Log{Address: common.BytesToAddress([]byte("test"))},
+		&types.Log{Address: common.BytesToAddress([]byte("address"))},
 	}
 	receipt2 := new(types.Receipt)
 	receipt2.Logs = []*types.Log{
-		&*types.Log{Address: common.BytesToAddress([]byte("test"))},
-		&*types.Log{Address: common.BytesToAddress([]byte("address1"))},
+		&types.Log{Address: common.BytesToAddress([]byte("test"))},
+		&types.Log{Address: common.BytesToAddress([]byte("address1"))},
 	}
 
 	WriteMipmapBloom(db, 1, types.Receipts{receipt1})
@@ -784,13 +785,13 @@ func TestMipmapBloom(t *testing.T) {
 	db, _ = ethdb.NewMemDatabase()
 	receipt := new(types.Receipt)
 	receipt.Logs = []*types.Log{
-		&*types.Log{Address: common.BytesToAddress([]byte("test"))},
+		&types.Log{Address: common.BytesToAddress([]byte("test"))},
 	}
 	WriteMipmapBloom(db, 999, types.Receipts{receipt1})
 
 	receipt = new(types.Receipt)
 	receipt.Logs = []*types.Log{
-		&*types.Log{Address: common.BytesToAddress([]byte("test 1"))},
+		&types.Log{Address: common.BytesToAddress([]byte("test 1"))},
 	}
 	WriteMipmapBloom(db, 1000, types.Receipts{receipt})
 
@@ -817,14 +818,14 @@ func TestMipmapChain(t *testing.T) {
 	)
 	defer db.Close()
 
-	genesis := WriteGenesisBlockForTesting(db, GenesisAccount{addr, big.NewInt(1000000)})
+	genesis := WriteGenesisBlockForTesting(db, params.GenesisAccount{addr, big.NewInt(1000000)})
 	chain, receipts := GenerateChain(testChainConfig(), genesis, db, 1010, func(i int, gen *BlockGen) {
 		var receipts types.Receipts
 		switch i {
 		case 1:
-			receipt := types.NewReceipt(nil, new(big.Int))
+			receipt := types.NewReceipt(nil, false, new(big.Int))
 			receipt.Logs = []*types.Log{
-				&*types.Log{
+				&types.Log{
 					Address: addr,
 					Topics:  []common.Hash{hash1},
 				},
@@ -832,8 +833,8 @@ func TestMipmapChain(t *testing.T) {
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 1000:
-			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = []*types.Log{&*types.Log{Address: addr2}}
+			receipt := types.NewReceipt(nil, false, new(big.Int))
+			receipt.Logs = []*types.Log{&types.Log{Address: addr2}}
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 

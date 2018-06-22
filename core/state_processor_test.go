@@ -12,6 +12,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -391,7 +392,7 @@ func TestAccumulateRewards1(t *testing.T) {
 		if !exists {
 			// t.Logf("No ecip1017 feature installed for config=%d, setting up a placeholder ecip1017 feature for testing.", i)
 			dhFork := config.ForkByName("Diehard")
-			dhFork.Features = append(dhFork.Features, &ForkFeature{
+			dhFork.Features = append(dhFork.Features, &params.ForkFeature{
 				ID: "reward",
 				Options: params.ChainFeatureConfigOptions{
 					"type": "ecip1017",

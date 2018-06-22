@@ -35,6 +35,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
@@ -164,7 +165,7 @@ func NewBlockChain(chainDb ethdb.Database, config *params.ChainConfig, pow pow.P
 		pow:          pow,
 	}
 	bc.SetValidator(NewBlockValidator(config, bc, pow))
-	bc.SetProcessor(NewStateProcessor(config, bc))
+	bc.SetProcessor(NewStateProcessor(config, bc, vm.Config{}))
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error
@@ -212,7 +213,7 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *params.ChainConfig, pow
 		pow:          pow,
 	}
 	bc.SetValidator(NewBlockValidator(config, bc, pow))
-	bc.SetProcessor(NewStateProcessor(config, bc))
+	bc.SetProcessor(NewStateProcessor(config, bc, vm.Config{}))
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error
@@ -1277,7 +1278,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				from, _ := types.Sender(signer, tx)
 
 				// The contract address can be derived from the transaction itbc
-				if MessageCreatesContract(transactions[j]) {
+				if transactions[j].To() == nil {
 					receipts[j].ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 				}
 				// The used gas can be calculated based on previous receipts
@@ -1644,13 +1645,13 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 			return
 		}
 		// Process block using the parent state as reference point.
-		receipts, logs, usedGas, err := bc.processor.Process(block, bc.stateCache)
+		receipts, logs, usedGas, err := bc.processor.Process(block, bc.stateCache, vm.Config{})
 		if err != nil {
 			res.Error = err
 			return
 		}
 		// Validate the state using the default validator
-		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, usedGas)
+		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, big.NewInt(int64(usedGas)))
 		if err != nil {
 			res.Error = err
 			return

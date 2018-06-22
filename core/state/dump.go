@@ -80,7 +80,7 @@ func (self *StateDB) RawDump(addresses []common.Address) Dump {
 			panic(err)
 		}
 
-		obj := newObject(nil, addrA, data, nil)
+		obj := newObject(nil, addrA, data)
 		account := DumpAccount{
 			Balance:  data.Balance.String(),
 			Nonce:    data.Nonce,
@@ -178,7 +178,7 @@ func iterator(sdb *StateDB, addresses []common.Address, c chan *AddressedRawAcco
 			panic(err)
 		}
 
-		obj := newObject(nil, addrA, data, nil)
+		obj := newObject(nil, addrA, data)
 		account := AddressedRawAccount{
 			DumpAccount: DumpAccount{
 				Balance:  data.Balance.String(),

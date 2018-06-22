@@ -110,6 +110,7 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 		refund:            new(big.Int),
 		logs:              make(map[common.Hash][]*types.Log),
 		preimages:         make(map[common.Hash][]byte),
+		journal:           newJournal(),
 	}, nil
 }
 
@@ -391,7 +392,7 @@ func (self *StateDB) getStateObject(addr common.Address) (stateObject *StateObje
 		return nil
 	}
 	// Insert into the live set.
-	obj = newObject(self, addr, data, self.MarkStateObjectDirty)
+	obj = newObject(self, addr, data)
 	self.setStateObject(obj)
 	return obj
 }
@@ -421,7 +422,7 @@ func (self *StateDB) MarkStateObjectDirty(addr common.Address) {
 // the given address, it is overwritten and returned as the second return value.
 func (self *StateDB) createObject(addr common.Address) (newobj, prev *StateObject) {
 	prev = self.getStateObject(addr)
-	newobj = newObject(self, addr, Account{}, self.MarkStateObjectDirty)
+	newobj = newObject(self, addr, Account{})
 	newobj.setNonce(StartingNonce) // sets the object to dirty
 	if prev == nil {
 		if logger.MlogEnabled() {
@@ -480,10 +481,11 @@ func (self *StateDB) Copy() *StateDB {
 		logs:              make(map[common.Hash][]*types.Log, len(self.logs)),
 		logSize:           self.logSize,
 		preimages:         make(map[common.Hash][]byte),
+		journal:           newJournal(),
 	}
 	// Copy the dirty states, logs, and preimages
 	for addr := range self.stateObjectsDirty {
-		state.stateObjects[addr] = self.stateObjects[addr].deepCopy(state, state.MarkStateObjectDirty)
+		state.stateObjects[addr] = self.stateObjects[addr].deepCopy(state)
 		state.stateObjectsDirty[addr] = struct{}{}
 	}
 	for hash, logs := range self.logs {

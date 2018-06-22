@@ -28,6 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 func BenchmarkInsertChain_empty_memdb(b *testing.B) {
@@ -81,8 +82,8 @@ func genValueTx(nbytes int) func(int, *BlockGen) {
 	return func(i int, gen *BlockGen) {
 		toaddr := common.Address{}
 		data := make([]byte, nbytes)
-		gas := IntrinsicGas(data, false, false)
-		tx, _ := types.NewTransaction(gen.TxNonce(benchRootAddr), toaddr, big.NewInt(1), gas, nil, data).SignECDSA(benchRootKey)
+		gas, _ := IntrinsicGas(data, false, false)
+		tx, _ := types.NewTransaction(gen.TxNonce(benchRootAddr), toaddr, big.NewInt(1), big.NewInt(0).SetUint64(gas), nil, data).SignECDSA(benchRootKey)
 		gen.AddTx(tx)
 	}
 }
@@ -109,8 +110,8 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 	return func(i int, gen *BlockGen) {
 		gas := CalcGasLimit(gen.PrevBlock(i - 1))
 		for {
-			gas.Sub(gas, TxGas)
-			if gas.Cmp(TxGas) < 0 {
+			gas.Sub(gas, big.NewInt(0).SetUint64(params.TxGas))
+			if gas.Cmp(big.NewInt(0).SetUint64(params.TxGas)) < 0 {
 				break
 			}
 			to := (from + 1) % naccounts
@@ -118,7 +119,7 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 				gen.TxNonce(ringAddrs[from]),
 				ringAddrs[to],
 				benchRootFunds,
-				TxGas,
+				big.NewInt(0).SetUint64(params.TxGas),
 				nil,
 				nil,
 			)
@@ -161,7 +162,7 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 
 	// Generate a chain of b.N blocks using the supplied block
 	// generator function.
-	genesis := WriteGenesisBlockForTesting(db, GenesisAccount{benchRootAddr, benchRootFunds})
+	genesis := WriteGenesisBlockForTesting(db, params.GenesisAccount{benchRootAddr, benchRootFunds})
 	chain, _ := GenerateChain(params.DefaultConfigMainnet.ChainConfig, genesis, db, b.N, gen)
 
 	// Time the insertion of the new chain.
