@@ -162,7 +162,7 @@ func (b *BlockGen) AddTx(tx *types.Transaction) {
 	if b.gasPool == nil {
 		b.SetCoinbase(common.Address{})
 	}
-	b.statedb.StartRecord(tx.Hash(), common.Hash{}, len(b.txs))
+	b.statedb.Prepare(tx.Hash(), common.Hash{}, len(b.txs))
 	gas := b.header.GasUsed.Uint64()
 	receipt, _, err := ApplyTransaction(b.config, b, nil, b.gasPool, b.statedb, b.header, tx, &gas, vm.Config{})
 	if err != nil {

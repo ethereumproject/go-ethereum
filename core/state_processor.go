@@ -46,16 +46,16 @@ var (
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
-	config *params.ChainConfig
-	bc     *BlockChain
+	config   *params.ChainConfig
+	bc       *BlockChain
 	vmConfig vm.Config
 }
 
 // NewStateProcessor initialises a new StateProcessor.
 func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, vmConfig vm.Config) *StateProcessor {
 	return &StateProcessor{
-		config: config,
-		bc:     bc,
+		config:   config,
+		bc:       bc,
 		vmConfig: vmConfig,
 	}
 }
@@ -88,7 +88,8 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		// 		return nil, nil, nil, fmt.Errorf("invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
 		// 	}
 		// }
-		statedb.StartRecord(tx.Hash(), block.Hash(), i)
+		// statedb.StartRecord(tx.Hash(), block.Hash(), i)
+		statedb.Prepare(tx.Hash(), block.Hash(), i)
 		if !UseSputnikVM {
 			// (config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config)
 			receipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
@@ -195,7 +196,6 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	if err != nil {
 		return nil, 0, err
 	}
-
 	// Update the state with pending changes
 	var root []byte
 	if config.IsByzantium(header.Number) {
@@ -207,9 +207,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 
 	// Create a new receipt for the transaction, storing the intermediate root and gas used by the tx
 	// based on the eip phase, we're passing wether the root touch-delete accounts.
-	// NOTE(whilei): here's a 'status' field diff
 	receipt := types.NewReceipt(root, failed, big.NewInt(0).SetUint64(*usedGas))
-	// ug := big.NewInt(0).SetUint64(*usedGas)
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = big.NewInt(0).SetUint64(gas)
 	// if the transaction created a contract, store the creation address in the receipt.
@@ -219,6 +217,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// Set the receipt logs and create a bloom for filtering
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+
 	return receipt, gas, err
 }
 

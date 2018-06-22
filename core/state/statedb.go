@@ -154,12 +154,6 @@ func (self *StateDB) pushTrie(t *trie.SecureTrie) {
 	}
 }
 
-func (self *StateDB) StartRecord(thash, bhash common.Hash, ti int) {
-	self.thash = thash
-	self.bhash = bhash
-	self.txIndex = ti
-}
-
 func (self *StateDB) AddLog(log *types.Log) {
 	self.journal.append(addLogChange{txhash: self.thash})
 

@@ -34,8 +34,10 @@ var (
 
 /*
 The State Transitioning Model
+
 A state transition is a change made when a transaction is applied to the current world state
 The state transitioning model does all all the necessary work to work out a valid new state root.
+
 1) Nonce handling
 2) Pre pay gas
 3) Create a new state object if the recipient is \0*32
@@ -64,9 +66,11 @@ type Message interface {
 	From() common.Address
 	//FromFrontier() (common.Address, error)
 	To() *common.Address
+
 	GasPrice() *big.Int
 	Gas() uint64
 	Value() *big.Int
+
 	Nonce() uint64
 	CheckNonce() bool
 	Data() []byte
@@ -95,6 +99,7 @@ func IntrinsicGas(data []byte, contractCreation, homestead bool) (uint64, error)
 			return 0, vm.ErrOutOfGas
 		}
 		gas += nz * params.TxDataNonZeroGas
+
 		z := uint64(len(data)) - nz
 		if (math.MaxUint64-gas)/params.TxDataZeroGas < z {
 			return 0, vm.ErrOutOfGas
@@ -135,11 +140,13 @@ func (st *StateTransition) to() common.Address {
 	}
 	return *st.msg.To()
 }
+
 func (st *StateTransition) useGas(amount uint64) error {
 	if st.gas < amount {
 		return vm.ErrOutOfGas
 	}
 	st.gas -= amount
+
 	return nil
 }
 
@@ -152,10 +159,12 @@ func (st *StateTransition) buyGas() error {
 		return err
 	}
 	st.gas += st.msg.Gas()
+
 	st.initialGas = st.msg.Gas()
 	st.state.SubBalance(st.msg.From(), mgval)
 	return nil
 }
+
 func (st *StateTransition) preCheck() error {
 	// Make sure this transaction's nonce is correct.
 	if st.msg.CheckNonce() {
@@ -180,6 +189,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	sender := vm.AccountRef(msg.From())
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
 	contractCreation := msg.To() == nil
+
 	// Pay intrinsic gas
 	gas, err := IntrinsicGas(st.data, contractCreation, homestead)
 	if err != nil {
@@ -188,6 +198,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	if err = st.useGas(gas); err != nil {
 		return nil, 0, false, err
 	}
+
 	var (
 		evm = st.evm
 		// vm errors do not effect consensus and are therefor
@@ -213,8 +224,10 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	}
 	st.refundGas()
 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+
 	return ret, st.gasUsed(), vmerr != nil, err
 }
+
 func (st *StateTransition) refundGas() {
 	// Apply refund counter, capped to half of the used gas.
 	refund := st.gasUsed() / 2
@@ -222,9 +235,11 @@ func (st *StateTransition) refundGas() {
 		refund = st.state.GetRefund()
 	}
 	st.gas += refund
+
 	// Return ETH for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), st.gasPrice)
 	st.state.AddBalance(st.msg.From(), remaining)
+
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.
 	st.gp.AddGas(big.NewInt(0).SetUint64(st.gas))

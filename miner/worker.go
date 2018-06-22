@@ -29,7 +29,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
@@ -655,7 +654,7 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 			continue
 		}
 
-		env.state.StartRecord(tx.Hash(), common.Hash{}, 0)
+		env.state.Prepare(tx.Hash(), common.Hash{}, 0)
 
 		err, logs := env.commitTransaction(tx, bc, gp)
 		switch {
