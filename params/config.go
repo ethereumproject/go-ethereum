@@ -61,6 +61,8 @@ var (
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
 
+	TestChainConfig = DefaultConfigMorden.ChainConfig
+
 	// Chain identities.
 	ChainIdentitiesBlacklist = map[string]bool{
 		"chaindata": true,
@@ -148,7 +150,7 @@ type ChainConfig struct {
 	Clique *CliqueConfig `json:"clique,omitempty"`
 }
 
-func (c *ChainConfig) SetForkBlockVals() {
+func (c *ChainConfig) SetForkBlockVals() *ChainConfig {
 	for _, f := range c.Forks {
 		switch f.Name {
 		case "Homestead":
@@ -196,6 +198,7 @@ func (c *ChainConfig) SetForkBlockVals() {
 			}
 		}
 	}
+	return c
 }
 
 type Fork struct {

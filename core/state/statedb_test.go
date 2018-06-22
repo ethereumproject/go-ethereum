@@ -262,7 +262,6 @@ func newTestAction(addr common.Address, r *rand.Rand) testAction {
 		{
 			name: "AddRefund",
 			fn: func(a testAction, s *StateDB) {
-				// s.AddRefund(big.NewInt(a.args[0]))
 				s.AddRefund(uint64(a.args[0]))
 			},
 			args:   make([]int64, 1),
@@ -396,7 +395,7 @@ func (test *snapshotTest) checkEqual(state, checkstate *StateDB) error {
 		}
 	}
 
-	if state.GetRefund().Cmp(checkstate.GetRefund()) != 0 {
+	if state.GetRefund() != checkstate.GetRefund() {
 		return fmt.Errorf("got GetRefund() == %d, want GetRefund() == %d",
 			state.GetRefund(), checkstate.GetRefund())
 	}
@@ -409,7 +408,10 @@ func (test *snapshotTest) checkEqual(state, checkstate *StateDB) error {
 
 func (s *StateSuite) TestTouchDelete(c *check.C) {
 	s.state.GetOrNewStateObject(common.Address{})
-	root, _ := s.state.CommitTo(s.db, false)
+	root, err := s.state.CommitTo(s.db, false)
+	if err != nil {
+		c.Fatal("error commiting to db", err)
+	}
 	s.state.Reset(root)
 
 	snapshot := s.state.Snapshot()
@@ -421,5 +423,21 @@ func (s *StateSuite) TestTouchDelete(c *check.C) {
 	s.state.RevertToSnapshot(snapshot)
 	if len(s.state.stateObjectsDirty) != 0 {
 		c.Fatal("expected no dirty state object")
+	}
+}
+
+// TestCopyOfCopy tests that modified objects are carried over to the copy, and the copy of the copy.
+// See https://github.com/ethereum/go-ethereum/pull/15225#issuecomment-380191512
+func TestCopyOfCopy(t *testing.T) {
+	db, _ := ethdb.NewMemDatabase()
+	sdb, _ := New(common.Hash{}, NewDatabase(db))
+	addr := common.HexToAddress("aaaa")
+	sdb.SetBalance(addr, big.NewInt(42))
+
+	if got := sdb.Copy().GetBalance(addr).Uint64(); got != 42 {
+		t.Fatalf("1st copy fail, expected 42, got %v", got)
+	}
+	if got := sdb.Copy().Copy().GetBalance(addr).Uint64(); got != 42 {
+		t.Fatalf("2nd copy fail, expected 42, got %v", got)
 	}
 }

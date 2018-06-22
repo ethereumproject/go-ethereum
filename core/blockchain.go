@@ -1633,16 +1633,20 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 
 		// Create a new statedb using the parent block and report an
 		// error if it fails.
+		// var parent *types.Block
 		switch {
 		case i == 0:
+			// parent = bc.GetBlock(block.ParentHash())
 			err = bc.stateCache.Reset(bc.GetBlock(block.ParentHash()).Root())
 		default:
+			// parent = chain[i-1]
 			err = bc.stateCache.Reset(chain[i-1].Root())
 		}
-		res.Error = err
-		if err != nil {
-			return
-		}
+		// state, err := state.New(parent.Root(), bc.stateCache.Database())
+		// if err != nil {
+		// 	res.Error = err
+		// 	return
+		// }
 		// Process block using the parent state as reference point.
 		receipts, logs, usedGas, err := bc.processor.Process(block, bc.stateCache)
 		if err != nil {
@@ -1655,7 +1659,21 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 		// Validate the state using the default validator
 		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, big.NewInt(0).SetUint64(usedGas))
 		if err != nil {
-			panic("validate state err: " + err.Error())
+			// glog.SetD(3)
+			// glog.D(logger.Error).Errorf("num txs: %d", block.Transactions().Len())
+			// glog.D(logger.Error).Errorf("num receipts: %d", receipts.Len())
+			// glog.SetD(0)
+			// for _, r := range receipts {
+			// 	// if r.GasUsed.Cmp(new(big.Int)) == 0 {
+			// 	glog.SetD(3)
+			// 	glog.D(logger.Error).Errorf("receipt gas used: %s", r.GasUsed.String())
+			// 	glog.SetD(0)
+			// 	// }
+			// }
+			// glog.SetD(3)
+			// glog.D(logger.Error).Errorf("header %s", block.Header().String())
+			// glog.SetD(0)
+			// panic("validate state err: " + err.Error() + " blockgasUsed: " + block.GasUsed().String())
 			res.Error = err
 			return
 		}

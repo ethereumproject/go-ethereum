@@ -97,6 +97,26 @@ type StateDB struct {
 	lock sync.Mutex
 }
 
+func (self *StateDB) OpenTrie(root common.Hash) (Trie, error) {
+	return self.db.OpenTrie(root)
+}
+
+func (self *StateDB) OpenStorageTrie(addrHash, root common.Hash) (Trie, error) {
+	return self.db.OpenStorageTrie(addrHash, root)
+}
+
+func (self *StateDB) ContractCode(addrHash, codeHash common.Hash) ([]byte, error) {
+	return self.db.ContractCode(addrHash, codeHash)
+}
+
+func (self *StateDB) ContractCodeSize(addrHash, codeHash common.Hash) (int, error) {
+	return self.db.ContractCodeSize(addrHash, codeHash)
+}
+
+func (self *StateDB) CopyTrie(t Trie) Trie {
+	return self.db.CopyTrie(t)
+}
+
 // Create a new state from a given trie
 func New(root common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
@@ -142,18 +162,6 @@ func (self *StateDB) Reset(root common.Hash) error {
 	return nil
 }
 
-func (self *StateDB) pushTrie(t *trie.SecureTrie) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-
-	if len(self.pastTries) >= maxPastTries {
-		copy(self.pastTries, self.pastTries[1:])
-		self.pastTries[len(self.pastTries)-1] = t
-	} else {
-		self.pastTries = append(self.pastTries, t)
-	}
-}
-
 func (self *StateDB) AddLog(log *types.Log) {
 	self.journal.append(addLogChange{txhash: self.thash})
 
@@ -194,7 +202,7 @@ func (self *StateDB) Preimages() map[common.Hash][]byte {
 
 func (self *StateDB) AddRefund(gas uint64) {
 	self.journal.append(refundChange{prev: self.refund})
-	self.refund.Add(self.refund, big.NewInt(int64(gas))) // += gas
+	self.refund.Add(self.refund, big.NewInt(0).SetUint64(gas)) // += gas
 }
 
 // Exist reports whether the given account address exists in the state.
@@ -426,12 +434,6 @@ func (self *StateDB) GetOrNewStateObject(addr common.Address) *StateObject {
 	return stateObject
 }
 
-// MarkStateObjectDirty adds the specified object to the dirty map to avoid costly
-// state object cache iteration to find a handful of modified ones.
-func (self *StateDB) MarkStateObjectDirty(addr common.Address) {
-	self.stateObjectsDirty[addr] = struct{}{}
-}
-
 // createObject creates a new state object. If there is an existing account with
 // the given address, it is overwritten and returned as the second return value.
 func (self *StateDB) createObject(addr common.Address) (newobj, prev *StateObject) {
@@ -510,8 +512,8 @@ func (self *StateDB) Copy() *StateDB {
 	state := &StateDB{
 		db:                self.db,
 		trie:              self.db.CopyTrie(self.trie),
-		stateObjects:      make(map[common.Address]*StateObject, len(self.stateObjectsDirty)),
-		stateObjectsDirty: make(map[common.Address]struct{}, len(self.stateObjectsDirty)),
+		stateObjects:      make(map[common.Address]*StateObject, len(self.journal.dirties)),
+		stateObjectsDirty: make(map[common.Address]struct{}, len(self.journal.dirties)),
 		refund:            new(big.Int).Set(self.refund),
 		logs:              make(map[common.Hash][]*types.Log, len(self.logs)),
 		logSize:           self.logSize,
