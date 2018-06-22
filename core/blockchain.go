@@ -1650,9 +1650,13 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 			res.Error = err
 			return
 		}
+		if usedGas == 0 && block.Transactions().Len() > 0 {
+			panic("used gas 0 bc.processor.process")
+		}
 		// Validate the state using the default validator
-		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, big.NewInt(int64(usedGas)))
+		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, big.NewInt(0).SetUint64(usedGas))
 		if err != nil {
+			panic("validate state err: " + err.Error())
 			res.Error = err
 			return
 		}

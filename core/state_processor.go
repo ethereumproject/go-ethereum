@@ -109,6 +109,10 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	}
 	AccumulateRewards(p.config, statedb, header, block.Uncles())
 
+	if *usedGas == 0 && block.Transactions().Len() > 0 {
+		panic("zero gas processor")
+	}
+
 	return receipts, allLogs, *usedGas, err
 }
 
@@ -182,10 +186,10 @@ func getTransactionBlockData(chainDb ethdb.Database, txHash common.Hash) (common
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
-	// signer := types.MakeSigner(config, header.Number)
-	signer := config.GetSigner(header.Number)
-	msg, err := tx.AsMessage(signer)
-
+	msg, err := tx.AsMessage(config.GetSigner(header.Number))
+	if err != nil {
+		return nil, 0, err
+	}
 	// Create a new context to be used in the EVM environment
 	context := NewEVMContext(msg, header, bc, author)
 	// Create a new environment which holds all relevant information
@@ -196,6 +200,9 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	if err != nil {
 		return nil, 0, err
 	}
+	if gas == 0 {
+		panic("zero gas apply message")
+	}
 	// Update the state with pending changes
 	var root []byte
 	if config.IsByzantium(header.Number) {
@@ -205,11 +212,15 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	}
 	*usedGas += gas
 
+	if *usedGas == 0 {
+		panic("used gas zero apply tx")
+	}
+
 	// Create a new receipt for the transaction, storing the intermediate root and gas used by the tx
 	// based on the eip phase, we're passing wether the root touch-delete accounts.
 	receipt := types.NewReceipt(root, failed, big.NewInt(0).SetUint64(*usedGas))
 	receipt.TxHash = tx.Hash()
-	receipt.GasUsed = big.NewInt(0).SetUint64(gas)
+	receipt.GasUsed = new(big.Int).SetUint64(gas)
 	// if the transaction created a contract, store the creation address in the receipt.
 	if msg.To() == nil {
 		receipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())
