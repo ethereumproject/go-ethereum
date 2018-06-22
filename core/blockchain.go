@@ -159,7 +159,6 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus
 		bodyRLPCache: bodyRLPCache,
 		blockCache:   blockCache,
 		futureBlocks: futureBlocks,
-		pow:          pow,
 	}
 	bc.SetValidator(NewBlockValidator(config, bc, engine))
 	bc.SetProcessor(NewStateProcessor(config, bc, engine))
@@ -195,7 +194,7 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus
 	return bc, nil
 }
 
-func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.PoW, mux *event.TypeMux) (*BlockChain, error) {
+func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, engine consensus.Engine, mux *event.TypeMux) (*BlockChain, error) {
 	bodyCache, _ := lru.New(bodyCacheLimit)
 	bodyRLPCache, _ := lru.New(bodyCacheLimit)
 	blockCache, _ := lru.New(blockCacheLimit)
@@ -210,10 +209,9 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, pow pow.Po
 		bodyRLPCache: bodyRLPCache,
 		blockCache:   blockCache,
 		futureBlocks: futureBlocks,
-		pow:          pow,
 	}
-	bc.SetValidator(NewBlockValidator(config, bc, pow))
-	bc.SetProcessor(NewStateProcessor(config, bc))
+	bc.SetValidator(NewBlockValidator(config, bc, engine))
+	bc.SetProcessor(NewStateProcessor(config, bc, engine))
 
 	gv := func() HeaderValidator { return bc.Validator() }
 	var err error
