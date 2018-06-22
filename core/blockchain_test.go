@@ -1631,21 +1631,21 @@ func TestEIP155Transition(t *testing.T) {
 		address = crypto.PubkeyToAddress(key.PublicKey)
 		funds   = big.NewInt(1000000000)
 		genesis = WriteGenesisBlockForTesting(db, GenesisAccount{address, funds})
-		config  = &ChainConfig{
-			Forks: []*Fork{
+		config  = &params.ChainConfig{
+			Forks: []*params.Fork{
 				{
 					Name:  "Homestead",
 					Block: big.NewInt(0),
-					Features: []*ForkFeature{
+					Features: []*params.ForkFeature{
 						{
 							ID: "difficulty",
-							Options: ChainFeatureConfigOptions{
+							Options: params.ChainFeatureConfigOptions{
 								"type": "homestead",
 							},
 						},
 						{
 							ID: "gastable",
-							Options: ChainFeatureConfigOptions{
+							Options: params.ChainFeatureConfigOptions{
 								"type": "homestead",
 							},
 						},
@@ -1654,22 +1654,22 @@ func TestEIP155Transition(t *testing.T) {
 				{
 					Name:  "Diehard",
 					Block: big.NewInt(2),
-					Features: []*ForkFeature{
+					Features: []*params.ForkFeature{
 						{
 							ID: "eip155",
-							Options: ChainFeatureConfigOptions{
+							Options: params.ChainFeatureConfigOptions{
 								"chainID": 1,
 							},
 						},
 						{ // ecip1010 bomb delay
 							ID: "gastable",
-							Options: ChainFeatureConfigOptions{
+							Options: params.ChainFeatureConfigOptions{
 								"type": "eip160",
 							},
 						},
 						{ // ecip1010 bomb delay
 							ID: "difficulty",
-							Options: ChainFeatureConfigOptions{
+							Options: params.ChainFeatureConfigOptions{
 								"type":   "ecip1010",
 								"length": 2000000,
 							},
@@ -1749,21 +1749,21 @@ func TestEIP155Transition(t *testing.T) {
 	}
 
 	// generate an invalid chain id transaction
-	config = &ChainConfig{
-		Forks: []*Fork{
+	config = &params.ChainConfig{
+		Forks: []*params.Fork{
 			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
-				Features: []*ForkFeature{
+				Features: []*params.ForkFeature{
 					{
 						ID: "difficulty",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type": "homestead",
 						},
 					},
 					{
 						ID: "gastable",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type": "homestead",
 						},
 					},
@@ -1772,22 +1772,22 @@ func TestEIP155Transition(t *testing.T) {
 			{
 				Name:  "Diehard",
 				Block: big.NewInt(2),
-				Features: []*ForkFeature{
+				Features: []*params.ForkFeature{
 					{
 						ID: "eip155",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"chainID": 2,
 						},
 					},
 					{ // ecip1010 bomb delay
 						ID: "gastable",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type": "eip160",
 						},
 					},
 					{ // ecip1010 bomb delay
 						ID: "difficulty",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type":   "ecip1010",
 							"length": 2000000,
 						},

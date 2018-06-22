@@ -64,7 +64,7 @@ type stateFn func() (*state.StateDB, error)
 // current state) and future transactions. Transactions move between those
 // two states over time as they are received and processed.
 type TxPool struct {
-	config       *ChainConfig
+	config       *params.ChainConfig
 	signer       types.Signer
 	currentState stateFn // The state function which will allow us to do some pre checks
 	pendingState *state.ManagedState
@@ -82,7 +82,7 @@ type TxPool struct {
 	homestead bool
 }
 
-func NewTxPool(config *ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() *big.Int) *TxPool {
+func NewTxPool(config *params.ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() *big.Int) *TxPool {
 	pool := &TxPool{
 		config:       config,
 		signer:       types.NewChainIdSigner(config.GetChainID()),

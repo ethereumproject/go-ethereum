@@ -393,7 +393,7 @@ func TestAccumulateRewards1(t *testing.T) {
 			dhFork := config.ForkByName("Diehard")
 			dhFork.Features = append(dhFork.Features, &ForkFeature{
 				ID: "reward",
-				Options: ChainFeatureConfigOptions{
+				Options: params.ChainFeatureConfigOptions{
 					"type": "ecip1017",
 					"era":  5000000, // for mainnet will be 5m
 				},
