@@ -15,11 +15,11 @@ GenesisDump json encoding mechanisms.
 This file and everything in it should die as soon as possible.
 */
 
-// hex is a hexadecimal string.
-type hex string
+// Hex is a hexadecimal string.
+type Hex string
 
 // Decode fills buf when h is not empty.
-func (h hex) Decode(buf []byte) error {
+func (h Hex) Decode(buf []byte) error {
 	if len(h) != 2*len(buf) {
 		return fmt.Errorf("want %d hexadecimals", 2*len(buf))
 	}
@@ -28,19 +28,19 @@ func (h hex) Decode(buf []byte) error {
 	return err
 }
 
-// prefixedHex is a hexadecimal string with an "0x" prefix.
-type prefixedHex string
+// PrefixedHex is a hexadecimal string with an "0x" prefix.
+type PrefixedHex string
 
-var errNoHexPrefix = errors.New("want 0x prefix")
+var ErrNoHexPrefix = errors.New("want 0x prefix")
 
 // Decode fills buf when h is not empty.
-func (h prefixedHex) Decode(buf []byte) error {
+func (h PrefixedHex) Decode(buf []byte) error {
 	i := len(h)
 	if i == 0 {
 		return nil
 	}
 	if i == 1 || h[0] != '0' || h[1] != 'x' {
-		return errNoHexPrefix
+		return ErrNoHexPrefix
 	}
 	if i == 2 {
 		return nil
@@ -53,13 +53,13 @@ func (h prefixedHex) Decode(buf []byte) error {
 	return err
 }
 
-func (h prefixedHex) Bytes() ([]byte, error) {
+func (h PrefixedHex) Bytes() ([]byte, error) {
 	l := len(h)
 	if l == 0 {
 		return nil, nil
 	}
 	if l == 1 || h[0] != '0' || h[1] != 'x' {
-		return nil, errNoHexPrefix
+		return nil, ErrNoHexPrefix
 	}
 	if l == 2 {
 		return nil, nil
@@ -70,7 +70,7 @@ func (h prefixedHex) Bytes() ([]byte, error) {
 	return bytes, err
 }
 
-func (h prefixedHex) Int() (*big.Int, error) {
+func (h PrefixedHex) Int() (*big.Int, error) {
 	bytes, err := h.Bytes()
 	if err != nil {
 		return nil, err

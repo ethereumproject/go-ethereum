@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	hexlib "encoding/hex"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -97,11 +99,11 @@ func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...params.GenesisAc
 	dump := params.GenesisDump{
 		GasLimit:   "0x47E7C4",
 		Difficulty: "0x020000",
-		Alloc:      make(map[hex]*params.GenesisDumpAlloc, len(accounts)),
+		Alloc:      make(map[params.Hex]*params.GenesisDumpAlloc, len(accounts)),
 	}
 
 	for _, a := range accounts {
-		dump.Alloc[hex(hexlib.EncodeToString(a.Address[:]))] = &params.GenesisDumpAlloc{
+		dump.Alloc[params.Hex(hexlib.EncodeToString(a.Address[:]))] = &params.GenesisDumpAlloc{
 			Balance: a.Balance.String(),
 		}
 	}
@@ -132,18 +134,18 @@ func GenesisDump(chaindb ethdb.Database) (*params.GenesisDump, error) {
 	coinbase := genesisHeader.Coinbase.Hex()
 
 	var dump = &params.GenesisDump{
-		Nonce:      prefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
-		Timestamp:  prefixedHex(time),
-		ParentHash: prefixedHex(parentHash),
-		//ExtraData:  prefixedHex(extra),
-		GasLimit:   prefixedHex(gasLimit),
-		Difficulty: prefixedHex(difficulty),
-		Mixhash:    prefixedHex(mixHash),
-		Coinbase:   prefixedHex(coinbase),
+		Nonce:      params.PrefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
+		Timestamp:  params.PrefixedHex(time),
+		ParentHash: params.PrefixedHex(parentHash),
+		//ExtraData:  params.PrefixedHex(extra),
+		GasLimit:   params.PrefixedHex(gasLimit),
+		Difficulty: params.PrefixedHex(difficulty),
+		Mixhash:    params.PrefixedHex(mixHash),
+		Coinbase:   params.PrefixedHex(coinbase),
 		//Alloc: ,
 	}
 	if genesisHeader.Extra != nil && len(genesisHeader.Extra) > 0 {
-		dump.ExtraData = prefixedHex(common.ToHex(genesisHeader.Extra))
+		dump.ExtraData = params.PrefixedHex(common.ToHex(genesisHeader.Extra))
 	}
 
 	// State allocations.
@@ -154,11 +156,11 @@ func GenesisDump(chaindb ethdb.Database) (*params.GenesisDump, error) {
 	stateDump := genState.RawDump([]common.Address{})
 
 	stateAccounts := stateDump.Accounts
-	dump.Alloc = make(map[hex]*params.GenesisDumpAlloc, len(stateAccounts))
+	dump.Alloc = make(map[params.Hex]*params.GenesisDumpAlloc, len(stateAccounts))
 
 	for address, acct := range stateAccounts {
 		if common.IsHexAddress(address) {
-			dump.Alloc[hex(address)] = &params.GenesisDumpAlloc{
+			dump.Alloc[params.Hex(address)] = &params.GenesisDumpAlloc{
 				Balance: acct.Balance,
 			}
 		} else {

@@ -608,7 +608,7 @@ func parseAllocationFile(config *SufficientChainConfig, open func(string) (io.Re
 	}
 	defer csvFile.Close()
 
-	config.Genesis.Alloc = make(map[hex]*GenesisDumpAlloc)
+	config.Genesis.Alloc = make(map[Hex]*GenesisDumpAlloc)
 
 	reader := csv.NewReader(csvFile)
 	line := 1
@@ -624,7 +624,7 @@ func parseAllocationFile(config *SufficientChainConfig, open func(string) (io.Re
 		}
 		line++
 
-		config.Genesis.Alloc[hex(row[0])] = &GenesisDumpAlloc{Balance: row[1]}
+		config.Genesis.Alloc[Hex(row[0])] = &GenesisDumpAlloc{Balance: row[1]}
 	}
 
 	config.Genesis.AllocFile = ""
