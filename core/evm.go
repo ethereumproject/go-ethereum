@@ -20,7 +20,6 @@ import (
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 )
@@ -29,7 +28,7 @@ import (
 // current blockchain to be used during transaction processing.
 type ChainContext interface {
 	// Engine retrieves the chain's consensus engine.
-	Engine() consensus.Engine
+	// Engine() consensus.Engine
 
 	// GetHeader returns the hash corresponding to their hash.
 	// PTAL Here's a fork in the road. Walking down the (common.Hash, uint64) path leads to batch db with sequential keys.
@@ -44,7 +43,7 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 	// If we don't have an explicit author (i.e. not mining), extract from the header
 	var beneficiary common.Address
 	if author == nil {
-		beneficiary, _ = chain.Engine().Author(header) // Ignore error, we're past header validation
+		beneficiary = header.Coinbase // , _ = chain.Engine().Author(header) // Ignore error, we're past header validation
 	} else {
 		beneficiary = *author
 	}

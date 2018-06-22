@@ -18,12 +18,10 @@ package core
 
 import (
 	"math/big"
-
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 )
 
 // TxPreEvent is posted when a transaction enters the transaction pool.

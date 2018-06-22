@@ -29,7 +29,7 @@ import (
 	"testing/quick"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"gopkg.in/check.v1"
 )
@@ -262,7 +262,8 @@ func newTestAction(addr common.Address, r *rand.Rand) testAction {
 		{
 			name: "AddRefund",
 			fn: func(a testAction, s *StateDB) {
-				s.AddRefund(big.NewInt(a.args[0]))
+				// s.AddRefund(big.NewInt(a.args[0]))
+				s.AddRefund(uint64(a.args[0]))
 			},
 			args:   make([]int64, 1),
 			noAddr: true,
@@ -272,7 +273,7 @@ func newTestAction(addr common.Address, r *rand.Rand) testAction {
 			fn: func(a testAction, s *StateDB) {
 				data := make([]byte, 2)
 				binary.BigEndian.PutUint16(data, uint16(a.args[0]))
-				s.AddLog(*types.Log{Address: addr, Data: data})
+				s.AddLog(&types.Log{Address: addr, Data: data})
 			},
 			args: make([]int64, 1),
 		},

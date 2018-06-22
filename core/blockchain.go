@@ -18,31 +18,29 @@
 package core
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math/big"
 	mrand "math/rand"
+	"reflect"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"reflect"
-	"strconv"
-
-	"encoding/binary"
-
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"

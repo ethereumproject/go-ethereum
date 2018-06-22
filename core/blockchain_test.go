@@ -18,11 +18,13 @@ package core
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,15 +32,12 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
-	"io/ioutil"
-	"strings"
 )
 
 func init() {

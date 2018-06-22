@@ -18,24 +18,23 @@ package core
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 
-	"crypto/ecdsa"
-	"encoding/binary"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"strings"
 )
 
 type diffTest struct {
