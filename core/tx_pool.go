@@ -27,9 +27,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -295,8 +297,12 @@ func (pool *TxPool) validateTx(tx *types.Transaction) (e error) {
 		return
 	}
 
-	intrGas := IntrinsicGas(tx.Data(), MessageCreatesContract(tx), pool.homestead)
-	if tx.Gas().Cmp(intrGas) < 0 {
+	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
+	if err != nil && err == vm.ErrOutOfGas {
+		e = err
+		return
+	}
+	if tx.Gas().Uint64() < intrGas {
 		e = ErrIntrinsicGas
 		return
 	}

@@ -23,8 +23,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 )
 
@@ -117,6 +119,14 @@ type BlockGen struct {
 	config   *params.ChainConfig
 }
 
+func (b *BlockGen) Engine() interface{} {
+	panic("implement me")
+}
+
+func (b *BlockGen) GetHeader(common.Hash) *types.Header {
+	return b.header
+}
+
 // SetCoinbase sets the coinbase of the generated block.
 // It can be called at most once.
 func (b *BlockGen) SetCoinbase(addr common.Address) {
@@ -148,7 +158,8 @@ func (b *BlockGen) AddTx(tx *types.Transaction) {
 		b.SetCoinbase(common.Address{})
 	}
 	b.statedb.StartRecord(tx.Hash(), common.Hash{}, len(b.txs))
-	receipt, _, _, err := ApplyTransaction(b.config, nil, b.gasPool, b.statedb, b.header, tx, b.header.GasUsed)
+	gas := b.header.GasUsed.Uint64()
+	receipt, _, err := ApplyTransaction(b.config, b, nil, b.gasPool, b.statedb, b.header, tx, &gas, vm.Config{})
 	if err != nil {
 		panic(err)
 	}
