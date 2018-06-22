@@ -19,6 +19,7 @@ package core
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -48,7 +49,6 @@ var (
 type StateProcessor struct {
 	config *params.ChainConfig
 	bc     *BlockChain
-	// engine consensus.Engine
 }
 
 // NewStateProcessor initialises a new StateProcessor.
@@ -56,7 +56,6 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain) *StateProcess
 	return &StateProcessor{
 		config: config,
 		bc:     bc,
-		// engine: engine,
 	}
 }
 
@@ -67,7 +66,7 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain) *StateProcess
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
-func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, []*types.Log, uint64, error) {
+func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, vm.Logs, *big.Int, error) {
 	var (
 		receipts types.Receipts
 		usedGas  = new(uint64)
@@ -176,6 +175,70 @@ func getTransactionBlockData(chainDb ethdb.Database, txHash common.Hash) (common
 	return txBlock.BlockHash, txBlock.BlockIndex, txBlock.Index, nil
 }
 
+func (p *StateProcessor) ReplayTransaction(txHash common.Hash, statedb *state.StateDB) (*types.Receipt, error) {
+	statedb = statedb.Copy()
+
+	blockHash, _, index, err := getTransactionBlockData(p.bc.chainDb, txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	block := GetBlock(p.bc.chainDb, blockHash)
+	tx := block.Transactions()[index]
+
+	var (
+		totalUsedGas = big.NewInt(0)
+		header       = block.Header()
+		gp           = new(GasPool).AddGas(block.GasLimit())
+	)
+
+	if tx.Protected() {
+		chainId := p.config.GetChainID()
+		if chainId.Cmp(new(big.Int)) == 0 {
+			return nil, fmt.Errorf("ChainID is not set for EIP-155 in chain configuration at block number: %v. \n  Tx ChainID: %v", block.Number(), tx.ChainId())
+		}
+		if tx.ChainId() == nil || tx.ChainId().Cmp(chainId) != 0 {
+			return nil, fmt.Errorf("Invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
+		}
+	}
+	//statedb.StartRecord(tx.Hash(), block.Hash(), i)
+	if !UseSputnikVM {
+		receipt, _, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
+		if err != nil {
+			return nil, err
+		}
+		return receipt, nil
+	}
+	receipt, _, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
+	if err != nil {
+		return nil, err
+	}
+	return receipt, nil
+}
+
+// TODO(tzdybal) - refactor (duplicate from eth/api.go)
+// getTransactionBlockData fetches the meta data for the given transaction from the chain database. This is useful to
+// retrieve block information for a hash. It returns the block hash, block index and transaction index.
+func getTransactionBlockData(chainDb ethdb.Database, txHash common.Hash) (common.Hash, uint64, uint64, error) {
+	var txBlock struct {
+		BlockHash  common.Hash
+		BlockIndex uint64
+		Index      uint64
+	}
+
+	blockData, err := chainDb.Get(append(txHash.Bytes(), 0x0001))
+	if err != nil {
+		return common.Hash{}, uint64(0), uint64(0), err
+	}
+
+	reader := bytes.NewReader(blockData)
+	if err = rlp.Decode(reader, &txBlock); err != nil {
+		return common.Hash{}, uint64(0), uint64(0), err
+	}
+
+	return txBlock.BlockHash, txBlock.BlockIndex, txBlock.Index, nil
+}
+
 // ApplyTransaction attempts to apply a transaction to the given state database
 // and uses the input parameters for its environment. It returns the receipt
 // for the transaction, gas used and an error if the transaction failed,
@@ -195,6 +258,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	if err != nil {
 		return nil, 0, err
 	}
+
 	// Update the state with pending changes
 	var root []byte
 	if config.IsByzantium(header.Number) {
@@ -218,6 +282,11 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// Set the receipt logs and create a bloom for filtering
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+	if failed {
+		receipt.Status = types.TxFailure
+	} else {
+		receipt.Status = types.TxSuccess
+	}
 
 	return receipt, gas, err
 }
