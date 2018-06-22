@@ -123,8 +123,13 @@ func (b *BlockGen) Engine() interface{} {
 	panic("implement me")
 }
 
-func (b *BlockGen) GetHeader(common.Hash) *types.Header {
-	return b.header
+func (b *BlockGen) GetHeader(c common.Hash) *types.Header {
+	for _, block := range b.chain {
+		if h := block.Header(); h.Hash() == c {
+			return h
+		}
+	}
+	return nil
 }
 
 // SetCoinbase sets the coinbase of the generated block.
