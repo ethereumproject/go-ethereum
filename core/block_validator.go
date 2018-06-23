@@ -57,8 +57,8 @@ type DifficultyConfig struct {
 // BlockValidator implements Validator.
 type BlockValidator struct {
 	config *params.ChainConfig // Chain configuration options
-	bc     *BlockChain  // Canonical block chain
-	Pow    pow.PoW      // Proof of work used for validating
+	bc     *BlockChain         // Canonical block chain
+	Pow    pow.PoW             // Proof of work used for validating
 }
 
 // NewBlockValidator returns a new block validator which is safe for re-use
@@ -125,9 +125,9 @@ func (v *BlockValidator) ValidateBlock(block *types.Block) error {
 // transition, such as amount of used gas, the receipt roots and the state root
 // itself. ValidateState returns a database batch if the validation was a success
 // otherwise nil and an error is returned.
-func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas *big.Int) (err error) {
+func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) (err error) {
 	header := block.Header()
-	if block.GasUsed().Cmp(usedGas) != 0 {
+	if block.GasUsed() != usedGas {
 		return validateError(fmt.Sprintf("gas used error (%v / %v)", block.GasUsed(), usedGas))
 	}
 	// Validate the received block's bloom with the one derived from the generated receipts.
@@ -241,12 +241,17 @@ func ValidateHeader(config *params.ChainConfig, pow pow.PoW, header *types.Heade
 		return fmt.Errorf("Difficulty check failed for header %v != %v at %v", header.Difficulty, expd, header.Number)
 	}
 
-	a := new(big.Int).Set(parent.GasLimit)
-	a = a.Sub(a, header.GasLimit)
-	a.Abs(a)
-	b := new(big.Int).Set(parent.GasLimit)
-	b = b.Div(b, GasLimitBoundDivisor)
-	if !(a.Cmp(b) < 0) || (header.GasLimit.Cmp(MinGasLimit) == -1) {
+	a := parent.GasLimit
+	// ensure subtraction doesn't result in underflow
+	if header.GasLimit <= parent.GasLimit {
+		a -= header.GasLimit
+	} else {
+		a = 0
+	}
+	b := parent.GasLimit
+	b = b / params.GasLimitBoundDivisor
+	if !(a < b) || (header.GasLimit < params.MinGasLimit) {
+		// if !(a.Cmp(b) < 0) || (header.GasLimit.Cmp(MinGasLimit) == -1) {
 		return fmt.Errorf("GasLimit check failed for header %v (%v > %v)", header.GasLimit, a, b)
 	}
 
@@ -529,17 +534,13 @@ func calcDifficultyFrontier(time, parentTime uint64, parentNumber, parentDiff *b
 }
 
 // CalcGasLimit computes the gas limit of the next block after parent.
-// The result may be modified by the caller.
 // This is miner strategy, not consensus protocol.
-func CalcGasLimit(parent *types.Block) *big.Int {
-	// contrib = (parentGasUsed * 3 / 2) / 1024
-	contrib := new(big.Int).Mul(parent.GasUsed(), big.NewInt(3))
-	contrib = contrib.Div(contrib, big.NewInt(2))
-	contrib = contrib.Div(contrib, GasLimitBoundDivisor)
+func CalcGasLimit(parent *types.Block) uint64 {
+	// contrib := (parent.GasUsed() * 3 / 2) / params.GasLimitBoundDivisor // 1024
+	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
 
-	// decay = parentGasLimit / 1024 -1
-	decay := new(big.Int).Div(parent.GasLimit(), GasLimitBoundDivisor)
-	decay.Sub(decay, big.NewInt(1))
+	// decay := (parent.GasLimit() / params.GasLimitBoundDivisor) - 1
+	decay := parent.GasLimit()/params.GasLimitBoundDivisor - 1
 
 	/*
 		strategy: gasLimit of block-to-mine is set based on parent's
@@ -548,15 +549,17 @@ func CalcGasLimit(parent *types.Block) *big.Int {
 		at that usage) the amount increased/decreased depends on how far away
 		from parentGasLimit * (2/3) parentGasUsed is.
 	*/
-	gl := new(big.Int).Sub(parent.GasLimit(), decay)
-	gl = gl.Add(gl, contrib)
-	gl.Set(common.BigMax(gl, MinGasLimit))
-
+	limit := parent.GasLimit() - decay + contrib
+	if limit < params.MinGasLimit {
+		limit = params.MinGasLimit
+	}
 	// however, if we're now below the target (TargetGasLimit) we increase the
 	// limit as much as we can (parentGasLimit / 1024 -1)
-	if gl.Cmp(TargetGasLimit) < 0 {
-		gl.Add(parent.GasLimit(), decay)
-		gl.Set(common.BigMin(gl, TargetGasLimit))
+	if limit < params.TargetGasLimit {
+		limit = parent.GasLimit() + decay
+		if limit > params.TargetGasLimit {
+			limit = params.TargetGasLimit
+		}
 	}
-	return gl
+	return limit
 }

@@ -111,10 +111,6 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 	}
 	AccumulateRewards(p.config, statedb, header, block.Uncles())
 
-	if *usedGas == 0 && block.Transactions().Len() > 0 {
-		panic("zero gas processor")
-	}
-
 	return receipts, allLogs, *usedGas, err
 }
 
@@ -139,6 +135,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	}
 	// Update the state with pending changes
 	var root []byte
+	// PTAL Note: this will need to be addressed.
 	// if config.IsByzantium(header.Number) {
 	// 	statedb.Finalise(true)
 	// } else {
@@ -146,19 +143,11 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// }
 	*usedGas += gas
 
-	if *usedGas == 0 {
-		panic("apply tx used gas 0")
-	}
-
-	if gas == 0 {
-		panic("apply tx gas 0")
-	}
-
 	// Create a new receipt for the transaction, storing the intermediate root and gas used by the tx
 	// based on the eip phase, we're passing wether the root touch-delete accounts.
-	receipt := types.NewReceipt(root, failed, big.NewInt(0).SetUint64(*usedGas))
+	receipt := types.NewReceipt(root, failed, *usedGas)
 	receipt.TxHash = tx.Hash()
-	receipt.GasUsed = new(big.Int).SetUint64(gas)
+	receipt.GasUsed = gas
 	// if the transaction created a contract, store the creation address in the receipt.
 	if msg.To() == nil {
 		receipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())

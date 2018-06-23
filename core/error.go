@@ -32,6 +32,10 @@ var (
 	BlockFutureErr   = errors.New("block time is in the future")
 	BlockTSTooBigErr = errors.New("block time too big")
 	BlockEqualTSErr  = errors.New("block time stamp equal to previous")
+
+	// ErrGasLimitReached is returned by the gas pool if the amount of gas required
+	// by a transaction is higher than what's left in the block.
+	ErrGasLimitReached = errors.New("gas limit reached")
 )
 
 // Parent error. In case a parent is unknown this error will be thrown
@@ -177,7 +181,7 @@ func IsValueTransferErr(e error) bool {
 }
 
 type GasLimitErr struct {
-	Have, Want *big.Int
+	Have, Want uint64
 }
 
 func IsGasLimitErr(err error) bool {

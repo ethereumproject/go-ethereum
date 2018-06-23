@@ -45,7 +45,7 @@ import (
 type Validator interface {
 	HeaderValidator
 	ValidateBlock(block *types.Block) error
-	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error
+	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error
 	VerifyUncles(block, parent *types.Block) error
 }
 

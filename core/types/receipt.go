@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/rlp"
@@ -38,20 +37,20 @@ const (
 type Receipt struct {
 	// Consensus fields
 	PostState         []byte
-	CumulativeGasUsed *big.Int
+	CumulativeGasUsed uint64
 	Bloom             Bloom
 	Logs              []*Log
+	Status            ReceiptStatus
 
 	// Implementation fields
 	TxHash          common.Hash
 	ContractAddress common.Address
-	GasUsed         *big.Int
-	Status          ReceiptStatus
+	GasUsed         uint64
 }
 
 // NewReceipt creates a barebone transaction receipt, copying the init fields.
-func NewReceipt(root []byte, failed bool, cumulativeGasUsed *big.Int) *Receipt {
-	r := &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed)}
+func NewReceipt(root []byte, failed bool, cumulativeGasUsed uint64) *Receipt {
+	r := &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: cumulativeGasUsed}
 	if failed {
 		r.Status = TxFailure
 	} else {
@@ -71,7 +70,7 @@ func (r *Receipt) EncodeRLP(w io.Writer) error {
 func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	var receipt struct {
 		PostState         []byte
-		CumulativeGasUsed *big.Int
+		CumulativeGasUsed uint64
 		Bloom             Bloom
 		Logs              []*Log
 	}
@@ -115,21 +114,21 @@ func (r *ReceiptForStorage) EncodeRLP(w io.Writer) error {
 func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	var oldReceipt struct {
 		PostState         []byte
-		CumulativeGasUsed *big.Int
+		CumulativeGasUsed uint64
 		Bloom             Bloom
 		TxHash            common.Hash
 		ContractAddress   common.Address
 		Logs              []*LogForStorage
-		GasUsed           *big.Int
+		GasUsed           uint64
 	}
 	var receipt struct {
 		PostState         []byte
-		CumulativeGasUsed *big.Int
+		CumulativeGasUsed uint64
 		Bloom             Bloom
 		TxHash            common.Hash
 		ContractAddress   common.Address
 		Logs              []*LogForStorage
-		GasUsed           *big.Int
+		GasUsed           uint64
 		Status            ReceiptStatus
 	}
 	receipt.Status = TxStatusUnknown

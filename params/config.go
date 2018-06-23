@@ -61,7 +61,7 @@ var (
 	ErrHashKnownBad  = errors.New("known bad hash")
 	ErrHashKnownFork = validateError("known fork hash mismatch")
 
-	TestChainConfig = DefaultConfigMorden.ChainConfig
+	// TestChainConfig = DefaultConfigMorden.ChainConfig
 
 	// Chain identities.
 	ChainIdentitiesBlacklist = map[string]bool{
@@ -308,8 +308,10 @@ func (g *GenesisDump) Header() (*types.Header, error) {
 	if h.Extra, err = g.ExtraData.Bytes(); err != nil {
 		return nil, fmt.Errorf("malformed extraData: %s", err)
 	}
-	if h.GasLimit, err = g.GasLimit.Int(); err != nil {
+	if gl, err := g.GasLimit.Int(); err != nil {
 		return nil, fmt.Errorf("malformed gasLimit: %s", err)
+	} else {
+		h.GasLimit = gl.Uint64()
 	}
 	if h.Difficulty, err = g.Difficulty.Int(); err != nil {
 		return nil, fmt.Errorf("malformed difficulty: %s", err)

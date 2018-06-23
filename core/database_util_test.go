@@ -648,25 +648,25 @@ func TestReceiptStorage(t *testing.T) {
 
 	receipt1 := &types.Receipt{
 		PostState:         []byte{0x01},
-		CumulativeGasUsed: big.NewInt(1),
+		CumulativeGasUsed: 1,
 		Logs: []*types.Log{
-			&types.Log{Address: common.BytesToAddress([]byte{0x11})},
-			&types.Log{Address: common.BytesToAddress([]byte{0x01, 0x11})},
+			{Address: common.BytesToAddress([]byte{0x11})},
+			{Address: common.BytesToAddress([]byte{0x01, 0x11})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x11, 0x11}),
 		ContractAddress: common.BytesToAddress([]byte{0x01, 0x11, 0x11}),
-		GasUsed:         big.NewInt(111111),
+		GasUsed:         111111,
 	}
 	receipt2 := &types.Receipt{
 		PostState:         []byte{0x02},
-		CumulativeGasUsed: big.NewInt(2),
+		CumulativeGasUsed: 2,
 		Logs: []*types.Log{
-			&types.Log{Address: common.BytesToAddress([]byte{0x22})},
-			&types.Log{Address: common.BytesToAddress([]byte{0x02, 0x22})},
+			{Address: common.BytesToAddress([]byte{0x22})},
+			{Address: common.BytesToAddress([]byte{0x02, 0x22})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x22, 0x22}),
 		ContractAddress: common.BytesToAddress([]byte{0x02, 0x22, 0x22}),
-		GasUsed:         big.NewInt(222222),
+		GasUsed:         222222,
 	}
 	receipts := []*types.Receipt{receipt1, receipt2}
 
@@ -707,25 +707,25 @@ func TestBlockReceiptStorage(t *testing.T) {
 
 	receipt1 := &types.Receipt{
 		PostState:         []byte{0x01},
-		CumulativeGasUsed: big.NewInt(1),
+		CumulativeGasUsed: 1,
 		Logs: []*types.Log{
-			&types.Log{Address: common.BytesToAddress([]byte{0x11})},
-			&types.Log{Address: common.BytesToAddress([]byte{0x01, 0x11})},
+			{Address: common.BytesToAddress([]byte{0x11})},
+			{Address: common.BytesToAddress([]byte{0x01, 0x11})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x11, 0x11}),
 		ContractAddress: common.BytesToAddress([]byte{0x01, 0x11, 0x11}),
-		GasUsed:         big.NewInt(111111),
+		GasUsed:         111111,
 	}
 	receipt2 := &types.Receipt{
 		PostState:         []byte{0x02},
-		CumulativeGasUsed: big.NewInt(2),
+		CumulativeGasUsed: 2,
 		Logs: []*types.Log{
-			&types.Log{Address: common.BytesToAddress([]byte{0x22})},
-			&types.Log{Address: common.BytesToAddress([]byte{0x02, 0x22})},
+			{Address: common.BytesToAddress([]byte{0x22})},
+			{Address: common.BytesToAddress([]byte{0x02, 0x22})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x22, 0x22}),
 		ContractAddress: common.BytesToAddress([]byte{0x02, 0x22, 0x22}),
-		GasUsed:         big.NewInt(222222),
+		GasUsed:         222222,
 	}
 	receipts := []*types.Receipt{receipt1, receipt2}
 
@@ -762,13 +762,13 @@ func TestMipmapBloom(t *testing.T) {
 
 	receipt1 := new(types.Receipt)
 	receipt1.Logs = []*types.Log{
-		&types.Log{Address: common.BytesToAddress([]byte("test"))},
-		&types.Log{Address: common.BytesToAddress([]byte("address"))},
+		{Address: common.BytesToAddress([]byte("test"))},
+		{Address: common.BytesToAddress([]byte("address"))},
 	}
 	receipt2 := new(types.Receipt)
 	receipt2.Logs = []*types.Log{
-		&types.Log{Address: common.BytesToAddress([]byte("test"))},
-		&types.Log{Address: common.BytesToAddress([]byte("address1"))},
+		{Address: common.BytesToAddress([]byte("test"))},
+		{Address: common.BytesToAddress([]byte("address1"))},
 	}
 
 	WriteMipmapBloom(db, 1, types.Receipts{receipt1})
@@ -785,13 +785,13 @@ func TestMipmapBloom(t *testing.T) {
 	db, _ = ethdb.NewMemDatabase()
 	receipt := new(types.Receipt)
 	receipt.Logs = []*types.Log{
-		&types.Log{Address: common.BytesToAddress([]byte("test"))},
+		{Address: common.BytesToAddress([]byte("test"))},
 	}
 	WriteMipmapBloom(db, 999, types.Receipts{receipt1})
 
 	receipt = new(types.Receipt)
 	receipt.Logs = []*types.Log{
-		&types.Log{Address: common.BytesToAddress([]byte("test 1"))},
+		{Address: common.BytesToAddress([]byte("test 1"))},
 	}
 	WriteMipmapBloom(db, 1000, types.Receipts{receipt})
 
@@ -823,9 +823,9 @@ func TestMipmapChain(t *testing.T) {
 		var receipts types.Receipts
 		switch i {
 		case 1:
-			receipt := types.NewReceipt(nil, false, new(big.Int))
+			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
-				&types.Log{
+				{
 					Address: addr,
 					Topics:  []common.Hash{hash1},
 				},
@@ -833,8 +833,8 @@ func TestMipmapChain(t *testing.T) {
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 1000:
-			receipt := types.NewReceipt(nil, false, new(big.Int))
-			receipt.Logs = []*types.Log{&types.Log{Address: addr2}}
+			receipt := types.NewReceipt(nil, false, 0)
+			receipt.Logs = []*types.Log{{Address: addr2}}
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 

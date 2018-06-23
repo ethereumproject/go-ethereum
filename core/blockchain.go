@@ -892,7 +892,7 @@ func (bc *BlockChain) FastSyncCommitHead(hash common.Hash) error {
 }
 
 // GasLimit returns the gas limit of the current HEAD block.
-func (bc *BlockChain) GasLimit() *big.Int {
+func (bc *BlockChain) GasLimit() uint64 {
 	bc.mu.RLock()
 	defer bc.mu.RUnlock()
 
@@ -1282,9 +1282,9 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				}
 				// The used gas can be calculated based on previous receipts
 				if j == 0 {
-					receipts[j].GasUsed = new(big.Int).Set(receipts[j].CumulativeGasUsed)
+					receipts[j].GasUsed = receipts[j].CumulativeGasUsed
 				} else {
-					receipts[j].GasUsed = new(big.Int).Sub(receipts[j].CumulativeGasUsed, receipts[j-1].CumulativeGasUsed)
+					receipts[j].GasUsed = receipts[j].CumulativeGasUsed - receipts[j-1].CumulativeGasUsed
 				}
 				// The derived log fields can simply be set from the block and transaction
 				for k := 0; k < len(receipts[j].Logs); k++ {
@@ -1657,7 +1657,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 			panic("used gas 0 bc.processor.process")
 		}
 		// Validate the state using the default validator
-		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, big.NewInt(0).SetUint64(usedGas))
+		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, usedGas)
 		if err != nil {
 			// glog.SetD(3)
 			// glog.D(logger.Error).Errorf("num txs: %d", block.Transactions().Len())

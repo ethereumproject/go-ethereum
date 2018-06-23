@@ -110,8 +110,8 @@ func genTxRing(naccounts int) func(int, *BlockGen) {
 	return func(i int, gen *BlockGen) {
 		gas := CalcGasLimit(gen.PrevBlock(i - 1))
 		for {
-			gas.Sub(gas, big.NewInt(0).SetUint64(params.TxGas))
-			if gas.Cmp(big.NewInt(0).SetUint64(params.TxGas)) < 0 {
+			gas -= params.TxGas
+			if gas < params.TxGas {
 				break
 			}
 			to := (from + 1) % naccounts

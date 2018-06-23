@@ -63,7 +63,7 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 
 	return types.NewBlock(&types.Header{
 		Difficulty: big.NewInt(131072),
-		GasLimit:   big.NewInt(4712388),
+		GasLimit:   4712388,
 		Root:       root,
 	}, nil, nil, nil)
 }
@@ -163,7 +163,7 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 		if err != nil {
 			return err
 		}
-		err = blockchain.Validator().ValidateState(block, blockchain.GetBlock(block.ParentHash()), statedb, receipts, big.NewInt(0).SetUint64(usedGas))
+		err = blockchain.Validator().ValidateState(block, blockchain.GetBlock(block.ParentHash()), statedb, receipts, usedGas)
 		if err != nil {
 			return err
 		}
@@ -453,7 +453,7 @@ type bproc struct{}
 
 func (bproc) ValidateBlock(*types.Block) error                        { return nil }
 func (bproc) ValidateHeader(*types.Header, *types.Header, bool) error { return nil }
-func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
+func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error {
 	return nil
 }
 func (bproc) VerifyUncles(block, parent *types.Block) error { return nil }
@@ -705,7 +705,7 @@ func testReorgBadHashes(t *testing.T, full bool) {
 		if ncm.CurrentBlock().Hash() != blocks[2].Header().Hash() {
 			t.Errorf("last block hash mismatch: have: %x, want %x", ncm.CurrentBlock().Hash(), blocks[2].Header().Hash())
 		}
-		if blocks[2].Header().GasLimit.Cmp(ncm.GasLimit()) != 0 {
+		if blocks[2].Header().GasLimit != ncm.GasLimit() {
 			t.Errorf("last  block gasLimit mismatch: have: %x, want %x", ncm.GasLimit(), blocks[2].Header().GasLimit)
 		}
 	} else {

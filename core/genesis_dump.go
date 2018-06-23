@@ -128,7 +128,7 @@ func GenesisDump(chaindb ethdb.Database) (*params.GenesisDump, error) {
 	nonce := fmt.Sprintf(`0x%x`, genesisHeader.Nonce)
 	time := common.BigToHash(genesisHeader.Time).Hex()
 	parentHash := genesisHeader.ParentHash.Hex()
-	gasLimit := common.BigToHash(genesisHeader.GasLimit).Hex()
+	gasLimit := fmt.Sprintf("0x%x", genesisHeader.GasLimit)
 	difficulty := common.BigToHash(genesisHeader.Difficulty).Hex()
 	mixHash := genesisHeader.MixDigest.Hex()
 	coinbase := genesisHeader.Coinbase.Hex()
