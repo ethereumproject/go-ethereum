@@ -29,10 +29,12 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -58,7 +60,7 @@ type uint64RingBuffer struct {
 // environment is the workers current environment and holds
 // all of the current state information
 type Work struct {
-	config             *core.ChainConfig
+	config             *params.ChainConfig
 	signer             types.Signer
 	state              *state.StateDB // apply state changes here
 	ancestors          *set.Set       // ancestor set (used for checking uncle parent validity)
@@ -88,7 +90,7 @@ type Result struct {
 
 // worker is the main object which takes care of applying messages to the new state
 type worker struct {
-	config *core.ChainConfig
+	config *params.ChainConfig
 
 	mu sync.Mutex
 
@@ -123,7 +125,7 @@ type worker struct {
 	fullValidation bool
 }
 
-func newWorker(config *core.ChainConfig, coinbase common.Address, eth core.Backend) *worker {
+func newWorker(config *params.ChainConfig, coinbase common.Address, eth core.Backend) *worker {
 	worker := &worker{
 		config:         config,
 		eth:            eth,
@@ -474,7 +476,6 @@ func (self *worker) commitNewWork() {
 		Number:     num.Add(num, common.Big1),
 		Difficulty: core.CalcDifficulty(self.config, uint64(tstamp), parent.Time().Uint64(), parent.Number(), parent.Difficulty()),
 		GasLimit:   core.CalcGasLimit(parent),
-		GasUsed:    new(big.Int),
 		Coinbase:   self.coinbase,
 		Extra:      HeaderExtra,
 		Time:       big.NewInt(tstamp),
@@ -691,7 +692,7 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, gp *core.GasPool) (error, []*types.Log) {
 	snap := env.state.Snapshot()
 
-	receipt, logs, _, err := core.ApplyTransaction(env.config, bc, gp, env.state, env.header, tx, env.header.GasUsed)
+	receipt, _, err := core.ApplyTransaction(env.config, bc, &env.header.Coinbase, gp, env.state, env.header, tx, &env.header.GasUsed, vm.Config{})
 
 	if logger.MlogEnabled() {
 		defer func() {
@@ -710,7 +711,7 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, g
 	env.txs = append(env.txs, tx)
 	env.receipts = append(env.receipts, receipt)
 
-	return nil, logs
+	return nil, receipt.Logs
 }
 
 // TODO: remove or use
