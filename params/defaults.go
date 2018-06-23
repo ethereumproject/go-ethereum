@@ -7,6 +7,7 @@ import (
 var (
 	DefaultConfigMainnet *SufficientChainConfig
 	DefaultConfigMorden  *SufficientChainConfig
+	TestChainConfig      *ChainConfig
 )
 
 func init() {
@@ -24,4 +25,6 @@ func init() {
 		glog.Fatal("Error parsing morden defaults from JSON:", err)
 	}
 	DefaultConfigMorden.ChainConfig.SetForkBlockVals()
+
+	TestChainConfig = DefaultConfigMorden.ChainConfig
 }
