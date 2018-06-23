@@ -27,6 +27,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -149,9 +150,9 @@ func migrateExistingDirToClassicNamingScheme(ctx *cli.Context) error {
 		// If block1920000 doesn't exist, given above checks for directory structure expectations,
 		// I think it's safe to assume that the chaindata directory is just too 'young', where it hasn't
 		// synced until block 1920000, and therefore can be migrated.
-		conf := core.DefaultConfigMainnet.ChainConfig
+		conf := params.DefaultConfigMainnet.ChainConfig
 		if chainIsMorden(ctx) {
-			conf = core.DefaultConfigMorden.ChainConfig
+			conf = params.DefaultConfigMorden.ChainConfig
 		}
 
 		hf := conf.ForkByName("The DAO Hard Fork")
@@ -223,7 +224,7 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	}
 
 	// 3.3 testnet uses subdir '/testnet'
-	if core.ChainIdentitiesMorden[chainIdentity] {
+	if params.ChainIdentitiesMorden[chainIdentity] {
 		exTestDir := filepath.Join(subdirPath, "../testnet")
 		exTestDirInfo, e := os.Stat(exTestDir)
 		if e != nil && os.IsNotExist(e) {

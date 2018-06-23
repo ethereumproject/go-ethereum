@@ -46,6 +46,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
@@ -94,14 +95,14 @@ func chainIsMorden(ctx *cli.Context) bool {
 	if ctx.GlobalBool(aliasableName(TestNetFlag.Name, ctx)) {
 		return true
 	}
-	if _, ok := core.ChainIdentitiesMorden[core.GetCacheChainIdentity()]; ok {
+	if _, ok := params.ChainIdentitiesMorden[params.GetCacheChainIdentity()]; ok {
 		return ok
 	}
-	if _, ok := core.ChainIdentitiesMorden[ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx))]; ok {
+	if _, ok := params.ChainIdentitiesMorden[ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx))]; ok {
 		return ok
 	}
-	if c := core.GetCacheChainConfig(); c != nil {
-		if _, ok := core.ChainIdentitiesMorden[c.Identity]; ok {
+	if c := params.GetCacheChainConfig(); c != nil {
+		if _, ok := params.ChainIdentitiesMorden[c.Identity]; ok {
 			return ok
 		}
 	}
@@ -135,7 +136,7 @@ func copyChainConfigFileToChainDataDir(ctx *cli.Context, identity, configFilePat
 // It returns one of valid strings: ["mainnet", "morden", or --chain="flaggedCustom"]
 func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 
-	if id := core.GetCacheChainIdentity(); id != "" {
+	if id := params.GetCacheChainIdentity(); id != "" {
 		return id
 	}
 
@@ -146,7 +147,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 	}
 
 	defer func() {
-		core.SetCacheChainIdentity(identity)
+		params.SetCacheChainIdentity(identity)
 	}()
 
 	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
@@ -155,20 +156,20 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 
 	if chainIsMorden(ctx) {
 		// This makes '--testnet', '--chain=testnet', and '--chain=morden' all use the same /morden subdirectory, if --chain isn't specified
-		identity = core.DefaultConfigMorden.Identity
+		identity = params.DefaultConfigMorden.Identity
 		return identity
 	}
 	// If --chain is in use.
 	if chainFlagVal := ctx.GlobalString(aliasableName(ChainIdentityFlag.Name, ctx)); chainFlagVal != "" {
-		if core.ChainIdentitiesMain[chainFlagVal] {
-			identity = core.DefaultConfigMainnet.Identity
+		if params.ChainIdentitiesMain[chainFlagVal] {
+			identity = params.DefaultConfigMainnet.Identity
 			return identity
 		}
 		// Check for disallowed values.
-		if core.ChainIdentitiesBlacklist[chainFlagVal] {
+		if params.ChainIdentitiesBlacklist[chainFlagVal] {
 			glog.Fatalf(`%v: %v: reserved word
 					reserved words for --chain flag include: 'chaindata', 'dapp', 'keystore', 'nodekey', 'nodes',
-					please use a different identifier`, ErrInvalidFlag, core.ErrInvalidChainID)
+					please use a different identifier`, ErrInvalidFlag, params.ErrInvalidChainID)
 			identity = ""
 			return identity
 		}
@@ -176,7 +177,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 		// Check if passed arg exists as a path to a valid config file.
 		if fstat, ferr := os.Stat(filepath.Clean(chainFlagVal)); ferr == nil && !fstat.IsDir() {
 			glog.V(logger.Debug).Infof("Found existing file at --%v: %v", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
-			c, configurationError := core.ReadExternalChainConfigFromFile(filepath.Clean(chainFlagVal))
+			c, configurationError := params.ReadExternalChainConfigFromFile(filepath.Clean(chainFlagVal))
 			if configurationError == nil {
 				// glog.V(logger.Debug).Infof("OK: Valid chain configuration. Chain identity: %v", c.Identity)
 				if e := copyChainConfigFileToChainDataDir(ctx, c.Identity, filepath.Clean(chainFlagVal)); e != nil {
@@ -184,7 +185,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 				}
 				// In edge case of using a config file for default configuration (decided by 'identity'),
 				// set global context and override config file.
-				if core.ChainIdentitiesMorden[c.Identity] || core.ChainIdentitiesMain[c.Identity] {
+				if params.ChainIdentitiesMorden[c.Identity] || params.ChainIdentitiesMain[c.Identity] {
 					if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), c.Identity); e != nil {
 						glog.Fatalf("Could not set global context chain identity to morden, error: %v", e)
 					}
@@ -199,12 +200,12 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 		identity = chainFlagVal
 		return identity
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
-		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, core.ErrInvalidChainID)
+		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, params.ErrInvalidChainID)
 		identity = ""
 		return identity
 	}
 	// If no relevant flag is set, return default mainnet.
-	identity = core.DefaultConfigMainnet.Identity
+	identity = params.DefaultConfigMainnet.Identity
 	return identity
 }
 
@@ -215,9 +216,9 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 // separately through external JSON config otherwise).
 func mustMakeChainConfigNameDefaulty(ctx *cli.Context) string {
 	if chainIsMorden(ctx) {
-		return core.DefaultConfigMorden.Name
+		return params.DefaultConfigMorden.Name
 	}
-	return core.DefaultConfigMainnet.Name
+	return params.DefaultConfigMainnet.Name
 }
 
 // mustMakeDataDir retrieves the currently requested data directory, terminating
@@ -306,11 +307,11 @@ func MakeBootstrapNodesFromContext(ctx *cli.Context) []*discover.Node {
 
 		// --testnet/--chain=morden flag overrides --config flag
 		if chainIsMorden(ctx) {
-			return core.DefaultConfigMorden.ParsedBootstrap
+			return params.DefaultConfigMorden.ParsedBootstrap
 		}
-		return core.DefaultConfigMainnet.ParsedBootstrap
+		return params.DefaultConfigMainnet.ParsedBootstrap
 	}
-	return core.ParseBootstrapNodeStrings(strings.Split(ctx.GlobalString(aliasableName(BootnodesFlag.Name, ctx)), ","))
+	return params.ParseBootstrapNodeStrings(strings.Split(ctx.GlobalString(aliasableName(BootnodesFlag.Name, ctx)), ","))
 }
 
 // MakeListenAddress creates a TCP listening address string from set command
@@ -522,14 +523,14 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 // should attempt to migration from old (<=3.3) directory schema to new.
 func shouldAttemptDirMigration(ctx *cli.Context) bool {
 	if !ctx.GlobalIsSet(aliasableName(DataDirFlag.Name, ctx)) {
-		if chainVal := mustMakeChainIdentity(ctx); core.ChainIdentitiesMain[chainVal] || core.ChainIdentitiesMorden[chainVal] {
+		if chainVal := mustMakeChainIdentity(ctx); params.ChainIdentitiesMain[chainVal] || params.ChainIdentitiesMorden[chainVal] {
 			return true
 		}
 	}
 	return false
 }
 
-func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientChainConfig) (stackConf *node.Config, shhEnable bool) {
+func mustMakeStackConf(ctx *cli.Context, name string, config *params.SufficientChainConfig) (stackConf *node.Config, shhEnable bool) {
 	// Configure the node's service container
 	stackConf = &node.Config{
 		DataDir:         MustMakeChainDataDir(ctx),
@@ -575,7 +576,7 @@ func mustMakeStackConf(ctx *cli.Context, name string, config *core.SufficientCha
 	return stackConf, shhEnable
 }
 
-func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.Config {
+func mustMakeEthConf(ctx *cli.Context, sconf *params.SufficientChainConfig) *eth.Config {
 
 	accman := MakeAccountManager(ctx)
 	passwords := MakePasswordList(ctx)
@@ -644,13 +645,13 @@ func mustMakeEthConf(ctx *cli.Context, sconf *core.SufficientChainConfig) *eth.C
 // - User must provide a full and complete config file if any is specified located at /custom/chain.json
 // - Note: Function reads custom config file each time it is called; this could be altered if desired, but I (whilei) felt
 // reading a file a couple of times was more efficient than storing a global.
-func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig {
+func mustMakeSufficientChainConfig(ctx *cli.Context) *params.SufficientChainConfig {
 
-	if c := core.GetCacheChainConfig(); c != nil {
+	if c := params.GetCacheChainConfig(); c != nil {
 		return c
 	}
 
-	config := &core.SufficientChainConfig{}
+	config := &params.SufficientChainConfig{}
 	defer func() {
 		// Allow flags to override external config file.
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
@@ -670,24 +671,24 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 			}
 			config.Network = i
 		}
-		core.SetCacheChainConfig(config)
+		params.SetCacheChainConfig(config)
 	}()
 
 	chainIdentity := mustMakeChainIdentity(ctx)
 
 	// If chain identity is either of defaults (via config file or flag), use defaults.
-	if core.ChainIdentitiesMain[chainIdentity] || core.ChainIdentitiesMorden[chainIdentity] {
+	if params.ChainIdentitiesMain[chainIdentity] || params.ChainIdentitiesMorden[chainIdentity] {
 		// Initialise chain configuration before handling migrations or setting up node.
 		config.Identity = chainIdentity
 		config.Name = mustMakeChainConfigNameDefaulty(ctx)
 		config.Network = eth.NetworkId // 1, default mainnet
 		config.Consensus = "ethash"
-		config.Genesis = core.DefaultConfigMainnet.Genesis
+		config.Genesis = params.DefaultConfigMainnet.Genesis
 		config.ChainConfig = MustMakeChainConfigFromDefaults(ctx).SortForks()
 		config.ParsedBootstrap = MakeBootstrapNodesFromContext(ctx)
 		if chainIsMorden(ctx) {
 			config.Network = 2
-			config.Genesis = core.DefaultConfigMorden.Genesis
+			config.Genesis = params.DefaultConfigMorden.Genesis
 			state.StartingNonce = state.DefaultTestnetStartingNonce // (2**20)
 		}
 		return config
@@ -704,10 +705,10 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 		$ geth --chain morden dump-chain-config %v/chain.json
 		$ sed -i.bak s/morden/%v/ %v/chain.json
 		$ vi %v/chain.json # <- make your customizations
-		`, core.ErrChainConfigNotFound, defaultChainConfigPath,
+		`, params.ErrChainConfigNotFound, defaultChainConfigPath,
 			chainDir, chainIdentity, chainDir, chainDir)
 	}
-	config, err := core.ReadExternalChainConfigFromFile(defaultChainConfigPath)
+	config, err := params.ReadExternalChainConfigFromFile(defaultChainConfigPath)
 	if err != nil {
 		glog.Fatalf(`invalid external configuration JSON: '%v': %v
 		Valid custom configuration JSON file must be named 'chain.json' and be located in respective chain subdir.`, defaultChainConfigPath, err)
@@ -715,7 +716,7 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 
 	// Ensure JSON 'id' value matches name of parent chain subdir.
 	if config.Identity != chainIdentity {
-		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, core.ErrInvalidChainID, config.Identity, chainIdentity)
+		glog.Fatalf(`%v: JSON 'id' value in external config file (%v) must match name of parent subdir (%v)`, params.ErrInvalidChainID, config.Identity, chainIdentity)
 	}
 
 	// Set statedb StartingNonce from external config, if specified (is optional)
@@ -728,9 +729,9 @@ func mustMakeSufficientChainConfig(ctx *cli.Context) *core.SufficientChainConfig
 	return config
 }
 
-func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig) {
+func logChainConfiguration(ctx *cli.Context, config *params.SufficientChainConfig) {
 	chainIdentity := mustMakeChainIdentity(ctx)
-	chainIsCustom := !(core.ChainIdentitiesMain[chainIdentity] || core.ChainIdentitiesMorden[chainIdentity])
+	chainIsCustom := !(params.ChainIdentitiesMain[chainIdentity] || params.ChainIdentitiesMorden[chainIdentity])
 
 	// File logs.
 	// TODO: uglify V logs? provide more detail for debugging? normal users won't see this.
@@ -788,10 +789,10 @@ func logChainConfiguration(ctx *cli.Context, config *core.SufficientChainConfig)
 }
 
 // MustMakeChainConfigFromDefaults reads the chain configuration from hardcode.
-func MustMakeChainConfigFromDefaults(ctx *cli.Context) *core.ChainConfig {
-	c := core.DefaultConfigMainnet.ChainConfig
+func MustMakeChainConfigFromDefaults(ctx *cli.Context) *params.ChainConfig {
+	c := params.DefaultConfigMainnet.ChainConfig
 	if chainIsMorden(ctx) {
-		c = core.DefaultConfigMorden.ChainConfig
+		c = params.DefaultConfigMorden.ChainConfig
 	}
 	return c
 }

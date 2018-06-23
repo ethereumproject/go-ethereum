@@ -4,17 +4,15 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
-	"path/filepath"
-	"testing"
-
-	"reflect"
-
 	"os/exec"
+	"path/filepath"
+	"reflect"
+	"testing"
 
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -143,7 +141,7 @@ func TestMustMakeChainDataDir(t *testing.T) {
 
 	for _, c := range cases {
 		// Unset cache.
-		core.SetCacheChainIdentity("")
+		params.SetCacheChainIdentity("")
 
 		setupFlags(t)
 
@@ -194,7 +192,7 @@ func TestGetChainIdentityValue(t *testing.T) {
 
 	for _, c := range cases {
 		// Unset cache.
-		core.SetCacheChainIdentity("")
+		params.SetCacheChainIdentity("")
 
 		setupFlags(t)
 
@@ -291,8 +289,8 @@ func TestMakeBootstrapNodesFromContext3(t *testing.T) {
 	}
 	context = cli.NewContext(app, set, nil)
 	got := MakeBootstrapNodesFromContext(context)
-	if len(got) != len(core.DefaultConfigMainnet.ParsedBootstrap) {
-		t.Errorf("wanted: %v, got %v", len(core.DefaultConfigMainnet.ParsedBootstrap), len(got))
+	if len(got) != len(params.DefaultConfigMainnet.ParsedBootstrap) {
+		t.Errorf("wanted: %v, got %v", len(params.DefaultConfigMainnet.ParsedBootstrap), len(got))
 	}
 }
 
@@ -309,8 +307,8 @@ func TestMakeBootstrapNodesFromContext4(t *testing.T) {
 	}
 	context = cli.NewContext(app, set, nil)
 	got := MakeBootstrapNodesFromContext(context)
-	if len(got) != len(core.DefaultConfigMorden.ParsedBootstrap) {
-		t.Errorf("wanted: %v, got %v", len(core.DefaultConfigMorden.ParsedBootstrap), len(got))
+	if len(got) != len(params.DefaultConfigMorden.ParsedBootstrap) {
+		t.Errorf("wanted: %v, got %v", len(params.DefaultConfigMorden.ParsedBootstrap), len(got))
 	}
 }
 
