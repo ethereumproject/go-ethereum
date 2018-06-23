@@ -79,7 +79,7 @@ type StateDB struct {
 	dbErr error
 
 	// The refund counter, also used by state transitioning.
-	refund *big.Int
+	refund uint64
 
 	thash, bhash common.Hash
 	txIndex      int
@@ -128,7 +128,6 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 		trie:              tr,
 		stateObjects:      make(map[common.Address]*StateObject),
 		stateObjectsDirty: make(map[common.Address]struct{}),
-		refund:            new(big.Int),
 		logs:              make(map[common.Hash][]*types.Log),
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
@@ -202,7 +201,7 @@ func (self *StateDB) Preimages() map[common.Hash][]byte {
 
 func (self *StateDB) AddRefund(gas uint64) {
 	self.journal.append(refundChange{prev: self.refund})
-	self.refund.Add(self.refund, big.NewInt(0).SetUint64(gas)) // += gas
+	self.refund += gas
 }
 
 // Exist reports whether the given account address exists in the state.
@@ -514,7 +513,7 @@ func (self *StateDB) Copy() *StateDB {
 		trie:              self.db.CopyTrie(self.trie),
 		stateObjects:      make(map[common.Address]*StateObject, len(self.journal.dirties)),
 		stateObjectsDirty: make(map[common.Address]struct{}, len(self.journal.dirties)),
-		refund:            new(big.Int).Set(self.refund),
+		refund:            self.refund,
 		logs:              make(map[common.Hash][]*types.Log, len(self.logs)),
 		logSize:           self.logSize,
 		preimages:         make(map[common.Hash][]byte),
@@ -579,7 +578,7 @@ func (self *StateDB) RevertToSnapshot(revid int) {
 // The return value must not be modified by the caller and will become
 // invalid at the next call to AddRefund.
 func (self *StateDB) GetRefund() uint64 {
-	return self.refund.Uint64()
+	return self.refund
 }
 
 // Finalise finalises the state by removing the self destructed objects
@@ -628,7 +627,7 @@ func (self *StateDB) Prepare(thash, bhash common.Hash, ti int) {
 func (s *StateDB) clearJournalAndRefund() {
 	s.journal = newJournal()
 	s.validRevisions = s.validRevisions[:0]
-	s.refund = big.NewInt(0)
+	s.refund = 0
 }
 
 // CommitTo writes the state to the given database.

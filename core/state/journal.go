@@ -118,7 +118,7 @@ type (
 
 	// Changes to other state values.
 	refundChange struct {
-		prev *big.Int
+		prev uint64
 	}
 	addLogChange struct {
 		txhash common.Hash
@@ -204,7 +204,7 @@ func (ch storageChange) dirtied() *common.Address {
 }
 
 func (ch refundChange) revert(s *StateDB) {
-	s.refund.Set(ch.prev)
+	s.refund = ch.prev
 }
 
 func (ch refundChange) dirtied() *common.Address {
