@@ -26,7 +26,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
@@ -174,7 +174,7 @@ func runVmTest(test VmTest) error {
 
 	// check post state
 	for addr, account := range test.Post {
-		obj := statedb.GetAccount(common.HexToAddress(addr))
+		obj := statedb.GetOrNewStateObject(common.HexToAddress(addr))
 		if obj == nil {
 			continue
 		}
@@ -211,7 +211,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, []*types.
 		panic("malformed gas, price or value")
 	}
 	// Reset the pre-compiled contracts for VM tests.
-	vm.Precompiled = make(map[string]*vm.PrecompiledAccount)
+	// vm.Precompiled = make(map[string]*vm.PrecompiledContract)
 
 	caller := state.GetOrNewStateObject(from)
 

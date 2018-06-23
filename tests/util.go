@@ -30,6 +30,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 func init() {
@@ -156,41 +157,41 @@ type RuleSet struct {
 func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
 }
-func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
+func (r RuleSet) GasTable(num *big.Int) *params.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
-		return &vm.GasTable{
-			ExtcodeSize:     big.NewInt(20),
-			ExtcodeCopy:     big.NewInt(20),
-			Balance:         big.NewInt(20),
-			SLoad:           big.NewInt(50),
-			Calls:           big.NewInt(40),
-			Suicide:         big.NewInt(0),
-			ExpByte:         big.NewInt(10),
+		return &params.GasTable{
+			ExtcodeSize:     uint64(20),
+			ExtcodeCopy:     uint64(20),
+			Balance:         uint64(20),
+			SLoad:           uint64(50),
+			Calls:           uint64(40),
+			Suicide:         uint64(0),
+			ExpByte:         uint64(10),
 			CreateBySuicide: nil,
 		}
 	}
 	if r.DiehardBlock == nil || num == nil || num.Cmp(r.DiehardBlock) < 0 {
-		return &vm.GasTable{
-			ExtcodeSize:     big.NewInt(700),
-			ExtcodeCopy:     big.NewInt(700),
-			Balance:         big.NewInt(400),
-			SLoad:           big.NewInt(200),
-			Calls:           big.NewInt(700),
-			Suicide:         big.NewInt(5000),
-			ExpByte:         big.NewInt(10),
-			CreateBySuicide: big.NewInt(25000),
+		return &params.GasTable{
+			ExtcodeSize:     uint64(700),
+			ExtcodeCopy:     uint64(700),
+			Balance:         uint64(400),
+			SLoad:           uint64(200),
+			Calls:           uint64(700),
+			Suicide:         uint64(5000),
+			ExpByte:         uint64(10),
+			CreateBySuicide: uint64(25000),
 		}
 	}
 
-	return &vm.GasTable{
-		ExtcodeSize:     big.NewInt(700),
-		ExtcodeCopy:     big.NewInt(700),
-		Balance:         big.NewInt(400),
-		SLoad:           big.NewInt(200),
-		Calls:           big.NewInt(700),
-		Suicide:         big.NewInt(5000),
-		ExpByte:         big.NewInt(50),
-		CreateBySuicide: big.NewInt(25000),
+	return &params.GasTable{
+		ExtcodeSize:     uint64(700),
+		ExtcodeCopy:     uint64(700),
+		Balance:         uint64(400),
+		SLoad:           uint64(200),
+		Calls:           uint64(700),
+		Suicide:         uint64(5000),
+		ExpByte:         uint64(50),
+		CreateBySuicide: uint64(25000),
 	}
 }
 
@@ -248,21 +249,40 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	}
 	env.Gas = new(big.Int)
 
-	env.evm = vm.New(env)
+	// env.evm = vm.New(env)
+	vm.NewEVM(vm.Context{
+		CanTransfer: core.CanTransfer,
+		Transfer:    core.Transfer,
+		GetHash:     core.GetHashFn(nil, nil), // TODO
+		Origin:      env.origin,
+		// GasPrice:    nil,
+		Coinbase:    env.coinbase,
+		GasLimit:    env.gasLimit.Uint64(),
+		BlockNumber: env.number,
+		Time:        env.time,
+		Difficulty:  env.difficulty,
+	}, state, params.DefaultConfigMorden.ChainConfig, vm.Config{})
 
 	return env
 }
 
-func (self *Env) RuleSet() vm.RuleSet      { return self.ruleSet }
-func (self *Env) Vm() vm.Vm                { return self.evm }
+func (self *Env) RuleSet() RuleSet {
+	diehard := params.TestChainConfig.ForkByName("Diehard")
+	return RuleSet{
+		HomesteadBlock:           params.TestChainConfig.HomesteadBlock,
+		HomesteadGasRepriceBlock: params.TestChainConfig.EIP150Block,
+		DiehardBlock:             diehard.Block,
+		ExplosionBlock:           big.NewInt(5000000), // TODO
+	}
+}
+func (self *Env) Vm() *vm.EVM              { return self.evm }
 func (self *Env) Origin() common.Address   { return self.origin }
 func (self *Env) BlockNumber() *big.Int    { return self.number }
 func (self *Env) Coinbase() common.Address { return self.coinbase }
 func (self *Env) Time() *big.Int           { return self.time }
 func (self *Env) Difficulty() *big.Int     { return self.difficulty }
-func (self *Env) Db() vm.Database          { return self.state }
+func (self *Env) Db() vm.StateDB           { return self.state }
 func (self *Env) GasLimit() *big.Int       { return self.gasLimit }
-func (self *Env) VmType() vm.Type          { return vm.StdVmTy }
 func (self *Env) GetHash(n uint64) common.Hash {
 	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 }
@@ -292,10 +312,11 @@ func (self *Env) Transfer(from, to vm.AccountRef, amount *big.Int) {
 	if self.skipTransfer {
 		return
 	}
-	core.Transfer(from, to, amount)
+	core.Transfer(self.Db(), from.Address(), to.Address(), amount)
 }
 
-func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas uint64, price, value *big.Int) ([]byte, error) {
+	ctc := vm.NewContract(caller, addr, value, gas)
 	if self.vmTest && self.depth > 0 {
 		caller.ReturnGas(gas, price)
 

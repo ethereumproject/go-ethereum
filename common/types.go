@@ -170,6 +170,10 @@ func (a *Address) Set(other Address) {
 	}
 }
 
+func (a Address) Address() Address {
+	return a
+}
+
 // Serialize given address to JSON
 func (a Address) MarshalJSON() ([]byte, error) {
 	return json.Marshal(a.Hex())
