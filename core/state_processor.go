@@ -17,8 +17,8 @@
 package core
 
 import (
-	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -26,9 +26,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/params"
-	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
 var (
@@ -81,16 +79,16 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 	)
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
-		// PTAL these seem like "sugary" "pre-flight" safety checks and warnings that are actually redundant to the VM processing
-		// if tx.Protected() {
-		// 	chainId := p.config.GetChainID()
-		// 	if chainId.Cmp(new(big.Int)) == 0 {
-		// 		return nil, nil, nil, fmt.Errorf("chainID is not set for EIP-155 in chain configuration at block number: %v. \n  Tx ChainID: %v", block.Number(), tx.ChainId())
-		// 	}
-		// 	if tx.ChainId() == nil || tx.ChainId().Cmp(chainId) != 0 {
-		// 		return nil, nil, nil, fmt.Errorf("invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
-		// 	}
-		// }
+		// PTAL these seem like "sugary" "pre-flight" safety checks and warnings that are actually redundant to the VM processing. I think we can safely get rid of them.
+		if tx.Protected() {
+			chainId := p.config.GetChainID()
+			if chainId.Cmp(new(big.Int)) == 0 {
+				return nil, nil, 0, fmt.Errorf("chainID is not set for EIP-155 in chain configuration at block number: %v. \n  Tx ChainID: %v", block.Number(), tx.ChainId())
+			}
+			if tx.ChainId() == nil || tx.ChainId().Cmp(chainId) != 0 {
+				return nil, nil, 0, fmt.Errorf("invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
+			}
+		}
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
 		if !UseSputnikVM {
 			// (config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config)
@@ -119,6 +117,8 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
+	tx.SetSigner(config.GetSigner(header.Number))
+
 	msg, err := tx.AsMessage(config.GetSigner(header.Number))
 	if err != nil {
 		return nil, 0, err
@@ -290,69 +290,4 @@ func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
 	dremainder := big.NewInt(0).Mod(d, big.NewInt(1))
 
 	return new(big.Int).Sub(d, dremainder)
-}
-
-func (p *StateProcessor) ReplayTransaction(txHash common.Hash, statedb *state.StateDB, cfg vm.Config) (*types.Receipt, error) {
-	statedb = statedb.Copy()
-
-	blockHash, _, index, err := getTransactionBlockData(p.bc.chainDb, txHash)
-	if err != nil {
-		return nil, err
-	}
-
-	block := GetBlock(p.bc.chainDb, blockHash)
-	tx := block.Transactions()[index]
-
-	var (
-		usedGas = new(uint64)
-		header  = block.Header()
-		gp      = new(GasPool).AddGas(block.GasLimit())
-	)
-
-	// PTAL again, as above
-	// if tx.Protected() {
-	// 	chainId := p.config.GetChainID()
-	// 	if chainId.Cmp(new(big.Int)) == 0 {
-	// 		return nil, fmt.Errorf("ChainID is not set for EIP-155 in chain configuration at block number: %v. \n  Tx ChainID: %v", block.Number(), tx.ChainId())
-	// 	}
-	// 	if tx.ChainId() == nil || tx.ChainId().Cmp(chainId) != 0 {
-	// 		return nil, fmt.Errorf("Invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
-	// 	}
-	// }
-	//statedb.StartRecord(tx.Hash(), block.Hash(), i)
-	if !UseSputnikVM {
-		receipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
-		if err != nil {
-			return nil, err
-		}
-		return receipt, nil
-	}
-	receipt, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, usedGas)
-	if err != nil {
-		return nil, err
-	}
-	return receipt, nil
-}
-
-// TODO(tzdybal) - refactor (duplicate from eth/api.go)
-// getTransactionBlockData fetches the meta data for the given transaction from the chain database. This is useful to
-// retrieve block information for a hash. It returns the block hash, block index and transaction index.
-func getTransactionBlockData(chainDb ethdb.Database, txHash common.Hash) (common.Hash, uint64, uint64, error) {
-	var txBlock struct {
-		BlockHash  common.Hash
-		BlockIndex uint64
-		Index      uint64
-	}
-
-	blockData, err := chainDb.Get(append(txHash.Bytes(), 0x0001))
-	if err != nil {
-		return common.Hash{}, uint64(0), uint64(0), err
-	}
-
-	reader := bytes.NewReader(blockData)
-	if err = rlp.Decode(reader, &txBlock); err != nil {
-		return common.Hash{}, uint64(0), uint64(0), err
-	}
-
-	return txBlock.BlockHash, txBlock.BlockIndex, txBlock.Index, nil
 }
