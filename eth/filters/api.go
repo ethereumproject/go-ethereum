@@ -28,7 +28,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/rpc"
@@ -233,7 +232,7 @@ func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []commo
 			s.logMu.Lock()
 			defer s.logMu.Unlock()
 			if queue := s.logQueue[id]; queue != nil {
-				queue.add(vmlog{log, removed})
+				queue.add(vmlog{*log, removed})
 			}
 		}
 	}
@@ -266,7 +265,7 @@ func (s *PublicFilterAPI) Logs(ctx context.Context, args NewFilterArgs) (rpc.Sub
 	}
 
 	notifySubscriber := func(log **types.Log, removed bool) {
-		rpcLog := toRPCLogs([]*types.Log{log}, removed)
+		rpcLog := toRPCLogs([]*types.Log{*log}, removed)
 		if err := subscription.Notify(rpcLog); err != nil {
 			subscription.Cancel()
 		}
@@ -579,7 +578,7 @@ func (s *PublicFilterAPI) GetFilterChanges(filterId string) interface{} {
 }
 
 type vmlog struct {
-	**types.Log
+	*types.Log
 	Removed bool `json:"removed"`
 }
 

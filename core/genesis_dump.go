@@ -15,6 +15,56 @@ import (
 	"github.com/ethereumproject/go-ethereum/params"
 )
 
+// MakeGenesisDump makes a genesis dump
+func MakeGenesisDump(chaindb ethdb.Database) (*params.GenesisDump, error) {
+	genesis := GetBlock(chaindb, GetCanonicalHash(chaindb, 0))
+	if genesis == nil {
+		return nil, nil
+	}
+	// Settings.
+
+	genesisHeader := genesis.Header()
+	nonce := fmt.Sprintf(`0x%x`, genesisHeader.Nonce)
+	time := common.BigToHash(genesisHeader.Time).Hex()
+	parentHash := genesisHeader.ParentHash.Hex()
+	gasLimit := common.BigToHash(new(big.Int).SetUint64(genesisHeader.GasLimit)).Hex()
+	difficulty := common.BigToHash(genesisHeader.Difficulty).Hex()
+	mixHash := genesisHeader.MixDigest.Hex()
+	coinbase := genesisHeader.Coinbase.Hex()
+	var dump = &params.GenesisDump{
+		Nonce:      params.PrefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
+		Timestamp:  params.PrefixedHex(time),
+		ParentHash: params.PrefixedHex(parentHash),
+		//ExtraData:  params.PrefixedHex(extra),
+		GasLimit:   params.PrefixedHex(gasLimit),
+		Difficulty: params.PrefixedHex(difficulty),
+		Mixhash:    params.PrefixedHex(mixHash),
+		Coinbase:   params.PrefixedHex(coinbase),
+		//Alloc: ,
+	}
+	if genesisHeader.Extra != nil && len(genesisHeader.Extra) > 0 {
+		dump.ExtraData = params.PrefixedHex(common.ToHex(genesisHeader.Extra))
+	}
+	// State allocations.
+	genState, err := state.New(genesis.Root(), state.NewDatabase(chaindb))
+	if err != nil {
+		return nil, err
+	}
+	stateDump := genState.RawDump([]common.Address{})
+	stateAccounts := stateDump.Accounts
+	dump.Alloc = make(map[params.Hex]*params.GenesisDumpAlloc, len(stateAccounts))
+	for address, acct := range stateAccounts {
+		if common.IsHexAddress(address) {
+			dump.Alloc[params.Hex(address)] = &params.GenesisDumpAlloc{
+				Balance: acct.Balance,
+			}
+		} else {
+			return nil, fmt.Errorf("Invalid address in genesis state: %v", address)
+		}
+	}
+	return dump, nil
+}
+
 // WriteGenesisBlock writes the genesis block to the database as block number 0
 func WriteGenesisBlock(chainDb ethdb.Database, genesis *params.GenesisDump) (*types.Block, error) {
 	statedb, err := state.New(common.Hash{}, state.NewDatabase(chainDb))

@@ -22,7 +22,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/event"
 )
 
@@ -75,9 +74,9 @@ func TestCallbacks(t *testing.T) {
 
 	mux.Post(core.ChainEvent{})
 	mux.Post(core.TxPreEvent{})
-	mux.Post([]*types.Log{&*types.Log{}})
-	mux.Post(core.RemovedLogsEvent{Logs: []*types.Log{&*types.Log{}}})
-	mux.Post(core.PendingLogsEvent{Logs: []*types.Log{&*types.Log{}}})
+	mux.Post([]*types.Log{{}})
+	mux.Post(core.RemovedLogsEvent{Logs: []*types.Log{{}}})
+	mux.Post(core.PendingLogsEvent{Logs: []*types.Log{{}}})
 
 	const dura = 5 * time.Second
 	failTimer := time.NewTimer(dura)

@@ -166,12 +166,12 @@ func (self *GasPriceOracle) lowestPrice(block *types.Block) *big.Int {
 
 	receipts := core.GetBlockReceipts(self.eth.ChainDb(), block.Hash())
 	if len(receipts) > 0 {
-		if cgu := receipts[len(receipts)-1].CumulativeGasUsed; cgu != nil {
-			gasUsed = receipts[len(receipts)-1].CumulativeGasUsed
+		if cgu := receipts[len(receipts)-1].CumulativeGasUsed; cgu != 0 {
+			gasUsed = new(big.Int).SetUint64(receipts[len(receipts)-1].CumulativeGasUsed)
 		}
 	}
 
-	if new(big.Int).Mul(gasUsed, big.NewInt(100)).Cmp(new(big.Int).Mul(block.GasLimit(),
+	if new(big.Int).Mul(gasUsed, big.NewInt(100)).Cmp(new(big.Int).Mul(new(big.Int).SetUint64(block.GasLimit()),
 		big.NewInt(int64(self.eth.GpoFullBlockRatio)))) < 0 {
 		// block is not full, could have posted a tx with MinGasPrice
 		return big.NewInt(0)

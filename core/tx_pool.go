@@ -70,7 +70,7 @@ type TxPool struct {
 	signer       types.Signer
 	currentState stateFn // The state function which will allow us to do some pre checks
 	pendingState *state.ManagedState
-	gasLimit     func() *big.Int // The current gas limit function callback
+	gasLimit     func() uint64 // The current gas limit function callback
 	minGasPrice  *big.Int
 	eventMux     *event.TypeMux
 	events       event.Subscription
@@ -84,7 +84,7 @@ type TxPool struct {
 	homestead bool
 }
 
-func NewTxPool(config *params.ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() *big.Int) *TxPool {
+func NewTxPool(config *params.ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() uint64) *TxPool {
 	pool := &TxPool{
 		config:       config,
 		signer:       types.NewChainIdSigner(config.GetChainID()),
@@ -277,7 +277,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) (e error) {
 
 	// Check the transaction doesn't exceed the current
 	// block limit gas.
-	if pool.gasLimit().Cmp(tx.Gas()) < 0 {
+	if pool.gasLimit() < tx.Gas().Uint64() {
 		e = ErrGasLimit
 		return
 	}
