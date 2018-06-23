@@ -26,6 +26,12 @@
   version = "v0.8.0"
 
 [[projects]]
+  name = "github.com/ethereum/go-ethereum"
+  packages = ["crypto/bn256/cloudflare","crypto/bn256/google"]
+  revision = "dea1ce052a10cd7d401a5c04f83f371a06fe293c"
+  version = "v1.8.11"
+
+[[projects]]
   branch = "master"
   name = "github.com/ethereumproject/benchmark"
   packages = ["rtprof","rtprof/pprof/driver","rtprof/pprof/internal/binutils","rtprof/pprof/internal/driver","rtprof/pprof/internal/elfexec","rtprof/pprof/internal/graph","rtprof/pprof/internal/measurement","rtprof/pprof/internal/plugin","rtprof/pprof/internal/report","rtprof/pprof/internal/symbolizer","rtprof/pprof/internal/symbolz","rtprof/pprof/measurement","rtprof/pprof/profile","rtprof/pprof/third_party/d3","rtprof/pprof/third_party/d3flamegraph","rtprof/pprof/third_party/d3tip","rtprof/pprof/third_party/svg"]
@@ -140,6 +146,12 @@
   revision = "3681c2a912330352991ecdd642f257efe5b85518"
 
 [[projects]]
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
@@ -167,6 +179,12 @@
   packages = [".","mem"]
   revision = "63644898a8da0bc22138abf860edaf5277b6102e"
   version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/stretchr/testify"
+  packages = ["assert","require"]
+  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
+  version = "v1.2.2"
 
 [[projects]]
   branch = "master"
@@ -236,6 +254,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fb11e36e96a973694e730c71620a8585f7a3b4ca1e89541abd89dcbf4f067b21"
+  inputs-digest = "d0d321c6da27dd01481daefa4305c975cfe5598fe9e08990187b84b69a9f4751"
   solver-name = "gps-cdcl"
   solver-version = 1
