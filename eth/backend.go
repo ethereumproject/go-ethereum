@@ -127,6 +127,7 @@ type Ethereum struct {
 	httpclient *httpclient.HTTPClient
 
 	eventMux *event.TypeMux
+	engine   consensus.Engine
 	miner    *miner.Miner
 
 	Mining        bool
@@ -138,6 +139,37 @@ type Ethereum struct {
 	etherbase     common.Address
 	netVersionId  int
 	netRPCService *PublicNetAPI
+}
+
+// CreateConsensusEngine creates the required type of consensus engine instance for an Ethereum service
+func CreateConsensusEngine(ctx *node.ServiceContext, config *ethash.Config, chainConfig *params.ChainConfig, db ethdb.Database) consensus.Engine {
+	// If proof-of-authority is requested, set it up
+	if chainConfig.Clique != nil {
+		return clique.New(chainConfig.Clique, db)
+	}
+	// Otherwise assume proof-of-work
+	switch config.PowMode {
+	case ethash.ModeFake:
+		log.Warn("Ethash used in fake mode")
+		return ethash.NewFaker()
+	case ethash.ModeTest:
+		log.Warn("Ethash used in test mode")
+		return ethash.NewTester()
+	case ethash.ModeShared:
+		log.Warn("Ethash used in shared mode")
+		return ethash.NewShared()
+	default:
+		engine := ethash.New(ethash.Config{
+			CacheDir:       ctx.ResolvePath(config.CacheDir),
+			CachesInMem:    config.CachesInMem,
+			CachesOnDisk:   config.CachesOnDisk,
+			DatasetDir:     config.DatasetDir,
+			DatasetsInMem:  config.DatasetsInMem,
+			DatasetsOnDisk: config.DatasetsOnDisk,
+		})
+		engine.SetThreads(-1) // Disable CPU mining
+		return engine
+	}
 }
 
 func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {

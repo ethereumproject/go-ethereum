@@ -831,15 +831,36 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	sconf := mustMakeSufficientChainConfig(ctx)
 	chainDb = MakeChainDatabase(ctx)
 
-	pow := pow.PoW(core.FakePow{})
-	if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
-		pow = ethash.New()
+	// pow := pow.PoW(core.FakePow{})
+	// if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
+	// 	pow = ethash.New()
+	// } else {
+	// 	glog.V(logger.Info).Infoln("Consensus: fake")
+	// 	glog.D(logger.Warn).Warnln("Consensus: fake")
+	// }
+
+	var engine consensus.Engine
+	if config.Clique != nil {
+		engine = clique.New(config.Clique, chainDb)
 	} else {
-		glog.V(logger.Info).Infoln("Consensus: fake")
-		glog.D(logger.Warn).Warnln("Consensus: fake")
+		engine = ethash.NewFaker()
+		if !ctx.GlobalBool(FakePoWFlag.Name) {
+			engine = ethash.New(ethash.Config{
+				CacheDir:       stack.ResolvePath(eth.DefaultConfig.Ethash.CacheDir),
+				CachesInMem:    eth.DefaultConfig.Ethash.CachesInMem,
+				CachesOnDisk:   eth.DefaultConfig.Ethash.CachesOnDisk,
+				DatasetDir:     stack.ResolvePath(eth.DefaultConfig.Ethash.DatasetDir),
+				DatasetsInMem:  eth.DefaultConfig.Ethash.DatasetsInMem,
+				DatasetsOnDisk: eth.DefaultConfig.Ethash.DatasetsOnDisk,
+			})
+		} else {
+			glog.V(logger.Info).Infoln("Consensus: fake")
+			glog.D(logger.Warn).Warnln("Consensus: fake")
+		}
 	}
 
-	chain, err = core.NewBlockChain(chainDb, sconf.ChainConfig, pow, new(event.TypeMux))
+
+	chain, err = core.NewBlockChain(chainDb, sconf.ChainConfig, engine, new(event.TypeMux))
 	if err != nil {
 		glog.Fatal("Could not start chainmanager: ", err)
 	}
