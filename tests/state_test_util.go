@@ -29,9 +29,11 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 func RunStateTestWithReader(ruleSet RuleSet, r io.Reader, skipTests []string) error {
@@ -222,6 +224,7 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 		t := common.HexToAddress(tx["to"])
 		to = &t
 	}
+
 	// Set pre compiled contracts
 	// vm.Precompiled = vm.PrecompiledContracts()
 	snapshot := statedb.Snapshot()
@@ -235,14 +238,52 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 	if err != nil {
 		panic(err)
 	}
+
 	addr := crypto.PubkeyToAddress(crypto.ToECDSA(key).PublicKey)
-	message := NewMessage(addr, to, data, value, gas, price, nonce)
+	// message := NewMessage(addr, to, data, value, gas, price, nonce)
+	message := types.NewMessage(addr, to, nonce, value, gas.Uint64(), price, data, true)
+
 	vmenv := NewEnvFromMap(ruleSet, statedb, env, tx)
+
+	cconfig := params.DefaultConfigMorden.ChainConfig
+	cconfig.HomesteadBlock = ruleSet.HomesteadBlock
+	cconfig.ForkByName("Diehard").Block = ruleSet.DiehardBlock
+	// ruleSet.ExplosionBlock
+	cconfig.EIP150Block = ruleSet.HomesteadGasRepriceBlock
+
+	bl, err := core.WriteGenesisBlock(db, &params.GenesisDump{
+		// Nonce:      vmenv.,
+		Number:     params.PrefixedHex(env["currentNumber"]),
+		Timestamp:  params.PrefixedHex(env["currentTimestamp"]),
+		ParentHash: "",
+		ExtraData:  "",
+		GasLimit:   params.PrefixedHex(env["currentGasLimit"]),
+		Difficulty: params.PrefixedHex(env["currentDifficulty"]),
+		Mixhash:    "",
+		Coinbase:   params.PrefixedHex("0x" + env["currentCoinbase"]),
+		Alloc:      nil,
+		AllocFile:  "",
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	context := core.NewEVMContext(message, bl.Header(), nil, &vmenv.coinbase)
+	context.GetHash = vmTestBlockHash
+	// context2 := vmenv.VmContext()
+	vmenv.evm = vm.NewEVM(context, vmenv.state, cconfig, vm.Config{})
 	vmenv.origin = addr
+
 	ret, _, _, err := core.ApplyMessage(vmenv.evm, message, gaspool)
+	// if err != nil {
+	// 	glog.Fatalln("errrr ", err)
+	// }
+
 	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || core.IsGasLimitErr(err) {
 		statedb.RevertToSnapshot(snapshot)
+		statedb.CommitTo(db, false)
 	}
+
 	statedb.CommitTo(db, false)
 
 	return ret, vmenv.state.Logs(), vmenv.Gas, err

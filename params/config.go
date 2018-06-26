@@ -322,6 +322,9 @@ func (g *GenesisDump) Header() (*types.Header, error) {
 	if err := g.Coinbase.Decode(h.Coinbase[:]); err != nil {
 		return nil, fmt.Errorf("malformed coinbase: %s", err)
 	}
+	if h.Number, err = g.Number.Int(); err != nil {
+		return nil, fmt.Errorf("malformed number: %s", err)
+	}
 
 	return &h, nil
 }

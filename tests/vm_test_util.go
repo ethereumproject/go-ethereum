@@ -215,6 +215,12 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, []*types.
 
 	caller := state.GetOrNewStateObject(from)
 
+	// vmenv := NewEnvFromMap(RuleSet{
+	// 	HomesteadBlock:           big.NewInt(1150000),
+	// 	HomesteadGasRepriceBlock: big.NewInt(2500000),
+	// 	DiehardBlock:             big.NewInt(3000000),
+	// 	ExplosionBlock:           big.NewInt(5000000),
+	// }, state, env, exec)
 	vmenv := NewEnvFromMap(RuleSet{
 		HomesteadBlock:           big.NewInt(1150000),
 		HomesteadGasRepriceBlock: big.NewInt(2500000),

@@ -22,6 +22,8 @@ type GenesisDump struct {
 	Alloc map[Hex]*GenesisDumpAlloc `json:"alloc"`
 	// Alloc file contains CSV representation of Alloc
 	AllocFile string `json:"alloc_file"`
+
+	Number PrefixedHex `json:"-"`
 }
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.

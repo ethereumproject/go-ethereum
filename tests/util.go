@@ -96,10 +96,13 @@ func (self Log) Topics() [][]byte {
 }
 
 func makePreState(db ethdb.Database, accounts map[string]Account) *state.StateDB {
-	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	sdb := state.NewDatabase(db)
+	statedb, _ := state.New(common.Hash{}, sdb)
 	for addr, account := range accounts {
 		insertAccount(statedb, addr, account)
 	}
+	root, _ := statedb.CommitTo(db, false)
+	statedb, _ = state.New(root, sdb)
 	return statedb
 }
 
@@ -225,6 +228,21 @@ func NewEnv(ruleSet RuleSet, state *state.StateDB) *Env {
 	return env
 }
 
+func (env *Env) VmContext() vm.Context {
+	return vm.Context{
+		CanTransfer: env.CanTransfer,
+		Transfer:    env.Transfer,
+		GetHash:     vmTestBlockHash,
+		Origin:      env.origin,
+		// GasPrice:    new(big.Int).Set(msg.GasPrice()), // this gets set per test via env.Call
+		Coinbase:    env.coinbase,
+		GasLimit:    env.gasLimit.Uint64(),
+		BlockNumber: env.number,
+		Time:        env.time,
+		Difficulty:  env.difficulty,
+	}
+}
+
 func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]string, exeValues map[string]string) *Env {
 	env := NewEnv(ruleSet, state)
 
@@ -249,29 +267,7 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	}
 	env.Gas = new(big.Int)
 
-	initialCall := true
-	canTransfer := func(db vm.StateDB, address common.Address, amount *big.Int) bool {
-		if initialCall {
-			initialCall = false
-			return true
-		}
-		return core.CanTransfer(db, address, amount)
-	}
-	transfer := func(db vm.StateDB, sender, recipient common.Address, amount *big.Int) {}
-
-	// env.evm = vm.New(env)
-	env.evm = vm.NewEVM(vm.Context{
-		CanTransfer: canTransfer,
-		Transfer:    transfer,
-		GetHash:     vmTestBlockHash,
-		Origin:      env.origin,
-		// GasPrice:    new(big.Int).Set(msg.GasPrice()),
-		Coinbase:    env.coinbase,
-		GasLimit:    env.gasLimit.Uint64(),
-		BlockNumber: env.number,
-		Time:        env.time,
-		Difficulty:  env.difficulty,
-	}, state, params.DefaultConfigMorden.ChainConfig, vm.Config{NoRecursion: true})
+	env.evm = vm.NewEVM(env.VmContext(), env.state, params.DefaultConfigMorden.ChainConfig, vm.Config{NoRecursion: true})
 
 	return env
 }
@@ -305,7 +301,7 @@ func (self *Env) AddLog(log **types.Log) {
 }
 func (self *Env) Depth() int     { return self.depth }
 func (self *Env) SetDepth(i int) { self.depth = i }
-func (self *Env) CanTransfer(from common.Address, balance *big.Int) bool {
+func (self *Env) CanTransfer(statedb vm.StateDB, from common.Address, balance *big.Int) bool {
 	if self.skipTransfer {
 		if self.initial {
 			self.initial = false
@@ -322,7 +318,7 @@ func (self *Env) RevertToSnapshot(snapshot int) {
 	self.state.RevertToSnapshot(snapshot)
 }
 
-func (self *Env) Transfer(from, to vm.AccountRef, amount *big.Int) {
+func (self *Env) Transfer(db vm.StateDB, from, to common.Address, amount *big.Int) {
 	if self.skipTransfer {
 		return
 	}
