@@ -26,6 +26,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -51,7 +52,6 @@ var (
 func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) (*ProtocolManager, *ethdb.MemDatabase, error) {
 	var (
 		evmux       = new(event.TypeMux)
-		pow         = new(core.FakePow)
 		db, _       = ethdb.NewMemDatabase()
 		genesis     = core.WriteGenesisBlockForTesting(db, testBank)
 		chainConfig = &core.ChainConfig{
@@ -62,7 +62,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 				},
 			},
 		}
-		blockchain, _ = core.NewBlockChain(db, chainConfig, pow, evmux)
+		blockchain, _ = core.NewBlockChain(db, chainConfig, ethash.NewFaker(), evmux)
 	)
 
 	chain, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, genesis, db, blocks, generator)
@@ -70,7 +70,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		panic(res.Error)
 	}
 
-	pm, err := NewProtocolManager(chainConfig, mode, NetworkId, evmux, &testTxPool{added: newtx}, pow, blockchain, db)
+	pm, err := NewProtocolManager(chainConfig, mode, NetworkId, evmux, &testTxPool{added: newtx}, ethash.NewFaker(), blockchain, db)
 	if err != nil {
 		return nil, nil, err
 	}

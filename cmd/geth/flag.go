@@ -33,6 +33,8 @@ import (
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/consensus"
+	"github.com/ethereumproject/go-ethereum/consensus/clique"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -46,7 +48,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
-	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -831,14 +832,6 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 	sconf := mustMakeSufficientChainConfig(ctx)
 	chainDb = MakeChainDatabase(ctx)
 
-	// pow := pow.PoW(core.FakePow{})
-	// if !ctx.GlobalBool(aliasableName(FakePoWFlag.Name, ctx)) {
-	// 	pow = ethash.New()
-	// } else {
-	// 	glog.V(logger.Info).Infoln("Consensus: fake")
-	// 	glog.D(logger.Warn).Warnln("Consensus: fake")
-	// }
-
 	var engine consensus.Engine
 	if config.Clique != nil {
 		engine = clique.New(config.Clique, chainDb)
@@ -858,7 +851,6 @@ func MakeChain(ctx *cli.Context) (chain *core.BlockChain, chainDb ethdb.Database
 			glog.D(logger.Warn).Warnln("Consensus: fake")
 		}
 	}
-
 
 	chain, err = core.NewBlockChain(chainDb, sconf.ChainConfig, engine, new(event.TypeMux))
 	if err != nil {
