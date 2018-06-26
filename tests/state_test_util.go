@@ -28,7 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
@@ -159,7 +159,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 
 	// check post state
 	for addr, account := range test.Post {
-		obj := statedb.GetAccount(common.HexToAddress(addr))
+		obj := statedb.GetOrNewStateObject(common.HexToAddress(addr))
 		if obj == nil {
 			return fmt.Errorf("did not find expected post-state account: %s", addr)
 		}
@@ -223,13 +223,13 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 		to = &t
 	}
 	// Set pre compiled contracts
-	vm.Precompiled = vm.PrecompiledContracts()
+	// vm.Precompiled = vm.PrecompiledContracts()
 	snapshot := statedb.Snapshot()
 	currentGasLimit, ok := new(big.Int).SetString(env["currentGasLimit"], 0)
 	if !ok {
 		panic("malformed currentGasLimit")
 	}
-	gaspool := new(core.GasPool).AddGas(currentGasLimit)
+	gaspool := new(core.GasPool).AddGas(currentGasLimit.Uint64())
 
 	key, err := hex.DecodeString(tx["secretKey"])
 	if err != nil {
@@ -239,7 +239,7 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 	message := NewMessage(addr, to, data, value, gas, price, nonce)
 	vmenv := NewEnvFromMap(ruleSet, statedb, env, tx)
 	vmenv.origin = addr
-	ret, _, _, err := core.ApplyMessage(vmenv, message, gaspool)
+	ret, _, _, err := core.ApplyMessage(vmenv.evm, message, gaspool)
 	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || core.IsGasLimitErr(err) {
 		statedb.RevertToSnapshot(snapshot)
 	}
