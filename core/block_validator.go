@@ -19,14 +19,12 @@ package core
 import (
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/pow"
-	"gopkg.in/fatih/set.v0"
 )
 
 var (
@@ -58,15 +56,14 @@ type BlockValidator struct {
 	config *ChainConfig // Chain configuration options
 	bc     *BlockChain  // Canonical block chain
 	engine consensus.Engine
-	Pow    pow.PoW      // Proof of work used for validating
+	// Pow    pow.PoW // Proof of work used for validating
 }
 
 // NewBlockValidator returns a new block validator which is safe for re-use
-func NewBlockValidator(config *ChainConfig, blockchain *BlockChain, engine consensus.Engine, pow pow.PoW) *BlockValidator {
+func NewBlockValidator(config *ChainConfig, blockchain *BlockChain, engine consensus.Engine) *BlockValidator {
 	validator := &BlockValidator{
 		config: config,
 		engine: engine,
-		Pow:    pow,
 		bc:     blockchain,
 	}
 	return validator
@@ -210,7 +207,6 @@ func CalcGasLimit(parent *types.Block) *big.Int {
 	}
 	return gl
 }
-
 
 // // VerifyUncles verifies the given block's uncles and applies the Ethereum
 // // consensus rules to the various block headers included; it will return an

@@ -31,6 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	set "gopkg.in/fatih/set.v0"
 )
 
@@ -582,7 +583,6 @@ func calcDifficultyFrontier(time, parentTime uint64, parentNumber, parentDiff *b
 
 	return diff
 }
-
 
 // VerifySeal implements consensus.Engine, checking whether the given block satisfies
 // the PoW difficulty requirements.

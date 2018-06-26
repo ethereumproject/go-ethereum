@@ -25,6 +25,8 @@ import (
 )
 
 var (
+	
+	ErrKnownBlock	 = errors.New("block already known")
 	BlockNumberErr   = errors.New("block number invalid")
 	BlockFutureErr   = errors.New("block time is in the future")
 	BlockTSTooBigErr = errors.New("block time too big")

@@ -35,6 +35,7 @@ import (
 	"encoding/binary"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
@@ -108,7 +109,7 @@ type BlockChain struct {
 	procInterrupt int32          // interrupt signaler for block processing
 	wg            sync.WaitGroup // chain processing wait group for shutting down
 
-	engine Engine 
+	engine    consensus.Engine
 	processor Processor // block processor interface
 	validator Validator // block and state validator interface
 
@@ -1107,23 +1108,39 @@ func (bc *BlockChain) GetBodyRLP(hash common.Hash) rlp.RawValue {
 	return body
 }
 
-// HasBlock checks if a block is fully present in the database or not, caching
-// it if present.
-func (bc *BlockChain) HasBlock(hash common.Hash) bool {
-	return bc.GetBlock(hash) != nil
+// // HasBlock checks if a block is fully present in the database or not, caching
+// // it if present.
+// func (bc *BlockChain) HasBlock(hash common.Hash) bool {
+// 	return bc.GetBlock(hash) != nil
+// }
+
+
+// HasBlock checks if a block is fully present in the database or not.
+func (bc *BlockChain) HasBlock(hash common.Hash, number uint64) bool {
+	if bc.blockCache.Contains(hash) {
+		return true
+	}
+	return rawdb.HasBody(bc.db, hash, number)
+}
+
+// HasState checks if state trie is fully present in the database or not.
+func (bc *BlockChain) HasState(hash common.Hash) bool {
+	_, err := bc.stateCache.OpenTrie(hash)
+	return err == nil
 }
 
 // HasBlockAndState checks if a block and associated state trie is fully present
 // in the database or not, caching it if present.
-func (bc *BlockChain) HasBlockAndState(hash common.Hash) bool {
+func (bc *BlockChain) HasBlockAndState(hash common.Hash, number uint64) bool {
 	// Check first that the block itbc is known
-	block := bc.GetBlock(hash)
+	block := bc.GetBlock(hash, number)
 	if block == nil {
 		return false
 	}
 	// Ensure the associated state is also present
 	_, err := state.New(block.Root(), state.NewDatabase(bc.chainDb))
 	return err == nil
+	return bc.HasState(block.Root())
 }
 
 // GetBlock retrieves a block from the database by hash, caching it if found.
