@@ -24,17 +24,16 @@ import (
 	"log"
 	"os"
 	"os/signal"
-
 	"path/filepath"
 
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/tests"
 	"github.com/ethereumproject/go-ethereum/whisper"
 )
@@ -146,7 +145,7 @@ func MakeSystemNode(keydir string, privkey string, test *tests.BlockTest) (*node
 	ethConf := &eth.Config{
 		TestGenesisState: db,
 		TestGenesisBlock: test.Genesis,
-		ChainConfig:      core.DefaultConfigMainnet.ChainConfig,
+		ChainConfig:      params.DefaultConfigMainnet.ChainConfig,
 		AccountManager:   accman,
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) { return eth.New(ctx, ethConf) }); err != nil {
