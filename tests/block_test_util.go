@@ -35,6 +35,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
@@ -171,12 +172,12 @@ func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error 
 	core.WriteHeadBlockHash(db, test.Genesis.Hash())
 	evmux := new(event.TypeMux)
 
-	core.DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block = homesteadBlock
+	params.DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block = homesteadBlock
 	if gasPriceFork != nil {
-		core.DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block = gasPriceFork
+		params.DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block = gasPriceFork
 	}
 
-	chain, err := core.NewBlockChain(db, core.DefaultConfigMainnet.ChainConfig, ethash.NewShared(), evmux)
+	chain, err := core.NewBlockChain(db, params.DefaultConfigMainnet.ChainConfig, ethash.NewShared(), evmux)
 	if err != nil {
 		return err
 	}
@@ -224,7 +225,8 @@ func (t *BlockTest) InsertPreState(db ethdb.Database) (*state.StateDB, error) {
 		if err != nil {
 			return nil, err
 		}
-		obj := statedb.CreateAccount(common.HexToAddress(addrString))
+		statedb.CreateAccount(common.HexToAddress(addrString))
+		obj := statedb.GetOrNewStateObject(common.HexToAddress(addrString))
 		obj.SetCode(crypto.Keccak256Hash(code), code)
 		obj.SetBalance(balance)
 		obj.SetNonce(nonce)
@@ -351,12 +353,12 @@ func validateHeader(h *btHeader, h2 *types.Header) error {
 		return fmt.Errorf("Difficulty: want: %v have: %v", expectedDifficulty, h2.Difficulty)
 	}
 
-	expectedGasLimit := mustConvertBigInt(h.GasLimit, 16)
-	if expectedGasLimit.Cmp(h2.GasLimit) != 0 {
+	expectedGasLimit := mustConvertUint(h.GasLimit, 16)
+	if expectedGasLimit != h2.GasLimit {
 		return fmt.Errorf("GasLimit: want: %v have: %v", expectedGasLimit, h2.GasLimit)
 	}
-	expectedGasUsed := mustConvertBigInt(h.GasUsed, 16)
-	if expectedGasUsed.Cmp(h2.GasUsed) != 0 {
+	expectedGasUsed := mustConvertUint(h.GasUsed, 16)
+	if expectedGasUsed != h2.GasUsed {
 		return fmt.Errorf("GasUsed: want: %v have: %v", expectedGasUsed, h2.GasUsed)
 	}
 
@@ -474,8 +476,8 @@ func mustConvertHeader(in btHeader) *types.Header {
 		UncleHash:   mustConvertHash(in.UncleHash),
 		ParentHash:  mustConvertHash(in.ParentHash),
 		Extra:       mustConvertBytes(in.ExtraData),
-		GasUsed:     mustConvertBigInt(in.GasUsed, 16),
-		GasLimit:    mustConvertBigInt(in.GasLimit, 16),
+		GasUsed:     mustConvertUint(in.GasUsed, 16),
+		GasLimit:    mustConvertUint(in.GasLimit, 16),
 		Difficulty:  mustConvertBigInt(in.Difficulty, 16),
 		Time:        mustConvertBigInt(in.Timestamp, 16),
 		Nonce:       types.EncodeNonce(mustConvertUint(in.Nonce, 16)),

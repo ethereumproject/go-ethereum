@@ -26,12 +26,12 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/ethereumproject/go-ethereum/params"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
@@ -126,20 +126,13 @@ func run(ctx *cli.Context) error {
 
 	db, _ := ethdb.NewMemDatabase()
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
-	sender := statedb.CreateAccount(common.StringToAddress("sender"))
+	statedb.CreateAccount(common.StringToAddress("sender"))
+	sender := statedb.GetOrNewStateObject(common.StringToAddress("sender"))
 
 	valueFlag, _ := new(big.Int).SetString(ctx.GlobalString(ValueFlag.Name), 0)
 	if valueFlag == nil {
 		log.Fatalf("malformed %s flag value %q", ValueFlag.Name, ctx.GlobalString(ValueFlag.Name))
 	}
-	vmenv := NewEnv(statedb, common.StringToAddress("evmuser"), valueFlag)
-
-	tstart := time.Now()
-
-	var (
-		ret []byte
-		err error
-	)
 
 	gasFlag, _ := new(big.Int).SetString(ctx.GlobalString(GasFlag.Name), 0)
 	if gasFlag == nil {
@@ -150,15 +143,48 @@ func run(ctx *cli.Context) error {
 		log.Fatalf("malformed %s flag value %q", PriceFlag.Name, ctx.GlobalString(PriceFlag.Name))
 	}
 
+	cant := func(statedb vm.StateDB, a common.Address, i *big.Int) bool { return false }
+	trans := func(statedb vm.StateDB, a common.Address, b common.Address, i *big.Int) {}
+	gh := func(i uint64) common.Hash { return common.Hash{} }
+	t := time.Now().Unix()
+	vmctx := vm.Context{
+		CanTransfer: cant,
+		Transfer:    trans,
+		GetHash:     gh,
+		Origin:      sender.Address(),
+		GasPrice:    priceFlag,
+		Coinbase:    sender.Address(),
+		GasLimit:    gasFlag.Uint64(),
+		BlockNumber: common.Big1,
+		Time:        big.NewInt(t),
+		Difficulty:  core.CalcDifficulty(params.DefaultConfigMorden.ChainConfig, uint64(t), uint64(t-1), new(big.Int), new(big.Int).SetBytes(common.Hex2Bytes("0x020000"))),
+	}
+
+	evm := vm.NewEVM(vmctx, statedb, params.DefaultConfigMorden.ChainConfig, vm.Config{
+		Debug:                   true,
+		Tracer:                  nil,
+		NoRecursion:             false,
+		EnablePreimageRecording: false,
+	})
+
+	var (
+		ret         []byte
+		leftoverGas uint64
+		err         error
+	)
+
+	tstart := time.Now()
+
 	if ctx.GlobalBool(CreateFlag.Name) {
 		input := append(common.Hex2Bytes(ctx.GlobalString(CodeFlag.Name)), common.Hex2Bytes(ctx.GlobalString(InputFlag.Name))...)
-		ret, _, err = vmenv.Create(sender, input, gasFlag, priceFlag, valueFlag)
+		ret, _, leftoverGas, err = evm.Create(sender, input, gasFlag.Uint64(), valueFlag)
 	} else {
-		receiver := statedb.CreateAccount(common.StringToAddress("receiver"))
+		statedb.CreateAccount(common.StringToAddress("receiver"))
+		receiver := statedb.GetOrNewStateObject(common.StringToAddress("receiver"))
 
 		code := common.Hex2Bytes(ctx.GlobalString(CodeFlag.Name))
 		receiver.SetCode(crypto.Keccak256Hash(code), code)
-		ret, err = vmenv.Call(sender, receiver.Address(), common.Hex2Bytes(ctx.GlobalString(InputFlag.Name)), gasFlag, priceFlag, valueFlag)
+		ret, leftoverGas, err = evm.Call(sender, receiver.Address(), common.Hex2Bytes(ctx.GlobalString(InputFlag.Name)), gasFlag.Uint64(), valueFlag)
 	}
 	vmdone := time.Since(tstart)
 
@@ -181,6 +207,7 @@ num gc:     %d
 	}
 
 	fmt.Printf("OUT: 0x%x", ret)
+	fmt.Printf("LEFTOVER GAS: %d", leftoverGas)
 	if err != nil {
 		fmt.Printf(" error: %v", err)
 	}
@@ -193,97 +220,4 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-}
-
-type VMEnv struct {
-	state *state.StateDB
-	block *types.Block
-
-	transactor *common.Address
-	value      *big.Int
-
-	depth int
-	Gas   *big.Int
-	time  *big.Int
-
-	evm *vm.EVM
-}
-
-func NewEnv(state *state.StateDB, transactor common.Address, value *big.Int) *VMEnv {
-	env := &VMEnv{
-		state:      state,
-		transactor: &transactor,
-		value:      value,
-		time:       big.NewInt(time.Now().Unix()),
-	}
-
-	env.evm = vm.New(env)
-	return env
-}
-
-// ruleSet implements vm.RuleSet and will always default to the homestead rule set.
-type ruleSet struct{}
-
-func (ruleSet) IsHomestead(*big.Int) bool { return true }
-
-func (ruleSet) GasTable(*big.Int) *vm.GasTable {
-	return &vm.GasTable{
-		ExtcodeSize:     big.NewInt(700),
-		ExtcodeCopy:     big.NewInt(700),
-		Balance:         big.NewInt(400),
-		SLoad:           big.NewInt(200),
-		Calls:           big.NewInt(700),
-		Suicide:         big.NewInt(5000),
-		ExpByte:         big.NewInt(10),
-		CreateBySuicide: big.NewInt(25000),
-	}
-}
-
-func (self *VMEnv) RuleSet() vm.RuleSet       { return ruleSet{} }
-func (self *VMEnv) Vm() vm.Vm                 { return self.evm }
-func (self *VMEnv) Db() vm.Database           { return self.state }
-func (self *VMEnv) SnapshotDatabase() int     { return self.state.Snapshot() }
-func (self *VMEnv) RevertToSnapshot(snap int) { self.state.RevertToSnapshot(snap) }
-func (self *VMEnv) Origin() common.Address    { return *self.transactor }
-func (self *VMEnv) BlockNumber() *big.Int     { return new(big.Int) }
-func (self *VMEnv) Coinbase() common.Address  { return *self.transactor }
-func (self *VMEnv) Time() *big.Int            { return self.time }
-func (self *VMEnv) Difficulty() *big.Int      { return common.Big1 }
-func (self *VMEnv) BlockHash() []byte         { return make([]byte, 32) }
-func (self *VMEnv) Value() *big.Int           { return self.value }
-func (self *VMEnv) GasLimit() *big.Int        { return big.NewInt(1000000000) }
-func (self *VMEnv) VmType() vm.Type           { return vm.StdVmTy }
-func (self *VMEnv) Depth() int                { return 0 }
-func (self *VMEnv) SetDepth(i int)            { self.depth = i }
-func (self *VMEnv) GetHash(n uint64) common.Hash {
-	if self.block.Number().Cmp(big.NewInt(int64(n))) == 0 {
-		return self.block.Hash()
-	}
-	return common.Hash{}
-}
-func (self *VMEnv) AddLog(log *vm.Log) {
-	self.state.AddLog(*log)
-}
-func (self *VMEnv) CanTransfer(from common.Address, balance *big.Int) bool {
-	return self.state.GetBalance(from).Cmp(balance) >= 0
-}
-func (self *VMEnv) Transfer(from, to vm.Account, amount *big.Int) {
-	core.Transfer(from, to, amount)
-}
-
-func (self *VMEnv) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	self.Gas = gas
-	return core.Call(self, caller, addr, data, gas, price, value)
-}
-
-func (self *VMEnv) CallCode(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	return core.CallCode(self, caller, addr, data, gas, price, value)
-}
-
-func (self *VMEnv) DelegateCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
-	return core.DelegateCall(self, caller, addr, data, gas, price)
-}
-
-func (self *VMEnv) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
-	return core.Create(self, caller, data, gas, price, value)
 }

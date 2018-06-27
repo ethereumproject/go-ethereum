@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/trie"
 )
 
@@ -79,7 +80,7 @@ type downloadTester struct {
 // newTester creates a new downloader test mocker.
 func newTester() *downloadTester {
 	testdb, _ := ethdb.NewMemDatabase()
-	genesis := core.WriteGenesisBlockForTesting(testdb, core.GenesisAccount{Address: testAddress, Balance: big.NewInt(1000000000)})
+	genesis := core.WriteGenesisBlockForTesting(testdb, params.GenesisAccount{Address: testAddress, Balance: big.NewInt(1000000000)})
 	//genesis := core.GenesisBlockForTesting(testdb, testAddress, big.NewInt(1000000000))
 
 	tester := &downloadTester{
@@ -111,7 +112,7 @@ func newTester() *downloadTester {
 // reassembly.
 func (dl *downloadTester) makeChain(n int, seed byte, parent *types.Block, parentReceipts types.Receipts, heavy bool) ([]common.Hash, map[common.Hash]*types.Header, map[common.Hash]*types.Block, map[common.Hash]types.Receipts) {
 	// Generate the block chain
-	blocks, receipts := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, parent, dl.peerDb, n, func(i int, block *core.BlockGen) {
+	blocks, receipts := core.GenerateChain(params.DefaultConfigMorden.ChainConfig, parent, dl.peerDb, n, func(i int, block *core.BlockGen) {
 		block.SetCoinbase(common.Address{seed})
 
 		// If a heavy chain is requested, delay blocks to raise difficulty
@@ -120,7 +121,7 @@ func (dl *downloadTester) makeChain(n int, seed byte, parent *types.Block, paren
 		}
 		// If the block number is multiple of 3, send a bonus transaction to the miner
 		if parent == dl.genesis && i%3 == 0 {
-			tx, err := types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), core.TxGas, nil, nil).SignECDSA(testKey)
+			tx, err := types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), new(big.Int).SetUint64(params.TxGas), nil, nil).SignECDSA(testKey)
 			if err != nil {
 				panic(err)
 			}

@@ -36,6 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -43,7 +44,7 @@ var (
 	testKey      *ecdsa.PrivateKey
 	testAddress  common.Address
 	genesis      *types.Block
-	unknownBlock = types.NewBlock(&types.Header{GasLimit: big.NewInt(4712388)}, nil, nil, nil)
+	unknownBlock = types.NewBlock(&types.Header{GasLimit: uint64(4712388)}, nil, nil, nil)
 )
 
 func init() {
@@ -75,7 +76,7 @@ func init() {
 	}
 	genesis = types.NewBlock(&types.Header{
 		Difficulty: big.NewInt(131072),
-		GasLimit:   big.NewInt(4712388),
+		GasLimit:   uint64(4712388),
 		Root:       root,
 	}, nil, nil, nil)
 }
@@ -85,12 +86,12 @@ func init() {
 // contains a transaction and every 5th an uncle to allow testing correct block
 // reassembly.
 func makeChain(n int, seed byte, parent *types.Block) ([]common.Hash, map[common.Hash]*types.Block) {
-	blocks, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, parent, testdb, n, func(i int, block *core.BlockGen) {
+	blocks, _ := core.GenerateChain(params.DefaultConfigMorden.ChainConfig, parent, testdb, n, func(i int, block *core.BlockGen) {
 		block.SetCoinbase(common.Address{seed})
 
 		// If the block number is multiple of 3, send a bonus transaction to the miner
 		if parent == genesis && i%3 == 0 {
-			tx, err := types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), core.TxGas, nil, nil).SignECDSA(testKey)
+			tx, err := types.NewTransaction(block.TxNonce(testAddress), common.Address{seed}, big.NewInt(1000), new(big.Int).SetUint64(params.TxGas), nil, nil).SignECDSA(testKey)
 			if err != nil {
 				panic(err)
 			}

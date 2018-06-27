@@ -18,32 +18,30 @@
 package core
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math/big"
 	mrand "math/rand"
+	"reflect"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"reflect"
-	"strconv"
-
-	"encoding/binary"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"
@@ -83,7 +81,7 @@ const (
 // included in the canonical one where as GetBlockByNumber always represents the
 // canonical chain.
 type BlockChain struct {
-	config *ChainConfig // chain & network configuration
+	config *params.ChainConfig // chain & network configuration
 
 	hc           *HeaderChain
 	chainDb      ethdb.Database
@@ -116,6 +114,10 @@ type BlockChain struct {
 	atxi *AtxiT
 }
 
+func (bc *BlockChain) Engine() interface{} {
+	panic("implement me")
+}
+
 type ChainInsertResult struct {
 	ChainInsertEvent
 	Index int
@@ -145,7 +147,11 @@ func (bc *BlockChain) GetBlockByHash(h common.Hash) *types.Block {
 // NewBlockChain returns a fully initialised block chain using information
 // available in the database. It initialises the default Ethereum Validator and
 // Processor.
+<<<<<<< HEAD
 func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus.Engine, mux *event.TypeMux) (*BlockChain, error) {
+=======
+func NewBlockChain(chainDb ethdb.Database, config *params.ChainConfig, pow pow.PoW, mux *event.TypeMux) (*BlockChain, error) {
+>>>>>>> whilei/mini-moaf-statetests
 	bodyCache, _ := lru.New(bodyCacheLimit)
 	bodyRLPCache, _ := lru.New(bodyCacheLimit)
 	blockCache, _ := lru.New(blockCacheLimit)
@@ -195,7 +201,11 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus
 	return bc, nil
 }
 
+<<<<<<< HEAD
 func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, engine consensus.Engine, mux *event.TypeMux) (*BlockChain, error) {
+=======
+func NewBlockChainDryrun(chainDb ethdb.Database, config *params.ChainConfig, pow pow.PoW, mux *event.TypeMux) (*BlockChain, error) {
+>>>>>>> whilei/mini-moaf-statetests
 	bodyCache, _ := lru.New(bodyCacheLimit)
 	bodyRLPCache, _ := lru.New(bodyCacheLimit)
 	blockCache, _ := lru.New(blockCacheLimit)
@@ -265,8 +275,8 @@ func (bc *BlockChain) blockIsGenesis(b *types.Block) bool {
 	if bc.Genesis() != nil {
 		return reflect.DeepEqual(b, bc.Genesis())
 	}
-	ht, _ := DefaultConfigMorden.Genesis.Header()
-	hm, _ := DefaultConfigMainnet.Genesis.Header()
+	ht, _ := params.DefaultConfigMorden.Genesis.Header()
+	hm, _ := params.DefaultConfigMainnet.Genesis.Header()
 	return b.Hash() == ht.Hash() || b.Hash() == hm.Hash()
 
 }
@@ -732,7 +742,6 @@ func (bc *BlockChain) LoadLastState(dryrun bool) error {
 		return err
 	}
 	bc.stateCache = statedb
-	bc.stateCache.GetAccount(common.Address{})
 
 	// Issue a status log and return
 	headerTd := bc.GetTd(bc.hc.CurrentHeader().Hash())
@@ -893,7 +902,7 @@ func (bc *BlockChain) FastSyncCommitHead(hash common.Hash) error {
 }
 
 // GasLimit returns the gas limit of the current HEAD block.
-func (bc *BlockChain) GasLimit() *big.Int {
+func (bc *BlockChain) GasLimit() uint64 {
 	bc.mu.RLock()
 	defer bc.mu.RUnlock()
 
@@ -1294,14 +1303,14 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				from, _ := types.Sender(signer, tx)
 
 				// The contract address can be derived from the transaction itbc
-				if MessageCreatesContract(transactions[j]) {
+				if transactions[j].To() == nil {
 					receipts[j].ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 				}
 				// The used gas can be calculated based on previous receipts
 				if j == 0 {
-					receipts[j].GasUsed = new(big.Int).Set(receipts[j].CumulativeGasUsed)
+					receipts[j].GasUsed = receipts[j].CumulativeGasUsed
 				} else {
-					receipts[j].GasUsed = new(big.Int).Sub(receipts[j].CumulativeGasUsed, receipts[j-1].CumulativeGasUsed)
+					receipts[j].GasUsed = receipts[j].CumulativeGasUsed - receipts[j-1].CumulativeGasUsed
 				}
 				// The derived log fields can simply be set from the block and transaction
 				for k := 0; k < len(receipts[j].Logs); k++ {
@@ -1578,7 +1587,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 	var (
 		stats         struct{ queued, processed, ignored int }
 		events        = make([]interface{}, 0, len(chain))
-		coalescedLogs vm.Logs
+		coalescedLogs []*types.Log
 		tstart        = time.Now()
 
 		nonceChecked = make([]bool, len(chain))
@@ -1650,22 +1659,27 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 
 		// Create a new statedb using the parent block and report an
 		// error if it fails.
+		// var parent *types.Block
 		switch {
 		case i == 0:
+			// parent = bc.GetBlock(block.ParentHash())
 			err = bc.stateCache.Reset(bc.GetBlock(block.ParentHash()).Root())
 		default:
+			// parent = chain[i-1]
 			err = bc.stateCache.Reset(chain[i-1].Root())
 		}
-		res.Error = err
 		if err != nil {
+			res.Error = err
 			return
 		}
+
 		// Process block using the parent state as reference point.
 		receipts, logs, usedGas, err := bc.processor.Process(block, bc.stateCache)
 		if err != nil {
 			res.Error = err
 			return
 		}
+
 		// Validate the state using the default validator
 		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, usedGas)
 		if err != nil {
@@ -1800,8 +1814,8 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		oldStart          = oldBlock
 		newStart          = newBlock
 		deletedTxs        types.Transactions
-		deletedLogs       vm.Logs
-		deletedLogsByHash = make(map[common.Hash]vm.Logs)
+		deletedLogs       []*types.Log
+		deletedLogsByHash = make(map[common.Hash][]*types.Log)
 		// collectLogs collects the logs that were generated during the
 		// processing of the block that corresponds with the given hash.
 		// These logs are later announced as deleted.
@@ -1949,7 +1963,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 
 // postChainEvents iterates over the events generated by a chain insertion and
 // posts them into the event mux.
-func (bc *BlockChain) postChainEvents(events []interface{}, logs vm.Logs) {
+func (bc *BlockChain) postChainEvents(events []interface{}, logs []*types.Log) {
 	// post event logs for further processing
 	bc.eventMux.Post(logs)
 	for _, event := range events {
@@ -2059,4 +2073,4 @@ func (bc *BlockChain) GetHeaderByNumber(number uint64) *types.Header {
 }
 
 // Config retrieves the blockchain's chain configuration.
-func (bc *BlockChain) Config() *ChainConfig { return bc.config }
+func (bc *BlockChain) Config() *params.ChainConfig { return bc.config }

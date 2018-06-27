@@ -30,13 +30,14 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 func init() {
 	glog.SetV(0)
 }
 
-func checkLogs(tlog []Log, logs vm.Logs) error {
+func checkLogs(tlog []Log, logs []*types.Log) error {
 
 	if len(tlog) != len(logs) {
 		return fmt.Errorf("log length mismatch. Expected %d, got %d", len(tlog), len(logs))
@@ -59,7 +60,7 @@ func checkLogs(tlog []Log, logs vm.Logs) error {
 					}
 				}
 			}
-			genBloom := common.LeftPadBytes(types.LogsBloom(vm.Logs{logs[i]}).Bytes(), 256)
+			genBloom := common.LeftPadBytes(types.LogsBloom([]*types.Log{logs[i]}).Bytes(), 256)
 
 			if !bytes.Equal(genBloom, common.Hex2Bytes(log.BloomF)) {
 				return fmt.Errorf("bloom mismatch")
@@ -95,10 +96,13 @@ func (self Log) Topics() [][]byte {
 }
 
 func makePreState(db ethdb.Database, accounts map[string]Account) *state.StateDB {
-	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	sdb := state.NewDatabase(db)
+	statedb, _ := state.New(common.Hash{}, sdb)
 	for addr, account := range accounts {
 		insertAccount(statedb, addr, account)
 	}
+	root, _ := statedb.CommitTo(db, false)
+	statedb, _ = state.New(root, sdb)
 	return statedb
 }
 
@@ -156,41 +160,41 @@ type RuleSet struct {
 func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
 }
-func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
+func (r RuleSet) GasTable(num *big.Int) *params.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
-		return &vm.GasTable{
-			ExtcodeSize:     big.NewInt(20),
-			ExtcodeCopy:     big.NewInt(20),
-			Balance:         big.NewInt(20),
-			SLoad:           big.NewInt(50),
-			Calls:           big.NewInt(40),
-			Suicide:         big.NewInt(0),
-			ExpByte:         big.NewInt(10),
-			CreateBySuicide: nil,
+		return &params.GasTable{
+			ExtcodeSize:     uint64(20),
+			ExtcodeCopy:     uint64(20),
+			Balance:         uint64(20),
+			SLoad:           uint64(50),
+			Calls:           uint64(40),
+			Suicide:         uint64(0),
+			ExpByte:         uint64(10),
+			CreateBySuicide: uint64(0),
 		}
 	}
 	if r.DiehardBlock == nil || num == nil || num.Cmp(r.DiehardBlock) < 0 {
-		return &vm.GasTable{
-			ExtcodeSize:     big.NewInt(700),
-			ExtcodeCopy:     big.NewInt(700),
-			Balance:         big.NewInt(400),
-			SLoad:           big.NewInt(200),
-			Calls:           big.NewInt(700),
-			Suicide:         big.NewInt(5000),
-			ExpByte:         big.NewInt(10),
-			CreateBySuicide: big.NewInt(25000),
+		return &params.GasTable{
+			ExtcodeSize:     uint64(700),
+			ExtcodeCopy:     uint64(700),
+			Balance:         uint64(400),
+			SLoad:           uint64(200),
+			Calls:           uint64(700),
+			Suicide:         uint64(5000),
+			ExpByte:         uint64(10),
+			CreateBySuicide: uint64(25000),
 		}
 	}
 
-	return &vm.GasTable{
-		ExtcodeSize:     big.NewInt(700),
-		ExtcodeCopy:     big.NewInt(700),
-		Balance:         big.NewInt(400),
-		SLoad:           big.NewInt(200),
-		Calls:           big.NewInt(700),
-		Suicide:         big.NewInt(5000),
-		ExpByte:         big.NewInt(50),
-		CreateBySuicide: big.NewInt(25000),
+	return &params.GasTable{
+		ExtcodeSize:     uint64(700),
+		ExtcodeCopy:     uint64(700),
+		Balance:         uint64(400),
+		SLoad:           uint64(200),
+		Calls:           uint64(700),
+		Suicide:         uint64(5000),
+		ExpByte:         uint64(50),
+		CreateBySuicide: uint64(25000),
 	}
 }
 
@@ -224,6 +228,21 @@ func NewEnv(ruleSet RuleSet, state *state.StateDB) *Env {
 	return env
 }
 
+func (env *Env) VmContext() vm.Context {
+	return vm.Context{
+		CanTransfer: env.CanTransfer,
+		Transfer:    env.Transfer,
+		GetHash:     vmTestBlockHash,
+		Origin:      env.origin,
+		// GasPrice:    new(big.Int).Set(msg.GasPrice()), // this gets set per test via env.Call
+		Coinbase:    env.coinbase,
+		GasLimit:    env.gasLimit.Uint64(),
+		BlockNumber: env.number,
+		Time:        env.time,
+		Difficulty:  env.difficulty,
+	}
+}
+
 func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]string, exeValues map[string]string) *Env {
 	env := NewEnv(ruleSet, state)
 
@@ -248,30 +267,41 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	}
 	env.Gas = new(big.Int)
 
-	env.evm = vm.New(env)
+	env.evm = vm.NewEVM(env.VmContext(), env.state, params.DefaultConfigMorden.ChainConfig, vm.Config{NoRecursion: true})
 
 	return env
 }
 
-func (self *Env) RuleSet() vm.RuleSet      { return self.ruleSet }
-func (self *Env) Vm() vm.Vm                { return self.evm }
+func vmTestBlockHash(n uint64) common.Hash {
+	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
+}
+
+func (self *Env) RuleSet() RuleSet {
+	diehard := params.TestChainConfig.ForkByName("Diehard")
+	return RuleSet{
+		HomesteadBlock:           params.TestChainConfig.HomesteadBlock,
+		HomesteadGasRepriceBlock: params.TestChainConfig.EIP150Block,
+		DiehardBlock:             diehard.Block,
+		ExplosionBlock:           big.NewInt(5000000), // TODO
+	}
+}
+func (self *Env) Vm() *vm.EVM              { return self.evm }
 func (self *Env) Origin() common.Address   { return self.origin }
 func (self *Env) BlockNumber() *big.Int    { return self.number }
 func (self *Env) Coinbase() common.Address { return self.coinbase }
 func (self *Env) Time() *big.Int           { return self.time }
 func (self *Env) Difficulty() *big.Int     { return self.difficulty }
-func (self *Env) Db() vm.Database          { return self.state }
+func (self *Env) Db() vm.StateDB           { return self.state }
 func (self *Env) GasLimit() *big.Int       { return self.gasLimit }
-func (self *Env) VmType() vm.Type          { return vm.StdVmTy }
 func (self *Env) GetHash(n uint64) common.Hash {
 	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 }
-func (self *Env) AddLog(log *vm.Log) {
+func (self *Env) AddLog(log **types.Log) {
 	self.state.AddLog(*log)
 }
 func (self *Env) Depth() int     { return self.depth }
 func (self *Env) SetDepth(i int) { self.depth = i }
-func (self *Env) CanTransfer(from common.Address, balance *big.Int) bool {
+func (self *Env) CanTransfer(statedb vm.StateDB, from common.Address, balance *big.Int) bool {
 	if self.skipTransfer {
 		if self.initial {
 			self.initial = false
@@ -288,74 +318,105 @@ func (self *Env) RevertToSnapshot(snapshot int) {
 	self.state.RevertToSnapshot(snapshot)
 }
 
-func (self *Env) Transfer(from, to vm.Account, amount *big.Int) {
+func (self *Env) Transfer(db vm.StateDB, from, to common.Address, amount *big.Int) {
 	if self.skipTransfer {
 		return
 	}
-	core.Transfer(from, to, amount)
+	core.Transfer(self.Db(), from.Address(), to.Address(), amount)
 }
 
-func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	if self.vmTest && self.depth > 0 {
-		caller.ReturnGas(gas, price)
+func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas uint64, price, value *big.Int) ([]byte, error) {
+	// ctc := vm.NewContract(caller, addr, value, gas)
+	// if self.vmTest && self.depth > 0 {
+	// 	caller.ReturnGas(gas, price)
+	//
+	// 	return nil, nil
+	// }
+	// ret, err := core.Call(self, caller, addr, data, gas, price, value)
+	// self.Gas = gas
 
+	if self.vmTest && self.depth > 0 {
+		// self.state.AddBalance(caller.Address(), new(big.Int).Mul(new(big.Int).SetUint64(gas), price))
 		return nil, nil
 	}
-	ret, err := core.Call(self, caller, addr, data, gas, price, value)
-	self.Gas = gas
+	self.evm.GasPrice = price
 
+	// original gas in bigInt
+	og := big.NewInt(0).SetUint64(gas)
+	self.Gas = og
+	ret, leftoverGas, err := self.evm.Call(caller, addr, data, gas, value)
+
+	// deduce spent gas from (original gas - leftover gas), and set as test resulting gas
+	// leftoverGas in bigInt
+	logB := big.NewInt(0).SetUint64(leftoverGas)
+	spentGas := new(big.Int).Sub(og, logB)
+	self.Gas.Sub(og, spentGas)
 	return ret, err
 
 }
 func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	if self.vmTest && self.depth > 0 {
-		caller.ReturnGas(gas, price)
-
+		// caller.ReturnGas(gas, price)
+		// self.state.AddBalance(caller.Address(), new(big.Int).Mul(gas, price))
 		return nil, nil
 	}
-	return core.CallCode(self, caller, addr, data, gas, price, value)
+	ret, _, err := self.evm.CallCode(caller, addr, data, gas.Uint64(), value)
+	return ret, err
+	// return core.CallCode(self, caller, addr, data, gas, price, value)
 }
 
 func (self *Env) DelegateCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
 	if self.vmTest && self.depth > 0 {
-		caller.ReturnGas(gas, price)
-
+		// caller.ReturnGas(gas, price)
+		// self.state.AddBalance(caller.Address(), new(big.Int).Mul(gas, price))
 		return nil, nil
 	}
-	return core.DelegateCall(self, caller, addr, data, gas, price)
+	ret, _, err := self.evm.DelegateCall(caller, addr, data, gas.Uint64())
+	// self.state.Finalise(false)
+	return ret, err
+	// return core.DelegateCall(self, caller, addr, data, gas, price)
 }
 
 func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	if self.vmTest {
-		caller.ReturnGas(gas, price)
+		// caller.ReturnGas(gas, price)
+		// self.state.AddBalance(caller.Address(), new(big.Int).Mul(gas, price))
 
 		nonce := self.state.GetNonce(caller.Address())
 		obj := self.state.GetOrNewStateObject(crypto.CreateAddress(caller.Address(), nonce))
 
 		return nil, obj.Address(), nil
 	} else {
-		return core.Create(self, caller, data, gas, price, value)
+		ret, a, _, err := self.evm.Create(caller, data, gas.Uint64(), value)
+		return ret, a, err
+		// return core.Create(self, caller, data, gas, price, value)
 	}
 }
 
 type Message struct {
-	from              common.Address
-	to                *common.Address
-	value, gas, price *big.Int
-	data              []byte
-	nonce             uint64
+	from  common.Address
+	to    *common.Address
+	value *big.Int
+	gas   uint64
+	price *big.Int
+	data  []byte
+	nonce uint64
 }
 
 func NewMessage(from common.Address, to *common.Address, data []byte, value, gas, price *big.Int, nonce uint64) Message {
-	return Message{from, to, value, gas, price, data, nonce}
+	return Message{from, to, value, gas.Uint64(), price, data, nonce}
 }
 
-func (self Message) Hash() []byte                          { return nil }
-func (self Message) From() (common.Address, error)         { return self.from, nil }
+func (self Message) Hash() []byte { return nil }
+
+func (self Message) From() common.Address                  { return self.from }
 func (self Message) FromFrontier() (common.Address, error) { return self.from, nil }
 func (self Message) To() *common.Address                   { return self.to }
 func (self Message) GasPrice() *big.Int                    { return self.price }
-func (self Message) Gas() *big.Int                         { return self.gas }
+func (self Message) Gas() uint64                           { return self.gas }
 func (self Message) Value() *big.Int                       { return self.value }
 func (self Message) Nonce() uint64                         { return self.nonce }
 func (self Message) Data() []byte                          { return self.data }
+func (self Message) CheckNonce() bool {
+	return true
+}

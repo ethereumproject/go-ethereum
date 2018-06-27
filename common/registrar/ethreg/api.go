@@ -29,15 +29,17 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 // registryAPIBackend is a backend for an Ethereum Registry.
 type registryAPIBackend struct {
-	config  *core.ChainConfig
+	config  *params.ChainConfig
 	bc      *core.BlockChain
 	chainDb ethdb.Database
 	txPool  *core.TxPool
@@ -46,12 +48,12 @@ type registryAPIBackend struct {
 
 // PrivateRegistarAPI offers various functions to access the Ethereum registry.
 type PrivateRegistarAPI struct {
-	config *core.ChainConfig
+	config *params.ChainConfig
 	be     *registryAPIBackend
 }
 
 // NewPrivateRegistarAPI creates a new PrivateRegistarAPI instance.
-func NewPrivateRegistarAPI(config *core.ChainConfig, bc *core.BlockChain, chainDb ethdb.Database, txPool *core.TxPool, am *accounts.Manager) *PrivateRegistarAPI {
+func NewPrivateRegistarAPI(config *params.ChainConfig, bc *core.BlockChain, chainDb ethdb.Database, txPool *core.TxPool, am *accounts.Manager) *PrivateRegistarAPI {
 	return &PrivateRegistarAPI{
 		config: config,
 		be: &registryAPIBackend{
@@ -114,16 +116,21 @@ func (api *PrivateRegistarAPI) RegisterUrl(sender common.Address, contentHashHex
 
 // callmsg is the message type used for call transations.
 type callmsg struct {
-	from          *state.StateObject
-	to            *common.Address
-	gas, gasPrice *big.Int
-	value         *big.Int
-	data          []byte
+	from     *state.StateObject
+	to       *common.Address
+	gas      uint64
+	gasPrice *big.Int
+	value    *big.Int
+	data     []byte
+}
+
+func (m callmsg) CheckNonce() bool {
+	return true
 }
 
 // accessor boilerplate to implement core.Message
-func (m callmsg) From() (common.Address, error) {
-	return m.from.Address(), nil
+func (m callmsg) From() common.Address {
+	return m.from.Address()
 }
 func (m callmsg) FromFrontier() (common.Address, error) {
 	return m.from.Address(), nil
@@ -137,7 +144,7 @@ func (m callmsg) To() *common.Address {
 func (m callmsg) GasPrice() *big.Int {
 	return m.gasPrice
 }
-func (m callmsg) Gas() *big.Int {
+func (m callmsg) Gas() uint64 {
 	return m.gas
 }
 func (m callmsg) Value() *big.Int {
@@ -156,12 +163,13 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 		return "", "", fmt.Errorf("malformed value %q", valueStr)
 	}
 
-	var gas *big.Int
+	var gas uint64
 	if gasStr != "" {
-		gas, ok = new(big.Int).SetString(gasStr, 0)
+		ggas, ok := new(big.Int).SetString(gasStr, 0)
 		if !ok {
 			return "", "", fmt.Errorf("malformed gas %q", gasStr)
 		}
+		gas = ggas.Uint64()
 	}
 
 	var gasPrice *big.Int
@@ -198,8 +206,8 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 		msg.to = &addr
 	}
 
-	if msg.gas.Cmp(big.NewInt(0)) == 0 {
-		msg.gas = big.NewInt(50000000)
+	if msg.gas == 0 {
+		msg.gas = 50000000
 	}
 
 	if msg.gasPrice.Cmp(big.NewInt(0)) == 0 {
@@ -207,11 +215,15 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 	}
 
 	header := be.bc.CurrentBlock().Header()
-	vmenv := core.NewEnv(statedb, be.config, be.bc, msg, header)
-	gp := new(core.GasPool).AddGas(common.MaxBig)
-	res, gas, err := core.ApplyMessage(vmenv, msg, gp)
 
-	return common.ToHex(res), gas.String(), err
+	vmContext := core.NewEVMContext(msg, header, be.bc, &header.Coinbase)
+	vmenv := vm.NewEVM(vmContext, statedb, be.config, vm.Config{})
+
+	gp := new(core.GasPool).AddGas(common.MaxBig.Uint64())
+
+	res, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
+
+	return common.ToHex(res), fmt.Sprintf("%d", gas), err
 }
 
 // StorageAt returns the data stores in the state for the given address and location.

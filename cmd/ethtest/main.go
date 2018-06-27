@@ -79,9 +79,9 @@ func runTestWithReader(test string, r io.Reader) error {
 	switch strings.ToLower(test) {
 	case "bk", "block", "blocktest", "blockchaintest", "blocktests", "blockchaintests":
 		err = tests.RunBlockTestWithReader(big.NewInt(1150000), nil, r, skipTests)
-	case "st", "state", "statetest", "statetests":
-		rs := tests.RuleSet{HomesteadBlock: big.NewInt(1150000)}
-		err = tests.RunStateTestWithReader(rs, r, skipTests)
+	// case "st", "state", "statetest", "statetests":
+	// 	rs := tests.RuleSet{HomesteadBlock: big.NewInt(1150000)}
+	// 	err = tests.RunStateTestWithReader(rs, r, skipTests)
 	case "tx", "transactiontest", "transactiontests":
 		err = tests.RunTransactionTestsWithReader(r, skipTests)
 	case "vm", "vmtest", "vmtests":

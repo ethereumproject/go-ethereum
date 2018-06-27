@@ -28,7 +28,6 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/rpc"
@@ -153,7 +152,7 @@ func (s *PublicFilterAPI) NewBlockFilter() (string, error) {
 	s.blockQueue[id] = &hashQueue{timeout: time.Now()}
 	s.blockMu.Unlock()
 
-	filter.BlockCallback = func(block *types.Block, logs vm.Logs) {
+	filter.BlockCallback = func(block *types.Block, logs []*types.Log) {
 		s.blockMu.Lock()
 		defer s.blockMu.Unlock()
 
@@ -207,7 +206,7 @@ func (s *PublicFilterAPI) NewPendingTransactionFilter() (string, error) {
 }
 
 // newLogFilter creates a new log filter.
-func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []common.Address, topics [][]common.Hash, callback func(log *vm.Log, removed bool)) (int, error) {
+func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []common.Address, topics [][]common.Hash, callback func(log **types.Log, removed bool)) (int, error) {
 	// protect filterManager.Add() and setting of filter fields
 	s.filterManager.Lock()
 	defer s.filterManager.Unlock()
@@ -226,14 +225,14 @@ func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []commo
 	filter.SetEndBlock(latest)
 	filter.SetAddresses(addresses)
 	filter.SetTopics(topics)
-	filter.LogCallback = func(log *vm.Log, removed bool) {
+	filter.LogCallback = func(log **types.Log, removed bool) {
 		if callback != nil {
 			callback(log, removed)
 		} else {
 			s.logMu.Lock()
 			defer s.logMu.Unlock()
 			if queue := s.logQueue[id]; queue != nil {
-				queue.add(vmlog{log, removed})
+				queue.add(vmlog{*log, removed})
 			}
 		}
 	}
@@ -265,8 +264,8 @@ func (s *PublicFilterAPI) Logs(ctx context.Context, args NewFilterArgs) (rpc.Sub
 		return nil, err
 	}
 
-	notifySubscriber := func(log *vm.Log, removed bool) {
-		rpcLog := toRPCLogs(vm.Logs{log}, removed)
+	notifySubscriber := func(log **types.Log, removed bool) {
+		rpcLog := toRPCLogs([]*types.Log{*log}, removed)
 		if err := subscription.Notify(rpcLog); err != nil {
 			subscription.Cancel()
 		}
@@ -579,7 +578,7 @@ func (s *PublicFilterAPI) GetFilterChanges(filterId string) interface{} {
 }
 
 type vmlog struct {
-	*vm.Log
+	*types.Log
 	Removed bool `json:"removed"`
 }
 
@@ -643,11 +642,11 @@ func newFilterId() (string, error) {
 	return "0x" + hex.EncodeToString(subid[:]), nil
 }
 
-// toRPCLogs is a helper that will convert a vm.Logs array to an structure which
+// toRPCLogs is a helper that will convert a []*types.Log array to an structure which
 // can hold additional information about the logs such as whether it was deleted.
 // Additionally when nil is given it will by default instead create an empty slice
 // instead. This is required by the RPC specification.
-func toRPCLogs(logs vm.Logs, removed bool) []vmlog {
+func toRPCLogs(logs []*types.Log, removed bool) []vmlog {
 	convertedLogs := make([]vmlog, len(logs))
 	for i, log := range logs {
 		convertedLogs[i] = vmlog{Log: log, Removed: removed}

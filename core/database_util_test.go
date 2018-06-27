@@ -18,24 +18,30 @@ package core
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 
+<<<<<<< HEAD
 	"crypto/ecdsa"
 	"encoding/binary"
 	"strings"
 
+=======
+>>>>>>> whilei/mini-moaf-statetests
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
@@ -649,25 +655,25 @@ func TestReceiptStorage(t *testing.T) {
 
 	receipt1 := &types.Receipt{
 		PostState:         []byte{0x01},
-		CumulativeGasUsed: big.NewInt(1),
-		Logs: vm.Logs{
-			&vm.Log{Address: common.BytesToAddress([]byte{0x11})},
-			&vm.Log{Address: common.BytesToAddress([]byte{0x01, 0x11})},
+		CumulativeGasUsed: 1,
+		Logs: []*types.Log{
+			{Address: common.BytesToAddress([]byte{0x11})},
+			{Address: common.BytesToAddress([]byte{0x01, 0x11})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x11, 0x11}),
 		ContractAddress: common.BytesToAddress([]byte{0x01, 0x11, 0x11}),
-		GasUsed:         big.NewInt(111111),
+		GasUsed:         111111,
 	}
 	receipt2 := &types.Receipt{
 		PostState:         []byte{0x02},
-		CumulativeGasUsed: big.NewInt(2),
-		Logs: vm.Logs{
-			&vm.Log{Address: common.BytesToAddress([]byte{0x22})},
-			&vm.Log{Address: common.BytesToAddress([]byte{0x02, 0x22})},
+		CumulativeGasUsed: 2,
+		Logs: []*types.Log{
+			{Address: common.BytesToAddress([]byte{0x22})},
+			{Address: common.BytesToAddress([]byte{0x02, 0x22})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x22, 0x22}),
 		ContractAddress: common.BytesToAddress([]byte{0x02, 0x22, 0x22}),
-		GasUsed:         big.NewInt(222222),
+		GasUsed:         222222,
 	}
 	receipts := []*types.Receipt{receipt1, receipt2}
 
@@ -708,25 +714,25 @@ func TestBlockReceiptStorage(t *testing.T) {
 
 	receipt1 := &types.Receipt{
 		PostState:         []byte{0x01},
-		CumulativeGasUsed: big.NewInt(1),
-		Logs: vm.Logs{
-			&vm.Log{Address: common.BytesToAddress([]byte{0x11})},
-			&vm.Log{Address: common.BytesToAddress([]byte{0x01, 0x11})},
+		CumulativeGasUsed: 1,
+		Logs: []*types.Log{
+			{Address: common.BytesToAddress([]byte{0x11})},
+			{Address: common.BytesToAddress([]byte{0x01, 0x11})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x11, 0x11}),
 		ContractAddress: common.BytesToAddress([]byte{0x01, 0x11, 0x11}),
-		GasUsed:         big.NewInt(111111),
+		GasUsed:         111111,
 	}
 	receipt2 := &types.Receipt{
 		PostState:         []byte{0x02},
-		CumulativeGasUsed: big.NewInt(2),
-		Logs: vm.Logs{
-			&vm.Log{Address: common.BytesToAddress([]byte{0x22})},
-			&vm.Log{Address: common.BytesToAddress([]byte{0x02, 0x22})},
+		CumulativeGasUsed: 2,
+		Logs: []*types.Log{
+			{Address: common.BytesToAddress([]byte{0x22})},
+			{Address: common.BytesToAddress([]byte{0x02, 0x22})},
 		},
 		TxHash:          common.BytesToHash([]byte{0x22, 0x22}),
 		ContractAddress: common.BytesToAddress([]byte{0x02, 0x22, 0x22}),
-		GasUsed:         big.NewInt(222222),
+		GasUsed:         222222,
 	}
 	receipts := []*types.Receipt{receipt1, receipt2}
 
@@ -762,14 +768,14 @@ func TestMipmapBloom(t *testing.T) {
 	db, _ := ethdb.NewMemDatabase()
 
 	receipt1 := new(types.Receipt)
-	receipt1.Logs = vm.Logs{
-		&vm.Log{Address: common.BytesToAddress([]byte("test"))},
-		&vm.Log{Address: common.BytesToAddress([]byte("address"))},
+	receipt1.Logs = []*types.Log{
+		{Address: common.BytesToAddress([]byte("test"))},
+		{Address: common.BytesToAddress([]byte("address"))},
 	}
 	receipt2 := new(types.Receipt)
-	receipt2.Logs = vm.Logs{
-		&vm.Log{Address: common.BytesToAddress([]byte("test"))},
-		&vm.Log{Address: common.BytesToAddress([]byte("address1"))},
+	receipt2.Logs = []*types.Log{
+		{Address: common.BytesToAddress([]byte("test"))},
+		{Address: common.BytesToAddress([]byte("address1"))},
 	}
 
 	WriteMipmapBloom(db, 1, types.Receipts{receipt1})
@@ -785,14 +791,14 @@ func TestMipmapBloom(t *testing.T) {
 	// reset
 	db, _ = ethdb.NewMemDatabase()
 	receipt := new(types.Receipt)
-	receipt.Logs = vm.Logs{
-		&vm.Log{Address: common.BytesToAddress([]byte("test"))},
+	receipt.Logs = []*types.Log{
+		{Address: common.BytesToAddress([]byte("test"))},
 	}
 	WriteMipmapBloom(db, 999, types.Receipts{receipt1})
 
 	receipt = new(types.Receipt)
-	receipt.Logs = vm.Logs{
-		&vm.Log{Address: common.BytesToAddress([]byte("test 1"))},
+	receipt.Logs = []*types.Log{
+		{Address: common.BytesToAddress([]byte("test 1"))},
 	}
 	WriteMipmapBloom(db, 1000, types.Receipts{receipt})
 
@@ -819,14 +825,14 @@ func TestMipmapChain(t *testing.T) {
 	)
 	defer db.Close()
 
-	genesis := WriteGenesisBlockForTesting(db, GenesisAccount{addr, big.NewInt(1000000)})
+	genesis := WriteGenesisBlockForTesting(db, params.GenesisAccount{addr, big.NewInt(1000000)})
 	chain, receipts := GenerateChain(testChainConfig(), genesis, db, 1010, func(i int, gen *BlockGen) {
 		var receipts types.Receipts
 		switch i {
 		case 1:
-			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
+			receipt := types.NewReceipt(nil, false, 0)
+			receipt.Logs = []*types.Log{
+				{
 					Address: addr,
 					Topics:  []common.Hash{hash1},
 				},
@@ -834,8 +840,8 @@ func TestMipmapChain(t *testing.T) {
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 1000:
-			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{&vm.Log{Address: addr2}}
+			receipt := types.NewReceipt(nil, false, 0)
+			receipt.Logs = []*types.Log{{Address: addr2}}
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 

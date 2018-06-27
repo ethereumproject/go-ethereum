@@ -43,6 +43,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
@@ -83,7 +84,7 @@ func StartNode(stack *node.Node) {
 
 	// mlog
 	nodeInfo := stack.Server().NodeInfo()
-	cconf := core.GetCacheChainConfig()
+	cconf := params.GetCacheChainConfig()
 	if cconf == nil {
 		Fatalf("Nil chain configuration")
 	}
@@ -321,7 +322,7 @@ var indent string = "    "
 // For use by 'status' command.
 // These are one of doing it, with each key/val per line and some appropriate indentations to signal grouping/parentage.
 // ... But there might be a more elegant way using columns and stuff. VeryPretty?
-func formatSufficientChainConfigPretty(config *core.SufficientChainConfig) (s []string) {
+func formatSufficientChainConfigPretty(config *params.SufficientChainConfig) (s []string) {
 	ss := []printable{}
 
 	// Chain identifiers.
@@ -638,7 +639,7 @@ func rollback(ctx *cli.Context) error {
 func dumpChainConfig(ctx *cli.Context) error {
 
 	chainIdentity := mustMakeChainIdentity(ctx)
-	if !(core.ChainIdentitiesMain[chainIdentity] || core.ChainIdentitiesMorden[chainIdentity]) {
+	if !(params.ChainIdentitiesMain[chainIdentity] || params.ChainIdentitiesMorden[chainIdentity]) {
 		glog.Fatal("Dump config should only be used with default chain configurations (mainnet or morden).")
 	}
 
@@ -671,11 +672,11 @@ func dumpChainConfig(ctx *cli.Context) error {
 
 	// Implicitly favor Morden because it is a smaller, simpler configuration,
 	// so I expect it to be used more frequently than mainnet.
-	genesisDump := core.DefaultConfigMorden.Genesis
+	genesisDump := params.DefaultConfigMorden.Genesis
 	netId := 2
-	stateConf := &core.StateConfig{StartingNonce: state.DefaultTestnetStartingNonce}
+	stateConf := &params.StateConfig{StartingNonce: state.DefaultTestnetStartingNonce}
 	if !chainIsMorden(ctx) {
-		genesisDump = core.DefaultConfigMainnet.Genesis
+		genesisDump = params.DefaultConfigMainnet.Genesis
 		netId = eth.NetworkId
 		stateConf = nil
 	}
@@ -686,16 +687,17 @@ func dumpChainConfig(ctx *cli.Context) error {
 		nodes = append(nodes, node.String())
 	}
 
-	var currentConfig = &core.SufficientChainConfig{
+	var currentConfig = &params.SufficientChainConfig{
 		Identity:    chainIdentity,
 		Name:        mustMakeChainConfigNameDefaulty(ctx),
 		Network:     netId,
 		State:       stateConf,
 		Consensus:   "ethash",
 		Genesis:     genesisDump,
-		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
+		ChainConfig: chainConfig, // get current/contextualized chain config
 		Bootstrap:   nodes,
 	}
+	currentConfig.ChainConfig.SortForks()
 
 	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {
 		glog.Fatalf("An error occurred while writing chain configuration: %v", writeError)

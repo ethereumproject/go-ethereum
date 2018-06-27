@@ -29,10 +29,10 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/node"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 const (
@@ -105,7 +105,7 @@ func newTester(t *testing.T, confOverride func(*eth.Config)) *tester {
 		t.Fatalf("failed to create node: %v", err)
 	}
 	ethConf := &eth.Config{
-		ChainConfig:    core.DefaultConfigMainnet.ChainConfig,
+		ChainConfig:    params.DefaultConfigMainnet.ChainConfig,
 		Etherbase:      common.HexToAddress(testAddress),
 		AccountManager: accman,
 		PowTest:        true,

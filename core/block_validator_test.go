@@ -21,31 +21,31 @@ import (
 	"testing"
 
 	"github.com/ethereumproject/ethash"
+	"github.com/ethereumproject/go-ethereum/params"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 )
 
-func testChainConfig() *ChainConfig {
-	return &ChainConfig{
-		Forks: []*Fork{
+func testChainConfig() *params.ChainConfig {
+	return &params.ChainConfig{
+		Forks: []*params.Fork{
 			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
-				Features: []*ForkFeature{
+				Features: []*params.ForkFeature{
 					{
 						ID: "gastable",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type": "homestead",
 						},
 					},
 					{
 						ID: "difficulty",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type": "homestead",
 						},
 					},
@@ -54,22 +54,22 @@ func testChainConfig() *ChainConfig {
 			{
 				Name:  "Diehard",
 				Block: big.NewInt(5),
-				Features: []*ForkFeature{
+				Features: []*params.ForkFeature{
 					{
 						ID: "eip155",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"chainID": 62,
 						},
 					},
 					{ // ecip1010 bomb delay
 						ID: "gastable",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type": "eip160",
 						},
 					},
 					{ // ecip1010 bomb delay
 						ID: "difficulty",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type":   "ecip1010",
 							"length": 2000000,
 						},
@@ -85,7 +85,7 @@ func proc(t testing.TB) (Validator, *BlockChain) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
+	_, err = WriteGenesisBlock(db, params.DefaultConfigMorden.Genesis)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestPutReceipt(t *testing.T) {
 	hash[0] = 2
 
 	receipt := new(types.Receipt)
-	receipt.Logs = vm.Logs{&vm.Log{
+	receipt.Logs = []*types.Log{{
 		Address:     addr,
 		Topics:      []common.Hash{hash},
 		Data:        []byte("hi"),
@@ -321,7 +321,7 @@ func TestDifficultyBombExplodeTestnet(t *testing.T) {
 
 // Compare expected difficulties on edges of forks.
 func TestCalcDifficulty1Mainnet(t *testing.T) {
-	config := DefaultConfigMainnet.ChainConfig
+	config := params.DefaultConfigMainnet.ChainConfig
 
 	parentTime := uint64(1513175023)
 	time := parentTime + 20
@@ -404,7 +404,7 @@ func TestCalcDifficulty1Mainnet(t *testing.T) {
 
 // Compare expected difficulties on edges of forks.
 func TestCalcDifficulty1Morden(t *testing.T) {
-	config := DefaultConfigMainnet.ChainConfig
+	config := params.DefaultConfigMainnet.ChainConfig
 
 	parentTime := uint64(1513175023)
 	time := parentTime + 20

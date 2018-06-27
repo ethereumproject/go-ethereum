@@ -40,8 +40,8 @@ func TestBlockEncoding(t *testing.T) {
 		}
 	}
 	check("Difficulty", block.Difficulty(), big.NewInt(131072))
-	check("GasLimit", block.GasLimit(), big.NewInt(3141592))
-	check("GasUsed", block.GasUsed(), big.NewInt(21000))
+	check("GasLimit", block.GasLimit(), uint64(3141592))
+	check("GasUsed", block.GasUsed(), uint64(21000))
 	check("Coinbase", block.Coinbase(), common.HexToAddress("8888f1f195afa192cfee860698584c030f4c9db1"))
 	check("MixDigest", block.MixDigest(), common.HexToHash("bd4472abb6659ebe3ee06ee4d7b72a00a9f4d001caca51342001075469aff498"))
 	check("Root", block.Root(), common.HexToHash("ef1552a40b7165c3cd773806b9e0c165b75356e0314bf0706f279c729f51e017"))

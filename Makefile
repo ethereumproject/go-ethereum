@@ -12,7 +12,7 @@ COMMIT=`git log --pretty=format:'%h' -n 1`
 # Choose to install geth with or without SputnikVM.
 WITH_SVM?=1
 
-# Provide default value of GOPATH, if it's not set in environment 
+# Provide default value of GOPATH, if it's not set in environment
 export GOPATH?=${HOME}/go
 
 LDFLAGS=-ldflags "-X main.Version="`git describe --tags`
@@ -119,10 +119,10 @@ test: ## Run all the tests
 cover: test ## Run all the tests and opens the coverage report
 	go tool cover -html=coverage.txt
 
-chainconfig: core/assets/assets.go ## Rebuild assets if source config files changed.
+chainconfig: params/assets/assets.go ## Rebuild assets if source config files changed.
 
-core/assets/assets.go: ${GOPATH}/bin/resources core/config/*.json core/config/*.csv
-	${GOPATH}/bin/resources -fmt -declare -var=DEFAULTS -package=assets -output=core/assets/assets.go core/config/*.json core/config/*.csv
+core/assets/assets.go: ${GOPATH}/bin/resources params/config/*.json params/config/*.csv
+	${GOPATH}/bin/resources -fmt -declare -var=DEFAULTS -package=assets -output=params/assets/assets.go params/config/*.json params/config/*.csv
 
 ${GOPATH}/bin/resources:
 	go get -u github.com/omeid/go-resources/cmd/resources

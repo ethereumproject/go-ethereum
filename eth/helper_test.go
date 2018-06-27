@@ -36,11 +36,12 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
 	testBankKey, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-	testBank       = core.GenesisAccount{
+	testBank       = params.GenesisAccount{
 		Address: crypto.PubkeyToAddress(testBankKey.PublicKey),
 		Balance: big.NewInt(1000000),
 	}
@@ -54,8 +55,8 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		evmux       = new(event.TypeMux)
 		db, _       = ethdb.NewMemDatabase()
 		genesis     = core.WriteGenesisBlockForTesting(db, testBank)
-		chainConfig = &core.ChainConfig{
-			Forks: []*core.Fork{
+		chainConfig = &params.ChainConfig{
+			Forks: []*params.Fork{
 				{
 					Name:  "Homestead",
 					Block: big.NewInt(0),
@@ -65,7 +66,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		blockchain, _ = core.NewBlockChain(db, chainConfig, ethash.NewFaker(), evmux)
 	)
 
-	chain, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, genesis, db, blocks, generator)
+	chain, _ := core.GenerateChain(params.DefaultConfigMorden.ChainConfig, genesis, db, blocks, generator)
 	if res := blockchain.InsertChain(chain); res.Error != nil {
 		panic(res.Error)
 	}

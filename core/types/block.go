@@ -65,8 +65,8 @@ type Header struct {
 	Bloom       Bloom          // Bloom
 	Difficulty  *big.Int       // Difficulty for the current block
 	Number      *big.Int       // The block number
-	GasLimit    *big.Int       // Gas limit
-	GasUsed     *big.Int       // Gas used
+	GasLimit    uint64         // Gas limit
+	GasUsed     uint64         // Gas used
 	Time        *big.Int       // Creation time
 	Extra       []byte         // Freeform descriptor
 	MixDigest   common.Hash    // for quick difficulty verification
@@ -245,12 +245,6 @@ func CopyHeader(h *Header) *Header {
 	if cpy.Number = new(big.Int); h.Number != nil {
 		cpy.Number.Set(h.Number)
 	}
-	if cpy.GasLimit = new(big.Int); h.GasLimit != nil {
-		cpy.GasLimit.Set(h.GasLimit)
-	}
-	if cpy.GasUsed = new(big.Int); h.GasUsed != nil {
-		cpy.GasUsed.Set(h.GasUsed)
-	}
 	if len(h.Extra) > 0 {
 		cpy.Extra = make([]byte, len(h.Extra))
 		copy(cpy.Extra, h.Extra)
@@ -318,8 +312,8 @@ func (b *Block) Transaction(hash common.Hash) *Transaction {
 }
 
 func (b *Block) Number() *big.Int     { return new(big.Int).Set(b.header.Number) }
-func (b *Block) GasLimit() *big.Int   { return new(big.Int).Set(b.header.GasLimit) }
-func (b *Block) GasUsed() *big.Int    { return new(big.Int).Set(b.header.GasUsed) }
+func (b *Block) GasLimit() uint64     { return b.header.GasLimit }
+func (b *Block) GasUsed() uint64      { return b.header.GasUsed }
 func (b *Block) Difficulty() *big.Int { return new(big.Int).Set(b.header.Difficulty) }
 func (b *Block) Time() *big.Int       { return new(big.Int).Set(b.header.Time) }
 

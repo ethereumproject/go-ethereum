@@ -27,13 +27,20 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
 	// Transaction Pool Errors
+
+	// ErrNonceTooLow is returned if the nonce of a transaction is lower than the
+	// one present in the local chain.
+	ErrNonceTooLow = errors.New("nonce too low")
+
 	ErrInvalidSender      = errors.New("Invalid sender")
 	ErrNonce              = errors.New("Nonce too low")
 	ErrCheap              = errors.New("Gas price too low for acceptance")
@@ -59,11 +66,11 @@ type stateFn func() (*state.StateDB, error)
 // current state) and future transactions. Transactions move between those
 // two states over time as they are received and processed.
 type TxPool struct {
-	config       *ChainConfig
+	config       *params.ChainConfig
 	signer       types.Signer
 	currentState stateFn // The state function which will allow us to do some pre checks
 	pendingState *state.ManagedState
-	gasLimit     func() *big.Int // The current gas limit function callback
+	gasLimit     func() uint64 // The current gas limit function callback
 	minGasPrice  *big.Int
 	eventMux     *event.TypeMux
 	events       event.Subscription
@@ -77,7 +84,7 @@ type TxPool struct {
 	homestead bool
 }
 
-func NewTxPool(config *ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() *big.Int) *TxPool {
+func NewTxPool(config *params.ChainConfig, eventMux *event.TypeMux, currentStateFn stateFn, gasLimitFn func() uint64) *TxPool {
 	pool := &TxPool{
 		config:       config,
 		signer:       types.NewChainIdSigner(config.GetChainID()),
@@ -270,7 +277,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) (e error) {
 
 	// Check the transaction doesn't exceed the current
 	// block limit gas.
-	if pool.gasLimit().Cmp(tx.Gas()) < 0 {
+	if pool.gasLimit() < tx.Gas().Uint64() {
 		e = ErrGasLimit
 		return
 	}
@@ -290,8 +297,12 @@ func (pool *TxPool) validateTx(tx *types.Transaction) (e error) {
 		return
 	}
 
-	intrGas := IntrinsicGas(tx.Data(), MessageCreatesContract(tx), pool.homestead)
-	if tx.Gas().Cmp(intrGas) < 0 {
+	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
+	if err != nil && err == vm.ErrOutOfGas {
+		e = err
+		return
+	}
+	if tx.Gas().Uint64() < intrGas {
 		e = ErrIntrinsicGas
 		return
 	}

@@ -23,8 +23,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 )
 
@@ -33,16 +35,16 @@ import (
  */
 
 // MakeChainConfig returns a new ChainConfig with the ethereum default chain settings.
-func MakeChainConfig() *ChainConfig {
-	return &ChainConfig{
-		Forks: []*Fork{
+func MakeChainConfig() *params.ChainConfig {
+	return &params.ChainConfig{
+		Forks: []*params.Fork{
 			{
 				Name:  "Homestead",
 				Block: big.NewInt(0),
-				Features: []*ForkFeature{
+				Features: []*params.ForkFeature{
 					{
 						ID: "difficulty",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type": "homestead",
 						},
 					},
@@ -52,28 +54,28 @@ func MakeChainConfig() *ChainConfig {
 	}
 }
 
-func MakeDiehardChainConfig() *ChainConfig {
-	return &ChainConfig{
-		Forks: []*Fork{
+func MakeDiehardChainConfig() *params.ChainConfig {
+	return &params.ChainConfig{
+		Forks: []*params.Fork{
 			{
 				Name:  "Diehard",
 				Block: big.NewInt(0),
-				Features: []*ForkFeature{
+				Features: []*params.ForkFeature{
 					{
 						ID: "eip155",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"chainID": 63,
 						},
 					},
 					{ // ecip1010 bomb delay
 						ID: "gastable",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type": "eip160",
 						},
 					},
 					{ // ecip1010 bomb delay
 						ID: "difficulty",
-						Options: ChainFeatureConfigOptions{
+						Options: params.ChainFeatureConfigOptions{
 							"type":   "ecip1010",
 							"length": 2000000,
 						},
@@ -114,7 +116,20 @@ type BlockGen struct {
 	txs      []*types.Transaction
 	receipts []*types.Receipt
 	uncles   []*types.Header
-	config   *ChainConfig
+	config   *params.ChainConfig
+}
+
+func (b *BlockGen) Engine() interface{} {
+	panic("implement me")
+}
+
+func (b *BlockGen) GetHeader(c common.Hash) *types.Header {
+	for _, block := range b.chain {
+		if h := block.Header(); h.Hash() == c {
+			return h
+		}
+	}
+	return nil
 }
 
 // SetCoinbase sets the coinbase of the generated block.
@@ -147,8 +162,8 @@ func (b *BlockGen) AddTx(tx *types.Transaction) {
 	if b.gasPool == nil {
 		b.SetCoinbase(common.Address{})
 	}
-	b.statedb.StartRecord(tx.Hash(), common.Hash{}, len(b.txs))
-	receipt, _, _, err := ApplyTransaction(b.config, nil, b.gasPool, b.statedb, b.header, tx, b.header.GasUsed)
+	b.statedb.Prepare(tx.Hash(), common.Hash{}, len(b.txs))
+	receipt, _, err := ApplyTransaction(b.config, b, &b.header.Coinbase, b.gasPool, b.statedb, b.header, tx, &b.header.GasUsed, vm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -220,14 +235,14 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 // Blocks created by GenerateChain do not contain valid proof of work
 // values. Inserting them into BlockChain requires use of FakePow or
 // a similar non-validating proof of work implementation.
-func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts) {
+func GenerateChain(config *params.ChainConfig, parent *types.Block, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts) {
 	blocks, receipts := make(types.Blocks, n), make([]types.Receipts, n)
 	genblock := func(i int, h *types.Header, statedb *state.StateDB) (*types.Block, types.Receipts) {
 		b := &BlockGen{parent: parent, i: i, chain: blocks, header: h, statedb: statedb, config: config}
 
 		// Mutate the state and block according to any hard-fork specs
 		if config == nil {
-			config = DefaultConfigMainnet.ChainConfig // MakeChainConfig()
+			config = params.DefaultConfigMainnet.ChainConfig // MakeChainConfig()
 		}
 		// Execute any user modifications to the block and finalize it
 		if gen != nil {
@@ -255,7 +270,7 @@ func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, 
 	return blocks, receipts
 }
 
-func makeHeader(config *ChainConfig, parent *types.Block, state *state.StateDB) *types.Header {
+func makeHeader(config *params.ChainConfig, parent *types.Block, state *state.StateDB) *types.Header {
 	var time *big.Int
 	if parent.Time() == nil {
 		time = big.NewInt(10)
@@ -268,7 +283,6 @@ func makeHeader(config *ChainConfig, parent *types.Block, state *state.StateDB) 
 		Coinbase:   parent.Coinbase(),
 		Difficulty: CalcDifficulty(config, time.Uint64(), new(big.Int).Sub(time, big.NewInt(10)).Uint64(), parent.Number(), parent.Difficulty()),
 		GasLimit:   CalcGasLimit(parent),
-		GasUsed:    new(big.Int),
 		Number:     new(big.Int).Add(parent.Number(), common.Big1),
 		Time:       time,
 	}
@@ -277,7 +291,7 @@ func makeHeader(config *ChainConfig, parent *types.Block, state *state.StateDB) 
 // newCanonical creates a chain database, and injects a deterministic canonical
 // chain. Depending on the full flag, if creates either a full block chain or a
 // header only chain.
-func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *BlockChain, error) {
+func newCanonical(config *params.ChainConfig, n int, full bool) (ethdb.Database, *BlockChain, error) {
 	// Create the new chain database
 	db, err := ethdb.NewMemDatabase()
 	if err != nil {
@@ -287,7 +301,7 @@ func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *Block
 	evmux := &event.TypeMux{}
 
 	// Initialize a fresh chain with only a genesis block
-	genesis, err := WriteGenesisBlock(db, DefaultConfigMorden.Genesis)
+	genesis, err := WriteGenesisBlock(db, params.DefaultConfigMorden.Genesis)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -314,7 +328,7 @@ func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *Block
 }
 
 // makeHeaderChain creates a deterministic chain of headers rooted at parent.
-func makeHeaderChain(config *ChainConfig, parent *types.Header, n int, db ethdb.Database, seed int) []*types.Header {
+func makeHeaderChain(config *params.ChainConfig, parent *types.Header, n int, db ethdb.Database, seed int) []*types.Header {
 	blocks := makeBlockChain(config, types.NewBlockWithHeader(parent), n, db, seed)
 	headers := make([]*types.Header, len(blocks))
 	for i, block := range blocks {
@@ -324,7 +338,7 @@ func makeHeaderChain(config *ChainConfig, parent *types.Header, n int, db ethdb.
 }
 
 // makeBlockChain creates a deterministic chain of blocks rooted at parent.
-func makeBlockChain(config *ChainConfig, parent *types.Block, n int, db ethdb.Database, seed int) []*types.Block {
+func makeBlockChain(config *params.ChainConfig, parent *types.Block, n int, db ethdb.Database, seed int) []*types.Block {
 	blocks, _ := GenerateChain(config, parent, db, n, func(i int, b *BlockGen) {
 		b.SetCoinbase(common.Address{0: byte(seed), 19: byte(i)})
 	})

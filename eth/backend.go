@@ -49,6 +49,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/miner"
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/p2p"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/rpc"
 )
@@ -62,10 +63,10 @@ const (
 )
 
 type Config struct {
-	ChainConfig *core.ChainConfig // chain configuration
+	ChainConfig *params.ChainConfig // chain configuration
 
 	NetworkId int // Network ID to use for selecting peers to connect to
-	Genesis   *core.GenesisDump
+	Genesis   *params.GenesisDump
 	FastSync  bool // Enables the state download based fast synchronisation algorithm
 	MaxPeers  int
 
@@ -101,7 +102,7 @@ type Config struct {
 
 type Ethereum struct {
 	config      *Config
-	chainConfig *core.ChainConfig
+	chainConfig *params.ChainConfig
 	// Channel for shutting down the ethereum
 	shutdownChan chan bool
 
@@ -290,7 +291,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	// block is present in the database.
 	genesis := core.GetBlock(chainDb, core.GetCanonicalHash(chainDb, 0))
 	if genesis == nil {
-		genesis, err = core.WriteGenesisBlock(chainDb, core.DefaultConfigMainnet.Genesis)
+		genesis, err = core.WriteGenesisBlock(chainDb, params.DefaultConfigMainnet.Genesis)
 		if err != nil {
 			return nil, err
 		}
@@ -466,7 +467,7 @@ func (s *Ethereum) DappDb() ethdb.Database             { return s.dappDb }
 func (s *Ethereum) IsListening() bool                  { return true } // Always listening
 func (s *Ethereum) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
 func (s *Ethereum) NetVersion() int                    { return s.netVersionId }
-func (s *Ethereum) ChainConfig() *core.ChainConfig     { return s.chainConfig }
+func (s *Ethereum) ChainConfig() *params.ChainConfig   { return s.chainConfig }
 func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 
 // Protocols implements node.Service, returning all the currently configured

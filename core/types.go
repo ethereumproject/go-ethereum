@@ -25,7 +25,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 )
@@ -46,7 +45,7 @@ import (
 type Validator interface {
 	HeaderValidator
 	ValidateBlock(block *types.Block) error
-	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error
+	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error
 	VerifyUncles(block, parent *types.Block) error
 }
 
@@ -65,7 +64,7 @@ type HeaderValidator interface {
 // of gas used in the process and return an error if any of the internal rules
 // failed.
 type Processor interface {
-	Process(block *types.Block, statedb *state.StateDB) (types.Receipts, vm.Logs, *big.Int, error)
+	Process(block *types.Block, statedb *state.StateDB) (types.Receipts, []*types.Log, uint64, error) // TODO:consensus args: + consensus.Engine
 }
 
 // Backend is an interface defining the basic functionality for an operable node

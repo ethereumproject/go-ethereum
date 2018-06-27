@@ -30,6 +30,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 )
 
@@ -53,7 +54,7 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth core.Backend, config *core.ChainConfig, mux *event.TypeMux, pow pow.PoW) *Miner {
+func New(eth core.Backend, config *params.ChainConfig, mux *event.TypeMux, pow pow.PoW) *Miner {
 	miner := &Miner{eth: eth, mux: mux, pow: pow, worker: newWorker(config, common.Address{}, eth), canStart: 1}
 	go miner.update()
 
