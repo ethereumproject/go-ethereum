@@ -234,6 +234,11 @@ func (a *Address) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// UnmarshalText parses a hash in hex syntax.
+func (a *Address) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedText("Address", input, a[:])
+}
+
 // PP Pretty Prints a byte slice in the following format:
 // 	hex(value[:4])...(hex[len(value)-4:])
 func PP(value []byte) string {

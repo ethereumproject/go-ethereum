@@ -17,15 +17,11 @@
 package tests
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/big"
-	"strconv"
 	"strings"
-	"testing"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/common/hexutil"
@@ -37,7 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
@@ -60,7 +55,7 @@ func (t *StateTest) UnmarshalJSON(in []byte) error {
 
 type stJSON struct {
 	Env  stEnv                    `json:"env"`
-	Pre  params.GenesisDumpAlloc  `json:"pre"`
+	Pre  core.GenesisAlloc        `json:"pre"`
 	Tx   stTransaction            `json:"transaction"`
 	Out  hexutil.Bytes            `json:"out"`
 	Post map[string][]stPostState `json:"post"`
@@ -131,7 +126,8 @@ func (t *StateTest) Run(subtest StateSubtest, vmconfig vm.Config) (*state.StateD
 		return nil, UnsupportedForkError{subtest.Fork}
 	}
 	block := t.genesis(config).ToBlock(nil)
-	statedb := MakePreState(ethdb.NewMemDatabase(), t.json.Pre)
+	db, _ := ethdb.NewMemDatabase()
+	statedb := MakePreState(db, t.json.Pre)
 
 	post := t.json.Post[subtest.Fork][subtest.Index]
 	msg, err := t.json.Tx.toMessage(post)
@@ -151,7 +147,7 @@ func (t *StateTest) Run(subtest StateSubtest, vmconfig vm.Config) (*state.StateD
 	if logs := rlpHash(statedb.Logs()); logs != common.Hash(post.Logs) {
 		return statedb, fmt.Errorf("post state logs hash mismatch: got %x, want %x", logs, post.Logs)
 	}
-	root, _ := statedb.Commit(config.IsEIP158(block.Number()))
+	root, _ := statedb.CommitTo(db, config.IsEIP158(block.Number()))
 	if root != common.Hash(post.Root) {
 		return statedb, fmt.Errorf("post state root mismatch: got %x, want %x", root, post.Root)
 	}
@@ -174,7 +170,7 @@ func MakePreState(db ethdb.Database, accounts core.GenesisAlloc) *state.StateDB 
 		}
 	}
 	// Commit and re-open to start with a clean state.
-	root, _ := statedb.Commit(false)
+	root, _ := statedb.CommitTo(db, false)
 	statedb, _ = state.New(root, sdb)
 	return statedb
 }
@@ -195,10 +191,11 @@ func (tx *stTransaction) toMessage(ps stPostState) (core.Message, error) {
 	// Derive sender from private key if present.
 	var from common.Address
 	if len(tx.PrivateKey) > 0 {
-		key, err := crypto.ToECDSA(tx.PrivateKey)
-		if err != nil {
-			return nil, fmt.Errorf("invalid private key: %v", err)
-		}
+		// key, err := crypto.ToECDSA(tx.PrivateKey)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("invalid private key: %v", err)
+		// }
+		key := crypto.ToECDSA(tx.PrivateKey)
 		from = crypto.PubkeyToAddress(key.PublicKey)
 	}
 	// Parse recipient if present.

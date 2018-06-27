@@ -25,8 +25,49 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/params"
 )
+
+var (
+	BlockSkipTests = initBlockSkipTests()
+	/* Go client does not support transaction (account) nonces above 2^64. This
+	technically breaks consensus but is regarded as "reasonable
+	engineering constraint" as accounts cannot easily reach such high
+	nonce values in practice
+	*/
+	TransSkipTests = []string{"TransactionWithHihghNonce256"}
+	StateSkipTests = []string{}
+	VmSkipTests    = []string{}
+)
+
+func initBlockSkipTests() []string {
+	if core.UseSputnikVM {
+		return []string{
+			// These tests are not valid, as they are out of scope for RLP and
+			// the consensus protocol.
+			"BLOCK__RandomByteAtTheEnd",
+			"TRANSCT__RandomByteAtTheEnd",
+			"BLOCK__ZeroByteAtTheEnd",
+			"TRANSCT__ZeroByteAtTheEnd",
+			"ChainAtoChainB_blockorder2",
+			"ChainAtoChainB_blockorder1",
+			"ChainAtoChainB_BlockHash",
+			"CallingCanonicalContractFromFork_CALLCODE",
+		}
+	} else {
+		return []string{
+			// These tests are not valid, as they are out of scope for RLP and
+			// the consensus protocol.
+			"BLOCK__RandomByteAtTheEnd",
+			"TRANSCT__RandomByteAtTheEnd",
+			"BLOCK__ZeroByteAtTheEnd",
+			"TRANSCT__ZeroByteAtTheEnd",
+			"ChainAtoChainB_blockorder2",
+			"ChainAtoChainB_blockorder1",
+		}
+	}
+}
 
 func readJson(reader io.Reader, value interface{}) error {
 	data, err := ioutil.ReadAll(reader)
