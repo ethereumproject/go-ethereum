@@ -22,61 +22,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"os"
-	"path/filepath"
 
-	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/params"
 )
-
-var (
-	baseDir            = filepath.Join(".", "files")
-	blockTestDir       = filepath.Join(baseDir, "BlockchainTests")
-	stateTestDir       = filepath.Join(baseDir, "StateTests")
-	transactionTestDir = filepath.Join(baseDir, "TransactionTests")
-	vmTestDir          = filepath.Join(baseDir, "VMTests")
-	rlpTestDir         = filepath.Join(baseDir, "RLPTests")
-
-	BlockSkipTests = initBlockSkipTests()
-
-	/* Go client does not support transaction (account) nonces above 2^64. This
-	technically breaks consensus but is regarded as "reasonable
-	engineering constraint" as accounts cannot easily reach such high
-	nonce values in practice
-	*/
-	TransSkipTests = []string{"TransactionWithHihghNonce256"}
-	StateSkipTests = []string{}
-	VmSkipTests    = []string{}
-)
-
-func initBlockSkipTests() []string {
-	if core.UseSputnikVM {
-		return []string{
-			// These tests are not valid, as they are out of scope for RLP and
-			// the consensus protocol.
-			"BLOCK__RandomByteAtTheEnd",
-			"TRANSCT__RandomByteAtTheEnd",
-			"BLOCK__ZeroByteAtTheEnd",
-			"TRANSCT__ZeroByteAtTheEnd",
-
-			"ChainAtoChainB_blockorder2",
-			"ChainAtoChainB_blockorder1",
-			"ChainAtoChainB_BlockHash",
-			"CallingCanonicalContractFromFork_CALLCODE",
-		}
-	} else {
-		return []string{
-			// These tests are not valid, as they are out of scope for RLP and
-			// the consensus protocol.
-			"BLOCK__RandomByteAtTheEnd",
-			"TRANSCT__RandomByteAtTheEnd",
-			"BLOCK__ZeroByteAtTheEnd",
-			"TRANSCT__ZeroByteAtTheEnd",
-
-			"ChainAtoChainB_blockorder2",
-			"ChainAtoChainB_blockorder1",
-		}
-	}
-}
 
 func readJson(reader io.Reader, value interface{}) error {
 	data, err := ioutil.ReadAll(reader)
@@ -99,7 +49,6 @@ func readJsonFile(fn string, value interface{}) error {
 		return err
 	}
 	defer file.Close()
-
 	err = readJson(file, value)
 	if err != nil {
 		return fmt.Errorf("%s in file %s", err.Error(), fn)
@@ -119,4 +68,68 @@ func findLine(data []byte, offset int64) (line int) {
 		}
 	}
 	return
+}
+
+// Forks table defines supported forks and their chain config.
+var Forks = map[string]*params.ChainConfig{
+	"Frontier": {
+		ChainID: big.NewInt(1),
+	},
+	"Homestead": {
+		ChainID:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+	},
+	"EIP150": {
+		ChainID:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(0),
+	},
+	"EIP158": {
+		ChainID:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(0),
+		EIP155Block:    big.NewInt(0),
+		EIP158Block:    big.NewInt(0),
+	},
+	"Byzantium": {
+		ChainID:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(0),
+		EIP155Block:    big.NewInt(0),
+		EIP158Block:    big.NewInt(0),
+		DAOForkBlock:   big.NewInt(0),
+		ByzantiumBlock: big.NewInt(0),
+	},
+	"FrontierToHomesteadAt5": {
+		ChainID:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(5),
+	},
+	"HomesteadToEIP150At5": {
+		ChainID:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(5),
+	},
+	"HomesteadToDaoAt5": {
+		ChainID:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		DAOForkBlock:   big.NewInt(5),
+		DAOForkSupport: true,
+	},
+	"EIP158ToByzantiumAt5": {
+		ChainID:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(0),
+		EIP155Block:    big.NewInt(0),
+		EIP158Block:    big.NewInt(0),
+		ByzantiumBlock: big.NewInt(5),
+	},
+}
+
+// UnsupportedForkError is returned when a test requests a fork that isn't implemented.
+type UnsupportedForkError struct {
+	Name string
+}
+
+func (e UnsupportedForkError) Error() string {
+	return fmt.Sprintf("unsupported fork %q", e.Name)
 }

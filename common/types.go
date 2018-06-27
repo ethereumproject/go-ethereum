@@ -25,6 +25,8 @@ import (
 	"math/rand"
 	"reflect"
 	"strings"
+
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
 )
 
 const (
@@ -113,6 +115,32 @@ func EmptyHash(h Hash) bool {
 
 func (h Hash) IsEmpty() bool {
 	return EmptyHash(h)
+}
+
+// UnprefixedHash allows marshaling a Hash without 0x prefix.
+type UnprefixedHash Hash
+
+// UnmarshalText decodes the hash from hex. The 0x prefix is optional.
+func (h *UnprefixedHash) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedUnprefixedText("UnprefixedHash", input, h[:])
+}
+
+// MarshalText encodes the hash as hex.
+func (h UnprefixedHash) MarshalText() ([]byte, error) {
+	return []byte(hex.EncodeToString(h[:])), nil
+}
+
+// UnprefixedAddress allows marshaling an Address without 0x prefix.
+type UnprefixedAddress Address
+
+// UnmarshalText decodes the address from hex. The 0x prefix is optional.
+func (a *UnprefixedAddress) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedUnprefixedText("UnprefixedAddress", input, a[:])
+}
+
+// MarshalText encodes the address as hex.
+func (a UnprefixedAddress) MarshalText() ([]byte, error) {
+	return []byte(hex.EncodeToString(a[:])), nil
 }
 
 /////////// Address
