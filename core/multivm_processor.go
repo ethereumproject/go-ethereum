@@ -23,7 +23,7 @@ var UseSputnikVM = false
 // chain config and state. Note that we use the name of the chain
 // config to determine which hard fork to use so ClassicVM's gas table
 // would not be used.
-func ApplyMultiVmTransaction(config *params.ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas uint64) (*types.Receipt, []*types.Log, uint64, error) {
+func ApplyMultiVmTransaction(config *params.ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas *uint64) (*types.Receipt, []*types.Log, uint64, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
 
 	from, err := tx.From()
@@ -129,21 +129,21 @@ Loop:
 
 	// VM execution is finished at this point. We apply changes to the statedb.
 
-	for _, account := range vm.AccountRefChanges() {
+	for _, account := range vm.AccountChanges() {
 		switch account.Typ() {
-		case sputnikvm.AccountRefChangeIncreaseBalance:
+		case sputnikvm.AccountChangeIncreaseBalance:
 			address := account.Address()
 			amount := account.ChangedAmount()
 			statedb.AddBalance(address, amount)
-		case sputnikvm.AccountRefChangeDecreaseBalance:
+		case sputnikvm.AccountChangeDecreaseBalance:
 			address := account.Address()
 			amount := account.ChangedAmount()
 			balance := new(big.Int).Sub(statedb.GetBalance(address), amount)
 			statedb.SetBalance(address, balance)
-		case sputnikvm.AccountRefChangeRemoved:
+		case sputnikvm.AccountChangeRemoved:
 			address := account.Address()
 			statedb.Suicide(address)
-		case sputnikvm.AccountRefChangeFull:
+		case sputnikvm.AccountChangeFull:
 			address := account.Address()
 			code := account.Code()
 			nonce := account.Nonce()
@@ -154,7 +154,7 @@ Loop:
 			for _, item := range account.ChangedStorage() {
 				statedb.SetState(address, common.BigToHash(item.Key), common.BigToHash(item.Value))
 			}
-		case sputnikvm.AccountRefChangeCreate:
+		case sputnikvm.AccountChangeCreate:
 			address := account.Address()
 			code := account.Code()
 			nonce := account.Nonce()
@@ -181,11 +181,11 @@ Loop:
 		statedb.AddLog(statelog)
 	}
 	usedGas := vm.UsedGas()
-	totalUsedGas += usedGas.Uint64()
+	*totalUsedGas += usedGas.Uint64()
 
-	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), false, totalUsedGas)
+	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), false, *totalUsedGas)
 	receipt.TxHash = tx.Hash()
-	receipt.GasUsed = totalUsedGas
+	receipt.GasUsed = usedGas.Uint64()
 	if tx.To() == nil {
 		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 	}
@@ -197,5 +197,5 @@ Loop:
 	glog.V(logger.Debug).Infoln(receipt)
 
 	vm.Free()
-	return receipt, logs, totalUsedGas, nil
+	return receipt, logs, usedGas.Uint64(), nil
 }
