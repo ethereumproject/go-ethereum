@@ -158,9 +158,27 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		head.Difficulty = params.GenesisDifficulty
 	}
 
-	statedb.CommitTo(db, false)
-	tr, _ := statedb.OpenTrie(root)
-	tr.CommitTo(db)
+	_, err := statedb.CommitTo(db, false)
+	if err != nil {
+		panic("err committo statedb " + err.Error())
+	}
+	// sdb, err := state.New(root, state.NewDatabase(db))
+	// if err != nil {
+	// 	panic("err stateNew " + err.Error())
+	// }
+	// _, err = sdb.CommitTo(db, false)
+	// if err != nil {
+	// 	panic("sdb committo " + err.Error())
+	// }
+	// tr, err := statedb.OpenTrie(root)
+	// if err != nil {
+	// 	panic("err open trie " + err.Error())
+	// }
+	// _, err = tr.CommitTo(db)
+	// if err != nil {
+	// 	panic("err commit trie " + err.Error())
+	// }
+	// statedb.Database().OpenTrie()
 	// statedb.Database().TrieDB().Commit(root, true)
 
 	return types.NewBlock(head, nil, nil, nil)
@@ -198,11 +216,11 @@ func (g *Genesis) MustCommit(db ethdb.Database) *types.Block {
 	return block
 }
 
-// GenesisBlockForTesting creates and writes a block in which addr has the given wei balance.
-func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big.Int) *types.Block {
-	g := Genesis{Alloc: GenesisAlloc{addr: {Balance: balance}}}
-	return g.MustCommit(db)
-}
+// // GenesisBlockForTesting creates and writes a block in which addr has the given wei balance.
+// func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big.Int) *types.Block {
+// 	g := Genesis{Alloc: GenesisAlloc{addr: {Balance: balance}}}
+// 	return g.MustCommit(db)
+// }
 
 //
 // // DefaultGenesisBlock returns the Ethereum main net genesis block.
