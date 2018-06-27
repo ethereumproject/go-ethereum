@@ -8,10 +8,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	evm "github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/sputnikvm-ffi/go/sputnikvm"
 )
 
@@ -23,12 +23,12 @@ var UseSputnikVM = false
 // chain config and state. Note that we use the name of the chain
 // config to determine which hard fork to use so ClassicVM's gas table
 // would not be used.
-func ApplyMultiVmTransaction(config *params.ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas *big.Int) (*types.Receipt, []*types.Log, *big.Int, error) {
+func ApplyMultiVmTransaction(config *params.ChainConfig, bc *BlockChain, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, totalUsedGas uint64) (*types.Receipt, []*types.Log, uint64, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
 
 	from, err := tx.From()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, 0, err
 	}
 	vmtx := sputnikvm.Transaction{
 		Caller:   from,
@@ -44,7 +44,7 @@ func ApplyMultiVmTransaction(config *params.ChainConfig, bc *BlockChain, gp *Gas
 		Timestamp:   header.Time.Uint64(),
 		Number:      header.Number,
 		Difficulty:  header.Difficulty,
-		GasLimit:    header.GasLimit,
+		GasLimit:    new(big.Int).SetUint64(header.GasLimit),
 	}
 
 	currentNumber := header.Number
@@ -170,16 +170,23 @@ Loop:
 		}
 	}
 	for _, log := range vm.Logs() {
-		statelog := evm.NewLog(log.Address, log.Topics, log.Data, header.Number.Uint64())
-		statedb.AddLog(*statelog)
+		statelog := &types.Log{
+			Address:     log.Address,
+			Topics:      log.Topics,
+			Data:        log.Data,
+			BlockNumber: header.Number.Uint64(),
+			TxHash:      tx.Hash(),
+		}
+		// (, log.Topics, log.Data, header.Number.Uint64())
+		statedb.AddLog(statelog)
 	}
 	usedGas := vm.UsedGas()
-	totalUsedGas.Add(totalUsedGas, usedGas)
+	totalUsedGas += usedGas.Uint64()
 
-	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), totalUsedGas)
+	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), false, totalUsedGas)
 	receipt.TxHash = tx.Hash()
-	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
-	if MessageCreatesContract(tx) {
+	receipt.GasUsed = totalUsedGas
+	if tx.To() == nil {
 		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 	}
 
