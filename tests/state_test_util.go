@@ -115,13 +115,13 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 			continue
 		}
 
-		//fmt.Println("StateTest:", name)
+		// fmt.Println("StateTest:", name)
 		if err := runStateTest(ruleSet, test); err != nil {
 			return fmt.Errorf("%s: %s\n", name, err.Error())
 		}
 
-		//glog.Infoln("State test passed: ", name)
-		//fmt.Println(string(statedb.Dump()))
+		// glog.Infoln("State test passed: ", name)
+		// fmt.Println(string(statedb.Dump()))
 	}
 	return nil
 
@@ -129,8 +129,6 @@ func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string)
 
 func runStateTest(ruleSet RuleSet, test VmTest) error {
 	db, _ := ethdb.NewMemDatabase()
-	statedb := makePreState(db, test.Pre)
-
 	// XXX Yeah, yeah...
 	env := make(map[string]string)
 	env["currentCoinbase"] = test.Env.CurrentCoinbase
@@ -144,6 +142,8 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		env["currentTimestamp"] = test.Env.CurrentTimestamp.(string)
 	}
 
+	statedb := makePreState(db, test.Pre)
+
 	var (
 		ret []byte
 		// gas  *big.Int
@@ -156,7 +156,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 	// Compare expected and actual return
 	rexp := common.FromHex(test.Out)
 	if bytes.Compare(rexp, ret) != 0 {
-		return fmt.Errorf("return failed. Expected %x, got %x\n", rexp, ret)
+		return fmt.Errorf("return failed") // Expected %x, got %x\n", rexp[:0], ret[:0])
 	}
 
 	// check post state
@@ -172,7 +172,8 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		if balance, ok := new(big.Int).SetString(account.Balance, 0); !ok {
 			panic("malformed test account balance")
 		} else if balance.Cmp(obj.Balance()) != 0 {
-			return fmt.Errorf("(%x) balance failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], account.Balance, obj.Balance())
+			return fmt.Errorf(`(%x) balance failed. Expected: %v have: %v
+`, obj.Address().Bytes()[:4], account.Balance, obj.Balance())
 		}
 
 		if nonce, err := strconv.ParseUint(account.Nonce, 0, 64); err != nil {
@@ -226,8 +227,7 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 	}
 
 	// Set pre compiled contracts
-	// vm.Precompiled = vm.PrecompiledContracts()
-	snapshot := statedb.Snapshot()
+
 	currentGasLimit, ok := new(big.Int).SetString(env["currentGasLimit"], 0)
 	if !ok {
 		panic("malformed currentGasLimit")
@@ -245,13 +245,15 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 
 	vmenv := NewEnvFromMap(ruleSet, statedb, env, tx)
 
-	cconfig := params.DefaultConfigMorden.ChainConfig
+	cconfig := params.TestChainConfig
 	cconfig.HomesteadBlock = ruleSet.HomesteadBlock
 	cconfig.ForkByName("Diehard").Block = ruleSet.DiehardBlock
 	// ruleSet.ExplosionBlock
 	cconfig.EIP150Block = ruleSet.HomesteadGasRepriceBlock
 
-	bl, err := core.WriteGenesisBlock(db, &params.GenesisDump{
+	scrapMemDb, _ := ethdb.NewMemDatabase()
+
+	bl, err := core.WriteGenesisBlock(scrapMemDb, &params.GenesisDump{
 		// Nonce:      vmenv.,
 		Number:     params.PrefixedHex(env["currentNumber"]),
 		Timestamp:  params.PrefixedHex(env["currentTimestamp"]),
@@ -267,12 +269,21 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	context := core.NewEVMContext(message, bl.Header(), nil, &vmenv.coinbase)
+	// -- doesn't help, doesn't hurt - 22/26/6
+	h := bl.Header()
+	h.Number, _ = new(big.Int).SetString(env["currentNumber"], 0)
+	nb := types.NewBlock(h, nil, nil, nil)
+	core.WriteBlock(db, nb)
+	// --
+	// nb = bl ; same same
+	// --
+	context := core.NewEVMContext(message, nb.Header(), nil, &vmenv.coinbase)
 	context.GetHash = vmTestBlockHash
 	// context2 := vmenv.VmContext()
 	vmenv.evm = vm.NewEVM(context, vmenv.state, cconfig, vm.Config{})
 	vmenv.origin = addr
+	// vm.Precompiled = vm.PrecompiledContracts()
+	snapshot := statedb.Snapshot()
 
 	ret, _, _, err := core.ApplyMessage(vmenv.evm, message, gaspool)
 	// if err != nil {
@@ -281,7 +292,7 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 
 	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || core.IsGasLimitErr(err) {
 		statedb.RevertToSnapshot(snapshot)
-		statedb.CommitTo(db, false)
+		// statedb.CommitTo(db, false)
 	}
 
 	statedb.CommitTo(db, false)
