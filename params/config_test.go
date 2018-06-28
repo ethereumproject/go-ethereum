@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-<<<<<<< HEAD:core/config_test.go
 	"path/filepath"
 
 	"reflect"
@@ -17,10 +16,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-=======
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
->>>>>>> whilei/mini-moaf-statetests:params/config_test.go
 )
 
 func TestConfigErrorProperties(t *testing.T) {

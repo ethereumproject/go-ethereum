@@ -201,11 +201,7 @@ func NewBlockChain(chainDb ethdb.Database, config *params.ChainConfig, pow pow.P
 	return bc, nil
 }
 
-<<<<<<< HEAD
 func NewBlockChainDryrun(chainDb ethdb.Database, config *ChainConfig, engine consensus.Engine, mux *event.TypeMux) (*BlockChain, error) {
-=======
-func NewBlockChainDryrun(chainDb ethdb.Database, config *params.ChainConfig, pow pow.PoW, mux *event.TypeMux) (*BlockChain, error) {
->>>>>>> whilei/mini-moaf-statetests
 	bodyCache, _ := lru.New(bodyCacheLimit)
 	bodyRLPCache, _ := lru.New(bodyCacheLimit)
 	blockCache, _ := lru.New(blockCacheLimit)
