@@ -29,11 +29,15 @@ import (
 	"sync/atomic"
 	"time"
 
+<<<<<<< HEAD
 	"reflect"
 	"strconv"
 
 	"encoding/binary"
 
+=======
+	"github.com/ethereum/go-ethereum/core/rawdb"
+>>>>>>> 1bcb3d12f... Fix merge conflicts
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -1113,7 +1117,6 @@ func (bc *BlockChain) GetBodyRLP(hash common.Hash) rlp.RawValue {
 // func (bc *BlockChain) HasBlock(hash common.Hash) bool {
 // 	return bc.GetBlock(hash) != nil
 // }
-
 
 // HasBlock checks if a block is fully present in the database or not.
 func (bc *BlockChain) HasBlock(hash common.Hash, number uint64) bool {

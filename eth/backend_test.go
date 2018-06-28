@@ -36,6 +36,7 @@ func TestMipmapUpgrade(t *testing.T) {
 		var receipts types.Receipts
 		switch i {
 		case 1:
+<<<<<<< HEAD
 			receipt := types.NewReceipt(nil, new(big.Int))
 			receipt.Logs = vm.Logs{&vm.Log{Address: addr}}
 			gen.AddUncheckedReceipt(receipt)
@@ -43,6 +44,15 @@ func TestMipmapUpgrade(t *testing.T) {
 		case 2:
 			receipt := types.NewReceipt(nil, new(big.Int))
 			receipt.Logs = vm.Logs{&vm.Log{Address: addr}}
+=======
+			receipt := types.NewReceipt(nil, false, 0)
+			receipt.Logs = []*types.Log{{Address: addr}}
+			gen.AddUncheckedReceipt(receipt)
+			receipts = types.Receipts{receipt}
+		case 2:
+			receipt := types.NewReceipt(nil, false, 0)
+			receipt.Logs = []*types.Log{{Address: addr}}
+>>>>>>> 1bcb3d12f... Fix merge conflicts
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		}
