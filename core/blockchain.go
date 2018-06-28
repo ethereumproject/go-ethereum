@@ -32,6 +32,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -147,11 +148,7 @@ func (bc *BlockChain) GetBlockByHash(h common.Hash) *types.Block {
 // NewBlockChain returns a fully initialised block chain using information
 // available in the database. It initialises the default Ethereum Validator and
 // Processor.
-<<<<<<< HEAD
 func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus.Engine, mux *event.TypeMux) (*BlockChain, error) {
-=======
-func NewBlockChain(chainDb ethdb.Database, config *params.ChainConfig, pow pow.PoW, mux *event.TypeMux) (*BlockChain, error) {
->>>>>>> whilei/mini-moaf-statetests
 	bodyCache, _ := lru.New(bodyCacheLimit)
 	bodyRLPCache, _ := lru.New(bodyCacheLimit)
 	blockCache, _ := lru.New(blockCacheLimit)
@@ -1118,7 +1115,6 @@ func (bc *BlockChain) GetBodyRLP(hash common.Hash) rlp.RawValue {
 // func (bc *BlockChain) HasBlock(hash common.Hash) bool {
 // 	return bc.GetBlock(hash) != nil
 // }
-
 
 // HasBlock checks if a block is fully present in the database or not.
 func (bc *BlockChain) HasBlock(hash common.Hash, number uint64) bool {

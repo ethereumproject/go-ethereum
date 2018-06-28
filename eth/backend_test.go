@@ -36,12 +36,12 @@ func TestMipmapUpgrade(t *testing.T) {
 		switch i {
 		case 1:
 			receipt := types.NewReceipt(nil, false, 0)
-			receipt.Logs = []*types.Log{&types.Log{Address: addr}}
+			receipt.Logs = []*types.Log{{Address: addr}}
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 2:
 			receipt := types.NewReceipt(nil, false, 0)
-			receipt.Logs = []*types.Log{&types.Log{Address: addr}}
+			receipt.Logs = []*types.Log{{Address: addr}}
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		}

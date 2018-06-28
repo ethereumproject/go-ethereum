@@ -39,7 +39,7 @@ func init() {
 func makeReceipt(addr common.Address) *types.Receipt {
 	receipt := types.NewReceipt(nil, false, 0)
 	receipt.Logs = []*types.Log{
-		&types.Log{Address: addr},
+		{Address: addr},
 	}
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	return receipt
@@ -145,7 +145,7 @@ func TestFilters(t *testing.T) {
 		case 1:
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
-				&types.Log{
+				{
 					Address: addr,
 					Topics:  []common.Hash{hash1},
 				},
@@ -155,7 +155,7 @@ func TestFilters(t *testing.T) {
 		case 2:
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
-				&types.Log{
+				{
 					Address: addr,
 					Topics:  []common.Hash{hash2},
 				},
@@ -165,7 +165,7 @@ func TestFilters(t *testing.T) {
 		case 998:
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
-				&types.Log{
+				{
 					Address: addr,
 					Topics:  []common.Hash{hash3},
 				},
@@ -175,7 +175,7 @@ func TestFilters(t *testing.T) {
 		case 999:
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
-				&types.Log{
+				{
 					Address: addr,
 					Topics:  []common.Hash{hash4},
 				},

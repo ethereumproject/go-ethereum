@@ -49,11 +49,7 @@ type SimulatedBackend struct {
 func NewSimulatedBackend(accounts ...params.GenesisAccount) *SimulatedBackend {
 	database, _ := ethdb.NewMemDatabase()
 	core.WriteGenesisBlockForTesting(database, accounts...)
-<<<<<<< HEAD
 	blockchain, _ := core.NewBlockChain(database, core.DefaultConfigMorden.ChainConfig, ethash.NewFaker(), new(event.TypeMux))
-=======
-	blockchain, _ := core.NewBlockChain(database, params.DefaultConfigMorden.ChainConfig, new(core.FakePow), new(event.TypeMux))
->>>>>>> whilei/mini-moaf-statetests
 
 	backend := &SimulatedBackend{
 		database:   database,
