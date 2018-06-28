@@ -1,0 +1,10 @@
+# Conflicts:
+#▸      accounts/abi/bind/backends/simulated.go
+#▸      cmd/geth/flag.go
+#▸      core/block_validator.go
+#▸      core/blockchain.go
+#▸      core/database_util_test.go
+#▸      core/error.go
+#▸      params/assets/assets.go
+#▸      params/config_test.go
+

@@ -24,6 +24,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 )
 
