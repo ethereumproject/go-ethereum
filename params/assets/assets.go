@@ -137,11 +137,7 @@ var DEFAULTS *FileSystem
 func init() {
 	DEFAULTS = &FileSystem{
 		files: map[string]File{
-<<<<<<< HEAD:core/assets/assets.go
-			"/core/config/mainnet.json": {
-=======
 			"/params/config/mainnet.json": File{
->>>>>>> whilei/mini-moaf-statetests:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x69, 0x64, 0x65, 0x6e, 0x74,
 					0x69, 0x74, 0x79, 0x22, 0x3a, 0x20, 0x22, 0x6d, 0x61, 0x69, 0x6e, 0x6e,
@@ -50797,11 +50793,7 @@ func init() {
 					modTime: time.Unix(0, 1529609730000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/morden.json": {
-=======
 			}, "/params/config/morden.json": File{
->>>>>>> whilei/mini-moaf-statetests:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x69, 0x64, 0x65, 0x6e, 0x74,
 					0x69, 0x74, 0x79, 0x22, 0x3a, 0x20, 0x22, 0x6d, 0x6f, 0x72, 0x64, 0x65,
@@ -51154,11 +51146,7 @@ func init() {
 					modTime: time.Unix(0, 1529609730000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/morden_bootnodes.json": {
-=======
 			}, "/params/config/morden_bootnodes.json": File{
->>>>>>> whilei/mini-moaf-statetests:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x62, 0x6f, 0x6f, 0x74, 0x73,
 					0x74, 0x72, 0x61, 0x70, 0x22, 0x3a, 0x20, 0x5b, 0x0a, 0x20, 0x20, 0x20,
@@ -51380,11 +51368,7 @@ func init() {
 					modTime: time.Unix(0, 1529609730000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/morden_genesis.json": {
-=======
 			}, "/params/config/morden_genesis.json": File{
->>>>>>> whilei/mini-moaf-statetests:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x67, 0x65, 0x6e, 0x65, 0x73,
 					0x69, 0x73, 0x22, 0x3a, 0x20, 0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20,
@@ -51424,11 +51408,7 @@ func init() {
 					modTime: time.Unix(0, 1529609730000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/morden_genesis_alloc.csv": {
-=======
 			}, "/params/config/morden_genesis_alloc.csv": File{
->>>>>>> whilei/mini-moaf-statetests:params/assets/assets.go
 				data: []byte{
 					0x22, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
 					0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
