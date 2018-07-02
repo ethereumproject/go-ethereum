@@ -158,7 +158,7 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus
 		config:       config,
 		chainDb:      chainDb,
 		eventMux:     mux,
-		quit:         make(chan struct{}),
+		quit:         make(chzan struct{}),
 		bodyCache:    bodyCache,
 		bodyRLPCache: bodyRLPCache,
 		blockCache:   blockCache,
