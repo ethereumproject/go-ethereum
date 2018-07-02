@@ -96,55 +96,55 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	return nil
 }
 
-// ValidateBlock validates the given block's header and uncles and verifies the
-// the block header's transaction and uncle roots.
-//
-// ValidateBlock does not validate the header's pow. The pow work validated
-// separately so we can process them in parallel.
-//
-// ValidateBlock also validates and makes sure that any previous state (or present)
-// state that might or might not be present is checked to make sure that fast
-// sync has done it's job proper. This prevents the block validator form accepting
-// false positives where a header is present but the state is not.
-func (v *BlockValidator) ValidateBlock(block *types.Block) error {
-	if v.bc.HasBlock(block.Hash()) {
-		if _, err := state.New(block.Root(), state.NewDatabase(v.bc.chainDb)); err == nil {
-			return &KnownBlockError{block.Number(), block.Hash()}
-		}
-	}
-	parent := v.bc.GetBlock(block.ParentHash())
-	if parent == nil {
-		return ParentError(block.ParentHash())
-	}
-	if _, err := state.New(parent.Root(), state.NewDatabase(v.bc.chainDb)); err != nil {
-		return ParentError(block.ParentHash())
-	}
+// // ValidateBlock validates the given block's header and uncles and verifies the
+// // the block header's transaction and uncle roots.
+// //
+// // ValidateBlock does not validate the header's pow. The pow work validated
+// // separately so we can process them in parallel.
+// //
+// // ValidateBlock also validates and makes sure that any previous state (or present)
+// // state that might or might not be present is checked to make sure that fast
+// // sync has done it's job proper. This prevents the block validator form accepting
+// // false positives where a header is present but the state is not.
+// func (v *BlockValidator) ValidateBlock(block *types.Block) error {
+// 	if v.bc.HasBlock(block.Hash(), block.NumberU64()) {
+// 		if _, err := state.New(block.Root(), state.NewDatabase(v.bc.chainDb)); err == nil {
+// 			return &KnownBlockError{block.Number(), block.Hash()}
+// 		}
+// 	}
+// 	parent := v.bc.GetBlock(block.ParentHash())
+// 	if parent == nil {
+// 		return ParentError(block.ParentHash())
+// 	}
+// 	if _, err := state.New(parent.Root(), state.NewDatabase(v.bc.chainDb)); err != nil {
+// 		return ParentError(block.ParentHash())
+// 	}
 
-	header := block.Header()
-	// validate the block header
-	if err := ValidateHeader(v.config, v.Pow, header, parent.Header(), false, false); err != nil {
-		return err
-	}
-	// verify the uncles are correctly rewarded
-	if err := v.VerifyUncles(block, parent); err != nil {
-		return err
-	}
+// 	header := block.Header()
+// 	// validate the block header
+// 	if err := ValidateHeader(v.config, v.Pow, header, parent.Header(), false, false); err != nil {
+// 		return err
+// 	}
+// 	// verify the uncles are correctly rewarded
+// 	if err := v.VerifyUncles(block, parent); err != nil {
+// 		return err
+// 	}
 
-	// Verify UncleHash before running other uncle validations
-	unclesSha := types.CalcUncleHash(block.Uncles())
-	if unclesSha != header.UncleHash {
-		return fmt.Errorf("invalid uncles root hash. received=%x calculated=%x", header.UncleHash, unclesSha)
-	}
+// 	// Verify UncleHash before running other uncle validations
+// 	unclesSha := types.CalcUncleHash(block.Uncles())
+// 	if unclesSha != header.UncleHash {
+// 		return fmt.Errorf("invalid uncles root hash. received=%x calculated=%x", header.UncleHash, unclesSha)
+// 	}
 
-	// The transactions Trie's root (R = (Tr [[i, RLP(T1)], [i, RLP(T2)], ... [n, RLP(Tn)]]))
-	// can be used by light clients to make sure they've received the correct Txs
-	txSha := types.DeriveSha(block.Transactions())
-	if txSha != header.TxHash {
-		return fmt.Errorf("invalid transaction root hash. received=%x calculated=%x", header.TxHash, txSha)
-	}
+// 	// The transactions Trie's root (R = (Tr [[i, RLP(T1)], [i, RLP(T2)], ... [n, RLP(Tn)]]))
+// 	// can be used by light clients to make sure they've received the correct Txs
+// 	txSha := types.DeriveSha(block.Transactions())
+// 	if txSha != header.TxHash {
+// 		return fmt.Errorf("invalid transaction root hash. received=%x calculated=%x", header.TxHash, txSha)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // ValidateState validates the various changes that happen after a state
 // transition, such as amount of used gas, the receipt roots and the state root
