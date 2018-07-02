@@ -138,12 +138,21 @@ type HeaderChainInsertResult struct {
 	Error error
 }
 
+
+// GetHeaderByHash retrieves a block header from the database by hash, caching it if
+// found.
 func (bc *BlockChain) GetHeaderByHash(h common.Hash) *types.Header {
-	return bc.hc.GetHeader(h)
+	return bc.hc.GetHeaderByHash(h)
 }
 
-func (bc *BlockChain) GetBlockByHash(h common.Hash) *types.Block {
-	return bc.GetBlock(h)
+
+// GetBlockByHash retrieves a block from the database by hash, caching it if found.
+func (bc *BlockChain) GetBlockByHash(hash common.Hash) *types.Block {
+	number := bc.hc.GetBlockNumber(hash)
+	if number == nil {
+		return nil
+	}
+	return bc.GetBlock(hash, *number)
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -159,7 +168,7 @@ func NewBlockChain(chainDb ethdb.Database, config *ChainConfig, engine consensus
 		config:       config,
 		chainDb:      chainDb,
 		eventMux:     mux,
-		quit:         make(chzan struct{}),
+		quit:         make(chan struct{}),
 		bodyCache:    bodyCache,
 		bodyRLPCache: bodyRLPCache,
 		blockCache:   blockCache,
@@ -1146,13 +1155,15 @@ func (bc *BlockChain) HasBlockAndState(hash common.Hash, number uint64) bool {
 	return bc.HasState(block.Root())
 }
 
-// GetBlock retrieves a block from the database by hash, caching it if found.
-func (bc *BlockChain) GetBlock(hash common.Hash) *types.Block {
+
+// GetBlock retrieves a block from the database by hash and number,
+// caching it if found.
+func (bc *BlockChain) GetBlock(hash common.Hash, number uint64) *types.Block {
 	// Short circuit if the block's already in the cache, retrieve otherwise
 	if block, ok := bc.blockCache.Get(hash); ok {
 		return block.(*types.Block)
 	}
-	block := GetBlock(bc.chainDb, hash)
+	block := rawdb.ReadBlock(bc.db, hash, number)
 	if block == nil {
 		return nil
 	}
@@ -1620,7 +1631,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 
 		// Stage 1 validation of the block using the chain's validator
 		// interface.
-		err := bc.Validator().ValidateBlock(block)
+		err := bc.Validator().ValidateBody(block)
 		if err != nil {
 			if IsKnownBlockErr(err) {
 				stats.ignored++
@@ -2037,10 +2048,10 @@ func (bc *BlockChain) GetTd(hash common.Hash) *big.Int {
 	return bc.hc.GetTd(hash)
 }
 
-// GetHeader retrieves a block header from the database by hash, caching it if
-// found.
-func (bc *BlockChain) GetHeader(hash common.Hash) *types.Header {
-	return bc.hc.GetHeader(hash)
+// GetHeader retrieves a block header from the database by hash and number,
+// caching it if found.
+func (bc *BlockChain) GetHeader(hash common.Hash, number uint64) *types.Header {
+	return bc.hc.GetHeader(hash, number)
 }
 
 // HasHeader checks if a block header is present in the database or not, caching

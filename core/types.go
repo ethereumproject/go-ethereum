@@ -45,8 +45,14 @@ import (
 // gas used. The implementer should decide what to do with the given input.
 type Validator interface {
 	HeaderValidator
+<<<<<<< HEAD
 	ValidateBlock(block *types.Block) error
 	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error
+=======
+	// ValidateBody validates the given block's content.
+	ValidateBody(block *types.Block) error
+	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error
+>>>>>>> 3993033d4... Update block validation
 	VerifyUncles(block, parent *types.Block) error
 }
 
