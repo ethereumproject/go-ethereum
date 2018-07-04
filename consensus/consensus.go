@@ -20,11 +20,11 @@ package consensus
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // ChainReader defines a small collection of methods needed to access the local

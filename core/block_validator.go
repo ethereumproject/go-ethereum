@@ -53,7 +53,7 @@ type DifficultyConfig struct {
 // BlockValidator implements Validator.
 type BlockValidator struct {
 	config *params.ChainConfig // Chain configuration options
-	bc     *BlockChain  // Canonical block chain
+	bc     *BlockChain         // Canonical block chain
 	engine consensus.Engine
 	// Pow    pow.PoW // Proof of work used for validating
 }
