@@ -138,13 +138,11 @@ type HeaderChainInsertResult struct {
 	Error error
 }
 
-
 // GetHeaderByHash retrieves a block header from the database by hash, caching it if
 // found.
 func (bc *BlockChain) GetHeaderByHash(h common.Hash) *types.Header {
 	return bc.hc.GetHeaderByHash(h)
 }
-
 
 // GetBlockByHash retrieves a block from the database by hash, caching it if found.
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) *types.Block {
@@ -1154,7 +1152,6 @@ func (bc *BlockChain) HasBlockAndState(hash common.Hash, number uint64) bool {
 	return err == nil
 	return bc.HasState(block.Root())
 }
-
 
 // GetBlock retrieves a block from the database by hash and number,
 // caching it if found.

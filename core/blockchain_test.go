@@ -452,7 +452,7 @@ func TestChainMultipleInsertions(t *testing.T) {
 
 type bproc struct{}
 
-func (bproc) ValidateBody(*types.Block) error                        { return nil }
+func (bproc) ValidateBody(*types.Block) error                         { return nil }
 func (bproc) ValidateHeader(*types.Header, *types.Header, bool) error { return nil }
 func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
 	return nil
