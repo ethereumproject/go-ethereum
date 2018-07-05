@@ -849,6 +849,7 @@ func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx
 		"hash":             b.Hash(),
 		"parentHash":       b.ParentHash(),
 		"nonce":            b.Header().Nonce,
+		"mixHash":          b.Header().MixDigest,
 		"sha3Uncles":       b.UncleHash(),
 		"logsBloom":        b.Bloom(),
 		"stateRoot":        b.Root(),
