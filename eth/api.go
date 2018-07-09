@@ -1181,7 +1181,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 			return nil, err
 		}
 		glog.V(logger.Info).Infof("tzdybal: ReplayTransaction")
-		receipt, err = proc.ReplayTransaction(txHash, statedb)
+		receipt, err = proc.PlaybackTransaction(txHash, statedb)
 		if err != nil {
 			return nil, err
 		}

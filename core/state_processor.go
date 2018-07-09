@@ -109,7 +109,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 	return receipts, allLogs, totalUsedGas, err
 }
 
-func (p *StateProcessor) ReplayTransaction(txHash common.Hash, statedb *state.StateDB) (*types.Receipt, error) {
+func (p *StateProcessor) PlaybackTransaction(txHash common.Hash, statedb *state.StateDB) (*types.Receipt, error) {
 	statedb = statedb.Copy()
 
 	blockHash, _, index, err := getTransactionBlockData(p.bc.chainDb, txHash)

@@ -257,6 +257,8 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	}
 
 	if vmerr != nil && IsValueTransferErr(vmerr) {
+		// if the vmerr was a value transfer error, return immediately
+		// transaction receipt status will be set to TxSuccess
 		return nil, nil, nil, false, InvalidTxError(vmerr)
 	}
 
@@ -280,7 +282,6 @@ func (self *StateTransition) refundGas() {
 	refund := common.BigMin(uhalf, self.state.GetRefund())
 	self.gas.Add(self.gas, refund)
 	self.state.AddBalance(sender.Address(), refund.Mul(refund, self.gasPrice))
-
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.
 	self.gp.AddGas(self.gas)
