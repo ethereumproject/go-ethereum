@@ -47,16 +47,15 @@ type Validator interface {
 	// ValidateBody validates the given block's content.
 	ValidateBody(block *types.Block) error
 	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error
-	VerifyUncles(block, parent *types.Block) error
 }
 
 // HeaderValidator is an interface for validating headers only
 //
 // ValidateHeader validates the given header and parent and returns an error
 // if it failed to do so.
-type HeaderValidator interface {
-	ValidateHeader(header, parent *types.Header, checkPow bool) error
-}
+// type HeaderValidator interface {
+// 	ValidateHeader(header, parent *types.Header, checkPow bool) error
+// }
 
 // Processor is an interface for processing blocks using a given initial state.
 //

@@ -28,13 +28,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/params"
-	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/hashicorp/golang-lru"
 )
 
@@ -57,19 +57,15 @@ type HeaderChain struct {
 
 	procInterrupt func() bool
 
-	rand         *mrand.Rand
-	getValidator getHeaderValidatorFn
-	eventMux     *event.TypeMux
+	rand     *mrand.Rand
+	engine   consensus.Engine
+	eventMux *event.TypeMux
 }
 
-// getHeaderValidatorFn returns a HeaderValidator interface
-type getHeaderValidatorFn func() HeaderValidator
-
 // NewHeaderChain creates a new HeaderChain structure.
-//  getValidator should return the parent's validator
 //  procInterrupt points to the parent's interrupt semaphore
 //  wg points to the parent's shutdown wait group
-func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, mux *event.TypeMux, getValidator getHeaderValidatorFn, procInterrupt func() bool) (*HeaderChain, error) {
+func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, procInterrupt func() bool) (*HeaderChain, error) {
 	headerCache, _ := lru.New(headerCacheLimit)
 	tdCache, _ := lru.New(tdCacheLimit)
 
@@ -87,7 +83,7 @@ func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, mux *eve
 		tdCache:       tdCache,
 		procInterrupt: procInterrupt,
 		rand:          mrand.New(mrand.NewSource(seed.Int64())),
-		getValidator:  getValidator,
+		engine:        engine,
 	}
 
 	gen := params.DefaultConfigMainnet.Genesis
@@ -295,9 +291,9 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 
 			var err error
 			if index == 0 {
-				err = hc.getValidator().ValidateHeader(header, hc.GetHeader(header.ParentHash), checkPow)
+				err = hc.engine.VerifyHeader(header, hc.GetHeader(header.ParentHash), checkPow)
 			} else {
-				err = hc.getValidator().ValidateHeader(header, chain[index-1], checkPow)
+				err = hc.engine.VerifyHeader(header, chain[index-1], checkPow)
 			}
 			if err != nil {
 				errs[index] = err
@@ -381,6 +377,20 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, checkFreq int, w
 	return res
 }
 
+// GetBlockNumber retrieves the block number belonging to the given hash
+// from the cache or database
+func (hc *HeaderChain) GetBlockNumber(hash common.Hash) *uint64 {
+	if cached, ok := hc.numberCache.Get(hash); ok {
+		number := cached.(uint64)
+		return &number
+	}
+	number := rawdb.ReadHeaderNumber(hc.chainDb, hash)
+	if number != nil {
+		hc.numberCache.Add(hash, *number)
+	}
+	return number
+}
+
 // GetBlockHashesFromHash retrieves a number of block hashes starting at a given
 // hash, fetching towards the genesis block.
 func (hc *HeaderChain) GetBlockHashesFromHash(hash common.Hash, max uint64) []common.Hash {
@@ -430,16 +440,6 @@ func (hc *HeaderChain) WriteTd(hash common.Hash, td *big.Int) error {
 	return nil
 }
 
-// GetHeaderByHash retrieves a block header from the database by hash, caching it if
-// found.
-func (hc *HeaderChain) GetHeaderByHash(hash common.Hash) *types.Header {
-	number := hc.GetBlockNumber(hash)
-	if number == nil {
-		return nil
-	}
-	return hc.GetHeader(hash, *number)
-}
-
 // GetHeader retrieves a block header from the database by hash and number,
 // caching it if found.
 func (hc *HeaderChain) GetHeader(hash common.Hash, number uint64) *types.Header {
@@ -470,6 +470,16 @@ func (hc *HeaderChain) GetHeaderByNumber(number uint64) *types.Header {
 		return nil
 	}
 	return hc.GetHeader(hash)
+}
+
+// GetHeaderByHash retrieves a block header from the database by hash, caching it if
+// found.
+func (hc *HeaderChain) GetHeaderByHash(hash common.Hash) *types.Header {
+	number := hc.GetBlockNumber(hash)
+	if number == nil {
+		return nil
+	}
+	return hc.GetHeader(hash, *number)
 }
 
 // CurrentHeader retrieves the current head header of the canonical chain. The
@@ -577,26 +587,38 @@ func (hc *HeaderChain) postChainEvents(events []interface{}) {
 	}
 }
 
-// headerValidator is responsible for validating block headers
-//
-// headerValidator implements HeaderValidator.
-type headerValidator struct {
-	config *params.ChainConfig
-	hc     *HeaderChain // Canonical header chain
-	Pow    pow.PoW      // Proof of work used for validating
+// Config retrieves the header chain's chain configuration.
+func (hc *HeaderChain) Config() *params.ChainConfig { return hc.config }
+
+// Engine retrieves the header chain's consensus engine.
+func (hc *HeaderChain) Engine() consensus.Engine { return hc.engine }
+
+// GetBlock implements consensus.ChainReader, and returns nil for every input as
+// a header chain does not have blocks available for retrieval.
+func (hc *HeaderChain) GetBlock(hash common.Hash, number uint64) *types.Block {
+	return nil
 }
 
-// ValidateHeader validates the given header and, depending on the pow arg,
-// checks the proof of work of the given header. Returns an error if the
-// validation failed.
-func (v *headerValidator) ValidateHeader(header, parent *types.Header, checkPow bool) error {
-	// Short circuit if the parent is missing.
-	if parent == nil {
-		return ParentError(header.ParentHash)
-	}
-	// Short circuit if the header's already known or its parent missing
-	if v.hc.HasHeader(header.Hash()) {
-		return nil
-	}
-	return ValidateHeader(v.config, v.Pow, header, parent, checkPow, false)
-}
+// // headerValidator is responsible for validating block headers
+// //
+// // headerValidator implements HeaderValidator.
+// type headerValidator struct {
+// 	config *params.ChainConfig
+// 	hc     *HeaderChain // Canonical header chain
+// 	Pow    pow.PoW      // Proof of work used for validating
+// }
+
+// // ValidateHeader validates the given header and, depending on the pow arg,
+// // checks the proof of work of the given header. Returns an error if the
+// // validation failed.
+// func (v *headerValidator) ValidateHeader(header, parent *types.Header, checkPow bool) error {
+// 	// Short circuit if the parent is missing.
+// 	if parent == nil {
+// 		return ParentError(header.ParentHash)
+// 	}
+// 	// Short circuit if the header's already known or its parent missing
+// 	if v.hc.HasHeader(header.Hash()) {
+// 		return nil
+// 	}
+// 	return ValidateHeader(v.config, v.Pow, header, parent, checkPow, false)
+// }
