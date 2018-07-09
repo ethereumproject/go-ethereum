@@ -182,7 +182,7 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 func testHeaderChainImport(chain []*types.Header, blockchain *BlockChain) error {
 	for _, header := range chain {
 		// Try and validate the header
-		if err := blockchain.Validator().ValidateHeader(header, blockchain.GetHeader(header.ParentHash), false); err != nil {
+		if err := blockchain.engine.VerifyHeader(header, blockchain.GetHeader(header.ParentHash), false); err != nil {
 			return err
 		}
 		// Manually insert the header into the database, but don't reorganise (allows subsequent testing)
@@ -452,9 +452,14 @@ func TestChainMultipleInsertions(t *testing.T) {
 
 type bproc struct{}
 
+<<<<<<< HEAD
 func (bproc) ValidateBody(*types.Block) error                         { return nil }
 func (bproc) ValidateHeader(*types.Header, *types.Header, bool) error { return nil }
 func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
+=======
+func (bproc) ValidateBody(*types.Block) error { return nil }
+func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error {
+>>>>>>> 8cb83c063... Fix
 	return nil
 }
 func (bproc) VerifyUncles(block, parent *types.Block) error { return nil }

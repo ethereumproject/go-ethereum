@@ -22,6 +22,11 @@ import (
 	"errors"
 	"fmt"
 
+<<<<<<< HEAD
+=======
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/consensus"
+>>>>>>> 8cb83c063... Fix
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
@@ -45,6 +50,7 @@ var (
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
+<<<<<<< HEAD
 	config *ChainConfig
 	bc     *BlockChain
 }
@@ -54,6 +60,19 @@ func NewStateProcessor(config *ChainConfig, bc *BlockChain) *StateProcessor {
 	return &StateProcessor{
 		config: config,
 		bc:     bc,
+=======
+	config *params.ChainConfig // Chain configuration options
+	bc     *BlockChain         // Canonical block chain
+	engine consensus.Engine    // Consensus engine used for block rewards
+}
+
+// NewStateProcessor initialises a new StateProcessor.
+func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consensus.Engine) *StateProcessor {
+	return &StateProcessor{
+		config: config,
+		bc:     bc,
+		engine: engine,
+>>>>>>> 8cb83c063... Fix
 	}
 }
 
@@ -145,7 +164,7 @@ func ApplyTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb 
 func AccumulateRewards(config *ChainConfig, statedb *state.StateDB, header *types.Header, uncles []*types.Header) {
 
 	// An uncle is a block that would be considered an orphan because its not on the longest chain (it's an alternative block at the same height as your parent).
-	// https://www.reddit.com/r/ethereum/comments/3c9jbf/wtf_are_uncles_and_why_do_they_matter/
+	// https://www.reddit.com/r/ethereumproject/comments/3c9jbf/wtf_are_uncles_and_why_do_they_matter/
 
 	// uncle.Number = 2,535,998 // assuming "latest" uncle...
 	// block.Number = 2,534,999 // uncles can be at same height as each other
