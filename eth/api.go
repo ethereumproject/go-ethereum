@@ -55,7 +55,7 @@ import (
 const defaultGas = uint64(90000)
 
 // TODO(tzdybal) - make it configurable parameter
-const replayTransactions = true
+const playbackTransactions = true
 
 // blockByNumber is a commonly used helper function which retrieves and returns
 // the block for the given block number, capable of handling two special blocks:
@@ -1216,7 +1216,10 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		fields["contractAddress"] = receipt.ContractAddress
 	}
 
-	if receipt.Status != types.TxStatusUnknown {
+	// Status field was introduced in ETH with EIP-609. For compatibility, we won't return status for
+	// blocks before the fork.
+	fields["status"] = nil
+	if receipt.Status != types.TxStatusUnknown && blockIndex >= 4370000 {
 		fields["status"] = receipt.Status
 	}
 
