@@ -820,7 +820,7 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
-	res, requiredGas, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
+	res, requiredGas, _, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
 	if len(res) == 0 { // backwards compatibility
 		return "0x", requiredGas, err
 	}
@@ -1176,7 +1176,6 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 	from, _ := types.Sender(signer, tx)
 
 	fields := map[string]interface{}{
-		"root":              common.Bytes2Hex(receipt.PostState),
 		"blockHash":         txBlock,
 		"blockNumber":       rpc.NewHexNumber(blockIndex),
 		"transactionHash":   txHash,
@@ -1187,6 +1186,13 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		"cumulativeGasUsed": rpc.NewHexNumber(receipt.CumulativeGasUsed),
 		"contractAddress":   nil,
 		"logs":              receipt.Logs,
+	}
+
+	// Assign receipt status or post state.
+	if len(receipt.PostState) > 0 {
+		fields["root"] = common.Bytes2Hex(receipt.PostState)
+	} else {
+		fields["status"] = rpc.NewHexNumber(receipt.Status)
 	}
 
 	if receipt.Logs == nil {
@@ -2035,7 +2041,7 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
-	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	ret, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 	return &ExecutionResult{
 		Gas:         gas,
 		ReturnValue: fmt.Sprintf("%x", ret),
@@ -2056,7 +2062,7 @@ func (s *PublicDebugAPI) TraceTransaction(txHash common.Hash) (*ExecutionResult,
 	}
 
 	gp := new(core.GasPool).AddGas(tx.Gas())
-	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	ret, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 	return &ExecutionResult{
 		Gas:         gas,
 		ReturnValue: fmt.Sprintf("%x", ret),
@@ -2111,7 +2117,7 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 		}
 
 		gp := new(core.GasPool).AddGas(tx.Gas())
-		_, _, err := core.ApplyMessage(vmenv, msg, gp)
+		_, _, _, err := core.ApplyMessage(vmenv, msg, gp)
 		if err != nil {
 			return nil, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)
 		}
