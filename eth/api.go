@@ -1172,19 +1172,25 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		return nil, err
 	}
 
-	if replayTransactions && receipt.Status == types.TxStatusUnknown {
-		// TODO(tzdybal) - get rid of this nasty casting
-		proc := s.bc.Processor().(*core.StateProcessor)
-		statedb, err := s.bc.StateAt(s.bc.GetBlock(txBlock).Root())
+	if playbackTransactions && receipt.Status == types.TxStatusUnknown {
+		// To be able to get the proper state for n-th transaction in a block,
+		// all previous transactions has to be executed. Because of that, it is
+		// reasonable to reprocess entire block and update all receipts from
+		// given block.
+		proc := s.bc.Processor()
+		block := s.bc.GetBlock(txBlock)
+		statedb, err := s.bc.StateAt(block.Root())
 		if err != nil {
-			// TODO(tzdybal) - fetch missing state dynamically
+			err := fmt.Errorf("state not found - transaction status is not available for fast synced blocks: %v", err)
 			return nil, err
 		}
-		glog.V(logger.Info).Infof("tzdybal: ReplayTransaction")
-		receipt, err = proc.PlaybackTransaction(txHash, statedb)
+
+		fmt.Println("tzdybal: PlayBackTransactions")
+		receipts, _, _, err := proc.Process(block, statedb)
 		if err != nil {
 			return nil, err
 		}
+		receipt = receipts[index]
 	}
 
 	var signer types.Signer = types.BasicSigner{}

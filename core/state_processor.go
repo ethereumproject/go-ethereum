@@ -17,20 +17,16 @@
 package core
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
 var (
@@ -107,70 +103,6 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 	AccumulateRewards(p.config, statedb, header, block.Uncles())
 
 	return receipts, allLogs, totalUsedGas, err
-}
-
-func (p *StateProcessor) PlaybackTransaction(txHash common.Hash, statedb *state.StateDB) (*types.Receipt, error) {
-	statedb = statedb.Copy()
-
-	blockHash, _, index, err := getTransactionBlockData(p.bc.chainDb, txHash)
-	if err != nil {
-		return nil, err
-	}
-
-	block := GetBlock(p.bc.chainDb, blockHash)
-	tx := block.Transactions()[index]
-
-	var (
-		totalUsedGas = big.NewInt(0)
-		header       = block.Header()
-		gp           = new(GasPool).AddGas(block.GasLimit())
-	)
-
-	if tx.Protected() {
-		chainId := p.config.GetChainID()
-		if chainId.Cmp(new(big.Int)) == 0 {
-			return nil, fmt.Errorf("ChainID is not set for EIP-155 in chain configuration at block number: %v. \n  Tx ChainID: %v", block.Number(), tx.ChainId())
-		}
-		if tx.ChainId() == nil || tx.ChainId().Cmp(chainId) != 0 {
-			return nil, fmt.Errorf("Invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
-		}
-	}
-	//statedb.StartRecord(tx.Hash(), block.Hash(), i)
-	if !UseSputnikVM {
-		receipt, _, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
-		if err != nil {
-			return nil, err
-		}
-		return receipt, nil
-	}
-	receipt, _, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
-	if err != nil {
-		return nil, err
-	}
-	return receipt, nil
-}
-
-// TODO(tzdybal) - refactor (duplicate from eth/api.go)
-// getTransactionBlockData fetches the meta data for the given transaction from the chain database. This is useful to
-// retrieve block information for a hash. It returns the block hash, block index and transaction index.
-func getTransactionBlockData(chainDb ethdb.Database, txHash common.Hash) (common.Hash, uint64, uint64, error) {
-	var txBlock struct {
-		BlockHash  common.Hash
-		BlockIndex uint64
-		Index      uint64
-	}
-
-	blockData, err := chainDb.Get(append(txHash.Bytes(), 0x0001))
-	if err != nil {
-		return common.Hash{}, uint64(0), uint64(0), err
-	}
-
-	reader := bytes.NewReader(blockData)
-	if err = rlp.Decode(reader, &txBlock); err != nil {
-		return common.Hash{}, uint64(0), uint64(0), err
-	}
-
-	return txBlock.BlockHash, txBlock.BlockIndex, txBlock.Index, nil
 }
 
 // ApplyTransaction attempts to apply a transaction to the given state database
