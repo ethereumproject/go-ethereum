@@ -43,7 +43,7 @@ import (
 // ValidateState validates the given statedb and optionally the receipts and
 // gas used. The implementer should decide what to do with the given input.
 type Validator interface {
-	HeaderValidator
+	// HeaderValidator
 	// ValidateBody validates the given block's content.
 	ValidateBody(block *types.Block) error
 	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error
