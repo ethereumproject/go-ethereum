@@ -17,7 +17,6 @@
 package types
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"math/big"
@@ -134,12 +133,8 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 
-	if err := s.Decode(&receipt); err != nil {
-		//if !strings.HasPrefix(err.Error(), "rlp: too few elements for struct") {
-		//	return err
-		//}
-		s.Reset(bytes.NewReader(raw), uint64(len(raw)))
-		if err := s.Decode(&oldReceipt); err != nil {
+	if err := rlp.DecodeBytes(raw, &receipt); err != nil {
+		if err := rlp.DecodeBytes(raw, &oldReceipt); err != nil {
 			return err
 		}
 		receipt.PostState = oldReceipt.PostState
