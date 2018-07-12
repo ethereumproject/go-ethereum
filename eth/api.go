@@ -1179,8 +1179,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		block := s.bc.GetBlock(txBlock)
 		statedb, err := s.bc.StateAt(block.Root())
 		if err != nil {
-			err := fmt.Errorf("state not found - transaction status is not available for fast synced blocks: %v", err)
-			return nil, err
+			return nil, fmt.Errorf("state not found - transaction status is not available for fast synced block: %v", err)
 		}
 
 		receipts, _, _, err := proc.Process(block, statedb)
