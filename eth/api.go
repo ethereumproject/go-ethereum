@@ -1177,7 +1177,8 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		// given block.
 		proc := s.bc.Processor()
 		block := s.bc.GetBlock(txBlock)
-		statedb, err := s.bc.StateAt(block.Root())
+		parent := s.bc.GetBlock(block.ParentHash())
+		statedb, err := s.bc.StateAt(parent.Root())
 		if err != nil {
 			return nil, fmt.Errorf("state not found - transaction status is not available for fast synced block: %v", err)
 		}
