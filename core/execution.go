@@ -159,7 +159,7 @@ func execDelegateCall(env vm.Environment, caller vm.ContractRef, originAddr, toA
 		to = env.Db().GetAccount(*toAddr)
 	}
 
-	// Iinitialise a new contract and make initialise the delegate values
+	// Initialise a new contract and make initialise the delegate values
 	contract := vm.NewContract(caller, to, value, gas, gasPrice).AsDelegate()
 	contract.SetCallCode(codeAddr, codeHash, code)
 	defer contract.Finalise()
@@ -172,6 +172,20 @@ func execDelegateCall(env vm.Environment, caller vm.ContractRef, originAddr, toA
 	}
 
 	return ret, addr, err
+}
+
+// StaticCall executes the contract associated with the addr with the given input
+// as parameters while disallowing any modifications to the state during the call.
+// Opcodes that attempt to perform such modifications will result in exceptions
+// instead of performing the modifications.
+func execStaticCall(env vm.Environment, caller vm.ContractRef, originAddr, toAddr, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value *big.Int) (ret []byte, addr common.Address, err error) {
+	evm := env.Vm()
+	// Depth check execution. Fail if we're trying to execute above the call depth limit.
+	if env.Depth() > callCreateDepthMax {
+		caller.ReturnGas(gas, gasPrice)
+		return nil, common.Address{}, errCallCreateDepth
+	}
+
 }
 
 // generic transfer method
