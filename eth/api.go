@@ -1187,6 +1187,13 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		if err != nil {
 			return nil, err
 		}
+
+		if err := core.WriteReceipts(s.chainDb, receipts); err != nil {
+			glog.V(logger.Warn).Infof("cannot save updated receipts: %v", err)
+		}
+		if err := core.WriteBlockReceipts(s.chainDb, block.Hash(), receipts); err != nil {
+			glog.V(logger.Warn).Infof("cannot save updated block receipts: %v", err)
+		}
 		receipt = receipts[index]
 	}
 
