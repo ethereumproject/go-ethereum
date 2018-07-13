@@ -51,7 +51,7 @@ type Receipt struct {
 
 // NewReceipt creates a barebone transaction receipt, copying the init fields.
 func NewReceipt(root []byte, cumulativeGasUsed *big.Int) *Receipt {
-	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed)}
+	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed), Status: TxStatusUnknown}
 }
 
 // EncodeRLP implements rlp.Encoder, and flattens the consensus fields of a receipt
