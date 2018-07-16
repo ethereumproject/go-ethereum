@@ -48,10 +48,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
-<<<<<<< HEAD
-=======
-	"github.com/ethereumproject/go-ethereum/params"
->>>>>>> 1bcb3d12f... Fix merge conflicts
 	"github.com/ethereumproject/go-ethereum/whisper"
 	"gopkg.in/urfave/cli.v1"
 )

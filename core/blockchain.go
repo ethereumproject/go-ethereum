@@ -24,27 +24,16 @@ import (
 	"log"
 	"math/big"
 	mrand "math/rand"
+	"reflect"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	"reflect"
-	"strconv"
-
 	"encoding/binary"
 
-=======
-=======
-	"github.com/chfast/go-ethereum/common/mclock"
->>>>>>> 8cb83c063... Fix
-=======
->>>>>>> 2c3d7bbf4... Fix headerchain handling
 	"github.com/ethereum/go-ethereum/core/rawdb"
->>>>>>> 1bcb3d12f... Fix merge conflicts
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -55,6 +44,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/trie"

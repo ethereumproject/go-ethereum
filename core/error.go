@@ -25,15 +25,10 @@ import (
 )
 
 var (
-<<<<<<< HEAD
-	
-	ErrKnownBlock	 = errors.New("block already known")
-=======
 	ErrKnownBlock = errors.New("block already known")
 	// ErrNonceTooHigh is returned if the nonce of a transaction is higher than the
 	// next one expected based on the local chain.
 	ErrNonceTooHigh  = errors.New("nonce too high")
->>>>>>> 1bcb3d12f... Fix merge conflicts
 	BlockNumberErr   = errors.New("block number invalid")
 	BlockFutureErr   = errors.New("block time is in the future")
 	BlockTSTooBigErr = errors.New("block time too big")

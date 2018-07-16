@@ -22,17 +22,14 @@ import (
 	"errors"
 	"fmt"
 
-<<<<<<< HEAD
-=======
-	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/consensus"
->>>>>>> 8cb83c063... Fix
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -50,17 +47,6 @@ var (
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
-<<<<<<< HEAD
-	config *ChainConfig
-	bc     *BlockChain
-}
-
-// NewStateProcessor initialises a new StateProcessor.
-func NewStateProcessor(config *ChainConfig, bc *BlockChain) *StateProcessor {
-	return &StateProcessor{
-		config: config,
-		bc:     bc,
-=======
 	config *params.ChainConfig // Chain configuration options
 	bc     *BlockChain         // Canonical block chain
 	engine consensus.Engine    // Consensus engine used for block rewards
@@ -72,7 +58,6 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 		config: config,
 		bc:     bc,
 		engine: engine,
->>>>>>> 8cb83c063... Fix
 	}
 }
 

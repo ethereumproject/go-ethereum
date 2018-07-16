@@ -137,11 +137,7 @@ var DEFAULTS *FileSystem
 func init() {
 	DEFAULTS = &FileSystem{
 		files: map[string]File{
-<<<<<<< HEAD:core/assets/assets.go
-			"/core/config/mainnet.json": {
-=======
 			"/params/config/mainnet.json": {
->>>>>>> 1bcb3d12f... Fix merge conflicts:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x69, 0x64, 0x65, 0x6e, 0x74,
 					0x69, 0x74, 0x79, 0x22, 0x3a, 0x20, 0x22, 0x6d, 0x61, 0x69, 0x6e, 0x6e,
@@ -442,15 +438,7 @@ func init() {
 					modTime: time.Unix(0, 1525956628000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/mainnet_bootnodes.json": {
-=======
-			}, "/params/config/mainnet_bootnodes.json": File{
->>>>>>> 5f778f86e... Fix merge conflict:params/assets/assets.go
-=======
 			}, "/params/config/mainnet_bootnodes.json": {
->>>>>>> 1bcb3d12f... Fix merge conflicts:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x62, 0x6f, 0x6f, 0x74, 0x73,
 					0x74, 0x72, 0x61, 0x70, 0x22, 0x3a, 0x20, 0x5b, 0x0a, 0x20, 0x20, 0x20,
@@ -602,15 +590,7 @@ func init() {
 					modTime: time.Unix(0, 1525956628000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/mainnet_genesis.json": {
-=======
-			}, "/params/config/mainnet_genesis.json": File{
->>>>>>> 5f778f86e... Fix merge conflict:params/assets/assets.go
-=======
 			}, "/params/config/mainnet_genesis.json": {
->>>>>>> 1bcb3d12f... Fix merge conflicts:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x09, 0x22, 0x67, 0x65, 0x6e, 0x65, 0x73, 0x69, 0x73, 0x22,
 					0x3a, 0x20, 0x7b, 0x0a, 0x09, 0x09, 0x22, 0x6e, 0x6f, 0x6e, 0x63, 0x65,
@@ -646,15 +626,7 @@ func init() {
 					modTime: time.Unix(0, 1527228759000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/mainnet_genesis_alloc.csv": {
-=======
-			}, "/params/config/mainnet_genesis_alloc.csv": File{
->>>>>>> 5f778f86e... Fix merge conflict:params/assets/assets.go
-=======
 			}, "/params/config/mainnet_genesis_alloc.csv": {
->>>>>>> 1bcb3d12f... Fix merge conflicts:params/assets/assets.go
 				data: []byte{
 					0x22, 0x30, 0x30, 0x30, 0x64, 0x38, 0x33, 0x36, 0x32, 0x30, 0x31, 0x33,
 					0x31, 0x38, 0x65, 0x63, 0x36, 0x38, 0x39, 0x39, 0x61, 0x36, 0x37, 0x35,
@@ -50772,15 +50744,7 @@ func init() {
 					modTime: time.Unix(0, 1525956628000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/morden.json": {
-=======
-			}, "/params/config/morden.json": File{
->>>>>>> e9ea9decf... Fix merge conflicts:params/assets/assets.go
-=======
 			}, "/params/config/morden.json": {
->>>>>>> 1bcb3d12f... Fix merge conflicts:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x69, 0x64, 0x65, 0x6e, 0x74,
 					0x69, 0x74, 0x79, 0x22, 0x3a, 0x20, 0x22, 0x6d, 0x6f, 0x72, 0x64, 0x65,
@@ -51096,15 +51060,7 @@ func init() {
 					modTime: time.Unix(0, 1525956628000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/morden_bootnodes.json": {
-=======
-			}, "/params/config/morden_bootnodes.json": File{
->>>>>>> e9ea9decf... Fix merge conflicts:params/assets/assets.go
-=======
 			}, "/params/config/morden_bootnodes.json": {
->>>>>>> 1bcb3d12f... Fix merge conflicts:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x62, 0x6f, 0x6f, 0x74, 0x73,
 					0x74, 0x72, 0x61, 0x70, 0x22, 0x3a, 0x20, 0x5b, 0x0a, 0x20, 0x20, 0x20,
@@ -51326,15 +51282,7 @@ func init() {
 					modTime: time.Unix(0, 1527231057000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/morden_genesis.json": {
-=======
-			}, "/params/config/morden_genesis.json": File{
->>>>>>> e9ea9decf... Fix merge conflicts:params/assets/assets.go
-=======
 			}, "/params/config/morden_genesis.json": {
->>>>>>> 1bcb3d12f... Fix merge conflicts:params/assets/assets.go
 				data: []byte{
 					0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x22, 0x67, 0x65, 0x6e, 0x65, 0x73,
 					0x69, 0x73, 0x22, 0x3a, 0x20, 0x7b, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20,
@@ -51374,15 +51322,7 @@ func init() {
 					modTime: time.Unix(0, 1525956628000000000),
 					isDir:   false,
 				},
-<<<<<<< HEAD:core/assets/assets.go
-<<<<<<< HEAD:core/assets/assets.go
-			}, "/core/config/morden_genesis_alloc.csv": {
-=======
-			}, "/params/config/morden_genesis_alloc.csv": File{
->>>>>>> e9ea9decf... Fix merge conflicts:params/assets/assets.go
-=======
 			}, "/params/config/morden_genesis_alloc.csv": {
->>>>>>> 1bcb3d12f... Fix merge conflicts:params/assets/assets.go
 				data: []byte{
 					0x22, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
 					0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,

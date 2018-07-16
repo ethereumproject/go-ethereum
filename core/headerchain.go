@@ -34,11 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-<<<<<<< HEAD
-	"github.com/ethereumproject/go-ethereum/pow"
-=======
 	"github.com/ethereumproject/go-ethereum/params"
->>>>>>> 8cb83c063... Fix
 	"github.com/hashicorp/golang-lru"
 )
 
@@ -69,11 +65,7 @@ type HeaderChain struct {
 // NewHeaderChain creates a new HeaderChain structure.
 //  procInterrupt points to the parent's interrupt semaphore
 //  wg points to the parent's shutdown wait group
-<<<<<<< HEAD
-func NewHeaderChain(chainDb ethdb.Database, config *ChainConfig, mux *event.TypeMux, getValidator getHeaderValidatorFn, procInterrupt func() bool) (*HeaderChain, error) {
-=======
 func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, procInterrupt func() bool) (*HeaderChain, error) {
->>>>>>> 8cb83c063... Fix
 	headerCache, _ := lru.New(headerCacheLimit)
 	tdCache, _ := lru.New(tdCacheLimit)
 
@@ -595,19 +587,8 @@ func (hc *HeaderChain) postChainEvents(events []interface{}) {
 	}
 }
 
-<<<<<<< HEAD
-// headerValidator is responsible for validating block headers
-//
-// headerValidator implements HeaderValidator.
-type headerValidator struct {
-	config *ChainConfig
-	hc     *HeaderChain // Canonical header chain
-	Pow    pow.PoW      // Proof of work used for validating
-}
-=======
 // Config retrieves the header chain's chain configuration.
 func (hc *HeaderChain) Config() *params.ChainConfig { return hc.config }
->>>>>>> 8cb83c063... Fix
 
 // Engine retrieves the header chain's consensus engine.
 func (hc *HeaderChain) Engine() consensus.Engine { return hc.engine }

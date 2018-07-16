@@ -452,14 +452,8 @@ func TestChainMultipleInsertions(t *testing.T) {
 
 type bproc struct{}
 
-<<<<<<< HEAD
-func (bproc) ValidateBody(*types.Block) error                         { return nil }
-func (bproc) ValidateHeader(*types.Header, *types.Header, bool) error { return nil }
-func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
-=======
 func (bproc) ValidateBody(*types.Block) error { return nil }
 func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error {
->>>>>>> 8cb83c063... Fix
 	return nil
 }
 func (bproc) VerifyUncles(block, parent *types.Block) error { return nil }

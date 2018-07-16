@@ -25,7 +25,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
@@ -37,15 +36,9 @@ func init() {
 }
 
 func makeReceipt(addr common.Address) *types.Receipt {
-<<<<<<< HEAD
-	receipt := types.NewReceipt(nil, new(big.Int))
-	receipt.Logs = vm.Logs{
-		&vm.Log{Address: addr},
-=======
 	receipt := types.NewReceipt(nil, false, 0)
 	receipt.Logs = []*types.Log{
 		{Address: addr},
->>>>>>> 1bcb3d12f... Fix merge conflicts
 	}
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	return receipt
@@ -149,15 +142,9 @@ func TestFilters(t *testing.T) {
 		var receipts types.Receipts
 		switch i {
 		case 1:
-<<<<<<< HEAD
-			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
-=======
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
 				{
->>>>>>> 1bcb3d12f... Fix merge conflicts
 					Address: addr,
 					Topics:  []common.Hash{hash1},
 				},
@@ -165,15 +152,9 @@ func TestFilters(t *testing.T) {
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 2:
-<<<<<<< HEAD
-			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
-=======
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
 				{
->>>>>>> 1bcb3d12f... Fix merge conflicts
 					Address: addr,
 					Topics:  []common.Hash{hash2},
 				},
@@ -181,15 +162,9 @@ func TestFilters(t *testing.T) {
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 998:
-<<<<<<< HEAD
-			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
-=======
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
 				{
->>>>>>> 1bcb3d12f... Fix merge conflicts
 					Address: addr,
 					Topics:  []common.Hash{hash3},
 				},
@@ -197,15 +172,9 @@ func TestFilters(t *testing.T) {
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 999:
-<<<<<<< HEAD
-			receipt := types.NewReceipt(nil, new(big.Int))
-			receipt.Logs = vm.Logs{
-				&vm.Log{
-=======
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
 				{
->>>>>>> 1bcb3d12f... Fix merge conflicts
 					Address: addr,
 					Topics:  []common.Hash{hash4},
 				},
