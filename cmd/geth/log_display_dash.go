@@ -54,6 +54,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/gizak/termui"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -98,7 +99,7 @@ func tuiDrawDash(e *eth.Ethereum) {
 		cid := e.ChainConfig().GetChainID()
 		cnet := e.NetVersion()
 		cname := ""
-		if id := core.GetCacheChainIdentity(); id != "" {
+		if id := params.GetCacheChainIdentity(); id != "" {
 			cname = id
 		}
 		headerInfo.Text = fmt.Sprintf(" Mode=%s Chain=%v(%d) Chain Id=%d \n"+

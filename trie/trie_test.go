@@ -21,11 +21,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/rlp"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -33,6 +28,12 @@ import (
 	"reflect"
 	"testing"
 	"testing/quick"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
 func init() {

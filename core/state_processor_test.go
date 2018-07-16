@@ -12,6 +12,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -308,7 +309,7 @@ func (c *expectedRewardCase) String() string {
 //			rewards: calculateExpectedEraRewards(era4, 1),
 //		},
 //	},
-func makeExpectedRewardCasesForConfig(c *ChainConfig, numUncles int, t *testing.T) []expectedRewardCase {
+func makeExpectedRewardCasesForConfig(c *params.ChainConfig, numUncles int, t *testing.T) []expectedRewardCase {
 	erasToTest := []expectedEraForTesting{era1, era2, era3}
 	eraLen := new(big.Int)
 	feat, _, configured := c.HasFeature("reward")
@@ -377,7 +378,7 @@ func makeExpectedRewardCasesForConfig(c *ChainConfig, numUncles int, t *testing.
 // Accruing over block cases simulates miner account winning many times.
 // Uses maps of running sums for winner & 2 uncles to keep tally.
 func TestAccumulateRewards1(t *testing.T) {
-	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
+	configs := []*params.ChainConfig{params.DefaultConfigMainnet.ChainConfig, params.DefaultConfigMorden.ChainConfig}
 	cases := [][]expectedRewardCase{}
 	for _, c := range configs {
 		cases = append(cases, makeExpectedRewardCasesForConfig(c, 2, t))
@@ -391,9 +392,9 @@ func TestAccumulateRewards1(t *testing.T) {
 		if !exists {
 			// t.Logf("No ecip1017 feature installed for config=%d, setting up a placeholder ecip1017 feature for testing.", i)
 			dhFork := config.ForkByName("Diehard")
-			dhFork.Features = append(dhFork.Features, &ForkFeature{
+			dhFork.Features = append(dhFork.Features, &params.ForkFeature{
 				ID: "reward",
-				Options: ChainFeatureConfigOptions{
+				Options: params.ChainFeatureConfigOptions{
 					"type": "ecip1017",
 					"era":  5000000, // for mainnet will be 5m
 				},
@@ -521,7 +522,7 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 
 	// Order matters here; expected cases must be ordered the same.
 	// Will uses indexes to match expectations -> test outcomes.
-	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
+	configs := []*params.ChainConfig{params.DefaultConfigMainnet.ChainConfig, params.DefaultConfigMorden.ChainConfig}
 	cases := [][]expectedRewardCase{}
 	for _, c := range configs {
 		cases = append(cases, makeExpectedRewardCasesForConfig(c, 2, t))
@@ -619,7 +620,7 @@ func TestAccumulateRewards2_2Uncles(t *testing.T) {
 // Tests winner includes 1 ommer header.
 func TestAccumulateRewards3_1Uncle(t *testing.T) {
 
-	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
+	configs := []*params.ChainConfig{params.DefaultConfigMainnet.ChainConfig, params.DefaultConfigMorden.ChainConfig}
 	cases := [][]expectedRewardCase{}
 	for _, c := range configs {
 		cases = append(cases, makeExpectedRewardCasesForConfig(c, 1, t))
@@ -705,7 +706,7 @@ func TestAccumulateRewards3_1Uncle(t *testing.T) {
 // Tests winner includes 0 ommer headers.
 func TestAccumulateRewards4_0Uncles(t *testing.T) {
 
-	configs := []*ChainConfig{DefaultConfigMainnet.ChainConfig, DefaultConfigMorden.ChainConfig}
+	configs := []*params.ChainConfig{params.DefaultConfigMainnet.ChainConfig, params.DefaultConfigMorden.ChainConfig}
 	cases := [][]expectedRewardCase{}
 	for _, c := range configs {
 		cases = append(cases, makeExpectedRewardCasesForConfig(c, 0, t))

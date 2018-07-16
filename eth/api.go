@@ -48,6 +48,7 @@ import (
 	ethMetrics "github.com/ethereumproject/go-ethereum/metrics"
 	"github.com/ethereumproject/go-ethereum/miner"
 	"github.com/ethereumproject/go-ethereum/p2p"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/ethereumproject/go-ethereum/rpc"
 )
@@ -553,7 +554,7 @@ func (s *PrivateAccountAPI) SignAndSendTransaction(args SendTxArgs, passwd strin
 // PublicBlockChainAPI provides an API to access the Ethereum blockchain.
 // It offers only methods that operate on public data that is freely available to anyone.
 type PublicBlockChainAPI struct {
-	config                  *core.ChainConfig
+	config                  *params.ChainConfig
 	bc                      *core.BlockChain
 	chainDb                 ethdb.Database
 	indexesDb               ethdb.Database
@@ -566,7 +567,7 @@ type PublicBlockChainAPI struct {
 }
 
 // NewPublicBlockChainAPI creates a new Etheruem blockchain API.
-func NewPublicBlockChainAPI(config *core.ChainConfig, bc *core.BlockChain, m *miner.Miner, chainDb ethdb.Database, gpo *GasPriceOracle, eventMux *event.TypeMux, am *accounts.Manager) *PublicBlockChainAPI {
+func NewPublicBlockChainAPI(config *params.ChainConfig, bc *core.BlockChain, m *miner.Miner, chainDb ethdb.Database, gpo *GasPriceOracle, eventMux *event.TypeMux, am *accounts.Manager) *PublicBlockChainAPI {
 	api := &PublicBlockChainAPI{
 		config:   config,
 		bc:       bc,
@@ -751,22 +752,25 @@ func (s *PublicBlockChainAPI) GetStorageAt(address common.Address, key string, b
 
 // callmsg is the message type used for call transactions.
 type callmsg struct {
-	from          *state.StateObject
-	to            *common.Address
-	gas, gasPrice *big.Int
-	value         *big.Int
-	data          []byte
+	from     *state.StateObject
+	to       *common.Address
+	gas      uint64
+	gasPrice *big.Int
+	value    *big.Int
+	data     []byte
 }
 
 // accessor boilerplate to implement core.Message
-func (m callmsg) From() (common.Address, error)         { return m.from.Address(), nil }
+func (m callmsg) From() common.Address { return m.from.Address() }
+
 func (m callmsg) FromFrontier() (common.Address, error) { return m.from.Address(), nil }
 func (m callmsg) Nonce() uint64                         { return m.from.Nonce() }
 func (m callmsg) To() *common.Address                   { return m.to }
 func (m callmsg) GasPrice() *big.Int                    { return m.gasPrice }
-func (m callmsg) Gas() *big.Int                         { return m.gas }
+func (m callmsg) Gas() uint64                           { return m.gas }
 func (m callmsg) Value() *big.Int                       { return m.value }
 func (m callmsg) Data() []byte                          { return m.data }
+func (m callmsg) CheckNonce() bool                      { return true }
 
 // CallArgs represents the arguments for a call.
 type CallArgs struct {
@@ -804,27 +808,30 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 	msg := callmsg{
 		from:     from,
 		to:       args.To,
-		gas:      args.Gas.BigInt(),
+		gas:      args.Gas.Uint64(),
 		gasPrice: args.GasPrice.BigInt(),
 		value:    args.Value.BigInt(),
 		data:     common.FromHex(args.Data),
 	}
-	if msg.gas == nil {
-		msg.gas = big.NewInt(50000000)
+	if msg.gas == 0 {
+		msg.gas = uint64(50000000)
 	}
 	if msg.gasPrice == nil {
 		msg.gasPrice = s.gpo.SuggestPrice()
 	}
 
 	// Execute the call and return
-	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
-	gp := new(core.GasPool).AddGas(common.MaxBig)
+	vmctx := core.NewEVMContext(msg, block.Header(), s.bc, &block.Header().Coinbase)
+	vmenv := vm.NewEVM(vmctx, stateDb, s.config, vm.Config{})
+	// vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
+	gp := new(core.GasPool).AddGas(common.MaxBig.Uint64())
 
 	res, requiredGas, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
+	rgBig := new(big.Int).SetUint64(requiredGas)
 	if len(res) == 0 { // backwards compatibility
-		return "0x", requiredGas, err
+		return "0x", rgBig, err
 	}
-	return common.ToHex(res), requiredGas, err
+	return common.ToHex(res), rgBig, err
 }
 
 // Call executes the given transaction on the state for the given block number.
@@ -1159,14 +1166,14 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 
 	tx, _, err := getTransaction(s.chainDb, s.txPool, txHash)
 	if err != nil {
-		glog.V(logger.Debug).Infof("%v\n", err)
-		return nil, nil
+		glog.V(logger.Info).Infof("tzdybal 1 %v\n", err)
+		return nil, err
 	}
 
 	txBlock, blockIndex, index, err := getTransactionBlockData(s.chainDb, txHash)
 	if err != nil {
-		glog.V(logger.Debug).Infof("%v\n", err)
-		return nil, nil
+		glog.V(logger.Info).Infof("tzdybal 2 %v\n", err)
+		return nil, err
 	}
 
 	var signer types.Signer = types.BasicSigner{}
@@ -1190,7 +1197,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 	}
 
 	if receipt.Logs == nil {
-		fields["logs"] = []vm.Logs{}
+		fields["logs"] = [][]*types.Log{}
 	}
 
 	// If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
@@ -2019,25 +2026,26 @@ func (s *PublicBlockChainAPI) TraceCall(args CallArgs, blockNr rpc.BlockNumber) 
 	msg := callmsg{
 		from:     from,
 		to:       args.To,
-		gas:      args.Gas.BigInt(),
+		gas:      args.Gas.Uint64(),
 		gasPrice: args.GasPrice.BigInt(),
 		value:    args.Value.BigInt(),
 		data:     common.FromHex(args.Data),
 	}
-	if msg.gas.Sign() == 0 {
-		msg.gas = big.NewInt(50000000)
+	if msg.gas == 0 {
+		msg.gas = uint64(50000000)
 	}
 	if msg.gasPrice.Sign() == 0 {
 		msg.gasPrice = new(big.Int).Mul(big.NewInt(50), common.Shannon)
 	}
 
 	// Execute the call and return
-	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
-	gp := new(core.GasPool).AddGas(common.MaxBig)
+	vmctx := core.NewEVMContext(msg, block.Header(), s.bc, &block.Header().Coinbase)
+	vmenv := vm.NewEVM(vmctx, stateDb, s.config, vm.Config{})
+	gp := new(core.GasPool).AddGas(common.MaxBig.Uint64())
 
-	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	ret, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 	return &ExecutionResult{
-		Gas:         gas,
+		Gas:         new(big.Int).SetUint64(gas),
 		ReturnValue: fmt.Sprintf("%x", ret),
 	}, nil
 }
@@ -2055,16 +2063,16 @@ func (s *PublicDebugAPI) TraceTransaction(txHash common.Hash) (*ExecutionResult,
 		return nil, err
 	}
 
-	gp := new(core.GasPool).AddGas(tx.Gas())
-	ret, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	gp := new(core.GasPool).AddGas(tx.Gas().Uint64())
+	ret, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 	return &ExecutionResult{
-		Gas:         gas,
+		Gas:         new(big.Int).SetUint64(gas),
 		ReturnValue: fmt.Sprintf("%x", ret),
 	}, nil
 }
 
 // computeTxEnv returns the execution environment of a certain transaction.
-func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, *core.VMEnv, error) {
+func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, *vm.EVM, error) {
 
 	// Create the parent state.
 	block := s.eth.BlockChain().GetBlock(blockHash)
@@ -2099,19 +2107,20 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 		msg := callmsg{
 			from:     from,
 			to:       tx.To(),
-			gas:      tx.Gas(),
+			gas:      tx.Gas().Uint64(),
 			gasPrice: tx.GasPrice(),
 			value:    tx.Value(),
 			data:     tx.Data(),
 		}
 
-		vmenv := core.NewEnv(statedb, s.eth.chainConfig, s.eth.BlockChain(), msg, block.Header())
+		vmctx := core.NewEVMContext(msg, block.Header(), s.eth.BlockChain(), &block.Header().Coinbase)
+		vmenv := vm.NewEVM(vmctx, statedb, s.eth.ChainConfig(), vm.Config{})
 		if idx == txIndex {
 			return msg, vmenv, nil
 		}
 
-		gp := new(core.GasPool).AddGas(tx.Gas())
-		_, _, err := core.ApplyMessage(vmenv, msg, gp)
+		gp := new(core.GasPool).AddGas(tx.Gas().Uint64())
+		_, _, _, err := core.ApplyMessage(vmenv, msg, gp)
 		if err != nil {
 			return nil, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)
 		}

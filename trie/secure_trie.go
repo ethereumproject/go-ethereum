@@ -18,6 +18,7 @@ package trie
 
 import (
 	"fmt"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )

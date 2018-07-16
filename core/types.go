@@ -25,7 +25,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
 )
@@ -44,19 +43,19 @@ import (
 // ValidateState validates the given statedb and optionally the receipts and
 // gas used. The implementer should decide what to do with the given input.
 type Validator interface {
-	HeaderValidator
-	ValidateBlock(block *types.Block) error
-	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error
-	VerifyUncles(block, parent *types.Block) error
+	// HeaderValidator
+	// ValidateBody validates the given block's content.
+	ValidateBody(block *types.Block) error
+	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error
 }
 
 // HeaderValidator is an interface for validating headers only
 //
 // ValidateHeader validates the given header and parent and returns an error
 // if it failed to do so.
-type HeaderValidator interface {
-	ValidateHeader(header, parent *types.Header, checkPow bool) error
-}
+// type HeaderValidator interface {
+// 	ValidateHeader(header, parent *types.Header, checkPow bool) error
+// }
 
 // Processor is an interface for processing blocks using a given initial state.
 //
@@ -65,7 +64,7 @@ type HeaderValidator interface {
 // of gas used in the process and return an error if any of the internal rules
 // failed.
 type Processor interface {
-	Process(block *types.Block, statedb *state.StateDB) (types.Receipts, vm.Logs, *big.Int, error)
+	Process(block *types.Block, statedb *state.StateDB) (types.Receipts, []*types.Log, uint64, error) // TODO:consensus args: + consensus.Engine
 }
 
 // Backend is an interface defining the basic functionality for an operable node

@@ -26,7 +26,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
@@ -174,7 +174,7 @@ func runVmTest(test VmTest) error {
 
 	// check post state
 	for addr, account := range test.Post {
-		obj := statedb.GetAccount(common.HexToAddress(addr))
+		obj := statedb.GetOrNewStateObject(common.HexToAddress(addr))
 		if obj == nil {
 			continue
 		}
@@ -198,7 +198,7 @@ func runVmTest(test VmTest) error {
 	return nil
 }
 
-func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, []*types.Log, *big.Int, error) {
 	var (
 		to       = common.HexToAddress(exec["address"])
 		from     = common.HexToAddress(exec["caller"])
@@ -211,10 +211,16 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 		panic("malformed gas, price or value")
 	}
 	// Reset the pre-compiled contracts for VM tests.
-	vm.Precompiled = make(map[string]*vm.PrecompiledAccount)
+	// vm.Precompiled = make(map[string]*vm.PrecompiledContract)
 
 	caller := state.GetOrNewStateObject(from)
 
+	// vmenv := NewEnvFromMap(RuleSet{
+	// 	HomesteadBlock:           big.NewInt(1150000),
+	// 	HomesteadGasRepriceBlock: big.NewInt(2500000),
+	// 	DiehardBlock:             big.NewInt(3000000),
+	// 	ExplosionBlock:           big.NewInt(5000000),
+	// }, state, env, exec)
 	vmenv := NewEnvFromMap(RuleSet{
 		HomesteadBlock:           big.NewInt(1150000),
 		HomesteadGasRepriceBlock: big.NewInt(2500000),
@@ -224,7 +230,6 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 	vmenv.vmTest = true
 	vmenv.skipTransfer = true
 	vmenv.initial = true
-	ret, err := vmenv.Call(caller, to, data, gas, price, value)
-
+	ret, err := vmenv.Call(caller, to, data, gas.Uint64(), price, value)
 	return ret, vmenv.state.Logs(), vmenv.Gas, err
 }

@@ -297,7 +297,7 @@ var PrintStatusGreen = func(e *eth.Ethereum, tickerInterval time.Duration, maxPe
 				txLen := b.Transactions().Len()
 				// Add to tallies
 				numTxsDiff += txLen
-				mGas = new(big.Int).Add(mGas, b.GasUsed())
+				mGas = new(big.Int).Add(mGas, new(big.Int).SetUint64(b.GasUsed()))
 				// Domino effect
 				if currentMode == lsModeImport {
 					if txLen > len(dominoes)-1 {

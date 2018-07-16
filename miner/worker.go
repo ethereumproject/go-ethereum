@@ -34,6 +34,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -59,7 +60,7 @@ type uint64RingBuffer struct {
 // environment is the workers current environment and holds
 // all of the current state information
 type Work struct {
-	config             *core.ChainConfig
+	config             *params.ChainConfig
 	signer             types.Signer
 	state              *state.StateDB // apply state changes here
 	ancestors          *set.Set       // ancestor set (used for checking uncle parent validity)
@@ -89,7 +90,7 @@ type Result struct {
 
 // worker is the main object which takes care of applying messages to the new state
 type worker struct {
-	config *core.ChainConfig
+	config *params.ChainConfig
 
 	mu sync.Mutex
 
@@ -124,7 +125,7 @@ type worker struct {
 	fullValidation bool
 }
 
-func newWorker(config *core.ChainConfig, coinbase common.Address, eth core.Backend) *worker {
+func newWorker(config *params.ChainConfig, coinbase common.Address, eth core.Backend) *worker {
 	worker := &worker{
 		config:         config,
 		eth:            eth,
@@ -307,7 +308,7 @@ func (self *worker) wait() {
 				}
 
 				// broadcast before waiting for validation
-				go func(block *types.Block, logs vm.Logs, receipts []*types.Receipt) {
+				go func(block *types.Block, logs []*types.Log, receipts []*types.Receipt) {
 					self.mux.Post(core.NewMinedBlockEvent{Block: block})
 					self.mux.Post(core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
 
@@ -475,7 +476,6 @@ func (self *worker) commitNewWork() {
 		Number:     num.Add(num, common.Big1),
 		Difficulty: core.CalcDifficulty(self.config, uint64(tstamp), parent.Time().Uint64(), parent.Number(), parent.Difficulty()),
 		GasLimit:   core.CalcGasLimit(parent),
-		GasUsed:    new(big.Int),
 		Coinbase:   self.coinbase,
 		Extra:      HeaderExtra,
 		Time:       big.NewInt(tstamp),
@@ -610,7 +610,7 @@ func (self *worker) commitUncle(work *Work, uncle *types.Header) error {
 func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Transactions, gasPrice *big.Int, bc *core.BlockChain) {
 	gp := new(core.GasPool).AddGas(env.header.GasLimit)
 
-	var coalescedLogs vm.Logs
+	var coalescedLogs []*types.Log
 	for _, tx := range transactions {
 		// Error may be ignored here. The error has already been checked
 		// during transaction acceptance is the transaction pool.
@@ -655,7 +655,7 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 			continue
 		}
 
-		env.state.StartRecord(tx.Hash(), common.Hash{}, 0)
+		env.state.Prepare(tx.Hash(), common.Hash{}, 0)
 
 		err, logs := env.commitTransaction(tx, bc, gp)
 		switch {
@@ -678,7 +678,7 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 
 	}
 	if len(coalescedLogs) > 0 || env.tcount > 0 {
-		go func(logs vm.Logs, tcount int) {
+		go func(logs []*types.Log, tcount int) {
 			if len(logs) > 0 {
 				mux.Post(core.PendingLogsEvent{Logs: logs})
 			}
@@ -689,10 +689,10 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 	}
 }
 
-func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, gp *core.GasPool) (error, vm.Logs) {
+func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, gp *core.GasPool) (error, []*types.Log) {
 	snap := env.state.Snapshot()
 
-	receipt, logs, _, err := core.ApplyTransaction(env.config, bc, gp, env.state, env.header, tx, env.header.GasUsed)
+	receipt, _, err := core.ApplyTransaction(env.config, bc, &env.header.Coinbase, gp, env.state, env.header, tx, &env.header.GasUsed, vm.Config{})
 
 	if logger.MlogEnabled() {
 		defer func() {
@@ -711,7 +711,7 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, g
 	env.txs = append(env.txs, tx)
 	env.receipts = append(env.receipts, receipt)
 
-	return nil, logs
+	return nil, receipt.Logs
 }
 
 // TODO: remove or use

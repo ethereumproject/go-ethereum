@@ -24,6 +24,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 func ExampleGenerateChain() {
@@ -40,7 +41,7 @@ func ExampleGenerateChain() {
 	)
 
 	// Ensure that key1 has some funds in the genesis block.
-	genesis := WriteGenesisBlockForTesting(db, GenesisAccount{addr1, big.NewInt(1000000)})
+	genesis := WriteGenesisBlockForTesting(db, params.GenesisAccount{addr1, big.NewInt(1000000)})
 
 	// This call generates a chain of 5 blocks. The function runs for
 	// each block and adds different features to gen based on the
@@ -49,13 +50,13 @@ func ExampleGenerateChain() {
 		switch i {
 		case 0:
 			// In block 1, addr1 sends addr2 some ether.
-			tx, _ := types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(10000), TxGas, nil, nil).SignECDSA(key1)
+			tx, _ := types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(10000), big.NewInt(0).SetUint64(params.TxGas), nil, nil).SignECDSA(key1)
 			gen.AddTx(tx)
 		case 1:
 			// In block 2, addr1 sends some more ether to addr2.
 			// addr2 passes it on to addr3.
-			tx1, _ := types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(1000), TxGas, nil, nil).SignECDSA(key1)
-			tx2, _ := types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), TxGas, nil, nil).SignECDSA(key2)
+			tx1, _ := types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(1000), big.NewInt(0).SetUint64(params.TxGas), nil, nil).SignECDSA(key1)
+			tx2, _ := types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), big.NewInt(0).SetUint64(params.TxGas), nil, nil).SignECDSA(key2)
 			gen.AddTx(tx1)
 			gen.AddTx(tx2)
 		case 2:

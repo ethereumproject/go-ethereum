@@ -21,11 +21,14 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/accounts/abi/bind"
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/consensus/ethash"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/event"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 // This nil assignment ensures compile time that SimulatedBackend implements bind.ContractBackend.
@@ -43,10 +46,10 @@ type SimulatedBackend struct {
 
 // NewSimulatedBackend creates a new binding backend using a simulated blockchain
 // for testing purposes.
-func NewSimulatedBackend(accounts ...core.GenesisAccount) *SimulatedBackend {
+func NewSimulatedBackend(accounts ...params.GenesisAccount) *SimulatedBackend {
 	database, _ := ethdb.NewMemDatabase()
 	core.WriteGenesisBlockForTesting(database, accounts...)
-	blockchain, _ := core.NewBlockChain(database, core.DefaultConfigMorden.ChainConfig, new(core.FakePow), new(event.TypeMux))
+	blockchain, _ := core.NewBlockChain(database, core.DefaultConfigMorden.ChainConfig, ethash.NewFaker(), new(event.TypeMux))
 
 	backend := &SimulatedBackend{
 		database:   database,
@@ -68,7 +71,7 @@ func (b *SimulatedBackend) Commit() {
 
 // Rollback aborts all pending transactions, reverting to the last committed state.
 func (b *SimulatedBackend) Rollback() {
-	blocks, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, b.blockchain.CurrentBlock(), b.database, 1, func(int, *core.BlockGen) {})
+	blocks, _ := core.GenerateChain(params.DefaultConfigMorden.ChainConfig, b.blockchain.CurrentBlock(), b.database, 1, func(int, *core.BlockGen) {})
 
 	b.pendingBlock = blocks[0]
 	b.pendingState, _ = state.New(b.pendingBlock.Root(), state.NewDatabase(b.database))
@@ -112,15 +115,20 @@ func (b *SimulatedBackend) ContractCall(contract common.Address, data []byte, pe
 		from:     from,
 		to:       &contract,
 		gasPrice: new(big.Int),
-		gasLimit: common.MaxBig,
+		gasLimit: common.MaxBig.Uint64(),
 		value:    new(big.Int),
 		data:     data,
 	}
 	// Execute the call and return
-	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
-	gaspool := new(core.GasPool).AddGas(common.MaxBig)
+	// Create a new context to be used in the EVM environment
+	context := core.NewEVMContext(msg, block.Header(), b.blockchain, &block.Header().Coinbase)
 
-	out, _, err := core.ApplyMessage(vmenv, msg, gaspool)
+	// Create a new environment which holds all relevant information
+	// about the transaction and calling mechanisms.
+	vmenv := vm.NewEVM(context, statedb, params.DefaultConfigMorden.ChainConfig, vm.Config{})
+	gaspool := new(core.GasPool).AddGas(common.MaxBig.Uint64())
+
+	out, _, _, err := core.ApplyMessage(vmenv, msg, gaspool)
 	return out, err
 }
 
@@ -162,22 +170,28 @@ func (b *SimulatedBackend) EstimateGasLimit(sender common.Address, contract *com
 		from:     from,
 		to:       contract,
 		gasPrice: new(big.Int),
-		gasLimit: common.MaxBig,
+		gasLimit: common.MaxBig.Uint64(),
 		value:    value,
 		data:     data,
 	}
 	// Execute the call and return
-	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
-	gaspool := new(core.GasPool).AddGas(common.MaxBig)
+	// Execute the call and return
+	// Create a new context to be used in the EVM environment
+	context := core.NewEVMContext(msg, block.Header(), b.blockchain, &block.Header().Coinbase)
+
+	// Create a new environment which holds all relevant information
+	// about the transaction and calling mechanisms.
+	vmenv := vm.NewEVM(context, statedb, params.DefaultConfigMorden.ChainConfig, vm.Config{})
+	gaspool := new(core.GasPool).AddGas(common.MaxBig.Uint64())
 
 	_, gas, _, err := core.NewStateTransition(vmenv, msg, gaspool).TransitionDb()
-	return gas, err
+	return new(big.Int).SetUint64(gas), err
 }
 
 // SendTransaction implements ContractTransactor.SendTransaction, delegating the raw
 // transaction injection to the remote node.
 func (b *SimulatedBackend) SendTransaction(tx *types.Transaction) error {
-	blocks, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, b.blockchain.CurrentBlock(), b.database, 1, func(number int, block *core.BlockGen) {
+	blocks, _ := core.GenerateChain(params.DefaultConfigMorden.ChainConfig, b.blockchain.CurrentBlock(), b.database, 1, func(number int, block *core.BlockGen) {
 		for _, tx := range b.pendingBlock.Transactions() {
 			block.AddTx(tx)
 		}
@@ -193,17 +207,18 @@ func (b *SimulatedBackend) SendTransaction(tx *types.Transaction) error {
 type callmsg struct {
 	from     *state.StateObject
 	to       *common.Address
-	gasLimit *big.Int
+	gasLimit uint64
 	gasPrice *big.Int
 	value    *big.Int
 	data     []byte
 }
 
-func (m callmsg) From() (common.Address, error)         { return m.from.Address(), nil }
+func (m callmsg) From() common.Address                  { return m.from.Address() }
 func (m callmsg) FromFrontier() (common.Address, error) { return m.from.Address(), nil }
 func (m callmsg) Nonce() uint64                         { return m.from.Nonce() }
 func (m callmsg) To() *common.Address                   { return m.to }
 func (m callmsg) GasPrice() *big.Int                    { return m.gasPrice }
-func (m callmsg) Gas() *big.Int                         { return m.gasLimit }
+func (m callmsg) Gas() uint64                           { return m.gasLimit }
 func (m callmsg) Value() *big.Int                       { return m.value }
 func (m callmsg) Data() []byte                          { return m.data }
+func (m callmsg) CheckNonce() bool                      { return true }

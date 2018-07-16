@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/event"
 )
 
@@ -71,7 +71,7 @@ func NewFilterSystem(mux *event.TypeMux) *FilterSystem {
 		core.RemovedLogsEvent{},
 		core.ChainEvent{},
 		core.TxPreEvent{},
-		vm.Logs(nil),
+		[]*types.Log(nil),
 	)
 	go fs.filterLoop()
 	return fs
@@ -160,12 +160,12 @@ func (fs *FilterSystem) filterLoop() {
 			}
 			fs.filterMu.RUnlock()
 
-		case vm.Logs:
+		case []*types.Log:
 			fs.filterMu.RLock()
 			for _, filter := range fs.logFilters {
 				if filter.LogCallback != nil && !filter.created.After(event.Time) {
 					for _, log := range filter.FilterLogs(ev) {
-						filter.LogCallback(log, false)
+						filter.LogCallback(&log, false)
 					}
 				}
 			}
@@ -175,7 +175,7 @@ func (fs *FilterSystem) filterLoop() {
 			for _, filter := range fs.logFilters {
 				if filter.LogCallback != nil && !filter.created.After(event.Time) {
 					for _, removedLog := range filter.FilterLogs(ev.Logs) {
-						filter.LogCallback(removedLog, true)
+						filter.LogCallback(&removedLog, true)
 					}
 				}
 			}
@@ -185,7 +185,7 @@ func (fs *FilterSystem) filterLoop() {
 			for _, filter := range fs.pendingLogFilters {
 				if filter.LogCallback != nil && !filter.created.After(event.Time) {
 					for _, pendingLog := range ev.Logs {
-						filter.LogCallback(pendingLog, false)
+						filter.LogCallback(&pendingLog, false)
 					}
 				}
 			}

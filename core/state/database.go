@@ -29,27 +29,31 @@ import (
 // Trie cache generation limit after which to evict trie nodes from memory.
 var MaxTrieCacheGen = uint16(120)
 
-//const (
-//	// Number of past tries to keep. This value is chosen such that
-//	// reasonable chain reorg depths will hit an existing trie.
-//	maxPastTries = 12
+// const (
+// 	// Number of past tries to keep. This value is chosen such that
+// 	// reasonable chain reorg depths will hit an existing trie.
+// 	maxPastTries = 12
 //
-//	// Number of codehash->size associations to keep.
-//	codeSizeCacheSize = 100000
-//)
+// 	// Number of codehash->size associations to keep.
+// 	codeSizeCacheSize = 100000
+// )
 
 // Database wraps access to tries and contract code.
 type Database interface {
-	// Accessing tries:
 	// OpenTrie opens the main account trie.
-	// OpenStorageTrie opens the storage trie of an account.
 	OpenTrie(root common.Hash) (Trie, error)
+
+	// OpenStorageTrie opens the storage trie of an account.
 	OpenStorageTrie(addrHash, root common.Hash) (Trie, error)
-	// Accessing contract code:
-	ContractCode(addrHash, codeHash common.Hash) ([]byte, error)
-	ContractCodeSize(addrHash, codeHash common.Hash) (int, error)
+
 	// CopyTrie returns an independent copy of the given trie.
 	CopyTrie(Trie) Trie
+
+	// ContractCode retrieves a particular contract's code.
+	ContractCode(addrHash, codeHash common.Hash) ([]byte, error)
+
+	// ContractCodeSize retrieves a particular contracts code's size.
+	ContractCodeSize(addrHash, codeHash common.Hash) (int, error)
 }
 
 // Trie is a Ethereum Merkle Trie.

@@ -12,6 +12,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -51,7 +52,7 @@ var (
 	ChainIdentityFlag = cli.StringFlag{
 		Name:  "chain",
 		Usage: `Chain identifier (default='mainnet', test='morden') or path to JSON chain configuration file (eg './path/to/chain.json').`,
-		Value: core.DefaultConfigMainnet.Identity,
+		Value: params.DefaultConfigMainnet.Identity,
 	}
 	NetworkIdFlag = cli.IntFlag{
 		Name:  "network-id, networkid",

@@ -21,6 +21,8 @@ import (
 
 	"strconv"
 
+	"sync"
+
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -29,7 +31,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	ldbutil "github.com/syndtr/goleveldb/leveldb/util"
-	"sync"
 )
 
 var OpenFileLimit = 64

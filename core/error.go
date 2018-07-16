@@ -25,10 +25,18 @@ import (
 )
 
 var (
+	ErrKnownBlock = errors.New("block already known")
+	// ErrNonceTooHigh is returned if the nonce of a transaction is higher than the
+	// next one expected based on the local chain.
+	ErrNonceTooHigh  = errors.New("nonce too high")
 	BlockNumberErr   = errors.New("block number invalid")
 	BlockFutureErr   = errors.New("block time is in the future")
 	BlockTSTooBigErr = errors.New("block time too big")
 	BlockEqualTSErr  = errors.New("block time stamp equal to previous")
+
+	// ErrGasLimitReached is returned by the gas pool if the amount of gas required
+	// by a transaction is higher than what's left in the block.
+	ErrGasLimitReached = errors.New("gas limit reached")
 )
 
 // Parent error. In case a parent is unknown this error will be thrown
@@ -174,7 +182,7 @@ func IsValueTransferErr(e error) bool {
 }
 
 type GasLimitErr struct {
-	Have, Want *big.Int
+	Have, Want uint64
 }
 
 func IsGasLimitErr(err error) bool {

@@ -26,6 +26,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -35,11 +36,12 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/p2p"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
 	testBankKey, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-	testBank       = core.GenesisAccount{
+	testBank       = params.GenesisAccount{
 		Address: crypto.PubkeyToAddress(testBankKey.PublicKey),
 		Balance: big.NewInt(1000000),
 	}
@@ -51,26 +53,25 @@ var (
 func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) (*ProtocolManager, *ethdb.MemDatabase, error) {
 	var (
 		evmux       = new(event.TypeMux)
-		pow         = new(core.FakePow)
 		db, _       = ethdb.NewMemDatabase()
 		genesis     = core.WriteGenesisBlockForTesting(db, testBank)
-		chainConfig = &core.ChainConfig{
-			Forks: []*core.Fork{
+		chainConfig = &params.ChainConfig{
+			Forks: []*params.Fork{
 				{
 					Name:  "Homestead",
 					Block: big.NewInt(0),
 				},
 			},
 		}
-		blockchain, _ = core.NewBlockChain(db, chainConfig, pow, evmux)
+		blockchain, _ = core.NewBlockChain(db, chainConfig, ethash.NewFaker(), evmux)
 	)
 
-	chain, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, genesis, db, blocks, generator)
+	chain, _ := core.GenerateChain(params.DefaultConfigMorden.ChainConfig, genesis, db, blocks, generator)
 	if res := blockchain.InsertChain(chain); res.Error != nil {
 		panic(res.Error)
 	}
 
-	pm, err := NewProtocolManager(chainConfig, mode, NetworkId, evmux, &testTxPool{added: newtx}, pow, blockchain, db)
+	pm, err := NewProtocolManager(chainConfig, mode, NetworkId, evmux, &testTxPool{added: newtx}, ethash.NewFaker(), blockchain, db)
 	if err != nil {
 		return nil, nil, err
 	}
