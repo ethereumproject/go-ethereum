@@ -54,9 +54,6 @@ import (
 
 const defaultGas = uint64(90000)
 
-// TODO(tzdybal) - make it configurable parameter
-const playbackTransactions = true
-
 // blockByNumber is a commonly used helper function which retrieves and returns
 // the block for the given block number, capable of handling two special blocks:
 // rpc.LatestBlockNumber and rpc.PendingBlockNumber. It returns nil when no block
@@ -1170,7 +1167,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		return nil, err
 	}
 
-	if playbackTransactions && receipt.Status == types.TxStatusUnknown {
+	if receipt.Status == types.TxStatusUnknown {
 		// To be able to get the proper state for n-th transaction in a block,
 		// all previous transactions has to be executed. Because of that, it is
 		// reasonable to reprocess entire block and update all receipts from
@@ -1226,10 +1223,9 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 		fields["contractAddress"] = receipt.ContractAddress
 	}
 
-	// Status field was introduced in ETH with EIP-609. For compatibility, we won't return status for
-	// blocks before the fork.
+	// We're not fully compatible with EIP-609 - just return status for all blocks.
 	fields["status"] = nil
-	if receipt.Status != types.TxStatusUnknown && blockIndex >= 4370000 {
+	if receipt.Status != types.TxStatusUnknown {
 		fields["status"] = receipt.Status
 	}
 
