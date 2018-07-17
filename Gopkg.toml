@@ -34,7 +34,7 @@
   name = "github.com/ethereumproject/ethash"
 
 [[constraint]]
-  branch = "master"
+  branch = "vm-failed"
   name = "github.com/ethereumproject/sputnikvm-ffi"
 
 [[constraint]]
