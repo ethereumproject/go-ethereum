@@ -21,6 +21,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/accounts/abi/bind"
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/consensus/ethash"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -46,7 +47,7 @@ type SimulatedBackend struct {
 func NewSimulatedBackend(accounts ...core.GenesisAccount) *SimulatedBackend {
 	database, _ := ethdb.NewMemDatabase()
 	core.WriteGenesisBlockForTesting(database, accounts...)
-	blockchain, _ := core.NewBlockChain(database, core.DefaultConfigMorden.ChainConfig, new(core.FakePow), new(event.TypeMux))
+	blockchain, _ := core.NewBlockChain(database, core.DefaultConfigMorden.ChainConfig, ethash.NewFaker(), new(event.TypeMux))
 
 	backend := &SimulatedBackend{
 		database:   database,

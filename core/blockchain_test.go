@@ -26,6 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"io/ioutil"
+	"strings"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
@@ -37,8 +40,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
-	"io/ioutil"
-	"strings"
 )
 
 func init() {
@@ -148,7 +149,7 @@ func testFork(t *testing.T, blockchain *BlockChain, i, n int, full bool, compara
 func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 	for _, block := range chain {
 		// Try and process the block
-		err := blockchain.Validator().ValidateBlock(block)
+		err := blockchain.Validator().ValidateBody(block)
 		if err != nil {
 			if IsKnownBlockErr(err) {
 				continue
@@ -181,7 +182,7 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 func testHeaderChainImport(chain []*types.Header, blockchain *BlockChain) error {
 	for _, header := range chain {
 		// Try and validate the header
-		if err := blockchain.Validator().ValidateHeader(header, blockchain.GetHeader(header.ParentHash), false); err != nil {
+		if err := blockchain.engine.VerifyHeader(header, blockchain.GetHeader(header.ParentHash), false); err != nil {
 			return err
 		}
 		// Manually insert the header into the database, but don't reorganise (allows subsequent testing)
@@ -451,9 +452,8 @@ func TestChainMultipleInsertions(t *testing.T) {
 
 type bproc struct{}
 
-func (bproc) ValidateBlock(*types.Block) error                        { return nil }
-func (bproc) ValidateHeader(*types.Header, *types.Header, bool) error { return nil }
-func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
+func (bproc) ValidateBody(*types.Block) error { return nil }
+func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error {
 	return nil
 }
 func (bproc) VerifyUncles(block, parent *types.Block) error { return nil }

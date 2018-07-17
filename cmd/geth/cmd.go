@@ -31,6 +31,8 @@ import (
 	"syscall"
 	"time"
 
+	"math"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -44,7 +46,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
-	"math"
 )
 
 const (

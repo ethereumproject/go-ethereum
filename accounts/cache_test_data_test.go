@@ -1,8 +1,9 @@
 package accounts
 
 import (
-	"github.com/ethereumproject/go-ethereum/common"
 	"path/filepath"
+
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 var (

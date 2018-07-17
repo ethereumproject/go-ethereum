@@ -28,6 +28,8 @@ import (
 
 	"crypto/ecdsa"
 	"encoding/binary"
+	"strings"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
@@ -35,7 +37,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"strings"
 )
 
 type diffTest struct {

@@ -20,13 +20,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math/big"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"math/big"
 )
 
 var (

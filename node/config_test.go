@@ -18,11 +18,12 @@ package node
 
 import (
 	"bytes"
-	"github.com/ethereumproject/go-ethereum/crypto"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/ethereumproject/go-ethereum/crypto"
 
 	"github.com/spf13/afero"
 )

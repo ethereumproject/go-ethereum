@@ -12,10 +12,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"net"
+
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
-	"net"
 )
 
 const defaultStatusLog = "sync=60s"
