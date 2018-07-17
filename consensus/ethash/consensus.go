@@ -24,14 +24,14 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/consensus/misc"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/common/math"
+	"github.com/ethereumproject/go-ethereum/consensus"
+	"github.com/ethereumproject/go-ethereum/consensus/misc"
+	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
 	set "gopkg.in/fatih/set.v0"
 )
 
@@ -468,7 +468,7 @@ func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *
 }
 
 func calcDifficultyDefused(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
-	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.mediawiki
+	// https://github.com/ethereumproject/EIPs/blob/master/EIPS/eip-2.mediawiki
 	// algorithm:
 	// diff = (parent_diff +
 	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
@@ -505,7 +505,7 @@ func calcDifficultyDefused(time, parentTime uint64, parentNumber, parentDiff *bi
 }
 
 func calcDifficultyHomestead(time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
-	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.mediawiki
+	// https://github.com/ethereumproject/EIPs/blob/master/EIPS/eip-2.mediawiki
 	// algorithm:
 	// diff = (parent_diff +
 	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
