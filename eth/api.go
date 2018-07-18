@@ -820,7 +820,7 @@ func (s *PublicBlockChainAPI) doCall(args CallArgs, blockNr rpc.BlockNumber) (st
 	vmenv := core.NewEnv(stateDb, s.config, s.bc, msg, block.Header())
 	gp := new(core.GasPool).AddGas(common.MaxBig)
 
-	res, requiredGas, _, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
+	res, requiredGas, _, err := core.NewStateTransition(vmenv, msg, gp).TransitionDb()
 	if len(res) == 0 { // backwards compatibility
 		return "0x", requiredGas, err
 	}

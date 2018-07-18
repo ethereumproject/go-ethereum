@@ -130,7 +130,7 @@ func NewStateTransition(env vm.Environment, msg Message, gp *GasPool) *StateTran
 func ApplyMessage(env vm.Environment, msg Message, gp *GasPool) ([]byte, *big.Int, bool, error) {
 	st := NewStateTransition(env, msg, gp)
 
-	ret, _, gasUsed, failed, err := st.TransitionDb()
+	ret, gasUsed, failed, err := st.TransitionDb()
 	return ret, gasUsed, failed, err
 }
 
@@ -221,7 +221,7 @@ func (self *StateTransition) preCheck() (err error) {
 }
 
 // TransitionDb will move the state by applying the message against the given environment.
-func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *big.Int, failed bool, err error) {
+func (self *StateTransition) TransitionDb() (ret []byte, gas *big.Int, failed bool, err error) {
 	if err = self.preCheck(); err != nil {
 		return
 	}
@@ -232,7 +232,7 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	contractCreation := MessageCreatesContract(msg)
 	// Pay intrinsic gas
 	if err = self.useGas(IntrinsicGas(self.data, contractCreation, homestead)); err != nil {
-		return nil, nil, nil, false, InvalidTxError(err)
+		return nil, nil, false, InvalidTxError(err)
 	}
 
 	vmenv := self.env
@@ -259,15 +259,13 @@ func (self *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *b
 	if vmerr != nil && IsValueTransferErr(vmerr) {
 		// if the vmerr was a value transfer error, return immediately
 		// transaction receipt status will be set to TxSuccess
-		return nil, nil, nil, false, InvalidTxError(vmerr)
+		return nil, nil, false, InvalidTxError(vmerr)
 	}
-
-	requiredGas = new(big.Int).Set(self.gasUsed())
 
 	self.refundGas()
 	self.state.AddBalance(self.env.Coinbase(), new(big.Int).Mul(self.gasUsed(), self.gasPrice))
 
-	return ret, requiredGas, self.gasUsed(), vmerr != nil, err
+	return ret, self.gasUsed(), vmerr != nil, err
 }
 
 func (self *StateTransition) refundGas() {

@@ -170,7 +170,7 @@ func (b *SimulatedBackend) EstimateGasLimit(sender common.Address, contract *com
 	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
 
-	_, gas, _, _, err := core.NewStateTransition(vmenv, msg, gaspool).TransitionDb()
+	_, gas, _, err := core.NewStateTransition(vmenv, msg, gaspool).TransitionDb()
 	return gas, err
 }
 
