@@ -33,12 +33,13 @@ package sputnikvm
 import "C"
 
 import (
-	"unsafe"
-	"math/big"
 	"github.com/ethereumproject/go-ethereum/common"
+	"math/big"
+	"unsafe"
 )
 
 type AccountChangeType int
+
 const (
 	AccountChangeIncreaseBalance = iota
 	AccountChangeDecreaseBalance
@@ -48,14 +49,14 @@ const (
 )
 
 type AccountChangeStorageItem struct {
-	Key *big.Int
+	Key   *big.Int
 	Value *big.Int
 }
 
 type AccountChange struct {
-	info C.sputnikvm_account_change
+	info    C.sputnikvm_account_change
 	storage []AccountChangeStorageItem
-	code []byte
+	code    []byte
 }
 
 func (change *AccountChange) Typ() AccountChangeType {
@@ -149,6 +150,7 @@ func (change *AccountChange) ChangedStorage() []AccountChangeStorageItem {
 }
 
 type RequireType int
+
 const (
 	RequireNone = iota
 	RequireAccount
@@ -211,8 +213,8 @@ func (require *Require) BlockNumber() *big.Int {
 
 type Log struct {
 	Address common.Address
-	Topics []common.Hash
-	Data []byte
+	Topics  []common.Hash
+	Data    []byte
 }
 
 type VM struct {
@@ -220,21 +222,21 @@ type VM struct {
 }
 
 type Transaction struct {
-	Caller common.Address
+	Caller   common.Address
 	GasPrice *big.Int
 	GasLimit *big.Int
-	Address *common.Address // If it is nil, then we take it as a Create transaction.
-	Value *big.Int
-	Input []byte
-	Nonce *big.Int
+	Address  *common.Address // If it is nil, then we take it as a Create transaction.
+	Value    *big.Int
+	Input    []byte
+	Nonce    *big.Int
 }
 
 type HeaderParams struct {
 	Beneficiary common.Address
-	Timestamp uint64
-	Number *big.Int
-	Difficulty *big.Int
-	GasLimit *big.Int
+	Timestamp   uint64
+	Number      *big.Int
+	Difficulty  *big.Int
+	GasLimit    *big.Int
 }
 
 func PrintCU256(v C.sputnikvm_u256) {
@@ -248,7 +250,7 @@ func ToCU256(v *big.Int) C.sputnikvm_u256 {
 		if i < (32 - len(bytes)) {
 			continue
 		}
-		cu256.data[i] = C.uchar(bytes[i - (32 - len(bytes))])
+		cu256.data[i] = C.uchar(bytes[i-(32-len(bytes))])
 	}
 	return *cu256
 }
@@ -270,7 +272,7 @@ func ToCGas(v *big.Int) C.sputnikvm_gas {
 		if i < (32 - len(bytes)) {
 			continue
 		}
-		cgas.data[i] = C.uchar(bytes[i - (32 - len(bytes))])
+		cgas.data[i] = C.uchar(bytes[i-(32-len(bytes))])
 	}
 	return *cgas
 }
@@ -517,7 +519,7 @@ func SetCustomInitialNonce(nonce *big.Int) {
 
 func (vm *VM) Fire() Require {
 	ret := C.sputnikvm_fire(vm.c)
-	return Require {
+	return Require{
 		c: ret,
 	}
 }
@@ -596,10 +598,10 @@ func (vm *VM) Logs() []Log {
 			j_cdata := unsafe.Pointer(uintptr(cdata) + uintptr(j))
 			data[j] = byte(*(*C.uchar)(j_cdata))
 		}
-		logs = append(logs, Log {
+		logs = append(logs, Log{
 			Address: address,
-			Topics: topics,
-			Data: data,
+			Topics:  topics,
+			Data:    data,
 		})
 		C.free(cdata)
 	}
@@ -615,10 +617,10 @@ func (vm *VM) AccountChanges() []AccountChange {
 	for i := 0; i < int(l); i++ {
 		i_cchange := unsafe.Pointer(uintptr(cchanges) + (uintptr(i) * uintptr(C.sizeof_sputnikvm_account_change)))
 		cchange := (*C.sputnikvm_account_change)(i_cchange)
-		change := AccountChange {
-			info: *cchange,
+		change := AccountChange{
+			info:    *cchange,
 			storage: make([]AccountChangeStorageItem, 0),
-			code: make([]byte, 0),
+			code:    make([]byte, 0),
 		}
 		switch change.Typ() {
 		case AccountChangeIncreaseBalance, AccountChangeDecreaseBalance, AccountChangeRemoved:
@@ -635,8 +637,8 @@ func (vm *VM) AccountChanges() []AccountChange {
 			for j := 0; j < int(uint(storage_len)); j++ {
 				j_cstorage := unsafe.Pointer(uintptr(cstorage) + (uintptr(j) * uintptr(C.sizeof_sputnikvm_account_change_storage)))
 				citem := (*C.sputnikvm_account_change_storage)(j_cstorage)
-				storage = append(storage, AccountChangeStorageItem {
-					Key: FromCU256(citem.key),
+				storage = append(storage, AccountChangeStorageItem{
+					Key:   FromCU256(citem.key),
 					Value: FromCU256(citem.value),
 				})
 			}
@@ -660,4 +662,8 @@ func (vm *VM) AccountChanges() []AccountChange {
 	}
 	C.free(cchanges)
 	return changes
+}
+
+func (vm *VM) Failed() bool {
+	return uint(C.sputnikvm_status_failed(vm.c)) == 1
 }

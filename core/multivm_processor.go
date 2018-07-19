@@ -179,6 +179,11 @@ Loop:
 	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), totalUsedGas)
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
+	if vm.Failed() {
+		receipt.Status = types.TxFailure
+	} else {
+		receipt.Status = types.TxSuccess
+	}
 	if MessageCreatesContract(tx) {
 		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 	}

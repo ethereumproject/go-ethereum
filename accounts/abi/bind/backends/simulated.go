@@ -120,7 +120,7 @@ func (b *SimulatedBackend) ContractCall(contract common.Address, data []byte, pe
 	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
 
-	out, _, err := core.ApplyMessage(vmenv, msg, gaspool)
+	out, _, _, err := core.ApplyMessage(vmenv, msg, gaspool)
 	return out, err
 }
 

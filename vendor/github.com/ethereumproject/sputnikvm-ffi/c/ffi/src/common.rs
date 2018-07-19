@@ -1,4 +1,4 @@
-use libc::{c_uchar, c_uint, c_longlong};
+use libc::{c_uchar};
 use bigint::{U256, H256, Gas, Address};
 
 // We use big-endian representation for c_u256 and c_gas. Note that
@@ -138,3 +138,4 @@ impl From<H256> for c_h256 {
         a
     }
 }
+

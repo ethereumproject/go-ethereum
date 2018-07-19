@@ -335,3 +335,9 @@ sputnikvm_default_transaction(void);
  */
 extern sputnikvm_header_params
 sputnikvm_default_header_params(void);
+
+/**
+ * Returns 1 if VM failed (VMStatus::ExitedErr), 0 otherwise (including VM is still running).
+ */
+extern char
+sputnikvm_status_failed(sputnikvm_vm_t *vm);
