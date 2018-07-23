@@ -20,17 +20,18 @@ package consensus
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/rpc"
 )
 
 // ChainReader defines a small collection of methods needed to access the local
 // blockchain during header and/or uncle verification.
 type ChainReader interface {
 	// Config retrieves the blockchain's chain configuration.
-	Config() *ChainConfig
+	Config() *params.ChainConfig
 
 	// CurrentHeader retrieves the current header from the local chain.
 	CurrentHeader() *types.Header

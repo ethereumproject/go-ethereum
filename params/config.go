@@ -14,110 +14,142 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package params
+package core
 
 import (
+	"encoding/csv"
+	hexlib "encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"os"
+	"sort"
+	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
+	"path/filepath"
+	"reflect"
+
+	"io"
+	"strings"
+
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/ethdb"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p/discover"
 )
 
-// Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
-	TestnetGenesisHash = common.HexToHash("0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d")
+	ErrChainConfigNotFound     = errors.New("chain config not found")
+	ErrChainConfigForkNotFound = errors.New("chain config fork not found")
+
+	ErrInvalidChainID = errors.New("invalid chainID")
+
+	ErrHashKnownBad  = errors.New("known bad hash")
+	ErrHashKnownFork = validateError("known fork hash mismatch")
+
+	// Chain identities.
+	ChainIdentitiesBlacklist = map[string]bool{
+		"chaindata": true,
+		"dapp":      true,
+		"keystore":  true,
+		"nodekey":   true,
+		"nodes":     true,
+	}
+	ChainIdentitiesMain = map[string]bool{
+		"main":    true,
+		"mainnet": true,
+	}
+	ChainIdentitiesMorden = map[string]bool{
+		"morden":  true,
+		"testnet": true,
+	}
+
+	cacheChainIdentity string
+	cacheChainConfig   *SufficientChainConfig
 )
 
-var (
-	// MainnetChainConfig is the chain parameters to run a node on the main network.
-	MainnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(1),
-		HomesteadBlock:      big.NewInt(1150000),
-		DAOForkBlock:        big.NewInt(1920000),
-		DAOForkSupport:      true,
-		EIP150Block:         big.NewInt(2463000),
-		EIP150Hash:          common.HexToHash("0x2086799aeebeae135c246c65021c82b4e15a2c451340993aacfd2751886514f0"),
-		EIP155Block:         big.NewInt(2675000),
-		EIP158Block:         big.NewInt(2675000),
-		ByzantiumBlock:      big.NewInt(4370000),
-		ConstantinopleBlock: nil,
-		Ethash:              new(EthashConfig),
-	}
+func SetCacheChainIdentity(s string) {
+	cacheChainIdentity = s
+}
 
-	// TestnetChainConfig contains the chain parameters to run a node on the Ropsten test network.
-	TestnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(3),
-		HomesteadBlock:      big.NewInt(0),
-		DAOForkBlock:        nil,
-		DAOForkSupport:      true,
-		EIP150Block:         big.NewInt(0),
-		EIP150Hash:          common.HexToHash("0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d"),
-		EIP155Block:         big.NewInt(10),
-		EIP158Block:         big.NewInt(10),
-		ByzantiumBlock:      big.NewInt(1700000),
-		ConstantinopleBlock: nil,
-		Ethash:              new(EthashConfig),
-	}
+func GetCacheChainIdentity() string {
+	return cacheChainIdentity
+}
 
-	// RinkebyChainConfig contains the chain parameters to run a node on the Rinkeby test network.
-	RinkebyChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(4),
-		HomesteadBlock:      big.NewInt(1),
-		DAOForkBlock:        nil,
-		DAOForkSupport:      true,
-		EIP150Block:         big.NewInt(2),
-		EIP150Hash:          common.HexToHash("0x9b095b36c15eaf13044373aef8ee0bd3a382a5abb92e402afa44b8249c3a90e9"),
-		EIP155Block:         big.NewInt(3),
-		EIP158Block:         big.NewInt(3),
-		ByzantiumBlock:      big.NewInt(1035301),
-		ConstantinopleBlock: nil,
-		Clique: &CliqueConfig{
-			Period: 15,
-			Epoch:  30000,
-		},
-	}
+func SetCacheChainConfig(c *SufficientChainConfig) *SufficientChainConfig {
+	cacheChainConfig = c
+	return cacheChainConfig
+}
 
-	// AllEthashProtocolChanges contains every protocol change (EIPs) introduced
-	// and accepted by the Ethereum core developers into the Ethash consensus.
-	//
-	// This configuration is intentionally not using keyed fields to force anyone
-	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil}
+func GetCacheChainConfig() *SufficientChainConfig {
+	return cacheChainConfig
+}
 
-	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
-	// and accepted by the Ethereum core developers into the Clique consensus.
-	//
-	// This configuration is intentionally not using keyed fields to force anyone
-	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}}
+// SufficientChainConfig holds necessary data for externalizing a given blockchain configuration.
+type SufficientChainConfig struct {
+	ID              string           `json:"id,omitempty"` // deprecated in favor of 'Identity', method decoding should id -> identity
+	Identity        string           `json:"identity"`
+	Name            string           `json:"name,omitempty"`
+	State           *StateConfig     `json:"state"`     // don't omitempty for clarity of potential custom options
+	Network         int              `json:"network"`   // eth.NetworkId (mainnet=1, morden=2)
+	Consensus       string           `json:"consensus"` // pow type (ethash OR ethash-test)
+	Genesis         *GenesisDump     `json:"genesis"`
+	ChainConfig     *ChainConfig     `json:"chainConfig"`
+	Bootstrap       []string         `json:"bootstrap"`
+	ParsedBootstrap []*discover.Node `json:"-"`
+	Include         []string         `json:"include"` // config files to include
+}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil}
-	TestRules       = TestChainConfig.Rules(new(big.Int))
-)
+// StateConfig hold variable data for statedb.
+type StateConfig struct {
+	StartingNonce uint64 `json:"startingNonce,omitempty"`
+}
 
-// ChainConfig is the core config which determines the blockchain settings.
-//
+// GenesisDump is the geth JSON format.
+// https://github.com/ethereumproject/wiki/wiki/Ethereum-Chain-Spec-Format#subformat-genesis
+type GenesisDump struct {
+	Nonce      prefixedHex `json:"nonce"`
+	Timestamp  prefixedHex `json:"timestamp"`
+	ParentHash prefixedHex `json:"parentHash"`
+	ExtraData  prefixedHex `json:"extraData"`
+	GasLimit   prefixedHex `json:"gasLimit"`
+	Difficulty prefixedHex `json:"difficulty"`
+	Mixhash    prefixedHex `json:"mixhash"`
+	Coinbase   prefixedHex `json:"coinbase"`
+
+	// Alloc maps accounts by their address.
+	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
+	// Alloc file contains CSV representation of Alloc
+	AllocFile string `json:"alloc_file"`
+}
+
+// GenesisDumpAlloc is a GenesisDump.Alloc entry.
+type GenesisDumpAlloc struct {
+	Code    prefixedHex `json:"-"` // skip field for json encode
+	Storage map[hex]hex `json:"-"`
+	Balance string      `json:"balance"` // decimal string
+}
+
+type GenesisAccount struct {
+	Address common.Address `json:"address"`
+	Balance *big.Int       `json:"balance"`
+}
+
 // ChainConfig is stored in the database on a per block basis. This means
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type ChainConfig struct {
-	ChainID *big.Int `json:"chainId"` // chainId identifies the current chain and is used for replay protection
+	// Forks holds fork block requirements. See ErrHashKnownFork.
+	Forks Forks `json:"forks"`
 
-	HomesteadBlock *big.Int `json:"homesteadBlock,omitempty"` // Homestead switch block (nil = no fork, 0 = already homestead)
-
-	DAOForkBlock   *big.Int `json:"daoForkBlock,omitempty"`   // TheDAO hard-fork switch block (nil = no fork)
-	DAOForkSupport bool     `json:"daoForkSupport,omitempty"` // Whether the nodes supports or opposes the DAO hard-fork
-
-	// EIP150 implements the Gas price changes (https://github.com/ethereum/EIPs/issues/150)
-	EIP150Block *big.Int    `json:"eip150Block,omitempty"` // EIP150 HF block (nil = no fork)
-	EIP150Hash  common.Hash `json:"eip150Hash,omitempty"`  // EIP150 HF hash (needed for header only clients as only gas pricing changed)
-
-	EIP155Block *big.Int `json:"eip155Block,omitempty"` // EIP155 HF block
-	EIP158Block *big.Int `json:"eip158Block,omitempty"` // EIP158 HF block
-
-	ByzantiumBlock      *big.Int `json:"byzantiumBlock,omitempty"`      // Byzantium switch block (nil = no fork, 0 = already on byzantium)
-	ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
+	// BadHashes holds well known blocks with consensus issues. See ErrHashKnownBad.
+	BadHashes []*BadHash `json:"badHashes"`
 
 	// Various consensus engines
 	Ethash *EthashConfig `json:"ethash,omitempty"`
@@ -143,203 +175,733 @@ func (c *CliqueConfig) String() string {
 	return "clique"
 }
 
-// String implements the fmt.Stringer interface.
-func (c *ChainConfig) String() string {
-	var engine interface{}
-	switch {
-	case c.Ethash != nil:
-		engine = c.Ethash
-	case c.Clique != nil:
-		engine = c.Clique
-	default:
-		engine = "unknown"
+type Fork struct {
+	Name string `json:"name"`
+	// Block is the block number where the hard-fork commences on
+	// the Ethereum network.
+	Block *big.Int `json:"block"`
+	// Used to improve sync for a known network split
+	RequiredHash common.Hash `json:"requiredHash"`
+	// Configurable features.
+	Features []*ForkFeature `json:"features"`
+}
+
+// Forks implements sort interface, sorting by block number
+type Forks []*Fork
+
+func (fs Forks) Len() int { return len(fs) }
+func (fs Forks) Less(i, j int) bool {
+	iF := fs[i]
+	jF := fs[j]
+	return iF.Block.Cmp(jF.Block) < 0
+}
+func (fs Forks) Swap(i, j int) {
+	fs[i], fs[j] = fs[j], fs[i]
+}
+
+// ForkFeatures are designed to decouple the implementation feature upgrades from Forks themselves.
+// For example, there are several 'set-gasprice' features, each using a different gastable,
+// as well as protocol upgrades including 'eip155', 'ecip1010', ... etc.
+type ForkFeature struct {
+	ID                string                    `json:"id"`
+	Options           ChainFeatureConfigOptions `json:"options"` // no * because they have to be iterable(?)
+	optionsLock       sync.RWMutex
+	ParsedOptions     map[string]interface{} `json:"-"` // don't include in JSON dumps, since its for holding parsed JSON in mem
+	parsedOptionsLock sync.RWMutex
+	// TODO Derive Oracle contracts from fork struct (Version, Registrar, Release)
+}
+
+// These are the raw key-value configuration options made available
+// by an external JSON file.
+type ChainFeatureConfigOptions map[string]interface{}
+
+type BadHash struct {
+	Block *big.Int
+	Hash  common.Hash
+}
+
+func (c *SufficientChainConfig) IsValid() (string, bool) {
+	// entirely empty
+	if reflect.DeepEqual(c, SufficientChainConfig{}) {
+		return "all empty", false
 	}
-	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v Engine: %v}",
-		c.ChainID,
-		c.HomesteadBlock,
-		c.DAOForkBlock,
-		c.DAOForkSupport,
-		c.EIP150Block,
-		c.EIP155Block,
-		c.EIP158Block,
-		c.ByzantiumBlock,
-		c.ConstantinopleBlock,
-		engine,
-	)
+
+	if c.Identity == "" {
+		return "identity/id", false
+	}
+
+	if c.Network == 0 {
+		return "networkId", false
+	}
+
+	if c := c.Consensus; c == "" || (c != "ethash" && c != "ethash-test") {
+		return "consensus", false
+	}
+
+	if c.Genesis == nil {
+		return "genesis", false
+	}
+	if len(c.Genesis.Nonce) == 0 {
+		return "genesis.nonce", false
+	}
+	if len(c.Genesis.GasLimit) == 0 {
+		return "genesis.gasLimit", false
+	}
+	if len(c.Genesis.Difficulty) == 0 {
+		return "genesis.difficulty", false
+	}
+	if _, e := c.Genesis.Header(); e != nil {
+		return "genesis.header(): " + e.Error(), false
+	}
+
+	if c.ChainConfig == nil {
+		return "chainConfig", false
+	}
+
+	if len(c.ChainConfig.Forks) == 0 {
+		return "forks", false
+	}
+
+	return "", true
+}
+
+// Header returns the mapping.
+func (g *GenesisDump) Header() (*types.Header, error) {
+	var h types.Header
+
+	var err error
+	if err = g.Nonce.Decode(h.Nonce[:]); err != nil {
+		return nil, fmt.Errorf("malformed nonce: %s", err)
+	}
+	if h.Time, err = g.Timestamp.Int(); err != nil {
+		return nil, fmt.Errorf("malformed timestamp: %s", err)
+	}
+	if err = g.ParentHash.Decode(h.ParentHash[:]); err != nil {
+		return nil, fmt.Errorf("malformed parentHash: %s", err)
+	}
+	if h.Extra, err = g.ExtraData.Bytes(); err != nil {
+		return nil, fmt.Errorf("malformed extraData: %s", err)
+	}
+	if h.GasLimit, err = g.GasLimit.Int(); err != nil {
+		return nil, fmt.Errorf("malformed gasLimit: %s", err)
+	}
+	if h.Difficulty, err = g.Difficulty.Int(); err != nil {
+		return nil, fmt.Errorf("malformed difficulty: %s", err)
+	}
+	if err = g.Mixhash.Decode(h.MixDigest[:]); err != nil {
+		return nil, fmt.Errorf("malformed mixhash: %s", err)
+	}
+	if err := g.Coinbase.Decode(h.Coinbase[:]); err != nil {
+		return nil, fmt.Errorf("malformed coinbase: %s", err)
+	}
+
+	return &h, nil
+}
+
+// SortForks sorts a ChainConfiguration's forks by block number smallest to bigget (chronologically).
+// This should need be called only once after construction
+func (c *ChainConfig) SortForks() *ChainConfig {
+	sort.Sort(c.Forks)
+	return c
+}
+
+// GetChainID gets the chainID for a chainconfig.
+// It returns big.Int zero-value if no chainID is ever set for eip155/chainID.
+// It uses ChainConfig#HasFeature, so it will return the last chronological value
+// if the value is set multiple times.
+func (c *ChainConfig) GetChainID() *big.Int {
+	n := new(big.Int)
+	feat, _, ok := c.HasFeature("eip155")
+	if !ok {
+		return n
+	}
+	if val, ok := feat.GetBigInt("chainID"); ok {
+		n.Set(val)
+	}
+	return n
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
 func (c *ChainConfig) IsHomestead(num *big.Int) bool {
-	return isForked(c.HomesteadBlock, num)
-}
-
-// IsDAOFork returns whether num is either equal to the DAO fork block or greater.
-func (c *ChainConfig) IsDAOFork(num *big.Int) bool {
-	return isForked(c.DAOForkBlock, num)
-}
-
-// IsEIP150 returns whether num is either equal to the EIP150 fork block or greater.
-func (c *ChainConfig) IsEIP150(num *big.Int) bool {
-	return isForked(c.EIP150Block, num)
-}
-
-// IsEIP155 returns whether num is either equal to the EIP155 fork block or greater.
-func (c *ChainConfig) IsEIP155(num *big.Int) bool {
-	return isForked(c.EIP155Block, num)
-}
-
-// IsEIP158 returns whether num is either equal to the EIP158 fork block or greater.
-func (c *ChainConfig) IsEIP158(num *big.Int) bool {
-	return isForked(c.EIP158Block, num)
-}
-
-// IsByzantium returns whether num is either equal to the Byzantium fork block or greater.
-func (c *ChainConfig) IsByzantium(num *big.Int) bool {
-	return isForked(c.ByzantiumBlock, num)
-}
-
-// IsConstantinople returns whether num is either equal to the Constantinople fork block or greater.
-func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
-	return isForked(c.ConstantinopleBlock, num)
-}
-
-// GasTable returns the gas table corresponding to the current phase (homestead or homestead reprice).
-//
-// The returned GasTable's fields shouldn't, under any circumstances, be changed.
-func (c *ChainConfig) GasTable(num *big.Int) GasTable {
-	if num == nil {
-		return GasTableHomestead
+	if c.ForkByName("Homestead").Block == nil || num == nil {
+		return false
 	}
-	switch {
-	case c.IsEIP158(num):
-		return GasTableEIP158
-	case c.IsEIP150(num):
-		return GasTableEIP150
-	default:
-		return GasTableHomestead
-	}
+	return num.Cmp(c.ForkByName("Homestead").Block) >= 0
 }
 
-// CheckCompatible checks whether scheduled fork transitions have been imported
-// with a mismatching chain configuration.
-func (c *ChainConfig) CheckCompatible(newcfg *ChainConfig, height uint64) *ConfigCompatError {
-	bhead := new(big.Int).SetUint64(height)
+// IsDiehard returns whether num is greater than or equal to the Diehard block, but less than explosion.
+func (c *ChainConfig) IsDiehard(num *big.Int) bool {
+	fork := c.ForkByName("Diehard")
+	if fork.Block == nil || num == nil {
+		return false
+	}
+	return num.Cmp(fork.Block) >= 0
+}
 
-	// Iterate checkCompatible to find the lowest conflict.
-	var lasterr *ConfigCompatError
-	for {
-		err := c.checkCompatible(newcfg, bhead)
-		if err == nil || (lasterr != nil && err.RewindTo == lasterr.RewindTo) {
-			break
+// IsExplosion returns whether num is either equal to the explosion block or greater.
+func (c *ChainConfig) IsExplosion(num *big.Int) bool {
+	feat, fork, configured := c.GetFeature(num, "difficulty")
+
+	if configured {
+		//name, exists := feat.GetString("type")
+		if name, exists := feat.GetString("type"); exists && name == "ecip1010" {
+			block := big.NewInt(0)
+			if length, ok := feat.GetBigInt("length"); ok {
+				block = block.Add(fork.Block, length)
+			} else {
+				panic("Fork feature ecip1010 requires length value.")
+			}
+			return num.Cmp(block) >= 0
 		}
-		lasterr = err
-		bhead.SetUint64(err.RewindTo)
 	}
-	return lasterr
+	return false
 }
 
-func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *ConfigCompatError {
-	if isForkIncompatible(c.HomesteadBlock, newcfg.HomesteadBlock, head) {
-		return newCompatError("Homestead fork block", c.HomesteadBlock, newcfg.HomesteadBlock)
+// ForkByName looks up a Fork by its name, assumed to be unique
+func (c *ChainConfig) ForkByName(name string) *Fork {
+	for i := range c.Forks {
+		if c.Forks[i].Name == name {
+			return c.Forks[i]
+		}
 	}
-	if isForkIncompatible(c.DAOForkBlock, newcfg.DAOForkBlock, head) {
-		return newCompatError("DAO fork block", c.DAOForkBlock, newcfg.DAOForkBlock)
+	return &Fork{}
+}
+
+// GetFeature looks up fork features by id, where id can (currently) be [difficulty, gastable, eip155].
+// GetFeature returns the feature|nil, the latest fork configuring a given id, and if the given feature id was found at all
+// If queried feature is not found, returns ForkFeature{}, Fork{}, false.
+// If queried block number and/or feature is a zero-value, returns ForkFeature{}, Fork{}, false.
+func (c *ChainConfig) GetFeature(num *big.Int, id string) (*ForkFeature, *Fork, bool) {
+	var okForkFeature = &ForkFeature{}
+	var okFork = &Fork{}
+	var found = false
+	if num != nil && id != "" {
+		for _, f := range c.Forks {
+			if f.Block == nil {
+				continue
+			}
+			if f.Block.Cmp(num) > 0 {
+				continue
+			}
+			for _, ff := range f.Features {
+				if ff.ID == id {
+					okForkFeature = ff
+					okFork = f
+					found = true
+				}
+			}
+		}
 	}
-	if c.IsDAOFork(head) && c.DAOForkSupport != newcfg.DAOForkSupport {
-		return newCompatError("DAO fork support flag", c.DAOForkBlock, newcfg.DAOForkBlock)
+	return okForkFeature, okFork, found
+}
+
+// HasFeature looks up if fork feature exists on any fork at any block in the configuration.
+// In case of multiple same-'id'd features, returns latest (assuming forks are sorted).
+func (c *ChainConfig) HasFeature(id string) (*ForkFeature, *Fork, bool) {
+	var okForkFeature = &ForkFeature{}
+	var okFork = &Fork{}
+	var found = false
+	if id != "" {
+		for _, f := range c.Forks {
+			for _, ff := range f.Features {
+				if ff.ID == id {
+					okForkFeature = ff
+					okFork = f
+					found = true
+				}
+			}
+		}
 	}
-	if isForkIncompatible(c.EIP150Block, newcfg.EIP150Block, head) {
-		return newCompatError("EIP150 fork block", c.EIP150Block, newcfg.EIP150Block)
+	return okForkFeature, okFork, found
+}
+
+func (c *ChainConfig) HeaderCheck(h *types.Header) error {
+	for _, fork := range c.Forks {
+		if fork.Block.Cmp(h.Number) != 0 {
+			continue
+		}
+		if !fork.RequiredHash.IsEmpty() && fork.RequiredHash != h.Hash() {
+			return ErrHashKnownFork
+		}
 	}
-	if isForkIncompatible(c.EIP155Block, newcfg.EIP155Block, head) {
-		return newCompatError("EIP155 fork block", c.EIP155Block, newcfg.EIP155Block)
+
+	for _, bad := range c.BadHashes {
+		if bad.Block.Cmp(h.Number) != 0 {
+			continue
+		}
+		if bad.Hash == h.Hash() {
+			return ErrHashKnownBad
+		}
 	}
-	if isForkIncompatible(c.EIP158Block, newcfg.EIP158Block, head) {
-		return newCompatError("EIP158 fork block", c.EIP158Block, newcfg.EIP158Block)
+
+	return nil
+}
+
+// GetLatestRequiredHash returns the latest requiredHash from chain config for a given blocknumber n (eg. bc head).
+// It does NOT depend on forks being sorted.
+func (c *ChainConfig) GetLatestRequiredHashFork(n *big.Int) (f *Fork) {
+	lastBlockN := new(big.Int)
+	for _, ff := range c.Forks {
+		if ff.RequiredHash.IsEmpty() {
+			continue
+		}
+		// If this fork is chronologically later than lastSet fork with required hash AND given block n is greater than
+		// the fork.
+		if ff.Block.Cmp(lastBlockN) > 0 && n.Cmp(ff.Block) >= 0 {
+			f = ff
+			lastBlockN = ff.Block
+		}
 	}
-	if c.IsEIP158(head) && !configNumEqual(c.ChainID, newcfg.ChainID) {
-		return newCompatError("EIP158 chain ID", c.EIP158Block, newcfg.EIP158Block)
+	return
+}
+
+func (c *ChainConfig) GetSigner(blockNumber *big.Int) types.Signer {
+	feature, _, configured := c.GetFeature(blockNumber, "eip155")
+	if configured {
+		if chainId, ok := feature.GetBigInt("chainID"); ok {
+			return types.NewChainIdSigner(chainId)
+		} else {
+			panic(fmt.Errorf("chainID is not set for EIP-155 at %v", blockNumber))
+		}
 	}
-	if isForkIncompatible(c.ByzantiumBlock, newcfg.ByzantiumBlock, head) {
-		return newCompatError("Byzantium fork block", c.ByzantiumBlock, newcfg.ByzantiumBlock)
+	return types.BasicSigner{}
+}
+
+// GasTable returns the gas table corresponding to the current fork
+// The returned GasTable's fields shouldn't, under any circumstances, be changed.
+func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
+	f, _, configured := c.GetFeature(num, "gastable")
+	if !configured {
+		return DefaultHomeSteadGasTable
 	}
-	if isForkIncompatible(c.ConstantinopleBlock, newcfg.ConstantinopleBlock, head) {
-		return newCompatError("Constantinople fork block", c.ConstantinopleBlock, newcfg.ConstantinopleBlock)
+	name, ok := f.GetString("type")
+	if !ok {
+		name = ""
+	} // will wall to default panic
+	switch name {
+	case "homestead":
+		return DefaultHomeSteadGasTable
+	case "eip150":
+		return DefaultGasRepriceGasTable
+	case "eip160":
+		return DefaultDiehardGasTable
+	default:
+		panic(fmt.Errorf("Unsupported gastable value '%v' at block: %v", name, num))
+	}
+}
+
+// WriteToJSONFile writes a given config to a specified file path.
+// It doesn't run any checks on the file path so make sure that's already squeaky clean.
+func (c *SufficientChainConfig) WriteToJSONFile(path string) error {
+	jsonConfig, err := json.MarshalIndent(c, "", "    ")
+	if err != nil {
+		return fmt.Errorf("Could not marshal json from chain config: %v", err)
+	}
+
+	if err := ioutil.WriteFile(path, jsonConfig, 0644); err != nil {
+		return fmt.Errorf("Could not write external chain config file: %v", err)
 	}
 	return nil
 }
 
-// isForkIncompatible returns true if a fork scheduled at s1 cannot be rescheduled to
-// block s2 because head is already past the fork.
-func isForkIncompatible(s1, s2, head *big.Int) bool {
-	return (isForked(s1, head) || isForked(s2, head)) && !configNumEqual(s1, s2)
+// resolvePath builds a path based on adjacentPath's directory.
+// It assumes that adjacentPath is the path of a file or immediate parent directory, and that
+// 'path' is either an absolute path or a path relative to the adjacentPath.
+func resolvePath(path, parentOrAdjacentPath string) string {
+	if !filepath.IsAbs(path) {
+		baseDir := filepath.Dir(parentOrAdjacentPath)
+		path = filepath.Join(baseDir, path)
+	}
+	return path
 }
 
-// isForked returns whether a fork scheduled at block s is active at the given head block.
-func isForked(s, head *big.Int) bool {
-	if s == nil || head == nil {
+func parseAllocationFile(config *SufficientChainConfig, open func(string) (io.ReadCloser, error), currentFile string) error {
+	if config.Genesis == nil || config.Genesis.AllocFile == "" {
+		return nil
+	}
+
+	if len(config.Genesis.Alloc) > 0 {
+		return fmt.Errorf("error processing %s: \"alloc\" values already set, but \"alloc_file\" is provided", currentFile)
+	}
+	path := resolvePath(config.Genesis.AllocFile, currentFile)
+	csvFile, err := open(path)
+	if err != nil {
+		return fmt.Errorf("failed to read allocation file: %v", err)
+	}
+	defer csvFile.Close()
+
+	config.Genesis.Alloc = make(map[hex]*GenesisDumpAlloc)
+
+	reader := csv.NewReader(csvFile)
+	line := 1
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return fmt.Errorf("error while reading allocation file: %v", err)
+		}
+		if len(row) != 2 {
+			return fmt.Errorf("invalid number of values in line %d: expected 2, got %d", line, len(row))
+		}
+		line++
+
+		config.Genesis.Alloc[hex(row[0])] = &GenesisDumpAlloc{Balance: row[1]}
+	}
+
+	config.Genesis.AllocFile = ""
+	return nil
+}
+
+func parseExternalChainConfig(mainConfigFile string, open func(string) (io.ReadCloser, error)) (*SufficientChainConfig, error) {
+	var config = &SufficientChainConfig{}
+	var processed []string
+
+	contains := func(hayStack []string, needle string) bool {
+		for _, v := range hayStack {
+			if needle == v {
+				return true
+			}
+		}
 		return false
 	}
-	return s.Cmp(head) <= 0
-}
 
-func configNumEqual(x, y *big.Int) bool {
-	if x == nil {
-		return y == nil
+	var processFile func(path, parent string) error
+	processFile = func(path, parent string) (err error) {
+		path = resolvePath(path, parent)
+		if contains(processed, path) {
+			return nil
+		}
+		processed = append(processed, path)
+
+		f, err := open(path)
+		// return file close error as named return if another error is not already being returned
+		defer func() {
+			if closeErr := f.Close(); err == nil {
+				err = closeErr
+			}
+		}()
+		if err != nil {
+			return fmt.Errorf("failed to read chain configuration file: %s", err)
+		}
+		if err := json.NewDecoder(f).Decode(config); err != nil {
+			return fmt.Errorf("%v: %s", f, err)
+		}
+
+		// read csv alloc file
+		if err := parseAllocationFile(config, open, path); err != nil {
+			return err
+		}
+
+		includes := make([]string, len(config.Include))
+		copy(includes, config.Include)
+		config.Include = nil
+
+		for _, include := range includes {
+			err := processFile(include, path)
+			if err != nil {
+				return err
+			}
+		}
+		return
 	}
-	if y == nil {
-		return x == nil
+
+	err := processFile(mainConfigFile, ".")
+	if err != nil {
+		return nil, err
 	}
-	return x.Cmp(y) == 0
-}
 
-// ConfigCompatError is raised if the locally-stored blockchain is initialised with a
-// ChainConfig that would alter the past.
-type ConfigCompatError struct {
-	What string
-	// block numbers of the stored and new configurations
-	StoredConfig, NewConfig *big.Int
-	// the block number to which the local chain must be rewound to correct the error
-	RewindTo uint64
-}
-
-func newCompatError(what string, storedblock, newblock *big.Int) *ConfigCompatError {
-	var rew *big.Int
-	switch {
-	case storedblock == nil:
-		rew = newblock
-	case newblock == nil || storedblock.Cmp(newblock) < 0:
-		rew = storedblock
-	default:
-		rew = newblock
+	// Make JSON 'id' -> 'identity' (for backwards compatibility)
+	if config.ID != "" && config.Identity == "" {
+		config.Identity = config.ID
 	}
-	err := &ConfigCompatError{what, storedblock, newblock, 0}
-	if rew != nil && rew.Sign() > 0 {
-		err.RewindTo = rew.Uint64() - 1
+
+	// Make 'ethash' default (backwards compatibility)
+	if config.Consensus == "" {
+		config.Consensus = "ethash"
 	}
-	return err
-}
 
-func (err *ConfigCompatError) Error() string {
-	return fmt.Sprintf("mismatching %s in database (have %d, want %d, rewindto %d)", err.What, err.StoredConfig, err.NewConfig, err.RewindTo)
-}
+	// Parse bootstrap nodes
+	config.ParsedBootstrap = ParseBootstrapNodeStrings(config.Bootstrap)
 
-// Rules wraps ChainConfig and is merely syntatic sugar or can be used for functions
-// that do not have or require information about the block.
-//
-// Rules is a one time interface meaning that it shouldn't be used in between transition
-// phases.
-type Rules struct {
-	ChainID                                   *big.Int
-	IsHomestead, IsEIP150, IsEIP155, IsEIP158 bool
-	IsByzantium                               bool
-}
-
-// Rules ensures c's ChainID is not nil.
-func (c *ChainConfig) Rules(num *big.Int) Rules {
-	chainID := c.ChainID
-	if chainID == nil {
-		chainID = new(big.Int)
+	if invalid, ok := config.IsValid(); !ok {
+		return nil, fmt.Errorf("Invalid chain configuration file. Please check the existence and integrity of keys and values for: %v", invalid)
 	}
-	return Rules{ChainID: new(big.Int).Set(chainID), IsHomestead: c.IsHomestead(num), IsEIP150: c.IsEIP150(num), IsEIP155: c.IsEIP155(num), IsEIP158: c.IsEIP158(num), IsByzantium: c.IsByzantium(num)}
+
+	config.ChainConfig = config.ChainConfig.SortForks()
+	return config, nil
+}
+
+// ReadExternalChainConfigFromFile reads a flagged external json file for blockchain configuration.
+// It returns a valid and full ("hard") configuration or an error.
+func ReadExternalChainConfigFromFile(incomingPath string) (*SufficientChainConfig, error) {
+
+	// ensure flag arg cleanliness
+	flaggedExternalChainConfigPath := filepath.Clean(incomingPath)
+
+	// ensure file exists and that it is NOT a directory
+	if info, err := os.Stat(flaggedExternalChainConfigPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("ERROR: No existing chain configuration file found at: %s", flaggedExternalChainConfigPath)
+	} else if info.IsDir() {
+		return nil, fmt.Errorf("ERROR: Specified configuration file cannot be a directory: %s", flaggedExternalChainConfigPath)
+	}
+
+	config, err := parseExternalChainConfig(flaggedExternalChainConfigPath, func(path string) (io.ReadCloser, error) { return os.Open(path) })
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+// ParseBootstrapNodeStrings is a helper function to parse stringified bs nodes, ie []"enode://e809c4a2fec7daed400e5e28564e23693b23b2cc5a019b612505631bbe7b9ccf709c1796d2a3d29ef2b045f210caf51e3c4f5b6d3587d43ad5d6397526fa6179@174.112.32.157:30303",...
+// to usable Nodes. It takes a slice of strings and returns a slice of Nodes.
+func ParseBootstrapNodeStrings(nodeStrings []string) []*discover.Node {
+	// Otherwise parse and use the CLI bootstrap nodes
+	bootnodes := []*discover.Node{}
+
+	for _, url := range nodeStrings {
+		url = strings.TrimSpace(url)
+		if url == "" {
+			continue
+		}
+		node, err := discover.ParseNode(url)
+		if err != nil {
+			glog.V(logger.Error).Infof("Bootstrap URL %s: %v\n", url, err)
+			continue
+		}
+		bootnodes = append(bootnodes, node)
+	}
+	return bootnodes
+}
+
+// GetString gets and option value for an options with key 'name',
+// returning value as a string.
+func (o *ForkFeature) GetString(name string) (string, bool) {
+	o.parsedOptionsLock.Lock()
+	defer o.parsedOptionsLock.Unlock()
+
+	if o.ParsedOptions == nil {
+		o.ParsedOptions = make(map[string]interface{})
+	} else {
+		val, ok := o.ParsedOptions[name]
+		if ok {
+			return val.(string), ok
+		}
+	}
+	o.optionsLock.RLock()
+	defer o.optionsLock.RUnlock()
+
+	val, ok := o.Options[name].(string)
+	o.ParsedOptions[name] = val //expect it as a string in config
+
+	return val, ok
+}
+
+// GetBigInt gets and option value for an options with key 'name',
+// returning value as a *big.Int and ok if it exists.
+func (o *ForkFeature) GetBigInt(name string) (*big.Int, bool) {
+	i := new(big.Int)
+
+	o.parsedOptionsLock.Lock()
+	defer o.parsedOptionsLock.Unlock()
+
+	if o.ParsedOptions == nil {
+		o.ParsedOptions = make(map[string]interface{})
+	} else {
+		val, ok := o.ParsedOptions[name]
+		if ok {
+			if vv, ok := val.(*big.Int); ok {
+				return i.Set(vv), true
+			}
+		}
+	}
+
+	o.optionsLock.RLock()
+	originalValue, ok := o.Options[name]
+	o.optionsLock.RUnlock()
+	if !ok {
+		return nil, false
+	}
+
+	// interface{} type assertion for _61_ is float64
+	if value, ok := originalValue.(float64); ok {
+		i.SetInt64(int64(value))
+		o.ParsedOptions[name] = i
+		return i, true
+	}
+	// handle other user-generated incoming options with some, albeit limited, degree of lenience
+	if value, ok := originalValue.(int64); ok {
+		i.SetInt64(value)
+		o.ParsedOptions[name] = i
+		return i, true
+	}
+	if value, ok := originalValue.(int); ok {
+		i.SetInt64(int64(value))
+		o.ParsedOptions[name] = i
+		return i, true
+	}
+	if value, ok := originalValue.(string); ok {
+		ii, ok := new(big.Int).SetString(value, 0)
+		if ok {
+			i.Set(ii)
+			o.ParsedOptions[name] = i
+		}
+		return i, ok
+	}
+	return nil, false
+}
+
+// WriteGenesisBlock writes the genesis block to the database as block number 0
+func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Block, error) {
+	statedb, err := state.New(common.Hash{}, state.NewDatabase(chainDb))
+	if err != nil {
+		return nil, err
+	}
+
+	for addrHex, account := range genesis.Alloc {
+		var addr common.Address
+		if err := addrHex.Decode(addr[:]); err != nil {
+			return nil, fmt.Errorf("malformed addres %q: %s", addrHex, err)
+		}
+
+		balance, ok := new(big.Int).SetString(account.Balance, 0)
+		if !ok {
+			return nil, fmt.Errorf("malformed account %q balance %q", addrHex, account.Balance)
+		}
+		statedb.AddBalance(addr, balance)
+
+		code, err := account.Code.Bytes()
+		if err != nil {
+			return nil, fmt.Errorf("malformed account %q code: %s", addrHex, err)
+		}
+		statedb.SetCode(addr, code)
+
+		for key, value := range account.Storage {
+			var k, v common.Hash
+			if err := key.Decode(k[:]); err != nil {
+				return nil, fmt.Errorf("malformed account %q key: %s", addrHex, err)
+			}
+			if err := value.Decode(v[:]); err != nil {
+				return nil, fmt.Errorf("malformed account %q value: %s", addrHex, err)
+			}
+			statedb.SetState(addr, k, v)
+		}
+	}
+	root, err := statedb.CommitTo(chainDb, false)
+	if err != nil {
+		return nil, err
+	}
+
+	header, err := genesis.Header()
+	if err != nil {
+		return nil, err
+	}
+	header.Root = root
+
+	gblock := types.NewBlock(header, nil, nil, nil)
+
+	if block := GetBlock(chainDb, gblock.Hash()); block != nil {
+		glog.V(logger.Debug).Infof("Genesis block %s already exists in chain -- writing canonical number", block.Hash().Hex())
+		err := WriteCanonicalHash(chainDb, block.Hash(), block.NumberU64())
+		if err != nil {
+			return nil, err
+		}
+		return block, nil
+	}
+
+	//if err := stateBatch.Write(); err != nil {
+	//	return nil, fmt.Errorf("cannot write state: %v", err)
+	//}
+	if err := WriteTd(chainDb, gblock.Hash(), header.Difficulty); err != nil {
+		return nil, err
+	}
+	if err := WriteBlock(chainDb, gblock); err != nil {
+		return nil, err
+	}
+	if err := WriteBlockReceipts(chainDb, gblock.Hash(), nil); err != nil {
+		return nil, err
+	}
+	if err := WriteCanonicalHash(chainDb, gblock.Hash(), gblock.NumberU64()); err != nil {
+		return nil, err
+	}
+	if err := WriteHeadBlockHash(chainDb, gblock.Hash()); err != nil {
+		return nil, err
+	}
+
+	return gblock, nil
+}
+
+func WriteGenesisBlockForTesting(db ethdb.Database, accounts ...GenesisAccount) *types.Block {
+	dump := GenesisDump{
+		GasLimit:   "0x47E7C4",
+		Difficulty: "0x020000",
+		Alloc:      make(map[hex]*GenesisDumpAlloc, len(accounts)),
+	}
+
+	for _, a := range accounts {
+		dump.Alloc[hex(hexlib.EncodeToString(a.Address[:]))] = &GenesisDumpAlloc{
+			Balance: a.Balance.String(),
+		}
+	}
+
+	block, err := WriteGenesisBlock(db, &dump)
+	if err != nil {
+		panic(err)
+	}
+	return block
+}
+
+// MakeGenesisDump makes a genesis dump
+func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
+
+	genesis := GetBlock(chaindb, GetCanonicalHash(chaindb, 0))
+	if genesis == nil {
+		return nil, nil
+	}
+
+	// Settings.
+	genesisHeader := genesis.Header()
+	nonce := fmt.Sprintf(`0x%x`, genesisHeader.Nonce)
+	time := common.BigToHash(genesisHeader.Time).Hex()
+	parentHash := genesisHeader.ParentHash.Hex()
+	gasLimit := common.BigToHash(genesisHeader.GasLimit).Hex()
+	difficulty := common.BigToHash(genesisHeader.Difficulty).Hex()
+	mixHash := genesisHeader.MixDigest.Hex()
+	coinbase := genesisHeader.Coinbase.Hex()
+
+	var dump = &GenesisDump{
+		Nonce:      prefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
+		Timestamp:  prefixedHex(time),
+		ParentHash: prefixedHex(parentHash),
+		//ExtraData:  prefixedHex(extra),
+		GasLimit:   prefixedHex(gasLimit),
+		Difficulty: prefixedHex(difficulty),
+		Mixhash:    prefixedHex(mixHash),
+		Coinbase:   prefixedHex(coinbase),
+		//Alloc: ,
+	}
+	if genesisHeader.Extra != nil && len(genesisHeader.Extra) > 0 {
+		dump.ExtraData = prefixedHex(common.ToHex(genesisHeader.Extra))
+	}
+
+	// State allocations.
+	genState, err := state.New(genesis.Root(), state.NewDatabase(chaindb))
+	if err != nil {
+		return nil, err
+	}
+	stateDump := genState.RawDump([]common.Address{})
+
+	stateAccounts := stateDump.Accounts
+	dump.Alloc = make(map[hex]*GenesisDumpAlloc, len(stateAccounts))
+
+	for address, acct := range stateAccounts {
+		if common.IsHexAddress(address) {
+			dump.Alloc[hex(address)] = &GenesisDumpAlloc{
+				Balance: acct.Balance,
+			}
+		} else {
+			return nil, fmt.Errorf("Invalid address in genesis state: %v", address)
+		}
+	}
+	return dump, nil
 }
