@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package core
+package params
 
 import (
 	"encoding/csv"
@@ -114,14 +114,14 @@ type StateConfig struct {
 // GenesisDump is the geth JSON format.
 // https://github.com/ethereumproject/wiki/wiki/Ethereum-Chain-Spec-Format#subformat-genesis
 type GenesisDump struct {
-	Nonce      prefixedHex `json:"nonce"`
-	Timestamp  prefixedHex `json:"timestamp"`
-	ParentHash prefixedHex `json:"parentHash"`
-	ExtraData  prefixedHex `json:"extraData"`
-	GasLimit   prefixedHex `json:"gasLimit"`
-	Difficulty prefixedHex `json:"difficulty"`
-	Mixhash    prefixedHex `json:"mixhash"`
-	Coinbase   prefixedHex `json:"coinbase"`
+	Nonce      types.PrefixedHex `json:"nonce"`
+	Timestamp  types.PrefixedHex `json:"timestamp"`
+	ParentHash types.PrefixedHex `json:"parentHash"`
+	ExtraData  types.PrefixedHex `json:"extraData"`
+	GasLimit   types.PrefixedHex `json:"gasLimit"`
+	Difficulty types.PrefixedHex `json:"difficulty"`
+	Mixhash    types.PrefixedHex `json:"mixhash"`
+	Coinbase   types.PrefixedHex `json:"coinbase"`
 
 	// Alloc maps accounts by their address.
 	Alloc map[hex]*GenesisDumpAlloc `json:"alloc"`
@@ -131,7 +131,7 @@ type GenesisDump struct {
 
 // GenesisDumpAlloc is a GenesisDump.Alloc entry.
 type GenesisDumpAlloc struct {
-	Code    prefixedHex `json:"-"` // skip field for json encode
+	Code    PrefixedHex `json:"-"` // skip field for json encode
 	Storage map[hex]hex `json:"-"`
 	Balance string      `json:"balance"` // decimal string
 }
@@ -870,18 +870,18 @@ func MakeGenesisDump(chaindb ethdb.Database) (*GenesisDump, error) {
 	coinbase := genesisHeader.Coinbase.Hex()
 
 	var dump = &GenesisDump{
-		Nonce:      prefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
-		Timestamp:  prefixedHex(time),
-		ParentHash: prefixedHex(parentHash),
-		//ExtraData:  prefixedHex(extra),
-		GasLimit:   prefixedHex(gasLimit),
-		Difficulty: prefixedHex(difficulty),
-		Mixhash:    prefixedHex(mixHash),
-		Coinbase:   prefixedHex(coinbase),
+		Nonce:      PrefixedHex(nonce), // common.ToHex(n)), // common.ToHex(
+		Timestamp:  PrefixedHex(time),
+		ParentHash: PrefixedHex(parentHash),
+		//ExtraData:  PrefixedHex(extra),
+		GasLimit:   PrefixedHex(gasLimit),
+		Difficulty: PrefixedHex(difficulty),
+		Mixhash:    PrefixedHex(mixHash),
+		Coinbase:   PrefixedHex(coinbase),
 		//Alloc: ,
 	}
 	if genesisHeader.Extra != nil && len(genesisHeader.Extra) > 0 {
-		dump.ExtraData = prefixedHex(common.ToHex(genesisHeader.Extra))
+		dump.ExtraData = PrefixedHex(common.ToHex(genesisHeader.Extra))
 	}
 
 	// State allocations.

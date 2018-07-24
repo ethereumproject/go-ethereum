@@ -94,13 +94,13 @@ func (h hex) Decode(buf []byte) error {
 	return err
 }
 
-// prefixedHex is a hexadecimal string with an "0x" prefix.
-type prefixedHex string
+// PrefixedHex is a hexadecimal string with an "0x" prefix.
+type PrefixedHex string
 
 var errNoHexPrefix = errors.New("want 0x prefix")
 
 // Decode fills buf when h is not empty.
-func (h prefixedHex) Decode(buf []byte) error {
+func (h PrefixedHex) Decode(buf []byte) error {
 	i := len(h)
 	if i == 0 {
 		return nil
@@ -119,7 +119,7 @@ func (h prefixedHex) Decode(buf []byte) error {
 	return err
 }
 
-func (h prefixedHex) Bytes() ([]byte, error) {
+func (h PrefixedHex) Bytes() ([]byte, error) {
 	l := len(h)
 	if l == 0 {
 		return nil, nil
@@ -136,7 +136,7 @@ func (h prefixedHex) Bytes() ([]byte, error) {
 	return bytes, err
 }
 
-func (h prefixedHex) Int() (*big.Int, error) {
+func (h PrefixedHex) Int() (*big.Int, error) {
 	bytes, err := h.Bytes()
 	if err != nil {
 		return nil, err

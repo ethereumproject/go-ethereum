@@ -24,6 +24,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/consensus"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
@@ -52,14 +53,14 @@ type DifficultyConfig struct {
 //
 // BlockValidator implements Validator.
 type BlockValidator struct {
-	config *ChainConfig // Chain configuration options
-	bc     *BlockChain  // Canonical block chain
+	config *params.ChainConfig // Chain configuration options
+	bc     *BlockChain         // Canonical block chain
 	engine consensus.Engine
 	// Pow    pow.PoW // Proof of work used for validating
 }
 
 // NewBlockValidator returns a new block validator which is safe for re-use
-func NewBlockValidator(config *ChainConfig, blockchain *BlockChain, engine consensus.Engine) *BlockValidator {
+func NewBlockValidator(config *params.ChainConfig, blockchain *BlockChain, engine consensus.Engine) *BlockValidator {
 	validator := &BlockValidator{
 		config: config,
 		engine: engine,
@@ -276,7 +277,7 @@ func CalcGasLimit(parent *types.Block) *big.Int {
 // // Validates a header. Returns an error if the header is invalid.
 // //
 // // See YP section 4.3.4. "Block Header Validity"
-// func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, parent *types.Header, checkPow, uncle bool) error {
+// func ValidateHeader(config *params.ChainConfig, pow pow.PoW, header *types.Header, parent *types.Header, checkPow, uncle bool) error {
 // 	if len(header.Extra) > types.HeaderExtraMax {
 // 		return fmt.Errorf("extra data size %d exceeds limit of %d", len(header.Extra), types.HeaderExtraMax)
 // 	}
