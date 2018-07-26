@@ -1226,7 +1226,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 	// We're not fully compatible with EIP-609 - just return status for all blocks.
 	fields["status"] = nil
 	if receipt.Status != types.TxStatusUnknown {
-		fields["status"] = receipt.Status
+		fields["status"] = rpc.NewHexNumber(receipt.Status)
 	}
 
 	return fields, nil
