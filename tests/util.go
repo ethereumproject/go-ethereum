@@ -135,10 +135,11 @@ type VmEnv struct {
 type VmTest struct {
 	Callcreates interface{}
 	//Env         map[string]string
-	Env           VmEnv
-	Exec          map[string]string
-	Transaction   map[string]string
-	Logs          []Log
+	Env         VmEnv
+	Exec        map[string]string
+	Transaction map[string]string
+	// Logs          []Log
+	Logs          string
 	Gas           string
 	Out           string
 	Post          map[string]Account

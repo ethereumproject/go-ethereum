@@ -19,6 +19,7 @@ package tests
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -36,103 +37,48 @@ func BenchmarkVmFibonacci16Tests(b *testing.B) {
 	}
 }
 
-// I've created a new function for each tests so it's easier to identify where the problem lies if any of them fail.
-func TestVMArithmetic(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmArithmeticTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestBitwiseLogicOperation(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmBitwiseLogicOperationTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestBlockInfo(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmBlockInfoTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestEnvironmentalInfo(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmEnvironmentalInfoTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestFlowOperation(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmIOandFlowOperationsTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestLogTest(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmLogTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestPerformance(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmPerformanceTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestPushDupSwap(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmPushDupSwapTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestVMSha3(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmSha3Test.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestVm(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmtests.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestVmLog(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmLogTest.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestInputLimits(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmInputLimits.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestInputLimitsLight(t *testing.T) {
-	fn := filepath.Join(vmTestDir, "vmInputLimitsLight.json")
-	if err := RunVmTest(fn, VmSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestVMRandom(t *testing.T) {
-	fns, _ := filepath.Glob(filepath.Join(baseDir, "RandomTests", "*"))
-	for _, fn := range fns {
-		if err := RunVmTest(fn, VmSkipTests); err != nil {
-			t.Error(err)
+func BenchmarkVMTests(b *testing.B) {
+	err := filepath.Walk(vmTestDir, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			b.Logf("walk err=%v", err)
+			return nil
 		}
+		if info.IsDir() {
+			b.Logf("%s: SKIP (DIR)", p)
+			return nil
+		}
+		name := filepath.Base(p)
+		ext := filepath.Ext(name)
+		name = strings.Replace(name, ext, "", -1)
+		if err := BenchVmTest(p, bconf{name, os.Getenv("JITFORCE") == "true", os.Getenv("JITVM") == "true"}, b); err != nil {
+			b.Error(err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
+func TestVMTests(t *testing.T) {
+	err := filepath.Walk(vmTestDir, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			t.Logf("walk err=%v", err)
+			return nil
+		}
+		if info.IsDir() {
+			t.Logf("%s: SKIP (DIR)", p)
+			return nil
+		}
+		if err := RunVmTest(p, VmSkipTests); err != nil {
+			t.Error(err)
+		} else {
+			t.Logf("%s: OK", p)
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err.Error())
 	}
 }

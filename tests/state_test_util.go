@@ -146,14 +146,14 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		ret []byte
 		// gas  *big.Int
 		// err  error
-		logs vm.Logs
+		stlogs vm.Logs
 	)
 
-	ret, logs, _, _ = RunState(ruleSet, db, statedb, env, test.Transaction)
+	ret, stlogs, _, _ = RunState(ruleSet, db, statedb, env, test.Transaction)
 
 	// Compare expected and actual return
 	rexp := common.FromHex(test.Out)
-	if bytes.Compare(rexp, ret) != 0 {
+	if !bytes.Equal(rexp, ret) {
 		return fmt.Errorf("return failed. Expected %x, got %x\n", rexp, ret)
 	}
 
@@ -195,9 +195,14 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 	}
 
 	// check logs
-	if len(test.Logs) > 0 {
-		if err := checkLogs(test.Logs, logs); err != nil {
-			return err
+	if test.Logs != "" {
+		stateLogsHash := rlpHash(statedb.Logs())
+		stLogsHash := rlpHash(stlogs)
+		if stateLogsHash != stLogsHash {
+			return fmt.Errorf("mismatch state/vm logs: state: %v vm: %v", stateLogsHash.Hex(), stLogsHash.Hex())
+		}
+		if stateLogsHash.Hex() != test.Logs && stLogsHash.Hex() != test.Logs {
+			return fmt.Errorf("post state logs hash mismatch; got/state: %v got/vm: %v want: %v", stateLogsHash.Hex(), stLogsHash.Hex(), test.Logs)
 		}
 	}
 
