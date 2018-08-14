@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -115,6 +116,32 @@ func (h Hash) IsEmpty() bool {
 	return EmptyHash(h)
 }
 
+// UnprefixedHash allows marshaling a Hash without 0x prefix.
+type UnprefixedHash Hash
+
+// UnmarshalText decodes the hash from hex. The 0x prefix is optional.
+func (h *UnprefixedHash) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedUnprefixedText("UnprefixedHash", input, h[:])
+}
+
+// MarshalText encodes the hash as hex.
+func (h UnprefixedHash) MarshalText() ([]byte, error) {
+	return []byte(hex.EncodeToString(h[:])), nil
+}
+
+// UnprefixedAddress allows marshaling an Address without 0x prefix.
+type UnprefixedAddress Address
+
+// UnmarshalText decodes the address from hex. The 0x prefix is optional.
+func (a *UnprefixedAddress) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedUnprefixedText("UnprefixedAddress", input, a[:])
+}
+
+// MarshalText encodes the address as hex.
+func (a UnprefixedAddress) MarshalText() ([]byte, error) {
+	return []byte(hex.EncodeToString(a[:])), nil
+}
+
 /////////// Address
 func BytesToAddress(b []byte) Address {
 	var a Address
@@ -168,6 +195,16 @@ func (a *Address) Set(other Address) {
 	for i, v := range other {
 		a[i] = v
 	}
+}
+
+// MarshalText returns the hex representation of a.
+func (a Address) MarshalText() ([]byte, error) {
+	return hexutil.Bytes(a[:]).MarshalText()
+}
+
+// UnmarshalText parses a hash in hex syntax.
+func (a *Address) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedText("Address", input, a[:])
 }
 
 // Serialize given address to JSON

@@ -106,7 +106,7 @@ type btTransaction struct {
 
 func RunBlockTestWithReader(homesteadBlock, gasPriceFork *big.Int, r io.Reader, skipTests []string) error {
 	btjs := make(map[string]*btJSON)
-	if err := readJson(r, &btjs); err != nil {
+	if err := readJSON(r, &btjs); err != nil {
 		return err
 	}
 
@@ -123,7 +123,7 @@ func RunBlockTestWithReader(homesteadBlock, gasPriceFork *big.Int, r io.Reader, 
 
 func RunBlockTest(homesteadBlock, gasPriceFork *big.Int, file string, skipTests []string) error {
 	btjs := make(map[string]*btJSON)
-	if err := readJsonFile(file, &btjs); err != nil {
+	if err := readJSONFile(file, &btjs); err != nil {
 		return err
 	}
 
@@ -546,7 +546,7 @@ func mustConvertUint(in string, base int) uint64 {
 
 func LoadBlockTests(file string) (map[string]*BlockTest, error) {
 	btjs := make(map[string]*btJSON)
-	if err := readJsonFile(file, &btjs); err != nil {
+	if err := readJSONFile(file, &btjs); err != nil {
 		return nil, err
 	}
 

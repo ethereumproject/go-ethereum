@@ -35,7 +35,7 @@ import (
 
 func RunVmTestWithReader(r io.Reader, skipTests []string) error {
 	tests := make(map[string]VmTest)
-	err := readJson(r, &tests)
+	err := readJSON(r, &tests)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ type bconf struct {
 
 func BenchVmTest(p string, conf bconf, b *testing.B) error {
 	tests := make(map[string]VmTest)
-	err := readJsonFile(p, &tests)
+	err := readJSONFile(p, &tests)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func benchVmTest(test VmTest, env map[string]string, b *testing.B) {
 
 func RunVmTest(p string, skipTests []string) error {
 	tests := make(map[string]VmTest)
-	err := readJsonFile(p, &tests)
+	err := readJSONFile(p, &tests)
 	if err != nil {
 		return err
 	}

@@ -56,7 +56,7 @@ func RunTransactionTestsWithReader(r io.Reader, skipTests []string) error {
 	}
 
 	bt := make(map[string]TransactionTest)
-	if err := readJson(r, &bt); err != nil {
+	if err := readJSON(r, &bt); err != nil {
 		return err
 	}
 
@@ -78,7 +78,7 @@ func RunTransactionTestsWithReader(r io.Reader, skipTests []string) error {
 
 func RunTransactionTests(file string, skipTests []string) error {
 	tests := make(map[string]TransactionTest)
-	if err := readJsonFile(file, &tests); err != nil {
+	if err := readJSONFile(file, &tests); err != nil {
 		return err
 	}
 

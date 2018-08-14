@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-	"strconv"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -94,7 +93,7 @@ func (self Log) Topics() [][]byte {
 	return t
 }
 
-func makePreState(db ethdb.Database, accounts map[string]Account) *state.StateDB {
+func makePreState(db ethdb.Database, accounts GenesisAlloc) *state.StateDB {
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	for addr, account := range accounts {
 		insertAccount(statedb, addr, account)
@@ -102,24 +101,17 @@ func makePreState(db ethdb.Database, accounts map[string]Account) *state.StateDB
 	return statedb
 }
 
-func insertAccount(state *state.StateDB, saddr string, account Account) {
-	if common.IsHex(account.Code) {
+func insertAccount(state *state.StateDB, saddr common.Address, account GenesisAccount) {
+	// TODO(whilei): maybe remove this unprefixing, might be unnecessary
+	if common.IsHex(string(account.Code)) {
 		account.Code = account.Code[2:]
 	}
-	addr := common.HexToAddress(saddr)
-	state.SetCode(addr, common.Hex2Bytes(account.Code))
-	if i, err := strconv.ParseUint(account.Nonce, 0, 64); err != nil {
-		panic(err)
-	} else {
-		state.SetNonce(addr, i)
-	}
-	if i, ok := new(big.Int).SetString(account.Balance, 0); !ok {
-		panic("malformed account balance")
-	} else {
-		state.SetBalance(addr, i)
-	}
+	addr := saddr
+	state.SetCode(addr, account.Code)
+	state.SetNonce(addr, account.Nonce)
+	state.SetBalance(addr, account.Balance)
 	for a, v := range account.Storage {
-		state.SetState(addr, common.HexToHash(a), common.HexToHash(v))
+		state.SetState(addr, a, v)
 	}
 }
 
@@ -139,19 +131,20 @@ type VmTest struct {
 	Exec        map[string]string
 	Transaction map[string]string
 	// Logs          []Log
-	Logs          string
-	Gas           string
-	Out           string
-	Post          map[string]Account
-	Pre           map[string]Account
+	Logs string
+	Gas  string
+	Out  string
+	Post map[string]Account
+	// Pre           map[string]Account
+	Pre           GenesisAlloc
 	PostStateRoot string
 }
 
 type RuleSet struct {
 	HomesteadBlock           *big.Int
-	HomesteadGasRepriceBlock *big.Int
-	DiehardBlock             *big.Int
-	ExplosionBlock           *big.Int
+	HomesteadGasRepriceBlock *big.Int // EIP150
+	DiehardBlock             *big.Int // EIP155
+	ExplosionBlock           *big.Int // eg. 5000000
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
