@@ -41,18 +41,20 @@ func TestBlockchainTests(t *testing.T) {
 			return nil
 		}
 		mil := big.NewInt(1000000)
-		e := RunBlockTest(mil, mil, p, BlockSkipTests)
-		if err != nil {
-			// Originally our tests had hardcoded fork block parameters. This "softly" ensures that those parameters can be met.
-			// Interestingly, however, this appears to never be touched.
-			t.Logf("1err=%v", e)
-			if e := RunBlockTest(new(big.Int), mil, p, BlockSkipTests); e != nil {
-				t.Fatalf("2err=%v", e)
+		if e := RunBlockTest(mil, mil, p, BlockSkipTests); e != nil {
+			// if e != nil {
+			// 	// Originally our tests had hardcoded fork block parameters. This "softly" ensures that those parameters can be met.
+			// 	// Interestingly, however, this appears to never be touched.
+			// 	t.Logf("1err=%v", e)
+			if e2 := RunBlockTest(new(big.Int), mil, p, BlockSkipTests); e2 != nil {
+				t.Errorf("%s: FAIL2 err=%v", p, e2)
 
 			} else {
-				t.Logf("%s: PASS (0,1000000)", p)
+				t.Logf("%s: PASS2", p)
 			}
 
+			// } else {
+			t.Errorf("%s: FAIL err=%v", p, e)
 		} else {
 			t.Logf("%s: PASS", p)
 		}
