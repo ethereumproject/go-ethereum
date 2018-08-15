@@ -25,7 +25,7 @@ import (
 func TestTransactionsTests(t *testing.T) {
 	err := filepath.Walk(transactionTestDir, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
-			t.Logf("walk err=%v", err)
+			t.Logf("%s: FAIL [walk err]=%v", p, err)
 			return nil
 		}
 		if info.IsDir() {

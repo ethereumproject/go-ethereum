@@ -33,11 +33,11 @@ func init() {
 func TestBlockchainTests(t *testing.T) {
 	err := filepath.Walk(blockTestDir, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
-			t.Logf("walk err=%v", err)
+			t.Fatalf("%s: FAIL [walk err]=%v", p, err) // debugging, should not happen
 			return nil
 		}
 		if info.IsDir() {
-			t.Logf("%s: SKIP (DIR)", p)
+			// t.Logf("%s: SKIP [DIR]", p) // debugging
 			return nil
 		}
 		mil := big.NewInt(1000000)
@@ -56,11 +56,9 @@ func TestBlockchainTests(t *testing.T) {
 		} else {
 			t.Logf("%s: PASS", p)
 		}
-
 		return nil
 	})
 	if err != nil {
 		panic(err.Error())
 	}
-
 }
