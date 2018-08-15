@@ -50,11 +50,11 @@ func TestBlockchainTests(t *testing.T) {
 				t.Fatalf("2err=%v", e)
 
 			} else {
-				t.Logf("%s: OK (0,1000000)", p)
+				t.Logf("%s: PASS (0,1000000)", p)
 			}
 
 		} else {
-			t.Logf("%s: OK", p)
+			t.Logf("%s: PASS", p)
 		}
 
 		return nil

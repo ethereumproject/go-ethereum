@@ -35,7 +35,7 @@ func TestTransactionsTests(t *testing.T) {
 		if err := RunTransactionTests(p, TransSkipTests); err != nil {
 			t.Error(err)
 		} else {
-			t.Logf("%s: OK", p)
+			t.Logf("%s: PASS", p)
 		}
 		return nil
 	})

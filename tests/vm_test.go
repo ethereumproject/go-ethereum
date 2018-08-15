@@ -74,7 +74,7 @@ func TestVMTests(t *testing.T) {
 		if err := RunVmTest(p, VmSkipTests); err != nil {
 			t.Error(err)
 		} else {
-			t.Logf("%s: OK", p)
+			t.Logf("%s: PASS", p)
 		}
 		return nil
 	})
