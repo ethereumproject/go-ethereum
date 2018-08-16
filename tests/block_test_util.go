@@ -36,6 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"regexp"
 )
 
 // Block Test JSON Format
@@ -138,29 +139,20 @@ func RunBlockTest(homesteadBlock, gasPriceFork *big.Int, file string, skipTests 
 }
 
 func runBlockTests(homesteadBlock, gasPriceFork *big.Int, bt map[string]*BlockTest, skipTests []string) error {
-	skipTest := make(map[string]bool, len(skipTests))
-	for _, name := range skipTests {
-		skipTest[name] = true
-	}
-
+OUTER:
 	for name, test := range bt {
-		if skipTest[name] {
-			glog.Infoln("Skipping block test", name)
-			continue
+		for _, skip := range skipTests {
+			re := regexp.MustCompile(skip)
+			if re.MatchString(name) {
+				glog.Infof("%s: SKIP", name)
+				continue OUTER
+			}
 		}
 		// test the block
 		if err := runBlockTest(homesteadBlock, gasPriceFork, test); err != nil {
-			var isSkip bool
-			for _, skip := range skipTests {
-				if strings.Contains(err.Error(), skip) || strings.Contains(name, skip) {
-					isSkip = true
-				}
-			}
-			if !isSkip {
-				return fmt.Errorf("%s: %v", name, err)
-			}
+			return fmt.Errorf("%s: %v", name, err)
 		}
-		glog.Infoln("Block test passed: ", name)
+		glog.Infof("%s: PASS", name)
 
 	}
 	return nil
