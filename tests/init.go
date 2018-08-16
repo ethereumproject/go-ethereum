@@ -68,6 +68,7 @@ func initBlockSkipTests() []string {
 			"ChainAtoChainB_BlockHash",
 			"CallingCanonicalContractFromFork_CALLCODE",
 			"Byzantium",
+			"EIP158",
 		}
 	} else {
 		return []string{
@@ -82,6 +83,7 @@ func initBlockSkipTests() []string {
 			"ChainAtoChainB_blockorder1",
 			"addNonConst_d0g0v0_Byzantium",
 			"Byzantium",
+			"EIP158",
 		}
 	}
 }
