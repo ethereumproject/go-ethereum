@@ -372,27 +372,34 @@ func (t *BlockTest) ValidatePostState(statedb *state.StateDB) error {
 	// validate post state accounts in test file against what we have in state db
 	for addrString, acct := range t.postAccounts {
 		// XXX: is is worth it checking for errors here?
-		addr, err := hex.DecodeString(addrString)
+		addr, err := hex.DecodeString(strings.TrimPrefix(addrString, "0x"))
 		if err != nil {
-			return err
+			return fmt.Errorf("addr/err=%v", err)
 		}
+		// addr, err := hex.DecodeString(addrString)
+		// uaddr := &common.UnprefixedAddress{}
+		// if err := uaddr.UnmarshalText([]byte(addrString)); err != nil {
+		// 	return fmt.Errorf("addr/err=%v", err)
+		// }
+		// addr := common.Address( wl)
 		code, err := hex.DecodeString(strings.TrimPrefix(acct.Code, "0x"))
 		if err != nil {
-			return err
+			return fmt.Errorf("code/err=%v", err)
 		}
 		balance, ok := new(big.Int).SetString(acct.Balance, 0)
 		if !ok {
-			return err
+			return fmt.Errorf("balance/err=%v", err)
 		}
 		nonce, err := strconv.ParseUint(prepInt(16, acct.Nonce), 16, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("nonce/err=%v", err)
 		}
 
 		// address is indirectly verified by the other fields, as it's the db key
-		code2 := statedb.GetCode(common.BytesToAddress(addr))
-		balance2 := statedb.GetBalance(common.BytesToAddress(addr))
-		nonce2 := statedb.GetNonce(common.BytesToAddress(addr))
+		aaddr := common.BytesToAddress(addr)
+		code2 := statedb.GetCode(aaddr)
+		balance2 := statedb.GetBalance(aaddr)
+		nonce2 := statedb.GetNonce(aaddr)
 		if !bytes.Equal(code2, code) {
 			return fmt.Errorf("account code mismatch for addr: %s want: %s have: %s", addrString, hex.EncodeToString(code), hex.EncodeToString(code2))
 		}
