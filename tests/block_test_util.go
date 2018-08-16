@@ -439,8 +439,26 @@ func (test *BlockTest) ValidateImportedHeaders(cm *core.BlockChain, validBlocks 
 	// block-by-block, so we can only validate imported headers after
 	// all blocks have been processed by ChainManager, as they may not
 	// be part of the longest chain until last block is imported.
-	for b := cm.CurrentBlock(); b != nil && b.NumberU64() != 0; b = cm.GetBlock(b.Header().ParentHash) {
+	for b := cm.CurrentBlock(); b != nil && b.NumberU64() != 0 && b.Header() != nil; b = cm.GetBlock(b.Header().ParentHash) {
 		bHash := common.Bytes2Hex(b.Hash().Bytes()) // hex without 0x prefix
+		btheader, ok := bmap[bHash]
+		if !ok {
+			// if no prefix, try adding one
+			if strings.HasPrefix(bHash, "0x") {
+				bHash = "0x" + bHash
+				// else if prefixed, try removing it
+			} else {
+				bHash = strings.TrimPrefix(bHash, "0x")
+			}
+			btheader, ok = bmap[bHash]
+			if !ok {
+				// continue
+				panic("NOTOK-" + test.Json.Network)
+			}
+		}
+		if btheader.BlockHeader == nil {
+			panic("NOTOKNIL")
+		}
 		if err := validateHeader(bmap[bHash].BlockHeader, b.Header()); err != nil {
 			return fmt.Errorf("Imported block header validation failed: %v", err)
 		}
