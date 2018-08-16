@@ -55,6 +55,7 @@ type btJSON struct {
 	Pre                map[string]btAccount
 	PostState          map[string]btAccount
 	Lastblockhash      string
+	Network            string
 }
 
 type btBlock struct {
@@ -143,7 +144,7 @@ OUTER:
 	for name, test := range bt {
 		for _, skip := range skipTests {
 			re := regexp.MustCompile(skip)
-			if re.MatchString(name) {
+			if re.MatchString(name) || re.MatchString(test.Json.Network) {
 				glog.Infof("%s: SKIP", name)
 				continue OUTER
 			}
@@ -156,6 +157,14 @@ OUTER:
 
 	}
 	return nil
+}
+
+var forks = map[string]*core.ChainConfig{
+	"Frontier":               core.TestConfigFrontier.ChainConfig,
+	"Homestead":              core.TestConfigHomestead.ChainConfig,
+	"EIP150":                 core.TestConfigEIP150.ChainConfig,
+	"FrontierToHomesteadAt5": core.TestConfigFrontierToHomesteadAt5.ChainConfig,
+	"HomesteadToEIP150At5":   core.TestConfigHomesteadToEIP150At5.ChainConfig,
 }
 
 func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error {
@@ -176,7 +185,12 @@ func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error 
 		core.DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block = gasPriceFork
 	}
 
-	chain, err := core.NewBlockChain(db, core.DefaultConfigMainnet.ChainConfig, ethash.NewShared(), evmux)
+	chainConfig, ok := forks[test.Json.Network]
+	if !ok {
+		return fmt.Errorf("unsupported fork: %s", test.Json.Network)
+	}
+
+	chain, err := core.NewBlockChain(db, chainConfig, ethash.NewShared(), evmux)
 	if err != nil {
 		return err
 	}
