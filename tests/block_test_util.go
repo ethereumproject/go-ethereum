@@ -142,12 +142,19 @@ func RunBlockTest(homesteadBlock, gasPriceFork *big.Int, file string, skipTests 
 func runBlockTests(homesteadBlock, gasPriceFork *big.Int, bt map[string]*BlockTest, skipTests []string) error {
 OUTER:
 	for name, test := range bt {
+		// use regexp to match blacklisted tests by name or Network field (NOTE that Network is actually "Fork", and is just terribly named)
 		for _, skip := range skipTests {
 			re := regexp.MustCompile(skip)
 			if re.MatchString(name) || re.MatchString(test.Json.Network) {
 				glog.Infof("%s: SKIP", name)
 				continue OUTER
 			}
+		}
+		// skip files that are not JSON test files
+		reJSON := regexp.MustCompile("json$")
+		if !reJSON.MatchString(name) {
+			glog.Infof("%s: SKIP", name)
+			continue OUTER
 		}
 		// test the block
 		if err := runBlockTest(homesteadBlock, gasPriceFork, test); err != nil {
