@@ -440,24 +440,16 @@ func (test *BlockTest) ValidateImportedHeaders(cm *core.BlockChain, validBlocks 
 	// all blocks have been processed by ChainManager, as they may not
 	// be part of the longest chain until last block is imported.
 	for b := cm.CurrentBlock(); b != nil && b.NumberU64() != 0 && b.Header() != nil; b = cm.GetBlock(b.Header().ParentHash) {
-		bHash := common.Bytes2Hex(b.Hash().Bytes()) // hex without 0x prefix
+		bHash := "0x" + common.Bytes2Hex(b.Hash().Bytes()) // hex without 0x prefix
 		btheader, ok := bmap[bHash]
+		// for debugging only
 		if !ok {
-			// if no prefix, try adding one
-			if strings.HasPrefix(bHash, "0x") {
-				bHash = "0x" + bHash
-				// else if prefixed, try removing it
-			} else {
-				bHash = strings.TrimPrefix(bHash, "0x")
+			var debugMap string
+			for k, v := range bmap {
+				debugMap += fmt.Sprintf("%s:%v", k, v)
 			}
-			btheader, ok = bmap[bHash]
-			if !ok {
-				// continue
-				panic("NOTOK-" + test.Json.Network)
-			}
-		}
-		if btheader.BlockHeader == nil {
-			panic("NOTOKNIL")
+			// using PANIC here because a missing BlockHeader will cause a panic during validateHeader
+			return fmt.Errorf("PANIC: network=%s, validBlocksN=%v validBlocks=%s", test.Json.Network, len(bmap), debugMap)
 		}
 		if err := validateHeader(bmap[bHash].BlockHeader, b.Header()); err != nil {
 			return fmt.Errorf("Imported block header validation failed: %v", err)
