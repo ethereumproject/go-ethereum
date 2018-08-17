@@ -448,7 +448,7 @@ func (test *BlockTest) ValidateImportedHeaders(cm *core.BlockChain, validBlocks 
 	// be part of the longest chain until last block is imported.
 	for b := cm.CurrentBlock(); b != nil && b.NumberU64() != 0 && b.Header() != nil; b = cm.GetBlock(b.Header().ParentHash) {
 		bHash := "0x" + common.Bytes2Hex(b.Hash().Bytes()) // hex without 0x prefix
-		btheader, ok := bmap[bHash]
+		_, ok := bmap[bHash]
 		// for debugging only
 		if !ok {
 			var debugMap string
