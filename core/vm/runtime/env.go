@@ -96,6 +96,9 @@ func (self *Env) Transfer(from, to vm.Account, amount *big.Int) {
 func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return core.Call(self, caller, addr, data, gas, price, value)
 }
+func (self *Env) StaticCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return core.StaticCall(self, caller, addr, data, gas, price)
+}
 func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return core.CallCode(self, caller, addr, data, gas, price, value)
 }

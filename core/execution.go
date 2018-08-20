@@ -36,6 +36,12 @@ func Call(env vm.Environment, caller vm.ContractRef, addr common.Address, input 
 	return ret, err
 }
 
+// StaticCall executes within the given contract
+func StaticCall(env vm.Environment, caller vm.ContractRef, addr common.Address, input []byte, gas, gasPrice *big.Int) (ret []byte, err error) {
+	ret, _, err = execStaticCall(env, caller, &addr, &addr, env.Db().GetCodeHash(addr), input, env.Db().GetCode(addr), gas, gasPrice)
+	return ret, err
+}
+
 // CallCode executes the given address' code as the given contract address
 func CallCode(env vm.Environment, caller vm.ContractRef, addr common.Address, input []byte, gas, gasPrice, value *big.Int) (ret []byte, err error) {
 	callerAddr := caller.Address()
@@ -178,7 +184,10 @@ func execDelegateCall(env vm.Environment, caller vm.ContractRef, originAddr, toA
 // as parameters while disallowing any modifications to the state during the call.
 // Opcodes that attempt to perform such modifications will result in exceptions
 // instead of performing the modifications.
-func execStaticCall(env vm.Environment, caller vm.ContractRef, originAddr, toAddr, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value *big.Int) (ret []byte, addr common.Address, err error) {
+//
+// the value argument is not included and taken to be zero
+// https://github.com/ethereum/EIPs/pull/214/files#diff-29d8cb8d19a769c141160ce5c1e65caeR31
+func execStaticCall(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice *big.Int) (ret []byte, addr common.Address, err error) {
 	evm := env.Vm()
 	// Depth check execution. Fail if we're trying to execute above the call depth limit.
 	if env.Depth() > callCreateDepthMax {
@@ -186,6 +195,30 @@ func execStaticCall(env vm.Environment, caller vm.ContractRef, originAddr, toAdd
 		return nil, common.Address{}, errCallCreateDepth
 	}
 
+	// TODO: estalish call as read-only
+
+	snapshot := env.SnapshotDatabase()
+
+	var to vm.Account
+	if !env.Db().Exist(*address) {
+		to = env.Db().CreateAccount(*address)
+	} else {
+		to = env.Db().GetAccount(*address)
+	}
+
+	// Initialise a new contract and make initialise the delegate values
+	contract := vm.NewContract(caller, to, new(big.Int), gas, gasPrice).AsDelegate()
+	contract.SetCallCode(codeAddr, codeHash, code)
+	defer contract.Finalise()
+
+	ret, err = evm.Run(contract, input)
+	if err != nil {
+		contract.UseGas(contract.Gas)
+
+		env.RevertToSnapshot(snapshot)
+	}
+
+	return ret, addr, err
 }
 
 // generic transfer method

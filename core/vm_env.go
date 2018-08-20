@@ -104,6 +104,9 @@ func (self *VMEnv) Transfer(from, to vm.Account, amount *big.Int) {
 func (self *VMEnv) Call(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return Call(self, me, addr, data, gas, price, value)
 }
+func (self *VMEnv) StaticCall(me vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return StaticCall(self, me, addr, data, gas, price)
+}
 func (self *VMEnv) CallCode(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return CallCode(self, me, addr, data, gas, price, value)
 }
