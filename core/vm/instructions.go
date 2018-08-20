@@ -511,6 +511,10 @@ func opDelegateCall(instr instruction, pc *uint64, env Environment, contract *Co
 	}
 }
 
+func opStaticCall(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+
+}
+
 func opSuicide(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	balance := env.Db().GetBalance(contract.Address())
 	env.Db().AddBalance(common.BigToAddress(stack.pop()), balance)
