@@ -55,6 +55,7 @@ func TestBlockchainTests(t *testing.T) {
 
 			} else {
 				t.Logf("%s: PASS2", p)
+				return nil
 			}
 
 			// } else {
