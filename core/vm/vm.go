@@ -320,7 +320,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		newMemSize = calcMemSize(stack.data[stack.len()-2], stack.data[stack.len()-3])
 
 		quadMemGas(mem, newMemSize, gas)
-	case CALL, CALLCODE:
+	case CALL, CALLCODE, STATICCALL:
 		gas.Set(gasTable.Calls)
 
 		if op == CALL {
