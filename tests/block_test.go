@@ -46,10 +46,8 @@ func TestBlockchainTests(t *testing.T) {
 		}
 		mil := big.NewInt(1000000)
 		if e := RunBlockTest(mil, mil, p, BlockSkipTests); e != nil {
-			// if e != nil {
-			// 	// Originally our tests had hardcoded fork block parameters. This "softly" ensures that those parameters can be met.
-			// 	// Interestingly, however, this appears to never be touched.
-			// 	t.Logf("1err=%v", e)
+			// Originally our tests had hardcoded fork block parameters. This "softly" ensures that those parameters can be met.
+			// Interestingly, however, this appears to never be touched.
 			if e2 := RunBlockTest(new(big.Int), mil, p, BlockSkipTests); e2 != nil {
 				t.Errorf("%s: FAIL2 err=%v", p, e2)
 
