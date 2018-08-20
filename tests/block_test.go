@@ -40,6 +40,10 @@ func TestBlockchainTests(t *testing.T) {
 			// t.Logf("%s: SKIP [DIR]", p) // debugging
 			return nil
 		}
+		if filepath.Ext(p) != ".json" {
+			t.Logf("%s: SKIP [non-json]", p)
+			return nil
+		}
 		mil := big.NewInt(1000000)
 		if e := RunBlockTest(mil, mil, p, BlockSkipTests); e != nil {
 			// if e != nil {

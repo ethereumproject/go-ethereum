@@ -150,12 +150,6 @@ OUTER:
 				continue OUTER
 			}
 		}
-		// skip files that are not JSON test files
-		reJSON := regexp.MustCompile("json$")
-		if !reJSON.MatchString(name) {
-			glog.Infof("%s: SKIP", name)
-			continue OUTER
-		}
 		// test the block
 		if err := runBlockTest(homesteadBlock, gasPriceFork, test); err != nil {
 			return fmt.Errorf("%s: %v", name, err)
