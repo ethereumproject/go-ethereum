@@ -33,6 +33,9 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	if ruleset.IsHomestead(blockNumber) {
 		jumpTable[DELEGATECALL] = jumpPtr{opDelegateCall, true}
 	}
+	if ruleset.IsByzantium(blockNumber) {
+		jumpTable[STATICCALL] = jumpPtr{opStaticCall, true}
+	}
 
 	jumpTable[ADD] = jumpPtr{opAdd, true}
 	jumpTable[SUB] = jumpPtr{opSub, true}
