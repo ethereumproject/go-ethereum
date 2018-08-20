@@ -69,6 +69,10 @@ type Environment interface {
 	Depth() int
 	// Set the current calling depth
 	SetDepth(i int)
+	// SetIsReadOnly sets whether it's allowed to modify state or not, eg. STATICCALL
+	SetReadOnly(isReadOnly bool)
+	// IsReadOnly returns whether the current env is allowed to make changes to state database, eg. STATICCALL
+	IsReadOnly() bool
 	// Call another contract
 	Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
 	// Take another's contract code and execute within our own context
