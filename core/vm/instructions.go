@@ -17,13 +17,19 @@
 package vm
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
-var callStipend = big.NewInt(2300) // Free gas given at beginning of call.
+var (
+	callStipend = big.NewInt(2300) // Free gas given at beginning of call.
+
+	errWriteProtection       = errors.New("evm: write protection")
+	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
+)
 
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
 
@@ -291,6 +297,26 @@ func opCalldataCopy(instr instruction, pc *uint64, env Environment, contract *Co
 	memory.Set(mOff.Uint64(), l.Uint64(), getData(contract.Input, cOff, l))
 }
 
+func opReturnDataCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) ([]byte, error) {
+	var (
+		mOff = stack.pop()
+		cOff = stack.pop()
+		l    = stack.pop()
+	)
+
+	end := new(big.Int).Add(cOff, l)
+	if end.BitLen() > 64 || uint64(len(env.ReturnData())) < end.Uint64() {
+		return nil, errReturnDataOutOfBounds
+	}
+
+	memory.Set(mOff.Uint64(), l.Uint64(), env.ReturnData()[cOff.Uint64():end.Uint64()])
+	return nil, nil
+}
+
+func opReturnDataSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	stack.push(new(big.Int).SetUint64(uint64(len(env.ReturnData()))))
+}
+
 func opExtCodeSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	addr := common.BigToAddress(stack.pop())
 	l := big.NewInt(int64(env.Db().GetCodeSize(addr)))
@@ -508,6 +534,37 @@ func opDelegateCall(instr instruction, pc *uint64, env Environment, contract *Co
 	} else {
 		stack.push(big.NewInt(1))
 		memory.Set(outOffset.Uint64(), outSize.Uint64(), ret)
+	}
+}
+
+func opStaticCall(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	gas := stack.pop()
+	// pop gas and value of the stack.
+	addr, value := stack.pop(), stack.pop()
+	value = U256(value)
+	// pop input size and offset
+	inOffset, inSize := stack.pop(), stack.pop()
+	// pop return size and offset
+	retOffset, retSize := stack.pop(), stack.pop()
+
+	address := common.BigToAddress(addr)
+
+	// Get the arguments from the memory
+	args := memory.Get(inOffset.Int64(), inSize.Int64())
+
+	if len(value.Bytes()) > 0 {
+		gas.Add(gas, callStipend)
+	}
+
+	ret, err := env.StaticCall(contract, address, args, gas, contract.Price)
+
+	if err != nil {
+		stack.push(new(big.Int))
+
+	} else {
+		stack.push(big.NewInt(1))
+
+		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 }
 

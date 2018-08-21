@@ -41,6 +41,9 @@ type Env struct {
 
 	getHashFn func(uint64) common.Hash
 
+	readOnly   bool   // Whether to throw on stateful modifications
+	returnData []byte // Last CALL's return data for subsequent reuse
+
 	evm *vm.EVM
 }
 
@@ -61,16 +64,20 @@ func NewEnv(cfg *Config, state *state.StateDB) vm.Environment {
 	return env
 }
 
-func (self *Env) RuleSet() vm.RuleSet      { return self.ruleSet }
-func (self *Env) Vm() vm.Vm                { return self.evm }
-func (self *Env) Origin() common.Address   { return self.origin }
-func (self *Env) BlockNumber() *big.Int    { return self.number }
-func (self *Env) Coinbase() common.Address { return self.coinbase }
-func (self *Env) Time() *big.Int           { return self.time }
-func (self *Env) Difficulty() *big.Int     { return self.difficulty }
-func (self *Env) Db() vm.Database          { return self.state }
-func (self *Env) GasLimit() *big.Int       { return self.gasLimit }
-func (self *Env) VmType() vm.Type          { return vm.StdVmTy }
+func (self *Env) SetReturnData(data []byte)   { self.returnData = data }
+func (self *Env) ReturnData() []byte          { return self.returnData }
+func (self *Env) SetReadOnly(isReadOnly bool) { self.readOnly = isReadOnly }
+func (self *Env) IsReadOnly() bool            { return self.readOnly }
+func (self *Env) RuleSet() vm.RuleSet         { return self.ruleSet }
+func (self *Env) Vm() vm.Vm                   { return self.evm }
+func (self *Env) Origin() common.Address      { return self.origin }
+func (self *Env) BlockNumber() *big.Int       { return self.number }
+func (self *Env) Coinbase() common.Address    { return self.coinbase }
+func (self *Env) Time() *big.Int              { return self.time }
+func (self *Env) Difficulty() *big.Int        { return self.difficulty }
+func (self *Env) Db() vm.Database             { return self.state }
+func (self *Env) GasLimit() *big.Int          { return self.gasLimit }
+func (self *Env) VmType() vm.Type             { return vm.StdVmTy }
 func (self *Env) GetHash(n uint64) common.Hash {
 	return self.getHashFn(n)
 }
@@ -95,6 +102,9 @@ func (self *Env) Transfer(from, to vm.Account, amount *big.Int) {
 
 func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return core.Call(self, caller, addr, data, gas, price, value)
+}
+func (self *Env) StaticCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return core.StaticCall(self, caller, addr, data, gas, price)
 }
 func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return core.CallCode(self, caller, addr, data, gas, price, value)

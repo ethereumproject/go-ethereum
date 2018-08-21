@@ -62,6 +62,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	evm.env.SetDepth(evm.env.Depth() + 1)
 	defer evm.env.SetDepth(evm.env.Depth() - 1)
 
+	evm.env.SetReturnData(nil)
+
 	if contract.CodeAddr != nil {
 		if p := Precompiled[contract.CodeAddr.Str()]; p != nil {
 			return evm.RunPrecompiled(p, input, contract)
@@ -120,6 +122,17 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	for ; ; instrCount++ {
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
+		if evm.env.RuleSet().IsECIP1045(evm.env.BlockNumber()) && evm.env.IsReadOnly() {
+			// If the interpreter is operating in readonly mode, make sure no
+			// state-modifying operation is performed. The 3rd stack item
+			// for a call operation is the value. Transfering value from one
+			// account to the others means the state is modified and should also
+			// return with an error.
+			if opPtr := evm.jumpTable[op]; opPtr.writes || op == CALL && stack.data[stack.len()-2-1].BitLen() > 0 {
+				return nil, errWriteProtection
+
+			}
+		}
 		// calculate the new memory size and gas price for the current executing opcode
 		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
 		if err != nil {
@@ -135,7 +148,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// Resize the memory calculated previously
 		mem.Resize(newMemSize.Uint64())
 
-		if opPtr := evm.jumpTable[op]; opPtr.valid {
+		opPtr := evm.jumpTable[op]
+		if opPtr.valid {
 			if opPtr.fn != nil {
 				opPtr.fn(instruction{}, &pc, evm.env, contract, mem, stack)
 			} else {
@@ -163,6 +177,11 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 					ret := mem.GetPtr(offset.Int64(), size.Int64())
 
 					return ret, nil
+				case RETURNDATACOPY:
+					if _, err := opReturnDataCopy(instruction{}, &pc, evm.env, contract, mem, stack); err != nil {
+						return nil, err
+					}
+
 				case SUICIDE:
 					opSuicide(instruction{}, nil, evm.env, contract, mem, stack)
 
@@ -177,6 +196,9 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 		pc++
 
+		if opPtr.returns {
+			evm.env.SetReturnData(ret)
+		}
 	}
 }
 
@@ -293,7 +315,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		gas.Add(gas, words.Mul(words, big.NewInt(6)))
 
 		quadMemGas(mem, newMemSize, gas)
-	case CALLDATACOPY:
+	case CALLDATACOPY, RETURNDATACOPY:
 		newMemSize = calcMemSize(stack.peek(), stack.data[stack.len()-3])
 
 		words := toWordSize(stack.data[stack.len()-3])
@@ -348,7 +370,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		stack.data[stack.len()-1] = cg
 		gas.Add(gas, cg)
 
-	case DELEGATECALL:
+	case DELEGATECALL, STATICCALL:
 		gas.Set(gasTable.Calls)
 
 		x := calcMemSize(stack.data[stack.len()-5], stack.data[stack.len()-6])

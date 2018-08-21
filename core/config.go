@@ -315,6 +315,11 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 	return num.Cmp(fork.Block) >= 0
 }
 
+func (c *ChainConfig) IsECIP1045(num *big.Int) bool {
+	// TODO: implement me, pending ECIP
+	return false
+}
+
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	feat, fork, configured := c.GetFeature(num, "difficulty")
