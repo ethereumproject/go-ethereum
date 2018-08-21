@@ -315,7 +315,7 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 	return num.Cmp(fork.Block) >= 0
 }
 
-func (c *ChainConfig) IsByzantium(num *big.Int) bool {
+func (c *ChainConfig) IsECIP1045(num *big.Int) bool {
 	// TODO: implement me, pending ECIP
 	return false
 }

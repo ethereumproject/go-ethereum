@@ -37,7 +37,7 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			valid: true,
 		}
 	}
-	if ruleset.IsByzantium(blockNumber) {
+	if ruleset.IsECIP1045(blockNumber) {
 		jumpTable[STATICCALL] = jumpPtr{
 			fn:    opStaticCall,
 			valid: true,
