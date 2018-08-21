@@ -19,8 +19,14 @@ package vm
 import "math/big"
 
 type jumpPtr struct {
+<<<<<<< HEAD
 	fn    instrFn
 	valid bool
+=======
+	fn     instrFn
+	valid  bool
+	writes bool
+>>>>>>> Implement RETURNDATASIZE and RETURNDATACOPY
 	// returns determines whether the operation sets the return data
 	returns bool
 }
@@ -267,7 +273,11 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	jumpTable[CREATE] = jumpPtr{
 		fn:      opCreate,
 		valid:   true,
+<<<<<<< HEAD
 		valid:   true,
+=======
+		writes:  true,
+>>>>>>> Implement RETURNDATASIZE and RETURNDATACOPY
 		returns: true,
 	}
 	jumpTable[CALL] = jumpPtr{
