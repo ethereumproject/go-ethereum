@@ -220,7 +220,8 @@ type Env struct {
 
 	vmTest bool
 
-	readOnly bool
+	readOnly   bool
+	returnData []byte
 
 	evm *vm.EVM
 }
@@ -262,6 +263,8 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	return env
 }
 
+func (self *Env) SetReturnData(data []byte)   { self.returnData = data }
+func (self *Env) ReturnData() []byte          { return self.returnData }
 func (self *Env) SetReadOnly(isReadOnly bool) { self.readOnly = isReadOnly }
 func (self *Env) IsReadOnly() bool            { return self.readOnly }
 func (self *Env) RuleSet() vm.RuleSet         { return self.ruleSet }

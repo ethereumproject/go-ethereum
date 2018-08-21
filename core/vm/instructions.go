@@ -27,7 +27,8 @@ import (
 var (
 	callStipend = big.NewInt(2300) // Free gas given at beginning of call.
 
-	errWriteProtection = errors.New("evm: write protection")
+	errWriteProtection       = errors.New("evm: write protection")
+	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
 )
 
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
@@ -294,6 +295,26 @@ func opCalldataCopy(instr instruction, pc *uint64, env Environment, contract *Co
 		l    = stack.pop()
 	)
 	memory.Set(mOff.Uint64(), l.Uint64(), getData(contract.Input, cOff, l))
+}
+
+func opReturnDataCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) ([]byte, error) {
+	var (
+		mOff = stack.pop()
+		cOff = stack.pop()
+		l    = stack.pop()
+	)
+
+	end := new(big.Int).Add(cOff, l)
+	if end.BitLen() > 64 || uint64(len(env.ReturnData())) < end.Uint64() {
+		return nil, errReturnDataOutOfBounds
+	}
+
+	memory.Set(mOff.Uint64(), l.Uint64(), env.ReturnData()[cOff.Uint64():end.Uint64()])
+	return nil, nil
+}
+
+func opReturnDataSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	stack.push(new(big.Int).SetUint64(uint64(len(env.ReturnData()))))
 }
 
 func opExtCodeSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {

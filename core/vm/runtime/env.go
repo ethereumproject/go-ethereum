@@ -41,7 +41,8 @@ type Env struct {
 
 	getHashFn func(uint64) common.Hash
 
-	readOnly bool
+	readOnly   bool   // Whether to throw on stateful modifications
+	returnData []byte // Last CALL's return data for subsequent reuse
 
 	evm *vm.EVM
 }
@@ -63,6 +64,8 @@ func NewEnv(cfg *Config, state *state.StateDB) vm.Environment {
 	return env
 }
 
+func (self *Env) SetReturnData(data []byte)   { self.returnData = data }
+func (self *Env) ReturnData() []byte          { return self.returnData }
 func (self *Env) SetReadOnly(isReadOnly bool) { self.readOnly = isReadOnly }
 func (self *Env) IsReadOnly() bool            { return self.readOnly }
 func (self *Env) RuleSet() vm.RuleSet         { return self.ruleSet }
