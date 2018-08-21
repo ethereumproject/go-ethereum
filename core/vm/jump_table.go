@@ -254,8 +254,9 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		valid: true,
 	}
 	jumpTable[CREATE] = jumpPtr{
-		fn:    opCreate,
-		valid: true,
+		fn:     opCreate,
+		valid:  true,
+		writes: true,
 	}
 	jumpTable[CALL] = jumpPtr{
 		fn:    opCall,
