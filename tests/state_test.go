@@ -18,6 +18,7 @@ package tests
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 )
 
@@ -39,10 +40,16 @@ func TestState(t *testing.T) {
 			key := fmt.Sprintf("%s/%d", subtest.Fork, subtest.Index)
 			name := name + "/" + key
 			t.Run(key, func(t *testing.T) {
-				for _, f := range []string{"EIP158", "Byzantium", "Constantinople", "HomesteadToDaoAt5", "EIP158ToByzantiumAt5"} {
+				for _, f := range []string{"EIP158", "Constantinople", "HomesteadToDaoAt5", "EIP158ToByzantiumAt5"} {
 					if subtest.Fork == f {
 						t.Skipf("fork=%s not supported", subtest.Fork)
 					}
+				}
+
+				whitelistRe := regexp.MustCompile(`stStaticCall`)
+				if !whitelistRe.MatchString(name) {
+					// OoD = Out of Domain
+					t.Skipf("%s/%s: SKIP - OoD", name, subtest.Fork)
 				}
 
 				rs, ok := Rules[subtest.Fork]
