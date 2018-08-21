@@ -158,6 +158,9 @@ func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
 }
 func (r RuleSet) IsECIP1045(n *big.Int) bool {
+	if r.ECIP1045Block == nil {
+		r.ECIP1045Block = new(big.Int)
+	}
 	return n.Cmp(r.ECIP1045Block) >= 0
 }
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
