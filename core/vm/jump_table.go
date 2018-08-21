@@ -261,7 +261,6 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	jumpTable[CALL] = jumpPtr{
 		fn:    opCall,
 		valid: true,
-		// TODO: this can change state if it returns with a non-zero value
 	}
 	jumpTable[CALLCODE] = jumpPtr{
 		fn:    opCallCode,
