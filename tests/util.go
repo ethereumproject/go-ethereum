@@ -151,10 +151,14 @@ type RuleSet struct {
 	HomesteadGasRepriceBlock *big.Int
 	DiehardBlock             *big.Int
 	ExplosionBlock           *big.Int
+	ECIP1045Block            *big.Int
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
+}
+func (r RuleSet) IsECIP1045(n *big.Int) bool {
+	return n.Cmp(r.ECIP1045Block) >= 0
 }
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
@@ -213,6 +217,8 @@ type Env struct {
 
 	vmTest bool
 
+	readOnly bool
+
 	evm *vm.EVM
 }
 
@@ -253,16 +259,18 @@ func NewEnvFromMap(ruleSet RuleSet, state *state.StateDB, envValues map[string]s
 	return env
 }
 
-func (self *Env) RuleSet() vm.RuleSet      { return self.ruleSet }
-func (self *Env) Vm() vm.Vm                { return self.evm }
-func (self *Env) Origin() common.Address   { return self.origin }
-func (self *Env) BlockNumber() *big.Int    { return self.number }
-func (self *Env) Coinbase() common.Address { return self.coinbase }
-func (self *Env) Time() *big.Int           { return self.time }
-func (self *Env) Difficulty() *big.Int     { return self.difficulty }
-func (self *Env) Db() vm.Database          { return self.state }
-func (self *Env) GasLimit() *big.Int       { return self.gasLimit }
-func (self *Env) VmType() vm.Type          { return vm.StdVmTy }
+func (self *Env) SetReadOnly(isReadOnly bool) { self.readOnly = isReadOnly }
+func (self *Env) IsReadOnly() bool            { return self.readOnly }
+func (self *Env) RuleSet() vm.RuleSet         { return self.ruleSet }
+func (self *Env) Vm() vm.Vm                   { return self.evm }
+func (self *Env) Origin() common.Address      { return self.origin }
+func (self *Env) BlockNumber() *big.Int       { return self.number }
+func (self *Env) Coinbase() common.Address    { return self.coinbase }
+func (self *Env) Time() *big.Int              { return self.time }
+func (self *Env) Difficulty() *big.Int        { return self.difficulty }
+func (self *Env) Db() vm.Database             { return self.state }
+func (self *Env) GasLimit() *big.Int          { return self.gasLimit }
+func (self *Env) VmType() vm.Type             { return vm.StdVmTy }
 func (self *Env) GetHash(n uint64) common.Hash {
 	return common.BytesToHash(crypto.Keccak256([]byte(big.NewInt(int64(n)).String())))
 }
@@ -323,6 +331,15 @@ func (self *Env) DelegateCall(caller vm.ContractRef, addr common.Address, data [
 		return nil, nil
 	}
 	return core.DelegateCall(self, caller, addr, data, gas, price)
+}
+
+func (self *Env) StaticCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	if self.vmTest && self.depth > 0 {
+		caller.ReturnGas(gas, price)
+
+		return nil, nil
+	}
+	return core.StaticCall(self, caller, addr, data, gas, price)
 }
 
 func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
