@@ -210,7 +210,7 @@ func execStaticCall(env vm.Environment, caller vm.ContractRef, address, codeAddr
 	}
 
 	// Initialise a new contract and make initialise the delegate values
-	contract := vm.NewContract(caller, to, new(big.Int), gas, gasPrice).AsDelegate()
+	contract := vm.NewContract(caller, to, new(big.Int), gas, gasPrice)
 	contract.SetCallCode(codeAddr, codeHash, code)
 	defer contract.Finalise()
 
