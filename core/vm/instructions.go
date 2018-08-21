@@ -512,7 +512,34 @@ func opDelegateCall(instr instruction, pc *uint64, env Environment, contract *Co
 }
 
 func opStaticCall(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	gas := stack.pop()
+	// pop gas and value of the stack.
+	addr, value := stack.pop(), stack.pop()
+	value = U256(value)
+	// pop input size and offset
+	inOffset, inSize := stack.pop(), stack.pop()
+	// pop return size and offset
+	retOffset, retSize := stack.pop(), stack.pop()
 
+	address := common.BigToAddress(addr)
+
+	// Get the arguments from the memory
+	args := memory.Get(inOffset.Int64(), inSize.Int64())
+
+	if len(value.Bytes()) > 0 {
+		gas.Add(gas, callStipend)
+	}
+
+	ret, err := env.StaticCall(contract, address, args, gas, contract.Price)
+
+	if err != nil {
+		stack.push(new(big.Int))
+
+	} else {
+		stack.push(big.NewInt(1))
+
+		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
+	}
 }
 
 func opSuicide(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
