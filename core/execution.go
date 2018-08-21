@@ -195,7 +195,10 @@ func execStaticCall(env vm.Environment, caller vm.ContractRef, address, codeAddr
 		return nil, common.Address{}, errCallCreateDepth
 	}
 
-	// TODO: estalish call as read-only
+	if !env.IsReadOnly() {
+		env.SetReadOnly(true)
+		defer func() { env.SetReadOnly(false) }()
+	}
 
 	snapshot := env.SnapshotDatabase()
 

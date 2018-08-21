@@ -120,6 +120,17 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	for ; ; instrCount++ {
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
+		if evm.env.IsReadOnly() {
+			// If the interpreter is operating in readonly mode, make sure no
+			// state-modifying operation is performed. The 3rd stack item
+			// for a call operation is the value. Transfering value from one
+			// account to the others means the state is modified and should also
+			// return with an error.
+			if opPtr := evm.jumpTable[op]; opPtr.writes || op == CALL && stack.data[stack.len()-2-1].BitLen() > 0 {
+				return nil, errWriteProtection
+
+			}
+		}
 		// calculate the new memory size and gas price for the current executing opcode
 		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
 		if err != nil {

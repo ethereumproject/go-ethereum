@@ -17,13 +17,18 @@
 package vm
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
-var callStipend = big.NewInt(2300) // Free gas given at beginning of call.
+var (
+	callStipend = big.NewInt(2300) // Free gas given at beginning of call.
+
+	errWriteProtection = errors.New("evm: write protection")
+)
 
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
 
