@@ -206,7 +206,8 @@ type VMEnv struct {
 	Gas   *big.Int
 	time  *big.Int
 
-	readOnly bool
+	readOnly   bool
+	returnData []byte
 
 	evm *vm.EVM
 }
@@ -242,6 +243,8 @@ func (ruleSet) GasTable(*big.Int) *vm.GasTable {
 	}
 }
 
+func (self *VMEnv) SetReturnData(data []byte)   { self.returnData = data }
+func (self *VMEnv) ReturnData() []byte          { return self.returnData }
 func (self *VMEnv) SetReadOnly(isReadOnly bool) { self.readOnly = isReadOnly }
 func (self *VMEnv) IsReadOnly() bool            { return self.readOnly }
 func (self *VMEnv) RuleSet() vm.RuleSet         { return ruleSet{} }

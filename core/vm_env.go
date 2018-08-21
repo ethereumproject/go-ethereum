@@ -46,7 +46,8 @@ type VMEnv struct {
 	evm         *vm.EVM        // The Ethereum Virtual Machine
 	depth       int            // Current execution depth
 	msg         Message        // Message appliod
-	readOnly    bool
+	readOnly    bool           // Whether to throw on stateful modifications
+	returnData  []byte         // Last CALL's return data for subsequent reuse
 
 	header    *types.Header            // Header information
 	chain     *BlockChain              // Blockchain handle
@@ -67,6 +68,8 @@ func NewEnv(state *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, m
 	return env
 }
 
+func (self *VMEnv) SetReturnData(data []byte)   { self.returnData = data }
+func (self *VMEnv) ReturnData() []byte          { return self.returnData }
 func (self *VMEnv) SetReadOnly(isReadOnly bool) { self.readOnly = isReadOnly }
 func (self *VMEnv) IsReadOnly() bool            { return self.readOnly }
 func (self *VMEnv) RuleSet() vm.RuleSet         { return self.chainConfig }

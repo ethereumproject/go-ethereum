@@ -21,6 +21,8 @@ import "math/big"
 type jumpPtr struct {
 	fn    instrFn
 	valid bool
+	// returns determines whether the operation sets the return data
+	returns bool
 }
 
 type vmJumpTable [256]jumpPtr
@@ -32,13 +34,24 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	// changes.
 	if ruleset.IsHomestead(blockNumber) {
 		jumpTable[DELEGATECALL] = jumpPtr{
-			fn:    opDelegateCall,
-			valid: true,
+			fn:      opDelegateCall,
+			valid:   true,
+			returns: true,
 		}
 	}
 	if ruleset.IsECIP1045(blockNumber) {
 		jumpTable[STATICCALL] = jumpPtr{
-			fn:    opStaticCall,
+			fn:      opStaticCall,
+			valid:   true,
+			returns: true,
+		}
+		jumpTable[RETURNDATASIZE] = jumpPtr{
+			fn:    opReturnDataSize,
+			valid: true,
+		}
+		jumpTable[RETURNDATACOPY] = jumpPtr{
+			// This is called manually during VM.Run in order to do error handling in case return data size is out of bounds.
+			// fn:    opReturnDataCopy,
 			valid: true,
 		}
 	}
@@ -252,16 +265,20 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		valid: true,
 	}
 	jumpTable[CREATE] = jumpPtr{
-		fn:    opCreate,
-		valid: true,
+		fn:      opCreate,
+		valid:   true,
+		valid:   true,
+		returns: true,
 	}
 	jumpTable[CALL] = jumpPtr{
-		fn:    opCall,
-		valid: true,
+		fn:      opCall,
+		valid:   true,
+		returns: true,
 	}
 	jumpTable[CALLCODE] = jumpPtr{
-		fn:    opCallCode,
-		valid: true,
+		fn:      opCallCode,
+		valid:   true,
+		returns: true,
 	}
 	jumpTable[LOG0] = jumpPtr{
 		fn:    makeLog(0),
