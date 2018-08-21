@@ -120,7 +120,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	for ; ; instrCount++ {
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
-		if evm.env.IsReadOnly() {
+		if evm.env.RuleSet().IsECIP1045(evm.env.BlockNumber()) && evm.env.IsReadOnly() {
 			// If the interpreter is operating in readonly mode, make sure no
 			// state-modifying operation is performed. The 3rd stack item
 			// for a call operation is the value. Transfering value from one
