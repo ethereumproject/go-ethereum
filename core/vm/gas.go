@@ -180,6 +180,7 @@ var _baseCheck = map[OpCode]req{
 	// Zero is calculated in the gasSwitch
 	CALL:         {7, new(big.Int), 1},
 	CALLCODE:     {7, new(big.Int), 1},
+	STATICCALL:   {6, new(big.Int), 1},
 	DELEGATECALL: {6, new(big.Int), 1},
 	SUICIDE:      {1, new(big.Int), 0},
 	JUMPDEST:     {0, big.NewInt(1), 0},
