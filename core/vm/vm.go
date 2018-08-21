@@ -62,6 +62,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	evm.env.SetDepth(evm.env.Depth() + 1)
 	defer evm.env.SetDepth(evm.env.Depth() - 1)
 
+	evm.env.SetReturnData(nil)
+
 	if contract.CodeAddr != nil {
 		if p := Precompiled[contract.CodeAddr.Str()]; p != nil {
 			return evm.RunPrecompiled(p, input, contract)
@@ -146,7 +148,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// Resize the memory calculated previously
 		mem.Resize(newMemSize.Uint64())
 
-		if opPtr := evm.jumpTable[op]; opPtr.valid {
+		opPtr := evm.jumpTable[op]
+		if opPtr.valid {
 			if opPtr.fn != nil {
 				opPtr.fn(instruction{}, &pc, evm.env, contract, mem, stack)
 			} else {
@@ -174,6 +177,11 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 					ret := mem.GetPtr(offset.Int64(), size.Int64())
 
 					return ret, nil
+				case RETURNDATACOPY:
+					if _, err := opReturnDataCopy(instruction{}, &pc, evm.env, contract, mem, stack); err != nil {
+						return nil, err
+					}
+
 				case SUICIDE:
 					opSuicide(instruction{}, nil, evm.env, contract, mem, stack)
 
@@ -188,6 +196,9 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 		pc++
 
+		if opPtr.returns {
+			evm.env.SetReturnData(ret)
+		}
 	}
 }
 
@@ -304,7 +315,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		gas.Add(gas, words.Mul(words, big.NewInt(6)))
 
 		quadMemGas(mem, newMemSize, gas)
-	case CALLDATACOPY:
+	case CALLDATACOPY, RETURNDATACOPY:
 		newMemSize = calcMemSize(stack.peek(), stack.data[stack.len()-3])
 
 		words := toWordSize(stack.data[stack.len()-3])

@@ -73,6 +73,10 @@ type Environment interface {
 	SetReadOnly(isReadOnly bool)
 	// IsReadOnly returns whether the current env is allowed to make changes to state database, eg. STATICCALL
 	IsReadOnly() bool
+	// SetReturnData sets the return data for CALL's return data for reuse
+	SetReturnData(data []byte)
+	// ReturnData gets the return data
+	ReturnData() []byte
 	// Call another contract
 	Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
 	// Take another's contract code and execute within our own context
