@@ -36,7 +36,7 @@ func Call(env vm.Environment, caller vm.ContractRef, addr common.Address, input 
 	return ret, err
 }
 
-// StaticCall executes within the given contract
+// StaticCall is equivalent to Call, except that it has no signature field for value
 func StaticCall(env vm.Environment, caller vm.ContractRef, addr common.Address, input []byte, gas, gasPrice *big.Int) (ret []byte, err error) {
 	ret, _, err = execStaticCall(env, caller, &addr, &addr, env.Db().GetCodeHash(addr), input, env.Db().GetCode(addr), gas, gasPrice)
 	return ret, err
