@@ -538,23 +538,12 @@ func opDelegateCall(instr instruction, pc *uint64, env Environment, contract *Co
 }
 
 func opStaticCall(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	gas := stack.pop()
-	// pop gas and value of the stack.
-	addr, value := stack.pop(), stack.pop()
-	value = U256(value)
-	// pop input size and offset
-	inOffset, inSize := stack.pop(), stack.pop()
-	// pop return size and offset
-	retOffset, retSize := stack.pop(), stack.pop()
+	gas, addr, inOffset, inSize, outOffset, outSize := stack.pop(), stack.pop(), stack.pop(), stack.pop(), stack.pop(), stack.pop()
 
 	address := common.BigToAddress(addr)
 
 	// Get the arguments from the memory
 	args := memory.Get(inOffset.Int64(), inSize.Int64())
-
-	if len(value.Bytes()) > 0 {
-		gas.Add(gas, callStipend)
-	}
 
 	ret, err := env.StaticCall(contract, address, args, gas, contract.Price)
 
@@ -564,7 +553,7 @@ func opStaticCall(instr instruction, pc *uint64, env Environment, contract *Cont
 	} else {
 		stack.push(big.NewInt(1))
 
-		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
+		memory.Set(outOffset.Uint64(), outSize.Uint64(), ret)
 	}
 }
 
