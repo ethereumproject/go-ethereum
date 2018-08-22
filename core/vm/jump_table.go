@@ -23,6 +23,7 @@ type jumpPtr struct {
 	valid bool
 	// returns determines whether the operation sets the return data
 	returns bool
+	reverts bool // determines whether the operation reverts state (implicitly halts)
 }
 
 type vmJumpTable [256]jumpPtr
@@ -50,9 +51,16 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			valid: true,
 		}
 		jumpTable[RETURNDATACOPY] = jumpPtr{
-			// This is called manually during VM.Run in order to do error handling in case return data size is out of bounds.
+			// This is called manually during EVM.Run in order to do error handling in case return data size is out of bounds.
 			// fn:    opReturnDataCopy,
 			valid: true,
+		}
+		jumpTable[REVERT] = jumpPtr{
+			// This is called manually during EVM.Run since implicity halt (akin to RETURN).
+			fn:      nil,
+			valid:   true,
+			reverts: true,
+			returns: true,
 		}
 	}
 
