@@ -29,6 +29,7 @@ var (
 
 	errWriteProtection       = errors.New("evm: write protection")
 	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
+	ErrExecutionReverted     = errors.New("evm: execution reverted")
 )
 
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
@@ -487,7 +488,8 @@ func opCall(instr instruction, pc *uint64, env Environment, contract *Contract, 
 
 	} else {
 		stack.push(big.NewInt(1))
-
+	}
+	if err == nil || err == ErrExecutionReverted {
 		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 }
@@ -518,7 +520,8 @@ func opCallCode(instr instruction, pc *uint64, env Environment, contract *Contra
 
 	} else {
 		stack.push(big.NewInt(1))
-
+	}
+	if err == nil || err == ErrExecutionReverted {
 		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 }
@@ -533,6 +536,8 @@ func opDelegateCall(instr instruction, pc *uint64, env Environment, contract *Co
 		stack.push(new(big.Int))
 	} else {
 		stack.push(big.NewInt(1))
+	}
+	if err == nil || err == ErrExecutionReverted {
 		memory.Set(outOffset.Uint64(), outSize.Uint64(), ret)
 	}
 }
@@ -552,7 +557,8 @@ func opStaticCall(instr instruction, pc *uint64, env Environment, contract *Cont
 
 	} else {
 		stack.push(big.NewInt(1))
-
+	}
+	if err == nil || err == ErrExecutionReverted {
 		memory.Set(outOffset.Uint64(), outSize.Uint64(), ret)
 	}
 }

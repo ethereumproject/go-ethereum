@@ -64,7 +64,7 @@ func Create(env vm.Environment, caller vm.ContractRef, code []byte, gas, gasPric
 	// Here we get an error if we run into maximum stack depth,
 	// See: https://github.com/ethereum/yellowpaper/pull/131
 	// and YP definitions for CREATE instruction
-	if err != nil {
+	if err != nil && err != vm.ErrExecutionReverted {
 		return nil, address, err
 	}
 	return ret, address, err
@@ -139,8 +139,9 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != vm.CodeStoreOutOfGasError) {
-		contract.UseGas(contract.Gas)
-
+		if err != vm.ErrExecutionReverted {
+			contract.UseGas(contract.Gas)
+		}
 		env.RevertToSnapshot(snapshotPreTransfer)
 	}
 
@@ -172,8 +173,9 @@ func execDelegateCall(env vm.Environment, caller vm.ContractRef, originAddr, toA
 
 	ret, err = evm.Run(contract, input)
 	if err != nil {
-		contract.UseGas(contract.Gas)
-
+		if err != vm.ErrExecutionReverted {
+			contract.UseGas(contract.Gas)
+		}
 		env.RevertToSnapshot(snapshot)
 	}
 
@@ -216,8 +218,9 @@ func execStaticCall(env vm.Environment, caller vm.ContractRef, address, codeAddr
 
 	ret, err = evm.Run(contract, input)
 	if err != nil {
-		contract.UseGas(contract.Gas)
-
+		if err != nil {
+			contract.UseGas(contract.Gas)
+		}
 		env.RevertToSnapshot(snapshot)
 	}
 

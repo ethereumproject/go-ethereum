@@ -204,6 +204,7 @@ const (
 	RETURN
 	DELEGATECALL
 	STATICCALL = 0xfa
+	REVERT     = 0xfd
 	SUICIDE    = 0xff
 )
 
@@ -360,6 +361,7 @@ var opCodeToString = map[OpCode]string{
 	CALLCODE:     "CALLCODE",
 	DELEGATECALL: "DELEGATECALL",
 	STATICCALL:   "STATICCALL",
+	REVERT:       "REVERT",
 	SUICIDE:      "SUICIDE",
 
 	PUSH: "PUSH",
@@ -507,6 +509,7 @@ var stringToOp = map[string]OpCode{
 	"CALL":         CALL,
 	"RETURN":       RETURN,
 	"CALLCODE":     CALLCODE,
+	"REVERT":       REVERT,
 	"SUICIDE":      SUICIDE,
 }
 
