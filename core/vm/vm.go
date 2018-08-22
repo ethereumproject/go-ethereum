@@ -172,6 +172,12 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 						continue
 					}
+				case REVERT:
+					offset, size := stack.pop(), stack.pop()
+					ret := mem.GetPtr(offset.Int64(), size.Int64())
+
+					return ret, ErrExecutionReverted
+
 				case RETURN:
 					offset, size := stack.pop(), stack.pop()
 					ret := mem.GetPtr(offset.Int64(), size.Int64())
@@ -194,11 +200,11 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 			return nil, fmt.Errorf("Invalid opcode %x", op)
 		}
 
-		pc++
-
 		if opPtr.returns {
 			evm.env.SetReturnData(ret)
 		}
+
+		pc++
 	}
 }
 
