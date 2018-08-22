@@ -186,6 +186,7 @@ var _baseCheck = map[OpCode]req{
 	DELEGATECALL: {6, new(big.Int), 1},
 	SUICIDE:      {1, new(big.Int), 0},
 	JUMPDEST:     {0, big.NewInt(1), 0},
+	REVERT:       {2, new(big.Int), 0},
 	RETURN:       {2, new(big.Int), 0},
 	PUSH1:        {0, GasFastestStep, 1},
 	DUP1:         {0, new(big.Int), 1},
