@@ -402,7 +402,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 
 // RunPrecompile runs and evaluate the output of a precompiled contract defined in contracts.go
 func (evm *EVM) RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (ret []byte, err error) {
-	gas := p.Gas(len(input))
+	gas := p.Gas(input)
 	if contract.UseGas(gas) {
 		ret = p.Call(input)
 
