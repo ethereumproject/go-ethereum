@@ -34,8 +34,8 @@ type PrecompiledAccount struct {
 }
 
 // Call calls the native function
-func (self PrecompiledAccount) Call(in []byte) []byte {
-	return self.fn(in)
+func (pa PrecompiledAccount) Call(in []byte) ([]byte, error) {
+	return pa.fn(in)
 }
 
 // Precompiled contains the default set of ethereum contracts
