@@ -1,4 +1,4 @@
-// Copyright 2015 The go-ethereum Authors
+/*  */ // Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -23,6 +23,8 @@ import (
 	"math/big"
 
 	"bytes"
+	"strings"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/common/hexutil"
 	"github.com/ethereumproject/go-ethereum/common/math"
@@ -31,7 +33,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/core/vm"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"strings"
 )
 
 // func RunStateTestWithReader(ruleSet RuleSet, r io.Reader, skipTests []string) error {
