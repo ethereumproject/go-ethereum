@@ -21,6 +21,7 @@ import (
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/ethereumproject/go-ethereum/crypto/bn256"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"math"
@@ -160,7 +161,7 @@ func PrecompiledContractsECIP1045() map[string]*PrecompiledAccount {
 	bn256ScalarMulGas := func(in []byte) *big.Int {
 		return big.NewInt(40000) // params.Bn256ScalarMulGas
 	}
-	pairingGas := func(in []byte) *big.Int {
+	bn256PairingGas := func(in []byte) *big.Int {
 		// return params.Bn256PairingBaseGas + uint64(len(input)/192)*params.Bn256PairingPerPointGas
 		base := big.NewInt(100000)
 		perPoint := big.NewInt(80000)
@@ -186,8 +187,8 @@ func PrecompiledContractsECIP1045() map[string]*PrecompiledAccount {
 	}
 	// pairing
 	contracts[preCByteAddress([]byte{8})] = &PrecompiledAccount{
-		Gas: pairingGas,
-		fn:  pairingFunc,
+		Gas: bn256PairingGas,
+		fn:  bn256PairingFunc,
 	}
 	return contracts
 }
@@ -225,7 +226,7 @@ func bn256AddFunc(in []byte) []byte {
 func bn256ScalarMulFunc(in []byte) []byte {
 
 }
-func pairingFunc(in []byte) []byte {
+func bn256PairingFunc(in []byte) []byte {
 
 }
 
