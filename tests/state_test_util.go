@@ -285,7 +285,7 @@ func (t *StateTest) Run(test *StateTest, subtest StateSubtest, ruleset RuleSet) 
 	}
 
 	// Set pre compiled contracts
-	vm.Precompiled = vm.PrecompiledContracts()
+	vm.PrecompiledHomestead = vm.PrecompiledContracts()
 
 	gaspool := new(core.GasPool)
 	gaspool.AddGas(new(big.Int).SetUint64(test.json.Tx.GasLimit[post.Indexes.Gas]))
