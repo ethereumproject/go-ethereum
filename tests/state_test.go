@@ -18,7 +18,7 @@ package tests
 
 import (
 	"fmt"
-	"regexp"
+	// "regexp"
 	"testing"
 )
 
@@ -46,11 +46,11 @@ func TestState(t *testing.T) {
 					}
 				}
 
-				whitelistRe := regexp.MustCompile(`stStaticCall`)
-				if !whitelistRe.MatchString(name) {
-					// OoD = Out of Domain
-					t.Skipf("%s/%s: SKIP - OoD", name, subtest.Fork)
-				}
+				// whitelistRe := regexp.MustCompile(`stStaticCall`)
+				// if !whitelistRe.MatchString(name) {
+				// 	// OoD = Out of Domain
+				// 	t.Skipf("%s/%s: SKIP - OoD", name, subtest.Fork)
+				// }
 
 				rs, ok := Rules[subtest.Fork]
 				if !ok {
