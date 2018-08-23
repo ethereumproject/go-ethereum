@@ -311,7 +311,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 	case MSTORE:
 		newMemSize = calcMemSize(stack.peek(), u256(32))
 		quadMemGas(mem, newMemSize, gas)
-	case RETURN:
+	case RETURN, REVERT:
 		newMemSize = calcMemSize(stack.peek(), stack.data[stack.len()-2])
 		quadMemGas(mem, newMemSize, gas)
 	case SHA3:
