@@ -65,7 +65,11 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	evm.env.SetReturnData(nil)
 
 	if contract.CodeAddr != nil {
-		if p := Precompiled[contract.CodeAddr.Str()]; p != nil {
+		precompiles := PrecompiledHomestead
+		if evm.env.RuleSet().IsECIP1045(evm.env.BlockNumber()) {
+			precompiles = PrecompiledContractsECIP1045()
+		}
+		if p := precompiles[contract.CodeAddr.Str()]; p != nil {
 			return evm.RunPrecompiled(p, input, contract)
 		}
 	}

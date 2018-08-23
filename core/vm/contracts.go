@@ -39,8 +39,8 @@ func (pa PrecompiledAccount) Call(in []byte) ([]byte, error) {
 	return pa.fn(in)
 }
 
-// Precompiled contains the default set of ethereum contracts
-var Precompiled = PrecompiledContracts()
+// PrecompiledHomestead contains the default set of ethereum contracts
+var PrecompiledHomestead = PrecompiledContracts()
 
 func preCByteAddress(i []byte) string {
 	return string(common.LeftPadBytes(i, 20))
