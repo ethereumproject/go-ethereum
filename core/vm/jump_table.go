@@ -19,9 +19,8 @@ package vm
 import "math/big"
 
 type jumpPtr struct {
-	fn     instrFn
-	valid  bool
-	writes bool
+	fn    instrFn
+	valid bool
 }
 
 type vmJumpTable [256]jumpPtr
@@ -233,9 +232,8 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		valid: true,
 	}
 	jumpTable[SSTORE] = jumpPtr{
-		fn:     opSstore,
-		valid:  true,
-		writes: true,
+		fn:    opSstore,
+		valid: true,
 	}
 	jumpTable[JUMPDEST] = jumpPtr{
 		fn:    opJumpdest,
@@ -254,9 +252,8 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		valid: true,
 	}
 	jumpTable[CREATE] = jumpPtr{
-		fn:     opCreate,
-		valid:  true,
-		writes: true,
+		fn:    opCreate,
+		valid: true,
 	}
 	jumpTable[CALL] = jumpPtr{
 		fn:    opCall,
@@ -269,27 +266,22 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	jumpTable[LOG0] = jumpPtr{
 		fn:    makeLog(0),
 		valid: true,
-		writes: true,
 	}
 	jumpTable[LOG1] = jumpPtr{
-		fn:     makeLog(1),
-		valid:  true,
-		writes: true,
+		fn:    makeLog(1),
+		valid: true,
 	}
 	jumpTable[LOG2] = jumpPtr{
-		fn:     makeLog(2),
-		valid:  true,
-		writes: true,
+		fn:    makeLog(2),
+		valid: true,
 	}
 	jumpTable[LOG3] = jumpPtr{
-		fn:     makeLog(3),
-		valid:  true,
-		writes: true,
+		fn:    makeLog(3),
+		valid: true,
 	}
 	jumpTable[LOG4] = jumpPtr{
-		fn:     makeLog(4),
-		valid:  true,
-		writes: true,
+		fn:    makeLog(4),
+		valid: true,
 	}
 	jumpTable[SWAP1] = jumpPtr{
 		fn:    makeSwap(1),
@@ -553,9 +545,8 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		valid: true,
 	}
 	jumpTable[SUICIDE] = jumpPtr{
-		fn:     nil,
-		valid:  true,
-		writes: true,
+		fn:    nil,
+		valid: true,
 	}
 	jumpTable[JUMP] = jumpPtr{
 		fn:    nil,

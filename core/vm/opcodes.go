@@ -35,6 +35,14 @@ func (op OpCode) IsStaticJump() bool {
 	return op == JUMP
 }
 
+func (op OpCode) IsStateModifying() bool {
+	switch op {
+	case SSTORE, CREATE, LOG0, LOG1, LOG2, LOG3, LOG4, SUICIDE:
+		return true
+	}
+	return false
+}
+
 const (
 	// 0x0 range - arithmetic ops
 	STOP OpCode = iota
