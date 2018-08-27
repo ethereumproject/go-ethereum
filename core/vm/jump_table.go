@@ -269,6 +269,7 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	jumpTable[LOG0] = jumpPtr{
 		fn:    makeLog(0),
 		valid: true,
+		writes: true,
 	}
 	jumpTable[LOG1] = jumpPtr{
 		fn:     makeLog(1),
