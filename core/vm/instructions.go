@@ -306,7 +306,7 @@ func opReturnDataCopy(instr instruction, pc *uint64, env Environment, contract *
 	)
 
 	end := new(big.Int).Add(cOff, length)
-	if end.BitLen() > 64 || uint64(len(env.ReturnData())) < end.Uint64() {
+	if end.IsUint64() || uint64(len(env.ReturnData())) < end.Uint64() {
 		return nil, errReturnDataOutOfBounds
 	}
 
