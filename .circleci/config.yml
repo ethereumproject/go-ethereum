@@ -54,7 +54,11 @@ unit_tests_steps: &unit_tests_steps
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           go env
-          go test -tags="sputnikvm netgo deterministic" ./...
+          # Since core/ and tests/ packages are run deterministically, we can safely
+          # infer that SputnikVM is functioning the same as the native VM without running
+          # the schroedinger nondeterministic tests with sputnik enabled.
+          go test -tags="netgo deterministic" ./...
+          go test -ldflags "-X github.com/ethereumproject/go-ethereum/core.UseSputnikVM=true" -tags="sputnikvm netgo deterministic" ./...
           schroedinger -t 5 -f ./schroedinger-tests.txt
 
 bats_tests_steps: &bats_tests_steps
