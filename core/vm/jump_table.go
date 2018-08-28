@@ -19,9 +19,8 @@ package vm
 import "math/big"
 
 type jumpPtr struct {
-	fn      instrFn
-	valid   bool
-	reverts bool // determines whether the operation reverts state (implicitly halts)
+	fn    instrFn
+	valid bool
 }
 
 type vmJumpTable [256]jumpPtr
@@ -53,9 +52,8 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		}
 		jumpTable[REVERT] = jumpPtr{
 			// This is called manually during EVM.Run since implicity halt (akin to RETURN).
-			fn:      nil,
-			valid:   true,
-			reverts: true,
+			fn:    nil,
+			valid: true,
 		}
 	}
 

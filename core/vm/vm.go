@@ -216,8 +216,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 // the operation. This does not reduce gas or resizes the memory.
 func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack) (*big.Int, *big.Int, error) {
 	var (
-		gas                 = new(big.Int)
-		newMemSize *big.Int = new(big.Int)
+		gas        = new(big.Int)
+		newMemSize = new(big.Int)
 	)
 	err := baseCheck(op, stack, gas)
 	if err != nil {

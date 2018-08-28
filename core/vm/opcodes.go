@@ -51,6 +51,14 @@ func (op OpCode) IsReturning() bool {
 	return false
 }
 
+func (op OpCode) IsReverting() bool {
+	switch op {
+	case REVERT:
+		return true
+	}
+	return false
+}
+
 const (
 	// 0x0 range - arithmetic ops
 	STOP OpCode = iota
