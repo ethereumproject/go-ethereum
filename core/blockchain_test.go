@@ -1422,7 +1422,7 @@ func TestLogReorgs(t *testing.T) {
 	// not contain a patch for this. As a result, it cannot figure out
 	// a correct patch to run. So we bypass this test when running
 	// with `UseSputnikVM`.
-	if UseSputnikVM {
+	if UseSputnikVM == "true" {
 		return
 	}
 
@@ -1484,7 +1484,7 @@ func TestReorgSideEvent(t *testing.T) {
 	// not contain a patch for this. As a result, it cannot figure out
 	// a correct patch to run. So we bypass this test when running
 	// with `UseSputnikVM`.
-	if UseSputnikVM {
+	if UseSputnikVM == "true" {
 		return
 	}
 
