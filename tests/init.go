@@ -49,7 +49,7 @@ var (
 )
 
 func initBlockSkipTests() []string {
-	if core.UseSputnikVM {
+	if core.UseSputnikVM == "true" {
 		return []string{
 			// These tests are not valid, as they are out of scope for RLP and
 			// the consensus protocol.
