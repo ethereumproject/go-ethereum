@@ -43,6 +43,14 @@ func (op OpCode) IsStateModifying() bool {
 	return false
 }
 
+func (op OpCode) IsReturning() bool {
+	switch op {
+	case DELEGATECALL, STATICCALL, REVERT, CREATE, CALL, CALLCODE, RETURN:
+		return true
+	}
+	return false
+}
+
 const (
 	// 0x0 range - arithmetic ops
 	STOP OpCode = iota

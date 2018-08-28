@@ -204,7 +204,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 			return nil, fmt.Errorf("Invalid opcode %x", op)
 		}
 
-		if opPtr.returns {
+		if op.IsReturning() {
 			evm.env.SetReturnData(ret)
 		}
 
