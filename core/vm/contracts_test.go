@@ -336,13 +336,37 @@ var bn256PairingTests = []precompiledTest{
 	},
 }
 
+// testContractRef implements the ContractRef interface as a mock for ContractRef (without needing StateObject)
+type testContractRef common.Address
+
+func (cr testContractRef) ReturnGas(*big.Int, *big.Int) {
+	panic("implement me")
+}
+
+func (cr testContractRef) Address() common.Address {
+	return (common.Address)(cr)
+}
+
+func (testContractRef) Value() *big.Int {
+	return new(big.Int)
+}
+
+func (testContractRef) SetCode(common.Hash, []byte) {
+	panic("implement me")
+}
+
+func (testContractRef) ForEachStorage(callback func(key, value common.Hash) bool) {
+	panic("implement me")
+}
+
 func testPrecompiled(addr string, test precompiledTest, t *testing.T) {
 	p := PrecompiledContractsECIP1045[common.HexToAddress(addr).Str()]
 	in := common.Hex2Bytes(test.input)
-	contract := NewContract(AccountRef(common.HexToAddress("1337")),
-		nil, new(big.Int), p.Gas(in))
+
+	contract := NewContract(testContractRef(common.HexToAddress("1337")),
+		nil, new(big.Int), p.Gas(in), new(big.Int))
 	t.Run(fmt.Sprintf("%s-Gas=%d", test.name, contract.Gas), func(t *testing.T) {
-		if res, err := RunPrecompiledContract(p, in, contract); err != nil {
+		if res, err := RunPrecompiled(p, in, contract); err != nil {
 			t.Error(err)
 		} else if common.Bytes2Hex(res) != test.expected {
 			t.Errorf("Expected %v, got %v", test.expected, common.Bytes2Hex(res))
@@ -357,8 +381,8 @@ func benchmarkPrecompiled(addr string, test precompiledTest, bench *testing.B) {
 	p := PrecompiledContractsECIP1045[common.HexToAddress(addr).Str()]
 	in := common.Hex2Bytes(test.input)
 	reqGas := p.Gas(in)
-	contract := NewContract(AccountRef(common.HexToAddress("1337")),
-		nil, new(big.Int), reqGas)
+	contract := NewContract(testContractRef(common.HexToAddress("1337")),
+		nil, new(big.Int), reqGas, new(big.Int))
 
 	var (
 		res  []byte
@@ -371,7 +395,7 @@ func benchmarkPrecompiled(addr string, test precompiledTest, bench *testing.B) {
 		for i := 0; i < bench.N; i++ {
 			contract.Gas = reqGas
 			copy(data, in)
-			res, err = RunPrecompiledContract(p, data, contract)
+			res, err = RunPrecompiled(p, data, contract)
 		}
 		bench.StopTimer()
 		//Check if it is correct

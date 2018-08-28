@@ -70,7 +70,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 			precompiles = PrecompiledContractsECIP1045
 		}
 		if p := precompiles[contract.CodeAddr.Str()]; p != nil {
-			return evm.RunPrecompiled(p, input, contract)
+			return RunPrecompiled(p, input, contract)
 		}
 	}
 
@@ -405,7 +405,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 }
 
 // RunPrecompile runs and evaluate the output of a precompiled contract defined in contracts.go
-func (evm *EVM) RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (ret []byte, err error) {
+func RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (ret []byte, err error) {
 	gas := p.Gas(input)
 	if contract.UseGas(gas) {
 		return p.Call(input)
