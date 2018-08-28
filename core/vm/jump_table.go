@@ -32,16 +32,14 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	// changes.
 	if ruleset.IsHomestead(blockNumber) {
 		jumpTable[DELEGATECALL] = jumpPtr{
-			fn:      opDelegateCall,
-			valid:   true,
-			returns: true,
+			fn:    opDelegateCall,
+			valid: true,
 		}
 	}
 	if ruleset.IsECIP1045(blockNumber) {
 		jumpTable[STATICCALL] = jumpPtr{
-			fn:      opStaticCall,
-			valid:   true,
-			returns: true,
+			fn:    opStaticCall,
+			valid: true,
 		}
 		jumpTable[RETURNDATASIZE] = jumpPtr{
 			fn:    opReturnDataSize,
@@ -276,14 +274,12 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		valid: true,
 	}
 	jumpTable[CALL] = jumpPtr{
-		fn:      opCall,
-		valid:   true,
-		returns: true,
+		fn:    opCall,
+		valid: true,
 	}
 	jumpTable[CALLCODE] = jumpPtr{
-		fn:      opCallCode,
-		valid:   true,
-		returns: true,
+		fn:    opCallCode,
+		valid: true,
 	}
 	jumpTable[LOG0] = jumpPtr{
 		fn:    makeLog(0),

@@ -318,26 +318,6 @@ func opReturnDataSize(instr instruction, pc *uint64, env Environment, contract *
 	stack.push(new(big.Int).SetUint64(uint64(len(env.ReturnData()))))
 }
 
-func opReturnDataCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) ([]byte, error) {
-	var (
-		mOff = stack.pop()
-		cOff = stack.pop()
-		l    = stack.pop()
-	)
-
-	end := new(big.Int).Add(cOff, l)
-	if end.BitLen() > 64 || uint64(len(env.ReturnData())) < end.Uint64() {
-		return nil, errReturnDataOutOfBounds
-	}
-
-	memory.Set(mOff.Uint64(), l.Uint64(), env.ReturnData()[cOff.Uint64():end.Uint64()])
-	return nil, nil
-}
-
-func opReturnDataSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	stack.push(new(big.Int).SetUint64(uint64(len(env.ReturnData()))))
-}
-
 func opExtCodeSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	addr := common.BigToAddress(stack.pop())
 	length := big.NewInt(int64(env.Db().GetCodeSize(addr)))
