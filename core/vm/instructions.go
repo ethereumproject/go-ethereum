@@ -291,26 +291,26 @@ func opCalldataSize(instr instruction, pc *uint64, env Environment, contract *Co
 
 func opCalldataCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	var (
-		mOff = stack.pop()
-		cOff = stack.pop()
-		l    = stack.pop()
+		mOff   = stack.pop()
+		cOff   = stack.pop()
+		length = stack.pop()
 	)
-	memory.Set(mOff.Uint64(), l.Uint64(), getData(contract.Input, cOff, l))
+	memory.Set(mOff.Uint64(), length.Uint64(), getData(contract.Input, cOff, length))
 }
 
 func opReturnDataCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) ([]byte, error) {
 	var (
-		mOff = stack.pop()
-		cOff = stack.pop()
-		l    = stack.pop()
+		mOff   = stack.pop()
+		cOff   = stack.pop()
+		length = stack.pop()
 	)
 
-	end := new(big.Int).Add(cOff, l)
+	end := new(big.Int).Add(cOff, length)
 	if end.BitLen() > 64 || uint64(len(env.ReturnData())) < end.Uint64() {
 		return nil, errReturnDataOutOfBounds
 	}
 
-	memory.Set(mOff.Uint64(), l.Uint64(), env.ReturnData()[cOff.Uint64():end.Uint64()])
+	memory.Set(mOff.Uint64(), length.Uint64(), env.ReturnData()[cOff.Uint64():end.Uint64()])
 	return nil, nil
 }
 
@@ -320,36 +320,36 @@ func opReturnDataSize(instr instruction, pc *uint64, env Environment, contract *
 
 func opExtCodeSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	addr := common.BigToAddress(stack.pop())
-	l := big.NewInt(int64(env.Db().GetCodeSize(addr)))
-	stack.push(l)
+	length := big.NewInt(int64(env.Db().GetCodeSize(addr)))
+	stack.push(length)
 }
 
 func opCodeSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	l := big.NewInt(int64(len(contract.Code)))
-	stack.push(l)
+	length := big.NewInt(int64(len(contract.Code)))
+	stack.push(length)
 }
 
 func opCodeCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	var (
-		mOff = stack.pop()
-		cOff = stack.pop()
-		l    = stack.pop()
+		mOff   = stack.pop()
+		cOff   = stack.pop()
+		length = stack.pop()
 	)
-	codeCopy := getData(contract.Code, cOff, l)
+	codeCopy := getData(contract.Code, cOff, length)
 
-	memory.Set(mOff.Uint64(), l.Uint64(), codeCopy)
+	memory.Set(mOff.Uint64(), length.Uint64(), codeCopy)
 }
 
 func opExtCodeCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	var (
-		addr = common.BigToAddress(stack.pop())
-		mOff = stack.pop()
-		cOff = stack.pop()
-		l    = stack.pop()
+		addr   = common.BigToAddress(stack.pop())
+		mOff   = stack.pop()
+		cOff   = stack.pop()
+		length = stack.pop()
 	)
-	codeCopy := getData(env.Db().GetCode(addr), cOff, l)
+	codeCopy := getData(env.Db().GetCode(addr), cOff, length)
 
-	memory.Set(mOff.Uint64(), l.Uint64(), codeCopy)
+	memory.Set(mOff.Uint64(), length.Uint64(), codeCopy)
 }
 
 func opGasprice(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
