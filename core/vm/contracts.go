@@ -20,12 +20,13 @@ import (
 	"math/big"
 
 	"errors"
+	"math"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/crypto/bn256"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"math"
 )
 
 // PrecompiledAccount represents a native ethereum contract
@@ -41,6 +42,7 @@ func (pa PrecompiledAccount) Call(in []byte) ([]byte, error) {
 
 // PrecompiledHomestead contains the default set of ethereum contracts
 var PrecompiledHomestead = PrecompiledContracts()
+var PrecompiledContractsECIP1045 = PrecompiledContractsECIP1045Func()
 
 func preCByteAddress(i []byte) string {
 	return string(common.LeftPadBytes(i, 20))
@@ -87,8 +89,8 @@ var (
 	big1024 = big.NewInt(1024)
 )
 
-// PrecompiledContractsECIP1045 returns the precompiled contracts made available at or after the ECIP1045 fork (akin to Byzantium)
-func PrecompiledContractsECIP1045() map[string]*PrecompiledAccount {
+// PrecompiledContractsECIP1045Func returns the precompiled contracts made available at or after the ECIP1045 fork (akin to Byzantium)
+func PrecompiledContractsECIP1045Func() map[string]*PrecompiledAccount {
 	contracts := PrecompiledContracts()
 	// gas functions
 	bigMax := func(x, y *big.Int) *big.Int {

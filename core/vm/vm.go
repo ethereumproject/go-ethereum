@@ -67,7 +67,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	if contract.CodeAddr != nil {
 		precompiles := PrecompiledHomestead
 		if evm.env.RuleSet().IsECIP1045(evm.env.BlockNumber()) {
-			precompiles = PrecompiledContractsECIP1045()
+			precompiles = PrecompiledContractsECIP1045
 		}
 		if p := precompiles[contract.CodeAddr.Str()]; p != nil {
 			return evm.RunPrecompiled(p, input, contract)
@@ -126,16 +126,16 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	for ; ; instrCount++ {
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
-		if evm.env.RuleSet().IsECIP1045(evm.env.BlockNumber()) && evm.env.IsReadOnly() {
-			// If the interpreter is operating in readonly mode, make sure no
-			// state-modifying operation is performed. The 3rd stack item
-			// for a call operation is the value. Transfering value from one
-			// account to the others means the state is modified and should also
-			// return with an error.
-			if opPtr := evm.jumpTable[op]; opPtr.writes || op == CALL && stack.data[stack.len()-2-1].BitLen() > 0 {
-				return nil, errWriteProtection
 
-			}
+		// If the interpreter is operating in readonly mode, make sure no
+		// state-modifying operation is performed. The 3rd stack item
+		// for a call operation is the value. Transfering value from one
+		// account to the others means the state is modified and should also
+		// return with an error.
+		checkStateMod := evm.env.RuleSet().IsECIP1045(evm.env.BlockNumber()) && evm.env.IsReadOnly()
+		checkStateMod = checkStateMod && (op.IsStateModifying() || op == CALL && stack.data[stack.len()-2-1].BitLen() > 0)
+		if checkStateMod {
+			return nil, errWriteProtection
 		}
 		// calculate the new memory size and gas price for the current executing opcode
 		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
@@ -204,7 +204,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 			return nil, fmt.Errorf("Invalid opcode %x", op)
 		}
 
-		if opPtr.returns {
+		if op.IsReturning() {
 			evm.env.SetReturnData(ret)
 		}
 
@@ -216,8 +216,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 // the operation. This does not reduce gas or resizes the memory.
 func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack) (*big.Int, *big.Int, error) {
 	var (
-		gas                 = new(big.Int)
-		newMemSize *big.Int = new(big.Int)
+		gas        = new(big.Int)
+		newMemSize = new(big.Int)
 	)
 	err := baseCheck(op, stack, gas)
 	if err != nil {

@@ -218,7 +218,7 @@ func execStaticCall(env vm.Environment, caller vm.ContractRef, address, codeAddr
 
 	ret, err = evm.Run(contract, input)
 	if err != nil {
-		if err != nil {
+		if err != vm.ErrExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
 		env.RevertToSnapshot(snapshot)
