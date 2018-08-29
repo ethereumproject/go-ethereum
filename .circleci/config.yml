@@ -261,7 +261,7 @@ workflows:
               only: /.*/
       - mac_evm_unit_tests:
           requires:
-            - mac_sputnik_vm
+            - mac_env_setup
           filters:
             tags:
               only: /.*/
@@ -302,7 +302,7 @@ workflows:
               only: /.*/
       - linux_unit_tests:
           requires:
-            - linux_sputnik_vm
+            - linux_env_setup
           filters:
             tags:
               only: /.*/
