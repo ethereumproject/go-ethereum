@@ -84,7 +84,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 			}
 		}
 		statedb.StartRecord(tx.Hash(), block.Hash(), i)
-		if !UseSputnikVM {
+		if UseSputnikVM != "true" {
 			receipt, logs, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
 			if err != nil {
 				return nil, nil, totalUsedGas, err
