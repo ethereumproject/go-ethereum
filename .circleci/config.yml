@@ -300,9 +300,15 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - linux_unit_tests:
+      - linux_evm_unit_tests:
           requires:
             - linux_env_setup
+          filters:
+            tags:
+              only: /.*/
+      - linux_sputnikvm_unit_tests:
+          requires:
+            - linux_sputnik_vm
           filters:
             tags:
               only: /.*/
