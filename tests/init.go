@@ -69,7 +69,7 @@ func initBlockSkipTests() []string {
 			"CallingCanonicalContractFromFork_CALLCODE",
 			"Dao",
 			"EIP158",
-			"Byzantium",
+			// "Byzantium",
 			"Constantinople",
 		}
 	} else {
@@ -86,7 +86,7 @@ func initBlockSkipTests() []string {
 			"addNonConst_d0g0v0_Byzantium",
 			"Dao",
 			"EIP158",
-			"Byzantium",
+			// "Byzantium",
 			"Constantinople",
 		}
 	}
