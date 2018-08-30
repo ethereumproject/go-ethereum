@@ -19,7 +19,7 @@ func init() {
 
 	var err error
 
-	DefaultConfigMainnet, err = parseExternalChainConfig("/core/config/.json", assetsOpen)
+	DefaultConfigMainnet, err = parseExternalChainConfig("/core/config/mainnet.json", assetsOpen)
 	if err != nil {
 		glog.Fatal("Error parsing  defaults from JSON:", err)
 	}
