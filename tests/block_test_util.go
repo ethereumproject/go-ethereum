@@ -164,6 +164,7 @@ var forks = map[string]*core.ChainConfig{
 	"Frontier":               core.TestConfigFrontier.ChainConfig,
 	"Homestead":              core.TestConfigHomestead.ChainConfig,
 	"EIP150":                 core.TestConfigEIP150.ChainConfig,
+	"Byzantium":              core.TestConfigECIP1045.ChainConfig,
 	"FrontierToHomesteadAt5": core.TestConfigFrontierToHomesteadAt5.ChainConfig,
 	"HomesteadToEIP150At5":   core.TestConfigHomesteadToEIP150At5.ChainConfig,
 }
