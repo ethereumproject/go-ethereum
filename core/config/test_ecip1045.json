@@ -45,6 +45,18 @@
                 }]
             },
             {
+                "name": "Diehard",
+                "block": 0,
+                "features": [{
+                        "id": "gastable",
+                        "options": {
+                            "type": "eip160"
+                        }
+                    }
+
+                ]
+            },
+            {
                 "name": "ECIP1045",
                 "block": 0
             }
