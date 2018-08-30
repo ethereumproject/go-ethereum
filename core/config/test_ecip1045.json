@@ -43,6 +43,10 @@
                         "type": "eip150"
                     }
                 }]
+            },
+            {
+                "name": "ECIP1045",
+                "block": 0
             }
         ],
         "badHashes": []
