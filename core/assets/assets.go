@@ -444,7 +444,7 @@ func init() {
 				fi: FileInfo{
 					name:    "mainnet.json",
 					size:    3601,
-					modTime: time.Unix(0, 1535563735948763058),
+					modTime: time.Unix(0, 1535660273152519934),
 					isDir:   false,
 				},
 			}, "/core/config/mainnet_bootnodes.json": File{
@@ -51074,7 +51074,7 @@ func init() {
 				fi: FileInfo{
 					name:    "morden.json",
 					size:    3780,
-					modTime: time.Unix(0, 1535563735952763128),
+					modTime: time.Unix(0, 1535660273152519934),
 					isDir:   false,
 				},
 			}, "/core/config/morden_bootnodes.json": File{
@@ -51517,7 +51517,7 @@ func init() {
 				fi: FileInfo{
 					name:    "test_ecip1045.json",
 					size:    1653,
-					modTime: time.Unix(0, 1535622900731896834),
+					modTime: time.Unix(0, 1535660274368505947),
 					isDir:   false,
 				},
 			}, "/core/config/test_eip150.json": File{
@@ -51657,7 +51657,7 @@ func init() {
 				fi: FileInfo{
 					name:    "test_eip150.json",
 					size:    1561,
-					modTime: time.Unix(0, 1535622894004448069),
+					modTime: time.Unix(0, 1535660274368505947),
 					isDir:   false,
 				},
 			}, "/core/config/test_frontier.json": File{
@@ -51718,7 +51718,7 @@ func init() {
 				fi: FileInfo{
 					name:    "test_frontier.json",
 					size:    622,
-					modTime: time.Unix(0, 1535564336003591285),
+					modTime: time.Unix(0, 1535660274368505947),
 					isDir:   false,
 				},
 			}, "/core/config/test_frontier_to_homestead_at_5.json": File{
@@ -51833,7 +51833,7 @@ func init() {
 				fi: FileInfo{
 					name:    "test_frontier_to_homestead_at_5.json",
 					size:    1263,
-					modTime: time.Unix(0, 1535564336003591285),
+					modTime: time.Unix(0, 1535660274368505947),
 					isDir:   false,
 				},
 			}, "/core/config/test_homestead.json": File{
@@ -51948,7 +51948,7 @@ func init() {
 				fi: FileInfo{
 					name:    "test_homestead.json",
 					size:    1263,
-					modTime: time.Unix(0, 1535564336003591285),
+					modTime: time.Unix(0, 1535660274368505947),
 					isDir:   false,
 				},
 			}, "/core/config/test_homestead_to_eip150_at_5.json": File{
@@ -52088,7 +52088,7 @@ func init() {
 				fi: FileInfo{
 					name:    "test_homestead_to_eip150_at_5.json",
 					size:    1561,
-					modTime: time.Unix(0, 1535624170952613482),
+					modTime: time.Unix(0, 1535660274368505947),
 					isDir:   false,
 				},
 			},
