@@ -149,16 +149,18 @@ type RuleSet struct {
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
-	return n.Cmp(r.HomesteadBlock) >= 0
+	return r.HomesteadBlock != nil && n != nil && n.Cmp(r.HomesteadBlock) >= 0
+}
+func (r RuleSet) IsDiehard(n *big.Int) bool {
+	return r.DiehardBlock != nil && n != nil && n.Cmp(r.DiehardBlock) >= 0
 }
 func (r RuleSet) IsECIP1045(n *big.Int) bool {
-	if r.ECIP1045Block == nil {
-		r.ECIP1045Block = new(big.Int)
-	}
-	return n.Cmp(r.ECIP1045Block) >= 0
+	return r.ECIP1045Block != nil && n != nil && n.Cmp(r.ECIP1045Block) >= 0
 }
+
+// TODO(whilei): investigate this logic. Seems funky, and might be causing gas differences.
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
-	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
+	if !r.IsHomestead(num) {
 		return &vm.GasTable{
 			ExtcodeSize:     big.NewInt(20),
 			ExtcodeCopy:     big.NewInt(20),
@@ -169,6 +171,7 @@ func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 			ExpByte:         big.NewInt(10),
 			CreateBySuicide: nil,
 		}
+
 	}
 	if r.DiehardBlock == nil || num == nil || num.Cmp(r.DiehardBlock) < 0 {
 		return &vm.GasTable{
