@@ -11,6 +11,24 @@ else
 	echo "With SputnikVM, running geth $OUTPUT ..."
 fi
 
+installrust() {
+    curl https://sh.rustup.rs -sSf | sh
+    source $HOME/.cargo/env
+}
+
+# Prompt to install rust and cargo if not already installed.
+if hash cargo 2>/dev/null; then
+    echo "Cargo installed OK, continuing"
+else
+    while true; do
+        read -p "Install/build with SputnikVM requires Rust and cargo to be installed. Would you like to install them? [Yy|Nn]" yn
+        case $yn in
+            [yY]* ) installrust; echo "Rust and cargo have been installed and temporarily added to your PATH"; break;;
+            [nN]* ) echo "Can't compile SputniKVM. Exiting."; exit 0;;
+        esac
+    done
+fi
+
 OS=`uname -s`
 
 geth_path="github.com/ethereumproject/go-ethereum"
@@ -39,7 +57,6 @@ case $OS in
 		LDFLAGS="-Wl,--allow-multiple-definition $sputnik_dir/c/sputnikvm.lib -lws2_32 -luserenv"
 		;;
 esac
-	
 
 
 if [ "$OUTPUT" == "install" ]; then
