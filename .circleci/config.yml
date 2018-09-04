@@ -10,11 +10,11 @@ sputnik_vm_steps: &sputnik_vm_steps
           export GOPATH=$HOME/go
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
-          make -C vendor/github.com/ethereumproject/sputnikvm-ffi/c
+          make -C vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c
     - persist_to_workspace:
         root: ~/
         paths:
-          - go/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+          - go/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a
 
 deploy_steps: &deploy_steps
   steps:
@@ -49,7 +49,7 @@ unit_tests_steps: &unit_tests_steps
           export PATH=$PATH:$GOBIN
           export TAGS="netgo deterministic"
           if [ $USE_SPUTNIK_VM == true ]; then
-            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
             if [ "$(uname)" == "Darwin" ]; then
               export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
             fi
@@ -74,7 +74,7 @@ bats_tests_steps: &bats_tests_steps
           name: Run bats tests
           command: |
             export GOPATH=$HOME/go
-            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
             if [ "$(uname)" == "Darwin" ]; then
               export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
             else
