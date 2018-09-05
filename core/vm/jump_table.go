@@ -36,7 +36,7 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			valid: true,
 		}
 	}
-	if ruleset.IsECIP1045(blockNumber) {
+	if ruleset.IsECIP1045B(blockNumber) {
 		jumpTable[STATICCALL] = jumpPtr{
 			fn:    opStaticCall,
 			valid: true,

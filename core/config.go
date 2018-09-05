@@ -315,9 +315,9 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 	return num.Cmp(fork.Block) >= 0
 }
 
-// IsECIP1045 returns whether the given block height is at or beyond the configured ECIP1045 block number.
-func (c *ChainConfig) IsECIP1045(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045"); fork != nil && fork.Block != nil && num != nil {
+// IsECIP1045B returns whether the given block height is at or beyond the configured ECIP1045B block number.
+func (c *ChainConfig) IsECIP1045B(num *big.Int) bool {
+	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
 		return num.Cmp(fork.Block) >= 0
 	}
 	return false

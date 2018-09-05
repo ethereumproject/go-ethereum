@@ -26,7 +26,7 @@ import (
 // execution of the EVM instructions (e.g. whether it's homestead)
 type RuleSet interface {
 	IsHomestead(*big.Int) bool
-	IsECIP1045(*big.Int) bool
+	IsECIP1045B(*big.Int) bool
 	// GasTable returns the gas prices for this phase, which is based on
 	// block number passed in.
 	GasTable(*big.Int) *GasTable

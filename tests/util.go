@@ -151,17 +151,17 @@ type RuleSet struct {
 	HomesteadGasRepriceBlock *big.Int
 	DiehardBlock             *big.Int
 	ExplosionBlock           *big.Int
-	ECIP1045Block            *big.Int
+	ECIP1045BBlock            *big.Int
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
 }
-func (r RuleSet) IsECIP1045(n *big.Int) bool {
-	if r.ECIP1045Block == nil {
-		r.ECIP1045Block = new(big.Int)
+func (r RuleSet) IsECIP1045B(n *big.Int) bool {
+	if r.ECIP1045BBlock == nil {
+		r.ECIP1045BBlock = new(big.Int)
 	}
-	return n.Cmp(r.ECIP1045Block) >= 0
+	return n.Cmp(r.ECIP1045BBlock) >= 0
 }
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {

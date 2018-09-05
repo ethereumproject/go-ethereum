@@ -41,7 +41,7 @@ func (pa PrecompiledAccount) Call(in []byte) ([]byte, error) {
 
 // PrecompiledHomestead contains the default set of ethereum contracts
 var PrecompiledHomestead = PrecompiledContracts()
-var PrecompiledContractsECIP1045 = PrecompiledContractsECIP1045Func()
+var PrecompiledContractsECIP1045B = PrecompiledContractsECIP1045BFunc()
 
 func preCByteAddress(i []byte) string {
 	return string(common.LeftPadBytes(i, 20))
@@ -88,8 +88,8 @@ var (
 	big1024 = big.NewInt(1024)
 )
 
-// PrecompiledContractsECIP1045Func returns the precompiled contracts made available at or after the ECIP1045 fork (akin to Byzantium)
-func PrecompiledContractsECIP1045Func() map[string]*PrecompiledAccount {
+// PrecompiledContractsECIP1045BFunc returns the precompiled contracts made available at or after the ECIP1045B fork (akin to Byzantium)
+func PrecompiledContractsECIP1045BFunc() map[string]*PrecompiledAccount {
 	contracts := PrecompiledContracts()
 	// gas functions
 	bigMax := func(x, y *big.Int) *big.Int {
