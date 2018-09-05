@@ -251,6 +251,53 @@ func opMulmod(instr instruction, pc *uint64, env Environment, contract *Contract
 	}
 }
 
+// opSHL implements Shift Left
+// The SHL instruction (shift left) pops 2 values from the stack, first arg1 and then arg2,
+// and pushes on the stack arg2 shifted to the left by arg1 number of bits.
+func opSHL(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	shift, val := U256(stack.pop()), U256(stack.peek())
+
+	if shift.Cmp(common.Big256) >= 0 {
+		val.SetUint64(0)
+		return
+	}
+	n := uint(shift.Uint64())
+	U256(val.Lsh(val, n))
+}
+
+// opSHR implements Logical Shift Right
+// The SHR instruction (logical shift right) pops 2 values from the stack, first arg1 and then arg2,
+// and pushes on the stack arg2 shifted to the right by arg1 number of bits with zero fill.
+func opSHR(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	shift, val := U256(stack.pop()), U256(stack.peek())
+
+	if shift.Cmp(common.Big256) >= 0 {
+		val.SetUint64(0)
+		return
+	}
+	n := uint(shift.Uint64())
+	U256(val.Rsh(val, n))
+}
+
+// opSAR implements Arithmetic Shift Right
+// The SAR instruction (arithmetic shift right) pops 2 values from the stack, first arg1 and then arg2,
+// and pushes on the stack arg2 shifted to the right by arg1 number of bits with sign extension.
+func opSAR(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	shift, val := U256(stack.pop()), S256(stack.pop())
+	if shift.Cmp(common.Big256) >= 0 {
+		if val.Sign() >= 0 {
+			val.SetUint64(0)
+		} else {
+			val.SetInt64(-1)
+		}
+		stack.push(U256(val))
+		return
+	}
+	n := uint(shift.Uint64())
+	val.Rsh(val, n)
+	stack.push(U256(val))
+}
+
 func opSha3(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	offset, size := stack.pop(), stack.pop()
 	hash := crypto.Keccak256(memory.Get(offset.Int64(), size.Int64()))
