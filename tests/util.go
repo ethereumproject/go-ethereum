@@ -151,18 +151,29 @@ type RuleSet struct {
 	HomesteadGasRepriceBlock *big.Int
 	DiehardBlock             *big.Int
 	ExplosionBlock           *big.Int
-	ECIP1045BBlock            *big.Int
+	ECIP1045BBlock           *big.Int
+	ECIP1045CBlock           *big.Int
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
 	return n.Cmp(r.HomesteadBlock) >= 0
 }
+
+// TODO(whilei): fix this; the logic should not save a nil block -> 0; it should return 'unset' logic instead of 'default' logic
 func (r RuleSet) IsECIP1045B(n *big.Int) bool {
 	if r.ECIP1045BBlock == nil {
 		r.ECIP1045BBlock = new(big.Int)
 	}
 	return n.Cmp(r.ECIP1045BBlock) >= 0
 }
+
+func (r RuleSet) IsECIP1045C(n *big.Int) bool {
+	if r.ECIP1045CBlock == nil {
+		r.ECIP1045CBlock = new(big.Int)
+	}
+	return n.Cmp(r.ECIP1045CBlock) >= 0
+}
+
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
 		return &vm.GasTable{

@@ -323,6 +323,14 @@ func (c *ChainConfig) IsECIP1045B(num *big.Int) bool {
 	return false
 }
 
+// IsECIP1045C returns whether the given block height is at or beyond the configured ECIP1045B block number.
+func (c *ChainConfig) IsECIP1045C(num *big.Int) bool {
+	if fork := c.ForkByName("ECIP1045C"); fork != nil && fork.Block != nil && num != nil {
+		return num.Cmp(fork.Block) >= 0
+	}
+	return false
+}
+
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	feat, fork, configured := c.GetFeature(num, "difficulty")

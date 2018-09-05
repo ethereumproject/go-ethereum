@@ -285,7 +285,7 @@ func opSHR(instr instruction, pc *uint64, env Environment, contract *Contract, m
 func opSAR(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	shift, val := U256(stack.pop()), S256(stack.pop())
 	if shift.Cmp(common.Big256) >= 0 {
-		if val.Sign() >= 0 {
+		if val.Sign() > 0 {
 			val.SetUint64(0)
 		} else {
 			val.SetInt64(-1)

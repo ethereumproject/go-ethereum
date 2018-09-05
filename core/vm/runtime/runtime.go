@@ -32,7 +32,10 @@ import (
 type ruleSet struct{}
 
 func (ruleSet) IsHomestead(*big.Int) bool { return true }
-func (ruleSet) IsECIP1045B(*big.Int) bool  { return true }
+
+// TODO/PTAL(whilei): WTF
+func (ruleSet) IsECIP1045B(*big.Int) bool { return true }
+func (ruleSet) IsECIP1045C(*big.Int) bool { return true }
 func (ruleSet) GasTable(*big.Int) *vm.GasTable {
 	return &vm.GasTable{
 		ExtcodeSize:     big.NewInt(700),

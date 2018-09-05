@@ -97,7 +97,11 @@
                 ]
             },
             {
-                "name": "ECIP1045BB",
+                "name": "ECIP1045B",
+                "block": 6900000
+            },
+            {
+                "name": "ECIP1045C",
                 "block": 6900000
             }
         ],

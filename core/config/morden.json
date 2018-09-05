@@ -99,9 +99,14 @@
                 ]
             },
             {
-                "name": "ECIP1045BB",
+                "name": "ECIP1045B",
+                "block": 3000000
+            },
+            {
+                "name": "ECIP1045C",
                 "block": 3000000
             }
+
         ],
         "badHashes": [
             {
