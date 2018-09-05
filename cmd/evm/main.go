@@ -300,3 +300,7 @@ func (self *VMEnv) StaticCall(caller vm.ContractRef, addr common.Address, data [
 func (self *VMEnv) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return core.Create(self, caller, data, gas, price, value)
 }
+
+func (self *VMEnv) Create2(caller vm.ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error) {
+	return core.Create2(self, caller, data, gas, price, value, salt)
+}

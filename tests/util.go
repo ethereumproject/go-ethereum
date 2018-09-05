@@ -372,6 +372,19 @@ func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *b
 	}
 }
 
+func (self *Env) Create2(caller vm.ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error) {
+	if self.vmTest {
+		caller.ReturnGas(gas, price)
+
+		nonce := self.state.GetNonce(caller.Address())
+		obj := self.state.GetOrNewStateObject(crypto.CreateAddress(caller.Address(), nonce))
+
+		return nil, obj.Address(), nil
+	} else {
+		return core.Create2(self, caller, data, gas, price, value, salt)
+	}
+}
+
 type Message struct {
 	from              common.Address
 	to                *common.Address

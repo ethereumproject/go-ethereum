@@ -37,7 +37,7 @@ func (op OpCode) IsStaticJump() bool {
 
 func (op OpCode) IsStateModifying() bool {
 	switch op {
-	case SSTORE, CREATE, LOG0, LOG1, LOG2, LOG3, LOG4, SUICIDE:
+	case SSTORE, CREATE, CREATE2, LOG0, LOG1, LOG2, LOG3, LOG4, SUICIDE:
 		return true
 	}
 	return false
@@ -45,7 +45,7 @@ func (op OpCode) IsStateModifying() bool {
 
 func (op OpCode) IsReturning() bool {
 	switch op {
-	case DELEGATECALL, STATICCALL, REVERT, CREATE, CALL, CALLCODE, RETURN:
+	case DELEGATECALL, STATICCALL, REVERT, CREATE, CREATE2, CALL, CALLCODE, RETURN:
 		return true
 	}
 	return false
@@ -230,6 +230,8 @@ const (
 	CALLCODE
 	RETURN
 	DELEGATECALL
+	CREATE2
+
 	STATICCALL = 0xfa
 	REVERT     = 0xfd
 	SUICIDE    = 0xff
@@ -390,6 +392,7 @@ var opCodeToString = map[OpCode]string{
 	RETURN:       "RETURN",
 	CALLCODE:     "CALLCODE",
 	DELEGATECALL: "DELEGATECALL",
+	CREATE2:      "CREATE2",
 	STATICCALL:   "STATICCALL",
 	REVERT:       "REVERT",
 	SUICIDE:      "SUICIDE",
@@ -445,6 +448,7 @@ var stringToOp = map[string]OpCode{
 	"CALLDATASIZE": CALLDATASIZE,
 	"CALLDATACOPY": CALLDATACOPY,
 	"DELEGATECALL": DELEGATECALL,
+	"CREATE2":      CREATE2,
 	"STATICCALL":   STATICCALL,
 	"CODESIZE":     CODESIZE,
 	"CODECOPY":     CODECOPY,

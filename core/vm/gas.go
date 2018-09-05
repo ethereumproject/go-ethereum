@@ -182,6 +182,7 @@ var _baseCheck = map[OpCode]req{
 	SSTORE:         {2, new(big.Int), 0},
 	SHA3:           {2, big.NewInt(30), 1},
 	CREATE:         {3, big.NewInt(32000), 1},
+	CREATE2:        {4, big.NewInt(32000), 1},
 	// Zero is calculated in the gasSwitch
 	CALL:         {7, new(big.Int), 1},
 	CALLCODE:     {7, new(big.Int), 1},

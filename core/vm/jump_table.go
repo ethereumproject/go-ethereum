@@ -69,6 +69,10 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			fn:    opSAR,
 			valid: true,
 		}
+		jumpTable[CREATE2] = jumpPtr{
+			fn:    opCreate2,
+			valid: true,
+		}
 	}
 
 	jumpTable[ADD] = jumpPtr{
