@@ -56,6 +56,20 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			valid: true,
 		}
 	}
+	if ruleset.IsECIP1045C(blockNumber) {
+		jumpTable[SHL] = jumpPtr{
+			fn:    opSHL,
+			valid: true,
+		}
+		jumpTable[SHR] = jumpPtr{
+			fn:    opSHR,
+			valid: true,
+		}
+		jumpTable[SAR] = jumpPtr{
+			fn:    opSAR,
+			valid: true,
+		}
+	}
 
 	jumpTable[ADD] = jumpPtr{
 		fn:    opAdd,
