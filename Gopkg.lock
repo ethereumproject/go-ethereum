@@ -3,6 +3,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/ETCDEVTeam/sputnikvm-ffi"
+  packages = ["go/sputnikvm"]
+  revision = "67fde4837870516c14cf253f8e956141c9d586f9"
+
+[[projects]]
+  branch = "master"
   name = "github.com/Gustav-Simonsson/go-opencl"
   packages = ["cl"]
   revision = "593e01cfc4f3353585015321e01951d4a907d3ef"
@@ -54,12 +60,6 @@
   name = "github.com/ethereumproject/ethash"
   packages = ["."]
   revision = "65a5b25efc277ff0996160cc3c76a44bec7a11fb"
-
-[[projects]]
-  branch = "vm-failed"
-  name = "github.com/ethereumproject/sputnikvm-ffi"
-  packages = ["go/sputnikvm"]
-  revision = "67fde4837870516c14cf253f8e956141c9d586f9"
 
 [[projects]]
   name = "github.com/fatih/color"
@@ -349,6 +349,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1fb827edc1d92940fc0b3e28de8c791bb6687a5b946c9191995bc390de20f839"
+  inputs-digest = "cba934e30ac391c4e1f3f69951e33020e183d729fb2bf60a18c7708836b9acdc"
   solver-name = "gps-cdcl"
   solver-version = 1
