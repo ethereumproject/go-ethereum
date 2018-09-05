@@ -341,7 +341,7 @@ func (d *Downloader) RegisterPeer(id string, version int, name string, currentHe
 	glog.V(logger.Detail).Infoln("Registering peer", id)
 	err = d.peers.Register(newPeer(id, version, name, currentHead, getRelHeaders, getAbsHeaders, getBlockBodies, getReceipts, getNodeData))
 	if err != nil {
-		glog.V(logger.Error).Errorf("Register failed:", err)
+		glog.V(logger.Error).Errorf("Register failed, err: %v", err)
 		return err
 	}
 	d.qosReduceConfidence()
@@ -404,7 +404,7 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 		d.dropPeer(id)
 
 	default:
-		glog.V(logger.Core).Warnln("Peer %s: sync: %s", id, err)
+		glog.V(logger.Core).Warnf("Peer %s: sync: %s", id, err)
 	}
 	return err
 }
@@ -675,7 +675,7 @@ func (d *Downloader) fetchHeight(p *peer) (*types.Header, error) {
 			return headers[0], nil
 
 		case <-timer.C:
-			glog.V(logger.Debug).Infof("%v: head header timeout", p, ttl)
+			glog.V(logger.Debug).Infof("%v: head header timeout, ttl: %v", p, ttl)
 			return nil, errTimeout
 
 		case <-d.bodyCh:
@@ -875,10 +875,10 @@ func (d *Downloader) fetchHeaders(p *peer, from uint64, pivot uint64) error {
 		timeout.Reset(ttl)
 
 		if skeleton {
-			glog.V(logger.Detail).Infof("Fetching skeleton headers", "count", MaxHeaderFetch, "from", from)
+			glog.V(logger.Detail).Infof("Fetching skeleton headers, count=%v from=%v", MaxHeaderFetch, from)
 			go p.getAbsHeaders(from+uint64(MaxHeaderFetch)-1, MaxSkeletonSize, MaxHeaderFetch-1, false)
 		} else {
-			glog.V(logger.Detail).Infof("Fetching full headers", "count", MaxHeaderFetch, "from", from)
+			glog.V(logger.Detail).Infof("Fetching full headers, count=%v from=%v", MaxHeaderFetch, from)
 			go p.getAbsHeaders(from, MaxHeaderFetch, 0, false)
 		}
 	}
