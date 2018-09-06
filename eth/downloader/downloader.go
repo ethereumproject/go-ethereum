@@ -893,7 +893,7 @@ func (d *Downloader) fetchHeaders(p *peer, from uint64, pivot uint64) error {
 		case packet := <-d.headerCh:
 			// Make sure the active peer is giving us the skeleton headers
 			if packet.PeerId() != p.id {
-				glog.V(logger.Debug).Warnf("Received skeleton from incorrect peer", "peer", packet.PeerId())
+				glog.V(logger.Debug).Warnln("Received skeleton from incorrect peer", "peer", packet.PeerId())
 				break
 			}
 			metrics.DLHeaderTimer.UpdateSince(request)
