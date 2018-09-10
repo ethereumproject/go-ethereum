@@ -31,139 +31,575 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	// when initialising a new VM execution we must first check the homestead
 	// changes.
 	if ruleset.IsHomestead(blockNumber) {
-		jumpTable[DELEGATECALL] = jumpPtr{opDelegateCall, true}
+		jumpTable[DELEGATECALL] = jumpPtr{
+			fn:    opDelegateCall,
+			valid: true,
+		}
+	}
+	if ruleset.IsECIP1045B(blockNumber) {
+		jumpTable[STATICCALL] = jumpPtr{
+			fn:    opStaticCall,
+			valid: true,
+		}
+		jumpTable[RETURNDATASIZE] = jumpPtr{
+			fn:    opReturnDataSize,
+			valid: true,
+		}
+		jumpTable[RETURNDATASIZE] = jumpPtr{
+			fn:    opReturnDataSize,
+			valid: true,
+		}
+		jumpTable[RETURNDATACOPY] = jumpPtr{
+			// This is called manually during EVM.Run in order to do error handling in case return data size is out of bounds.
+			// fn:    opReturnDataCopy,
+			valid: true,
+		}
+		jumpTable[REVERT] = jumpPtr{
+			// This is called manually during EVM.Run since implicity halt (akin to RETURN).
+			fn:    nil,
+			valid: true,
+		}
+	}
+	if ruleset.IsECIP1045C(blockNumber) {
+		jumpTable[SHL] = jumpPtr{
+			fn:    opSHL,
+			valid: true,
+		}
+		jumpTable[SHR] = jumpPtr{
+			fn:    opSHR,
+			valid: true,
+		}
+		jumpTable[SAR] = jumpPtr{
+			fn:    opSAR,
+			valid: true,
+		}
+		jumpTable[CREATE2] = jumpPtr{
+			fn:    opCreate2,
+			valid: true,
+		}
+		jumpTable[EXTCODEHASH] = jumpPtr{
+			fn:    opExtCodeHash,
+			valid: true,
+		}
 	}
 
-	jumpTable[ADD] = jumpPtr{opAdd, true}
-	jumpTable[SUB] = jumpPtr{opSub, true}
-	jumpTable[MUL] = jumpPtr{opMul, true}
-	jumpTable[DIV] = jumpPtr{opDiv, true}
-	jumpTable[SDIV] = jumpPtr{opSdiv, true}
-	jumpTable[MOD] = jumpPtr{opMod, true}
-	jumpTable[SMOD] = jumpPtr{opSmod, true}
-	jumpTable[EXP] = jumpPtr{opExp, true}
-	jumpTable[SIGNEXTEND] = jumpPtr{opSignExtend, true}
-	jumpTable[NOT] = jumpPtr{opNot, true}
-	jumpTable[LT] = jumpPtr{opLt, true}
-	jumpTable[GT] = jumpPtr{opGt, true}
-	jumpTable[SLT] = jumpPtr{opSlt, true}
-	jumpTable[SGT] = jumpPtr{opSgt, true}
-	jumpTable[EQ] = jumpPtr{opEq, true}
-	jumpTable[ISZERO] = jumpPtr{opIszero, true}
-	jumpTable[AND] = jumpPtr{opAnd, true}
-	jumpTable[OR] = jumpPtr{opOr, true}
-	jumpTable[XOR] = jumpPtr{opXor, true}
-	jumpTable[BYTE] = jumpPtr{opByte, true}
-	jumpTable[ADDMOD] = jumpPtr{opAddmod, true}
-	jumpTable[MULMOD] = jumpPtr{opMulmod, true}
-	jumpTable[SHA3] = jumpPtr{opSha3, true}
-	jumpTable[ADDRESS] = jumpPtr{opAddress, true}
-	jumpTable[BALANCE] = jumpPtr{opBalance, true}
-	jumpTable[ORIGIN] = jumpPtr{opOrigin, true}
-	jumpTable[CALLER] = jumpPtr{opCaller, true}
-	jumpTable[CALLVALUE] = jumpPtr{opCallValue, true}
-	jumpTable[CALLDATALOAD] = jumpPtr{opCalldataLoad, true}
-	jumpTable[CALLDATASIZE] = jumpPtr{opCalldataSize, true}
-	jumpTable[CALLDATACOPY] = jumpPtr{opCalldataCopy, true}
-	jumpTable[CODESIZE] = jumpPtr{opCodeSize, true}
-	jumpTable[EXTCODESIZE] = jumpPtr{opExtCodeSize, true}
-	jumpTable[CODECOPY] = jumpPtr{opCodeCopy, true}
-	jumpTable[EXTCODECOPY] = jumpPtr{opExtCodeCopy, true}
-	jumpTable[GASPRICE] = jumpPtr{opGasprice, true}
-	jumpTable[BLOCKHASH] = jumpPtr{opBlockhash, true}
-	jumpTable[COINBASE] = jumpPtr{opCoinbase, true}
-	jumpTable[TIMESTAMP] = jumpPtr{opTimestamp, true}
-	jumpTable[NUMBER] = jumpPtr{opNumber, true}
-	jumpTable[DIFFICULTY] = jumpPtr{opDifficulty, true}
-	jumpTable[GASLIMIT] = jumpPtr{opGasLimit, true}
-	jumpTable[POP] = jumpPtr{opPop, true}
-	jumpTable[MLOAD] = jumpPtr{opMload, true}
-	jumpTable[MSTORE] = jumpPtr{opMstore, true}
-	jumpTable[MSTORE8] = jumpPtr{opMstore8, true}
-	jumpTable[SLOAD] = jumpPtr{opSload, true}
-	jumpTable[SSTORE] = jumpPtr{opSstore, true}
-	jumpTable[JUMPDEST] = jumpPtr{opJumpdest, true}
-	jumpTable[PC] = jumpPtr{nil, true}
-	jumpTable[MSIZE] = jumpPtr{opMsize, true}
-	jumpTable[GAS] = jumpPtr{opGas, true}
-	jumpTable[CREATE] = jumpPtr{opCreate, true}
-	jumpTable[CALL] = jumpPtr{opCall, true}
-	jumpTable[CALLCODE] = jumpPtr{opCallCode, true}
-	jumpTable[LOG0] = jumpPtr{makeLog(0), true}
-	jumpTable[LOG1] = jumpPtr{makeLog(1), true}
-	jumpTable[LOG2] = jumpPtr{makeLog(2), true}
-	jumpTable[LOG3] = jumpPtr{makeLog(3), true}
-	jumpTable[LOG4] = jumpPtr{makeLog(4), true}
-	jumpTable[SWAP1] = jumpPtr{makeSwap(1), true}
-	jumpTable[SWAP2] = jumpPtr{makeSwap(2), true}
-	jumpTable[SWAP3] = jumpPtr{makeSwap(3), true}
-	jumpTable[SWAP4] = jumpPtr{makeSwap(4), true}
-	jumpTable[SWAP5] = jumpPtr{makeSwap(5), true}
-	jumpTable[SWAP6] = jumpPtr{makeSwap(6), true}
-	jumpTable[SWAP7] = jumpPtr{makeSwap(7), true}
-	jumpTable[SWAP8] = jumpPtr{makeSwap(8), true}
-	jumpTable[SWAP9] = jumpPtr{makeSwap(9), true}
-	jumpTable[SWAP10] = jumpPtr{makeSwap(10), true}
-	jumpTable[SWAP11] = jumpPtr{makeSwap(11), true}
-	jumpTable[SWAP12] = jumpPtr{makeSwap(12), true}
-	jumpTable[SWAP13] = jumpPtr{makeSwap(13), true}
-	jumpTable[SWAP14] = jumpPtr{makeSwap(14), true}
-	jumpTable[SWAP15] = jumpPtr{makeSwap(15), true}
-	jumpTable[SWAP16] = jumpPtr{makeSwap(16), true}
-	jumpTable[PUSH1] = jumpPtr{makePush(1, big.NewInt(1)), true}
-	jumpTable[PUSH2] = jumpPtr{makePush(2, big.NewInt(2)), true}
-	jumpTable[PUSH3] = jumpPtr{makePush(3, big.NewInt(3)), true}
-	jumpTable[PUSH4] = jumpPtr{makePush(4, big.NewInt(4)), true}
-	jumpTable[PUSH5] = jumpPtr{makePush(5, big.NewInt(5)), true}
-	jumpTable[PUSH6] = jumpPtr{makePush(6, big.NewInt(6)), true}
-	jumpTable[PUSH7] = jumpPtr{makePush(7, big.NewInt(7)), true}
-	jumpTable[PUSH8] = jumpPtr{makePush(8, big.NewInt(8)), true}
-	jumpTable[PUSH9] = jumpPtr{makePush(9, big.NewInt(9)), true}
-	jumpTable[PUSH10] = jumpPtr{makePush(10, big.NewInt(10)), true}
-	jumpTable[PUSH11] = jumpPtr{makePush(11, big.NewInt(11)), true}
-	jumpTable[PUSH12] = jumpPtr{makePush(12, big.NewInt(12)), true}
-	jumpTable[PUSH13] = jumpPtr{makePush(13, big.NewInt(13)), true}
-	jumpTable[PUSH14] = jumpPtr{makePush(14, big.NewInt(14)), true}
-	jumpTable[PUSH15] = jumpPtr{makePush(15, big.NewInt(15)), true}
-	jumpTable[PUSH16] = jumpPtr{makePush(16, big.NewInt(16)), true}
-	jumpTable[PUSH17] = jumpPtr{makePush(17, big.NewInt(17)), true}
-	jumpTable[PUSH18] = jumpPtr{makePush(18, big.NewInt(18)), true}
-	jumpTable[PUSH19] = jumpPtr{makePush(19, big.NewInt(19)), true}
-	jumpTable[PUSH20] = jumpPtr{makePush(20, big.NewInt(20)), true}
-	jumpTable[PUSH21] = jumpPtr{makePush(21, big.NewInt(21)), true}
-	jumpTable[PUSH22] = jumpPtr{makePush(22, big.NewInt(22)), true}
-	jumpTable[PUSH23] = jumpPtr{makePush(23, big.NewInt(23)), true}
-	jumpTable[PUSH24] = jumpPtr{makePush(24, big.NewInt(24)), true}
-	jumpTable[PUSH25] = jumpPtr{makePush(25, big.NewInt(25)), true}
-	jumpTable[PUSH26] = jumpPtr{makePush(26, big.NewInt(26)), true}
-	jumpTable[PUSH27] = jumpPtr{makePush(27, big.NewInt(27)), true}
-	jumpTable[PUSH28] = jumpPtr{makePush(28, big.NewInt(28)), true}
-	jumpTable[PUSH29] = jumpPtr{makePush(29, big.NewInt(29)), true}
-	jumpTable[PUSH30] = jumpPtr{makePush(30, big.NewInt(30)), true}
-	jumpTable[PUSH31] = jumpPtr{makePush(31, big.NewInt(31)), true}
-	jumpTable[PUSH32] = jumpPtr{makePush(32, big.NewInt(32)), true}
-	jumpTable[DUP1] = jumpPtr{makeDup(1), true}
-	jumpTable[DUP2] = jumpPtr{makeDup(2), true}
-	jumpTable[DUP3] = jumpPtr{makeDup(3), true}
-	jumpTable[DUP4] = jumpPtr{makeDup(4), true}
-	jumpTable[DUP5] = jumpPtr{makeDup(5), true}
-	jumpTable[DUP6] = jumpPtr{makeDup(6), true}
-	jumpTable[DUP7] = jumpPtr{makeDup(7), true}
-	jumpTable[DUP8] = jumpPtr{makeDup(8), true}
-	jumpTable[DUP9] = jumpPtr{makeDup(9), true}
-	jumpTable[DUP10] = jumpPtr{makeDup(10), true}
-	jumpTable[DUP11] = jumpPtr{makeDup(11), true}
-	jumpTable[DUP12] = jumpPtr{makeDup(12), true}
-	jumpTable[DUP13] = jumpPtr{makeDup(13), true}
-	jumpTable[DUP14] = jumpPtr{makeDup(14), true}
-	jumpTable[DUP15] = jumpPtr{makeDup(15), true}
-	jumpTable[DUP16] = jumpPtr{makeDup(16), true}
+	jumpTable[ADD] = jumpPtr{
+		fn:    opAdd,
+		valid: true,
+	}
+	jumpTable[SUB] = jumpPtr{
+		fn:    opSub,
+		valid: true,
+	}
+	jumpTable[MUL] = jumpPtr{
+		fn:    opMul,
+		valid: true,
+	}
+	jumpTable[DIV] = jumpPtr{
+		fn:    opDiv,
+		valid: true,
+	}
+	jumpTable[SDIV] = jumpPtr{
+		fn:    opSdiv,
+		valid: true,
+	}
+	jumpTable[MOD] = jumpPtr{
+		fn:    opMod,
+		valid: true,
+	}
+	jumpTable[SMOD] = jumpPtr{
+		fn:    opSmod,
+		valid: true,
+	}
+	jumpTable[EXP] = jumpPtr{
+		fn:    opExp,
+		valid: true,
+	}
+	jumpTable[SIGNEXTEND] = jumpPtr{
+		fn:    opSignExtend,
+		valid: true,
+	}
+	jumpTable[NOT] = jumpPtr{
+		fn:    opNot,
+		valid: true,
+	}
+	jumpTable[LT] = jumpPtr{
+		fn:    opLt,
+		valid: true,
+	}
+	jumpTable[GT] = jumpPtr{
+		fn:    opGt,
+		valid: true,
+	}
+	jumpTable[SLT] = jumpPtr{
+		fn:    opSlt,
+		valid: true,
+	}
+	jumpTable[SGT] = jumpPtr{
+		fn:    opSgt,
+		valid: true,
+	}
+	jumpTable[EQ] = jumpPtr{
+		fn:    opEq,
+		valid: true,
+	}
+	jumpTable[ISZERO] = jumpPtr{
+		fn:    opIszero,
+		valid: true,
+	}
+	jumpTable[AND] = jumpPtr{
+		fn:    opAnd,
+		valid: true,
+	}
+	jumpTable[OR] = jumpPtr{
+		fn:    opOr,
+		valid: true,
+	}
+	jumpTable[XOR] = jumpPtr{
+		fn:    opXor,
+		valid: true,
+	}
+	jumpTable[BYTE] = jumpPtr{
+		fn:    opByte,
+		valid: true,
+	}
+	jumpTable[ADDMOD] = jumpPtr{
+		fn:    opAddmod,
+		valid: true,
+	}
+	jumpTable[MULMOD] = jumpPtr{
+		fn:    opMulmod,
+		valid: true,
+	}
+	jumpTable[SHA3] = jumpPtr{
+		fn:    opSha3,
+		valid: true,
+	}
+	jumpTable[ADDRESS] = jumpPtr{
+		fn:    opAddress,
+		valid: true,
+	}
+	jumpTable[BALANCE] = jumpPtr{
+		fn:    opBalance,
+		valid: true,
+	}
+	jumpTable[ORIGIN] = jumpPtr{
+		fn:    opOrigin,
+		valid: true,
+	}
+	jumpTable[CALLER] = jumpPtr{
+		fn:    opCaller,
+		valid: true,
+	}
+	jumpTable[CALLVALUE] = jumpPtr{
+		fn:    opCallValue,
+		valid: true,
+	}
+	jumpTable[CALLDATALOAD] = jumpPtr{
+		fn:    opCalldataLoad,
+		valid: true,
+	}
+	jumpTable[CALLDATASIZE] = jumpPtr{
+		fn:    opCalldataSize,
+		valid: true,
+	}
+	jumpTable[CALLDATACOPY] = jumpPtr{
+		fn:    opCalldataCopy,
+		valid: true,
+	}
+	jumpTable[CODESIZE] = jumpPtr{
+		fn:    opCodeSize,
+		valid: true,
+	}
+	jumpTable[EXTCODESIZE] = jumpPtr{
+		fn:    opExtCodeSize,
+		valid: true,
+	}
+	jumpTable[CODECOPY] = jumpPtr{
+		fn:    opCodeCopy,
+		valid: true,
+	}
+	jumpTable[EXTCODECOPY] = jumpPtr{
+		fn:    opExtCodeCopy,
+		valid: true,
+	}
+	jumpTable[GASPRICE] = jumpPtr{
+		fn:    opGasprice,
+		valid: true,
+	}
+	jumpTable[BLOCKHASH] = jumpPtr{
+		fn:    opBlockhash,
+		valid: true,
+	}
+	jumpTable[COINBASE] = jumpPtr{
+		fn:    opCoinbase,
+		valid: true,
+	}
+	jumpTable[TIMESTAMP] = jumpPtr{
+		fn:    opTimestamp,
+		valid: true,
+	}
+	jumpTable[NUMBER] = jumpPtr{
+		fn:    opNumber,
+		valid: true,
+	}
+	jumpTable[DIFFICULTY] = jumpPtr{
+		fn:    opDifficulty,
+		valid: true,
+	}
+	jumpTable[GASLIMIT] = jumpPtr{
+		fn:    opGasLimit,
+		valid: true,
+	}
+	jumpTable[POP] = jumpPtr{
+		fn:    opPop,
+		valid: true,
+	}
+	jumpTable[MLOAD] = jumpPtr{
+		fn:    opMload,
+		valid: true,
+	}
+	jumpTable[MSTORE] = jumpPtr{
+		fn:    opMstore,
+		valid: true,
+	}
+	jumpTable[MSTORE8] = jumpPtr{
+		fn:    opMstore8,
+		valid: true,
+	}
+	jumpTable[SLOAD] = jumpPtr{
+		fn:    opSload,
+		valid: true,
+	}
+	jumpTable[SSTORE] = jumpPtr{
+		fn:    opSstore,
+		valid: true,
+	}
+	jumpTable[JUMPDEST] = jumpPtr{
+		fn:    opJumpdest,
+		valid: true,
+	}
+	jumpTable[PC] = jumpPtr{
+		fn:    nil,
+		valid: true,
+	}
+	jumpTable[MSIZE] = jumpPtr{
+		fn:    opMsize,
+		valid: true,
+	}
+	jumpTable[GAS] = jumpPtr{
+		fn:    opGas,
+		valid: true,
+	}
+	jumpTable[CREATE] = jumpPtr{
+		fn:    opCreate,
+		valid: true,
+	}
+	jumpTable[CALL] = jumpPtr{
+		fn:    opCall,
+		valid: true,
+	}
+	jumpTable[CALLCODE] = jumpPtr{
+		fn:    opCallCode,
+		valid: true,
+	}
+	jumpTable[LOG0] = jumpPtr{
+		fn:    makeLog(0),
+		valid: true,
+	}
+	jumpTable[LOG1] = jumpPtr{
+		fn:    makeLog(1),
+		valid: true,
+	}
+	jumpTable[LOG2] = jumpPtr{
+		fn:    makeLog(2),
+		valid: true,
+	}
+	jumpTable[LOG3] = jumpPtr{
+		fn:    makeLog(3),
+		valid: true,
+	}
+	jumpTable[LOG4] = jumpPtr{
+		fn:    makeLog(4),
+		valid: true,
+	}
+	jumpTable[SWAP1] = jumpPtr{
+		fn:    makeSwap(1),
+		valid: true,
+	}
+	jumpTable[SWAP2] = jumpPtr{
+		fn:    makeSwap(2),
+		valid: true,
+	}
+	jumpTable[SWAP3] = jumpPtr{
+		fn:    makeSwap(3),
+		valid: true,
+	}
+	jumpTable[SWAP4] = jumpPtr{
+		fn:    makeSwap(4),
+		valid: true,
+	}
+	jumpTable[SWAP5] = jumpPtr{
+		fn:    makeSwap(5),
+		valid: true,
+	}
+	jumpTable[SWAP6] = jumpPtr{
+		fn:    makeSwap(6),
+		valid: true,
+	}
+	jumpTable[SWAP7] = jumpPtr{
+		fn:    makeSwap(7),
+		valid: true,
+	}
+	jumpTable[SWAP8] = jumpPtr{
+		fn:    makeSwap(8),
+		valid: true,
+	}
+	jumpTable[SWAP9] = jumpPtr{
+		fn:    makeSwap(9),
+		valid: true,
+	}
+	jumpTable[SWAP10] = jumpPtr{
+		fn:    makeSwap(10),
+		valid: true,
+	}
+	jumpTable[SWAP11] = jumpPtr{
+		fn:    makeSwap(11),
+		valid: true,
+	}
+	jumpTable[SWAP12] = jumpPtr{
+		fn:    makeSwap(12),
+		valid: true,
+	}
+	jumpTable[SWAP13] = jumpPtr{
+		fn:    makeSwap(13),
+		valid: true,
+	}
+	jumpTable[SWAP14] = jumpPtr{
+		fn:    makeSwap(14),
+		valid: true,
+	}
+	jumpTable[SWAP15] = jumpPtr{
+		fn:    makeSwap(15),
+		valid: true,
+	}
+	jumpTable[SWAP16] = jumpPtr{
+		fn:    makeSwap(16),
+		valid: true,
+	}
+	jumpTable[PUSH1] = jumpPtr{
+		fn:    makePush(1, big.NewInt(1)),
+		valid: true,
+	}
+	jumpTable[PUSH2] = jumpPtr{
+		fn:    makePush(2, big.NewInt(2)),
+		valid: true,
+	}
+	jumpTable[PUSH3] = jumpPtr{
+		fn:    makePush(3, big.NewInt(3)),
+		valid: true,
+	}
+	jumpTable[PUSH4] = jumpPtr{
+		fn:    makePush(4, big.NewInt(4)),
+		valid: true,
+	}
+	jumpTable[PUSH5] = jumpPtr{
+		fn:    makePush(5, big.NewInt(5)),
+		valid: true,
+	}
+	jumpTable[PUSH6] = jumpPtr{
+		fn:    makePush(6, big.NewInt(6)),
+		valid: true,
+	}
+	jumpTable[PUSH7] = jumpPtr{
+		fn:    makePush(7, big.NewInt(7)),
+		valid: true,
+	}
+	jumpTable[PUSH8] = jumpPtr{
+		fn:    makePush(8, big.NewInt(8)),
+		valid: true,
+	}
+	jumpTable[PUSH9] = jumpPtr{
+		fn:    makePush(9, big.NewInt(9)),
+		valid: true,
+	}
+	jumpTable[PUSH10] = jumpPtr{
+		fn:    makePush(10, big.NewInt(10)),
+		valid: true,
+	}
+	jumpTable[PUSH11] = jumpPtr{
+		fn:    makePush(11, big.NewInt(11)),
+		valid: true,
+	}
+	jumpTable[PUSH12] = jumpPtr{
+		fn:    makePush(12, big.NewInt(12)),
+		valid: true,
+	}
+	jumpTable[PUSH13] = jumpPtr{
+		fn:    makePush(13, big.NewInt(13)),
+		valid: true,
+	}
+	jumpTable[PUSH14] = jumpPtr{
+		fn:    makePush(14, big.NewInt(14)),
+		valid: true,
+	}
+	jumpTable[PUSH15] = jumpPtr{
+		fn:    makePush(15, big.NewInt(15)),
+		valid: true,
+	}
+	jumpTable[PUSH16] = jumpPtr{
+		fn:    makePush(16, big.NewInt(16)),
+		valid: true,
+	}
+	jumpTable[PUSH17] = jumpPtr{
+		fn:    makePush(17, big.NewInt(17)),
+		valid: true,
+	}
+	jumpTable[PUSH18] = jumpPtr{
+		fn:    makePush(18, big.NewInt(18)),
+		valid: true,
+	}
+	jumpTable[PUSH19] = jumpPtr{
+		fn:    makePush(19, big.NewInt(19)),
+		valid: true,
+	}
+	jumpTable[PUSH20] = jumpPtr{
+		fn:    makePush(20, big.NewInt(20)),
+		valid: true,
+	}
+	jumpTable[PUSH21] = jumpPtr{
+		fn:    makePush(21, big.NewInt(21)),
+		valid: true,
+	}
+	jumpTable[PUSH22] = jumpPtr{
+		fn:    makePush(22, big.NewInt(22)),
+		valid: true,
+	}
+	jumpTable[PUSH23] = jumpPtr{
+		fn:    makePush(23, big.NewInt(23)),
+		valid: true,
+	}
+	jumpTable[PUSH24] = jumpPtr{
+		fn:    makePush(24, big.NewInt(24)),
+		valid: true,
+	}
+	jumpTable[PUSH25] = jumpPtr{
+		fn:    makePush(25, big.NewInt(25)),
+		valid: true,
+	}
+	jumpTable[PUSH26] = jumpPtr{
+		fn:    makePush(26, big.NewInt(26)),
+		valid: true,
+	}
+	jumpTable[PUSH27] = jumpPtr{
+		fn:    makePush(27, big.NewInt(27)),
+		valid: true,
+	}
+	jumpTable[PUSH28] = jumpPtr{
+		fn:    makePush(28, big.NewInt(28)),
+		valid: true,
+	}
+	jumpTable[PUSH29] = jumpPtr{
+		fn:    makePush(29, big.NewInt(29)),
+		valid: true,
+	}
+	jumpTable[PUSH30] = jumpPtr{
+		fn:    makePush(30, big.NewInt(30)),
+		valid: true,
+	}
+	jumpTable[PUSH31] = jumpPtr{
+		fn:    makePush(31, big.NewInt(31)),
+		valid: true,
+	}
+	jumpTable[PUSH32] = jumpPtr{
+		fn:    makePush(32, big.NewInt(32)),
+		valid: true,
+	}
+	jumpTable[DUP1] = jumpPtr{
+		fn:    makeDup(1),
+		valid: true,
+	}
+	jumpTable[DUP2] = jumpPtr{
+		fn:    makeDup(2),
+		valid: true,
+	}
+	jumpTable[DUP3] = jumpPtr{
+		fn:    makeDup(3),
+		valid: true,
+	}
+	jumpTable[DUP4] = jumpPtr{
+		fn:    makeDup(4),
+		valid: true,
+	}
+	jumpTable[DUP5] = jumpPtr{
+		fn:    makeDup(5),
+		valid: true,
+	}
+	jumpTable[DUP6] = jumpPtr{
+		fn:    makeDup(6),
+		valid: true,
+	}
+	jumpTable[DUP7] = jumpPtr{
+		fn:    makeDup(7),
+		valid: true,
+	}
+	jumpTable[DUP8] = jumpPtr{
+		fn:    makeDup(8),
+		valid: true,
+	}
+	jumpTable[DUP9] = jumpPtr{
+		fn:    makeDup(9),
+		valid: true,
+	}
+	jumpTable[DUP10] = jumpPtr{
+		fn:    makeDup(10),
+		valid: true,
+	}
+	jumpTable[DUP11] = jumpPtr{
+		fn:    makeDup(11),
+		valid: true,
+	}
+	jumpTable[DUP12] = jumpPtr{
+		fn:    makeDup(12),
+		valid: true,
+	}
+	jumpTable[DUP13] = jumpPtr{
+		fn:    makeDup(13),
+		valid: true,
+	}
+	jumpTable[DUP14] = jumpPtr{
+		fn:    makeDup(14),
+		valid: true,
+	}
+	jumpTable[DUP15] = jumpPtr{
+		fn:    makeDup(15),
+		valid: true,
+	}
+	jumpTable[DUP16] = jumpPtr{
+		fn:    makeDup(16),
+		valid: true,
+	}
 
-	jumpTable[RETURN] = jumpPtr{nil, true}
-	jumpTable[SUICIDE] = jumpPtr{nil, true}
-	jumpTable[JUMP] = jumpPtr{nil, true}
-	jumpTable[JUMPI] = jumpPtr{nil, true}
-	jumpTable[STOP] = jumpPtr{nil, true}
+	jumpTable[RETURN] = jumpPtr{
+		fn:    nil,
+		valid: true,
+	}
+	jumpTable[SUICIDE] = jumpPtr{
+		fn:    nil,
+		valid: true,
+	}
+	jumpTable[JUMP] = jumpPtr{
+		fn:    nil,
+		valid: true,
+	}
+	jumpTable[JUMPI] = jumpPtr{
+		fn:    nil,
+		valid: true,
+	}
+	jumpTable[STOP] = jumpPtr{
+		fn:    nil,
+		valid: true,
+	}
 
 	return jumpTable
 }

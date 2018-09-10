@@ -57,7 +57,7 @@ func RunRLPTest(file string, skip []string) error {
 // RunRLPTest runs the tests encoded in r, skipping tests by name.
 func RunRLPTestWithReader(r io.Reader, skip []string) error {
 	var tests map[string]*RLPTest
-	if err := readJson(r, &tests); err != nil {
+	if err := readJSON(r, &tests); err != nil {
 		return err
 	}
 	for _, s := range skip {

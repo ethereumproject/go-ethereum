@@ -17,13 +17,20 @@
 package vm
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 )
 
-var callStipend = big.NewInt(2300) // Free gas given at beginning of call.
+var (
+	callStipend = big.NewInt(2300) // Free gas given at beginning of call.
+
+	errWriteProtection       = errors.New("evm: write protection")
+	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
+	ErrExecutionReverted     = errors.New("evm: execution reverted")
+)
 
 type instrFn func(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack)
 
@@ -244,6 +251,53 @@ func opMulmod(instr instruction, pc *uint64, env Environment, contract *Contract
 	}
 }
 
+// opSHL implements Shift Left
+// The SHL instruction (shift left) pops 2 values from the stack, first arg1 and then arg2,
+// and pushes on the stack arg2 shifted to the left by arg1 number of bits.
+func opSHL(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	shift, val := U256(stack.pop()), U256(stack.peek())
+
+	if shift.Cmp(common.Big256) >= 0 {
+		val.SetUint64(0)
+		return
+	}
+	n := uint(shift.Uint64())
+	U256(val.Lsh(val, n))
+}
+
+// opSHR implements Logical Shift Right
+// The SHR instruction (logical shift right) pops 2 values from the stack, first arg1 and then arg2,
+// and pushes on the stack arg2 shifted to the right by arg1 number of bits with zero fill.
+func opSHR(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	shift, val := U256(stack.pop()), U256(stack.peek())
+
+	if shift.Cmp(common.Big256) >= 0 {
+		val.SetUint64(0)
+		return
+	}
+	n := uint(shift.Uint64())
+	U256(val.Rsh(val, n))
+}
+
+// opSAR implements Arithmetic Shift Right
+// The SAR instruction (arithmetic shift right) pops 2 values from the stack, first arg1 and then arg2,
+// and pushes on the stack arg2 shifted to the right by arg1 number of bits with sign extension.
+func opSAR(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	shift, val := U256(stack.pop()), S256(stack.pop())
+	if shift.Cmp(common.Big256) >= 0 {
+		if val.Sign() > 0 {
+			val.SetUint64(0)
+		} else {
+			val.SetInt64(-1)
+		}
+		stack.push(U256(val))
+		return
+	}
+	n := uint(shift.Uint64())
+	val.Rsh(val, n)
+	stack.push(U256(val))
+}
+
 func opSha3(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	offset, size := stack.pop(), stack.pop()
 	hash := crypto.Keccak256(memory.Get(offset.Int64(), size.Int64()))
@@ -284,45 +338,65 @@ func opCalldataSize(instr instruction, pc *uint64, env Environment, contract *Co
 
 func opCalldataCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	var (
-		mOff = stack.pop()
-		cOff = stack.pop()
-		l    = stack.pop()
+		mOff   = stack.pop()
+		cOff   = stack.pop()
+		length = stack.pop()
 	)
-	memory.Set(mOff.Uint64(), l.Uint64(), getData(contract.Input, cOff, l))
+	memory.Set(mOff.Uint64(), length.Uint64(), getData(contract.Input, cOff, length))
+}
+
+func opReturnDataCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) ([]byte, error) {
+	var (
+		mOff   = stack.pop()
+		cOff   = stack.pop()
+		length = stack.pop()
+	)
+
+	end := new(big.Int).Add(cOff, length)
+	if !end.IsUint64() || uint64(len(env.ReturnData())) < end.Uint64() {
+		return nil, errReturnDataOutOfBounds
+	}
+
+	memory.Set(mOff.Uint64(), length.Uint64(), env.ReturnData()[cOff.Uint64():end.Uint64()])
+	return nil, nil
+}
+
+func opReturnDataSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	stack.push(new(big.Int).SetUint64(uint64(len(env.ReturnData()))))
 }
 
 func opExtCodeSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	addr := common.BigToAddress(stack.pop())
-	l := big.NewInt(int64(env.Db().GetCodeSize(addr)))
-	stack.push(l)
+	length := big.NewInt(int64(env.Db().GetCodeSize(addr)))
+	stack.push(length)
 }
 
 func opCodeSize(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
-	l := big.NewInt(int64(len(contract.Code)))
-	stack.push(l)
+	length := big.NewInt(int64(len(contract.Code)))
+	stack.push(length)
 }
 
 func opCodeCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	var (
-		mOff = stack.pop()
-		cOff = stack.pop()
-		l    = stack.pop()
+		mOff   = stack.pop()
+		cOff   = stack.pop()
+		length = stack.pop()
 	)
-	codeCopy := getData(contract.Code, cOff, l)
+	codeCopy := getData(contract.Code, cOff, length)
 
-	memory.Set(mOff.Uint64(), l.Uint64(), codeCopy)
+	memory.Set(mOff.Uint64(), length.Uint64(), codeCopy)
 }
 
 func opExtCodeCopy(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	var (
-		addr = common.BigToAddress(stack.pop())
-		mOff = stack.pop()
-		cOff = stack.pop()
-		l    = stack.pop()
+		addr   = common.BigToAddress(stack.pop())
+		mOff   = stack.pop()
+		cOff   = stack.pop()
+		length = stack.pop()
 	)
-	codeCopy := getData(env.Db().GetCode(addr), cOff, l)
+	codeCopy := getData(env.Db().GetCode(addr), cOff, length)
 
-	memory.Set(mOff.Uint64(), l.Uint64(), codeCopy)
+	memory.Set(mOff.Uint64(), length.Uint64(), codeCopy)
 }
 
 func opGasprice(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
@@ -435,6 +509,39 @@ func opCreate(instr instruction, pc *uint64, env Environment, contract *Contract
 	}
 }
 
+func opCreate2(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	var (
+		value        = stack.pop()
+		offset, size = stack.pop(), stack.pop()
+		salt         = stack.pop()
+		input        = memory.Get(offset.Int64(), size.Int64())
+		gas          = new(big.Int).Set(contract.Gas)
+	)
+	if env.RuleSet().GasTable(env.BlockNumber()).CreateBySuicide != nil {
+		gas.Div(gas, n64)
+		gas = gas.Sub(contract.Gas, gas)
+	}
+
+	contract.UseGas(gas)
+	_, addr, suberr := env.Create2(contract, input, gas, contract.Price, value, salt)
+	// Push item on the stack based on the returned error. If the ruleset is
+	// homestead we must check for CodeStoreOutOfGasError (homestead only
+	// rule) and treat as an error, if the ruleset is frontier we must
+	// ignore this error and pretend the operation was successful.
+	if env.RuleSet().IsHomestead(env.BlockNumber()) && suberr == CodeStoreOutOfGasError {
+		stack.push(new(big.Int))
+	} else if suberr != nil && suberr != CodeStoreOutOfGasError {
+		stack.push(new(big.Int))
+	} else {
+		stack.push(addr.Big())
+	}
+}
+
+func opExtCodeHash(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	slot := stack.peek()
+	slot.SetBytes(env.Db().GetCodeHash(common.BigToAddress(slot)).Bytes())
+}
+
 func opCall(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	gas := stack.pop()
 	// pop gas and value of the stack.
@@ -461,7 +568,8 @@ func opCall(instr instruction, pc *uint64, env Environment, contract *Contract, 
 
 	} else {
 		stack.push(big.NewInt(1))
-
+	}
+	if err == nil || err == ErrExecutionReverted {
 		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 }
@@ -492,7 +600,8 @@ func opCallCode(instr instruction, pc *uint64, env Environment, contract *Contra
 
 	} else {
 		stack.push(big.NewInt(1))
-
+	}
+	if err == nil || err == ErrExecutionReverted {
 		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 }
@@ -507,6 +616,29 @@ func opDelegateCall(instr instruction, pc *uint64, env Environment, contract *Co
 		stack.push(new(big.Int))
 	} else {
 		stack.push(big.NewInt(1))
+	}
+	if err == nil || err == ErrExecutionReverted {
+		memory.Set(outOffset.Uint64(), outSize.Uint64(), ret)
+	}
+}
+
+func opStaticCall(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	gas, addr, inOffset, inSize, outOffset, outSize := stack.pop(), stack.pop(), stack.pop(), stack.pop(), stack.pop(), stack.pop()
+
+	address := common.BigToAddress(addr)
+
+	// Get the arguments from the memory
+	args := memory.Get(inOffset.Int64(), inSize.Int64())
+
+	ret, err := env.StaticCall(contract, address, args, gas, contract.Price)
+
+	if err != nil {
+		stack.push(new(big.Int))
+
+	} else {
+		stack.push(big.NewInt(1))
+	}
+	if err == nil || err == ErrExecutionReverted {
 		memory.Set(outOffset.Uint64(), outSize.Uint64(), ret)
 	}
 }

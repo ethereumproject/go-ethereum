@@ -17,49 +17,30 @@
 package tests
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
 
-func TestTransactions(t *testing.T) {
-	err := RunTransactionTests(filepath.Join(transactionTestDir, "ttTransactionTest.json"), TransSkipTests)
+func TestTransactionsTests(t *testing.T) {
+	err := filepath.Walk(transactionTestDir, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			t.Logf("%s: FAIL [walk err]=%v", p, err)
+			return nil
+		}
+		if info.IsDir() {
+			t.Logf("%s: SKIP (DIR)", p)
+			return nil
+		}
+		if err := RunTransactionTests(p, TransSkipTests); err != nil {
+			t.Error(err)
+		} else {
+			t.Logf("%s: PASS", p)
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatal(err)
+		panic(err.Error())
 	}
-}
 
-func TestWrongRLPTransactions(t *testing.T) {
-	err := RunTransactionTests(filepath.Join(transactionTestDir, "ttWrongRLPTransaction.json"), TransSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func Test10MBTransactions(t *testing.T) {
-	err := RunTransactionTests(filepath.Join(transactionTestDir, "tt10mbDataField.json"), TransSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// homestead tests
-func TestHomesteadTransactions(t *testing.T) {
-	err := RunTransactionTests(filepath.Join(transactionTestDir, "Homestead", "ttTransactionTest.json"), TransSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestHomesteadWrongRLPTransactions(t *testing.T) {
-	err := RunTransactionTests(filepath.Join(transactionTestDir, "Homestead", "ttWrongRLPTransaction.json"), TransSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestHomestead10MBTransactions(t *testing.T) {
-	err := RunTransactionTests(filepath.Join(transactionTestDir, "Homestead", "tt10mbDataField.json"), TransSkipTests)
-	if err != nil {
-		t.Fatal(err)
-	}
 }

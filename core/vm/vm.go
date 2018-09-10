@@ -62,9 +62,15 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	evm.env.SetDepth(evm.env.Depth() + 1)
 	defer evm.env.SetDepth(evm.env.Depth() - 1)
 
+	evm.env.SetReturnData(nil)
+
 	if contract.CodeAddr != nil {
-		if p := Precompiled[contract.CodeAddr.Str()]; p != nil {
-			return evm.RunPrecompiled(p, input, contract)
+		precompiles := PrecompiledHomestead
+		if evm.env.RuleSet().IsECIP1045B(evm.env.BlockNumber()) {
+			precompiles = PrecompiledContractsECIP1045B
+		}
+		if p := precompiles[contract.CodeAddr.Str()]; p != nil {
+			return RunPrecompiled(p, input, contract)
 		}
 	}
 
@@ -120,6 +126,17 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	for ; ; instrCount++ {
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
+
+		// If the interpreter is operating in readonly mode, make sure no
+		// state-modifying operation is performed. The 3rd stack item
+		// for a call operation is the value. Transfering value from one
+		// account to the others means the state is modified and should also
+		// return with an error.
+		checkStateMod := evm.env.RuleSet().IsECIP1045B(evm.env.BlockNumber()) && evm.env.IsReadOnly()
+		checkStateMod = checkStateMod && (op.IsStateModifying() || op == CALL && stack.data[stack.len()-2-1].BitLen() > 0)
+		if checkStateMod {
+			return nil, errWriteProtection
+		}
 		// calculate the new memory size and gas price for the current executing opcode
 		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
 		if err != nil {
@@ -135,7 +152,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// Resize the memory calculated previously
 		mem.Resize(newMemSize.Uint64())
 
-		if opPtr := evm.jumpTable[op]; opPtr.valid {
+		opPtr := evm.jumpTable[op]
+		if opPtr.valid {
 			if opPtr.fn != nil {
 				opPtr.fn(instruction{}, &pc, evm.env, contract, mem, stack)
 			} else {
@@ -158,11 +176,22 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 						continue
 					}
+				case REVERT:
+					offset, size := stack.pop(), stack.pop()
+					ret := mem.GetPtr(offset.Int64(), size.Int64())
+
+					return ret, ErrExecutionReverted
+
 				case RETURN:
 					offset, size := stack.pop(), stack.pop()
 					ret := mem.GetPtr(offset.Int64(), size.Int64())
 
 					return ret, nil
+				case RETURNDATACOPY:
+					if _, err := opReturnDataCopy(instruction{}, &pc, evm.env, contract, mem, stack); err != nil {
+						return nil, err
+					}
+
 				case SUICIDE:
 					opSuicide(instruction{}, nil, evm.env, contract, mem, stack)
 
@@ -175,8 +204,11 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 			return nil, fmt.Errorf("Invalid opcode %x", op)
 		}
 
-		pc++
+		if op.IsReturning() {
+			evm.env.SetReturnData(ret)
+		}
 
+		pc++
 	}
 }
 
@@ -184,8 +216,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 // the operation. This does not reduce gas or resizes the memory.
 func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack) (*big.Int, *big.Int, error) {
 	var (
-		gas                 = new(big.Int)
-		newMemSize *big.Int = new(big.Int)
+		gas        = new(big.Int)
+		newMemSize = new(big.Int)
 	)
 	err := baseCheck(op, stack, gas)
 	if err != nil {
@@ -283,7 +315,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 	case MSTORE:
 		newMemSize = calcMemSize(stack.peek(), u256(32))
 		quadMemGas(mem, newMemSize, gas)
-	case RETURN:
+	case RETURN, REVERT:
 		newMemSize = calcMemSize(stack.peek(), stack.data[stack.len()-2])
 		quadMemGas(mem, newMemSize, gas)
 	case SHA3:
@@ -293,7 +325,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		gas.Add(gas, words.Mul(words, big.NewInt(6)))
 
 		quadMemGas(mem, newMemSize, gas)
-	case CALLDATACOPY:
+	case CALLDATACOPY, RETURNDATACOPY:
 		newMemSize = calcMemSize(stack.peek(), stack.data[stack.len()-3])
 
 		words := toWordSize(stack.data[stack.len()-3])
@@ -316,7 +348,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		gas.Add(gas, words.Mul(words, big.NewInt(3)))
 
 		quadMemGas(mem, newMemSize, gas)
-	case CREATE:
+	case CREATE, CREATE2:
 		newMemSize = calcMemSize(stack.data[stack.len()-2], stack.data[stack.len()-3])
 
 		quadMemGas(mem, newMemSize, gas)
@@ -348,7 +380,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		stack.data[stack.len()-1] = cg
 		gas.Add(gas, cg)
 
-	case DELEGATECALL:
+	case DELEGATECALL, STATICCALL:
 		gas.Set(gasTable.Calls)
 
 		x := calcMemSize(stack.data[stack.len()-5], stack.data[stack.len()-6])
@@ -373,12 +405,10 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 }
 
 // RunPrecompile runs and evaluate the output of a precompiled contract defined in contracts.go
-func (evm *EVM) RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (ret []byte, err error) {
-	gas := p.Gas(len(input))
+func RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (ret []byte, err error) {
+	gas := p.Gas(input)
 	if contract.UseGas(gas) {
-		ret = p.Call(input)
-
-		return ret, nil
+		return p.Call(input)
 	} else {
 		return nil, OutOfGasError
 	}

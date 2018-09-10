@@ -27,13 +27,15 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
 func RunVmTestWithReader(r io.Reader, skipTests []string) error {
 	tests := make(map[string]VmTest)
-	err := readJson(r, &tests)
+	err := readJSON(r, &tests)
 	if err != nil {
 		return err
 	}
@@ -57,7 +59,7 @@ type bconf struct {
 
 func BenchVmTest(p string, conf bconf, b *testing.B) error {
 	tests := make(map[string]VmTest)
-	err := readJsonFile(p, &tests)
+	err := readJSONFile(p, &tests)
 	if err != nil {
 		return err
 	}
@@ -98,7 +100,7 @@ func benchVmTest(test VmTest, env map[string]string, b *testing.B) {
 
 func RunVmTest(p string, skipTests []string) error {
 	tests := make(map[string]VmTest)
-	err := readJsonFile(p, &tests)
+	err := readJSONFile(p, &tests)
 	if err != nil {
 		return err
 	}
@@ -149,7 +151,8 @@ func runVmTest(test VmTest) error {
 		env["currentTimestamp"] = test.Env.CurrentTimestamp.(string)
 	}
 
-	ret, logs, gas, err := RunVm(statedb, env, test.Exec)
+	// ret, logs, gas, err := RunVm(statedb, env, test.Exec)
+	ret, vmlogs, gas, err := RunVm(statedb, env, test.Exec)
 
 	// Compare expected and actual return
 	rexp := common.FromHex(test.Out)
@@ -188,14 +191,25 @@ func runVmTest(test VmTest) error {
 	}
 
 	// check logs
-	if len(test.Logs) > 0 {
-		lerr := checkLogs(test.Logs, logs)
-		if lerr != nil {
-			return lerr
+	if test.Logs != "" {
+		stateLogsHash := rlpHash(statedb.Logs())
+		vmLogsHash := rlpHash(vmlogs)
+		if stateLogsHash != vmLogsHash {
+			return fmt.Errorf("mismatch state/vm logs: state: %v vm: %v", stateLogsHash.Hex(), vmLogsHash.Hex())
+		}
+		if stateLogsHash.Hex() != test.Logs && vmLogsHash.Hex() != test.Logs {
+			return fmt.Errorf("post state logs hash mismatch; got/state: %v got/vm: %v want: %v", stateLogsHash.Hex(), vmLogsHash.Hex(), test.Logs)
 		}
 	}
 
 	return nil
+}
+
+func rlpHash(x interface{}) (h common.Hash) {
+	hw := sha3.NewKeccak256()
+	rlp.Encode(hw, x)
+	hw.Sum(h[:0])
+	return h
 }
 
 func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
@@ -211,7 +225,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 		panic("malformed gas, price or value")
 	}
 	// Reset the pre-compiled contracts for VM tests.
-	vm.Precompiled = make(map[string]*vm.PrecompiledAccount)
+	vm.PrecompiledHomestead = make(map[string]*vm.PrecompiledAccount)
 
 	caller := state.GetOrNewStateObject(from)
 

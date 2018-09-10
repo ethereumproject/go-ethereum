@@ -206,6 +206,9 @@ type VMEnv struct {
 	Gas   *big.Int
 	time  *big.Int
 
+	readOnly   bool
+	returnData []byte
+
 	evm *vm.EVM
 }
 
@@ -222,10 +225,14 @@ func NewEnv(state *state.StateDB, transactor common.Address, value *big.Int) *VM
 }
 
 // ruleSet implements vm.RuleSet and will always default to the homestead rule set.
+// TODO(whilei): wtf
+// Why is this always defaulty to the Homestead!
 type ruleSet struct{}
 
+// FIXME these should NOT always return true.
 func (ruleSet) IsHomestead(*big.Int) bool { return true }
-
+func (ruleSet) IsECIP1045B(*big.Int) bool { return true }
+func (ruleSet) IsECIP1045C(*big.Int) bool { return true }
 func (ruleSet) GasTable(*big.Int) *vm.GasTable {
 	return &vm.GasTable{
 		ExtcodeSize:     big.NewInt(700),
@@ -239,22 +246,26 @@ func (ruleSet) GasTable(*big.Int) *vm.GasTable {
 	}
 }
 
-func (self *VMEnv) RuleSet() vm.RuleSet       { return ruleSet{} }
-func (self *VMEnv) Vm() vm.Vm                 { return self.evm }
-func (self *VMEnv) Db() vm.Database           { return self.state }
-func (self *VMEnv) SnapshotDatabase() int     { return self.state.Snapshot() }
-func (self *VMEnv) RevertToSnapshot(snap int) { self.state.RevertToSnapshot(snap) }
-func (self *VMEnv) Origin() common.Address    { return *self.transactor }
-func (self *VMEnv) BlockNumber() *big.Int     { return new(big.Int) }
-func (self *VMEnv) Coinbase() common.Address  { return *self.transactor }
-func (self *VMEnv) Time() *big.Int            { return self.time }
-func (self *VMEnv) Difficulty() *big.Int      { return common.Big1 }
-func (self *VMEnv) BlockHash() []byte         { return make([]byte, 32) }
-func (self *VMEnv) Value() *big.Int           { return self.value }
-func (self *VMEnv) GasLimit() *big.Int        { return big.NewInt(1000000000) }
-func (self *VMEnv) VmType() vm.Type           { return vm.StdVmTy }
-func (self *VMEnv) Depth() int                { return 0 }
-func (self *VMEnv) SetDepth(i int)            { self.depth = i }
+func (self *VMEnv) SetReturnData(data []byte)   { self.returnData = data }
+func (self *VMEnv) ReturnData() []byte          { return self.returnData }
+func (self *VMEnv) SetReadOnly(isReadOnly bool) { self.readOnly = isReadOnly }
+func (self *VMEnv) IsReadOnly() bool            { return self.readOnly }
+func (self *VMEnv) RuleSet() vm.RuleSet         { return ruleSet{} }
+func (self *VMEnv) Vm() vm.Vm                   { return self.evm }
+func (self *VMEnv) Db() vm.Database             { return self.state }
+func (self *VMEnv) SnapshotDatabase() int       { return self.state.Snapshot() }
+func (self *VMEnv) RevertToSnapshot(snap int)   { self.state.RevertToSnapshot(snap) }
+func (self *VMEnv) Origin() common.Address      { return *self.transactor }
+func (self *VMEnv) BlockNumber() *big.Int       { return new(big.Int) }
+func (self *VMEnv) Coinbase() common.Address    { return *self.transactor }
+func (self *VMEnv) Time() *big.Int              { return self.time }
+func (self *VMEnv) Difficulty() *big.Int        { return common.Big1 }
+func (self *VMEnv) BlockHash() []byte           { return make([]byte, 32) }
+func (self *VMEnv) Value() *big.Int             { return self.value }
+func (self *VMEnv) GasLimit() *big.Int          { return big.NewInt(1000000000) }
+func (self *VMEnv) VmType() vm.Type             { return vm.StdVmTy }
+func (self *VMEnv) Depth() int                  { return 0 }
+func (self *VMEnv) SetDepth(i int)              { self.depth = i }
 func (self *VMEnv) GetHash(n uint64) common.Hash {
 	if self.block.Number().Cmp(big.NewInt(int64(n))) == 0 {
 		return self.block.Hash()
@@ -284,6 +295,14 @@ func (self *VMEnv) DelegateCall(caller vm.ContractRef, addr common.Address, data
 	return core.DelegateCall(self, caller, addr, data, gas, price)
 }
 
+func (self *VMEnv) StaticCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return core.StaticCall(self, caller, addr, data, gas, price)
+}
+
 func (self *VMEnv) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return core.Create(self, caller, data, gas, price, value)
+}
+
+func (self *VMEnv) Create2(caller vm.ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error) {
+	return core.Create2(self, caller, data, gas, price, value, salt)
 }

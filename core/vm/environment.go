@@ -26,6 +26,8 @@ import (
 // execution of the EVM instructions (e.g. whether it's homestead)
 type RuleSet interface {
 	IsHomestead(*big.Int) bool
+	IsECIP1045B(*big.Int) bool
+	IsECIP1045C(*big.Int) bool
 	// GasTable returns the gas prices for this phase, which is based on
 	// block number passed in.
 	GasTable(*big.Int) *GasTable
@@ -68,14 +70,26 @@ type Environment interface {
 	Depth() int
 	// Set the current calling depth
 	SetDepth(i int)
+	// SetIsReadOnly sets whether it's allowed to modify state or not, eg. STATICCALL
+	SetReadOnly(isReadOnly bool)
+	// IsReadOnly returns whether the current env is allowed to make changes to state database, eg. STATICCALL
+	IsReadOnly() bool
+	// SetReturnData sets the return data for CALL's return data for reuse
+	SetReturnData(data []byte)
+	// ReturnData gets the return data
+	ReturnData() []byte
 	// Call another contract
 	Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
 	// Take another's contract code and execute within our own context
 	CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
 	// Same as CallCode except sender and value is propagated from parent to child scope
 	DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
+	// Same as call, except no modifications to state db.
+	StaticCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
 	// Create a new contract
 	Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error)
+
+	Create2(me ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error)
 }
 
 // Vm is the basic interface for an implementation of the EVM.

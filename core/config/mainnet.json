@@ -95,6 +95,22 @@
                         }
                     }
                 ]
+            },
+            {
+                "name": "ECIP1045B",
+                "block": 6900000
+            },
+            {
+                "name": "ECIP1045C",
+                "block": 6900000,
+                "features": [
+                    {
+                        "id": "gastable",
+                        "options": {
+                            "type": "ecip1045c"
+                        }
+                    }
+                ]
             }
         ],
         "badHashes": [

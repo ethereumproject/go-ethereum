@@ -36,6 +36,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"regexp"
 )
 
 // Block Test JSON Format
@@ -54,6 +55,7 @@ type btJSON struct {
 	Pre                map[string]btAccount
 	PostState          map[string]btAccount
 	Lastblockhash      string
+	Network            string
 }
 
 type btBlock struct {
@@ -106,7 +108,7 @@ type btTransaction struct {
 
 func RunBlockTestWithReader(homesteadBlock, gasPriceFork *big.Int, r io.Reader, skipTests []string) error {
 	btjs := make(map[string]*btJSON)
-	if err := readJson(r, &btjs); err != nil {
+	if err := readJSON(r, &btjs); err != nil {
 		return err
 	}
 
@@ -123,7 +125,7 @@ func RunBlockTestWithReader(homesteadBlock, gasPriceFork *big.Int, r io.Reader, 
 
 func RunBlockTest(homesteadBlock, gasPriceFork *big.Int, file string, skipTests []string) error {
 	btjs := make(map[string]*btJSON)
-	if err := readJsonFile(file, &btjs); err != nil {
+	if err := readJSONFile(file, &btjs); err != nil {
 		return err
 	}
 
@@ -138,24 +140,33 @@ func RunBlockTest(homesteadBlock, gasPriceFork *big.Int, file string, skipTests 
 }
 
 func runBlockTests(homesteadBlock, gasPriceFork *big.Int, bt map[string]*BlockTest, skipTests []string) error {
-	skipTest := make(map[string]bool, len(skipTests))
-	for _, name := range skipTests {
-		skipTest[name] = true
-	}
-
+OUTER:
 	for name, test := range bt {
-		if skipTest[name] {
-			glog.Infoln("Skipping block test", name)
-			continue
+		// use regexp to match blacklisted tests by name or Network field (NOTE that Network is actually "Fork", and is just terribly named)
+		for _, skip := range skipTests {
+			re := regexp.MustCompile(skip)
+			if re.MatchString(name) || re.MatchString(test.Json.Network) {
+				glog.Infof("%s: SKIP", name)
+				continue OUTER
+			}
 		}
 		// test the block
 		if err := runBlockTest(homesteadBlock, gasPriceFork, test); err != nil {
 			return fmt.Errorf("%s: %v", name, err)
 		}
-		glog.Infoln("Block test passed: ", name)
+		glog.Infof("%s: PASS", name)
 
 	}
 	return nil
+}
+
+var forks = map[string]*core.ChainConfig{
+	"Frontier":               core.TestConfigFrontier.ChainConfig,
+	"Homestead":              core.TestConfigHomestead.ChainConfig,
+	"EIP150":                 core.TestConfigEIP150.ChainConfig,
+	"Byzantium":              core.TestConfigECIP1045.ChainConfig,
+	"FrontierToHomesteadAt5": core.TestConfigFrontierToHomesteadAt5.ChainConfig,
+	"HomesteadToEIP150At5":   core.TestConfigHomesteadToEIP150At5.ChainConfig,
 }
 
 func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error {
@@ -176,7 +187,12 @@ func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error 
 		core.DefaultConfigMainnet.ChainConfig.ForkByName("GasReprice").Block = gasPriceFork
 	}
 
-	chain, err := core.NewBlockChain(db, core.DefaultConfigMainnet.ChainConfig, ethash.NewShared(), evmux)
+	chainConfig, ok := forks[test.Json.Network]
+	if !ok {
+		return fmt.Errorf("unsupported fork: %s", test.Json.Network)
+	}
+
+	chain, err := core.NewBlockChain(db, chainConfig, ethash.NewShared(), evmux)
 	if err != nil {
 		return err
 	}
@@ -372,27 +388,34 @@ func (t *BlockTest) ValidatePostState(statedb *state.StateDB) error {
 	// validate post state accounts in test file against what we have in state db
 	for addrString, acct := range t.postAccounts {
 		// XXX: is is worth it checking for errors here?
-		addr, err := hex.DecodeString(addrString)
+		addr, err := hex.DecodeString(strings.TrimPrefix(addrString, "0x"))
 		if err != nil {
-			return err
+			return fmt.Errorf("addr/err=%v", err)
 		}
+		// addr, err := hex.DecodeString(addrString)
+		// uaddr := &common.UnprefixedAddress{}
+		// if err := uaddr.UnmarshalText([]byte(addrString)); err != nil {
+		// 	return fmt.Errorf("addr/err=%v", err)
+		// }
+		// addr := common.Address( wl)
 		code, err := hex.DecodeString(strings.TrimPrefix(acct.Code, "0x"))
 		if err != nil {
-			return err
+			return fmt.Errorf("code/err=%v", err)
 		}
 		balance, ok := new(big.Int).SetString(acct.Balance, 0)
 		if !ok {
-			return err
+			return fmt.Errorf("balance/err=%v", err)
 		}
 		nonce, err := strconv.ParseUint(prepInt(16, acct.Nonce), 16, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("nonce/err=%v", err)
 		}
 
 		// address is indirectly verified by the other fields, as it's the db key
-		code2 := statedb.GetCode(common.BytesToAddress(addr))
-		balance2 := statedb.GetBalance(common.BytesToAddress(addr))
-		nonce2 := statedb.GetNonce(common.BytesToAddress(addr))
+		aaddr := common.BytesToAddress(addr)
+		code2 := statedb.GetCode(aaddr)
+		balance2 := statedb.GetBalance(aaddr)
+		nonce2 := statedb.GetNonce(aaddr)
 		if !bytes.Equal(code2, code) {
 			return fmt.Errorf("account code mismatch for addr: %s want: %s have: %s", addrString, hex.EncodeToString(code), hex.EncodeToString(code2))
 		}
@@ -418,8 +441,18 @@ func (test *BlockTest) ValidateImportedHeaders(cm *core.BlockChain, validBlocks 
 	// block-by-block, so we can only validate imported headers after
 	// all blocks have been processed by ChainManager, as they may not
 	// be part of the longest chain until last block is imported.
-	for b := cm.CurrentBlock(); b != nil && b.NumberU64() != 0; b = cm.GetBlock(b.Header().ParentHash) {
-		bHash := common.Bytes2Hex(b.Hash().Bytes()) // hex without 0x prefix
+	for b := cm.CurrentBlock(); b != nil && b.NumberU64() != 0 && b.Header() != nil; b = cm.GetBlock(b.Header().ParentHash) {
+		bHash := "0x" + common.Bytes2Hex(b.Hash().Bytes()) // hex without 0x prefix
+		_, ok := bmap[bHash]
+		// for debugging only
+		if !ok {
+			var debugMap string
+			for k, v := range bmap {
+				debugMap += fmt.Sprintf("%s:%v", k, v)
+			}
+			// using PANIC here because a missing BlockHeader will cause a panic during validateHeader
+			return fmt.Errorf("PANIC: network=%s, validBlocksN=%v validBlocks=%s", test.Json.Network, len(bmap), debugMap)
+		}
 		if err := validateHeader(bmap[bHash].BlockHeader, b.Header()); err != nil {
 			return fmt.Errorf("Imported block header validation failed: %v", err)
 		}
@@ -546,7 +579,7 @@ func mustConvertUint(in string, base int) uint64 {
 
 func LoadBlockTests(file string) (map[string]*BlockTest, error) {
 	btjs := make(map[string]*btJSON)
-	if err := readJsonFile(file, &btjs); err != nil {
+	if err := readJSONFile(file, &btjs); err != nil {
 		return nil, err
 	}
 

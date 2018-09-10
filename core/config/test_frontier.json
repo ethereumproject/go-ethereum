@@ -1,0 +1,29 @@
+{
+    "identity": "mainnet",
+    "name": "Ethereum Classic Mainnet",
+    "state": null,
+    "network": 1,
+    "consensus": "ethash",
+    "chainConfig": {
+        "forks": [
+            {
+                "name": "EIP155",
+                "block": 0,
+                "features": [
+                    {
+                        "id": "eip155",
+                        "options": {
+                            "chainID": 1
+                        }
+                    }
+                ]
+            }
+        ],
+        "badHashes": [
+        ]
+    },
+	"include": [
+		"mainnet_genesis.json",
+		"mainnet_bootnodes.json"
+	]
+}
