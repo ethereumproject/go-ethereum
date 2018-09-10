@@ -323,7 +323,7 @@ var Rules = map[string]RuleSet{
 		HomesteadBlock:           new(big.Int),
 		HomesteadGasRepriceBlock: new(big.Int),
 		DiehardBlock:             new(big.Int),
-		ECIP1045Block:            new(big.Int),
+		ECIP1045BBlock:           new(big.Int),
 	},
 	"FrontierToHomesteadAt5": {
 		HomesteadBlock: big.NewInt(5),
