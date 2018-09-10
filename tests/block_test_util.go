@@ -176,10 +176,18 @@ func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error 
 		return fmt.Errorf("InsertPreState: %v", err)
 	}
 
-	core.WriteTd(db, test.Genesis.Hash(), test.Genesis.Difficulty())
-	core.WriteBlock(db, test.Genesis)
-	core.WriteCanonicalHash(db, test.Genesis.Hash(), test.Genesis.NumberU64())
-	core.WriteHeadBlockHash(db, test.Genesis.Hash())
+	if err := core.WriteTd(db, test.Genesis.Hash(), test.Genesis.Difficulty()); err != nil {
+		return err
+	}
+	if err := core.WriteBlock(db, test.Genesis); err != nil {
+		return err
+	}
+	if err := core.WriteCanonicalHash(db, test.Genesis.Hash(), test.Genesis.NumberU64()); err != nil {
+		return err
+	}
+	if err := core.WriteHeadBlockHash(db, test.Genesis.Hash()); err != nil {
+		return err
+	}
 	evmux := new(event.TypeMux)
 
 	core.DefaultConfigMainnet.ChainConfig.ForkByName("Homestead").Block = homesteadBlock
