@@ -124,3 +124,7 @@ func (self *VMEnv) DelegateCall(me vm.ContractRef, addr common.Address, data []b
 func (self *VMEnv) Create(me vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return Create(self, me, data, gas, price, value)
 }
+
+func (self *VMEnv) Create2(me vm.ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error) {
+	return Create2(self, me, data, gas, price, value, salt)
+}

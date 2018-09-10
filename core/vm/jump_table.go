@@ -36,7 +36,7 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			valid: true,
 		}
 	}
-	if ruleset.IsECIP1045(blockNumber) {
+	if ruleset.IsECIP1045B(blockNumber) {
 		jumpTable[STATICCALL] = jumpPtr{
 			fn:    opStaticCall,
 			valid: true,
@@ -57,6 +57,28 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		jumpTable[REVERT] = jumpPtr{
 			// This is called manually during EVM.Run since implicity halt (akin to RETURN).
 			fn:    nil,
+			valid: true,
+		}
+	}
+	if ruleset.IsECIP1045C(blockNumber) {
+		jumpTable[SHL] = jumpPtr{
+			fn:    opSHL,
+			valid: true,
+		}
+		jumpTable[SHR] = jumpPtr{
+			fn:    opSHR,
+			valid: true,
+		}
+		jumpTable[SAR] = jumpPtr{
+			fn:    opSAR,
+			valid: true,
+		}
+		jumpTable[CREATE2] = jumpPtr{
+			fn:    opCreate2,
+			valid: true,
+		}
+		jumpTable[EXTCODEHASH] = jumpPtr{
+			fn:    opExtCodeHash,
 			valid: true,
 		}
 	}

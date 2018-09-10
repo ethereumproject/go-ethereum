@@ -26,7 +26,8 @@ import (
 // execution of the EVM instructions (e.g. whether it's homestead)
 type RuleSet interface {
 	IsHomestead(*big.Int) bool
-	IsECIP1045(*big.Int) bool
+	IsECIP1045B(*big.Int) bool
+	IsECIP1045C(*big.Int) bool
 	// GasTable returns the gas prices for this phase, which is based on
 	// block number passed in.
 	GasTable(*big.Int) *GasTable
@@ -87,6 +88,8 @@ type Environment interface {
 	StaticCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
 	// Create a new contract
 	Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error)
+
+	Create2(me ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error)
 }
 
 // Vm is the basic interface for an implementation of the EVM.

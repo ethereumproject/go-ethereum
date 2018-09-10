@@ -62,6 +62,11 @@ func CreateAddress(b common.Address, nonce uint64) common.Address {
 	return common.BytesToAddress(Keccak256(data)[12:])
 }
 
+// Creates an ethereum address given the bytes and the nonce
+func CreateAddress2(b common.Address, salt [32]byte, code []byte) common.Address {
+	return common.BytesToAddress(Keccak256([]byte{0xff}, b.Bytes(), salt[:], Keccak256(code))[12:])
+}
+
 func Sha256(data []byte) []byte {
 	hash := sha256.Sum256(data)
 

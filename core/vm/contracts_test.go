@@ -16,6 +16,14 @@
 
 package vm
 
+import (
+	"fmt"
+	"math/big"
+	"testing"
+
+	"github.com/ethereumproject/go-ethereum/common"
+)
+
 // import (
 // 	"fmt"
 // 	"math/big"
@@ -336,55 +344,79 @@ package vm
 // 	},
 // }
 
-// func testPrecompiled(addr string, test precompiledTest, t *testing.T) {
-// 	p := PrecompiledContractsECIP1045[common.HexToAddress(addr).Str()]
-// 	in := common.Hex2Bytes(test.input)
-// 	contract := NewContract(AccountRef(common.HexToAddress("1337")),
-// 		nil, new(big.Int), p.Gas(in))
-// 	t.Run(fmt.Sprintf("%s-Gas=%d", test.name, contract.Gas), func(t *testing.T) {
-// 		if res, err := RunPrecompiledContract(p, in, contract); err != nil {
-// 			t.Error(err)
-// 		} else if common.Bytes2Hex(res) != test.expected {
-// 			t.Errorf("Expected %v, got %v", test.expected, common.Bytes2Hex(res))
-// 		}
-// 	})
-// }
+// testContractRef implements the ContractRef interface as a mock for ContractRef (without needing StateObject)
+type testContractRef common.Address
 
-// func benchmarkPrecompiled(addr string, test precompiledTest, bench *testing.B) {
-// 	if test.noBenchmark {
-// 		return
-// 	}
-// 	p := PrecompiledContractsECIP1045[common.HexToAddress(addr).Str()]
-// 	in := common.Hex2Bytes(test.input)
-// 	reqGas := p.Gas(in)
-// 	contract := NewContract(AccountRef(common.HexToAddress("1337")),
-// 		nil, new(big.Int), reqGas)
+func (cr testContractRef) ReturnGas(*big.Int, *big.Int) {
+	panic("implement me")
+}
 
-// 	var (
-// 		res  []byte
-// 		err  error
-// 		data = make([]byte, len(in))
-// 	)
+func (cr testContractRef) Address() common.Address {
+	return (common.Address)(cr)
+}
 
-// 	bench.Run(fmt.Sprintf("%s-Gas=%d", test.name, contract.Gas), func(bench *testing.B) {
-// 		bench.ResetTimer()
-// 		for i := 0; i < bench.N; i++ {
-// 			contract.Gas = reqGas
-// 			copy(data, in)
-// 			res, err = RunPrecompiledContract(p, data, contract)
-// 		}
-// 		bench.StopTimer()
-// 		//Check if it is correct
-// 		if err != nil {
-// 			bench.Error(err)
-// 			return
-// 		}
-// 		if common.Bytes2Hex(res) != test.expected {
-// 			bench.Error(fmt.Sprintf("Expected %v, got %v", test.expected, common.Bytes2Hex(res)))
-// 			return
-// 		}
-// 	})
-// }
+func (testContractRef) Value() *big.Int {
+	return new(big.Int)
+}
+
+func (testContractRef) SetCode(common.Hash, []byte) {
+	panic("implement me")
+}
+
+func (testContractRef) ForEachStorage(callback func(key, value common.Hash) bool) {
+	panic("implement me")
+}
+
+func testPrecompiled(addr string, test precompiledTest, t *testing.T) {
+	p := PrecompiledContractsECIP1045B[common.HexToAddress(addr).Str()]
+	in := common.Hex2Bytes(test.input)
+
+	contract := NewContract(testContractRef(common.HexToAddress("1337")),
+		nil, new(big.Int), p.Gas(in), new(big.Int))
+	t.Run(fmt.Sprintf("%s-Gas=%d", test.name, contract.Gas), func(t *testing.T) {
+		if res, err := RunPrecompiled(p, in, contract); err != nil {
+			t.Error(err)
+		} else if common.Bytes2Hex(res) != test.expected {
+			t.Errorf("Expected %v, got %v", test.expected, common.Bytes2Hex(res))
+		}
+	})
+}
+
+func benchmarkPrecompiled(addr string, test precompiledTest, bench *testing.B) {
+	if test.noBenchmark {
+		return
+	}
+	p := PrecompiledContractsECIP1045B[common.HexToAddress(addr).Str()]
+	in := common.Hex2Bytes(test.input)
+	reqGas := p.Gas(in)
+	contract := NewContract(testContractRef(common.HexToAddress("1337")),
+		nil, new(big.Int), reqGas, new(big.Int))
+
+	// 	var (
+	// 		res  []byte
+	// 		err  error
+	// 		data = make([]byte, len(in))
+	// 	)
+
+	bench.Run(fmt.Sprintf("%s-Gas=%d", test.name, contract.Gas), func(bench *testing.B) {
+		bench.ResetTimer()
+		for i := 0; i < bench.N; i++ {
+			contract.Gas = reqGas
+			copy(data, in)
+			res, err = RunPrecompiled(p, data, contract)
+		}
+		bench.StopTimer()
+		//Check if it is correct
+		if err != nil {
+			bench.Error(err)
+			return
+		}
+		if common.Bytes2Hex(res) != test.expected {
+			bench.Error(fmt.Sprintf("Expected %v, got %v", test.expected, common.Bytes2Hex(res)))
+			return
+		}
+	})
+}
 
 // // Benchmarks the sample inputs from the ECRECOVER precompile.
 // func BenchmarkPrecompiledEcrecover(bench *testing.B) {

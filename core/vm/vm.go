@@ -66,11 +66,11 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 	if contract.CodeAddr != nil {
 		precompiles := PrecompiledHomestead
-		if evm.env.RuleSet().IsECIP1045(evm.env.BlockNumber()) {
-			precompiles = PrecompiledContractsECIP1045
+		if evm.env.RuleSet().IsECIP1045B(evm.env.BlockNumber()) {
+			precompiles = PrecompiledContractsECIP1045B
 		}
 		if p := precompiles[contract.CodeAddr.Str()]; p != nil {
-			return evm.RunPrecompiled(p, input, contract)
+			return RunPrecompiled(p, input, contract)
 		}
 	}
 
@@ -132,7 +132,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// for a call operation is the value. Transfering value from one
 		// account to the others means the state is modified and should also
 		// return with an error.
-		checkStateMod := evm.env.RuleSet().IsECIP1045(evm.env.BlockNumber()) && evm.env.IsReadOnly()
+		checkStateMod := evm.env.RuleSet().IsECIP1045B(evm.env.BlockNumber()) && evm.env.IsReadOnly()
 		checkStateMod = checkStateMod && (op.IsStateModifying() || op == CALL && stack.data[stack.len()-2-1].BitLen() > 0)
 		if checkStateMod {
 			return nil, errWriteProtection
@@ -348,7 +348,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		gas.Add(gas, words.Mul(words, big.NewInt(3)))
 
 		quadMemGas(mem, newMemSize, gas)
-	case CREATE:
+	case CREATE, CREATE2:
 		newMemSize = calcMemSize(stack.data[stack.len()-2], stack.data[stack.len()-3])
 
 		quadMemGas(mem, newMemSize, gas)
@@ -405,7 +405,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 }
 
 // RunPrecompile runs and evaluate the output of a precompiled contract defined in contracts.go
-func (evm *EVM) RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (ret []byte, err error) {
+func RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (ret []byte, err error) {
 	gas := p.Gas(input)
 	if contract.UseGas(gas) {
 		return p.Call(input)

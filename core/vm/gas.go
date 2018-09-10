@@ -43,6 +43,7 @@ var (
 type GasTable struct {
 	ExtcodeSize *big.Int
 	ExtcodeCopy *big.Int
+	ExtcodeHash *big.Int
 	Balance     *big.Int
 	SLoad       *big.Int
 	Calls       *big.Int
@@ -136,6 +137,9 @@ var _baseCheck = map[OpCode]req{
 	XOR:            {2, GasFastestStep, 1},
 	NOT:            {1, GasFastestStep, 1},
 	BYTE:           {2, GasFastestStep, 1},
+	SHL:            {2, GasFastestStep, 1},
+	SHR:            {2, GasFastestStep, 1},
+	SAR:            {2, GasFastestStep, 1},
 	CALLDATALOAD:   {1, GasFastestStep, 1},
 	CALLDATACOPY:   {3, GasFastestStep, 1},
 	RETURNDATACOPY: {3, GasFastestStep, 1},
@@ -175,10 +179,12 @@ var _baseCheck = map[OpCode]req{
 	BALANCE:        {1, new(big.Int), 1},
 	EXTCODESIZE:    {1, new(big.Int), 1},
 	EXTCODECOPY:    {4, new(big.Int), 0},
+	EXTCODEHASH:    {1, new(big.Int), 1},
 	SLOAD:          {1, big.NewInt(50), 1},
 	SSTORE:         {2, new(big.Int), 0},
 	SHA3:           {2, big.NewInt(30), 1},
 	CREATE:         {3, big.NewInt(32000), 1},
+	CREATE2:        {4, big.NewInt(32000), 1},
 	// Zero is calculated in the gasSwitch
 	CALL:         {7, new(big.Int), 1},
 	CALLCODE:     {7, new(big.Int), 1},

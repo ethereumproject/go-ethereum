@@ -145,57 +145,57 @@ type RuleSet struct {
 	HomesteadGasRepriceBlock *big.Int
 	DiehardBlock             *big.Int
 	ExplosionBlock           *big.Int
-	ECIP1045Block            *big.Int
+	ECIP1045BBlock           *big.Int
+	ECIP1045CBlock           *big.Int
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
-	return r.HomesteadBlock != nil && n != nil && n.Cmp(r.HomesteadBlock) >= 0
+	if n == nil || r.HomesteadBlock == nil {
+		return false
+	}
+	return n.Cmp(r.HomesteadBlock) >= 0
 }
+
+func (r RuleSet) IsEIP150(n *big.Int) bool {
+	if n == nil || r.HomesteadGasRepriceBlock == nil {
+		return false
+	}
+	return n.Cmp(r.HomesteadGasRepriceBlock) >= 0
+}
+
 func (r RuleSet) IsDiehard(n *big.Int) bool {
-	return r.DiehardBlock != nil && n != nil && n.Cmp(r.DiehardBlock) >= 0
-}
-func (r RuleSet) IsECIP1045(n *big.Int) bool {
-	return r.ECIP1045Block != nil && n != nil && n.Cmp(r.ECIP1045Block) >= 0
+	if n == nil || r.DiehardBlock == nil {
+		return false
+	}
+	return n.Cmp(r.DiehardBlock) >= 0
 }
 
-// TODO(whilei): investigate this logic. Seems funky, and might be causing gas differences.
+// TODO(whilei): fix this; the logic should not save a nil block -> 0; it should return 'unset' logic instead of 'default' logic
+func (r RuleSet) IsECIP1045B(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r RuleSet) IsECIP1045C(n *big.Int) bool {
+	if n == nil || r.ECIP1045CBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045CBlock) >= 0
+}
+
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
-	if !r.IsHomestead(num) {
-		return &vm.GasTable{
-			ExtcodeSize:     big.NewInt(20),
-			ExtcodeCopy:     big.NewInt(20),
-			Balance:         big.NewInt(20),
-			SLoad:           big.NewInt(50),
-			Calls:           big.NewInt(40),
-			Suicide:         big.NewInt(0),
-			ExpByte:         big.NewInt(10),
-			CreateBySuicide: nil,
-		}
-
+	if r.IsECIP1045C(num) {
+		return core.DefaultECIP1045CGasTable
+	} else if r.IsDiehard(num) {
+		return core.DefaultDiehardGasTable
+	} else if r.IsEIP150(num) {
+		return core.DefaultGasRepriceGasTable
+	} else if r.IsHomestead(num) {
+		return core.DefaultHomeSteadGasTable
 	}
-	if r.DiehardBlock == nil || num == nil || num.Cmp(r.DiehardBlock) < 0 {
-		return &vm.GasTable{
-			ExtcodeSize:     big.NewInt(700),
-			ExtcodeCopy:     big.NewInt(700),
-			Balance:         big.NewInt(400),
-			SLoad:           big.NewInt(200),
-			Calls:           big.NewInt(700),
-			Suicide:         big.NewInt(5000),
-			ExpByte:         big.NewInt(10),
-			CreateBySuicide: big.NewInt(25000),
-		}
-	}
-
-	return &vm.GasTable{
-		ExtcodeSize:     big.NewInt(700),
-		ExtcodeCopy:     big.NewInt(700),
-		Balance:         big.NewInt(400),
-		SLoad:           big.NewInt(200),
-		Calls:           big.NewInt(700),
-		Suicide:         big.NewInt(5000),
-		ExpByte:         big.NewInt(50),
-		CreateBySuicide: big.NewInt(25000),
-	}
+	return core.DefaultHomeSteadGasTable
 }
 
 type Env struct {
@@ -355,6 +355,19 @@ func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *b
 		return nil, obj.Address(), nil
 	} else {
 		return core.Create(self, caller, data, gas, price, value)
+	}
+}
+
+func (self *Env) Create2(caller vm.ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error) {
+	if self.vmTest {
+		caller.ReturnGas(gas, price)
+
+		nonce := self.state.GetNonce(caller.Address())
+		obj := self.state.GetOrNewStateObject(crypto.CreateAddress(caller.Address(), nonce))
+
+		return nil, obj.Address(), nil
+	} else {
+		return core.Create2(self, caller, data, gas, price, value, salt)
 	}
 }
 
