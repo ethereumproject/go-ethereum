@@ -718,7 +718,7 @@ func (s *PublicBlockChainAPI) NewBlocks(ctx context.Context, args NewBlocksArgs)
 		if err == nil {
 			return subscription.Notify(notification)
 		}
-		glog.V(logger.Warn).Info("unable to format block %v\n", err)
+		glog.V(logger.Warn).Infof("unable to format block %v\n", err)
 		return nil
 	}
 	s.muNewBlockSubscriptions.Unlock()
@@ -1742,7 +1742,7 @@ func (api *PublicGethAPI) GetTransactionsByAddress(address common.Address, block
 // Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
 // Returns a slice of strings of transactions hashes.
 func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN rpc.BlockNumber, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
-	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
+	glog.V(logger.Debug).Infof("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
 	atxi := api.eth.BlockChain().GetAtxi()
 	if atxi == nil {
@@ -1777,7 +1777,7 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 }
 
 func (api *PublicGethAPI) BuildATXI(start, stop, step rpc.BlockNumber) (bool, error) {
-	glog.V(logger.Debug).Infoln("RPC call: geth_buildATXI %v %v %v", start, stop, step)
+	glog.V(logger.Debug).Infof("RPC call: geth_buildATXI %v %v %v", start, stop, step)
 
 	convert := func(number rpc.BlockNumber) uint64 {
 		switch number {
