@@ -1329,7 +1329,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			// Store the addr-tx indexes if enabled
 			if bc.atxi != nil {
 				if err := WriteBlockAddTxIndexes(bc.atxi.Db, block); err != nil {
-					glog.Fatalf("failed to write block add-tx indexes", err)
+					glog.Fatalf("failed to write block add-tx indexes, err: %v", err)
 				}
 				// if buildATXI has been in use (via RPC) and is NOT finished, current < stop
 				// if buildATXI has been in use (via RPC) and IS finished, current == stop
@@ -1539,7 +1539,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 	for i := 1; i < len(chain); i++ {
 		if chain[i].NumberU64() != chain[i-1].NumberU64()+1 || chain[i].ParentHash() != chain[i-1].Hash() {
 			// Chain broke ancestry, log a messge (programming error) and skip insertion
-			glog.V(logger.Error).Infof("Non contiguous block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
+			glog.V(logger.Error).Infoln("Non contiguous block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
 				"parent", chain[i].ParentHash(), "prevnumber", chain[i-1].Number(), "prevhash", chain[i-1].Hash())
 
 			res.Error = fmt.Errorf("non contiguous insert: item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),

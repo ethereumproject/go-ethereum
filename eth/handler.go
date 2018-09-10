@@ -171,8 +171,8 @@ func NewProtocolManager(config *core.ChainConfig, mode downloader.SyncMode, netw
 	}
 	inserter := func(blocks types.Blocks) *core.ChainInsertResult {
 		if atomic.LoadUint32(&manager.fastSync) == 1 {
-			glog.V(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
-			glog.D(logger.Warn).Warnf("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
+			glog.V(logger.Warn).Warnln("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
+			glog.D(logger.Warn).Warnln("Discarded bad propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash().Hex()[:9])
 		}
 		// Mark initial sync done on any fetcher import
 		atomic.StoreUint32(&manager.acceptsTxs, 1)
