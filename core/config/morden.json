@@ -104,7 +104,15 @@
             },
             {
                 "name": "ECIP1045C",
-                "block": 3000000
+                "block": 3000000,
+                "features": [
+                    {
+                        "id": "gastable",
+                        "options": {
+                            "type": "ecip1045c"
+                        }
+                    }
+                ]
             }
 
         ],

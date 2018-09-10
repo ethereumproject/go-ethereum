@@ -537,6 +537,11 @@ func opCreate2(instr instruction, pc *uint64, env Environment, contract *Contrac
 	}
 }
 
+func opExtCodeHash(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
+	slot := stack.peek()
+	slot.SetBytes(env.Db().GetCodeHash(common.BigToAddress(slot)).Bytes())
+}
+
 func opCall(instr instruction, pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) {
 	gas := stack.pop()
 	// pop gas and value of the stack.

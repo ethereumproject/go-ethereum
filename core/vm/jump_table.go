@@ -73,6 +73,10 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			fn:    opCreate2,
 			valid: true,
 		}
+		jumpTable[EXTCODEHASH] = jumpPtr{
+			fn:    opExtCodeHash,
+			valid: true,
+		}
 	}
 
 	jumpTable[ADD] = jumpPtr{

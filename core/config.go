@@ -478,6 +478,8 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 		return DefaultGasRepriceGasTable
 	case "eip160":
 		return DefaultDiehardGasTable
+	case "ecip1045c":
+		return DefaultECIP1045CGasTable
 	default:
 		panic(fmt.Errorf("Unsupported gastable value '%v' at block: %v", name, num))
 	}

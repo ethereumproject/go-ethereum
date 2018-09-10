@@ -225,12 +225,14 @@ func NewEnv(state *state.StateDB, transactor common.Address, value *big.Int) *VM
 }
 
 // ruleSet implements vm.RuleSet and will always default to the homestead rule set.
+// TODO(whilei): wtf
+// Why is this always defaulty to the Homestead!
 type ruleSet struct{}
 
+// FIXME these should NOT always return true.
 func (ruleSet) IsHomestead(*big.Int) bool { return true }
 func (ruleSet) IsECIP1045B(*big.Int) bool { return true }
 func (ruleSet) IsECIP1045C(*big.Int) bool { return true }
-
 func (ruleSet) GasTable(*big.Int) *vm.GasTable {
 	return &vm.GasTable{
 		ExtcodeSize:     big.NewInt(700),
