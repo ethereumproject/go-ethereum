@@ -315,6 +315,22 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 	return num.Cmp(fork.Block) >= 0
 }
 
+// IsECIP1045B returns whether the given block height is at or beyond the configured ECIP1045B block number.
+func (c *ChainConfig) IsECIP1045B(num *big.Int) bool {
+	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
+		return num.Cmp(fork.Block) >= 0
+	}
+	return false
+}
+
+// IsECIP1045C returns whether the given block height is at or beyond the configured ECIP1045B block number.
+func (c *ChainConfig) IsECIP1045C(num *big.Int) bool {
+	if fork := c.ForkByName("ECIP1045C"); fork != nil && fork.Block != nil && num != nil {
+		return num.Cmp(fork.Block) >= 0
+	}
+	return false
+}
+
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	feat, fork, configured := c.GetFeature(num, "difficulty")
@@ -462,6 +478,8 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 		return DefaultGasRepriceGasTable
 	case "eip160":
 		return DefaultDiehardGasTable
+	case "ecip1045c":
+		return DefaultECIP1045CGasTable
 	default:
 		panic(fmt.Errorf("Unsupported gastable value '%v' at block: %v", name, num))
 	}

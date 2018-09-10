@@ -26,6 +26,8 @@ type ruleSet struct {
 }
 
 func (r ruleSet) IsHomestead(n *big.Int) bool { return n.Cmp(r.hs) >= 0 }
+func (r ruleSet) IsECIP1045B(n *big.Int) bool { return n.Cmp(r.hs) >= 0 }
+func (r ruleSet) IsECIP1045C(n *big.Int) bool { return n.Cmp(r.hs) >= 0 }
 
 func (r ruleSet) GasTable(*big.Int) *GasTable {
 	return &GasTable{
@@ -44,11 +46,17 @@ func TestInit(t *testing.T) {
 	if jumpTable[DELEGATECALL].valid {
 		t.Error("Expected DELEGATECALL not to be present")
 	}
+	if jumpTable[STATICCALL].valid {
+		t.Error("Expected STATICCALL not to be present")
+	}
 
 	for _, n := range []int64{1, 2, 100} {
 		jumpTable := newJumpTable(ruleSet{big.NewInt(1)}, big.NewInt(n))
 		if !jumpTable[DELEGATECALL].valid {
 			t.Error("Expected DELEGATECALL to be present for block", n)
+		}
+		if !jumpTable[STATICCALL].valid {
+			t.Error("Expected STATICCALL to be present for block", n)
 		}
 	}
 }

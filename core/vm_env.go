@@ -46,6 +46,8 @@ type VMEnv struct {
 	evm         *vm.EVM        // The Ethereum Virtual Machine
 	depth       int            // Current execution depth
 	msg         Message        // Message appliod
+	readOnly    bool           // Whether to throw on stateful modifications
+	returnData  []byte         // Last CALL's return data for subsequent reuse
 
 	header    *types.Header            // Header information
 	chain     *BlockChain              // Blockchain handle
@@ -66,18 +68,22 @@ func NewEnv(state *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, m
 	return env
 }
 
-func (self *VMEnv) RuleSet() vm.RuleSet      { return self.chainConfig }
-func (self *VMEnv) Vm() vm.Vm                { return self.evm }
-func (self *VMEnv) Origin() common.Address   { f, _ := self.msg.From(); return f }
-func (self *VMEnv) BlockNumber() *big.Int    { return self.header.Number }
-func (self *VMEnv) Coinbase() common.Address { return self.header.Coinbase }
-func (self *VMEnv) Time() *big.Int           { return self.header.Time }
-func (self *VMEnv) Difficulty() *big.Int     { return self.header.Difficulty }
-func (self *VMEnv) GasLimit() *big.Int       { return self.header.GasLimit }
-func (self *VMEnv) Value() *big.Int          { return self.msg.Value() }
-func (self *VMEnv) Db() vm.Database          { return self.state }
-func (self *VMEnv) Depth() int               { return self.depth }
-func (self *VMEnv) SetDepth(i int)           { self.depth = i }
+func (self *VMEnv) SetReturnData(data []byte)   { self.returnData = data }
+func (self *VMEnv) ReturnData() []byte          { return self.returnData }
+func (self *VMEnv) SetReadOnly(isReadOnly bool) { self.readOnly = isReadOnly }
+func (self *VMEnv) IsReadOnly() bool            { return self.readOnly }
+func (self *VMEnv) RuleSet() vm.RuleSet         { return self.chainConfig }
+func (self *VMEnv) Vm() vm.Vm                   { return self.evm }
+func (self *VMEnv) Origin() common.Address      { f, _ := self.msg.From(); return f }
+func (self *VMEnv) BlockNumber() *big.Int       { return self.header.Number }
+func (self *VMEnv) Coinbase() common.Address    { return self.header.Coinbase }
+func (self *VMEnv) Time() *big.Int              { return self.header.Time }
+func (self *VMEnv) Difficulty() *big.Int        { return self.header.Difficulty }
+func (self *VMEnv) GasLimit() *big.Int          { return self.header.GasLimit }
+func (self *VMEnv) Value() *big.Int             { return self.msg.Value() }
+func (self *VMEnv) Db() vm.Database             { return self.state }
+func (self *VMEnv) Depth() int                  { return self.depth }
+func (self *VMEnv) SetDepth(i int)              { self.depth = i }
 func (self *VMEnv) GetHash(n uint64) common.Hash {
 	return self.getHashFn(n)
 }
@@ -104,6 +110,9 @@ func (self *VMEnv) Transfer(from, to vm.Account, amount *big.Int) {
 func (self *VMEnv) Call(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return Call(self, me, addr, data, gas, price, value)
 }
+func (self *VMEnv) StaticCall(me vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return StaticCall(self, me, addr, data, gas, price)
+}
 func (self *VMEnv) CallCode(me vm.ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
 	return CallCode(self, me, addr, data, gas, price, value)
 }
@@ -114,4 +123,8 @@ func (self *VMEnv) DelegateCall(me vm.ContractRef, addr common.Address, data []b
 
 func (self *VMEnv) Create(me vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return Create(self, me, data, gas, price, value)
+}
+
+func (self *VMEnv) Create2(me vm.ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error) {
+	return Create2(self, me, data, gas, price, value, salt)
 }

@@ -56,3 +56,15 @@ var DefaultDiehardGasTable = &vm.GasTable{
 	ExpByte:         big.NewInt(50),
 	CreateBySuicide: big.NewInt(25000),
 }
+
+var DefaultECIP1045CGasTable = &vm.GasTable{
+	ExtcodeSize:     big.NewInt(700),
+	ExtcodeCopy:     big.NewInt(700),
+	ExtcodeHash:     big.NewInt(400),
+	Balance:         big.NewInt(400),
+	SLoad:           big.NewInt(200),
+	Calls:           big.NewInt(700),
+	Suicide:         big.NewInt(5000),
+	ExpByte:         big.NewInt(50),
+	CreateBySuicide: big.NewInt(25000),
+}
