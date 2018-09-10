@@ -1950,26 +1950,24 @@ func (bc *BlockChain) postChainEvents(events []interface{}, logs vm.Logs) {
 func (bc *BlockChain) update() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-
-	for range ticker.C {
+	for {
 		select {
+		case <-ticker.C:
+			blocks := make([]*types.Block, 0, bc.futureBlocks.Len())
+			for _, hash := range bc.futureBlocks.Keys() {
+				if block, exist := bc.futureBlocks.Get(hash); exist {
+					blocks = append(blocks, block.(*types.Block))
+				}
+			}
+
+			if len(blocks) > 0 {
+				types.BlockBy(types.Number).Sort(blocks)
+				if res := bc.InsertChain(blocks); res.Error != nil {
+					log.Printf("periodic future chain update on block #%d [%s]:  %s", blocks[res.Index].Number(), blocks[res.Index].Hash().Hex(), res.Error)
+				}
+			}
 		case <-bc.quit:
 			return
-		default:
-		}
-
-		blocks := make([]*types.Block, 0, bc.futureBlocks.Len())
-		for _, hash := range bc.futureBlocks.Keys() {
-			if block, exist := bc.futureBlocks.Get(hash); exist {
-				blocks = append(blocks, block.(*types.Block))
-			}
-		}
-
-		if len(blocks) > 0 {
-			types.BlockBy(types.Number).Sort(blocks)
-			if res := bc.InsertChain(blocks); res.Error != nil {
-				log.Printf("periodic future chain update on block #%d [%s]:  %s", blocks[res.Index].Number(), blocks[res.Index].Hash().Hex(), res.Error)
-			}
 		}
 	}
 }
