@@ -127,8 +127,6 @@ Loop:
 				hash = block.Hash()
 			}
 			vm.CommitBlockhash(number, hash)
-		default:
-			panic("unreachable")
 		}
 	}
 
