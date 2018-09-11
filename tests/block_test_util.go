@@ -143,12 +143,9 @@ func runBlockTests(homesteadBlock, gasPriceFork *big.Int, bt map[string]*BlockTe
 OUTER:
 	for name, test := range bt {
 		// use regexp to match blacklisted tests by name or Network field (NOTE that Network is actually "Fork", and is just terribly named)
-		for _, skip := range skipTests {
-			re := regexp.MustCompile(skip)
-			if re.MatchString(name) || re.MatchString(test.Json.Network) {
-				glog.Infof("%s: SKIP", name)
-				continue OUTER
-			}
+		if blockTestSkipMatches(skipTests, name) || blockTestSkipMatches(skipTests, test.Json.Network) {
+			glog.Infof("%s: SKIP", name)
+			continue OUTER
 		}
 		// test the block
 		if err := runBlockTest(homesteadBlock, gasPriceFork, test); err != nil {

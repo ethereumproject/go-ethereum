@@ -69,8 +69,12 @@ func initBlockSkipTests() []string {
 			"CallingCanonicalContractFromFork_CALLCODE",
 			"Dao",
 			"EIP158",
+			// Don't skip for ECIP1045B+C support.
 			// "Byzantium",
-			"Constantinople",
+			// "Constantinople",
+
+			// General state tests are 'exported' as blockchain tests, but we can run them natively.
+			"GeneralStateTests",
 		}
 	} else {
 		return []string{
@@ -86,10 +90,25 @@ func initBlockSkipTests() []string {
 			"addNonConst_d0g0v0_Byzantium",
 			"Dao",
 			"EIP158",
+			// Don't skip for ECIP1045B+C support.
 			// "Byzantium",
-			"Constantinople",
+			// "Constantinople",
+
+			// General state tests are 'exported' as blockchain tests, but we can run them natively.
+			"GeneralStateTests",
 		}
 	}
+}
+
+// blockTestSkipMatches returns true if pattern matches, and test should be skipped
+func blockTestSkipMatches(skipTests []string, pattern string) bool {
+	for _, skip := range skipTests {
+		re := regexp.MustCompile(skip)
+		if re.MatchString(pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 // func readJSON(reader io.Reader, value interface{}) error {

@@ -44,6 +44,14 @@ func TestBlockchainTests(t *testing.T) {
 			t.Logf("%s: SKIP [non-json]", p)
 			return nil
 		}
+		// log.Printf("blockskiptestsn=%d\n", len(BlockSkipTests))
+		if blockTestSkipMatches(BlockSkipTests, p) {
+			t.Logf("%s: SKIP [skipmatch-p]", p)
+			return nil
+		} else if blockTestSkipMatches(BlockSkipTests, info.Name()) {
+			t.Logf("%s: SKIP [skipmatch-name]", info.Name())
+			return nil
+		}
 		mil := big.NewInt(1000000)
 		if e := RunBlockTest(mil, mil, p, BlockSkipTests); e != nil {
 			// Originally our tests had hardcoded fork block parameters. This "softly" ensures that those parameters can be met.
