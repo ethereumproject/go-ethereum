@@ -36,7 +36,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/rlp"
-	"regexp"
 )
 
 // Block Test JSON Format
