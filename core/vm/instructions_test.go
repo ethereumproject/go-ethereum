@@ -229,6 +229,40 @@ func testTwoOperandOp(t *testing.T, tests []twoOperandTest, opFn func(instr inst
 	}
 }
 
+func TestByteOp(t *testing.T) {
+	tenv, err := newVMTestEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stak := newstack()
+	pc := uint64(0)
+	tests := []struct {
+		v        string
+		th       uint64
+		expected *big.Int
+	}{
+		{"ABCDEF0908070605040302010000000000000000000000000000000000000000", 0, big.NewInt(0xAB)},
+		{"ABCDEF0908070605040302010000000000000000000000000000000000000000", 1, big.NewInt(0xCD)},
+		{"00CDEF090807060504030201ffffffffffffffffffffffffffffffffffffffff", 0, big.NewInt(0x00)},
+		{"00CDEF090807060504030201ffffffffffffffffffffffffffffffffffffffff", 1, big.NewInt(0xCD)},
+		{"0000000000000000000000000000000000000000000000000000000000102030", 31, big.NewInt(0x30)},
+		{"0000000000000000000000000000000000000000000000000000000000102030", 30, big.NewInt(0x20)},
+		{"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 32, big.NewInt(0x0)},
+		{"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 0xFFFFFFFFFFFFFFFF, big.NewInt(0x0)},
+	}
+	for _, test := range tests {
+		val := new(big.Int).SetBytes(common.Hex2Bytes(test.v))
+		th := new(big.Int).SetUint64(test.th)
+		stak.push(val)
+		stak.push(th)
+		opByte(instruction{}, &pc, tenv, nil, nil, stak)
+		actual := stak.pop()
+		if actual.Cmp(test.expected) != 0 {
+			t.Fatalf("Expected [%v] %v:th byte to be %v, was: %v", test.v, test.th, test.expected, actual)
+		}
+	}
+}
+
 func TestSHL(t *testing.T) {
 	// Testcases from https://github.com/ethereum/EIPs/blob/master/EIPS/eip-145.md#shl-shift-left
 	tests := []twoOperandTest{
@@ -287,6 +321,7 @@ func TestSAR(t *testing.T) {
 
 	testTwoOperandOp(t, tests, opSAR)
 }
+
 func TestSGT(t *testing.T) {
 	tests := []twoOperandTest{
 
