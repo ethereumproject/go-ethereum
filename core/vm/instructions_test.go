@@ -19,115 +19,6 @@ type VMTestEnv struct {
 	readOnly   bool
 	returnData []byte
 }
-
-func (VMTestEnv) RuleSet() RuleSet {
-	panic("implement me")
-}
-
-func (VMTestEnv) Db() Database {
-	panic("implement me")
-}
-
-func (VMTestEnv) SnapshotDatabase() int {
-	panic("implement me")
-}
-
-func (VMTestEnv) RevertToSnapshot(int) {
-	panic("implement me")
-}
-
-func (VMTestEnv) Origin() common.Address {
-	panic("implement me")
-}
-
-func (VMTestEnv) BlockNumber() *big.Int {
-	panic("implement me")
-}
-
-func (VMTestEnv) GetHash(uint64) common.Hash {
-	panic("implement me")
-}
-
-func (VMTestEnv) Coinbase() common.Address {
-	panic("implement me")
-}
-
-func (VMTestEnv) Time() *big.Int {
-	panic("implement me")
-}
-
-func (VMTestEnv) Difficulty() *big.Int {
-	panic("implement me")
-}
-
-func (VMTestEnv) GasLimit() *big.Int {
-	panic("implement me")
-}
-
-func (VMTestEnv) CanTransfer(from common.Address, balance *big.Int) bool {
-	panic("implement me")
-}
-
-func (VMTestEnv) Transfer(from, to Account, amount *big.Int) {
-	panic("implement me")
-}
-
-func (VMTestEnv) AddLog(*Log) {
-	panic("implement me")
-}
-
-func (VMTestEnv) Vm() Vm {
-	panic("implement me")
-}
-
-func (VMTestEnv) Depth() int {
-	panic("implement me")
-}
-
-func (VMTestEnv) SetDepth(i int) {
-	panic("implement me")
-}
-
-func (VMTestEnv) SetReadOnly(isReadOnly bool) {
-	panic("implement me")
-}
-
-func (VMTestEnv) IsReadOnly() bool {
-	panic("implement me")
-}
-
-func (VMTestEnv) SetReturnData(data []byte) {
-	panic("implement me")
-}
-
-func (VMTestEnv) ReturnData() []byte {
-	panic("implement me")
-}
-
-func (VMTestEnv) Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	panic("implement me")
-}
-
-func (VMTestEnv) CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
-	panic("implement me")
-}
-
-func (VMTestEnv) DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
-	panic("implement me")
-}
-
-func (VMTestEnv) StaticCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
-	panic("implement me")
-}
-
-func (VMTestEnv) Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
-	panic("implement me")
-}
-
-func (VMTestEnv) Create2(me ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error) {
-	panic("implement me")
-}
-
 type rs struct {
 	HomesteadBlock           *big.Int
 	HomesteadGasRepriceBlock *big.Int
@@ -146,54 +37,6 @@ func newTestRS() rs {
 		ECIP1045BBlock:           new(big.Int),
 		ECIP1045CBlock:           new(big.Int),
 	}
-}
-
-func (r rs) IsHomestead(n *big.Int) bool {
-	if n == nil || r.HomesteadBlock == nil {
-		return false
-	}
-	return n.Cmp(r.HomesteadBlock) >= 0
-}
-
-func (r rs) IsEIP150(n *big.Int) bool {
-	if n == nil || r.HomesteadGasRepriceBlock == nil {
-		return false
-	}
-	return n.Cmp(r.HomesteadGasRepriceBlock) >= 0
-}
-
-func (r rs) IsDiehard(n *big.Int) bool {
-	if n == nil || r.DiehardBlock == nil {
-		return false
-	}
-	return n.Cmp(r.DiehardBlock) >= 0
-}
-
-func (r rs) IsECIP1045B(n *big.Int) bool {
-	if n == nil || r.ECIP1045BBlock == nil {
-		return false
-	}
-	return n.Cmp(r.ECIP1045BBlock) >= 0
-}
-
-func (r rs) IsECIP1045C(n *big.Int) bool {
-	if n == nil || r.ECIP1045CBlock == nil {
-		return false
-	}
-	return n.Cmp(r.ECIP1045CBlock) >= 0
-}
-
-func (r rs) GasTable(num *big.Int) *GasTable {
-	if r.IsECIP1045C(num) {
-		return &GasTable{}
-	} else if r.IsDiehard(num) {
-		return &GasTable{}
-	} else if r.IsEIP150(num) {
-		return &GasTable{}
-	} else if r.IsHomestead(num) {
-		return &GasTable{}
-	}
-	return &GasTable{}
 }
 
 func newVMTestEnv() (VMTestEnv, error) {
@@ -357,4 +200,162 @@ func TestSLT(t *testing.T) {
 		{"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd", "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb", "0000000000000000000000000000000000000000000000000000000000000001"},
 	}
 	testTwoOperandOp(t, tests, opSlt)
+}
+
+// Implements 'Environment' interface
+func (VMTestEnv) RuleSet() RuleSet {
+	panic("implement me")
+}
+
+func (VMTestEnv) Db() Database {
+	panic("implement me")
+}
+
+func (VMTestEnv) SnapshotDatabase() int {
+	panic("implement me")
+}
+
+func (VMTestEnv) RevertToSnapshot(int) {
+	panic("implement me")
+}
+
+func (VMTestEnv) Origin() common.Address {
+	panic("implement me")
+}
+
+func (VMTestEnv) BlockNumber() *big.Int {
+	panic("implement me")
+}
+
+func (VMTestEnv) GetHash(uint64) common.Hash {
+	panic("implement me")
+}
+
+func (VMTestEnv) Coinbase() common.Address {
+	panic("implement me")
+}
+
+func (VMTestEnv) Time() *big.Int {
+	panic("implement me")
+}
+
+func (VMTestEnv) Difficulty() *big.Int {
+	panic("implement me")
+}
+
+func (VMTestEnv) GasLimit() *big.Int {
+	panic("implement me")
+}
+
+func (VMTestEnv) CanTransfer(from common.Address, balance *big.Int) bool {
+	panic("implement me")
+}
+
+func (VMTestEnv) Transfer(from, to Account, amount *big.Int) {
+	panic("implement me")
+}
+
+func (VMTestEnv) AddLog(*Log) {
+	panic("implement me")
+}
+
+func (VMTestEnv) Vm() Vm {
+	panic("implement me")
+}
+
+func (VMTestEnv) Depth() int {
+	panic("implement me")
+}
+
+func (VMTestEnv) SetDepth(i int) {
+	panic("implement me")
+}
+
+func (VMTestEnv) SetReadOnly(isReadOnly bool) {
+	panic("implement me")
+}
+
+func (VMTestEnv) IsReadOnly() bool {
+	panic("implement me")
+}
+
+func (VMTestEnv) SetReturnData(data []byte) {
+	panic("implement me")
+}
+
+func (VMTestEnv) ReturnData() []byte {
+	panic("implement me")
+}
+
+func (VMTestEnv) Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	panic("implement me")
+}
+
+func (VMTestEnv) CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {
+	panic("implement me")
+}
+
+func (VMTestEnv) DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	panic("implement me")
+}
+
+func (VMTestEnv) StaticCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	panic("implement me")
+}
+
+func (VMTestEnv) Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
+	panic("implement me")
+}
+
+func (VMTestEnv) Create2(me ContractRef, data []byte, gas, price, value, salt *big.Int) ([]byte, common.Address, error) {
+	panic("implement me")
+}
+
+// Implements RuleSet interface
+func (r rs) IsHomestead(n *big.Int) bool {
+	if n == nil || r.HomesteadBlock == nil {
+		return false
+	}
+	return n.Cmp(r.HomesteadBlock) >= 0
+}
+
+func (r rs) IsEIP150(n *big.Int) bool {
+	if n == nil || r.HomesteadGasRepriceBlock == nil {
+		return false
+	}
+	return n.Cmp(r.HomesteadGasRepriceBlock) >= 0
+}
+
+func (r rs) IsDiehard(n *big.Int) bool {
+	if n == nil || r.DiehardBlock == nil {
+		return false
+	}
+	return n.Cmp(r.DiehardBlock) >= 0
+}
+
+func (r rs) IsECIP1045B(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r rs) IsECIP1045C(n *big.Int) bool {
+	if n == nil || r.ECIP1045CBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045CBlock) >= 0
+}
+
+func (r rs) GasTable(num *big.Int) *GasTable {
+	if r.IsECIP1045C(num) {
+		return &GasTable{}
+	} else if r.IsDiehard(num) {
+		return &GasTable{}
+	} else if r.IsEIP150(num) {
+		return &GasTable{}
+	} else if r.IsHomestead(num) {
+		return &GasTable{}
+	}
+	return &GasTable{}
 }
