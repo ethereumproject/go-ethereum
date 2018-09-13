@@ -128,6 +128,24 @@ func TestOpMStore(t *testing.T) {
 	}
 }
 
+func BenchmarkOpMstore(bench *testing.B) {
+	tenv, err := newVMTestEnv()
+	if err != nil {
+		bench.Fatal(err)
+	}
+	stak := newstack()
+	mem := NewMemory()
+	mem.Resize(64)
+	pc := uint64(0)
+	memStart := big.NewInt(0)
+	value := big.NewInt(0x1337)
+	bench.ResetTimer()
+	for i := 0; i < bench.N; i++ {
+		stak.pushN(value, memStart)
+		opMstore(instruction{}, &pc, tenv, nil, mem, stak)
+	}
+}
+
 func TestSHL(t *testing.T) {
 	// Testcases from https://github.com/ethereum/EIPs/blob/master/EIPS/eip-145.md#shl-shift-left
 	tests := []twoOperandTest{
