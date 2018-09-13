@@ -20,18 +20,21 @@ import "math/big"
 
 // Common big integers often used
 var (
+	BigTrue   = Big1
+	BigFalse  = big.NewInt(0)
 	Big0      = big.NewInt(0)
 	Big1      = big.NewInt(1)
 	Big2      = big.NewInt(2)
 	Big3      = big.NewInt(3)
-	BigTrue   = Big1
-	BigFalse  = big.NewInt(0)
+	Big8      = big.NewInt(8)
 	Big32     = big.NewInt(32)
 	Big36     = big.NewInt(36)
+	Big64     = big.NewInt(64)
 	Big97     = big.NewInt(97)
 	Big98     = big.NewInt(98)
 	Big256    = big.NewInt(256)
 	Big257    = big.NewInt(257)
+	Big1024   = big.NewInt(1024)
 	MaxBig, _ = new(big.Int).SetString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
 )
 
