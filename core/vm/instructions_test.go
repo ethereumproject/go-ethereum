@@ -106,6 +106,28 @@ func TestByteOp(t *testing.T) {
 	}
 }
 
+func TestOpMStore(t *testing.T) {
+	tenv, err := newVMTestEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stak := newstack()
+	mem := NewMemory()
+	mem.Resize(64)
+	pc := uint64(0)
+	v := "abcdef00000000000000abba000000000deaf000000c0de00100000000133700"
+	stak.pushN(new(big.Int).SetBytes(common.Hex2Bytes(v)), big.NewInt(0))
+	opMstore(instruction{}, &pc, tenv, nil, mem, stak)
+	if got := common.Bytes2Hex(mem.Get(0, 32)); got != v {
+		t.Fatalf("Mstore fail, got %v, expected %v", got, v)
+	}
+	stak.pushN(big.NewInt(0x1), big.NewInt(0))
+	opMstore(instruction{}, &pc, tenv, nil, mem, stak)
+	if common.Bytes2Hex(mem.Get(0, 32)) != "0000000000000000000000000000000000000000000000000000000000000001" {
+		t.Fatalf("Mstore failed to overwrite previous value")
+	}
+}
+
 func TestSHL(t *testing.T) {
 	// Testcases from https://github.com/ethereum/EIPs/blob/master/EIPS/eip-145.md#shl-shift-left
 	tests := []twoOperandTest{
