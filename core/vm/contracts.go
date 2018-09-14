@@ -82,13 +82,6 @@ func PrecompiledContracts() map[string]*PrecompiledAccount {
 	}
 }
 
-var (
-	big8    = big.NewInt(8)
-	big32   = big.NewInt(32)
-	big64   = big.NewInt(64)
-	big1024 = big.NewInt(1024)
-)
-
 // PrecompiledContractsECIP1045BFunc returns the precompiled contracts made available at or after the ECIP1045B fork (akin to Byzantium)
 func PrecompiledContractsECIP1045BFunc() map[string]*PrecompiledAccount {
 	contracts := PrecompiledContracts()
@@ -102,9 +95,9 @@ func PrecompiledContractsECIP1045BFunc() map[string]*PrecompiledAccount {
 
 	bigModExpGas := func(input []byte) *big.Int {
 		var (
-			baseLen = new(big.Int).SetBytes(getData(input, big.NewInt(0), big.NewInt(32)))
-			expLen  = new(big.Int).SetBytes(getData(input, big.NewInt(32), big.NewInt(32)))
-			modLen  = new(big.Int).SetBytes(getData(input, big.NewInt(64), big.NewInt(32)))
+			baseLen = new(big.Int).SetBytes(getData(input, common.Big0, common.Big32))
+			expLen  = new(big.Int).SetBytes(getData(input, common.Big32, common.Big32))
+			modLen  = new(big.Int).SetBytes(getData(input, common.Big64, common.Big32))
 		)
 		if len(input) > 96 {
 			input = input[96:]
@@ -116,8 +109,8 @@ func PrecompiledContractsECIP1045BFunc() map[string]*PrecompiledAccount {
 		if big.NewInt(int64(len(input))).Cmp(baseLen) <= 0 {
 			expHead = new(big.Int)
 		} else {
-			if expLen.Cmp(big32) > 0 {
-				expHead = new(big.Int).SetBytes(getData(input, baseLen, big32))
+			if expLen.Cmp(common.Big32) > 0 {
+				expHead = new(big.Int).SetBytes(getData(input, baseLen, common.Big32))
 			} else {
 				expHead = new(big.Int).SetBytes(getData(input, baseLen, expLen))
 			}
@@ -128,18 +121,18 @@ func PrecompiledContractsECIP1045BFunc() map[string]*PrecompiledAccount {
 			msb = bitlen - 1
 		}
 		adjExpLen := new(big.Int)
-		if expLen.Cmp(big32) > 0 {
-			adjExpLen.Sub(expLen, big32)
-			adjExpLen.Mul(big8, adjExpLen)
+		if expLen.Cmp(common.Big32) > 0 {
+			adjExpLen.Sub(expLen, common.Big32)
+			adjExpLen.Mul(common.Big8, adjExpLen)
 		}
 		adjExpLen.Add(adjExpLen, big.NewInt(int64(msb)))
 
 		// Calculate the gas cost of the operation
 		gas := new(big.Int).Set(bigMax(modLen, baseLen))
 		switch {
-		case gas.Cmp(big64) <= 0:
+		case gas.Cmp(common.Big64) <= 0:
 			gas.Mul(gas, gas)
-		case gas.Cmp(big1024) <= 0:
+		case gas.Cmp(common.Big1024) <= 0:
 			gas = new(big.Int).Add(
 				new(big.Int).Div(new(big.Int).Mul(gas, gas), big.NewInt(4)),
 				new(big.Int).Sub(new(big.Int).Mul(big.NewInt(96), gas), big.NewInt(3072)),
@@ -198,9 +191,9 @@ func PrecompiledContractsECIP1045BFunc() map[string]*PrecompiledAccount {
 
 func bigModExpFunc(input []byte) ([]byte, error) {
 	var (
-		baseLen = new(big.Int).SetBytes(getData(input, new(big.Int), big32))
-		expLen  = new(big.Int).SetBytes(getData(input, big32, big32))
-		modLen  = new(big.Int).SetBytes(getData(input, big64, big32))
+		baseLen = new(big.Int).SetBytes(getData(input, new(big.Int), common.Big32))
+		expLen  = new(big.Int).SetBytes(getData(input, common.Big32, common.Big32))
+		modLen  = new(big.Int).SetBytes(getData(input, common.Big64, common.Big32))
 	)
 	if len(input) > 96 {
 		input = input[96:]
@@ -245,11 +238,11 @@ func newTwistPoint(blob []byte) (*bn256.G2, error) {
 }
 
 func bn256AddFunc(in []byte) ([]byte, error) {
-	x, err := newCurvePoint(getData(in, new(big.Int), big64))
+	x, err := newCurvePoint(getData(in, new(big.Int), common.Big64))
 	if err != nil {
 		return nil, err
 	}
-	y, err := newCurvePoint(getData(in, big64, big64))
+	y, err := newCurvePoint(getData(in, common.Big64, common.Big64))
 	if err != nil {
 		return nil, err
 	}
@@ -259,12 +252,12 @@ func bn256AddFunc(in []byte) ([]byte, error) {
 }
 
 func bn256ScalarMulFunc(input []byte) ([]byte, error) {
-	p, err := newCurvePoint(getData(input, new(big.Int), big64))
+	p, err := newCurvePoint(getData(input, new(big.Int), common.Big64))
 	if err != nil {
 		return nil, err
 	}
 	res := new(bn256.G1)
-	res.ScalarMult(p, new(big.Int).SetBytes(getData(input, big64, big32)))
+	res.ScalarMult(p, new(big.Int).SetBytes(getData(input, common.Big64, common.Big32)))
 	return res.Marshal(), nil
 }
 
