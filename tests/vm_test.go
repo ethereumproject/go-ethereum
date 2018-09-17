@@ -129,7 +129,7 @@ func TestInputLimitsLight(t *testing.T) {
 }
 
 func TestVMRandom(t *testing.T) {
-	fns, _ := filepath.Glob(filepath.Join(baseDir, "RandomTests", "*"))
+	fns, _ := filepath.Glob(filepath.Join(vmTestDir, "RandomTests", "*"))
 	for _, fn := range fns {
 		if err := RunVmTest(fn, VmSkipTests); err != nil {
 			t.Error(err)

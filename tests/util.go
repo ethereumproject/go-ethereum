@@ -145,7 +145,6 @@ type VmTest struct {
 	Pre           map[string]Account
 	PostStateRoot string
 }
-
 type RuleSet struct {
 	HomesteadBlock           *big.Int
 	HomesteadGasRepriceBlock *big.Int
