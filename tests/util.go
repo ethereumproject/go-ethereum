@@ -145,6 +145,7 @@ type VmTest struct {
 	Pre           map[string]Account
 	PostStateRoot string
 }
+
 type RuleSet struct {
 	HomesteadBlock           *big.Int
 	HomesteadGasRepriceBlock *big.Int
@@ -318,7 +319,7 @@ func (self *Env) Call(caller vm.ContractRef, addr common.Address, data []byte, g
 		return nil, nil
 	}
 	ret, err := core.Call(self, caller, addr, data, gas, price, value)
-	self.Gas = gas
+	self.Gas = new(big.Int).Set(gas)
 
 	return ret, err
 
