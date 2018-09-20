@@ -111,7 +111,8 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	snapshotPreTransfer := env.SnapshotDatabase()
 	var (
 		from = env.Db().GetAccount(caller.Address())
-		to   vm.Account
+
+		to vm.Account
 	)
 	if createAccount {
 		to = env.Db().CreateAccount(*address)

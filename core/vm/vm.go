@@ -288,7 +288,22 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 
 		var g *big.Int
 		y, x := stack.data[stack.len()-2], stack.data[stack.len()-1]
-		val := statedb.GetState(contract.Address(), common.BigToHash(x))
+
+		loc := x
+		newValue := y // EIP1283
+
+		val := statedb.GetState(contract.Address(), common.BigToHash(x)) // val IS hash
+
+		currentValue := val // EIP1283
+
+		// EIP1283
+		// If current value equals new value (noop), 200 gas deducted
+		if common.BigToHash(newValue) == currentValue {
+			g = big.NewInt(200)
+		} else if {
+			// If current value != new value
+		}
+
 
 		// This checks for 3 scenario's and calculates gas accordingly
 		// 1. From a zero-value address to a non-zero value         (NEW VALUE)
