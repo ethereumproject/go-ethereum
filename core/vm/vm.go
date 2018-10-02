@@ -85,9 +85,10 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	}
 
 	var (
-		caller     = contract.caller
-		code       = contract.Code
-		instrCount = 0
+		caller            = contract.caller
+		code              = contract.Code
+		originalSStoreMap = make(map[*big.Int]common.Hash) // stores "original" values from SSTORE if called, for use in computing EIP1283
+		instrCount        = 0
 
 		op      OpCode         // current opcode
 		mem     = NewMemory()  // bound memory
@@ -138,7 +139,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 			return nil, errWriteProtection
 		}
 		// calculate the new memory size and gas price for the current executing opcode
-		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
+		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack, originalSStoreMap)
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +215,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 // calculateGasAndSize calculates the required given the opcode and stack items calculates the new memorysize for
 // the operation. This does not reduce gas or resizes the memory.
-func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack) (*big.Int, *big.Int, error) {
+func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack, originalSStoreMap map[*big.Int]common.Hash) (*big.Int, *big.Int, error) {
 	var (
 		gas        = new(big.Int)
 		newMemSize = new(big.Int)
@@ -286,40 +287,86 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 			return nil, nil, err
 		}
 
-		var g *big.Int
-		y, x := stack.data[stack.len()-2], stack.data[stack.len()-1]
+		var g, refundCounter *big.Int
+		newValue, storageLoc := stack.data[stack.len()-2], stack.data[stack.len()-1]
 
-		loc := x
-		newValue := y // EIP1283
+		currentValue := statedb.GetState(contract.Address(), common.BigToHash(storageLoc))
 
-		val := statedb.GetState(contract.Address(), common.BigToHash(x)) // val IS hash
-
-		currentValue := val // EIP1283
-
-		// EIP1283
-		// If current value equals new value (noop), 200 gas deducted
-		if common.BigToHash(newValue) == currentValue {
-			g = big.NewInt(200)
-		} else if {
-			// If current value != new value
-		}
-
-
-		// This checks for 3 scenario's and calculates gas accordingly
-		// 1. From a zero-value address to a non-zero value         (NEW VALUE)
-		// 2. From a non-zero value address to a zero-value address (DELETE)
-		// 3. From a non-zero to a non-zero                         (CHANGE)
-		if common.EmptyHash(val) && !common.EmptyHash(common.BigToHash(y)) {
-			// 0 => non 0
-			g = big.NewInt(20000) // Once per SLOAD operation.
-		} else if !common.EmptyHash(val) && common.EmptyHash(common.BigToHash(y)) {
-			statedb.AddRefund(big.NewInt(15000))
-			g = big.NewInt(5000)
+		if !env.RuleSet().IsECIP1045C(env.BlockNumber()) {
+			// Not-EIP1283
+			// This checks for 3 scenario's and calculates gas accordingly
+			// 1. From a zero-value address to a non-zero value         (NEW VALUE)
+			// 2. From a non-zero value address to a zero-value address (DELETE)
+			// 3. From a non-zero to a non-zero                         (CHANGE)
+			if common.EmptyHash(currentValue) && !common.EmptyHash(common.BigToHash(newValue)) {
+				// 0 => non 0
+				g = big.NewInt(20000) // Once per SLOAD operation.
+			} else if !common.EmptyHash(currentValue) && common.EmptyHash(common.BigToHash(newValue)) {
+				refundCounter.Add(refundCounter, big.NewInt(15000))
+				g = big.NewInt(5000)
+			} else {
+				// non 0 => non 0 (or 0 => 0)
+				g = big.NewInt(5000)
+			}
 		} else {
-			// non 0 => non 0 (or 0 => 0)
-			g = big.NewInt(5000)
+			// EIP1283
+			// Set singleton original store value if SSTORE hasn't yet been called, or set local value if it has already been called.
+			// PTAL: It seems devastatingly ironic that I'm now using a "dirty storage map" to keep track of original values.
+			var originalSStoreValue = currentValue
+			if v, ok := originalSStoreMap[storageLoc]; ok {
+				originalSStoreValue = v
+			} else {
+				originalSStoreMap[storageLoc] = currentValue
+			}
+
+			// EIP1283
+			// If current value equals new value (noop), 200 gas deducted
+			if common.BigToHash(newValue) == currentValue {
+				g = big.NewInt(200)
+			} else {
+				// If current value != new value
+				// If original value equals current value (this storage slot has not been changed by the current execution context)
+				// If original value is 0, 20000 gas is deducted.
+				// 	Otherwise, 5000 gas is deducted. If new value is 0, add 15000 gas to refund counter.
+				if originalSStoreValue == currentValue {
+					if common.EmptyHash(originalSStoreValue) {
+						g = big.NewInt(20000)
+					} else {
+						g = big.NewInt(5000)
+						if newValue.Cmp(common.Big0) == 0 {
+							refundCounter.Add(refundCounter, big.NewInt(15000))
+						}
+					}
+				} else {
+					// If original value does not equal current value (this storage slot is dirty), 200 gas is deducted. Apply both of the following clauses.
+					g = big.NewInt(200)
+					// 1. If original value is not 0
+					// If current value is 0 (also means that new value is not 0), remove 15000 gas from refund counter. We can prove that refund counter will never go below 0.
+					// If new value is 0 (also means that current value is not 0), add 15000 gas to refund counter.
+					if !common.EmptyHash(originalSStoreValue) {
+						if common.EmptyHash(currentValue) {
+							refundCounter.Sub(refundCounter, big.NewInt(15000))
+						}
+						if newValue.Cmp(common.Big0) == 0 {
+							refundCounter.Add(refundCounter, big.NewInt(15000))
+						}
+					}
+					// 2. If original value equals new value (this storage slot is reset)
+					// If original value is 0, add 19800 gas to refund counter.
+					// Otherwise, add 4800 gas to refund counter.
+					if originalSStoreValue.Big().Cmp(newValue) == 0 {
+						if common.EmptyHash(originalSStoreValue) {
+							refundCounter.Add(refundCounter, big.NewInt(19800))
+						} else {
+							refundCounter.Add(refundCounter, big.NewInt(4800))
+						}
+					}
+				}
+			}
 		}
+
 		gas.Set(g)
+		statedb.AddRefund(refundCounter)
 
 	case MLOAD:
 		newMemSize = calcMemSize(stack.peek(), u256(32))
