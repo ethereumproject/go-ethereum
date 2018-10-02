@@ -128,6 +128,63 @@ func TestOpMStore(t *testing.T) {
 	}
 }
 
+func TestOpSStore(t *testing.T) {
+	tenv, err := newVMTestEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenv.ruleset = newTestRS()
+	// stak := newstack()
+	mem := NewMemory()
+	mem.Resize(64)
+	// pc := uint64(0)
+
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1283.md#test-cases
+	var tests = []struct {
+		code     string
+		gasUsed  *big.Int
+		refund   *big.Int
+		original int64
+		outcomes [3]int64 // 1st,2nd,3rd; -1 will be used for non-present (test doesn't run thru 3rd)
+	}{
+		{
+			code:     "60006000556000600055",
+			gasUsed:  big.NewInt(412),
+			refund:   big.NewInt(0),
+			original: 0,
+			outcomes: [3]int64{0, 0, -1},
+		},
+	}
+
+	for i, test := range tests {
+		gasProvided := big.NewInt(100000)
+		acc := common.BigToAddress(big.NewInt(int64(i)))
+		ref := newTestContractRef(acc)
+		contract := NewContract(ref, ref, big.NewInt(0), gasProvided, big.NewInt(0))
+		contract.Gas = gasProvided
+		codeBytes := common.Hex2Bytes(test.code)
+		contract.Code = codeBytes
+		evm := New(tenv)
+		_, err := evm.Run(contract, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		contract.Finalise()
+
+		if contract.Gas.Cmp(test.gasUsed) != 0 {
+			// if gasProvided.Cmp(test.gasUsed) != 0 {
+			// t.Fatalf("gasprov: want: %v, got: %v, ret: %v", test.gasUsed, gasProvided, string(ret))
+			// }
+			t.Fatalf("want: %v, got: %v", test.gasUsed, contract.UsedGas)
+		} else {
+			t.Logf("ok: want: %v, got: %v", test.gasUsed, contract.UsedGas)
+		}
+		// state.StateDB.
+		// tenv.evm.Run(contract *Contract, input []byte)
+
+	}
+}
+
 func BenchmarkOpMstore(bench *testing.B) {
 	tenv, err := newVMTestEnv()
 	if err != nil {
@@ -474,12 +531,13 @@ func BenchmarkOpIsZero(b *testing.B) {
 }
 
 // Implements 'Environment' interface
-func (VMTestEnv) RuleSet() RuleSet {
-	panic("implement me")
+func (e VMTestEnv) RuleSet() RuleSet {
+	return e.ruleset
+	// panic("implement me")
 }
 
-func (VMTestEnv) Db() Database {
-	panic("implement me")
+func (e VMTestEnv) Db() Database {
+	panic("vmtestenv.Db() implement me")
 }
 
 func (VMTestEnv) SnapshotDatabase() int {
@@ -495,7 +553,7 @@ func (VMTestEnv) Origin() common.Address {
 }
 
 func (VMTestEnv) BlockNumber() *big.Int {
-	panic("implement me")
+	return new(big.Int)
 }
 
 func (VMTestEnv) GetHash(uint64) common.Hash {
@@ -535,11 +593,12 @@ func (VMTestEnv) Vm() Vm {
 }
 
 func (VMTestEnv) Depth() int {
-	panic("implement me")
+	return 0
+	// panic("implement me")
 }
 
 func (VMTestEnv) SetDepth(i int) {
-	panic("implement me")
+	// panic("implement me")
 }
 
 func (VMTestEnv) SetReadOnly(isReadOnly bool) {
@@ -550,12 +609,12 @@ func (VMTestEnv) IsReadOnly() bool {
 	panic("implement me")
 }
 
-func (VMTestEnv) SetReturnData(data []byte) {
-	panic("implement me")
+func (e VMTestEnv) SetReturnData(data []byte) {
+	e.returnData = data
 }
 
-func (VMTestEnv) ReturnData() []byte {
-	panic("implement me")
+func (e VMTestEnv) ReturnData() []byte {
+	return e.returnData
 }
 
 func (VMTestEnv) Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error) {

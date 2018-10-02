@@ -336,34 +336,49 @@ var bn256PairingTests = []precompiledTest{
 	},
 }
 
-// testContractRef implements the ContractRef interface as a mock for ContractRef (without needing StateObject)
-type testContractRef common.Address
+func newTestContractRef(a common.Address) testContractRef {
+	return testContractRef{
+		addr:    a,
+		gas:     new(big.Int),
+		storage: make(map[common.Hash]common.Hash),
+	}
+}
 
-func (cr testContractRef) ReturnGas(*big.Int, *big.Int) {
-	panic("implement me")
+// testContractRef implements the ContractRef interface as a mock for ContractRef (without needing StateObject)
+type testContractRef struct {
+	addr    common.Address
+	gas     *big.Int
+	value   *big.Int
+	storage map[common.Hash]common.Hash
+}
+
+func (cr testContractRef) ReturnGas(gas, price *big.Int) {
+	cr.gas.Add(cr.gas, gas)
 }
 
 func (cr testContractRef) Address() common.Address {
-	return (common.Address)(cr)
+	return (common.Address)(cr.addr)
 }
 
-func (testContractRef) Value() *big.Int {
-	return new(big.Int)
+func (cr testContractRef) Value() *big.Int {
+	return cr.value
 }
 
-func (testContractRef) SetCode(common.Hash, []byte) {
-	panic("implement me")
+func (cr testContractRef) SetCode(loc common.Hash, code []byte) {
+	cr.storage[loc] = common.BytesToHash(code)
 }
 
-func (testContractRef) ForEachStorage(callback func(key, value common.Hash) bool) {
-	panic("implement me")
+func (cr testContractRef) ForEachStorage(callback func(key, value common.Hash) bool) {
+	for k, v := range cr.storage {
+		callback(k, v)
+	}
 }
 
 func testPrecompiled(addr string, test precompiledTest, t *testing.T) {
 	p := PrecompiledContractsECIP1045B[common.HexToAddress(addr).Str()]
 	in := common.Hex2Bytes(test.input)
 
-	contract := NewContract(testContractRef(common.HexToAddress("1337")),
+	contract := NewContract(newTestContractRef(common.HexToAddress("1337")),
 		nil, new(big.Int), p.Gas(in), new(big.Int))
 	t.Run(fmt.Sprintf("%s-Gas=%d", test.name, contract.Gas), func(t *testing.T) {
 		if res, err := RunPrecompiled(p, in, contract); err != nil {
@@ -381,7 +396,7 @@ func benchmarkPrecompiled(addr string, test precompiledTest, bench *testing.B) {
 	p := PrecompiledContractsECIP1045B[common.HexToAddress(addr).Str()]
 	in := common.Hex2Bytes(test.input)
 	reqGas := p.Gas(in)
-	contract := NewContract(testContractRef(common.HexToAddress("1337")),
+	contract := NewContract(newTestContractRef(common.HexToAddress("1337")),
 		nil, new(big.Int), reqGas, new(big.Int))
 
 	var (
