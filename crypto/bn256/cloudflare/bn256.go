@@ -27,6 +27,8 @@ func randomK(r io.Reader) (k *big.Int, err error) {
 			return
 		}
 	}
+
+	return
 }
 
 // G1 is an abstract cyclic group. The zero value is suitable for use as the
@@ -120,23 +122,19 @@ func (e *G1) Marshal() []byte {
 func (e *G1) Unmarshal(m []byte) ([]byte, error) {
 	// Each value is a 256-bit number.
 	const numBytes = 256 / 8
+
 	if len(m) < 2*numBytes {
 		return nil, errors.New("bn256: not enough data")
 	}
-	// Unmarshal the points and check their caps
+
 	if e.p == nil {
 		e.p = &curvePoint{}
 	} else {
 		e.p.x, e.p.y = gfP{0}, gfP{0}
 	}
-	var err error
-	if err = e.p.x.Unmarshal(m); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.Unmarshal(m[numBytes:]); err != nil {
-		return nil, err
-	}
-	// Encode into Montgomery form and ensure it's on the curve
+
+	e.p.x.Unmarshal(m)
+	e.p.y.Unmarshal(m[numBytes:])
 	montEncode(&e.p.x, &e.p.x)
 	montEncode(&e.p.y, &e.p.y)
 
@@ -154,6 +152,7 @@ func (e *G1) Unmarshal(m []byte) ([]byte, error) {
 			return nil, errors.New("bn256: malformed point")
 		}
 	}
+
 	return m[2*numBytes:], nil
 }
 
@@ -233,20 +232,22 @@ func (e *G2) Marshal() []byte {
 	}
 
 	e.p.MakeAffine()
-	ret := make([]byte, numBytes*4)
 	if e.p.IsInfinity() {
-		return ret
+		return make([]byte, 1)
 	}
+
+	ret := make([]byte, 1+numBytes*4)
+	ret[0] = 0x01
 	temp := &gfP{}
 
 	montDecode(temp, &e.p.x.x)
-	temp.Marshal(ret)
+	temp.Marshal(ret[1:])
 	montDecode(temp, &e.p.x.y)
-	temp.Marshal(ret[numBytes:])
+	temp.Marshal(ret[1+numBytes:])
 	montDecode(temp, &e.p.y.x)
-	temp.Marshal(ret[2*numBytes:])
+	temp.Marshal(ret[1+2*numBytes:])
 	montDecode(temp, &e.p.y.y)
-	temp.Marshal(ret[3*numBytes:])
+	temp.Marshal(ret[1+3*numBytes:])
 
 	return ret
 }
@@ -256,27 +257,24 @@ func (e *G2) Marshal() []byte {
 func (e *G2) Unmarshal(m []byte) ([]byte, error) {
 	// Each value is a 256-bit number.
 	const numBytes = 256 / 8
-	if len(m) < 4*numBytes {
-		return nil, errors.New("bn256: not enough data")
-	}
-	// Unmarshal the points and check their caps
+
 	if e.p == nil {
 		e.p = &twistPoint{}
 	}
-	var err error
-	if err = e.p.x.x.Unmarshal(m); err != nil {
-		return nil, err
+
+	if len(m) > 0 && m[0] == 0x00 {
+		e.p.SetInfinity()
+		return m[1:], nil
+	} else if len(m) > 0 && m[0] != 0x01 {
+		return nil, errors.New("bn256: malformed point")
+	} else if len(m) < 1+4*numBytes {
+		return nil, errors.New("bn256: not enough data")
 	}
-	if err = e.p.x.y.Unmarshal(m[numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.x.Unmarshal(m[2*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.y.Unmarshal(m[3*numBytes:]); err != nil {
-		return nil, err
-	}
-	// Encode into Montgomery form and ensure it's on the curve
+
+	e.p.x.x.Unmarshal(m[1:])
+	e.p.x.y.Unmarshal(m[1+numBytes:])
+	e.p.y.x.Unmarshal(m[1+2*numBytes:])
+	e.p.y.y.Unmarshal(m[1+3*numBytes:])
 	montEncode(&e.p.x.x, &e.p.x.x)
 	montEncode(&e.p.x.y, &e.p.x.y)
 	montEncode(&e.p.y.x, &e.p.y.x)
@@ -295,7 +293,8 @@ func (e *G2) Unmarshal(m []byte) ([]byte, error) {
 			return nil, errors.New("bn256: malformed point")
 		}
 	}
-	return m[4*numBytes:], nil
+
+	return m[1+4*numBytes:], nil
 }
 
 // GT is an abstract cyclic group. The zero value is suitable for use as the
@@ -304,23 +303,20 @@ type GT struct {
 	p *gfP12
 }
 
+// RandomGT returns x and e(g₁, g₂)ˣ where x is a random, non-zero number read
+// from r.
+func RandomGT(r io.Reader) (*big.Int, *GT, error) {
+	k, err := randomK(r)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return k, new(GT).ScalarBaseMult(k), nil
+}
+
 // Pair calculates an Optimal Ate pairing.
 func Pair(g1 *G1, g2 *G2) *GT {
 	return &GT{optimalAte(g2.p, g1.p)}
-}
-
-// PairingCheck calculates the Optimal Ate pairing for a set of points.
-func PairingCheck(a []*G1, b []*G2) bool {
-	acc := new(gfP12)
-	acc.SetOne()
-
-	for i := 0; i < len(a); i++ {
-		if a[i].p.IsInfinity() || b[i].p.IsInfinity() {
-			continue
-		}
-		acc.Mul(acc, miller(b[i].p, a[i].p))
-	}
-	return finalExponentiation(acc).IsOne()
 }
 
 // Miller applies Miller's algorithm, which is a bilinear function from the
@@ -332,6 +328,16 @@ func Miller(g1 *G1, g2 *G2) *GT {
 
 func (g *GT) String() string {
 	return "bn256.GT" + g.p.String()
+}
+
+// ScalarBaseMult sets e to g*k where g is the generator of the group and then
+// returns out.
+func (e *GT) ScalarBaseMult(k *big.Int) *GT {
+	if e.p == nil {
+		e.p = &gfP12{}
+	}
+	e.p.Exp(gfP12Gen, k)
+	return e
 }
 
 // ScalarMult sets e to a*k and then returns e.
@@ -427,43 +433,18 @@ func (e *GT) Unmarshal(m []byte) ([]byte, error) {
 		e.p = &gfP12{}
 	}
 
-	var err error
-	if err = e.p.x.x.x.Unmarshal(m); err != nil {
-		return nil, err
-	}
-	if err = e.p.x.x.y.Unmarshal(m[numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.x.y.x.Unmarshal(m[2*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.x.y.y.Unmarshal(m[3*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.x.z.x.Unmarshal(m[4*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.x.z.y.Unmarshal(m[5*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.x.x.Unmarshal(m[6*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.x.y.Unmarshal(m[7*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.y.x.Unmarshal(m[8*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.y.y.Unmarshal(m[9*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.z.x.Unmarshal(m[10*numBytes:]); err != nil {
-		return nil, err
-	}
-	if err = e.p.y.z.y.Unmarshal(m[11*numBytes:]); err != nil {
-		return nil, err
-	}
+	e.p.x.x.x.Unmarshal(m)
+	e.p.x.x.y.Unmarshal(m[numBytes:])
+	e.p.x.y.x.Unmarshal(m[2*numBytes:])
+	e.p.x.y.y.Unmarshal(m[3*numBytes:])
+	e.p.x.z.x.Unmarshal(m[4*numBytes:])
+	e.p.x.z.y.Unmarshal(m[5*numBytes:])
+	e.p.y.x.x.Unmarshal(m[6*numBytes:])
+	e.p.y.x.y.Unmarshal(m[7*numBytes:])
+	e.p.y.y.x.Unmarshal(m[8*numBytes:])
+	e.p.y.y.y.Unmarshal(m[9*numBytes:])
+	e.p.y.z.x.Unmarshal(m[10*numBytes:])
+	e.p.y.z.y.Unmarshal(m[11*numBytes:])
 	montEncode(&e.p.x.x.x, &e.p.x.x.x)
 	montEncode(&e.p.x.x.y, &e.p.x.x.y)
 	montEncode(&e.p.x.y.x, &e.p.x.y.x)
