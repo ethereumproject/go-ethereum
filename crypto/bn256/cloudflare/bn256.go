@@ -460,3 +460,17 @@ func (e *GT) Unmarshal(m []byte) ([]byte, error) {
 
 	return m[12*numBytes:], nil
 }
+
+// PairingCheck calculates the Optimal Ate pairing for a set of points.
+func PairingCheck(a []*G1, b []*G2) bool {
+	acc := new(gfP12)
+	acc.SetOne()
+
+	for i := 0; i < len(a); i++ {
+		if a[i].p.IsInfinity() || b[i].p.IsInfinity() {
+			continue
+		}
+		acc.Mul(acc, miller(b[i].p, a[i].p))
+	}
+	return finalExponentiation(acc).IsOne()
+}
