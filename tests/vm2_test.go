@@ -42,6 +42,15 @@ func TestSputnikVMTests(t *testing.T) {
 	}
 }
 
+func TestEIP1283VMTests(t *testing.T) {
+	fns, _ := filepath.Glob(filepath.Join(vmTestDir, "SputnikVM", "vmEIP1283", "*"))
+	for _, fn := range fns {
+		if err := RunVmTest2(fn, VmSkipTests); err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 // RunVmTest2 reads input JSON and runs associated test.
 func RunVmTest2(p string, skipTests []string) error {
 	tests := make(map[string]VmTest2)
