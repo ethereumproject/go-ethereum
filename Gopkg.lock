@@ -174,12 +174,6 @@
   revision = "3681c2a912330352991ecdd642f257efe5b85518"
 
 [[projects]]
-  name = "github.com/pmezard/go-difflib"
-  packages = ["difflib"]
-  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
-  version = "v1.0.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
@@ -220,15 +214,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  name = "github.com/stretchr/testify"
-  packages = [
-    "assert",
-    "require"
-  ]
-  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
-  version = "v1.2.2"
-
-[[projects]]
   branch = "master"
   name = "github.com/syndtr/goleveldb"
   packages = [
@@ -251,6 +236,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
+    "bn256",
     "pbkdf2",
     "ripemd160",
     "scrypt"
@@ -272,11 +258,12 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = [
+    "cpu",
     "unix",
     "windows",
     "windows/registry"
   ]
-  revision = "83801418e1b59fb1880e363299581ee543af32ca"
+  revision = "8469e314837c2e2471561de5c47bbf8bfd0d9099"
 
 [[projects]]
   branch = "master"
@@ -349,6 +336,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cba934e30ac391c4e1f3f69951e33020e183d729fb2bf60a18c7708836b9acdc"
+  inputs-digest = "c5e1f837845ab957f1b606f953348f1bcdcd817f96533e4c166823aed2e6024e"
   solver-name = "gps-cdcl"
   solver-version = 1
