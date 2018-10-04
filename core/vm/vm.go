@@ -287,7 +287,8 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 			return nil, nil, err
 		}
 
-		var g, refundCounter *big.Int
+		var g *big.Int
+		refundCounter := big.NewInt(0)
 		newValue, storageLoc := stack.data[stack.len()-2], stack.data[stack.len()-1]
 
 		currentValue := statedb.GetState(contract.Address(), common.BigToHash(storageLoc))
