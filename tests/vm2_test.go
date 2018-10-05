@@ -48,11 +48,8 @@ func TestEIP1283VMTests(t *testing.T) {
 		if filepath.Ext(fn) != ".json" {
 			continue
 		}
-		fmt.Println("tzdybal:", fn)
 		if err := RunVmTest2(fn, VmSkipTests); err != nil {
 			t.Error(err)
-		} else {
-			t.Log("PASS:", fn)
 		}
 	}
 }

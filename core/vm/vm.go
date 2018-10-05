@@ -319,7 +319,6 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 				originalValue = currentValue
 			}
 			g, refundCounter = eip1283sstoreGas(originalValue.Big(), currentValue.Big(), newValue)
-			fmt.Println("tzdybal: g=", g, "refundCounter=", refundCounter)
 		}
 
 		gas.Set(g)
@@ -434,7 +433,6 @@ func RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (re
 }
 
 func eip1283sstoreGas(originalValue, currentValue, newValue *big.Int) (g, refundCounter *big.Int) {
-	fmt.Println("tzdybal:", "orig=", originalValue, "curr=", currentValue, "new=", newValue)
 	refundCounter = big.NewInt(0)
 	// EIP1283
 	// Set singleton original store value if SSTORE hasn't yet been called, or set local value if it has already been called.
@@ -444,7 +442,6 @@ func eip1283sstoreGas(originalValue, currentValue, newValue *big.Int) (g, refund
 	// If current value equals new value (noop), 200 gas deducted
 	if newValue.Cmp(currentValue) == 0 {
 		g = big.NewInt(200)
-		fmt.Println("tzdybal: 1. 200")
 	} else {
 		// If current value != new value
 		// If original value equals current value (this storage slot has not been changed by the current execution context)
@@ -453,30 +450,24 @@ func eip1283sstoreGas(originalValue, currentValue, newValue *big.Int) (g, refund
 		if originalValue.Cmp(currentValue) == 0 {
 			if originalValue.Cmp(common.Big0) == 0 {
 				g = big.NewInt(20000)
-				fmt.Println("tzdybal: 2. 20000")
 			} else {
 				g = big.NewInt(5000)
-				fmt.Println("tzdybal: 3. 5000")
 				if newValue.Cmp(common.Big0) == 0 {
 					refundCounter.Add(refundCounter, big.NewInt(15000))
-					fmt.Println("tzdybal: 4. ref +15000")
 				}
 			}
 		} else {
 			// If original value does not equal current value (this storage slot is dirty), 200 gas is deducted. Apply both of the following clauses.
 			g = big.NewInt(200)
-			fmt.Println("tzdybal: 5. 200")
 			// 1. If original value is not 0
 			// If current value is 0 (also means that new value is not 0), remove 15000 gas from refund counter. We can prove that refund counter will never go below 0.
 			// If new value is 0 (also means that current value is not 0), add 15000 gas to refund counter.
 			if originalValue.Cmp(common.Big0) != 0 {
 				if currentValue.Cmp(common.Big0) == 0 {
 					refundCounter.Sub(refundCounter, big.NewInt(15000))
-					fmt.Println("tzdybal: 6. ref -15000")
 				}
 				if newValue.Cmp(common.Big0) == 0 {
 					refundCounter.Add(refundCounter, big.NewInt(15000))
-					fmt.Println("tzdybal: 7. ref +15000")
 				}
 			}
 			// 2. If original value equals new value (this storage slot is reset)
@@ -485,10 +476,8 @@ func eip1283sstoreGas(originalValue, currentValue, newValue *big.Int) (g, refund
 			if originalValue.Cmp(newValue) == 0 {
 				if originalValue.Cmp(common.Big0) == 0 {
 					refundCounter.Add(refundCounter, big.NewInt(19800))
-					fmt.Println("tzdybal: 8. ref +19800")
 				} else {
 					refundCounter.Add(refundCounter, big.NewInt(4800))
-					fmt.Println("tzdybal: 9. ref +4800")
 				}
 			}
 		}
