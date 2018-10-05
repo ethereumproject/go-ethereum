@@ -12,19 +12,19 @@ type twistPoint struct {
 }
 
 var twistB = &gfP2{
-	gfP{0x75046774386b8d71, 0x5bd0854a46d36cf8, 0x664327a1d41c8414, 0x96c9abb932eeb2f},
-	gfP{0xb94f760fb4c5ee14, 0xdae9f8f24c3b6eb4, 0x77a675d2e52f4fe4, 0x736f31b09116c66b},
+	gfP{0x38e7ecccd1dcff67, 0x65f0b37d93ce0d3e, 0xd749d0dd22ac00aa, 0x0141b9ce4a688d4d},
+	gfP{0x3bf938e377b802a8, 0x020b1b273633535d, 0x26b7edf049755260, 0x2514c6324384a86d},
 }
 
 // twistGen is the generator of group G₂.
 var twistGen = &twistPoint{
 	gfP2{
-		gfP{0x402c4ab7139e1404, 0xce1c368a183d85a4, 0xd67cf9a6cb8d3983, 0x3cf246bbc2a9fbe8},
-		gfP{0x88f9f11da7cdc184, 0x18293f95d69509d3, 0xb5ce0c55a735d5a1, 0x15134189bfd45a0},
+		gfP{0xafb4737da84c6140, 0x6043dd5a5802d8c4, 0x09e950fc52a02f86, 0x14fef0833aea7b6b},
+		gfP{0x8e83b5d102bc2026, 0xdceb1935497b0172, 0xfbb8264797811adf, 0x19573841af96503b},
 	},
 	gfP2{
-		gfP{0xbfac7d731e9e87a2, 0xa50bb8007962e441, 0xafe910a4e8270556, 0x5075c5429d69159a},
-		gfP{0xc2e07c1463ea9e56, 0xee4442052072ebd2, 0x561a519486036937, 0x5bd9394cc0d2cce},
+		gfP{0x64095b56c71856ee, 0xdc57f922327d3cbb, 0x55f935be33351076, 0x0da4a0e693fd6482},
+		gfP{0x619dfa9d886be9f6, 0xfe7fd297f59e9b78, 0xff9e1a62231b7dfe, 0x28fd7eebae9e4206},
 	},
 	gfP2{*newGFp(0), *newGFp(1)},
 	gfP2{*newGFp(0), *newGFp(1)},
@@ -54,7 +54,12 @@ func (c *twistPoint) IsOnCurve() bool {
 	y2.Square(&c.y)
 	x3.Square(&c.x).Mul(x3, &c.x).Add(x3, twistB)
 
-	return *y2 == *x3
+	if *y2 != *x3 {
+		return false
+	}
+	cneg := &twistPoint{}
+	cneg.Mul(c, Order)
+	return cneg.z.IsZero()
 }
 
 func (c *twistPoint) SetInfinity() {
