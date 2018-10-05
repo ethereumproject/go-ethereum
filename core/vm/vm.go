@@ -319,7 +319,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 				originalValue = currentValue
 			}
 			g, refundCounter = eip1283sstoreGas(originalValue.Big(), currentValue.Big(), newValue)
-			fmt.Println("tzdybal: g=", g, "refundCounter=", refundCounter, "\n")
+			fmt.Println("tzdybal: g=", g, "refundCounter=", refundCounter)
 		}
 
 		gas.Set(g)
