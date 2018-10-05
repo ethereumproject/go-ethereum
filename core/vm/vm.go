@@ -87,7 +87,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	var (
 		caller            = contract.caller
 		code              = contract.Code
-		originalSStoreMap = make(map[*big.Int]common.Hash) // stores "original" values from SSTORE if called, for use in computing EIP1283
+		originalSStoreMap = make(map[common.Address]common.Hash) // stores "original" values from SSTORE if called, for use in computing EIP1283
 		instrCount        = 0
 
 		op      OpCode         // current opcode
@@ -215,7 +215,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 // calculateGasAndSize calculates the required given the opcode and stack items calculates the new memorysize for
 // the operation. This does not reduce gas or resizes the memory.
-func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack, originalSStoreMap map[*big.Int]common.Hash) (*big.Int, *big.Int, error) {
+func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract, caller ContractRef, op OpCode, statedb Database, mem *Memory, stack *stack, originalSStoreMap map[common.Address]common.Hash) (*big.Int, *big.Int, error) {
 	var (
 		gas        = new(big.Int)
 		newMemSize = new(big.Int)
@@ -310,60 +310,16 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 				g = big.NewInt(5000)
 			}
 		} else {
-			// EIP1283
-			// Set singleton original store value if SSTORE hasn't yet been called, or set local value if it has already been called.
-			// PTAL: It seems devastatingly ironic that I'm now using a "dirty storage map" to keep track of original values.
-			var originalSStoreValue = currentValue
-			if v, ok := originalSStoreMap[storageLoc]; ok {
-				originalSStoreValue = v
+			var originalValue common.Hash
+			loc := common.BigToAddress(storageLoc)
+			if v, ok := originalSStoreMap[loc]; ok {
+				originalValue = v
 			} else {
-				originalSStoreMap[storageLoc] = currentValue
+				originalSStoreMap[loc] = currentValue
+				originalValue = currentValue
 			}
-
-			// EIP1283
-			// If current value equals new value (noop), 200 gas deducted
-			if common.BigToHash(newValue) == currentValue {
-				g = big.NewInt(200)
-			} else {
-				// If current value != new value
-				// If original value equals current value (this storage slot has not been changed by the current execution context)
-				// If original value is 0, 20000 gas is deducted.
-				// 	Otherwise, 5000 gas is deducted. If new value is 0, add 15000 gas to refund counter.
-				if originalSStoreValue == currentValue {
-					if common.EmptyHash(originalSStoreValue) {
-						g = big.NewInt(20000)
-					} else {
-						g = big.NewInt(5000)
-						if newValue.Cmp(common.Big0) == 0 {
-							refundCounter.Add(refundCounter, big.NewInt(15000))
-						}
-					}
-				} else {
-					// If original value does not equal current value (this storage slot is dirty), 200 gas is deducted. Apply both of the following clauses.
-					g = big.NewInt(200)
-					// 1. If original value is not 0
-					// If current value is 0 (also means that new value is not 0), remove 15000 gas from refund counter. We can prove that refund counter will never go below 0.
-					// If new value is 0 (also means that current value is not 0), add 15000 gas to refund counter.
-					if !common.EmptyHash(originalSStoreValue) {
-						if common.EmptyHash(currentValue) {
-							refundCounter.Sub(refundCounter, big.NewInt(15000))
-						}
-						if newValue.Cmp(common.Big0) == 0 {
-							refundCounter.Add(refundCounter, big.NewInt(15000))
-						}
-					}
-					// 2. If original value equals new value (this storage slot is reset)
-					// If original value is 0, add 19800 gas to refund counter.
-					// Otherwise, add 4800 gas to refund counter.
-					if originalSStoreValue.Big().Cmp(newValue) == 0 {
-						if common.EmptyHash(originalSStoreValue) {
-							refundCounter.Add(refundCounter, big.NewInt(19800))
-						} else {
-							refundCounter.Add(refundCounter, big.NewInt(4800))
-						}
-					}
-				}
-			}
+			g, refundCounter = eip1283sstoreGas(originalValue.Big(), currentValue.Big(), newValue)
+			fmt.Println("tzdybal: g=", g, "refundCounter=", refundCounter, "\n")
 		}
 
 		gas.Set(g)
@@ -475,4 +431,67 @@ func RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (re
 	} else {
 		return nil, OutOfGasError
 	}
+}
+
+func eip1283sstoreGas(originalValue, currentValue, newValue *big.Int) (g, refundCounter *big.Int) {
+	fmt.Println("tzdybal:", "orig=", originalValue, "curr=", currentValue, "new=", newValue)
+	refundCounter = big.NewInt(0)
+	// EIP1283
+	// Set singleton original store value if SSTORE hasn't yet been called, or set local value if it has already been called.
+	// PTAL: It seems devastatingly ironic that I'm now using a "dirty storage map" to keep track of original values.
+
+	// EIP1283
+	// If current value equals new value (noop), 200 gas deducted
+	if newValue.Cmp(currentValue) == 0 {
+		g = big.NewInt(200)
+		fmt.Println("tzdybal: 1. 200")
+	} else {
+		// If current value != new value
+		// If original value equals current value (this storage slot has not been changed by the current execution context)
+		// If original value is 0, 20000 gas is deducted.
+		// 	Otherwise, 5000 gas is deducted. If new value is 0, add 15000 gas to refund counter.
+		if originalValue.Cmp(currentValue) == 0 {
+			if originalValue.Cmp(common.Big0) == 0 {
+				g = big.NewInt(20000)
+				fmt.Println("tzdybal: 2. 20000")
+			} else {
+				g = big.NewInt(5000)
+				fmt.Println("tzdybal: 3. 5000")
+				if newValue.Cmp(common.Big0) == 0 {
+					refundCounter.Add(refundCounter, big.NewInt(15000))
+					fmt.Println("tzdybal: 4. ref +15000")
+				}
+			}
+		} else {
+			// If original value does not equal current value (this storage slot is dirty), 200 gas is deducted. Apply both of the following clauses.
+			g = big.NewInt(200)
+			fmt.Println("tzdybal: 5. 200")
+			// 1. If original value is not 0
+			// If current value is 0 (also means that new value is not 0), remove 15000 gas from refund counter. We can prove that refund counter will never go below 0.
+			// If new value is 0 (also means that current value is not 0), add 15000 gas to refund counter.
+			if originalValue.Cmp(common.Big0) != 0 {
+				if currentValue.Cmp(common.Big0) == 0 {
+					refundCounter.Sub(refundCounter, big.NewInt(15000))
+					fmt.Println("tzdybal: 6. ref -15000")
+				}
+				if newValue.Cmp(common.Big0) == 0 {
+					refundCounter.Add(refundCounter, big.NewInt(15000))
+					fmt.Println("tzdybal: 7. ref +15000")
+				}
+			}
+			// 2. If original value equals new value (this storage slot is reset)
+			// If original value is 0, add 19800 gas to refund counter.
+			// Otherwise, add 4800 gas to refund counter.
+			if originalValue.Cmp(newValue) == 0 {
+				if originalValue.Cmp(common.Big0) == 0 {
+					refundCounter.Add(refundCounter, big.NewInt(19800))
+					fmt.Println("tzdybal: 8. ref +19800")
+				} else {
+					refundCounter.Add(refundCounter, big.NewInt(4800))
+					fmt.Println("tzdybal: 9. ref +4800")
+				}
+			}
+		}
+	}
+	return
 }
