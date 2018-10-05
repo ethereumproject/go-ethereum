@@ -97,17 +97,23 @@ func (e *gfP2) MulScalar(a *gfP2, b *gfP) *gfP2 {
 	return e
 }
 
-// MulXi sets e=ξa where ξ=i+3 and then returns e.
+// MulXi sets e=ξa where ξ=i+9 and then returns e.
 func (e *gfP2) MulXi(a *gfP2) *gfP2 {
-	// (xi+y)(i+3) = (3x+y)i+(3y-x)
+	// (xi+y)(i+9) = (9x+y)i+(9y-x)
 	tx := &gfP{}
 	gfpAdd(tx, &a.x, &a.x)
+	gfpAdd(tx, tx, tx)
+	gfpAdd(tx, tx, tx)
 	gfpAdd(tx, tx, &a.x)
+
 	gfpAdd(tx, tx, &a.y)
 
 	ty := &gfP{}
 	gfpAdd(ty, &a.y, &a.y)
+	gfpAdd(ty, ty, ty)
+	gfpAdd(ty, ty, ty)
 	gfpAdd(ty, ty, &a.y)
+
 	gfpSub(ty, ty, &a.x)
 
 	e.x.Set(tx)
