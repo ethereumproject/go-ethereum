@@ -331,6 +331,14 @@ func (c *ChainConfig) IsECIP1045C(num *big.Int) bool {
 	return false
 }
 
+func (c *ChainConfig) IsEIP1283(num *big.Int) bool {
+	if fork := c.ForkByName("ECIP1045C"); fork != nil && fork.Block != nil && num != nil {
+		// TODO: use fork features?
+		return num.Cmp(fork.Block) >= 0
+	}
+	return false
+}
+
 // IsExplosion returns whether num is either equal to the explosion block or greater.
 func (c *ChainConfig) IsExplosion(num *big.Int) bool {
 	feat, fork, configured := c.GetFeature(num, "difficulty")

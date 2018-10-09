@@ -293,7 +293,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 
 		currentValue := statedb.GetState(contract.Address(), common.BigToHash(storageLoc))
 
-		if !env.RuleSet().IsECIP1045C(env.BlockNumber()) {
+		if !env.RuleSet().IsEIP1283(env.BlockNumber()) {
 			// Not-EIP1283
 			// This checks for 3 scenario's and calculates gas accordingly
 			// 1. From a zero-value address to a non-zero value         (NEW VALUE)
