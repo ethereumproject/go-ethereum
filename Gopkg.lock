@@ -255,7 +255,7 @@
     "ripemd160",
     "scrypt"
   ]
-  revision = "d585fd2cc9195196078f516b69daff6744ef5e84"
+  revision = "e3636079e1a4c1f337f212cc5cd2aca108f6c900"
 
 [[projects]]
   branch = "master"
@@ -272,11 +272,12 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = [
+    "cpu",
     "unix",
     "windows",
     "windows/registry"
   ]
-  revision = "83801418e1b59fb1880e363299581ee543af32ca"
+  revision = "8469e314837c2e2471561de5c47bbf8bfd0d9099"
 
 [[projects]]
   branch = "master"
@@ -349,6 +350,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cba934e30ac391c4e1f3f69951e33020e183d729fb2bf60a18c7708836b9acdc"
+  inputs-digest = "b4fdc23585dc19e7b3194893254191677ae87ce7b6044c470d571dbd7fa0e56a"
   solver-name = "gps-cdcl"
   solver-version = 1
