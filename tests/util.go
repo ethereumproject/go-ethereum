@@ -153,6 +153,7 @@ type RuleSet struct {
 	ExplosionBlock           *big.Int
 	ECIP1045BBlock           *big.Int
 	ECIP1045CBlock           *big.Int
+	EIP1283Block             *big.Int // this feature is normally included in ECIP1045C, but separated here for testing purposes
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
@@ -189,6 +190,13 @@ func (r RuleSet) IsECIP1045C(n *big.Int) bool {
 		return false
 	}
 	return n.Cmp(r.ECIP1045CBlock) >= 0
+}
+
+func (r RuleSet) IsEIP1283(n *big.Int) bool {
+	if n == nil || r.EIP1283Block == nil {
+		return false
+	}
+	return n.Cmp(r.EIP1283Block) >= 0
 }
 
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {

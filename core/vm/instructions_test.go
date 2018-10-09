@@ -618,6 +618,14 @@ func (r rs) IsECIP1045C(n *big.Int) bool {
 	return n.Cmp(r.ECIP1045CBlock) >= 0
 }
 
+func (r rs) IsEIP1283(n *big.Int) bool {
+	if n == nil || r.ECIP1045CBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045CBlock) >= 0
+
+}
+
 func (r rs) GasTable(num *big.Int) *GasTable {
 	if r.IsECIP1045C(num) {
 		return &GasTable{}
