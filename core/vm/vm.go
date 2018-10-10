@@ -482,9 +482,5 @@ func eip1283sstoreGas(originalValue, currentValue, newValue *big.Int) (g, refund
 			}
 		}
 	}
-	// This should never happen, but just for safety.
-	if refundCounter.Sign() < 0 {
-		refundCounter.Set(big.NewInt(0))
-	}
 	return
 }
