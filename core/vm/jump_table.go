@@ -47,7 +47,7 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		}
 		jumpTable[RETURNDATACOPY] = jumpPtr{
 			// This is called manually during EVM.Run in order to do error handling in case return data size is out of bounds.
-			// fn:    opReturnDataCopy,
+			fn:    nil,
 			valid: true,
 		}
 		jumpTable[REVERT] = jumpPtr{
