@@ -603,12 +603,6 @@ func (r rs) IsDiehard(n *big.Int) bool {
 	}
 	return n.Cmp(r.DiehardBlock) >= 0
 }
-func (r rs) IsEIP658(n *big.Int) bool {
-	if n == nil || r.ECIP1045BBlock == nil {
-		return false
-	}
-	return n.Cmp(r.ECIP1045BBlock) >= 0
-}
 
 func (r rs) IsEIP140(n *big.Int) bool {
 	if n == nil || r.ECIP1045BBlock == nil {

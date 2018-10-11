@@ -25,10 +25,6 @@ type ruleSet struct {
 	hs *big.Int
 }
 
-func (r ruleSet) IsEIP658(n *big.Int) bool {
-	return n.Cmp(r.hs) >= 0
-}
-
 func (r ruleSet) IsEIP140(n *big.Int) bool {
 	return n.Cmp(r.hs) >= 0
 }

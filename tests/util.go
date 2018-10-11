@@ -177,13 +177,6 @@ func (r RuleSet) IsDiehard(n *big.Int) bool {
 	return n.Cmp(r.DiehardBlock) >= 0
 }
 
-func (r RuleSet) IsEIP658(n *big.Int) bool {
-	if n == nil || r.ECIP1045BBlock == nil {
-		return false
-	}
-	return n.Cmp(r.ECIP1045BBlock) >= 0
-}
-
 func (r RuleSet) IsEIP140(n *big.Int) bool {
 	if n == nil || r.ECIP1045BBlock == nil {
 		return false

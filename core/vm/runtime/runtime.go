@@ -32,9 +32,6 @@ import (
 type ruleSet struct{}
 
 func (ruleSet) IsHomestead(*big.Int) bool { return true }
-func (ruleSet) IsEIP658(*big.Int) bool {
-	return true
-}
 
 func (ruleSet) IsEIP140(*big.Int) bool {
 	return true

@@ -28,7 +28,6 @@ type RuleSet interface {
 	IsHomestead(*big.Int) bool
 
 	// ETH: Byzantium
-	IsEIP658(*big.Int) bool // Receipt status code rlp
 	IsEIP140(*big.Int) bool // REVERT
 	IsEIP211(*big.Int) bool // RETURNDATASIZE, RETURNDATACOPY
 	IsEIP214(*big.Int) bool // STATICCALL
