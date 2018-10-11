@@ -316,80 +316,57 @@ func (c *ChainConfig) IsDiehard(num *big.Int) bool {
 }
 
 func (c *ChainConfig) IsEIP658(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP658")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP140(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP140")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP211(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP211")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP214(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP214")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP198(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP198")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP212(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP212")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP213(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045B"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP213")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP215(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045C"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP215")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP1014(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045C"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP1014")
+	return configured
 }
 
 func (c *ChainConfig) IsEIP1052(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045C"); fork != nil && fork.Block != nil && num != nil {
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	return c.GasTable(num) == DefaultEIP1052GasTable
 }
+
 func (c *ChainConfig) IsEIP1283(num *big.Int) bool {
-	if fork := c.ForkByName("ECIP1045C"); fork != nil && fork.Block != nil && num != nil {
-		// TODO: use fork features?
-		return num.Cmp(fork.Block) >= 0
-	}
-	return false
+	_, _, configured := c.GetFeature(num, "EIP1283")
+	return configured
 }
 
 // IsExplosion returns whether num is either equal to the explosion block or greater.
@@ -539,7 +516,7 @@ func (c *ChainConfig) GasTable(num *big.Int) *vm.GasTable {
 		return DefaultGasRepriceGasTable
 	case "eip160":
 		return DefaultDiehardGasTable
-	case "ecip1045c":
+	case "EIP1052":
 		return DefaultEIP1052GasTable
 	default:
 		panic(fmt.Errorf("Unsupported gastable value '%v' at block: %v", name, num))

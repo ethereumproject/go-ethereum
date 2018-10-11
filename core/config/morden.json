@@ -99,22 +99,47 @@
                 ]
             },
             {
-                "name": "ECIP1045B",
-                "block": 3000000
-            },
-            {
-                "name": "ECIP1045C",
+                "name": "ECIP1045",
                 "block": 3000000,
                 "features": [
                     {
+                        "id": "EIP658"
+                    },
+                    {
+                        "id": "EIP140"
+                    },
+                    {
+                        "id": "EIP211"
+                    },
+                    {
+                        "id": "EIP214"
+                    },
+                    {
+                        "id": "EIP198"
+                    },
+                    {
+                        "id": "EIP212"
+                    },
+                    {
+                        "id": "EIP213"
+                    },
+                    {
+                        "id": "EIP215"
+                    },
+                    {
+                        "id": "EIP1014"
+                    },
+                    {
                         "id": "gastable",
                         "options": {
-                            "type": "ecip1045c"
+                            "type": "EIP1052"
                         }
+                    },
+                    {
+                        "id": "EIP1283"
                     }
                 ]
             }
-
         ],
         "badHashes": [
             {

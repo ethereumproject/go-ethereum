@@ -97,18 +97,44 @@
                 ]
             },
             {
-                "name": "ECIP1045B",
-                "block": 6900000
-            },
-            {
-                "name": "ECIP1045C",
-                "block": 6900000,
+                "name": "ECIP1045",
+                "block": 7100000,
                 "features": [
+                    {
+                        "id": "EIP658"
+                    },
+                    {
+                        "id": "EIP140"
+                    },
+                    {
+                        "id": "EIP211"
+                    },
+                    {
+                        "id": "EIP214"
+                    },
+                    {
+                        "id": "EIP198"
+                    },
+                    {
+                        "id": "EIP212"
+                    },
+                    {
+                        "id": "EIP213"
+                    },
+                    {
+                        "id": "EIP215"
+                    },
+                    {
+                        "id": "EIP1014"
+                    },
                     {
                         "id": "gastable",
                         "options": {
-                            "type": "ecip1045c"
+                            "type": "EIP1052"
                         }
+                    },
+                    {
+                        "id": "EIP1283"
                     }
                 ]
             }
@@ -120,8 +146,8 @@
             }
         ]
     },
-	"include": [
-		"mainnet_genesis.json",
-		"mainnet_bootnodes.json"
-	]
+    "include": [
+        "mainnet_genesis.json",
+        "mainnet_bootnodes.json"
+    ]
 }
