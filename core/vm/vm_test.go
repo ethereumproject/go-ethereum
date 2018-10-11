@@ -26,6 +26,9 @@ func (c eip1283TestCase) String() string {
 	return fmt.Sprintf("i=%d code=%s gas=%v refund=%v original=%v iters=%v", c.index, c.code, c.wantGas, c.wantRefund, c.originalV, c.iters)
 }
 
+// TestEIP1283SStoreGas reads the specified test cases from the table in the raw EIP1283 markdown document
+// and runs them as test cases. By reading directly from the EIP document, we're able to sidestep potential
+// human errors in test implementation (read here, write there - human challenge).
 func TestEIP1283SStoreGas(t *testing.T) {
 	cases := []eip1283TestCase{}
 	eipSpecPath, err := filepath.Abs("../../tests/files/VMTests/ECIP1045/vmEIP1283/eip-1283.md")
