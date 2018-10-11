@@ -177,15 +177,70 @@ func (r RuleSet) IsDiehard(n *big.Int) bool {
 	return n.Cmp(r.DiehardBlock) >= 0
 }
 
-// TODO(whilei): fix this; the logic should not save a nil block -> 0; it should return 'unset' logic instead of 'default' logic
-func (r RuleSet) IsECIP1045B(n *big.Int) bool {
+func (r RuleSet) IsEIP658(n *big.Int) bool {
 	if n == nil || r.ECIP1045BBlock == nil {
 		return false
 	}
 	return n.Cmp(r.ECIP1045BBlock) >= 0
 }
 
-func (r RuleSet) IsECIP1045C(n *big.Int) bool {
+func (r RuleSet) IsEIP140(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r RuleSet) IsEIP211(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r RuleSet) IsEIP214(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r RuleSet) IsEIP198(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r RuleSet) IsEIP212(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r RuleSet) IsEIP213(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r RuleSet) IsEIP215(n *big.Int) bool {
+	if n == nil || r.ECIP1045CBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045CBlock) >= 0
+}
+
+func (r RuleSet) IsEIP1014(n *big.Int) bool {
+	if n == nil || r.ECIP1045CBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045CBlock) >= 0
+}
+
+func (r RuleSet) IsEIP1052(n *big.Int) bool {
 	if n == nil || r.ECIP1045CBlock == nil {
 		return false
 	}
@@ -200,8 +255,8 @@ func (r RuleSet) IsEIP1283(n *big.Int) bool {
 }
 
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
-	if r.IsECIP1045C(num) {
-		return core.DefaultECIP1045CGasTable
+	if r.IsEIP1052(num) {
+		return core.DefaultEIP1052GasTable
 	} else if r.IsDiehard(num) {
 		return core.DefaultDiehardGasTable
 	} else if r.IsEIP150(num) {

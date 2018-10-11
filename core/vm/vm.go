@@ -66,8 +66,16 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 	if contract.CodeAddr != nil {
 		precompiles := PrecompiledHomestead
-		if evm.env.RuleSet().IsECIP1045B(evm.env.BlockNumber()) {
-			precompiles = PrecompiledContractsECIP1045B
+		rs, bn := evm.env.RuleSet(), evm.env.BlockNumber()
+		if rs.IsEIP198(bn) {
+			precompiles[bn256modExpAddr] = bn256modExpAcc
+		}
+		if rs.IsEIP213(bn) {
+			precompiles[bn256scalarMulAddr] = bn256scalarMulAcc
+			precompiles[bn256addAddr] = bn256addAcc
+		}
+		if rs.IsEIP212(bn) {
+			precompiles[bn256pairingAddr] = bn256pairingAcc
 		}
 		if p := precompiles[contract.CodeAddr.Str()]; p != nil {
 			return RunPrecompiled(p, input, contract)
@@ -133,7 +141,7 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		// for a call operation is the value. Transfering value from one
 		// account to the others means the state is modified and should also
 		// return with an error.
-		checkStateMod := evm.env.RuleSet().IsECIP1045B(evm.env.BlockNumber()) && evm.env.IsReadOnly()
+		checkStateMod := evm.env.RuleSet().IsEIP214(evm.env.BlockNumber()) && evm.env.IsReadOnly()
 		checkStateMod = checkStateMod && (op.IsStateModifying() || op == CALL && stack.data[stack.len()-2-1].BitLen() > 0)
 		if checkStateMod {
 			return nil, errWriteProtection

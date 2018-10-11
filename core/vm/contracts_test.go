@@ -360,7 +360,13 @@ func (testContractRef) ForEachStorage(callback func(key, value common.Hash) bool
 }
 
 func testPrecompiled(addr string, test precompiledTest, t *testing.T) {
-	p := PrecompiledContractsECIP1045B[common.HexToAddress(addr).Str()]
+	pcs := PrecompiledContracts()
+	pcs[bn256modExpAddr] = bn256modExpAcc
+	pcs[bn256addAddr] = bn256addAcc
+	pcs[bn256scalarMulAddr] = bn256scalarMulAcc
+	pcs[bn256pairingAddr] = bn256pairingAcc
+
+	p := pcs[common.HexToAddress(addr).Str()]
 	in := common.Hex2Bytes(test.input)
 
 	contract := NewContract(testContractRef(common.HexToAddress("1337")),
@@ -378,7 +384,14 @@ func benchmarkPrecompiled(addr string, test precompiledTest, bench *testing.B) {
 	if test.noBenchmark {
 		return
 	}
-	p := PrecompiledContractsECIP1045B[common.HexToAddress(addr).Str()]
+
+	pcs := PrecompiledContracts()
+	pcs[bn256modExpAddr] = bn256modExpAcc
+	pcs[bn256addAddr] = bn256addAcc
+	pcs[bn256scalarMulAddr] = bn256scalarMulAcc
+	pcs[bn256pairingAddr] = bn256pairingAcc
+
+	p := pcs[common.HexToAddress(addr).Str()]
 	in := common.Hex2Bytes(test.input)
 	reqGas := p.Gas(in)
 	contract := NewContract(testContractRef(common.HexToAddress("1337")),

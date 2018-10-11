@@ -603,15 +603,70 @@ func (r rs) IsDiehard(n *big.Int) bool {
 	}
 	return n.Cmp(r.DiehardBlock) >= 0
 }
-
-func (r rs) IsECIP1045B(n *big.Int) bool {
+func (r rs) IsEIP658(n *big.Int) bool {
 	if n == nil || r.ECIP1045BBlock == nil {
 		return false
 	}
 	return n.Cmp(r.ECIP1045BBlock) >= 0
 }
 
-func (r rs) IsECIP1045C(n *big.Int) bool {
+func (r rs) IsEIP140(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r rs) IsEIP211(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r rs) IsEIP214(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r rs) IsEIP198(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r rs) IsEIP212(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r rs) IsEIP213(n *big.Int) bool {
+	if n == nil || r.ECIP1045BBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045BBlock) >= 0
+}
+
+func (r rs) IsEIP215(n *big.Int) bool {
+	if n == nil || r.ECIP1045CBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045CBlock) >= 0
+}
+
+func (r rs) IsEIP1014(n *big.Int) bool {
+	if n == nil || r.ECIP1045CBlock == nil {
+		return false
+	}
+	return n.Cmp(r.ECIP1045CBlock) >= 0
+}
+
+func (r rs) IsEIP1052(n *big.Int) bool {
 	if n == nil || r.ECIP1045CBlock == nil {
 		return false
 	}
@@ -627,7 +682,7 @@ func (r rs) IsEIP1283(n *big.Int) bool {
 }
 
 func (r rs) GasTable(num *big.Int) *GasTable {
-	if r.IsECIP1045C(num) {
+	if r.IsEIP1052(num) {
 		return &GasTable{}
 	} else if r.IsDiehard(num) {
 		return &GasTable{}

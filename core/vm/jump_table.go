@@ -36,11 +36,14 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			valid: true,
 		}
 	}
-	if ruleset.IsECIP1045B(blockNumber) {
-		jumpTable[STATICCALL] = jumpPtr{
-			fn:    opStaticCall,
+	if ruleset.IsEIP140(blockNumber) {
+		jumpTable[REVERT] = jumpPtr{
+			// This is called manually during EVM.Run since implicity halt (akin to RETURN).
+			fn:    nil,
 			valid: true,
 		}
+	}
+	if ruleset.IsEIP211(blockNumber) {
 		jumpTable[RETURNDATASIZE] = jumpPtr{
 			fn:    opReturnDataSize,
 			valid: true,
@@ -50,13 +53,14 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			fn:    nil,
 			valid: true,
 		}
-		jumpTable[REVERT] = jumpPtr{
-			// This is called manually during EVM.Run since implicity halt (akin to RETURN).
-			fn:    nil,
+	}
+	if ruleset.IsEIP214(blockNumber) {
+		jumpTable[STATICCALL] = jumpPtr{
+			fn:    opStaticCall,
 			valid: true,
 		}
 	}
-	if ruleset.IsECIP1045C(blockNumber) {
+	if ruleset.IsEIP215(blockNumber) {
 		jumpTable[SHL] = jumpPtr{
 			fn:    opSHL,
 			valid: true,
@@ -69,10 +73,14 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 			fn:    opSAR,
 			valid: true,
 		}
+	}
+	if ruleset.IsEIP1014(blockNumber) {
 		jumpTable[CREATE2] = jumpPtr{
 			fn:    opCreate2,
 			valid: true,
 		}
+	}
+	if ruleset.IsEIP1052(blockNumber) {
 		jumpTable[EXTCODEHASH] = jumpPtr{
 			fn:    opExtCodeHash,
 			valid: true,

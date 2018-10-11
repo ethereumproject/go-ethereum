@@ -26,9 +26,22 @@ import (
 // execution of the EVM instructions (e.g. whether it's homestead)
 type RuleSet interface {
 	IsHomestead(*big.Int) bool
-	IsECIP1045B(*big.Int) bool
-	IsECIP1045C(*big.Int) bool
-	IsEIP1283(*big.Int) bool
+
+	// ETH: Byzantium
+	IsEIP658(*big.Int) bool // Receipt status code rlp
+	IsEIP140(*big.Int) bool // REVERT
+	IsEIP211(*big.Int) bool // RETURNDATASIZE, RETURNDATACOPY
+	IsEIP214(*big.Int) bool // STATICCALL
+	IsEIP198(*big.Int) bool // Precomp bn256 modexp
+	IsEIP212(*big.Int) bool // Precomp bn256 elliptic curve pairing
+	IsEIP213(*big.Int) bool // Precomp bn256 elliptic curve add + mul
+
+	// ETH: Constantinople
+	IsEIP215(*big.Int) bool  // SHR, SHL, SAR (bitwise shifts)
+	IsEIP1014(*big.Int) bool // CREATE2
+	IsEIP1052(*big.Int) bool // EXTCODEHASH
+	IsEIP1283(*big.Int) bool // SSTORE gas metering
+
 	// GasTable returns the gas prices for this phase, which is based on
 	// block number passed in.
 	GasTable(*big.Int) *GasTable

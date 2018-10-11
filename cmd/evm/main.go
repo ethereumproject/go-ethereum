@@ -231,13 +231,52 @@ type ruleSet struct{}
 
 // FIXME these should NOT always return true.
 func (ruleSet) IsHomestead(*big.Int) bool { return true }
-func (ruleSet) IsECIP1045B(*big.Int) bool { return true }
-func (ruleSet) IsECIP1045C(*big.Int) bool { return true }
-func (ruleSet) IsEIP1283(*big.Int) bool   { return true }
+func (ruleSet) IsEIP658(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP140(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP211(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP214(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP198(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP212(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP213(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP215(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP1014(*big.Int) bool {
+	return true
+}
+
+func (ruleSet) IsEIP1052(*big.Int) bool {
+	return true
+}
+func (ruleSet) IsEIP1283(*big.Int) bool { return true }
+
 func (ruleSet) GasTable(*big.Int) *vm.GasTable {
 	return &vm.GasTable{
 		ExtcodeSize:     big.NewInt(700),
 		ExtcodeCopy:     big.NewInt(700),
+		ExtcodeHash:     big.NewInt(400),
 		Balance:         big.NewInt(400),
 		SLoad:           big.NewInt(200),
 		Calls:           big.NewInt(700),

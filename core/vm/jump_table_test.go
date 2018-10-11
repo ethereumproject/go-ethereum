@@ -25,15 +25,54 @@ type ruleSet struct {
 	hs *big.Int
 }
 
-func (r ruleSet) IsHomestead(n *big.Int) bool { return n.Cmp(r.hs) >= 0 }
-func (r ruleSet) IsECIP1045B(n *big.Int) bool { return n.Cmp(r.hs) >= 0 }
-func (r ruleSet) IsECIP1045C(n *big.Int) bool { return n.Cmp(r.hs) >= 0 }
+func (r ruleSet) IsEIP658(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP140(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP211(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP214(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP198(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP212(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP213(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP215(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP1014(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
+func (r ruleSet) IsEIP1052(n *big.Int) bool {
+	return n.Cmp(r.hs) >= 0
+}
+
 func (r ruleSet) IsEIP1283(n *big.Int) bool   { return n.Cmp(r.hs) >= 0 }
+func (r ruleSet) IsHomestead(n *big.Int) bool { return n.Cmp(r.hs) >= 0 }
 
 func (r ruleSet) GasTable(*big.Int) *GasTable {
 	return &GasTable{
 		ExtcodeSize: big.NewInt(20),
 		ExtcodeCopy: big.NewInt(20),
+		ExtcodeHash: big.NewInt(400),
 		Balance:     big.NewInt(20),
 		SLoad:       big.NewInt(50),
 		Calls:       big.NewInt(40),

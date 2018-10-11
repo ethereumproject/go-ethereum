@@ -41,7 +41,6 @@ func (pa PrecompiledAccount) Call(in []byte) ([]byte, error) {
 
 // PrecompiledHomestead contains the default set of ethereum contracts
 var PrecompiledHomestead = PrecompiledContracts()
-var PrecompiledContractsECIP1045B = PrecompiledContractsECIP1045BFunc()
 
 func preCByteAddress(i []byte) string {
 	return string(common.LeftPadBytes(i, 20))
@@ -81,113 +80,112 @@ func PrecompiledContracts() map[string]*PrecompiledAccount {
 	}
 }
 
-// PrecompiledContractsECIP1045BFunc returns the precompiled contracts made available at or after the ECIP1045B fork (akin to Byzantium)
-func PrecompiledContractsECIP1045BFunc() map[string]*PrecompiledAccount {
-	contracts := PrecompiledContracts()
-	// gas functions
-	bigMax := func(x, y *big.Int) *big.Int {
-		if x.Cmp(y) < 0 {
-			return y
-		}
-		return x
+func bigMax(x, y *big.Int) *big.Int {
+	if x.Cmp(y) < 0 {
+		return y
 	}
-
-	bigModExpGas := func(input []byte) *big.Int {
-		var (
-			baseLen = new(big.Int).SetBytes(getData(input, common.Big0, common.Big32))
-			expLen  = new(big.Int).SetBytes(getData(input, common.Big32, common.Big32))
-			modLen  = new(big.Int).SetBytes(getData(input, common.Big64, common.Big32))
-		)
-		if len(input) > 96 {
-			input = input[96:]
-		} else {
-			input = input[:0]
-		}
-		// Retrieve the head 32 bytes of exp for the adjusted exponent length
-		var expHead *big.Int
-		if big.NewInt(int64(len(input))).Cmp(baseLen) <= 0 {
-			expHead = new(big.Int)
-		} else {
-			if expLen.Cmp(common.Big32) > 0 {
-				expHead = new(big.Int).SetBytes(getData(input, baseLen, common.Big32))
-			} else {
-				expHead = new(big.Int).SetBytes(getData(input, baseLen, expLen))
-			}
-		}
-		// Calculate the adjusted exponent length
-		var msb int
-		if bitlen := expHead.BitLen(); bitlen > 0 {
-			msb = bitlen - 1
-		}
-		adjExpLen := new(big.Int)
-		if expLen.Cmp(common.Big32) > 0 {
-			adjExpLen.Sub(expLen, common.Big32)
-			adjExpLen.Mul(common.Big8, adjExpLen)
-		}
-		adjExpLen.Add(adjExpLen, big.NewInt(int64(msb)))
-
-		// Calculate the gas cost of the operation
-		gas := new(big.Int).Set(bigMax(modLen, baseLen))
-		switch {
-		case gas.Cmp(common.Big64) <= 0:
-			gas.Mul(gas, gas)
-		case gas.Cmp(common.Big1024) <= 0:
-			gas = new(big.Int).Add(
-				new(big.Int).Div(new(big.Int).Mul(gas, gas), big.NewInt(4)),
-				new(big.Int).Sub(new(big.Int).Mul(big.NewInt(96), gas), big.NewInt(3072)),
-			)
-		default:
-			gas = new(big.Int).Add(
-				new(big.Int).Div(new(big.Int).Mul(gas, gas), big.NewInt(16)),
-				new(big.Int).Sub(new(big.Int).Mul(big.NewInt(480), gas), big.NewInt(199680)),
-			)
-		}
-		gas.Mul(gas, bigMax(adjExpLen, big.NewInt(1)))
-		gas.Div(gas, big.NewInt(20)) // ModExpQuadCoeffDiv
-
-		if gas.BitLen() > 64 {
-			return new(big.Int).SetUint64(math.MaxUint64)
-		}
-		return gas
-	}
-	bn256AddGas := func(in []byte) *big.Int {
-		return big.NewInt(500) // params.Bn256AddGas
-	}
-	bn256ScalarMulGas := func(in []byte) *big.Int {
-		return big.NewInt(40000) // params.Bn256ScalarMulGas
-	}
-	bn256PairingGas := func(in []byte) *big.Int {
-		// return params.Bn256PairingBaseGas + uint64(len(input)/192)*params.Bn256PairingPerPointGas
-		base := big.NewInt(100000)
-		perPoint := big.NewInt(80000)
-		lDiv := new(big.Int).SetUint64(uint64(len(in) / 192))
-		out := new(big.Int).Add(base, new(big.Int).Mul(lDiv, perPoint))
-		return out
-	}
-
-	// bigModExp
-	contracts[preCByteAddress([]byte{5})] = &PrecompiledAccount{
-		Gas: bigModExpGas,
-		fn:  bigModExpFunc,
-	}
-	// bn256Add
-	contracts[preCByteAddress([]byte{6})] = &PrecompiledAccount{
-		Gas: bn256AddGas,
-		fn:  bn256AddFunc,
-	}
-	// bn256ScalarMul
-	contracts[preCByteAddress([]byte{7})] = &PrecompiledAccount{
-		Gas: bn256ScalarMulGas,
-		fn:  bn256ScalarMulFunc,
-	}
-	// pairing
-	contracts[preCByteAddress([]byte{8})] = &PrecompiledAccount{
-		Gas: bn256PairingGas,
-		fn:  bn256PairingFunc,
-	}
-	return contracts
+	return x
 }
 
+var bn256modExpAddr = preCByteAddress([]byte{5})
+var bn256modExpAcc = &PrecompiledAccount{
+	Gas: bigModExpGas,
+	fn:  bigModExpFunc,
+}
+
+var bn256addAddr = preCByteAddress([]byte{6})
+var bn256addAcc = &PrecompiledAccount{
+	Gas: bn256addGas,
+	fn:  bn256AddFunc,
+}
+
+var bn256scalarMulAddr = preCByteAddress([]byte{7})
+var bn256scalarMulAcc = &PrecompiledAccount{
+	Gas: bn256ScalarMulGas,
+	fn:  bn256ScalarMulFunc,
+}
+
+var bn256pairingAddr = preCByteAddress([]byte{8})
+var bn256pairingAcc = &PrecompiledAccount{
+	Gas: bn256PairingGas,
+	fn:  bn256PairingFunc,
+}
+
+func bn256PairingGas(in []byte) *big.Int {
+	// return params.Bn256PairingBaseGas + uint64(len(input)/192)*params.Bn256PairingPerPointGas
+	base := big.NewInt(100000)
+	perPoint := big.NewInt(80000)
+	lDiv := new(big.Int).SetUint64(uint64(len(in) / 192))
+	out := new(big.Int).Add(base, new(big.Int).Mul(lDiv, perPoint))
+	return out
+}
+
+func bn256addGas(in []byte) *big.Int {
+	return big.NewInt(500) // params.Bn256AddGas
+}
+
+func bn256ScalarMulGas(in []byte) *big.Int {
+	return big.NewInt(40000) // params.Bn256ScalarMulGas
+}
+
+func bigModExpGas(input []byte) *big.Int {
+	var (
+		baseLen = new(big.Int).SetBytes(getData(input, common.Big0, common.Big32))
+		expLen  = new(big.Int).SetBytes(getData(input, common.Big32, common.Big32))
+		modLen  = new(big.Int).SetBytes(getData(input, common.Big64, common.Big32))
+	)
+	if len(input) > 96 {
+		input = input[96:]
+	} else {
+		input = input[:0]
+	}
+	// Retrieve the head 32 bytes of exp for the adjusted exponent length
+	var expHead *big.Int
+	if big.NewInt(int64(len(input))).Cmp(baseLen) <= 0 {
+		expHead = new(big.Int)
+	} else {
+		if expLen.Cmp(common.Big32) > 0 {
+			expHead = new(big.Int).SetBytes(getData(input, baseLen, common.Big32))
+		} else {
+			expHead = new(big.Int).SetBytes(getData(input, baseLen, expLen))
+		}
+	}
+	// Calculate the adjusted exponent length
+	var msb int
+	if bitlen := expHead.BitLen(); bitlen > 0 {
+		msb = bitlen - 1
+	}
+	adjExpLen := new(big.Int)
+	if expLen.Cmp(common.Big32) > 0 {
+		adjExpLen.Sub(expLen, common.Big32)
+		adjExpLen.Mul(common.Big8, adjExpLen)
+	}
+	adjExpLen.Add(adjExpLen, big.NewInt(int64(msb)))
+
+	// Calculate the gas cost of the operation
+	gas := new(big.Int).Set(bigMax(modLen, baseLen))
+	switch {
+	case gas.Cmp(common.Big64) <= 0:
+		gas.Mul(gas, gas)
+	case gas.Cmp(common.Big1024) <= 0:
+		gas = new(big.Int).Add(
+			new(big.Int).Div(new(big.Int).Mul(gas, gas), big.NewInt(4)),
+			new(big.Int).Sub(new(big.Int).Mul(big.NewInt(96), gas), big.NewInt(3072)),
+		)
+	default:
+		gas = new(big.Int).Add(
+			new(big.Int).Div(new(big.Int).Mul(gas, gas), big.NewInt(16)),
+			new(big.Int).Sub(new(big.Int).Mul(big.NewInt(480), gas), big.NewInt(199680)),
+		)
+	}
+	gas.Mul(gas, bigMax(adjExpLen, big.NewInt(1)))
+	gas.Div(gas, big.NewInt(20)) // ModExpQuadCoeffDiv
+
+	if gas.BitLen() > 64 {
+		return new(big.Int).SetUint64(math.MaxUint64)
+	}
+	return gas
+}
 func bigModExpFunc(input []byte) ([]byte, error) {
 	var (
 		baseLen = new(big.Int).SetBytes(getData(input, new(big.Int), common.Big32))
