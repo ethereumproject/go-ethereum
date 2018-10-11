@@ -6,7 +6,7 @@ environment:
   GCP_PASSWD:
     secure: erzLJz7qT0kCJa+jZG6Sf9wwkfLYO2UDLzydkKTdwqA=
 install:
-  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
+  - set PATH=%GOPATH%\bin;c:\go\bin;C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;%PATH%
 
   # Install janus.
   - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get-windows.sh | bash
