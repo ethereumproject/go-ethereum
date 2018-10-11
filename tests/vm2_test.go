@@ -71,6 +71,27 @@ func TestECIP1045EIP1283VMTests(t *testing.T) {
 	}
 }
 
+func TestECIP1045CREATE2Tests(t *testing.T) {
+	rs := RuleSet{
+		HomesteadBlock:           big.NewInt(0),
+		HomesteadGasRepriceBlock: big.NewInt(0),
+		DiehardBlock:             big.NewInt(0),
+		ExplosionBlock:           big.NewInt(0),
+		ECIP1045BBlock:           big.NewInt(0),
+		ECIP1045CBlock:           big.NewInt(0),
+		EIP1283Block:             big.NewInt(0),
+	}
+	fns, _ := filepath.Glob(filepath.Join(vmTestDir, "ECIP1045", "vmCreate2", "*"))
+	for _, fn := range fns {
+		if filepath.Ext(fn) != ".json" {
+			continue
+		}
+		if err := RunVmTest2(fn, VmSkipTests, rs); err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 // RunVmTest2 reads input JSON and runs associated test.
 func RunVmTest2(p string, skipTests []string, rs RuleSet) error {
 	tests := make(map[string]VmTest2)
