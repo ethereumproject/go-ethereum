@@ -6,7 +6,7 @@ environment:
   GCP_PASSWD:
     secure: erzLJz7qT0kCJa+jZG6Sf9wwkfLYO2UDLzydkKTdwqA=
 install:
-  - set PATH=%GOPATH%\bin;c:\go\bin;C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;%PATH%
+  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
 
   # Install janus.
   - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get-windows.sh | bash
@@ -19,6 +19,8 @@ install:
   - go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
 
   # Install Rust.
+  # It seems, that we need stable version of gcc (not MSYS2) 
+  - set PATH=C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;%PATH%
   - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - rustup-init -yv --default-toolchain stable --default-host x86_64-pc-windows-gnu
   - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
@@ -28,7 +30,6 @@ install:
   - git clone https://github.com/ETCDEVTeam/sputnikvm-ffi
   - cd c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi
   - gcc --version
-  - where gcc.exe
   - cargo build --release
   - copy c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi\target\release\sputnikvm_ffi.lib c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib
   - set CGO_LDFLAGS=-Wl,--allow-multiple-definition c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
