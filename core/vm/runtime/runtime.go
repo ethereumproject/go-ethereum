@@ -28,14 +28,10 @@ import (
 	"github.com/ethereumproject/go-ethereum/ethdb"
 )
 
-// The default, always homestead, rule set for the vm env
+// The default, always edge, rule set interface implementor for the vm env
 type ruleSet struct{}
 
 func (ruleSet) IsHomestead(*big.Int) bool { return true }
-
-// TODO/PTAL(whilei): WTF
-// +1 bumping, wtf HACK FIXME
-// FIXME these should not always return true
 func (ruleSet) IsECIP1045B(*big.Int) bool { return true }
 func (ruleSet) IsECIP1045C(*big.Int) bool { return true }
 func (ruleSet) IsEIP1283(*big.Int) bool   { return true }
