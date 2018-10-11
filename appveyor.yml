@@ -1,6 +1,6 @@
 platform: x64
 clone_folder: c:\gopath\src\github.com\ethereumproject\go-ethereum
-os: Visual Studio 2015
+os: Visual Studio 2017
 environment:
   GOPATH: c:\gopath
   GCP_PASSWD:
