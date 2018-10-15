@@ -55,6 +55,12 @@ func TestEcrecover(t *testing.T) {
 // These tests are sanity checks.
 // They should ensure that we don't e.g. use Sha3-224 instead of Sha3-256
 // and that the sha3 library uses keccak-f permutation.
+func TestKeccak256Hash(t *testing.T) {
+	msg := []byte("abc")
+	exp, _ := hex.DecodeString("4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45")
+	checkhash(t, "Sha3-256-array", func(in []byte) []byte { h := Keccak256Hash(in); return h[:] }, msg, exp)
+}
+
 func TestSha3(t *testing.T) {
 	msg := []byte("abc")
 	exp, _ := hex.DecodeString("4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45")
@@ -288,4 +294,50 @@ func TestPythonIntegration(t *testing.T) {
 
 	fmt.Printf("msg: %x, privkey: %x sig: %x\n", msg0, k1, sig0)
 	fmt.Printf("msg: %x, privkey: %x sig: %x\n", msg1, k1, sig1)
+}
+
+// TestCreateAddress2 tests the test cases from EIP1014
+func TestCreateAddress2(t *testing.T) {
+	cases := []struct {
+		address    common.Address
+		salt       common.Hash
+		code       []byte
+		wantResult common.Address
+	}{
+		// 0
+		{
+			address:    common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			salt:       common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+			code:       []byte{0x00},
+			wantResult: common.HexToAddress("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38"),
+		},
+		// 1
+		{
+			address:    common.HexToAddress("0xdeadbeef00000000000000000000000000000000"),
+			salt:       common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+			code:       []byte{0x00},
+			wantResult: common.HexToAddress("0xB928f69Bb1D91Cd65274e3c79d8986362984fDA3"),
+		},
+		// 2
+		{
+			address:    common.HexToAddress("0xdeadbeef00000000000000000000000000000000"),
+			salt:       common.HexToHash("0x000000000000000000000000feed000000000000000000000000000000000000"),
+			code:       []byte{0x00},
+			wantResult: common.HexToAddress("0xD04116cDd17beBE565EB2422F2497E06cC1C9833"),
+		},
+		// 3
+		{
+			address:    common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			salt:       common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+			code:       common.HexToHash("0xdeadbeef").Bytes(),
+			wantResult: common.HexToAddress("0x70f2b2914A2a4b783FaEFb75f459A580616Fcb5e"),
+		},
+	}
+
+	for _, c := range cases {
+		got := CreateAddress2(c.address, c.salt, c.code)
+		if got != c.wantResult {
+			t.Errorf("got=%x want=%x", got, c.wantResult)
+		}
+	}
 }
