@@ -70,7 +70,8 @@ func Create(env vm.Environment, caller vm.ContractRef, code []byte, gas, gasPric
 	return ret, address, err
 }
 
-// Create2 creates a new contract with the given code
+// Create2 creates a new contract with the given code. The difference between Create2 and Create is Create2 uses
+// keccak256(0xff ++ msg.sender ++ salt ++ keccak256(init_code)[12:])
 func Create2(env vm.Environment, caller vm.ContractRef, code []byte, gas, gasPrice, value, salt *big.Int) (ret []byte, address common.Address, err error) {
 	ret, address, err = exec(env, caller, nil, nil, crypto.Keccak256Hash(code), nil, code, gas, gasPrice, value, salt)
 	// Here we get an error if we run into maximum stack depth,
@@ -82,6 +83,7 @@ func Create2(env vm.Environment, caller vm.ContractRef, code []byte, gas, gasPri
 	return ret, address, err
 }
 
+// exec switches on nil value for 'salt' to decide whether to use crypto.Create (nil) or crypto.Create2 (non-nil)
 func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value, salt *big.Int) (ret []byte, addr common.Address, err error) {
 	evm := env.Vm()
 	// Depth check execution. Fail if we're trying to execute above the
@@ -106,7 +108,7 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 		if salt == nil {
 			addr = crypto.CreateAddress(caller.Address(), nonce)
 		} else {
-			addr = crypto.CreateAddress2(caller.Address(), common.BigToHash(salt), code)
+			addr = crypto.CreateAddress2(caller.Address(), common.BigToHash(salt), crypto.Keccak256Hash(code).Bytes())
 		}
 		address = &addr
 		createAccount = true

@@ -296,48 +296,77 @@ func TestPythonIntegration(t *testing.T) {
 	fmt.Printf("msg: %x, privkey: %x sig: %x\n", msg1, k1, sig1)
 }
 
-// TestCreateAddress2 tests the test cases from EIP1014
-func TestCreateAddress2(t *testing.T) {
-	cases := []struct {
-		address    common.Address
-		salt       common.Hash
-		code       []byte
-		wantResult common.Address
-	}{
-		// 0
-		{
-			address:    common.HexToAddress("0x0000000000000000000000000000000000000000"),
-			salt:       common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
-			code:       []byte{0x00},
-			wantResult: common.HexToAddress("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38"),
-		},
-		// 1
-		{
-			address:    common.HexToAddress("0xdeadbeef00000000000000000000000000000000"),
-			salt:       common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
-			code:       []byte{0x00},
-			wantResult: common.HexToAddress("0xB928f69Bb1D91Cd65274e3c79d8986362984fDA3"),
-		},
-		// 2
-		{
-			address:    common.HexToAddress("0xdeadbeef00000000000000000000000000000000"),
-			salt:       common.HexToHash("0x000000000000000000000000feed000000000000000000000000000000000000"),
-			code:       []byte{0x00},
-			wantResult: common.HexToAddress("0xD04116cDd17beBE565EB2422F2497E06cC1C9833"),
-		},
-		// 3
-		{
-			address:    common.HexToAddress("0x0000000000000000000000000000000000000000"),
-			salt:       common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
-			code:       common.HexToHash("0xdeadbeef").Bytes(),
-			wantResult: common.HexToAddress("0x70f2b2914A2a4b783FaEFb75f459A580616Fcb5e"),
-		},
+func TestCreate2Addreses(t *testing.T) {
+	type testcase struct {
+		origin   string
+		salt     string
+		code     string
+		expected string
 	}
 
-	for _, c := range cases {
-		got := CreateAddress2(c.address, c.salt, c.code)
-		if got != c.wantResult {
-			t.Errorf("got=%x want=%x", got, c.wantResult)
+	for i, tt := range []testcase{
+		{
+			origin:   "0x0000000000000000000000000000000000000000",
+			salt:     "0x0000000000000000000000000000000000000000",
+			code:     "0x00",
+			expected: "0x4d1a2e2bb4f88f0250f26ffff098b0b30b26bf38",
+		},
+		{
+			origin:   "0xdeadbeef00000000000000000000000000000000",
+			salt:     "0x0000000000000000000000000000000000000000",
+			code:     "0x00",
+			expected: "0xB928f69Bb1D91Cd65274e3c79d8986362984fDA3",
+		},
+		{
+			origin:   "0xdeadbeef00000000000000000000000000000000",
+			salt:     "0xfeed000000000000000000000000000000000000",
+			code:     "0x00",
+			expected: "0xD04116cDd17beBE565EB2422F2497E06cC1C9833",
+		},
+		{
+			origin:   "0x0000000000000000000000000000000000000000",
+			salt:     "0x0000000000000000000000000000000000000000",
+			code:     "0xdeadbeef",
+			expected: "0x70f2b2914A2a4b783FaEFb75f459A580616Fcb5e",
+		},
+		{
+			origin:   "0x00000000000000000000000000000000deadbeef",
+			salt:     "0xcafebabe",
+			code:     "0xdeadbeef",
+			expected: "0x60f3f640a8508fC6a86d45DF051962668E1e8AC7",
+		},
+		{
+			origin:   "0x00000000000000000000000000000000deadbeef",
+			salt:     "0xcafebabe",
+			code:     "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+			expected: "0x1d8bfDC5D46DC4f61D6b6115972536eBE6A8854C",
+		},
+		{
+			origin:   "0x0000000000000000000000000000000000000000",
+			salt:     "0x0000000000000000000000000000000000000000",
+			code:     "0x",
+			expected: "0xE33C0C7F7df4809055C3ebA6c09CFe4BaF1BD9e0",
+		},
+	} {
+
+		origin := common.BytesToAddress(common.FromHex(tt.origin))
+		salt := common.BytesToHash(common.FromHex(tt.salt))
+		code := common.FromHex(tt.code)
+		codeHash := Keccak256Hash(code)
+		address := CreateAddress2(origin, salt, codeHash.Bytes())
+		/*
+			stack          := newstack()
+			// salt, but we don't need that for this test
+			stack.push(big.NewInt(int64(len(code)))) //size
+			stack.push(big.NewInt(0)) // memstart
+			stack.push(big.NewInt(0)) // value
+			gas, _ := gasCreate2(params.GasTable{}, nil, nil, stack, nil, 0)
+			fmt.Printf("Example %d\n* address `0x%x`\n* salt `0x%x`\n* init_code `0x%x`\n* gas (assuming no mem expansion): `%v`\n* result: `%s`\n\n", i,origin, salt, code, gas, address.String())
+		*/
+		expected := common.BytesToAddress(common.FromHex(tt.expected))
+		if !bytes.Equal(expected.Bytes(), address.Bytes()) {
+			t.Errorf("test %d: expected %s, got %s", i, expected.Str(), address.Str())
 		}
+
 	}
 }
