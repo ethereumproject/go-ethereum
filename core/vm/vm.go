@@ -381,11 +381,10 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 	case CREATE2:
 		newMemSize = calcMemSize(stack.data[stack.len()-2], stack.data[stack.len()-3])
 
-		words := toWordSize(stack.data[stack.len()-2])
-		gas.Add(gas, words.Mul(words, big.NewInt(6)))
+		// Add gas cost for SHA3/word. This fn modifies the gas pointer-variable as needed.
+		gasCreate2WordCost(mem, newMemSize, gas, stack)
 
 		quadMemGas(mem, newMemSize, gas)
-
 	case CALL, CALLCODE:
 		gas.Set(gasTable.Calls)
 

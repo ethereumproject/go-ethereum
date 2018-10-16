@@ -689,3 +689,95 @@ func (r rs) GasTable(num *big.Int) *GasTable {
 	}
 	return &GasTable{}
 }
+
+func TestCreate2Addreses(t *testing.T) {
+	type testcase struct {
+		origin   string
+		salt     string
+		code     string
+		expected string
+		wantGas  *big.Int
+	}
+
+	for i, tt := range []testcase{
+		{
+			origin:   "0x0000000000000000000000000000000000000000",
+			salt:     "0x0000000000000000000000000000000000000000",
+			code:     "0x00",
+			expected: "0x4d1a2e2bb4f88f0250f26ffff098b0b30b26bf38",
+			wantGas:  big.NewInt(32006),
+		},
+		{
+			origin:   "0xdeadbeef00000000000000000000000000000000",
+			salt:     "0x0000000000000000000000000000000000000000",
+			code:     "0x00",
+			expected: "0xB928f69Bb1D91Cd65274e3c79d8986362984fDA3",
+			wantGas:  big.NewInt(32006),
+		},
+		{
+			origin:   "0xdeadbeef00000000000000000000000000000000",
+			salt:     "0xfeed000000000000000000000000000000000000",
+			code:     "0x00",
+			expected: "0xD04116cDd17beBE565EB2422F2497E06cC1C9833",
+			wantGas:  big.NewInt(32006),
+		},
+		{
+			origin:   "0x0000000000000000000000000000000000000000",
+			salt:     "0x0000000000000000000000000000000000000000",
+			code:     "0xdeadbeef",
+			expected: "0x70f2b2914A2a4b783FaEFb75f459A580616Fcb5e",
+			wantGas:  big.NewInt(32006),
+		},
+		{
+			origin:   "0x00000000000000000000000000000000deadbeef",
+			salt:     "0xcafebabe",
+			code:     "0xdeadbeef",
+			expected: "0x60f3f640a8508fC6a86d45DF051962668E1e8AC7",
+			wantGas:  big.NewInt(32006),
+		},
+		{
+			origin:   "0x00000000000000000000000000000000deadbeef",
+			salt:     "0xcafebabe",
+			code:     "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+			expected: "0x1d8bfDC5D46DC4f61D6b6115972536eBE6A8854C",
+			wantGas:  big.NewInt(32012),
+		},
+		{
+			origin:   "0x0000000000000000000000000000000000000000",
+			salt:     "0x0000000000000000000000000000000000000000",
+			code:     "0x",
+			expected: "0xE33C0C7F7df4809055C3ebA6c09CFe4BaF1BD9e0",
+			wantGas:  big.NewInt(32000),
+		},
+	} {
+
+		origin := common.BytesToAddress(common.FromHex(tt.origin))
+		salt := common.BytesToHash(common.FromHex(tt.salt))
+		code := common.FromHex(tt.code)
+		codeHash := crypto.Keccak256Hash(code)
+		address := crypto.CreateAddress2(origin, salt, codeHash.Bytes())
+
+		stack := newstack()
+		stack.push(big.NewInt(0))                // 4. salt, although we don't need it for this test
+		stack.push(big.NewInt(int64(len(code)))) // 3. size
+		stack.push(big.NewInt(0))                // 2. memstart
+		stack.push(big.NewInt(0))                // 1. value (endowment)
+
+		gas := new(big.Int)
+		baseCheck(CREATE2, stack, gas) // Ensures stack length, and sets initial gas cost for CREATE2.
+
+		// Tests assume no memory expansion, so newMemSize is 0.
+		gasCreate2WordCost(NewMemory(), big.NewInt(0), gas, stack)
+
+		if gas.Cmp(tt.wantGas) != 0 {
+			// t.Logf("Example %d\n* address `0x%x`\n* salt `0x%x`\n* init_code `0x%x`\n* gas (assuming no mem expansion): `%v`\n* result: `%s`\n\n", i, origin, salt, code, gas, address.Str())
+			t.Errorf("[gas] want=%v got=%v", tt.wantGas, gas)
+		}
+
+		expected := common.BytesToAddress(common.FromHex(tt.expected))
+		if !bytes.Equal(expected.Bytes(), address.Bytes()) {
+			t.Errorf("test %d: expected %s, got %s", i, expected.Str(), address.Str())
+		}
+
+	}
+}

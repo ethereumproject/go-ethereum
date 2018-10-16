@@ -75,6 +75,11 @@ func callGas(gasTable *GasTable, availableGas, base, callCost *big.Int) *big.Int
 	return callCost
 }
 
+func gasCreate2WordCost(mem *Memory, newMemSize *big.Int, gas *big.Int, stack *stack) {
+	words := toWordSize(stack.data[stack.len()-2-1])
+	gas.Add(gas, words.Mul(words, big.NewInt(6)))
+}
+
 // IsEmpty return true if all values are zero values,
 // which useful for checking JSON-decoded empty state.
 func (g *GasTable) IsEmpty() bool {
