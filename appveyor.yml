@@ -1,6 +1,6 @@
 platform: x64
 clone_folder: c:\gopath\src\github.com\ethereumproject\go-ethereum
-os: Visual Studio 2015
+os: Visual Studio 2017
 environment:
   GOPATH: c:\gopath
   GCP_PASSWD:
@@ -19,6 +19,8 @@ install:
   - go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
 
   # Install Rust.
+  # It seems, that we need stable version of gcc (not MSYS2) 
+  - set PATH=C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin;%PATH%
   - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - rustup-init -yv --default-toolchain stable --default-host x86_64-pc-windows-gnu
   - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
@@ -27,6 +29,7 @@ install:
   - cd c:\gopath\src\github.com\ETCDEVTeam
   - git clone https://github.com/ETCDEVTeam/sputnikvm-ffi
   - cd c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi
+  - gcc --version
   - cargo build --release
   - copy c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi\target\release\sputnikvm_ffi.lib c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib
   - set CGO_LDFLAGS=-Wl,--allow-multiple-definition c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
@@ -41,7 +44,7 @@ install:
 build_script:
   # See .circleci/config.yml for explanation about SputnikVM nondeterministic tests absence.
   - go test -tags="deterministic" ./...
-  - go test -ldflags "-X github.com/ethereumproject/go-ethereum/core.UseSputnikVM=true" -tags="sputnikvm deterministic" ./...
+  - go test -ldflags "-X github.com/ethereumproject/go-ethereum/core.UseSputnikVM=true" -tags="sputnikvm deterministic" --count=1 ./...
   - schroedinger.exe -t 5 -f .\schroedinger-tests.txt
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" github.com/ethereumproject/go-ethereum/cmd/geth
   - ps: >-
