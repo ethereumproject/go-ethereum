@@ -29,8 +29,8 @@ import (
 type ReceiptStatus byte
 
 const (
-	TxFailure       ReceiptStatus = 0
-	TxSuccess       ReceiptStatus = 1
+	TxFailure       ReceiptStatus = 0x00
+	TxSuccess       ReceiptStatus = 0x01
 	TxStatusUnknown ReceiptStatus = 0xFF
 )
 
@@ -54,10 +54,25 @@ func NewReceipt(root []byte, cumulativeGasUsed *big.Int) *Receipt {
 	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed), Status: TxStatusUnknown}
 }
 
+type receiptRLP struct {
+	PostStateOrStatus []byte
+	CumulativeGasUsed *big.Int
+	Bloom             Bloom
+	Logs              vm.Logs
+}
+
 // EncodeRLP implements rlp.Encoder, and flattens the consensus fields of a receipt
 // into an RLP stream.
 func (r *Receipt) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, []interface{}{r.PostState, r.CumulativeGasUsed, r.Bloom, r.Logs})
+	var stateOrStatus []byte
+	if len(r.PostState) == 0 { // if there is no state, EIP-658 is in place
+		stateOrStatus = make([]byte, 1)
+		stateOrStatus[0] = byte(r.Status)
+	} else {
+		stateOrStatus = r.PostState
+	}
+
+	return rlp.Encode(w, &receiptRLP{stateOrStatus, r.CumulativeGasUsed, r.Bloom, r.Logs})
 }
 
 // DecodeRLP implements rlp.Decoder, and loads the consensus fields of a receipt
@@ -72,7 +87,16 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&receipt); err != nil {
 		return err
 	}
-	r.PostState, r.CumulativeGasUsed, r.Bloom, r.Logs = receipt.PostState, receipt.CumulativeGasUsed, receipt.Bloom, receipt.Logs
+
+	r.CumulativeGasUsed, r.Bloom, r.Logs = receipt.CumulativeGasUsed, receipt.Bloom, receipt.Logs
+
+	// EIP-658 processing of mixed status/state field
+	if len(receipt.PostState) == len(common.Hash{}) {
+		r.PostState = receipt.PostState
+	} else if len(receipt.PostState) == 1 {
+		r.Status = ReceiptStatus(receipt.PostState[0])
+	}
+
 	return nil
 }
 
