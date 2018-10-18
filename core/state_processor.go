@@ -120,7 +120,12 @@ func ApplyTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb 
 
 	// Update the state with pending changes
 	usedGas.Add(usedGas, gas)
-	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), usedGas)
+	// if EIP-658 is enabled, we don't save PostState in receipt
+	var postState []byte = nil
+	if config.IsECIP1045B(header.Number) {
+		postState = statedb.IntermediateRoot(false).Bytes()
+	}
+	receipt := types.NewReceipt(postState, usedGas)
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = new(big.Int).Set(gas)
 	if MessageCreatesContract(tx) {
