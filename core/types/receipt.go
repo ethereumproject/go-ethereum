@@ -17,6 +17,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -79,7 +80,7 @@ func (r *Receipt) EncodeRLP(w io.Writer) error {
 // from an RLP stream.
 func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	var receipt struct {
-		PostState         []byte
+		PostStateOrStatus []byte
 		CumulativeGasUsed *big.Int
 		Bloom             Bloom
 		Logs              vm.Logs
@@ -91,10 +92,12 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	r.CumulativeGasUsed, r.Bloom, r.Logs = receipt.CumulativeGasUsed, receipt.Bloom, receipt.Logs
 
 	// EIP-658 processing of mixed status/state field
-	if len(receipt.PostState) == len(common.Hash{}) {
-		r.PostState = receipt.PostState
-	} else if len(receipt.PostState) == 1 {
-		r.Status = ReceiptStatus(receipt.PostState[0])
+	if len(receipt.PostStateOrStatus) == len(common.Hash{}) {
+		r.PostState = receipt.PostStateOrStatus
+	} else if len(receipt.PostStateOrStatus) == 1 {
+		r.Status = ReceiptStatus(receipt.PostStateOrStatus[0])
+	} else {
+		return fmt.Errorf("Invalid receipt - PostState or Status field is not encoded properly: %s", hex.EncodeToString(receipt.PostStateOrStatus))
 	}
 
 	return nil
