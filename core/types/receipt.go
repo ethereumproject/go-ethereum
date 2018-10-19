@@ -18,6 +18,7 @@ package types
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -67,10 +68,16 @@ type receiptRLP struct {
 func (r *Receipt) EncodeRLP(w io.Writer) error {
 	var stateOrStatus []byte
 	if len(r.PostState) == 0 { // if there is no state, EIP-658 is in place
-		stateOrStatus = make([]byte, 1)
-		stateOrStatus[0] = byte(r.Status)
-	} else {
+		if r.Status != TxStatusUnknown {
+			stateOrStatus = []byte{byte(r.Status)}
+		} else {
+			return errors.New("invalid receipt: PostState not present (EIP-658?) but transaction Status is unknown")
+		}
+	} else if len(r.PostState) == len(common.Hash{}) {
 		stateOrStatus = r.PostState
+	} else {
+		// this should never happen
+		return fmt.Errorf("invalid receipt: PostState length mismatch: expecting %d, found %d", len(common.Hash{}), len(r.PostState))
 	}
 
 	return rlp.Encode(w, &receiptRLP{stateOrStatus, r.CumulativeGasUsed, r.Bloom, r.Logs})
@@ -97,7 +104,7 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	} else if len(receipt.PostStateOrStatus) == 1 {
 		r.Status = ReceiptStatus(receipt.PostStateOrStatus[0])
 	} else {
-		return fmt.Errorf("Invalid receipt - PostState or Status field is not encoded properly: %s", hex.EncodeToString(receipt.PostStateOrStatus))
+		return fmt.Errorf("invalid receipt: PostState or Status field is not encoded properly: %s", hex.EncodeToString(receipt.PostStateOrStatus))
 	}
 
 	return nil
