@@ -121,7 +121,7 @@ func ApplyTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, statedb 
 	// Update the state with pending changes
 	usedGas.Add(usedGas, gas)
 	// If EIP-658 is enabled, we don't save PostState in receipt, it's included otherwise.
-	// It's very important to force PostState to nil, because this
+	// It's very important to force PostState to nil, because this field is used during RLP encoding (consensus related)
 	var postState []byte = nil
 	if !config.IsEIP658(header.Number) {
 		postState = statedb.IntermediateRoot(false).Bytes()
