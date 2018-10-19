@@ -101,6 +101,7 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	// EIP-658 processing of mixed status/state field
 	if len(receipt.PostStateOrStatus) == len(common.Hash{}) {
 		r.PostState = receipt.PostStateOrStatus
+		r.Status = TxStatusUnknown
 	} else if len(receipt.PostStateOrStatus) == 1 {
 		r.Status = ReceiptStatus(receipt.PostStateOrStatus[0])
 	} else {
