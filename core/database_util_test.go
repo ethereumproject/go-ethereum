@@ -823,7 +823,7 @@ func TestMipmapChain(t *testing.T) {
 		var receipts types.Receipts
 		switch i {
 		case 1:
-			receipt := types.NewReceipt(nil, new(big.Int))
+			receipt := types.NewReceipt(common.Hash{}.Bytes(), new(big.Int))
 			receipt.Logs = vm.Logs{
 				&vm.Log{
 					Address: addr,
@@ -833,7 +833,7 @@ func TestMipmapChain(t *testing.T) {
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
 		case 1000:
-			receipt := types.NewReceipt(nil, new(big.Int))
+			receipt := types.NewReceipt(common.Hash{}.Bytes(), new(big.Int))
 			receipt.Logs = vm.Logs{&vm.Log{Address: addr2}}
 			gen.AddUncheckedReceipt(receipt)
 			receipts = types.Receipts{receipt}
