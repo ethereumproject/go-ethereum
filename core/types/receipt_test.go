@@ -56,12 +56,7 @@ func TestEIP658RLPRoundTrip2(t *testing.T) {
 	var r2 Receipt
 	r2.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
 
-	same := len(r1.PostState) == len(r2.PostState)
-	for i := range r1.PostState {
-		same = same && r1.PostState[i] == r2.PostState[i]
-	}
-
-	if !same {
+	if !bytes.Equal(r1.PostState, r2.PostState) {
 		t.Errorf("invalid PostState: expected %v, got %v", r1.PostState, r2.PostState)
 	}
 	if r2.Status != TxStatusUnknown {
