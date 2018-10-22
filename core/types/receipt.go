@@ -103,7 +103,11 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 		r.PostState = receipt.PostStateOrStatus
 		r.Status = TxStatusUnknown
 	} else if len(receipt.PostStateOrStatus) == 1 {
-		r.Status = ReceiptStatus(receipt.PostStateOrStatus[0])
+		status := ReceiptStatus(receipt.PostStateOrStatus[0])
+		if status != TxSuccess && status != TxFailure {
+			return fmt.Errorf("invalid receipt: invalid Status value '%#X', expected 0x01 or 0x02", status)
+		}
+		r.Status = status
 	} else {
 		return fmt.Errorf("invalid receipt: PostState or Status field is not encoded properly: %s", hex.EncodeToString(receipt.PostStateOrStatus))
 	}
