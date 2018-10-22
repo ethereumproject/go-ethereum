@@ -72,12 +72,28 @@ type encTest struct {
 }
 
 var encTests = []encTest{
+	// bytes and byte slices
+	{val: byte(0), output: "80"},
+	{val: byte(0x0), output: "80"},
+	{val: byte(0x00), output: "80"},
+	{val: byte(1), output: "01"},
+	{val: byte(0x1), output: "01"},
+	{val: byte(0x01), output: "01"},
+	{val: byte(0x7f), output: "7F"},
+
+	{val: []byte{}, output: "80"},
+	{val: []byte{0}, output: "00"}, // PTAL
+	{val: []byte{1}, output: "01"},
+	{val: []byte{0x7f}, output: "7F"},
+
 	// booleans
-	{val: true, output: "01"},
 	{val: false, output: "80"},
+	{val: true, output: "01"},
 
 	// integers
 	{val: uint32(0), output: "80"},
+	{val: uint32(1), output: "01"},
+
 	{val: uint32(127), output: "7F"},
 	{val: uint32(128), output: "8180"},
 	{val: uint32(256), output: "820100"},
