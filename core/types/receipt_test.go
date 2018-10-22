@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -25,15 +26,19 @@ func encodeReceipt(r *Receipt) ([]byte, error) {
 func TestEIP658RLPRoundTrip1(t *testing.T) {
 	// EIP-658 enabled - PostState is nil, Status is present
 	r1 := NewReceipt(nil, big.NewInt(4095))
-	r1.Status = TxSuccess
+	r1.Status = TxFailure
 
 	rlpData, err := encodeReceipt(r1)
+	fmt.Println(hex.EncodeToString(rlpData))
 	if err != nil {
 		t.Error("unexpected error", err)
 	}
 
 	var r2 Receipt
-	r2.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
+	err = r2.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
+	if err != nil {
+		t.Error("decoding error:", err)
+	}
 
 	if r1.Status != r2.Status {
 		t.Errorf("invalid status: expected %v, got %v", r1.Status, r2.Status)

@@ -28,7 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
-type ReceiptStatus byte
+type ReceiptStatus uint8
 
 const (
 	TxFailure       ReceiptStatus = 0x00
@@ -56,8 +56,8 @@ func NewReceipt(root []byte, cumulativeGasUsed *big.Int) *Receipt {
 	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed), Status: TxStatusUnknown}
 }
 
-type receiptRLP struct {
-	PostStateOrStatus []byte
+type consensusReceiptRLP struct {
+	PostStateOrStatus interface{}
 	CumulativeGasUsed *big.Int
 	Bloom             Bloom
 	Logs              vm.Logs
@@ -66,10 +66,10 @@ type receiptRLP struct {
 // EncodeRLP implements rlp.Encoder, and flattens the consensus fields of a receipt
 // into an RLP stream.
 func (r *Receipt) EncodeRLP(w io.Writer) error {
-	var stateOrStatus []byte
+	var stateOrStatus interface{}
 	if len(r.PostState) == 0 { // if there is no state, EIP-658 is in place
 		if r.Status != TxStatusUnknown {
-			stateOrStatus = []byte{byte(r.Status)}
+			stateOrStatus = r.Status
 		} else {
 			return errors.New("invalid receipt: PostState not present (EIP-658?) but transaction Status is unknown")
 		}
@@ -80,7 +80,7 @@ func (r *Receipt) EncodeRLP(w io.Writer) error {
 		return fmt.Errorf("invalid receipt: PostState length mismatch: expecting %d, found %d", len(common.Hash{}), len(r.PostState))
 	}
 
-	return rlp.Encode(w, &receiptRLP{stateOrStatus, r.CumulativeGasUsed, r.Bloom, r.Logs})
+	return rlp.Encode(w, &consensusReceiptRLP{stateOrStatus, r.CumulativeGasUsed, r.Bloom, r.Logs})
 }
 
 // DecodeRLP implements rlp.Decoder, and loads the consensus fields of a receipt
@@ -102,9 +102,12 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	if len(receipt.PostStateOrStatus) == len(common.Hash{}) {
 		r.PostState = receipt.PostStateOrStatus
 		r.Status = TxStatusUnknown
+	} else if len(receipt.PostStateOrStatus) == 0 {
+		// scalar 0 (TxFailure) is encoded as '0x80', and this is decoded as []byte as {} (empty slice)
+		r.Status = TxFailure
 	} else if len(receipt.PostStateOrStatus) == 1 {
 		status := ReceiptStatus(receipt.PostStateOrStatus[0])
-		if status != TxSuccess && status != TxFailure {
+		if status != TxSuccess {
 			return fmt.Errorf("invalid receipt: invalid Status value '%#X', expected 0x01 or 0x02", status)
 		}
 		r.Status = status
