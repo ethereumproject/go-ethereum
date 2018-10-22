@@ -99,19 +99,20 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	r.CumulativeGasUsed, r.Bloom, r.Logs = receipt.CumulativeGasUsed, receipt.Bloom, receipt.Logs
 
 	// EIP-658 processing of mixed status/state field
-	if len(receipt.PostStateOrStatus) == len(common.Hash{}) {
+	switch len(receipt.PostStateOrStatus) {
+	case len(common.Hash{}):
 		r.PostState = receipt.PostStateOrStatus
 		r.Status = TxStatusUnknown
-	} else if len(receipt.PostStateOrStatus) == 0 {
+	case 0:
 		// scalar 0 (TxFailure) is encoded as '0x80', and this is decoded as []byte as {} (empty slice)
 		r.Status = TxFailure
-	} else if len(receipt.PostStateOrStatus) == 1 {
+	case 1:
 		status := ReceiptStatus(receipt.PostStateOrStatus[0])
 		if status != TxSuccess {
-			return fmt.Errorf("invalid receipt: invalid Status value '%#X', expected 0x01 or 0x02", status)
+			return fmt.Errorf("invalid receipt: invalid Status value '0x%X', expected 0x01 or 0x02", status)
 		}
 		r.Status = status
-	} else {
+	default:
 		return fmt.Errorf("invalid receipt: PostState or Status field is not encoded properly: %s", hex.EncodeToString(receipt.PostStateOrStatus))
 	}
 
