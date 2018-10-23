@@ -109,7 +109,7 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	case 1:
 		status := ReceiptStatus(receipt.PostStateOrStatus[0])
 		if status != TxSuccess {
-			return fmt.Errorf("invalid receipt: invalid Status value '0x%X', expected 0x01 or 0x02", status)
+			return fmt.Errorf("invalid receipt: invalid Status value '0x%X', expected 0x01", status)
 		}
 		r.Status = status
 	default:
