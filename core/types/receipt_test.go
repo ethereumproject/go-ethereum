@@ -16,10 +16,11 @@ func encodeReceipt(r *Receipt) ([]byte, error) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
 
-	err := r.EncodeRLP(writer)
-	writer.Flush()
+	if err := r.EncodeRLP(writer); err != nil {
+		return buf.Bytes(), err
+	}
 
-	return buf.Bytes(), err
+	return buf.Bytes(), writer.Flush()
 }
 
 func TestEIP658RLPRoundTrip1(t *testing.T) {
@@ -58,7 +59,10 @@ func TestEIP658RLPRoundTrip2(t *testing.T) {
 	}
 
 	var r2 Receipt
-	r2.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
+	err = r2.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
+	if err != nil {
+		t.Errorf("could not decode encoded receipt RLP: err=%v", err)
+	}
 
 	if !bytes.Equal(r1.PostState, r2.PostState) {
 		t.Errorf("invalid PostState: expected %v, got %v", r1.PostState, r2.PostState)
@@ -83,7 +87,7 @@ func TestInvalidReceiptsEncoding(t *testing.T) {
 	_, err = encodeReceipt(r)
 	if err == nil {
 		t.Error("error was expected")
-	} else if err.Error() != fmt.Sprintf(errfNoStateNorStatus) {
+	} else if err.Error() != errfNoStateNorStatus {
 		t.Error("invalid error message:", err)
 	}
 }
@@ -154,9 +158,12 @@ func TestInvalidReceiptsDecoding(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(tt *testing.T) {
-			rlpData, _ := hex.DecodeString(testCase.rlpHex)
+			rlpData, err := hex.DecodeString(testCase.rlpHex)
+			if err != nil {
+				tt.Fatalf("could not decode test rlp hex: case=%s hex=%s", testCase.name, testCase.rlpHex)
+			}
 			var r Receipt
-			err := r.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
+			err = r.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
 			if err == nil {
 				tt.Error("error was expected")
 			} else {
