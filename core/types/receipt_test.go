@@ -20,7 +20,9 @@ func encodeReceipt(r *Receipt) ([]byte, error) {
 		return buf.Bytes(), err
 	}
 
-	return buf.Bytes(), writer.Flush()
+	err := writer.Flush()
+
+	return buf.Bytes(), err
 }
 
 func TestEIP658RLPRoundTrip1(t *testing.T) {
