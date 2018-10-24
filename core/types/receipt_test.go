@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"math/big"
-	"strings"
 	"testing"
 
 	"github.com/ethereumproject/go-ethereum/common"
@@ -74,8 +74,8 @@ func TestInvalidReceiptsEncoding(t *testing.T) {
 	_, err := encodeReceipt(r)
 	if err == nil {
 		t.Error("error was expected")
-	} else if !strings.Contains(err.Error(), "PostState") || !strings.Contains(err.Error(), "length") {
-		t.Error("probably invalid error message:", err)
+	} else if err.Error() != fmt.Sprintf(errfInvalidStateLen, len(r.PostState)) {
+		t.Error("invalid error message:", err)
 	}
 
 	// case 2: no PostState (EIP-658), unknown transaction status
@@ -83,8 +83,8 @@ func TestInvalidReceiptsEncoding(t *testing.T) {
 	_, err = encodeReceipt(r)
 	if err == nil {
 		t.Error("error was expected")
-	} else if !strings.Contains(err.Error(), "PostState") || !strings.Contains(err.Error(), "Status") || !strings.Contains(err.Error(), "unknown") {
-		t.Error("probably invalid error message:", err)
+	} else if err.Error() != fmt.Sprintf(errfNoStateNorStatus) {
+		t.Error("invalid error message:", err)
 	}
 }
 
@@ -121,34 +121,34 @@ func TestInvalidReceiptsDecoding(t *testing.T) {
 	invalid5 := "f9010800820fffb9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0"
 
 	testCases := []struct {
-		name              string
-		rlpHex            string
-		errorExpectations []string
+		name          string
+		rlpHex        string
+		expectedError string
 	}{
 		{
 			"Status=0x22",
 			invalid1,
-			[]string{"Status", "22"},
+			fmt.Sprintf(errfInvalidStatus, 0x22),
 		},
 		{
 			"Status=0xEE",
 			invalid2,
-			[]string{"Status", "EE"},
+			fmt.Sprintf(errfInvalidStatus, 0xEE),
 		},
 		{
 			"Status=0xFF(TxStatusUnknown)",
 			invalid3,
-			[]string{"Status", "FF"},
+			fmt.Sprintf(errfInvalidStatus, 0xFF),
 		},
 		{
 			"Status=0x0101",
 			invalid4,
-			[]string{"PostState", "Status", "0101"},
+			fmt.Sprintf(errfInvalidStateOrStatus, hex.EncodeToString([]byte{0x01, 0x01})),
 		},
 		{
 			"Status=0x00",
 			invalid5,
-			[]string{"Status", "0x0"},
+			fmt.Sprintf(errfInvalidStatus, 0x00),
 		},
 	}
 
@@ -160,10 +160,8 @@ func TestInvalidReceiptsDecoding(t *testing.T) {
 			if err == nil {
 				t.Error("error was expected")
 			} else {
-				for _, e := range testCase.errorExpectations {
-					if !strings.Contains(err.Error(), e) {
-						tt.Error("Probably invalid error message:", err)
-					}
+				if err.Error() != testCase.expectedError {
+					tt.Error("invalid error message:", err)
 				}
 			}
 		})

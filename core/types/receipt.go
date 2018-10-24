@@ -36,6 +36,14 @@ const (
 	TxStatusUnknown ReceiptStatus = 0xFF
 )
 
+// errf stands for error format
+const (
+	errfNoStateNorStatus     = "invalid receipt: PostState not present (EIP-658?) but transaction Status is unknown"
+	errfInvalidStateLen      = "invalid receipt: PostState length mismatch: expecting 32, found %d"
+	errfInvalidStatus        = "invalid receipt: invalid Status value '0x%X', expected 0x01"
+	errfInvalidStateOrStatus = "invalid receipt: PostState or Status field is not encoded properly: %s"
+)
+
 // Receipt represents the results of a transaction.
 type Receipt struct {
 	// Consensus fields
@@ -71,13 +79,13 @@ func (r *Receipt) EncodeRLP(w io.Writer) error {
 		if r.Status != TxStatusUnknown {
 			stateOrStatus = r.Status
 		} else {
-			return errors.New("invalid receipt: PostState not present (EIP-658?) but transaction Status is unknown")
+			return errors.New(errfNoStateNorStatus)
 		}
 	} else if len(r.PostState) == len(common.Hash{}) {
 		stateOrStatus = r.PostState
 	} else {
 		// this should never happen
-		return fmt.Errorf("invalid receipt: PostState length mismatch: expecting %d, found %d", len(common.Hash{}), len(r.PostState))
+		return fmt.Errorf(errfInvalidStateLen, len(r.PostState))
 	}
 
 	return rlp.Encode(w, &consensusReceiptRLP{stateOrStatus, r.CumulativeGasUsed, r.Bloom, r.Logs})
@@ -109,11 +117,11 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	case 1:
 		status := ReceiptStatus(receipt.PostStateOrStatus[0])
 		if status != TxSuccess {
-			return fmt.Errorf("invalid receipt: invalid Status value '0x%X', expected 0x01", status)
+			return fmt.Errorf(errfInvalidStatus, status)
 		}
 		r.Status = status
 	default:
-		return fmt.Errorf("invalid receipt: PostState or Status field is not encoded properly: %s", hex.EncodeToString(receipt.PostStateOrStatus))
+		return fmt.Errorf(errfInvalidStateOrStatus, hex.EncodeToString(receipt.PostStateOrStatus))
 	}
 
 	return nil
