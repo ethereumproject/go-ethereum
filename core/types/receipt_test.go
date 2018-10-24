@@ -48,29 +48,37 @@ func TestEIP658RLPRoundTrip1(t *testing.T) {
 }
 
 func TestEIP658RLPRoundTrip2(t *testing.T) {
-	// EIP-658 disabled - PostState AND Status are present in Receipt
-	r1 := NewReceipt(common.Hash{}.Bytes(), big.NewInt(4095))
-	for i := 0; i < len(r1.PostState); i++ {
-		r1.PostState[i] = byte(i)
+	emptyHashBytes := common.Hash{}.Bytes()
+	arbitraryHashBytes := make([]byte, len(emptyHashBytes))
+	// set up arbitrary hash with correct length
+	for i := 0; i < len(emptyHashBytes); i++ {
+		arbitraryHashBytes[i] = byte(i)
 	}
-	r1.Status = TxSuccess
+	for index, root := range [][]byte{emptyHashBytes, arbitraryHashBytes} {
+		// EIP-658 disabled - PostState AND Status are present in Receipt
+		r1 := NewReceipt(root, big.NewInt(4095))
 
-	rlpData, err := encodeReceipt(r1)
-	if err != nil {
-		t.Error("unexpected error", err)
-	}
+		// copy(r1.PostState, root)
 
-	var r2 Receipt
-	err = r2.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
-	if err != nil {
-		t.Errorf("could not decode encoded receipt RLP: err=%v", err)
-	}
+		r1.Status = TxSuccess
 
-	if !bytes.Equal(r1.PostState, r2.PostState) {
-		t.Errorf("invalid PostState: expected %v, got %v", r1.PostState, r2.PostState)
-	}
-	if r2.Status != TxStatusUnknown {
-		t.Errorf("invalid Status: expected 0xFF, got %v", r2.Status)
+		rlpData, err := encodeReceipt(r1)
+		if err != nil {
+			t.Error(index, "unexpected error", err)
+		}
+
+		var r2 Receipt
+		err = r2.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
+		if err != nil {
+			t.Errorf("could not decode encoded receipt RLP: index=%d err=%v", index, err)
+		}
+
+		if !bytes.Equal(r1.PostState, r2.PostState) {
+			t.Errorf("invalid PostState: index=%d expected %v, got %v", index, r1.PostState, r2.PostState)
+		}
+		if r2.Status != TxStatusUnknown {
+			t.Errorf("invalid Status: index=%d expected 0xFF, got %v", index, r2.Status)
+		}
 	}
 }
 
