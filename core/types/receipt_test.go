@@ -158,7 +158,7 @@ func TestInvalidReceiptsDecoding(t *testing.T) {
 			var r Receipt
 			err := r.DecodeRLP(rlp.NewStream(bytes.NewReader(rlpData), 0))
 			if err == nil {
-				t.Error("error was expected")
+				tt.Error("error was expected")
 			} else {
 				if err.Error() != testCase.expectedErrorMsg {
 					tt.Error("invalid error message:", err)
