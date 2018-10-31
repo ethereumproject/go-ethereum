@@ -253,7 +253,7 @@ func makeCLIApp() (app *cli.App) {
 
 		if ctx.IsSet(SputnikVMFlag.Name) {
 			if core.SputnikVMExists {
-				core.UseSputnikVM = true
+				core.UseSputnikVM = "true"
 			} else {
 				log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
 			}

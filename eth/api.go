@@ -719,7 +719,7 @@ func (s *PublicBlockChainAPI) NewBlocks(ctx context.Context, args NewBlocksArgs)
 		if err == nil {
 			return subscription.Notify(notification)
 		}
-		glog.V(logger.Warn).Info("unable to format block %v\n", err)
+		glog.V(logger.Warn).Infof("unable to format block %v\n", err)
 		return nil
 	}
 	s.muNewBlockSubscriptions.Unlock()
@@ -856,6 +856,7 @@ func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx
 		"hash":             b.Hash(),
 		"parentHash":       b.ParentHash(),
 		"nonce":            b.Header().Nonce,
+		"mixHash":          b.Header().MixDigest,
 		"sha3Uncles":       b.UncleHash(),
 		"logsBloom":        b.Bloom(),
 		"stateRoot":        b.Root(),
@@ -1165,14 +1166,39 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 
 	tx, _, err := getTransaction(s.chainDb, s.txPool, txHash)
 	if err != nil {
-		glog.V(logger.Info).Infof("tzdybal 1 %v\n", err)
 		return nil, err
 	}
 
 	txBlock, blockIndex, index, err := getTransactionBlockData(s.chainDb, txHash)
 	if err != nil {
-		glog.V(logger.Info).Infof("tzdybal 2 %v\n", err)
 		return nil, err
+	}
+
+	if receipt.Status == types.TxStatusUnknown {
+		// To be able to get the proper state for n-th transaction in a block,
+		// all previous transactions has to be executed. Because of that, it is
+		// reasonable to reprocess entire block and update all receipts from
+		// given block.
+		proc := s.bc.Processor()
+		block := s.bc.GetBlock(txBlock)
+		parent := s.bc.GetBlock(block.ParentHash())
+		statedb, err := s.bc.StateAt(parent.Root())
+		if err != nil {
+			return nil, fmt.Errorf("state not found - transaction status is not available for fast synced block: %v", err)
+		}
+
+		receipts, _, _, err := proc.Process(block, statedb)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := core.WriteReceipts(s.chainDb, receipts); err != nil {
+			glog.V(logger.Warn).Infof("cannot save updated receipts: %v", err)
+		}
+		if err := core.WriteBlockReceipts(s.chainDb, block.Hash(), receipts); err != nil {
+			glog.V(logger.Warn).Infof("cannot save updated block receipts: %v", err)
+		}
+		receipt = receipts[index]
 	}
 
 	var signer types.Signer = types.BasicSigner{}
@@ -1202,6 +1228,12 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(txHash common.Hash) (ma
 	// If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
 	if bytes.Compare(receipt.ContractAddress.Bytes(), bytes.Repeat([]byte{0}, 20)) != 0 {
 		fields["contractAddress"] = receipt.ContractAddress
+	}
+
+	// We're not fully compatible with EIP-609 - just return status for all blocks.
+	fields["status"] = nil
+	if receipt.Status != types.TxStatusUnknown {
+		fields["status"] = rpc.NewHexNumber(receipt.Status)
 	}
 
 	return fields, nil
@@ -1717,7 +1749,7 @@ func (api *PublicGethAPI) GetTransactionsByAddress(address common.Address, block
 // Optional values include start and stop block numbers, and to/from/both value for tx/address relation.
 // Returns a slice of strings of transactions hashes.
 func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockStartN uint64, blockEndN rpc.BlockNumber, toOrFrom string, txKindOf string, pagStart, pagEnd int, reverse bool) (list []string, err error) {
-	glog.V(logger.Debug).Infoln("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
+	glog.V(logger.Debug).Infof("RPC call: debug_getAddressTransactions %s %d %d %s %s", address, blockStartN, blockEndN, toOrFrom, txKindOf)
 
 	atxi := api.eth.BlockChain().GetAtxi()
 	if atxi == nil {
@@ -1752,7 +1784,7 @@ func (api *PublicGethAPI) GetAddressTransactions(address common.Address, blockSt
 }
 
 func (api *PublicGethAPI) BuildATXI(start, stop, step rpc.BlockNumber) (bool, error) {
-	glog.V(logger.Debug).Infoln("RPC call: geth_buildATXI %v %v %v", start, stop, step)
+	glog.V(logger.Debug).Infof("RPC call: geth_buildATXI %v %v %v", start, stop, step)
 
 	convert := func(number rpc.BlockNumber) uint64 {
 		switch number {
@@ -2062,7 +2094,11 @@ func (s *PublicDebugAPI) TraceTransaction(txHash common.Hash) (*ExecutionResult,
 		return nil, err
 	}
 
+<<<<<<< HEAD
 	gp := new(core.GasPool).AddGas(tx.Gas().Uint64())
+=======
+	gp := new(core.GasPool).AddGas(tx.Gas())
+>>>>>>> upstream/master
 	ret, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 	return &ExecutionResult{
 		Gas:         new(big.Int).SetUint64(gas),
@@ -2118,7 +2154,7 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 			return msg, vmenv, nil
 		}
 
-		gp := new(core.GasPool).AddGas(tx.Gas().Uint64())
+		gp := new(core.GasPool).AddGas(tx.Gas())
 		_, _, _, err := core.ApplyMessage(vmenv, msg, gp)
 		if err != nil {
 			return nil, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)

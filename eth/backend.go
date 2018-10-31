@@ -697,7 +697,10 @@ func addMipmapBloomBins(db ethdb.Database) (err error) {
 		if (hash == common.Hash{}) {
 			return fmt.Errorf("chain db corrupted. Could not find block %d.", i)
 		}
-		core.WriteMipmapBloom(db, i, core.GetBlockReceipts(db, hash))
+		err := core.WriteMipmapBloom(db, i, core.GetBlockReceipts(db, hash))
+		if err != nil {
+			return err
+		}
 	}
 	glog.V(logger.Info).Infoln("upgrade completed in", time.Since(tstart))
 	return nil

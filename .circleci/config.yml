@@ -9,13 +9,12 @@ sputnik_vm_steps: &sputnik_vm_steps
         command: |
           export GOPATH=$HOME/go
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-          git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
-          cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
-          cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+          cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+          make -C vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c
     - persist_to_workspace:
         root: ~/
         paths:
-          - go/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+          - go/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a
 
 deploy_steps: &deploy_steps
   steps:
@@ -48,14 +47,21 @@ unit_tests_steps: &unit_tests_steps
           export GOPATH=$HOME/go
           export GOBIN=$GOPATH/bin
           export PATH=$PATH:$GOBIN
-          export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
-          if [ "$(uname)" == "Darwin" ]; then
-            export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
+          export TAGS="netgo deterministic"
+          if [ $USE_SPUTNIK_VM == true ]; then
+            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            if [ "$(uname)" == "Darwin" ]; then
+              export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
+            fi
+            export TAGS="sputnikvm $TAGS"
           fi
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           go env
-          go test -tags="sputnikvm netgo deterministic" ./...
+          # Since core/ and tests/ packages are run deterministically, we can safely
+          # infer that SputnikVM is functioning the same as the native VM without running
+          # the schroedinger nondeterministic tests with sputnik enabled.
+          go test -ldflags "-X github.com/ethereumproject/go-ethereum/core.UseSputnikVM=$USE_SPUTNIK_VM" -tags="$TAGS" ./...
           schroedinger -t 5 -f ./schroedinger-tests.txt
 
 bats_tests_steps: &bats_tests_steps
@@ -68,7 +74,7 @@ bats_tests_steps: &bats_tests_steps
           name: Run bats tests
           command: |
             export GOPATH=$HOME/go
-            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
             if [ "$(uname)" == "Darwin" ]; then
               export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
             else
@@ -189,16 +195,34 @@ jobs:
       - image: circleci/golang:1.9
     <<: *sputnik_vm_steps
 
-  mac_unit_tests:
+  mac_evm_unit_tests:
     macos:
       xcode: "9.0"
+    environment:
+        USE_SPUTNIK_VM: false
     <<: *unit_tests_steps
 
-  linux_unit_tests:
+  linux_evm_unit_tests:
     docker:
       - image: circleci/golang:1.9
-        environment:
-            GOMAXPROCS: 2
+    environment:
+        GOMAXPROCS: 2
+        USE_SPUTNIK_VM: false
+    <<: *unit_tests_steps
+
+  mac_sputnikvm_unit_tests:
+    macos:
+      xcode: "9.0"
+    environment:
+        USE_SPUTNIK_VM: true
+    <<: *unit_tests_steps
+
+  linux_sputnikvm_unit_tests:
+    docker:
+      - image: circleci/golang:1.9
+    environment:
+        GOMAXPROCS: 2
+        USE_SPUTNIK_VM: true
     <<: *unit_tests_steps
 
   mac_bats_tests:
@@ -235,7 +259,13 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - mac_unit_tests:
+      - mac_evm_unit_tests:
+          requires:
+            - mac_env_setup
+          filters:
+            tags:
+              only: /.*/
+      - mac_sputnikvm_unit_tests:
           requires:
             - mac_sputnik_vm
           filters:
@@ -249,7 +279,8 @@ workflows:
               only: /.*/
       - mac_deploy:
           requires:
-            - mac_unit_tests
+            - mac_evm_unit_tests
+            - mac_sputnikvm_unit_tests
             - mac_bats_tests
           filters:
             branches:
@@ -269,7 +300,13 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - linux_unit_tests:
+      - linux_evm_unit_tests:
+          requires:
+            - linux_env_setup
+          filters:
+            tags:
+              only: /.*/
+      - linux_sputnikvm_unit_tests:
           requires:
             - linux_sputnik_vm
           filters:
@@ -283,7 +320,8 @@ workflows:
               only: /.*/
       - linux_deploy:
           requires:
-            - linux_unit_tests
+            - linux_evm_unit_tests
+            - linux_sputnikvm_unit_tests
             - linux_bats_tests
           filters:
             branches:

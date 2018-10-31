@@ -15,7 +15,7 @@ use libc::{c_uchar, c_uint, c_longlong};
 use bigint::{U256, M256};
 use sputnikvm::{TransactionAction, ValidTransaction, HeaderParams, SeqTransactionVM, Patch,
                 MainnetFrontierPatch, MainnetHomesteadPatch, MainnetEIP150Patch, MainnetEIP160Patch,
-                VM, RequireError, AccountCommitment, AccountChange,
+                VM, VMStatus, RequireError, AccountCommitment, AccountChange,
                 FrontierPatch, HomesteadPatch, EIP150Patch, EIP160Patch, AccountPatch};
 
 type c_action = c_uchar;
@@ -763,4 +763,19 @@ pub extern "C" fn sputnikvm_default_header_params() -> c_header_params {
         difficulty: c_u256::default(),
         gas_limit: c_gas::default(),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn sputnikvm_status_failed(vm: *mut Box<VM>) -> c_uchar {
+    let mut vm_box = unsafe { Box::from_raw(vm) };
+    let ret;
+    {
+        let vm: &mut VM = vm_box.deref_mut().deref_mut();
+        match vm.status() {
+            VMStatus::ExitedErr(_) => ret = 1,
+            default => ret = 0,
+        }
+    }
+    Box::into_raw(vm_box);
+    ret
 }

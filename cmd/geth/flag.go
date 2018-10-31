@@ -362,11 +362,11 @@ func MakeWSRpcHost(ctx *cli.Context) string {
 // for Geth and returns half of the allowance to assign to the database.
 func MakeDatabaseHandles() int {
 	if err := raiseFdLimit(2048); err != nil {
-		glog.V(logger.Warn).Errorf("Failed to raise file descriptor allowance: ", err)
+		glog.V(logger.Warn).Errorf("Failed to raise file descriptor allowance: %v", err)
 	}
 	limit, err := getFdLimit()
 	if err != nil {
-		glog.V(logger.Warn).Errorf("Failed to retrieve file descriptor allowance: ", err)
+		glog.V(logger.Warn).Errorf("Failed to retrieve file descriptor allowance: %v", err)
 	}
 	if limit > 2048 { // cap database file descriptors even if more is available
 		limit = 2048
@@ -495,16 +495,16 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 	// Assemble and return the protocol stack
 	stack, err := node.New(stackConf)
 	if err != nil {
-		glog.Fatalf("%v: failed to create the protocol stack: ", ErrStackFail, err)
+		glog.Fatalf("%v: failed to create the protocol stack: %v", ErrStackFail, err)
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
 		return eth.New(ctx, ethConf)
 	}); err != nil {
-		glog.Fatalf("%v: failed to register the Ethereum service: ", ErrStackFail, err)
+		glog.Fatalf("%v: failed to register the Ethereum service: %v", ErrStackFail, err)
 	}
 	if shhEnable {
 		if err := stack.Register(func(*node.ServiceContext) (node.Service, error) { return whisper.New(), nil }); err != nil {
-			glog.Fatalf("%v: failed to register the Whisper service: ", ErrStackFail, err)
+			glog.Fatalf("%v: failed to register the Whisper service: %v", ErrStackFail, err)
 		}
 	}
 

@@ -1,7 +1,7 @@
 build:
 	cd ffi && cargo build --release
 	cp ffi/target/release/libsputnikvm_ffi.a libsputnikvm.a
-	cp ffi/target/release/libsputnikvm_ffi.so libsputnikvm.so
+	cp ffi/target/release/libsputnikvm_ffi.so libsputnikvm.so | true
 
 build-musl:
 	cd ffi && docker run --rm -it -v "$(shell pwd)/ffi":/home/rust/src ekidd/rust-musl-builder cargo build --release
@@ -10,4 +10,4 @@ build-musl:
 debug:
 	cd ffi && cargo build
 	cp ffi/target/debug/libsputnikvm_ffi.a libsputnikvm.a
-	cp ffi/target/debug/libsputnikvm_ffi.so libsputnikvm.so
+	cp ffi/target/debug/libsputnikvm_ffi.so libsputnikvm.so | true

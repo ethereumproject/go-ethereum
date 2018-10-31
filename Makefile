@@ -130,6 +130,8 @@ ${GOPATH}/bin/resources:
 clean: ## Remove local snapshot binary directory
 	if [ -d ${BINARY} ] ; then rm -rf ${BINARY} ; fi
 	go clean -i ./...
+	rm -rf vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/ffi/target
+	rm -f vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.*
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:

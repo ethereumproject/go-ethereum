@@ -5,19 +5,21 @@ package core
 import (
 	"math/big"
 
+	"github.com/ETCDEVTeam/sputnikvm-ffi/go/sputnikvm"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/params"
-	"github.com/ethereumproject/sputnikvm-ffi/go/sputnikvm"
 )
 
 const SputnikVMExists = true
 
-var UseSputnikVM = false
+// UseSputnikVM determines whether the VM will be Sputnik or Geth's native one.
+// Awkward though it is to use a string variable, go's -ldflags relies on it being a constant string in order to be settable via -X from the command line,
+// eg. -ldflags "-X core.UseSputnikVM=true".
+var UseSputnikVM string = "false"
 
 // Apply a transaction using the SputnikVM processor with the given
 // chain config and state. Note that we use the name of the chain
@@ -185,8 +187,13 @@ Loop:
 
 	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), false, *totalUsedGas)
 	receipt.TxHash = tx.Hash()
-	receipt.GasUsed = usedGas.Uint64()
-	if tx.To() == nil {
+	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
+	if vm.Failed() {
+		receipt.Status = types.TxFailure
+	} else {
+		receipt.Status = types.TxSuccess
+	}
+	if MessageCreatesContract(tx) {
 		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 	}
 

@@ -33,3 +33,4 @@ coverage.txt
 .vscode
 
 accounts/testdata/keystore/accounts.db
+tests/testdata

@@ -134,12 +134,12 @@ func (pool *TxPool) eventLoop() {
 func (pool *TxPool) resetState() {
 	currentState, err := pool.currentState()
 	if err != nil {
-		glog.V(logger.Info).Infoln("failed to get current state: %v", err)
+		glog.V(logger.Info).Infof("failed to get current state: %v", err)
 		return
 	}
 	managedState := state.ManageState(currentState)
 	if err != nil {
-		glog.V(logger.Info).Infoln("failed to get managed state: %v", err)
+		glog.V(logger.Info).Infof("failed to get managed state: %v", err)
 		return
 	}
 	pool.pendingState = managedState
@@ -344,7 +344,7 @@ func (self *TxPool) add(tx *types.Transaction) error {
 		).Send(mlogTxPool)
 	}
 	if glog.V(logger.Debug) {
-		glog.Infof("(t) %x => %s (%v) %x\n", from, toName, tx.Value, hash)
+		glog.Infof("(t) %x => %s (%v) %x\n", from, toName, tx.Value(), hash)
 	}
 
 	return nil
@@ -568,7 +568,7 @@ func (pool *TxPool) checkQueue() {
 func (pool *TxPool) validatePool() {
 	state, err := pool.currentState()
 	if err != nil {
-		glog.V(logger.Info).Infoln("failed to get current state: %v", err)
+		glog.V(logger.Info).Infof("failed to get current state: %v", err)
 		return
 	}
 	balanceCache := make(map[common.Address]*big.Int)

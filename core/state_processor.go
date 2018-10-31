@@ -89,10 +89,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 				return nil, nil, 0, fmt.Errorf("invalid transaction chain id. Current chain id: %v tx chain id: %v", p.config.GetChainID(), tx.ChainId())
 			}
 		}
-		statedb.Prepare(tx.Hash(), block.Hash(), i)
-		if !UseSputnikVM {
-			// (config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config)
-			receipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
+		statedb.StartRecord(tx.Hash(), block.Hash(), i)
+		if UseSputnikVM != "true" {
+			receipt, logs, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
 			if err != nil {
 				return nil, nil, *usedGas, err
 			}
@@ -119,7 +118,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
 	tx.SetSigner(config.GetSigner(header.Number))
 
-	msg, err := tx.AsMessage(config.GetSigner(header.Number))
+	_, gas, failed, err := ApplyMessage(NewEnv(statedb, config, bc, tx, header), tx, gp)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -155,6 +154,11 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// Set the receipt logs and create a bloom for filtering
 	receipt.Logs = statedb.GetLogs(tx.Hash())
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+	if failed {
+		receipt.Status = types.TxFailure
+	} else {
+		receipt.Status = types.TxSuccess
+	}
 
 	return receipt, gas, err
 }

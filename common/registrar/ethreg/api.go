@@ -215,6 +215,12 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 	}
 
 	header := be.bc.CurrentBlock().Header()
+<<<<<<< HEAD
+=======
+	vmenv := core.NewEnv(statedb, be.config, be.bc, msg, header)
+	gp := new(core.GasPool).AddGas(common.MaxBig)
+	res, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
+>>>>>>> upstream/master
 
 	vmContext := core.NewEVMContext(msg, header, be.bc, &header.Coinbase)
 	vmenv := vm.NewEVM(vmContext, statedb, be.config, vm.Config{})

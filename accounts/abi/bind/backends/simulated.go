@@ -123,11 +123,14 @@ func (b *SimulatedBackend) ContractCall(contract common.Address, data []byte, pe
 	// Create a new context to be used in the EVM environment
 	context := core.NewEVMContext(msg, block.Header(), b.blockchain, &block.Header().Coinbase)
 
+<<<<<<< HEAD
 	// Create a new environment which holds all relevant information
 	// about the transaction and calling mechanisms.
 	vmenv := vm.NewEVM(context, statedb, params.DefaultConfigMorden.ChainConfig, vm.Config{})
 	gaspool := new(core.GasPool).AddGas(common.MaxBig.Uint64())
 
+=======
+>>>>>>> upstream/master
 	out, _, _, err := core.ApplyMessage(vmenv, msg, gaspool)
 	return out, err
 }

@@ -35,7 +35,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/ethereumproject/sputnikvm-ffi"
+  name = "github.com/ETCDEVTeam/sputnikvm-ffi"
 
 [[constraint]]
   name = "github.com/gizak/termui"
