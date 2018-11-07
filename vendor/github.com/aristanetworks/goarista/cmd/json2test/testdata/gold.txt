@@ -1,0 +1,16 @@
+?   	pkg/skipped	[no test files]
+=== RUN   TestPass
+--- PASS: TestPass (0.00s)
+PASS
+ok  	pkg/passed	0.013s
+panic
+FAIL	pkg/panic	600.029s
+--- FAIL: TestFail (0.18s)
+
+Test failures:
+[1] pkg/panic.TestPanic
+panic
+FAIL	pkg/panic	600.029s
+
+[2] pkg/failed.TestFail
+--- FAIL: TestFail (0.18s)

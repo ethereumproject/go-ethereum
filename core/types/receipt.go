@@ -19,6 +19,7 @@ package types
 import (
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/rlp"
@@ -36,21 +37,13 @@ const (
 type Receipt struct {
 	// Consensus fields
 	PostState         []byte
-	CumulativeGasUsed uint64
+	CumulativeGasUsed *big.Int
 	Bloom             Bloom
 	Logs              []*Log
 
 	// Implementation fields
 	TxHash          common.Hash
 	ContractAddress common.Address
-<<<<<<< HEAD
-	GasUsed         uint64
-}
-
-// NewReceipt creates a barebone transaction receipt, copying the init fields.
-func NewReceipt(root []byte, failed bool, cumulativeGasUsed uint64) *Receipt {
-	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: cumulativeGasUsed}
-=======
 	GasUsed         *big.Int
 	Status          ReceiptStatus
 }
@@ -58,7 +51,6 @@ func NewReceipt(root []byte, failed bool, cumulativeGasUsed uint64) *Receipt {
 // NewReceipt creates a barebone transaction receipt, copying the init fields.
 func NewReceipt(root []byte, cumulativeGasUsed *big.Int) *Receipt {
 	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed), Status: TxStatusUnknown}
->>>>>>> upstream/master
 }
 
 // EncodeRLP implements rlp.Encoder, and flattens the consensus fields of a receipt
@@ -72,7 +64,7 @@ func (r *Receipt) EncodeRLP(w io.Writer) error {
 func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	var receipt struct {
 		PostState         []byte
-		CumulativeGasUsed uint64
+		CumulativeGasUsed *big.Int
 		Bloom             Bloom
 		Logs              []*Log
 	}
@@ -120,23 +112,18 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 		Bloom             Bloom
 		TxHash            common.Hash
 		ContractAddress   common.Address
-		Logs              []*vm.LogForStorage
+		Logs              []*LogForStorage
 		GasUsed           *big.Int
 	}
 	var receipt struct {
 		PostState         []byte
-		CumulativeGasUsed uint64
+		CumulativeGasUsed *big.Int
 		Bloom             Bloom
 		TxHash            common.Hash
 		ContractAddress   common.Address
-<<<<<<< HEAD
 		Logs              []*LogForStorage
-		GasUsed           uint64
-=======
-		Logs              []*vm.LogForStorage
 		GasUsed           *big.Int
 		Status            ReceiptStatus
->>>>>>> upstream/master
 	}
 	receipt.Status = TxStatusUnknown
 

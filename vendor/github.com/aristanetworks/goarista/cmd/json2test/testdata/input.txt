@@ -1,0 +1,17 @@
+{"Time":"2018-03-08T10:33:12.002692769-08:00","Action":"output","Package":"pkg/skipped","Output":"?   \tpkg/skipped\t[no test files]\n"}
+{"Time":"2018-03-08T10:33:12.003199228-08:00","Action":"skip","Package":"pkg/skipped","Elapsed":0.001}
+{"Time":"2018-03-08T10:33:12.343866281-08:00","Action":"run","Package":"pkg/passed","Test":"TestPass"}
+{"Time":"2018-03-08T10:33:12.34406622-08:00","Action":"output","Package":"pkg/passed","Test":"TestPass","Output":"=== RUN   TestPass\n"}
+{"Time":"2018-03-08T10:33:12.344139342-08:00","Action":"output","Package":"pkg/passed","Test":"TestPass","Output":"--- PASS: TestPass (0.00s)\n"}
+{"Time":"2018-03-08T10:33:12.344165231-08:00","Action":"pass","Package":"pkg/passed","Test":"TestPass","Elapsed":0}
+{"Time":"2018-03-08T10:33:12.344297059-08:00","Action":"output","Package":"pkg/passed","Output":"PASS\n"}
+{"Time":"2018-03-08T10:33:12.345217622-08:00","Action":"output","Package":"pkg/passed","Output":"ok  \tpkg/passed\t0.013s\n"}
+{"Time":"2018-03-08T10:33:12.34533033-08:00","Action":"pass","Package":"pkg/passed","Elapsed":0.013}
+{"Time":"2018-03-08T10:33:20.243866281-08:00","Action":"run","Package":"pkg/panic","Test":"TestPanic"}
+{"Time":"2018-03-08T10:33:20.27231537-08:00","Action":"output","Package":"pkg/panic","Test":"TestPanic","Output":"panic\n"}
+{"Time":"2018-03-08T10:33:20.272414481-08:00","Action":"output","Package":"pkg/panic","Test":"TestPanic","Output":"FAIL\tpkg/panic\t600.029s\n"}
+{"Time":"2018-03-08T10:33:20.272440286-08:00","Action":"fail","Package":"pkg/panic","Test":"TestPanic","Elapsed":600.029}
+{"Time":"2018-03-08T10:33:26.143866281-08:00","Action":"run","Package":"pkg/failed","Test":"TestFail"}
+{"Time":"2018-03-08T10:33:27.158776469-08:00","Action":"output","Package":"pkg/failed","Test":"TestFail","Output":"--- FAIL: TestFail (0.18s)\n"}
+{"Time":"2018-03-08T10:33:27.158860934-08:00","Action":"fail","Package":"pkg/failed","Test":"TestFail","Elapsed":0.18}
+{"Time":"2018-03-08T10:33:27.161302093-08:00","Action":"fail","Package":"pkg/failed","Elapsed":0.204}

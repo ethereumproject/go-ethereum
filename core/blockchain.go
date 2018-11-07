@@ -190,8 +190,8 @@ func NewBlockChain(chainDb ethdb.Database, config *params.ChainConfig, engine co
 	}
 
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
-	for hash := range config.BadHashes {
-		if header := bc.GetHeaderByHash(hash); header != nil {
+	for _, hash := range config.BadHashes {
+		if header := bc.GetHeaderByHash(hash.Hash); header != nil {
 			// get the canonical block corresponding to the offending header's number
 			headerByNumber := bc.GetHeaderByNumber(header.Number.Uint64())
 			// make sure the headerByNumber (if present) is in our current canonical chain
@@ -241,8 +241,8 @@ func NewBlockChainDryrun(chainDb ethdb.Database, config *params.ChainConfig, eng
 	//	return nil, err
 	//}
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
-	for i := range config.BadHashes {
-		if header := bc.GetHeader(config.BadHashes[i].Hash); header != nil && header.Number.Cmp(config.BadHashes[i].Block) == 0 {
+	for _, bh := range config.BadHashes {
+		if header := bc.GetHeader(bh.Hash, bh.Block.Uint64()); header != nil && header.Number.Cmp(bh.Block) == 0 {
 			glog.V(logger.Error).Infof("Found bad hash, rewinding chain to block #%d [%s]", header.Number, header.ParentHash.Hex())
 			bc.SetHead(header.Number.Uint64() - 1)
 			glog.V(logger.Error).Infoln("Chain rewind was successful, resuming normal operation")
@@ -327,7 +327,7 @@ func (bc *BlockChain) blockIsInvalid(b *types.Block) error {
 				// Note that we're confirming that blockchain "has" this block;
 				// later we'll use "has-with-state" to differentiate fast/full blocks, and want to be sure
 				// that not only is the hash valid, but also that only the state is missing if HasBlock returns false.
-				if !bc.HasBlock(b.Hash()) {
+				if !bc.HasBlock(b.Hash(), b.NumberU64()) {
 					return fmt.Errorf("blockchain cannot find block with hash=%x", b.Hash())
 				}
 				return nil
@@ -375,12 +375,12 @@ func (bc *BlockChain) blockIsInvalid(b *types.Block) error {
 		if pHash == (common.Hash{}) {
 			return ParentError(pHash)
 		}
-		pHeader := bc.hc.GetHeader(pHash)
+		pHeader := bc.hc.GetHeader(pHash, b.NumberU64())
 		if pHeader == nil {
 			return fmt.Errorf("nil parent header for hash: %x", pHash)
 		}
 		// Use parent header hash to get block (instead of b.ParentHash)
-		parent := bc.GetBlock(pHeader.Hash())
+		parent := bc.GetBlock(pHeader.Hash(), pHeader.Number.Uint64())
 		if parent == nil {
 			return ParentError(b.ParentHash())
 		}

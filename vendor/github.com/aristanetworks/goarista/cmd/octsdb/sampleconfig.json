@@ -1,0 +1,54 @@
+{
+	"comment": "This is a sample configuration for EOS versions below 4.20",
+	"subscriptions": [
+		"/Sysdb/interface/counter/eth/lag",
+		"/Sysdb/interface/counter/eth/slice/phy",
+
+		"/Sysdb/environment/temperature/status",
+		"/Sysdb/environment/cooling/status",
+		"/Sysdb/environment/power/status",
+
+		"/Sysdb/hardware/xcvr/status/all/xcvrStatus"
+	],
+	"metricPrefix": "eos",
+	"metrics": {
+		"intfCounter": {
+			"path": "/Sysdb/(interface)/counter/eth/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter/current/statistics/(?P<direction>(?:in|out))(Octets|Errors|Discards)"
+		},
+		"intfPktCounter": {
+			"path": "/Sysdb/(interface)/counter/eth/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter/current/statistics/(?P<direction>(?:in|out))(?P<type>(?:Ucast|Multicast|Broadcast))(Pkt)"
+		},
+		"intfPfcClassCounter": {
+			"path": "/Sysdb/(interface)/counter/eth/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter/current/ethStatistics/(?P<direction>(?:in|out))(PfcClassFrames)"
+		},
+
+		"tempSensor": {
+			"path": "/Sysdb/(environment)/temperature/status/tempSensor/(?P<sensor>.+)/((?:maxT|t)emperature)"
+		},
+		"tempSensorAlert": {
+			"path": "/Sysdb/(environment)/temperature/status/tempSensor/(?P<sensor>.+)/(alertRaisedCount)"
+		},
+		"currentSensor": {
+			"path": "/Sysdb/(environment)/power/status/currentSensor/(?P<sensor>.+)/(current)"
+		},
+		"powerSensor": {
+			"path": "/Sysdb/(environment/power)/status/powerSupply/(?P<sensor>.+)/(input|output)Power"
+		},
+		"voltageSensor": {
+			"path": "/Sysdb/(environment)/power/status/voltageSensor/(?P<sensor>.+)/(voltage)"
+		},
+		"railCurrentSensor": {
+			"path": "/Sysdb/(environment)/power/status/voltageSensor/(?P<sensor>.+)/(current)"
+		},
+		"fanSpeed": {
+			"path": "/Sysdb/(environment)/cooling/status/(fan)/(?P<fan>.+)/(speed)"
+		},
+
+		"qsfpRxPower": {
+			"path": "/Sysdb/hardware/(xcvr)/status/all/xcvrStatus/(?P<intf>.+)/domRegisterData/lane(?P<lane>\\d)(OpticalRxPower)"
+		},
+		"sfpTemperature": {
+			"path": "/Sysdb/hardware/(xcvr)/status/all/xcvrStatus/(?P<intf>.+)/lastDomUpdateTime/(temperature)"
+		}
+	}
+}

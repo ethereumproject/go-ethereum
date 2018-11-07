@@ -1,0 +1,80 @@
+# Per-device labels. Optional
+# Exactly the same set of labels must be specified for each device.
+# If device address is *, the labels apply to all devices not listed explicitly.
+# If any explicit device if listed below, then you need to specify all devices you're subscribed to,
+# or have a wildcard entry. Otherwise, updates from non-listed devices will be ignored.
+#deviceLabels:
+#        10.1.1.1:
+#                lab1: val1
+#                lab2: val2
+#        '*':
+#                lab1: val3
+#                lab2: val4
+
+# Subscriptions to OpenConfig paths.
+subscriptions:
+        - /Smash/counters/ethIntf
+        - /Smash/interface/counter/lag/current/counter
+        - /Sysdb/environment/archer/cooling/status
+        - /Sysdb/environment/archer/power/status
+        - /Sysdb/environment/archer/temperature/status
+        - /Sysdb/hardware/archer/xcvr/status
+        - /Sysdb/interface/config/eth
+
+# Prometheus metrics configuration.
+# If you use named capture groups in the path, they will be extracted into labels with the same name.
+# All fields are mandatory.
+metrics:
+        - name: interfaceDescription
+          path: /Sysdb/interface/config/eth/phy/slice/1/intfConfig/(?P<interface>Ethernet.)/description
+          help: Description
+          valuelabel: description
+          defaultvalue: 15
+        - name: intfCounter
+          path: /Smash/counters/ethIntf/FocalPointV2/current/(counter)/(?P<intf>.+)/statistics/(?P<direction>(?:in|out))(Octets|Errors|Discards)
+          help: Per-Interface Bytes/Errors/Discards Counters
+        - name: intfLagCounter
+          path: /Smash/interface/counter/lag/current/(counter)/(?P<intf>.+)/statistics/(?P<direction>(?:in|out))(Octets|Errors|Discards)
+          help: Per-Lag Bytes/Errors/Discards Counters
+        - name: intfPktCounter
+          path: /Smash/counters/ethIntf/FocalPointV2/current/(counter)/(?P<intf>.+)/statistics/(?P<direction>(?:in|out))(?P<type>(?:Ucast|Multicast|Broadcast))(Pkt)
+          help: Per-Interface Unicast/Multicast/Broadcast Packer Counters
+        - name: intfLagPktCounter
+          path: /Smash/interface/counter/lag/current/(counter)/(?P<intf>.+)/statistics/(?P<direction>(?:in|out))(?P<type>(?:Ucast|Multicast|Broadcast))(Pkt)
+          help: Per-Lag Unicast/Multicast/Broadcast Packer Counters
+        - name: intfPfcClassCounter
+          path: /Smash/counters/ethIntf/FocalPointV2/current/(counter)/(?P<intf>.+)/ethStatistics/(?P<direction>(?:in|out))(PfcClassFrames)
+          help: Per-Interface Input/Output PFC Frames Counters
+        - name: tempSensor
+          path: /Sysdb/(environment)/archer/temperature/status/(?P<sensor>.+)/((?:maxT|t)emperature)
+          help: Temperature and Maximum Temperature
+        - name: tempSensorAlert
+          path: /Sysdb/(environment)/archer/temperature/status/(?P<sensor>.+)/(alertRaisedCount)
+          help: Temperature Alerts Counter
+        - name: currentSensor
+          path: /Sysdb/(environment)/archer/power/status/currentSensor/(?P<sensor>.+)/(current)
+          help: Current Levels
+        - name: powerSensor
+          path: /Sysdb/(environment)/archer/(power)/status/powerSupply/(?P<sensor>.+)/(input|output)Power
+          help: Input/Output Power Levels
+        - name: voltageSensor
+          path: /Sysdb/(environment)/archer/power/status/voltageSensor/(?:cell/.+|system)/(?P<sensor>.+)/(voltage)
+          help: Voltage Levels
+        - name: railCurrentSensor
+          path: /Sysdb/(environment)/archer/power/status/voltageSensor/(?:cell/.+|system)/(?P<sensor>.+)/(current)
+          help: Rail Current Levels
+        - name: fanSpeed
+          path: /Sysdb/(environment)/archer/(cooling)/status/(?P<fan>.+)/speed
+          help: Fan Speed
+        - name: qsfpModularRxPower
+          path: /Sysdb/hardware/archer/(xcvr)/status/slice/(?P<linecard>.+)/(?P<intf>.+)/domRegisterData/lane(?P<lane>\\d)(OpticalRxPower)
+          help: qsfpModularRxPower
+        - name: qsfpFixedRxPower
+          path: /Sysdb/hardware/archer/(xcvr)/status/all/(?P<intf>.+)/domRegisterData/lane(?P<lane>\\d)(OpticalRxPower)
+          help: qsfpFixedRxPower
+        - name: sfpModularTemperature
+          path: /Sysdb/hardware/archer/(xcvr)/status/slice/(?P<linecard>.+)/(?P<intf>.+)/lastDomUpdateTime/(temperature)
+          help: sfpModularTemperature
+        - name: sfpFixedTemperature
+          path: /Sysdb/hardware/archer/(xcvr)/status/all/(?P<intf>.+)/lastDomUpdateTime/(temperature)
+          help: sfpFixedTemperature
