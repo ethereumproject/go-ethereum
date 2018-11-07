@@ -24,6 +24,7 @@ _*
 bin
 dist
 coverage.txt
+vendor
 
 # IntelliJ
 *.iml
@@ -33,3 +34,4 @@ coverage.txt
 .vscode
 
 accounts/testdata/keystore/accounts.db
+tests/testdata
