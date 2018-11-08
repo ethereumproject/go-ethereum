@@ -385,12 +385,12 @@ func (bc *BlockChain) blockIsInvalid(b *types.Block) error {
 			return ParentError(b.ParentHash())
 		}
 
-		if err := bc.engine.VerifyHeader(b.Header(), parent.Header(), true); err != nil {
+		if err := bc.engine.VerifyHeader(bc, parent.Header(), true); err != nil {
 			return err
 		}
 
 		// verify the uncles are correctly rewarded
-		if err := bc.engine.VerifyUncles(b, parent); err != nil {
+		if err := bc.engine.VerifyUncles(bc, parent); err != nil {
 			return err
 		}
 
@@ -411,17 +411,17 @@ func (bc *BlockChain) blockIsInvalid(b *types.Block) error {
 
 	// fullBlockCheck ensures state exists for parent and current blocks.
 	fullBlockCheck := func(b *types.Block) error {
-		parent := bc.GetBlock(b.ParentHash())
+		parent := bc.GetBlock(b.ParentHash(), b.NumberU64()-1)
 		if parent == nil {
 			return ParentError(b.ParentHash())
 		}
 		// Parent does not have state; this is only a corruption if it's the not the point where fast
 		// sync was disabled and full states started to be synced.
-		if !bc.HasBlockAndState(parent.Hash()) {
-			grandparent := bc.GetBlock(parent.ParentHash())
+		if !bc.HasBlockAndState(parent.Hash(), b.NumberU64()-1) {
+			grandparent := bc.GetBlock(parent.ParentHash(), b.NumberU64()-1)
 			// If grandparent DOES have state, then so should parent.
 			// If grandparent doesn't have state, then assume that it was the first full block synced.
-			if bc.HasBlockAndState(grandparent.Hash()) {
+			if bc.HasBlockAndState(grandparent.Hash(), b.NumberU64()-2) {
 				return ParentError(b.ParentHash())
 			}
 		}
@@ -442,7 +442,7 @@ func (bc *BlockChain) blockIsInvalid(b *types.Block) error {
 		}
 		// Genesis will have state.
 		if pi > 1 {
-			if bc.HasBlockAndState(cb.Hash()) {
+			if bc.HasBlockAndState(cb.Hash(), cb.NumberU64()) {
 				return fmt.Errorf("checking block=%d without state, found nonabsent state for block #%d", b.NumberU64(), pi)
 			}
 		}
@@ -458,7 +458,7 @@ func (bc *BlockChain) blockIsInvalid(b *types.Block) error {
 	//
 	// Assume state is not missing.
 	// Fast block.
-	if !bc.HasBlockAndState(b.Hash()) {
+	if !bc.HasBlockAndState(b.Hash(), b.NumberU64()) {
 		glog.V(logger.Debug).Infof("Validating recovery FAST block #%d", b.Number())
 		return fastBlockCheck(b)
 	}
@@ -548,7 +548,7 @@ func (bc *BlockChain) Recovery(from int, increment int) (checkpoint uint64) {
 
 			// If state information is available for block, it is a full block.
 			// State validity has been confirmed by `blockIsInvalid == nil`
-			if bc.HasBlockAndState(checkpointBlockNext.Hash()) {
+			if bc.HasBlockAndState(checkpointBlockNext.Hash(), checkpointBlockNext.NumberU64()) {
 				bc.currentBlock = checkpointBlockNext
 			}
 
@@ -609,7 +609,8 @@ func (bc *BlockChain) LoadLastState(dryrun bool) error {
 	}
 
 	// Get head block by hash
-	currentBlock := bc.GetBlock(head)
+	currentHeader := bc.hc.CurrentHeader()
+	currentBlock := bc.GetBlock(currentHeader.Hash(), currentHeader.Number.Uint64())
 
 	// Make sure head block is available.
 	if currentBlock == nil {
@@ -637,12 +638,12 @@ func (bc *BlockChain) LoadLastState(dryrun bool) error {
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock = currentBlock
 
-	// Restore the last known head header
-	currentHeader := bc.currentBlock.Header()
+	// // Restore the last known head header
+	// currentHeader := bc.currentBlock.Header()
 
 	// Get head header by hash.
 	if head := GetHeadHeaderHash(bc.chainDb); head != (common.Hash{}) {
-		if header := bc.GetHeader(head); header != nil {
+		if header := bc.GetHeader(head, currentHeader.Number.Uint64()); header != nil {
 			currentHeader = header
 		}
 	}
@@ -660,7 +661,7 @@ func (bc *BlockChain) LoadLastState(dryrun bool) error {
 	// Restore the last known head fast block from placeholder
 	bc.currentFastBlock = bc.currentBlock
 	if head := GetHeadFastBlockHash(bc.chainDb); head != (common.Hash{}) {
-		if block := bc.GetBlock(head); block != nil {
+		if block := bc.GetBlock(head, currentHeader.Number.Uint64()); block != nil {
 			bc.currentFastBlock = block
 		}
 	}
@@ -714,7 +715,7 @@ func (bc *BlockChain) LoadLastState(dryrun bool) error {
 	}
 
 	// Check head header number congruent to hash.
-	if h := bc.hc.GetHeaderByNumber(bc.hc.CurrentHeader().Number.Uint64()); h != nil && bc.hc.GetHeader(h.Hash()) != h {
+	if h := bc.hc.GetHeaderByNumber(bc.hc.CurrentHeader().Number.Uint64()); h != nil && bc.hc.GetHeader(h.Hash(), bc.hc.CurrentHeader().Number.Uint64()) != h {
 		glog.V(logger.Error).Errorf("Found head header number and hash mismatch: number=%d, hash=%x", bc.hc.CurrentHeader().Number.Uint64(), bc.hc.CurrentHeader().Hash())
 		return recoverOrReset()
 	}
@@ -803,7 +804,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 
 	// Rewind the block chain, ensuring we don't end up with a stateless head block
 	if bc.currentBlock != nil && currentHeader.Number.Uint64() < bc.currentBlock.NumberU64() {
-		bc.currentBlock = bc.GetBlock(currentHeader.Hash())
+		bc.currentBlock = bc.GetBlock(currentHeader.Hash(), currentHeader.Number.Uint64())
 	}
 	if bc.currentBlock != nil {
 		if _, err := state.New(bc.currentBlock.Root(), state.NewDatabase(bc.chainDb)); err != nil {
@@ -813,7 +814,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	}
 	// Rewind the fast block in a simpleton way to the target head
 	if bc.currentFastBlock != nil && currentHeader.Number.Uint64() < bc.currentFastBlock.NumberU64() {
-		bc.currentFastBlock = bc.GetBlock(currentHeader.Hash())
+		bc.currentFastBlock = bc.GetBlock(currentHeader.Hash(), currentHeader.Number.Uint64())
 	}
 	// If either blocks reached nil, reset to the genesis state
 	if bc.currentBlock == nil {
@@ -886,7 +887,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 // irrelevant what the chain contents were prior.
 func (bc *BlockChain) FastSyncCommitHead(hash common.Hash) error {
 	// Make sure that both the block as well at its state trie exists
-	block := bc.GetBlock(hash)
+	block := bc.GetBlockByHash(hash)
 	if block == nil {
 		return fmt.Errorf("non existent block [%x…]", hash[:4])
 	}
@@ -1129,7 +1130,7 @@ func (bc *BlockChain) HasBlock(hash common.Hash, number uint64) bool {
 	if bc.blockCache.Contains(hash) {
 		return true
 	}
-	return rawdb.HasBody(bc.db, hash, number)
+	return rawdb.HasBody(bc.chainDb, hash, number)
 }
 
 // HasState checks if state trie is fully present in the database or not.
@@ -1159,7 +1160,7 @@ func (bc *BlockChain) GetBlock(hash common.Hash, number uint64) *types.Block {
 	if block, ok := bc.blockCache.Get(hash); ok {
 		return block.(*types.Block)
 	}
-	block := rawdb.ReadBlock(bc.db, hash, number)
+	block := rawdb.ReadBlock(bc.chainDb, hash, number)
 	if block == nil {
 		return nil
 	}
@@ -1175,14 +1176,14 @@ func (bc *BlockChain) GetBlockByNumber(number uint64) *types.Block {
 	if hash == (common.Hash{}) {
 		return nil
 	}
-	return bc.GetBlock(hash)
+	return bc.GetBlockByHash(hash)
 }
 
 // [deprecated by eth/62]
 // GetBlocksFromHash returns the block corresponding to hash and up to n-1 ancestors.
 func (bc *BlockChain) GetBlocksFromHash(hash common.Hash, n int) (blocks []*types.Block) {
 	for i := 0; i < n; i++ {
-		block := bc.GetBlock(hash)
+		block := bc.GetBlockByHash(hash)
 		if block == nil {
 			break
 		}
@@ -1198,7 +1199,7 @@ func (bc *BlockChain) GetUnclesInChain(block *types.Block, length int) []*types.
 	uncles := []*types.Header{}
 	for i := 0; block != nil && i < length; i++ {
 		uncles = append(uncles, block.Uncles()...)
-		block = bc.GetBlock(block.ParentHash())
+		block = bc.GetBlockByHash(block.ParentHash())
 	}
 	return uncles
 }
@@ -1235,16 +1236,16 @@ func (bc *BlockChain) Rollback(chain []common.Hash) {
 		hash := chain[i]
 
 		if bc.hc.CurrentHeader().Hash() == hash {
-			bc.hc.SetCurrentHeader(bc.GetHeader(bc.hc.CurrentHeader().ParentHash))
+			bc.hc.SetCurrentHeader(bc.GetHeaderByHash(bc.hc.CurrentHeader().ParentHash))
 		}
 		if bc.currentFastBlock.Hash() == hash {
-			bc.currentFastBlock = bc.GetBlock(bc.currentFastBlock.ParentHash())
+			bc.currentFastBlock = bc.GetBlockByHash(bc.currentFastBlock.ParentHash())
 			if err := WriteHeadFastBlockHash(bc.chainDb, bc.currentFastBlock.Hash()); err != nil {
 				glog.Fatalf("failed to write fast head block hash: %v", err)
 			}
 		}
 		if bc.currentBlock.Hash() == hash {
-			bc.currentBlock = bc.GetBlock(bc.currentBlock.ParentHash())
+			bc.currentBlock = bc.GetBlockByHash(bc.currentBlock.ParentHash())
 			if err := WriteHeadBlockHash(bc.chainDb, bc.currentBlock.Hash()); err != nil {
 				glog.Fatalf("failed to write head block hash: %v", err)
 			}
@@ -1290,7 +1291,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				return
 			}
 			// Skip if the entire data is already known
-			if bc.HasBlock(block.Hash()) {
+			if bc.HasBlock(block.Hash(), block.NumberU64()) {
 				atomic.AddInt32(&stats.ignored, 1)
 				continue
 			}
@@ -1481,7 +1482,7 @@ func (bc *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err er
 			case SideStatTy:
 				mlogWriteStatus = "SIDE"
 			}
-			parent := bc.GetBlock(block.ParentHash())
+			parent := bc.GetBlockByHash(block.ParentHash())
 			parentTimeDiff := new(big.Int)
 			if parent != nil {
 				parentTimeDiff = new(big.Int).Sub(block.Time(), parent.Time())
@@ -1863,7 +1864,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 		switch {
 		case i == 0:
 			// parent = bc.GetBlock(block.ParentHash())
-			err = bc.stateCache.Reset(bc.GetBlock(block.ParentHash()).Root())
+			err = bc.stateCache.Reset(bc.GetBlockByHash(block.ParentHash()).Root())
 		default:
 			// parent = chain[i-1]
 			err = bc.stateCache.Reset(chain[i-1].Root())
@@ -1881,7 +1882,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 		}
 
 		// Validate the state using the default validator
-		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash()), bc.stateCache, receipts, usedGas)
+		err = bc.Validator().ValidateState(block, bc.GetBlockByHash(block.ParentHash()), bc.stateCache, receipts, usedGas)
 		if err != nil {
 			res.Error = err
 			return
@@ -2033,7 +2034,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	// first reduce whoever is higher bound
 	if oldBlock.NumberU64() > newBlock.NumberU64() {
 		// reduce old chain
-		for ; oldBlock != nil && oldBlock.NumberU64() != newBlock.NumberU64(); oldBlock = bc.GetBlock(oldBlock.ParentHash()) {
+		for ; oldBlock != nil && oldBlock.NumberU64() != newBlock.NumberU64(); oldBlock = bc.GetBlockByHash(oldBlock.ParentHash()) {
 			oldChain = append(oldChain, oldBlock)
 			deletedTxs = append(deletedTxs, oldBlock.Transactions()...)
 
@@ -2041,7 +2042,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		}
 	} else {
 		// reduce new chain and append new chain blocks for inserting later on
-		for ; newBlock != nil && newBlock.NumberU64() != oldBlock.NumberU64(); newBlock = bc.GetBlock(newBlock.ParentHash()) {
+		for ; newBlock != nil && newBlock.NumberU64() != oldBlock.NumberU64(); newBlock = bc.GetBlockByHash(newBlock.ParentHash()) {
 			newChain = append(newChain, newBlock)
 		}
 	}
@@ -2064,7 +2065,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		deletedTxs = append(deletedTxs, oldBlock.Transactions()...)
 		collectLogs(oldBlock.Hash())
 
-		oldBlock, newBlock = bc.GetBlock(oldBlock.ParentHash()), bc.GetBlock(newBlock.ParentHash())
+		oldBlock, newBlock = bc.GetBlockByHash(oldBlock.ParentHash()), bc.GetBlockByHash(newBlock.ParentHash())
 		if oldBlock == nil {
 			return fmt.Errorf("Invalid old chain")
 		}
