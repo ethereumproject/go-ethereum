@@ -73,11 +73,11 @@ func NewBlockValidator(config *params.ChainConfig, blockchain *BlockChain, engin
 // validated at this point.
 func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	// Check whether the block's known, and if not, that it's linkable
-	if v.bc.HasBlockAndState(block.Hash(), block.NumberU64()) {
+	if v.bc.HasBlockAndState(block.Hash()) {
 		return ErrKnownBlock
 	}
-	if !v.bc.HasBlockAndState(block.ParentHash(), block.NumberU64()-1) {
-		if !v.bc.HasBlock(block.ParentHash(), block.NumberU64()-1) {
+	if !v.bc.HasBlockAndState(block.ParentHash()) {
+		if !v.bc.HasBlock(block.ParentHash()) {
 			return consensus.ErrUnknownAncestor
 		}
 		return consensus.ErrPrunedAncestor

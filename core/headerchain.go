@@ -440,14 +440,14 @@ func (hc *HeaderChain) WriteTd(hash common.Hash, td *big.Int) error {
 	return nil
 }
 
-// GetHeader retrieves a block header from the database by hash and number,
-// caching it if found.
-func (hc *HeaderChain) GetHeader(hash common.Hash, number uint64) *types.Header {
+// GetHeader retrieves a block header from the database by hash, caching it if
+// found.
+func (hc *HeaderChain) GetHeader(hash common.Hash) *types.Header {
 	// Short circuit if the header's already in the cache, retrieve otherwise
 	if header, ok := hc.headerCache.Get(hash); ok {
 		return header.(*types.Header)
 	}
-	header := rawdb.ReadHeader(hc.chainDb, hash, number)
+	header := GetHeader(hc.chainDb, hash)
 	if header == nil {
 		return nil
 	}

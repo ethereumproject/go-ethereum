@@ -37,7 +37,7 @@ type ChainReader interface {
 	CurrentHeader() *types.Header
 
 	// GetHeader retrieves a block header from the database by hash and number.
-	GetHeader(hash common.Hash, number uint64) *types.Header
+	GetHeader(hash common.Hash) *types.Header
 
 	// GetHeaderByNumber retrieves a block header from the database by number.
 	GetHeaderByNumber(number uint64) *types.Header
@@ -46,7 +46,7 @@ type ChainReader interface {
 	GetHeaderByHash(hash common.Hash) *types.Header
 
 	// GetBlock retrieves a block from the database by hash and number.
-	GetBlock(hash common.Hash, number uint64) *types.Block
+	GetBlock(hash common.Hash) *types.Block
 }
 
 // Engine is an algorithm agnostic consensus engine.
