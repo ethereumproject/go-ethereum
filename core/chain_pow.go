@@ -43,7 +43,7 @@ func verifyNoncesFromHeaders(checker pow.PoW, headers []*types.Header) (chan<- s
 // verifyNoncesFromBlocks starts a concurrent block nonce verification,
 // returning a quit channel to abort the operations and a results channel
 // to retrieve the async verifications.
-func verifyNoncesFromBlocks(checker pow.PoW, blocks []*types.Block) (chan<- struct{}, <-chan nonceCheckResult) {
+func verifyNoncesFromBlocks(checker consensus.PoW, blocks []*types.Block) (chan<- struct{}, <-chan nonceCheckResult) {
 	items := make([]pow.Block, len(blocks))
 	for i, block := range blocks {
 		items[i] = block

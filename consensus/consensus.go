@@ -101,7 +101,18 @@ type Engine interface {
 // PoW is a consensus engine based on proof-of-work.
 type PoW interface {
 	Engine
-
 	// Hashrate returns the current mining hashrate of a PoW consensus engine.
 	Hashrate() float64
+	
+	//
+	Search(block Block, stop <-chan struct{}, index int) (uint64, []byte)
+	
+	//
+	Verify(block Block) bool
+	
+	// GetHashrate returns the current mining hashrate of a PoW consensus engine.
+	GetHashrate() int64
+	
+	//
+	Turbo(bool)
 }
