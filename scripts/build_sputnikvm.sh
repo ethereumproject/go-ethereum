@@ -46,11 +46,11 @@ cd "$GOPATH/src/$geth_path"
 LDFLAGS="$sputnik_dir/c/libsputnikvm.a "
 case $OS in
 	"Linux")
-		LDFLAGS+="-ldl"
+		LDFLAGS+="-ldl -lm"
 		;;
 
 	"Darwin")
-		LDFLAGS+="-ldl -lresolv"
+		LDFLAGS+="-ldl -lresolv -lm"
 		;;
 
     CYGWIN*|MINGW32*|MSYS*)

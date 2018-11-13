@@ -11,3 +11,7 @@ debug:
 	cd ffi && cargo build
 	cp ffi/target/debug/libsputnikvm_ffi.a libsputnikvm.a
 	cp ffi/target/debug/libsputnikvm_ffi.so libsputnikvm.so | true
+
+clean:
+	cd ffi && cargo clean
+	rm libsputnikvm.a libsputnikvm.so

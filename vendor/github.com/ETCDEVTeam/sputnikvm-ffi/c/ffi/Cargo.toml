@@ -1,12 +1,24 @@
 [package]
 name = "sputnikvm-ffi"
-version = "0.0.0"
-authors = ["Wei Tang <hi@that.world>"]
+version = "0.11.0-beta.0"
+authors = ["Wei Tang <hi@that.world>", "Mike Lubinets <lubinetsm@yandex.ru>"]
+repository = "https://github.com/ETCDEVTeam/sputnikvm-ffi"
+license-file = "LICENSE"
 
 [lib]
 crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
 libc = "0.2"
-etcommon-bigint = { version = "0.2", default-features = false, features = ["rlp"] }
-sputnikvm = { version = "0.9", default-features = false, features = ["std", "rust-secp256k1"] }
+etcommon-bigint = { version = "0.2", default-features = false }
+sputnikvm = { version = "0.11.0-beta" , default-features = false }
+sputnikvm-network-classic = { version = "0.11.0-beta", default-features = false }
+env_logger = { version = "0.5.13", optional = true }
+
+[features]
+default = ["std", "rust-secp256k1", "rlp", "log"]
+rlp = ["etcommon-bigint/rlp", "sputnikvm-network-classic/rlp"]
+c-secp256k1 = ["sputnikvm/c-secp256k1", "sputnikvm-network-classic/c-secp256k1"]
+rust-secp256k1 = ["sputnikvm/rust-secp256k1", "sputnikvm-network-classic/rust-secp256k1"]
+std = ["sputnikvm/std", "sputnikvm-network-classic/std"]
+log = ["env_logger"]

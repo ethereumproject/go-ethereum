@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/sputnikvm-ffi/go/sputnikvm"
+	"github.com/ETCDEVTeam/sputnikvm-ffi/go/sputnikvm"
 )
 
 func main() {
