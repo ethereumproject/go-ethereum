@@ -24,12 +24,13 @@ install:
   - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
   - rustup update
 
-  - cd c:\gopath\src\github.com\ETCDEVTeam
-  - git clone https://github.com/ETCDEVTeam/sputnikvm-ffi
-  - cd c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi
-  - cargo build --release
-  - copy c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi\target\release\sputnikvm_ffi.lib c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib
-  - set CGO_LDFLAGS=-Wl,--allow-multiple-definition c:\gopath\src\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
+  # Build sputnikvm-ffi from go-ethereum/vendor dir (depend on 'dep' vendoring version control, instead of 'upstream master' vc).
+  - cd c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi
+  - cargo build --release --verbose
+  - copy c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi\target\release\sputnikvm_ffi.lib c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib
+  # Set build flag definitions.
+  - set CGO_LDFLAGS=-Wl,--allow-multiple-definition c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
+
   - cd c:\gopath\src\github.com\ethereumproject\go-ethereum
 
   - echo %VERSION_BASE% %VERSION%
