@@ -29,10 +29,6 @@ import (
 	"strings"
 	"testing"
 
-	"crypto/ecdsa"
-	"encoding/binary"
-	"strings"
-
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/crypto"

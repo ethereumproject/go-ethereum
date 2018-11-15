@@ -9,10 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"path/filepath"
-
-	"reflect"
-
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 )
