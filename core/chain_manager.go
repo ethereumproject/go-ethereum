@@ -28,6 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/event"
 	"github.com/ethereumproject/go-ethereum/params"
 	"github.com/ethereumproject/go-ethereum/pow"
+	"github.com/ethereumproject/go-ethereum/consensus"
 )
 
 /*
@@ -109,6 +110,7 @@ type BlockGen struct {
 	i       int
 	parent  *types.Block
 	chain   []*types.Block
+	chainReader consensus.ChainReader
 	header  *types.Header
 	statedb *state.StateDB
 
@@ -116,7 +118,9 @@ type BlockGen struct {
 	txs      []*types.Transaction
 	receipts []*types.Receipt
 	uncles   []*types.Header
+	
 	config   *params.ChainConfig
+	engine consensus.Engine
 }
 
 func (b *BlockGen) Engine() interface{} {
@@ -220,7 +224,7 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 	if b.header.Time.Cmp(b.parent.Header().Time) <= 0 {
 		panic("block time out of range")
 	}
-	b.header.Difficulty = CalcDifficulty(MakeChainConfig(), b.header.Time.Uint64(), b.parent.Time().Uint64(), b.parent.Number(), b.parent.Difficulty())
+	b.header.Difficulty = b.engine.CalcDifficulty(b.chainReader, b.header.Time.Uint64(), b.parent.Header())
 }
 
 // GenerateChain creates a chain of n blocks. The first block's
@@ -235,11 +239,14 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 // Blocks created by GenerateChain do not contain valid proof of work
 // values. Inserting them into BlockChain requires use of FakePow or
 // a similar non-validating proof of work implementation.
-func GenerateChain(config *params.ChainConfig, parent *types.Block, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts) {
+func GenerateChain(config *params.ChainConfig, parent *types.Block, engine consensus.Engine, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts) {
 	blocks, receipts := make(types.Blocks, n), make([]types.Receipts, n)
 	genblock := func(i int, h *types.Header, statedb *state.StateDB) (*types.Block, types.Receipts) {
-		b := &BlockGen{parent: parent, i: i, chain: blocks, header: h, statedb: statedb, config: config}
-
+		blockchain, _ := NewBlockChain(statedb, config, engine, vm.Config{}, nil)
+		defer blockchain.Stop()
+		
+		b := &BlockGen{i: i, parent: parent, chain: blocks, chainReader: blockchain, statedb: statedb, config: config, engine: engine}
+		b.header = makeHeader(b.chainReader, parent, statedb, b.engine)
 		// Mutate the state and block according to any hard-fork specs
 		if config == nil {
 			config = params.DefaultConfigMainnet.ChainConfig // MakeChainConfig()
@@ -248,21 +255,27 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, db ethdb.Dat
 		if gen != nil {
 			gen(i, b)
 		}
-		AccumulateRewards(config, statedb, h, b.uncles)
-		root, err := statedb.CommitTo(db, false)
-		if err != nil {
-			panic(fmt.Sprintf("state write error: %v", err))
+
+		if b.engine != nil {
+			// Finalize and seal the block
+			block, _ := b.engine.Finalize(b.chainReader, b.header, statedb, b.txs, b.uncles, b.receipts)
+
+			AccumulateRewards(config, statedb, h, b.uncles)
+			root, err := statedb.CommitTo(db, false)
+			if err != nil {
+				panic(fmt.Sprintf("state write error: %v", err))
+			}
+			h.Root = root
+			return types.NewBlock(h, b.txs, b.uncles, b.receipts), b.receipts
 		}
-		h.Root = root
-		return types.NewBlock(h, b.txs, b.uncles, b.receipts), b.receipts
+
 	}
 	for i := 0; i < n; i++ {
 		statedb, err := state.New(parent.Root(), state.NewDatabase(db))
 		if err != nil {
 			panic(err)
 		}
-		header := makeHeader(config, parent, statedb)
-		block, receipt := genblock(i, header, statedb)
+		block, receipt := genblock(i, parent, statedb)
 		blocks[i] = block
 		receipts[i] = receipt
 		parent = block
@@ -270,7 +283,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, db ethdb.Dat
 	return blocks, receipts
 }
 
-func makeHeader(config *params.ChainConfig, parent *types.Block, state *state.StateDB) *types.Header {
+func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.StateDB, engine consensus.Engine) *types.Header {
 	var time *big.Int
 	if parent.Time() == nil {
 		time = big.NewInt(10)
@@ -281,7 +294,12 @@ func makeHeader(config *params.ChainConfig, parent *types.Block, state *state.St
 		Root:       state.IntermediateRoot(false),
 		ParentHash: parent.Hash(),
 		Coinbase:   parent.Coinbase(),
-		Difficulty: CalcDifficulty(config, time.Uint64(), new(big.Int).Sub(time, big.NewInt(10)).Uint64(), parent.Number(), parent.Difficulty()),
+		Difficulty: engine.CalcDifficulty(chain, time.Uint64(), &types.Header{
+			Number:     parent.Number(),
+			Time:       new(big.Int).Sub(time, big.NewInt(10)),
+			Difficulty: parent.Difficulty(),
+			UncleHash:  parent.UncleHash(),
+		}),
 		GasLimit:   CalcGasLimit(parent),
 		Number:     new(big.Int).Add(parent.Number(), common.Big1),
 		Time:       time,

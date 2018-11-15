@@ -105,10 +105,10 @@ type PoW interface {
 	Hashrate() float64
 	
 	//
-	Search(block Block, stop <-chan struct{}, index int) (uint64, []byte)
+	Search(block types.Block, stop <-chan struct{}, index int) (uint64, []byte)
 	
 	//
-	Verify(block Block) bool
+	Verify(block types.Block) bool
 	
 	// GetHashrate returns the current mining hashrate of a PoW consensus engine.
 	GetHashrate() int64
