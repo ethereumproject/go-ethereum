@@ -94,6 +94,10 @@ var (
 		Name:  "fast",
 		Usage: "Enable fast syncing through state downloads",
 	}
+	SlowSyncFlag = cli.BoolFlag{
+		Name:  "slow",
+		Usage: "Force full sync, even if fast sync is in progress",
+	}
 	LightKDFFlag = cli.BoolFlag{
 		Name:  "light-kdf,lightkdf",
 		Usage: "Reduce key-derivation RAM & CPU usage at some expense of KDF strength",

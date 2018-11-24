@@ -153,6 +153,7 @@ func makeCLIApp() (app *cli.App) {
 		ChainIdentityFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,
+		SlowSyncFlag,
 		AddrTxIndexFlag,
 		AddrTxIndexAutoBuildFlag,
 		CacheFlag,

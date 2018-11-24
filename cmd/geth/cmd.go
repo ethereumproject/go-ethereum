@@ -378,7 +378,7 @@ func formatEthConfigPretty(ethConfig *eth.Config) (s []string) {
 	// NetworkID
 	ss = append(ss, printable{0, "Network", ethConfig.NetworkId})
 	// FastSync?
-	ss = append(ss, printable{0, "Fast sync", ethConfig.FastSync})
+	ss = append(ss, printable{0, "Fast sync", ethConfig.SyncMode})
 	// BlockChainVersion
 	ss = append(ss, printable{0, "Blockchain version", ethConfig.BlockChainVersion})
 	// DatabaseCache

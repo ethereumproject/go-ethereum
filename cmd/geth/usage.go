@@ -77,6 +77,7 @@ var AppHelpFlagAndCommandGroups = []flagGroup{
 			DevModeFlag,
 			NodeNameFlag,
 			FastSyncFlag,
+			SlowSyncFlag,
 			CacheFlag,
 			LightKDFFlag,
 			SputnikVMFlag,

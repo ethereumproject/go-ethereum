@@ -118,14 +118,15 @@ func ErrWasRequested(e error) bool {
 type SyncMode int
 
 const (
-	FullSync  SyncMode = iota // Synchronise the entire blockchain history from full blocks
-	FastSync                  // Quickly download the headers, full sync only at the chain head
-	LightSync                 // Download only the headers and terminate afterwards
+	FullSync      SyncMode = iota // Synchronise the entire blockchain history from full blocks
+	ForceFullSync                 // Like above, but ensure FullSync no matter the DB state
+	FastSync                      // Quickly download the headers, full sync only at the chain head
+	LightSync                     // Download only the headers and terminate afterwards
 )
 
 func (m SyncMode) String() string {
 	switch m {
-	case FullSync:
+	case FullSync, ForceFullSync:
 		return "FULL"
 	case FastSync:
 		return "FAST"
