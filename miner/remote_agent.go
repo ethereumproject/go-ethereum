@@ -194,6 +194,6 @@ out:
 	}
 }
 
-func (self *RemoteAgent) Win(work *Work) *types.Block {
+func (a *RemoteAgent) Win(work *Work) *types.Block {
 	panic("satisfies automining method")
 }

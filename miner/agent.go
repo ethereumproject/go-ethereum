@@ -51,52 +51,52 @@ func NewCpuAgent(index int, pow pow.PoW) *CpuAgent {
 	return miner
 }
 
-func (self *CpuAgent) Work() chan<- *Work            { return self.workCh }
-func (self *CpuAgent) Pow() pow.PoW                  { return self.pow }
-func (self *CpuAgent) SetReturnCh(ch chan<- *Result) { self.returnCh = ch }
+func (aa *CpuAgent) Work() chan<- *Work            { return aa.workCh }
+func (aa *CpuAgent) Pow() pow.PoW                  { return aa.pow }
+func (aa *CpuAgent) SetReturnCh(ch chan<- *Result) { aa.returnCh = ch }
 
-func (self *CpuAgent) Stop() {
-	self.mu.Lock()
-	defer self.mu.Unlock()
+func (aa *CpuAgent) Stop() {
+	aa.mu.Lock()
+	defer aa.mu.Unlock()
 
-	close(self.quit)
+	close(aa.quit)
 }
 
-func (self *CpuAgent) Start() {
-	self.mu.Lock()
-	defer self.mu.Unlock()
+func (aa *CpuAgent) Start() {
+	aa.mu.Lock()
+	defer aa.mu.Unlock()
 
-	if !atomic.CompareAndSwapInt32(&self.isMining, 0, 1) {
+	if !atomic.CompareAndSwapInt32(&aa.isMining, 0, 1) {
 		return // agent already started
 	}
 
-	self.quit = make(chan struct{})
+	aa.quit = make(chan struct{})
 	// creating current op ch makes sure we're not closing a nil ch
 	// later on
-	self.workCh = make(chan *Work, 1)
+	aa.workCh = make(chan *Work, 1)
 
-	go self.update()
+	go aa.update()
 }
 
-func (self *CpuAgent) update() {
+func (aa *CpuAgent) update() {
 out:
 	for {
 		select {
-		case work := <-self.workCh:
-			self.mu.Lock()
-			if self.quitCurrentOp != nil {
-				close(self.quitCurrentOp)
+		case work := <-aa.workCh:
+			aa.mu.Lock()
+			if aa.quitCurrentOp != nil {
+				close(aa.quitCurrentOp)
 			}
-			self.quitCurrentOp = make(chan struct{})
-			go self.mine(work, self.quitCurrentOp)
-			self.mu.Unlock()
-		case <-self.quit:
-			self.mu.Lock()
-			if self.quitCurrentOp != nil {
-				close(self.quitCurrentOp)
-				self.quitCurrentOp = nil
+			aa.quitCurrentOp = make(chan struct{})
+			go aa.mine(work, aa.quitCurrentOp)
+			aa.mu.Unlock()
+		case <-aa.quit:
+			aa.mu.Lock()
+			if aa.quitCurrentOp != nil {
+				close(aa.quitCurrentOp)
+				aa.quitCurrentOp = nil
 			}
-			self.mu.Unlock()
+			aa.mu.Unlock()
 			break out
 		}
 	}
@@ -105,33 +105,33 @@ done:
 	// Empty work channel
 	for {
 		select {
-		case <-self.workCh:
+		case <-aa.workCh:
 		default:
-			close(self.workCh)
+			close(aa.workCh)
 			break done
 		}
 	}
 
-	atomic.StoreInt32(&self.isMining, 0)
+	atomic.StoreInt32(&aa.isMining, 0)
 }
 
-func (self *CpuAgent) mine(work *Work, stop <-chan struct{}) {
-	glog.V(logger.Debug).Infof("(re)started agent[%d]. mining...\n", self.index)
+func (aa *CpuAgent) mine(work *Work, stop <-chan struct{}) {
+	glog.V(logger.Debug).Infof("(re)started agent[%d]. mining...\n", aa.index)
 
 	// Mine
-	nonce, mixDigest := self.pow.Search(work.Block, stop, self.index)
+	nonce, mixDigest := aa.pow.Search(work.Block, stop, aa.index)
 	if nonce != 0 {
 		block := work.Block.WithMiningResult(nonce, common.BytesToHash(mixDigest))
-		self.returnCh <- &Result{work, block}
+		aa.returnCh <- &Result{work, block}
 	} else {
-		self.returnCh <- nil
+		aa.returnCh <- nil
 	}
 }
 
-func (self *CpuAgent) GetHashRate() int64 {
-	return self.pow.GetHashrate()
+func (aa *CpuAgent) GetHashRate() int64 {
+	return aa.pow.GetHashrate()
 }
 
-func (self *CpuAgent) Win(work *Work) *types.Block {
+func (aa *CpuAgent) Win(work *Work) *types.Block {
 	panic("satisfies automining method")
 }
