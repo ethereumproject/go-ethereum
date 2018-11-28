@@ -51,10 +51,12 @@ type Miner struct {
 
 	canStart    int32 // can start indicates whether we can start the mining operation
 	shouldStart int32 // should start indicates whether we should start after sync
+
+	automine bool
 }
 
-func New(eth core.Backend, config *core.ChainConfig, mux *event.TypeMux, pow pow.PoW) *Miner {
-	miner := &Miner{eth: eth, mux: mux, pow: pow, worker: newWorker(config, common.Address{}, eth), canStart: 1}
+func New(eth core.Backend, config *core.ChainConfig, mux *event.TypeMux, pow pow.PoW, automine bool) *Miner {
+	miner := &Miner{eth: eth, mux: mux, pow: pow, worker: newWorker(config, common.Address{}, eth), canStart: 1, automine: automine}
 	go miner.update()
 
 	return miner
@@ -121,8 +123,10 @@ func (self *Miner) Start(coinbase common.Address, threads int) {
 
 	atomic.StoreInt32(&self.mining, 1)
 
-	for i := 0; i < threads; i++ {
-		self.worker.register(NewCpuAgent(i, self.pow))
+	if !self.automine {
+		for i := 0; i < threads; i++ {
+			self.worker.register(NewCpuAgent(i, self.pow))
+		}
 	}
 
 	mlogMinerStart.AssignDetails(

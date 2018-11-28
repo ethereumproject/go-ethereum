@@ -150,6 +150,8 @@ type ChainConfig struct {
 
 	// BadHashes holds well known blocks with consensus issues. See ErrHashKnownBad.
 	BadHashes []*BadHash `json:"badHashes"`
+
+	Automine bool `json:"automine,omitempty"`
 }
 
 type Fork struct {
@@ -738,7 +740,9 @@ func WriteGenesisBlock(chainDb ethdb.Database, genesis *GenesisDump) (*types.Blo
 	for addrHex, account := range genesis.Alloc {
 		var addr common.Address
 		if err := addrHex.Decode(addr[:]); err != nil {
-			return nil, fmt.Errorf("malformed addres %q: %s", addrHex, err)
+			if err = addrHex[2:].Decode(addr[:]); err != nil {
+				return nil, fmt.Errorf("malformed addres %q: %s", addrHex, err)
+			}
 		}
 
 		balance, ok := new(big.Int).SetString(account.Balance, 0)

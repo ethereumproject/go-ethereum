@@ -190,6 +190,7 @@ func makeCLIApp() (app *cli.App) {
 		PreloadJSFlag,
 		WhisperEnabledFlag,
 		DevModeFlag,
+		EZDevModeFlag,
 		TestNetFlag,
 		NetworkIdFlag,
 		RPCCORSDomainFlag,
@@ -264,21 +265,6 @@ func makeCLIApp() (app *cli.App) {
 		if err := handleIfDataDirSchemaMigrations(ctx); err != nil {
 			return err
 		}
-
-		if err := setupLogRotation(ctx); err != nil {
-			return err
-		}
-
-		// Handle parsing and applying log verbosity, severities, and default configurations from context.
-		if err := setupLogging(ctx); err != nil {
-			return err
-		}
-
-		// Handle parsing and applying log rotation configs from context.
-		if err := setupLogRotation(ctx); err != nil {
-			return err
-		}
-
 		if s := ctx.String("metrics"); s != "" {
 			go metrics.CollectToFile(s)
 		}
@@ -293,10 +279,25 @@ func makeCLIApp() (app *cli.App) {
 		// Set morden chain by default for dev mode.
 		if ctx.GlobalBool(aliasableName(DevModeFlag.Name, ctx)) {
 			if !ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
-				if e := ctx.Set(aliasableName(ChainIdentityFlag.Name, ctx), "morden"); e != nil {
+				if e := ctx.GlobalSet(ChainIdentityFlag.Name, "morden"); e != nil {
 					return fmt.Errorf("failed to set chain value: %v", e)
 				}
 			}
+		}
+
+		if ctx.GlobalBool(aliasableName(EZDevModeFlag.Name, ctx)) {
+			log.Println("Turning on EZDEV...")
+			core.SetCacheChainIdentity("ezdev")
+		}
+
+		// Handle parsing and applying log verbosity, severities, and default configurations from context.
+		if err := setupLogging(ctx); err != nil {
+			return err
+		}
+
+		// Handle parsing and applying log rotation configs from context.
+		if err := setupLogRotation(ctx); err != nil {
+			return err
 		}
 
 		if port := ctx.GlobalInt(PprofFlag.Name); port != 0 {

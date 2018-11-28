@@ -1197,6 +1197,19 @@ const (
 	SideStatTy
 )
 
+func (w WriteStatus) String() string {
+	switch w {
+	case NonStatTy:
+		return "non"
+	case CanonStatTy:
+		return "canon"
+	case SideStatTy:
+		return "side"
+	default:
+		panic("unreachable")
+	}
+}
+
 // Rollback is designed to remove a chain of links from the database that aren't
 // certain enough to be valid.
 func (bc *BlockChain) Rollback(chain []common.Hash) {

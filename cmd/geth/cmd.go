@@ -31,6 +31,8 @@ import (
 	"syscall"
 	"time"
 
+	"math"
+
 	"github.com/ethereumproject/ethash"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -44,7 +46,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/pow"
 	"github.com/ethereumproject/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
-	"math"
 )
 
 const (
@@ -637,7 +638,7 @@ func rollback(ctx *cli.Context) error {
 func dumpChainConfig(ctx *cli.Context) error {
 
 	chainIdentity := mustMakeChainIdentity(ctx)
-	if !(core.ChainIdentitiesMain[chainIdentity] || core.ChainIdentitiesMorden[chainIdentity]) {
+	if !(core.ChainIdentitiesMain[chainIdentity] || core.ChainIdentitiesMorden[chainIdentity] || chainIdentity == "ezdev") {
 		glog.Fatal("Dump config should only be used with default chain configurations (mainnet or morden).")
 	}
 
@@ -694,6 +695,10 @@ func dumpChainConfig(ctx *cli.Context) error {
 		Genesis:     genesisDump,
 		ChainConfig: chainConfig.SortForks(), // get current/contextualized chain config
 		Bootstrap:   nodes,
+	}
+
+	if ctx.GlobalBool(EZDevModeFlag.Name) {
+		currentConfig = core.DefaultConfigEZDev
 	}
 
 	if writeError := currentConfig.WriteToJSONFile(chainConfigFilePath); writeError != nil {

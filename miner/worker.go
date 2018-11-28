@@ -18,7 +18,6 @@ package miner
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -49,6 +48,7 @@ type Agent interface {
 	Stop()
 	Start()
 	GetHashRate() int64
+	Win(work *Work) *types.Block // just for automining
 }
 
 type uint64RingBuffer struct {
@@ -101,6 +101,8 @@ type worker struct {
 	agents map[Agent]struct{}
 	recv   chan *Result
 
+	autominer Agent
+
 	eth     core.Backend
 	chain   *core.BlockChain
 	proc    core.Validator
@@ -137,8 +139,11 @@ func newWorker(config *core.ChainConfig, coinbase common.Address, eth core.Backe
 		possibleUncles: make(map[common.Hash]*types.Block),
 		coinbase:       coinbase,
 		txQueue:        make(map[common.Hash]*types.Transaction),
-		agents:         make(map[Agent]struct{}),
 		fullValidation: false,
+	}
+	worker.agents = make(map[Agent]struct{})
+	if config.Automine {
+		worker.autominer = NewAutoAgent(0)
 	}
 	worker.events = worker.mux.Subscribe(core.ChainHeadEvent{}, core.ChainSideEvent{}, core.TxPreEvent{})
 	go worker.update()
@@ -218,7 +223,6 @@ func (self *worker) unregister(agent Agent) {
 
 func (self *worker) update() {
 	for event := range self.events.Chan() {
-		// A real event arrived, process interesting content
 		switch ev := event.Data.(type) {
 		case core.ChainHeadEvent:
 			self.commitNewWork()
@@ -227,12 +231,36 @@ func (self *worker) update() {
 			self.possibleUncles[ev.Block.Hash()] = ev.Block
 			self.uncleMu.Unlock()
 		case core.TxPreEvent:
-			// Apply transaction to the pending state if we're not mining
-			if atomic.LoadInt32(&self.mining) == 0 {
-				self.currentMu.Lock()
-				self.current.commitTransactions(self.mux, types.Transactions{ev.Tx}, self.gasPrice, self.chain)
-				self.currentMu.Unlock()
+			if self.config.Automine {
+				if atomic.LoadInt32(&self.mining) == 0 {
+					self.start()
+				} else {
+					// If many txs are fired at geth at once, they will be included in blocks more quickly than this event will be processed, causing ~200+ transactions per block, and yielding many empty blocks after the burst is complete as the channel drains. This conditional simply ensure that there are actually transactions to add a next block. If not, the event is essentially ignored.
+					pending, queued := self.eth.TxPool().Stats()
+					if pending+queued == 0 {
+						continue
+
+					}
+
+					self.currentMu.Lock()
+					ww := self.current
+					self.currentMu.Unlock()
+					self.currentMu.Lock()
+					w := self.autominer.Win(ww) // ftw
+					self.currentMu.Unlock()
+
+					glog.D(logger.Info).Infoln("+tx: ", ev.Tx.String(), "txpool(p=", pending, "q=", queued, ")")
+					self.recv <- &Result{ww, w}
+				}
+			} else {
+				// Apply transaction to the pending state if we're not mining
+				if atomic.LoadInt32(&self.mining) == 0 {
+					self.currentMu.Lock()
+					self.current.commitTransactions(self.mux, types.Transactions{ev.Tx}, self.gasPrice, self.chain)
+					self.currentMu.Unlock()
+				}
 			}
+
 		}
 	}
 }
@@ -249,6 +277,7 @@ func newLocalMinedBlock(blockNumber uint64, prevMinedBlocks *uint64RingBuffer) (
 	return minedBlocks
 }
 
+// wait waits for agent to find new a new solved block
 func (self *worker) wait() {
 	for {
 		for result := range self.recv {
@@ -262,7 +291,7 @@ func (self *worker) wait() {
 
 			if self.fullValidation {
 				if res := self.chain.InsertChain(types.Blocks{block}); res.Error != nil {
-					log.Printf("mine: ignoring invalid block #%d (%x) received: %v\n", block.Number(), block.Hash(), res.Error)
+					glog.Errorln("mine: ignoring invalid block #%d (%x) received: %v\n", block.Number(), block.Hash(), res.Error)
 					continue
 				}
 				go self.mux.Post(core.NewMinedBlockEvent{Block: block})
@@ -271,18 +300,21 @@ func (self *worker) wait() {
 				parent := self.chain.GetBlock(block.ParentHash())
 				if parent == nil {
 					glog.V(logger.Error).Infoln("Invalid block found during mining")
+					glog.D(logger.Error).Infoln("Invalid block found during mining")
 					continue
 				}
 
 				auxValidator := self.eth.BlockChain().AuxValidator()
 				if err := core.ValidateHeader(self.config, auxValidator, block.Header(), parent.Header(), true, false); err != nil && err != core.BlockFutureErr {
 					glog.V(logger.Error).Infoln("Invalid header on mined block:", err)
+					glog.D(logger.Error).Infoln("Invalid header on mined block:", err)
 					continue
 				}
 
 				stat, err := self.chain.WriteBlock(block)
 				if err != nil {
 					glog.V(logger.Error).Infoln("error writing block to chain", err)
+					glog.D(logger.Error).Infoln("error writing block to chain", err)
 					continue
 				}
 
@@ -308,7 +340,7 @@ func (self *worker) wait() {
 
 				// broadcast before waiting for validation
 				go func(block *types.Block, logs vm.Logs, receipts []*types.Receipt) {
-					self.mux.Post(core.NewMinedBlockEvent{Block: block})
+					self.mux.Post(core.NewMinedBlockEvent{Block: block, Stat: stat})
 					self.mux.Post(core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
 
 					if stat == core.CanonStatTy {
@@ -459,14 +491,20 @@ func (self *worker) commitNewWork() {
 	tstart := time.Now()
 	parent := self.chain.CurrentBlock()
 	tstamp := tstart.Unix()
+
+	// compare parent time and ~now time (tstamp),
+	// if parent time is greater than or the same as tstamp,
+	// then set stamp to be one second after parent
 	if parent.Time().Cmp(new(big.Int).SetInt64(tstamp)) >= 0 {
 		tstamp = parent.Time().Int64() + 1
 	}
 	// this will ensure we're not going off too far in the future
-	if now := time.Now().Unix(); tstamp > now+4 {
-		wait := time.Duration(tstamp-now) * time.Second
-		glog.V(logger.Info).Infoln("We are too far in the future. Waiting for", wait)
-		time.Sleep(wait)
+	if !self.config.Automine {
+		if now := time.Now().Unix(); tstamp > now+4 {
+			wait := time.Duration(tstamp-now) * time.Second
+			glog.V(logger.Info).Infoln("We are too far in the future. Waiting for", wait)
+			time.Sleep(wait)
+		}
 	}
 
 	num := parent.Number()

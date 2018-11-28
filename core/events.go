@@ -44,7 +44,10 @@ type PendingStateEvent struct{}
 type NewBlockEvent struct{ Block *types.Block }
 
 // NewMinedBlockEvent is posted when a block has been imported.
-type NewMinedBlockEvent struct{ Block *types.Block }
+type NewMinedBlockEvent struct {
+	Block *types.Block
+	Stat  WriteStatus
+}
 
 // RemovedTransactionEvent is posted when a reorg happens
 type RemovedTransactionEvent struct{ Txs types.Transactions }

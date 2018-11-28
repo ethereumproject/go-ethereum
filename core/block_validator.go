@@ -255,7 +255,7 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 		return BlockNumberErr
 	}
 
-	if checkPow {
+	if checkPow && !config.Automine {
 		// Verify the nonce of the header. Return an error if it's not valid
 		if !pow.Verify(types.NewBlockWithHeader(header)) {
 			return &BlockNonceErr{header.Number, header.Hash(), header.Nonce.Uint64()}

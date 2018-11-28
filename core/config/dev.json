@@ -1,0 +1,109 @@
+{
+    "identity": "ezdev",
+    "name": "EZDEV Client",
+    "state": {
+        "startingNonce": 181818
+    },
+    "network": 69,
+    "consensus": "ethash-test",
+    "chainConfig": {
+        "forks": [
+            {
+                "name": "Homestead",
+                "block": 0,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": [
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "type": "homestead"
+                        }
+                    },
+                    {
+                        "id": "gastable",
+                        "options": {
+                            "type": "homestead"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "GasReprice",
+                "block": 0,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": [
+                    {
+                        "id": "gastable",
+                        "options": {
+                            "type": "eip150"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "The DAO Hard Fork",
+                "block": 0,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": []
+            },
+            {
+                "name": "Diehard",
+                "block": 0,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": [
+                    {
+                        "id": "eip155",
+                        "options": {
+                            "chainID": 69
+                        }
+                    },
+                    {
+                        "id": "gastable",
+                        "options": {
+                            "type": "eip160"
+                        }
+                    },
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "length": 2000000,
+                            "type": "ecip1010"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Gotham",
+                "block": 0,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": [
+                    {
+                        "id": "reward",
+                        "options": {
+                            "era": 2000000,
+                            "type": "ecip1017"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Defuse Difficulty Bomb",
+                "block": 0,
+                "features": [
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "type": "defused"
+                        }
+                    }
+                ]
+            }
+        ],
+        "badHashes": [
+        ]
+    },
+	"include" : [
+		"dev_genesis.json",
+		"dev_bootnodes.json"
+	]
+}

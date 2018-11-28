@@ -228,7 +228,8 @@ func (tx *Transaction) String() string {
 	}
 	enc, _ := rlp.EncodeToBytes(&tx.data)
 	return fmt.Sprintf(`
-	TX(%x)
+	Hash:     %x
+	ChainID:  %v
 	Contract: %v
 	From:     %s
 	To:       %s
@@ -240,10 +241,11 @@ func (tx *Transaction) String() string {
 	V:        0x%x
 	R:        0x%x
 	S:        0x%x
-	Hex:      %x
+	RLP Hex:  %x
 `,
 		tx.Hash(),
-		len(tx.data.Recipient.Bytes()) == 0,
+		tx.ChainId(),
+		tx.To() == nil,
 		from,
 		to,
 		tx.data.AccountNonce,

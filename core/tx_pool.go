@@ -111,7 +111,6 @@ func (pool *TxPool) eventLoop() {
 			if ev.Block != nil && pool.config.IsHomestead(ev.Block.Number()) {
 				pool.homestead = true
 			}
-
 			pool.resetState()
 			pool.mu.Unlock()
 		case GasPriceChanged:
@@ -127,12 +126,12 @@ func (pool *TxPool) eventLoop() {
 func (pool *TxPool) resetState() {
 	currentState, err := pool.currentState()
 	if err != nil {
-		glog.V(logger.Info).Infof("failed to get current state: %v", err)
+		glog.V(logger.Error).Errorf("failed to get current state: %v", err)
 		return
 	}
 	managedState := state.ManageState(currentState)
 	if err != nil {
-		glog.V(logger.Info).Infof("failed to get managed state: %v", err)
+		glog.V(logger.Error).Errorf("failed to get managed state: %v", err)
 		return
 	}
 	pool.pendingState = managedState

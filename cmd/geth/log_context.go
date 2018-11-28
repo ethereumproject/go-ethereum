@@ -12,10 +12,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"net"
+
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
-	"net"
 )
 
 const defaultStatusLog = "sync=60s"
@@ -54,7 +55,7 @@ func setupLogging(ctx *cli.Context) error {
 			glog.SetToStderr(true)
 		}
 	} else {
-		logDir = filepath.Join(MustMakeChainDataDir(ctx), glog.DefaultLogDirName)
+		logDir = filepath.Join(mustMakeDataDir(ctx), mustMakeChainIdentity(ctx), glog.DefaultLogDirName)
 	}
 
 	// Allow to-file logging to be disabled

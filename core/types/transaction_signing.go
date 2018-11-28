@@ -50,15 +50,16 @@ func normaliseV(s Signer, v *big.Int) byte {
 }
 
 // deriveChainId derives the chain id from the given v parameter
-func deriveChainId(v *big.Int) *big.Int {
+func deriveChainId(v *big.Int) (o *big.Int) {
+	o = new(big.Int)
 	if v.BitLen() <= 64 {
 		v := v.Uint64()
 		if v == 27 || v == 28 {
-			return new(big.Int)
+			return o
 		}
-		return new(big.Int).SetUint64((v - 35) / 2)
+		return o.SetUint64((v - 35) / 2)
 	}
-	v = new(big.Int).Sub(v, big.NewInt(35))
+	v = o.Sub(v, big.NewInt(35))
 	return v.Div(v, big.NewInt(2))
 }
 
