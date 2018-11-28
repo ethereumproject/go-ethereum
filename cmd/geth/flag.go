@@ -482,7 +482,7 @@ func MakeSystemNode(version string, ctx *cli.Context) *node.Node {
 		miner.HeaderExtra = []byte(s)
 	}
 
-	if ctx.GlobalBool(EZDevModeFlag.Name) {
+	if ctx.GlobalBool(aliasableName(EZDevModeFlag.Name, ctx)) {
 		setEZDevFlags(ctx)
 		if err := setupEZDev(ctx, core.DefaultConfigEZDev); err != nil {
 			panic(err)
