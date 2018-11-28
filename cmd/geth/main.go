@@ -287,7 +287,7 @@ func makeCLIApp() (app *cli.App) {
 
 		if ctx.GlobalBool(aliasableName(EZDevModeFlag.Name, ctx)) {
 			log.Println("Turning on EZDEV...")
-			core.SetCacheChainIdentity("ezdev")
+			core.SetCacheChainIdentity(core.ChainIdentityEZDev)
 		}
 
 		// Handle parsing and applying log verbosity, severities, and default configurations from context.

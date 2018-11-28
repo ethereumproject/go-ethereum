@@ -44,6 +44,8 @@ import (
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 )
 
+const ChainIdentityEZDev = "ezdev"
+
 var (
 	ErrChainConfigNotFound     = errors.New("chain config not found")
 	ErrChainConfigForkNotFound = errors.New("chain config fork not found")
@@ -69,6 +71,22 @@ var (
 		"morden":  true,
 		"testnet": true,
 	}
+	// ChainIdentitiesReserved maps all reserved chain identities, including
+	// mainnet, any testnets, and reserved special configurations like ezdev.
+	ChainIdentitiesReserved = func() map[string]bool {
+		var m = make(map[string]bool)
+		for _, r := range []map[string]bool{
+			ChainIdentitiesMain,
+			ChainIdentitiesMorden,
+		} {
+			for k, v := range r {
+				m[k] = v
+			}
+		}
+		// Add extra special identites
+		m[ChainIdentityEZDev] = true
+		return m
+	}()
 
 	cacheChainIdentity string
 	cacheChainConfig   *SufficientChainConfig

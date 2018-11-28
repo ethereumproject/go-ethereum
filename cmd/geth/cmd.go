@@ -638,8 +638,8 @@ func rollback(ctx *cli.Context) error {
 func dumpChainConfig(ctx *cli.Context) error {
 
 	chainIdentity := mustMakeChainIdentity(ctx)
-	if !(core.ChainIdentitiesMain[chainIdentity] || core.ChainIdentitiesMorden[chainIdentity] || chainIdentity == "ezdev") {
-		glog.Fatal("Dump config should only be used with default chain configurations (mainnet or morden).")
+	if !core.ChainIdentitiesReserved[chainIdentity] {
+		glog.Fatal("Dump config should only be used with default chain configurations (mainnet or morden or ezdev).")
 	}
 
 	glog.D(logger.Warn).Infof("Dumping configuration for: %v", chainIdentity)

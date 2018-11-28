@@ -67,7 +67,7 @@ var (
 		Usage: "Developer mode: pre-configured private network with several debugging flags",
 	}
 	EZDevModeFlag = cli.BoolFlag{
-		Name:  "ezdev",
+		Name:  core.ChainIdentityEZDev,
 		Usage: "EZ Developer mode: pre-configured private network, automining, default accounts",
 	}
 	NodeNameFlag = cli.StringFlag{
