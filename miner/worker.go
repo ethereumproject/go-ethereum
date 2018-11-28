@@ -244,8 +244,6 @@ func (self *worker) update() {
 
 					self.currentMu.Lock()
 					ww := self.current
-					self.currentMu.Unlock()
-					self.currentMu.Lock()
 					w := self.autominer.Win(ww) // ftw
 					self.currentMu.Unlock()
 
