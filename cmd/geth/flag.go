@@ -196,11 +196,7 @@ func mustMakeChainIdentity(ctx *cli.Context) (identity string) {
 			glog.Fatalf("Invalid chain config file at --%v: '%v': %v \nAssuming literal identity argument.",
 				aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal, configurationError)
 		}
-		// glog.V(logger.Debug).Infof("No existing file at --%v: '%v'. Using literal chain identity.", aliasableName(ChainIdentityFlag.Name, ctx), chainFlagVal)
 		identity = chainFlagVal
-
-		glog.Error("parse chain identity", identity)
-
 		return identity
 	} else if ctx.GlobalIsSet(aliasableName(ChainIdentityFlag.Name, ctx)) {
 		glog.Fatalf("%v: %v: chainID empty", ErrInvalidFlag, core.ErrInvalidChainID)
