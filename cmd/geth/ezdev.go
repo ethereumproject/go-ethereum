@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/logger"
@@ -47,11 +46,9 @@ func setupEZDev(ctx *cli.Context, config *core.SufficientChainConfig) error {
 			if err != nil {
 				return err
 			}
-			a := strings.Replace(acc.Address.Hex(), "0x", "", -1)
-			// poor man's csv writer
-			d := fmt.Sprintf(`"%s","%v"
-`, a, bal)
 			glog.D(logger.Warn).Infoln(acc.Address.Hex(), acc.File)
+			// poor man's csv writer
+			d := fmt.Sprintf(`"%s","%v"%c`, acc.Address.Hex(), bal, '\n')
 			data = append(data, []byte(d)...)
 		}
 	} else {
