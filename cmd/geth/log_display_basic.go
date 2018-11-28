@@ -57,7 +57,7 @@ var basicDisplaySystem = displayEventHandlers{
 				switch d := evData.(type) {
 				case core.NewMinedBlockEvent:
 					glog.D(logger.Warn).Infof(basicScanLn,
-						"Mined "+d.Stat.String(),
+						fmt.Sprintf("Mined %s", d.Stat.String()),
 						formatBlockNumber(d.Block.NumberU64()),
 						d.Block.Hash().Hex()[2:2+len(xlocalHeadHashD)],
 						fmt.Sprintf("%3d/%2d", d.Block.Transactions().Len(), new(big.Int).Div(d.Block.GasUsed(), big.NewInt(1000000)).Int64()),
