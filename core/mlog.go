@@ -14,6 +14,7 @@ var mlogTxPool = logger.MLogRegisterAvailable("txpool", mLogLinesTxPool)
 var mLogLinesBlockchain = []*logger.MLogT{
 	mlogBlockchainWriteBlock,
 	mlogBlockchainInsertBlocks,
+	mlogBlockchainReorgBlocks,
 }
 
 var mLogLinesHeaderchain = []*logger.MLogT{
