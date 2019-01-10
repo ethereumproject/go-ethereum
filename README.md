@@ -10,7 +10,8 @@
 Official Go language implementation of the Ethereum protocol supporting the
 _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and powerful application platform for developers in parallel to Ethereum (ETHF), while differentially rejecting the DAO bailout.
 
-## Install
+## TEST PR
+## Install 
 
 ### :rocket: From a release binary
 The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Home#Developers).
