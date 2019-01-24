@@ -33,3 +33,13 @@ coverage.txt
 .vscode
 
 accounts/testdata/keystore/accounts.db
+
+cmd/abigen/abigen
+cmd/disasm/disasm
+cmd/ethtest/ethtest
+cmd/evm/evm
+cmd/rlpdump/rlpdump
+cmd/geth/geth
+cmd/bootnode/bootnode
+
+
