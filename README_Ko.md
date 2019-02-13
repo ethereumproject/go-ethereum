@@ -331,7 +331,7 @@ $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x000000000000000000000
 
 이 프로젝트는 현재 어려운 프로젝트 인 [Ethereum (ETHF) Github project](https://github.com/ethereum) 에서 마이그레이션되었으며 프로젝트를 유지 관리하는 데 필요한 인프라를 단계적으로 마이그레이션해야합니다.
 
-작업에 기여하고 싶다면, 메인 코드베이스를 검토하고 병합하기 위해 유지 보수자를위한 요청을 포크하고 수정하고 커밋하고 보내십시오. 좀더 복잡한 변경사항을 제출하려면 [our Slack channel (#development)](http://ethereumclassic.herokuapp.com/) 또는 [our Discord channel (#development)](https://discord.gg/wpwSGWn) 의 핵심개발자에게 먼저 확인하십시오. 이러한 변화가 프로젝트의 일반적인 철학과 일치하는지 확인하고 / 또는 조기 피드백을 통해 귀하의 노력을 훨씬 가볍게 만들뿐만 아니라 검토 및 병합 절차를 빠르고 간단하게 수행 할 수 있습니다..
+작업에 기여하고 싶다면, 메인 코드베이스를 검토하고 병합하기 위해 유지 보수자를위한 요청을 포크하고 수정하고 커밋하고 보내십시오. 좀더 복잡한 변경사항을 제출하려면 [our Discord channel (#development)](https://discord.gg/NgzMPaj) 의 핵심개발자에게 먼저 확인하십시오. 이러한 변화가 프로젝트의 일반적인 철학과 일치하는지 확인하고 / 또는 조기 피드백을 통해 귀하의 노력을 훨씬 가볍게 만들뿐만 아니라 검토 및 병합 절차를 빠르고 간단하게 수행 할 수 있습니다..
 
 
 환경 구성, 프로젝트 종속성 관리 및 절차 테스트에 대한 자세한 내용은 [Wiki](https://github.com/ethereumproject/go-ethereum/wiki) 를 참조하십시오.
