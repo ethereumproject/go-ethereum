@@ -25,9 +25,10 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
+	"os"
+
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/rpc"
-	"os"
 )
 
 var (

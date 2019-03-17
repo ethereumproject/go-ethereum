@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -111,7 +112,6 @@ func loggingContains(s severity, str string, t *testing.T) bool {
 func displayContains(s severity, str string, t *testing.T) bool {
 	return strings.Contains(displayContents(s), str)
 }
-
 
 // setFlags configures the logging flags how the test expects them.
 func setFlags() {
@@ -245,7 +245,7 @@ func TestHeader2InfoLog(t *testing.T) {
 	defer logging.verbosityTraceThreshold.set(s)
 	pid = 1234
 	Info("test")
-	format := "I" + "0102 15:04:05.067890 logger/glog/glog_test.go:"+strconv.Itoa(lineNumber()-1)+"] test\n"
+	format := "I" + "0102 15:04:05.067890 logger/glog/glog_test.go:" + strconv.Itoa(lineNumber()-1) + "] test\n"
 	n, err := fmt.Sscanf(loggingContents(infoLog), format)
 	if err != nil {
 		t.Errorf("log format error: %d elements, error %s:\n%s", n, err, loggingContents(infoLog))
@@ -321,7 +321,7 @@ func TestErrorDisplay(t *testing.T) {
 	display.verbosity.Set("3")
 	defer display.verbosity.Set("0")
 	D(2).Errorln("test")
-	if !displayContains(errorLog, "ERROR", t) {
+	if !displayContains(errorLog, "ERR ", t) {
 		t.Errorf("Error has wrong character: %q", displayContents(errorLog))
 	}
 	if !displayContains(warningLog, "test", t) {
@@ -720,6 +720,7 @@ func testRotation(t *testing.T) {
 
 	// execute rotation
 	sb := &syncBuffer{}
+	atomic.StoreInt64(&rotationTime, 0) // make sure, that rotation is executed
 	sb.rotateOld(logDate)
 
 	// make assertions
@@ -761,7 +762,7 @@ func testRotation(t *testing.T) {
 			if maxTimestamp != "" && file.Mode().IsRegular() {
 				timestamp := extractTimestamp(file.Name(), preffix)
 				if strings.Compare(timestamp, maxTimestamp) < 0 {
-					t.Errorf("Old file not removed properly: %s\n", file.Name())
+					t.Errorf("Old file not removed properly: %s, %v\n", file.Name(), maxTimestamp)
 				}
 			}
 		}

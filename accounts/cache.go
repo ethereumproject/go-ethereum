@@ -145,7 +145,7 @@ func (ac *addrCache) find(a Account) (Account, error) {
 				return matches[i], nil
 			}
 		}
-		if (a.Address == common.Address{}) {
+		if a.Address.IsEmpty() {
 			return Account{}, ErrNoMatch
 		}
 	}
@@ -239,7 +239,7 @@ func (ac *addrCache) scan() ([]Account, error) {
 		switch {
 		case err != nil:
 			glog.V(logger.Debug).Infof("can't decode key %s: %v", path, err)
-		case (keyJSON.Address == common.Address{}):
+		case keyJSON.Address.IsEmpty():
 			glog.V(logger.Debug).Infof("can't decode key %s: missing or zero address", path)
 		default:
 			addrs = append(addrs, Account{Address: keyJSON.Address, File: path})

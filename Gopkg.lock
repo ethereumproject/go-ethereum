@@ -3,6 +3,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/ETCDEVTeam/sputnikvm-ffi"
+  packages = ["go/sputnikvm"]
+  revision = "67fde4837870516c14cf253f8e956141c9d586f9"
+
+[[projects]]
+  branch = "master"
   name = "github.com/Gustav-Simonsson/go-opencl"
   packages = ["cl"]
   revision = "593e01cfc4f3353585015321e01951d4a907d3ef"
@@ -56,16 +62,10 @@
   revision = "65a5b25efc277ff0996160cc3c76a44bec7a11fb"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/ethereumproject/sputnikvm-ffi"
-  packages = ["go/sputnikvm"]
-  revision = "68bcac0a08ca8ed7d8f2ace4b4aca72176544770"
-
-[[projects]]
   name = "github.com/fatih/color"
   packages = ["."]
-  revision = "507f6050b8568533fb3f5504de8e5205fa62a114"
-  version = "v1.6.0"
+  revision = "5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4"
+  version = "v1.7.0"
 
 [[projects]]
   name = "github.com/gizak/termui"
@@ -180,10 +180,9 @@
   revision = "e181e095bae94582363434144c61a9653aff6e50"
 
 [[projects]]
-  branch = "master"
   name = "github.com/rjeczalik/notify"
   packages = ["."]
-  revision = "e1801ee34d54c4bf45126ef51fe9750b4e42bee8"
+  revision = "c31e5f2cb22b3e4ef3f882f413847669bf2652b9"
 
 [[projects]]
   branch = "master"
@@ -204,6 +203,15 @@
   packages = ["."]
   revision = "7af7a1e09ba336d2ea14b1ce73bf693c6837dbf6"
   version = "v1.2"
+
+[[projects]]
+  name = "github.com/spf13/afero"
+  packages = [
+    ".",
+    "mem"
+  ]
+  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -271,11 +279,14 @@
     "encoding/unicode",
     "internal/gen",
     "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
     "internal/utf8internal",
     "language",
     "runes",
     "transform",
-    "unicode/cldr"
+    "unicode/cldr",
+    "unicode/norm"
   ]
   revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
 
@@ -323,6 +334,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2a159657f64d076ce0a2e9a184eda92d100ca9b1fa9dda0c003bdbd6079e3b26"
+  inputs-digest = "cba934e30ac391c4e1f3f69951e33020e183d729fb2bf60a18c7708836b9acdc"
   solver-name = "gps-cdcl"
   solver-version = 1

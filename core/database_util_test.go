@@ -26,6 +26,8 @@ import (
 	"strconv"
 	"testing"
 
+	"crypto/ecdsa"
+	"encoding/binary"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/core/vm"
@@ -33,6 +35,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto/sha3"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/rlp"
+	"strings"
 )
 
 type diffTest struct {
@@ -295,6 +298,240 @@ func TestTdStorage(t *testing.T) {
 	DeleteTd(db, hash)
 	if entry := GetTd(db, hash); entry != nil {
 		t.Fatalf("Deleted TD returned: %v", entry)
+	}
+}
+
+func TestAddrTxStorage(t *testing.T) {
+	dbFilepath, err := ioutil.TempDir("", "geth-db-util-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dbFilepath)
+	db, _ := ethdb.NewLDBDatabase(dbFilepath, 10, 100)
+
+	testKey := func(hex string) (*ecdsa.PrivateKey, common.Address) {
+		key := crypto.ToECDSA(common.Hex2Bytes(hex))
+		addr := crypto.PubkeyToAddress(key.PublicKey)
+		return key, addr
+	}
+
+	skey1, from1 := testKey("123915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
+	skey2, from2 := testKey("456915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
+
+	from2to := common.BytesToAddress([]byte{0x22})
+
+	// from1 -> 1
+	tx1 := types.NewTransaction(1, common.BytesToAddress([]byte{0x11}), big.NewInt(111), big.NewInt(1111), big.NewInt(11111), []byte{0x11, 0x11, 0x11})
+
+	// from2 -> 2,3,txC
+	tx2 := types.NewTransaction(2, from2to, big.NewInt(222), big.NewInt(2222), big.NewInt(22222), []byte{0x22, 0x22, 0x22})
+	tx3 := types.NewTransaction(3, common.BytesToAddress([]byte{0x33}), big.NewInt(333), big.NewInt(3333), big.NewInt(33333), []byte{0x33, 0x33, 0x33})
+	txC := types.NewTransaction(4, common.Address{}, big.NewInt(333), big.NewInt(3333), big.NewInt(33333), []byte{0x33, 0x33, 0x33})
+
+	txs := []*types.Transaction{tx1, tx2, tx3, txC}
+	txsSigned := []*types.Transaction{}
+
+	for _, x := range txs {
+		// Sign em so we get from
+		key := skey1
+		if x.Nonce() != 1 {
+			key = skey2
+		}
+		x.SetSigner(types.NewChainIdSigner(big.NewInt(1)))
+		xs, err := x.SignECDSA(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		txsSigned = append(txsSigned, xs)
+	}
+
+	block := types.NewBlock(&types.Header{Number: big.NewInt(314)}, txsSigned, nil, nil)
+
+	// Put in the transactions just for fun.
+	//
+	// Check that no transactions entries are in a pristine database
+	for i, tx := range txsSigned {
+		if txn, _, _, _ := GetTransaction(db, tx.Hash()); txn != nil {
+			t.Fatalf("tx #%d [%x]: non existent transaction returned: %v", i, tx.Hash(), txn)
+		}
+	}
+	// Insert all the transactions into the database, and verify contents
+	if err := WriteTransactions(db, block); err != nil {
+		t.Fatalf("failed to write transactions: %v", err)
+	}
+	for i, tx := range txsSigned {
+		if txn, hash, number, index := GetTransaction(db, tx.Hash()); txn == nil {
+			t.Fatalf("tx #%d [%x]: transaction not found", i, tx.Hash())
+		} else {
+			if hash != block.Hash() || number != block.NumberU64() || index != uint64(i) {
+				t.Fatalf("tx #%d [%x]: positional metadata mismatch: have %x/%d/%d, want %x/%v/%v", i, tx.Hash(), hash, number, index, block.Hash(), block.NumberU64(), i)
+			}
+			if tx.String() != txn.String() {
+				t.Fatalf("tx #%d [%x]: transaction mismatch: have %v, want %v", i, tx.Hash(), txn, tx)
+			}
+		}
+	}
+
+	// Write the atx indexes
+	if err := WriteBlockAddTxIndexes(db, block); err != nil {
+		t.Fatal(err)
+	}
+
+	prefix := ethdb.NewBytesPrefix(txAddressIndexPrefix)
+	it := db.NewIteratorRange(prefix)
+	count := 0
+	for it.Next() {
+		count++
+		//// Debugger -- it's kinda nice to see what the indexes look like
+		//ad, bn, tf, sc, txh := resolveAddrTxBytes(it.Key())
+		//addr, blockn, direc, ko, txhash := common.BytesToAddress(ad), binary.LittleEndian.Uint64(bn), string(tf), string(sc), common.BytesToHash(txh)
+		//t.Log(addr.Hex(), blockn, direc, ko, txhash.Hex())
+	}
+	it.Release()
+	if e := it.Error(); e != nil {
+		t.Fatal(e)
+	}
+	if count != 8 {
+		t.Errorf("want: %v, got: %v", 7, count)
+	}
+
+	out, _ := GetAddrTxs(db, from2, 0, 0, "", "", -1, -1, false)
+	if len(out) != 3 {
+		t.Errorf("want: %v, got: %v", 3, len(out))
+	}
+
+	// Test pagination and reverse
+	outReverse, _ := GetAddrTxs(db, from2, 0, 0, "", "", -1, -1, true)
+	if len(outReverse) != 3 {
+		t.Errorf("want: %v, got: %v", 3, len(outReverse))
+	}
+	// reverse
+	if out[0] != outReverse[2] || out[1] != outReverse[1] || out[2] != outReverse[0] {
+		t.Errorf("got: %v, want: %v", outReverse, out)
+	}
+	// pagination
+	outPag, _ := GetAddrTxs(db, from2, 0, 0, "", "", 1, -1, false)
+	if len(outPag) != 2 {
+		t.Errorf("got: %v, want: %v", len(outPag), 2)
+	}
+
+	out, _ = GetAddrTxs(db, from2, 0, 0, "", "c", -1, -1, false)
+	if len(out) != 1 {
+		t.Errorf("got: %v, want: %v", len(out), 1)
+	}
+	out, _ = GetAddrTxs(db, common.Address{}, 0, 0, "", "", -1, -1, false)
+	if len(out) != 1 {
+		t.Errorf("got: %v, want: %v", len(out), 1)
+	}
+
+	out, _ = GetAddrTxs(db, from1, 314, 314, "", "", -1, -1, false)
+	if len(out) != 1 {
+		t.Errorf("want: %v, got: %v", 1, len(out))
+	} else {
+		h := out[0]
+		if !strings.HasPrefix(h, "0x") {
+			t.Errorf("want: 0x-prefix, got: %v", h)
+		}
+		if !common.IsHex(h) {
+			t.Errorf("want: hex, got: %v", h)
+		}
+		txh := common.HexToHash(h)
+
+		if txh != txsSigned[0].Hash() {
+			t.Errorf("got: %x, want: %x", txh, txsSigned[0].Hash())
+		}
+
+		gx, _, _, _ := GetTransaction(db, txh)
+		if gx == nil {
+			t.Errorf("missing tx: %x", txh)
+		}
+	}
+
+	out, _ = GetAddrTxs(db, from2to, 314, 314, "to", "", -1, -1, false)
+	if len(out) != 1 {
+		t.Errorf("want: %v, got: %v", 1, len(out))
+	} else {
+		h := out[0]
+		if !strings.HasPrefix(h, "0x") {
+			t.Errorf("want: 0x-prefix, got: %v", h)
+		}
+		if !common.IsHex(h) {
+			t.Errorf("want: hex, got: %v", h)
+		}
+		txh := common.HexToHash(h)
+		if txh != txsSigned[1].Hash() {
+			t.Errorf("got: %x, want: %x", txh, txsSigned[0].Hash())
+		}
+		gx, _, _, _ := GetTransaction(db, txh)
+		if gx == nil {
+			t.Errorf("missing tx: %x", txh)
+		}
+		f, e := gx.From()
+		if e != nil {
+			t.Error(e)
+		}
+		if f != from2 {
+			t.Errorf("got: %v, want: %v", f, from2)
+		}
+	}
+	out, _ = GetAddrTxs(db, from2to, 314, 314, "from", "", -1, -1, false)
+	if len(out) != 0 {
+		t.Errorf("want: %v, got: %v", 0, len(out))
+	}
+}
+
+func TestFormatAndResolveAddrTxBytesKey(t *testing.T) {
+	testAddr := common.Address{}
+	testBN := uint64(42)
+	testTorf := "f"
+	testKindOf := "s"
+	testTxH := common.Hash{}
+
+	testBNBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(testBNBytes, testBN)
+
+	key := formatAddrTxBytesIndex(testAddr.Bytes(), testBNBytes, []byte(testTorf), []byte(testKindOf), testTxH.Bytes())
+
+	// Test key/prefix iterator-ability.
+	itPrefix := formatAddrTxIterator(testAddr)
+	if !bytes.HasPrefix(key, itPrefix) {
+		t.Fatalf("key/prefix mismatch: prefix=%s key=%s", itPrefix, key)
+	}
+
+	// Reverse engineer key and ensure expected.
+	outAddr, outBNBytes, outTorf, outKindOf, outTxH := resolveAddrTxBytes(key)
+
+	if gotAddr := common.BytesToAddress(outAddr); gotAddr != testAddr {
+		t.Errorf("got: %v, want: %v", gotAddr.Hex(), testAddr.Hex())
+	}
+	if gotBN := binary.LittleEndian.Uint64(outBNBytes); gotBN != testBN {
+		t.Errorf("got: %v, want: %v", gotBN, testBN)
+	}
+	if gotTorf := string(outTorf); gotTorf != testTorf {
+		t.Errorf("got: %v, want: %v", gotTorf, testTorf)
+	}
+	if gotKindOf := string(outKindOf); gotKindOf != testKindOf {
+		t.Errorf("got: %v, want: %v", gotKindOf, testKindOf)
+	}
+	if gotTxH := common.BytesToHash(outTxH); gotTxH != testTxH {
+		t.Errorf("got: %v, want: %v", gotTxH, testTxH)
+	}
+
+	// Ensure proper key part sizing.
+	sizes := []struct {
+		b           []byte
+		expectedLen int
+	}{
+		{outAddr, common.AddressLength},
+		{outBNBytes, 8},
+		{outTorf, 1},
+		{outKindOf, 1},
+		{outTxH, common.HashLength},
+	}
+	for _, s := range sizes {
+		if l := len(s.b); l != s.expectedLen {
+			t.Errorf("want: %v, got: %v", s.expectedLen, l)
+		}
 	}
 }
 

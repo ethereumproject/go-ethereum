@@ -98,7 +98,7 @@ func benchStateTest(ruleSet RuleSet, test VmTest, env map[string]string, b *test
 	statedb := makePreState(db, test.Pre)
 	b.StartTimer()
 
-	RunState(ruleSet, statedb, env, test.Exec)
+	RunState(ruleSet, db, statedb, env, test.Exec)
 }
 
 func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string) error {
@@ -149,7 +149,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		logs vm.Logs
 	)
 
-	ret, logs, _, _ = RunState(ruleSet, statedb, env, test.Transaction)
+	ret, logs, _, _ = RunState(ruleSet, db, statedb, env, test.Transaction)
 
 	// Compare expected and actual return
 	rexp := common.FromHex(test.Out)
@@ -159,10 +159,13 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 
 	// check post state
 	for addr, account := range test.Post {
-		obj := statedb.GetStateObject(common.HexToAddress(addr))
+		obj := statedb.GetAccount(common.HexToAddress(addr))
 		if obj == nil {
 			return fmt.Errorf("did not find expected post-state account: %s", addr)
 		}
+		// Because vm.Account interface does not have Nonce method, so after
+		// checking that obj exists, we'll use the StateObject type afterwards
+		sobj := statedb.GetOrNewStateObject(common.HexToAddress(addr))
 
 		if balance, ok := new(big.Int).SetString(account.Balance, 0); !ok {
 			panic("malformed test account balance")
@@ -172,8 +175,8 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 
 		if nonce, err := strconv.ParseUint(account.Nonce, 0, 64); err != nil {
 			return fmt.Errorf("test account %q malformed nonce: %s", addr, err)
-		} else if obj.Nonce() != nonce {
-			return fmt.Errorf("(%x) nonce failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], account.Nonce, obj.Nonce())
+		} else if sobj.Nonce() != nonce {
+			return fmt.Errorf("(%x) nonce failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], account.Nonce, sobj.Nonce())
 		}
 
 		for addr, value := range account.Storage {
@@ -186,7 +189,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		}
 	}
 
-	root, _ := statedb.Commit()
+	root, _ := statedb.CommitTo(db, false)
 	if common.HexToHash(test.PostStateRoot) != root {
 		return fmt.Errorf("Post state root error. Expected: %s have: %x", test.PostStateRoot, root)
 	}
@@ -201,7 +204,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 	return nil
 }
 
-func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, tx map[string]string) ([]byte, vm.Logs, *big.Int, error) {
 	data := common.FromHex(tx["data"])
 	gas, _ := new(big.Int).SetString(tx["gasLimit"], 0)
 	price, _ := new(big.Int).SetString(tx["gasPrice"], 0)
@@ -236,11 +239,11 @@ func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string
 	message := NewMessage(addr, to, data, value, gas, price, nonce)
 	vmenv := NewEnvFromMap(ruleSet, statedb, env, tx)
 	vmenv.origin = addr
-	ret, _, err := core.ApplyMessage(vmenv, message, gaspool)
+	ret, _, _, err := core.ApplyMessage(vmenv, message, gaspool)
 	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || core.IsGasLimitErr(err) {
 		statedb.RevertToSnapshot(snapshot)
 	}
-	statedb.Commit()
+	statedb.CommitTo(db, false)
 
 	return ret, vmenv.state.Logs(), vmenv.Gas, err
 }

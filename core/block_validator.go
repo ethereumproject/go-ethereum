@@ -82,7 +82,7 @@ func NewBlockValidator(config *ChainConfig, blockchain *BlockChain, pow pow.PoW)
 // false positives where a header is present but the state is not.
 func (v *BlockValidator) ValidateBlock(block *types.Block) error {
 	if v.bc.HasBlock(block.Hash()) {
-		if _, err := state.New(block.Root(), v.bc.chainDb); err == nil {
+		if _, err := state.New(block.Root(), state.NewDatabase(v.bc.chainDb)); err == nil {
 			return &KnownBlockError{block.Number(), block.Hash()}
 		}
 	}
@@ -90,7 +90,7 @@ func (v *BlockValidator) ValidateBlock(block *types.Block) error {
 	if parent == nil {
 		return ParentError(block.ParentHash())
 	}
-	if _, err := state.New(parent.Root(), v.bc.chainDb); err != nil {
+	if _, err := state.New(parent.Root(), state.NewDatabase(v.bc.chainDb)); err != nil {
 		return ParentError(block.ParentHash())
 	}
 
@@ -142,7 +142,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	}
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
-	if root := statedb.IntermediateRoot(); header.Root != root {
+	if root := statedb.IntermediateRoot(false); header.Root != root {
 		return fmt.Errorf("invalid merkle root: header=%x computed=%x", header.Root, root)
 	}
 	return nil
@@ -269,7 +269,12 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
 func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
-
+	if config == nil {
+		glog.Fatalln("missing chain configuration, cannot calculate difficulty")
+	}
+	if parentDiff == nil {
+		parentDiff = big.NewInt(0)
+	}
 	num := new(big.Int).Add(parentNumber, common.Big1) // increment block number to current
 
 	f, fork, configured := config.GetFeature(num, "difficulty")

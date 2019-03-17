@@ -25,6 +25,8 @@ import (
 	"os"
 	"os/signal"
 
+	"path/filepath"
+
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
@@ -35,7 +37,6 @@ import (
 	"github.com/ethereumproject/go-ethereum/node"
 	"github.com/ethereumproject/go-ethereum/tests"
 	"github.com/ethereumproject/go-ethereum/whisper"
-	"path/filepath"
 )
 
 // Version is the application revision identifier. It can be set with the linker

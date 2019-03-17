@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -57,12 +56,6 @@ var (
 		Name:    "upgrade-db",
 		Aliases: []string{"upgradedb"},
 		Usage:   "Upgrade chainblock database",
-	}
-	removedbCommand = cli.Command{
-		Action:  removeDB,
-		Name:    "remove-db",
-		Aliases: []string{"removedb"},
-		Usage:   "Remove blockchain and state databases",
 	}
 	dumpCommand = cli.Command{
 		Action: dump,
@@ -105,7 +98,7 @@ var (
 	resetCommand = cli.Command{
 		Action: resetChaindata,
 		Name:   "reset",
-		Usage:  "Reset the chain database",
+		Usage:  "Reset (remove) the chain database",
 		Description: `
 		Reset does a hard reset of the entire chain database.
 		This is a drastic and irreversible command, and should be used with caution.
@@ -168,25 +161,6 @@ func exportChain(ctx *cli.Context) error {
 	}
 
 	fmt.Printf("Export done in %v", time.Since(start))
-	return nil
-}
-
-func removeDB(ctx *cli.Context) error {
-	confirm, err := console.Stdin.PromptConfirm("Remove local database?")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if confirm {
-		fmt.Println("Removing chaindata...")
-		start := time.Now()
-
-		os.RemoveAll(filepath.Join(ctx.GlobalString(DataDirFlag.Name), "chaindata"))
-
-		fmt.Printf("Removed in %v\n", time.Since(start))
-	} else {
-		fmt.Println("Operation aborted")
-	}
 	return nil
 }
 
@@ -286,7 +260,7 @@ func dump(ctx *cli.Context) error {
 			out.WriteString("{}\n")
 			log.Fatal("block not found")
 		} else {
-			state, err := state.New(block.Root(), chainDb)
+			state, err := state.New(block.Root(), state.NewDatabase(chainDb))
 			if err != nil {
 				return fmt.Errorf("could not create new state: %v", err)
 			}

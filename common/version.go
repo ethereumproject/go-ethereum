@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/user"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -36,7 +35,8 @@ type ClientSessionIdentityT struct {
 
 // String is the stringer fn for ClientSessionIdentityT
 func (s *ClientSessionIdentityT) String() string {
-	return fmt.Sprint(s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, strconv.Itoa(s.Pid))
+	return fmt.Sprintf("VERSION=%s GO=%s GOOS=%s GOARCH=%s SESSIONID=%s HOSTNAME=%s USER=%s MACHINE=%s PID=%d",
+		s.Version, s.Goversion, s.Goos, s.Goarch, s.SessionID, s.Hostname, s.Username, s.MachineID, s.Pid)
 }
 
 // Helpers for random sessionid string.

@@ -1,0 +1,117 @@
+{
+    "identity": "morden",
+    "name": "Morden Testnet",
+    "state": {
+        "startingNonce": 1048576
+    },
+    "network": 2,
+    "consensus": "ethash",
+    "chainConfig": {
+        "forks": [
+            {
+                "name": "Homestead",
+                "block": 494000,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": [
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "type": "homestead"
+                        }
+                    },
+                    {
+                        "id": "gastable",
+                        "options": {
+                            "type": "homestead"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "GasReprice",
+                "block": 1783000,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": [
+                    {
+                        "id": "gastable",
+                        "options": {
+                            "type": "eip150"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "The DAO Hard Fork",
+                "block": 1885000,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": []
+            },
+            {
+                "name": "Diehard",
+                "block": 1915000,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": [
+                    {
+                        "id": "eip155",
+                        "options": {
+                            "chainID": 62
+                        }
+                    },
+                    {
+                        "id": "gastable",
+                        "options": {
+                            "type": "eip160"
+                        }
+                    },
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "length": 2000000,
+                            "type": "ecip1010"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Gotham",
+                "block": 2000000,
+                "requiredHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "features": [
+                    {
+                        "id": "reward",
+                        "options": {
+                            "era": 2000000,
+                            "type": "ecip1017"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Defuse Difficulty Bomb",
+                "block": 2300000,
+                "features": [
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "type": "defused"
+                        }
+                    }
+                ]
+            }
+        ],
+        "badHashes": [
+            {
+                "Block": 383792,
+                "Hash": "0x9690db54968a760704d99b8118bf79d565711669cefad24b51b5b1013d827808"
+            },
+            {
+                "Block": 1915277,
+                "Hash": "0x3bef9997340acebc85b84948d849ceeff74384ddf512a20676d424e972a3c3c4"
+            }
+        ]
+    },
+	"include" : [
+		"test_genesis.json",
+		"test_bootnodes.json"
+	]
+}

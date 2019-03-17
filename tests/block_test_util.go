@@ -207,7 +207,7 @@ func runBlockTest(homesteadBlock, gasPriceFork *big.Int, test *BlockTest) error 
 // InsertPreState populates the given database with the genesis
 // accounts defined by the test.
 func (t *BlockTest) InsertPreState(db ethdb.Database) (*state.StateDB, error) {
-	statedb, err := state.New(common.Hash{}, db)
+	statedb, err := state.New(common.Hash{}, state.NewDatabase(db))
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func (t *BlockTest) InsertPreState(db ethdb.Database) (*state.StateDB, error) {
 		}
 	}
 
-	root, err := statedb.Commit()
+	root, err := statedb.CommitTo(db, false)
 	if err != nil {
 		return nil, fmt.Errorf("error writing state: %v", err)
 	}
@@ -270,12 +270,12 @@ func (t *BlockTest) TryBlocksInsert(blockchain *core.BlockChain) ([]btBlock, err
 
 		// RLP decoding worked, try to insert into chain:
 		blocks := types.Blocks{cb}
-		if i, err := blockchain.InsertChain(blocks); err != nil {
+		if res := blockchain.InsertChain(blocks); res.Error != nil {
 			if b.BlockHeader == nil {
 				// block supposed to be invalid, continue with next
 				continue
 			}
-			return nil, fmt.Errorf("abort on block #%d (%x): %s", blocks[i].Number(), blocks[i].Hash(), err)
+			return nil, fmt.Errorf("abort on block #%d (%x): %s", blocks[res.Index].Number(), blocks[res.Index].Hash(), res.Error)
 		}
 		if b.BlockHeader == nil {
 			return nil, fmt.Errorf("Block insertion should have failed")

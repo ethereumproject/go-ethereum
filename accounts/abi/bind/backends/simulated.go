@@ -60,8 +60,8 @@ func NewSimulatedBackend(accounts ...core.GenesisAccount) *SimulatedBackend {
 // Commit imports all the pending transactions as a single block and starts a
 // fresh new state.
 func (b *SimulatedBackend) Commit() {
-	if _, err := b.blockchain.InsertChain([]*types.Block{b.pendingBlock}); err != nil {
-		panic(err) // This cannot happen unless the simulator is wrong, fail in that case
+	if res := b.blockchain.InsertChain([]*types.Block{b.pendingBlock}); res.Error != nil {
+		panic(res.Error) // This cannot happen unless the simulator is wrong, fail in that case
 	}
 	b.Rollback()
 }
@@ -71,7 +71,7 @@ func (b *SimulatedBackend) Rollback() {
 	blocks, _ := core.GenerateChain(core.DefaultConfigMorden.ChainConfig, b.blockchain.CurrentBlock(), b.database, 1, func(int, *core.BlockGen) {})
 
 	b.pendingBlock = blocks[0]
-	b.pendingState, _ = state.New(b.pendingBlock.Root(), b.database)
+	b.pendingState, _ = state.New(b.pendingBlock.Root(), state.NewDatabase(b.database))
 }
 
 // HasCode implements ContractVerifier.HasCode, checking whether there is any
@@ -120,7 +120,7 @@ func (b *SimulatedBackend) ContractCall(contract common.Address, data []byte, pe
 	vmenv := core.NewEnv(statedb, core.DefaultConfigMorden.ChainConfig, b.blockchain, msg, block.Header())
 	gaspool := new(core.GasPool).AddGas(common.MaxBig)
 
-	out, _, err := core.ApplyMessage(vmenv, msg, gaspool)
+	out, _, _, err := core.ApplyMessage(vmenv, msg, gaspool)
 	return out, err
 }
 
@@ -184,7 +184,7 @@ func (b *SimulatedBackend) SendTransaction(tx *types.Transaction) error {
 		block.AddTx(tx)
 	})
 	b.pendingBlock = blocks[0]
-	b.pendingState, _ = state.New(b.pendingBlock.Root(), b.database)
+	b.pendingState, _ = state.New(b.pendingBlock.Root(), state.NewDatabase(b.database))
 
 	return nil
 }

@@ -19,18 +19,18 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/urfave/cli.v1"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
 
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/ethereumproject/benchmark/rtprof"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/console"
 	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/eth"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/metrics"
 )
@@ -42,6 +42,67 @@ var Version = "source"
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	common.SetClientVersion(Version)
+}
+
+var makeDagCommand = cli.Command{
+	Action:  makedag,
+	Name:    "make-dag",
+	Aliases: []string{"makedag"},
+	Usage:   "Generate ethash dag (for testing)",
+	Description: `
+		The makedag command generates an ethash DAG in /tmp/dag.
+
+		This command exists to support the system testing project.
+		Regular users do not need to execute it.
+				`,
+}
+
+var gpuInfoCommand = cli.Command{
+	Action:  gpuinfo,
+	Name:    "gpu-info",
+	Aliases: []string{"gpuinfo"},
+	Usage:   "GPU info",
+	Description: `
+	Prints OpenCL device info for all found GPUs.
+			`,
+}
+
+var gpuBenchCommand = cli.Command{
+	Action:  gpubench,
+	Name:    "gpu-bench",
+	Aliases: []string{"gpubench"},
+	Usage:   "Benchmark GPU",
+	Description: `
+	Runs quick benchmark on first GPU found.
+			`,
+}
+
+var versionCommand = cli.Command{
+	Action: version,
+	Name:   "version",
+	Usage:  "Print ethereum version numbers",
+	Description: `
+	The output of this command is supposed to be machine-readable.
+			`,
+}
+
+var makeMlogDocCommand = cli.Command{
+	Action: makeMLogDocumentation,
+	Name:   "mdoc",
+	Usage:  "Generate mlog documentation",
+	Description: `
+	Auto-generates documentation for all available mlog lines.
+	Use -md switch to toggle markdown output (eg. for wiki).
+	Arguments may be used to specify exclusive candidate components;
+	so 'geth mdoc -md discover' will generate markdown documentation only
+	for the 'discover' component.
+			`,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "md",
+			Usage: "Toggle markdown formatting",
+		},
+	},
 }
 
 func makeCLIApp() (app *cli.App) {
@@ -57,7 +118,6 @@ func makeCLIApp() (app *cli.App) {
 		exportCommand,
 		dumpChainConfigCommand,
 		upgradedbCommand,
-		removedbCommand,
 		dumpCommand,
 		rollbackCommand,
 		recoverCommand,
@@ -70,62 +130,12 @@ func makeCLIApp() (app *cli.App) {
 		javascriptCommand,
 		statusCommand,
 		apiCommand,
-		{
-			Action:  makedag,
-			Name:    "make-dag",
-			Aliases: []string{"makedag"},
-			Usage:   "Generate ethash dag (for testing)",
-			Description: `
-	The makedag command generates an ethash DAG in /tmp/dag.
-
-	This command exists to support the system testing project.
-	Regular users do not need to execute it.
-			`,
-		},
-		{
-			Action:  gpuinfo,
-			Name:    "gpu-info",
-			Aliases: []string{"gpuinfo"},
-			Usage:   "GPU info",
-			Description: `
-	Prints OpenCL device info for all found GPUs.
-			`,
-		},
-		{
-			Action:  gpubench,
-			Name:    "gpu-bench",
-			Aliases: []string{"gpubench"},
-			Usage:   "Benchmark GPU",
-			Description: `
-	Runs quick benchmark on first GPU found.
-			`,
-		},
-		{
-			Action: version,
-			Name:   "version",
-			Usage:  "Print ethereum version numbers",
-			Description: `
-	The output of this command is supposed to be machine-readable.
-			`,
-		},
-		{
-			Action: makeMLogDocumentation,
-			Name:   "mdoc",
-			Usage:  "Generate mlog documentation",
-			Description: `
-	Auto-generates documentation for all available mlog lines.
-	Use -md switch to toggle markdown output (eg. for wiki).
-	Arguments may be used to specify exclusive candidate components;
-	so 'geth mdoc -md discover' will generate markdown documentation only
-	for the 'discover' component.
-			`,
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "md",
-					Usage: "Toggle markdown formatting",
-				},
-			},
-		},
+		makeDagCommand,
+		gpuInfoCommand,
+		gpuBenchCommand,
+		versionCommand,
+		makeMlogDocCommand,
+		buildAddrTxIndexCommand,
 	}
 
 	app.Flags = []cli.Flag{
@@ -143,6 +153,9 @@ func makeCLIApp() (app *cli.App) {
 		ChainIdentityFlag,
 		BlockchainVersionFlag,
 		FastSyncFlag,
+		SlowSyncFlag,
+		AddrTxIndexFlag,
+		AddrTxIndexAutoBuildFlag,
 		CacheFlag,
 		LightKDFFlag,
 		JSpathFlag,
@@ -241,8 +254,7 @@ func makeCLIApp() (app *cli.App) {
 
 		if ctx.IsSet(SputnikVMFlag.Name) {
 			if core.SputnikVMExists {
-				log.Printf("Using the SputnikVM Ethereum Virtual Machine implementation ...")
-				core.UseSputnikVM = true
+				core.UseSputnikVM = "true"
 			} else {
 				log.Fatal("This version of geth wasn't built to include SputnikVM. To build with SputnikVM, use -tags=sputnikvm following the go build command.")
 			}
@@ -270,12 +282,6 @@ func makeCLIApp() (app *cli.App) {
 		if s := ctx.String("metrics"); s != "" {
 			go metrics.CollectToFile(s)
 		}
-
-		// This should be the only place where reporting is enabled
-		// because it is not intended to run while testing.
-		// In addition to this check, bad block reports are sent only
-		// for chains with the main network genesis block and network id 1.
-		eth.EnableBadBlockReporting = true
 
 		// (whilei): I use `log` instead of `glog` because git diff tells me:
 		// > The output of this command is supposed to be machine-readable.

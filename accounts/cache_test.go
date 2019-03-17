@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// +build !deterministic
+
 package accounts
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereumproject/go-ethereum/common"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -28,24 +28,9 @@ import (
 	"sort"
 	"testing"
 	"time"
-)
 
-var (
-	cachetestDir, _   = filepath.Abs(filepath.Join("testdata", "keystore"))
-	cachetestAccounts = []Account{
-		{
-			Address: common.HexToAddress("7ef5a6135f1fd6a02593eedc869c6d41d934aef8"),
-			File:    filepath.Join(cachetestDir, "UTC--2016-03-22T12-57-55.920751759Z--7ef5a6135f1fd6a02593eedc869c6d41d934aef8"),
-		},
-		{
-			Address: common.HexToAddress("f466859ead1932d743d622cb74fc058882e8648a"),
-			File:    filepath.Join(cachetestDir, "aaa"),
-		},
-		{
-			Address: common.HexToAddress("289d485d9771714cce91d3393d764e1311907acc"),
-			File:    filepath.Join(cachetestDir, "zzz"),
-		},
-	}
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 func TestWatchNewFile(t *testing.T) {

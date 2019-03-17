@@ -14,41 +14,25 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// +build !deterministic
+
 package accounts
 
 import (
-	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"io/ioutil"
-	"math/rand"
 	"os"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 func init() {
 	glog.SetD(0)
 	glog.SetV(0)
-}
-
-var testSigData = make([]byte, 32)
-
-func tmpManager(t *testing.T) (string, *Manager) {
-	rand.Seed(time.Now().UnixNano())
-	dir, err := ioutil.TempDir("", fmt.Sprintf("eth-manager-mem-test-%d-%d", os.Getpid(), rand.Int()))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	m, err := NewManager(dir, veryLightScryptN, veryLightScryptP, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dir, m
 }
 
 func TestManager_Mem(t *testing.T) {

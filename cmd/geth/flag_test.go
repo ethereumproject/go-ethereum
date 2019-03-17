@@ -9,12 +9,13 @@ import (
 
 	"reflect"
 
+	"os/exec"
+
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
-	"gopkg.in/urfave/cli.v1"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"os/exec"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var ogHome string  // placeholder
@@ -142,7 +143,7 @@ func TestMustMakeChainDataDir(t *testing.T) {
 
 	for _, c := range cases {
 		// Unset cache.
-		cacheChainIdentity = ""
+		core.SetCacheChainIdentity("")
 
 		setupFlags(t)
 
@@ -193,7 +194,7 @@ func TestGetChainIdentityValue(t *testing.T) {
 
 	for _, c := range cases {
 		// Unset cache.
-		cacheChainIdentity = ""
+		core.SetCacheChainIdentity("")
 
 		setupFlags(t)
 
@@ -222,7 +223,6 @@ func TestGetChainIdentityValue(t *testing.T) {
 			}
 			t.Fatalf("process ran with err %v, want exit status 1", err)
 		}
-
 
 	}
 }

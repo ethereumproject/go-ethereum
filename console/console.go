@@ -30,9 +30,9 @@ import (
 	"github.com/ethereumproject/go-ethereum/internal/jsre"
 	"github.com/ethereumproject/go-ethereum/internal/web3ext"
 	"github.com/ethereumproject/go-ethereum/rpc"
+	"github.com/fatih/color"
 	"github.com/peterh/liner"
 	"github.com/robertkrimen/otto"
-	"github.com/fatih/color"
 )
 
 var (

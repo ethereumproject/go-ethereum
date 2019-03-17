@@ -11,97 +11,58 @@ else
 	echo "With SputnikVM, running geth $OUTPUT ..."
 fi
 
-OS='Unknown OS'
-case "$(uname -s)" in
-    Darwin)
-        OS="Mac";;
+installrust() {
+    curl https://sh.rustup.rs -sSf | sh
+    source $HOME/.cargo/env
+}
 
-    Linux)
-        OS="Linux";;
+# Prompt to install rust and cargo if not already installed.
+if hash cargo 2>/dev/null; then
+    echo "Cargo installed OK, continuing"
+else
+    while true; do
+        read -p "Install/build with SputnikVM requires Rust and cargo to be installed. Would you like to install them? [Yy|Nn]" yn
+        case $yn in
+            [yY]* ) installrust; echo "Rust and cargo have been installed and temporarily added to your PATH"; break;;
+            [nN]* ) echo "Can't compile SputniKVM. Exiting."; exit 0;;
+        esac
+    done
+fi
+
+OS=`uname -s`
+
+geth_path="github.com/ethereumproject/go-ethereum"
+sputnik_path="github.com/ETCDEVTeam/sputnikvm-ffi"
+sputnik_dir="$GOPATH/src/$geth_path/vendor/$sputnik_path"
+
+geth_bindir="$GOPATH/src/$geth_path/bin"
+
+echo "Building SputnikVM"
+make -C "$sputnik_dir/c"
+
+echo "Doing geth $OUTPUT ..."
+cd "$GOPATH/src/$geth_path"
+
+LDFLAGS="$sputnik_dir/c/libsputnikvm.a "
+case $OS in
+	"Linux")
+		LDFLAGS+="-ldl"
+		;;
+
+	"Darwin")
+		LDFLAGS+="-ldl -lresolv"
+		;;
 
     CYGWIN*|MINGW32*|MSYS*)
-        OS="Windows";;
-
-    *)
-        echo 'Unknown OS'
-        exit;;
+		LDFLAGS="-Wl,--allow-multiple-definition $sputnik_dir/c/sputnikvm.lib -lws2_32 -luserenv"
+		;;
 esac
 
-if [ "$OS" == "Windows" ]; then
-    cd %GOPATH%\src\github.com\ethereumproject
-	# Check if git is happening in svm-ffi.
-	if [ -d "%GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi" ]; then
-		cd sputnikvm-ffi
-		if [ -d "%GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\.git" ]; then
-			remote_name=$(git remote -v | head -1 | awk '{print $1;}')
-			if [ ! "%remote_name%" == "" ]; then
-				echo "Updating SputnikVM FFI from branch [%remote_name%] ..."
-				git pull %remote_name% master
-			fi
-		fi
-    	cd c\ffi
-	else
-    	git clone https://github.com/ethereumproject/sputnikvm-ffi.git
-    	cd sputnikvm-ffi\c\ffi
-	fi
-    cargo build --release
-    copy %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi\target\release\sputnikvm.lib \
-        %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib
 
-    cd %GOPATH%\src\github.com\ethereumproject\go-ethereum\cmd\geth
-    set CGO_LDFLAGS=-Wl,--allow-multiple-definition \
-        %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
-	if [ "$OUTPUT" == "install" ]; then
-		go install -ldflags '-X main.Version='$(git describe --tags) -tags=sputnikvm .
-	elif [ "$OUTPUT" == "build" ]; then
-		mkdir -p %GOPATH%\src\github.com\ethereumproject\go-ethereum\bin
-		go build -ldflags '-X main.Version='$(git describe --tags) -o %GOPATH%\src\github.com\ethereumproject\go-ethereum\bin\geth -tags=sputnikvm .
-	fi
-else
-    ep_gopath=$GOPATH/src/github.com/ethereumproject
-	sputnikffi_path="$ep_gopath/sputnikvm-ffi"
-
-	# If sputnikvmffi has already been cloned/existing
-	if [ -d "$sputnikffi_path" ]; then
-		# Ensure git is happening in svm-ffi.
-		# Update if .git exists, otherwise don't try updating. We could possibly handle git-initing and adding remote but seems
-		# like an edge case.
-		if [ -d "$sputnikffi_path/.git" ]; then
-        	cd $sputnikffi_path
-			remote_name=$(git remote -v | head -1 | awk '{print $1;}')
-			if [ ! "$remote_name" == "" ]; then
-				echo "Updating SputnikVM FFI from branch [$remote_name] ..."
-				git pull "$remote_name" master
-			fi
-		fi
-    else
-        echo "Cloning SputnikVM FFI ..."
-        cd $ep_gopath
-        git clone https://github.com/ethereumproject/sputnikvm-ffi.git
-	fi
-    cd "$sputnikffi_path/c/ffi"
-	echo "Building SputnikVM FFI ..."
-    cargo build --release
-    cp $sputnikffi_path/c/ffi/target/release/libsputnikvm_ffi.a \
-        $sputnikffi_path/c/libsputnikvm.a
-
-	geth_binpath="$ep_gopath/go-ethereum/bin"
-	echo "Doing geth $OUTPUT ..."
-	cd "$ep_gopath/go-ethereum"
-    if [ "$OS" == "Linux" ]; then
-		if [ "$OUTPUT" == "install" ]; then
-			CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl" go install -ldflags '-X main.Version='$(git describe --tags) ./cmd/geth
-		elif [ "$OUTPUT" == "build" ]; then
-			mkdir -p "$geth_binpath"
-			CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl" go build -ldflags '-X main.Version='$(git describe --tags) -o $geth_binpath/geth -tags=sputnikvm ./cmd/geth
-		fi
-    else
-		if [ "$OUTPUT" == "install" ]; then
-			CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl -lresolv" go install -ldflags '-X main.Version='$(git describe --tags) -tags=sputnikvm ./cmd/geth
-		elif [ "$OUTPUT" == "build" ]; then
-			mkdir -p "$geth_binpath"
-			CGO_LDFLAGS="$sputnikffi_path/c/libsputnikvm.a -ldl -lresolv" go build -ldflags '-X main.Version='$(git describe --tags) -o $geth_binpath/geth -tags=sputnikvm ./cmd/geth
-		fi
-    fi
+if [ "$OUTPUT" == "install" ]; then
+	CGO_LDFLAGS=$LDFLAGS go install -ldflags '-X main.Version='$(git describe --tags) -tags="sputnikvm netgo" ./cmd/geth
+elif [ "$OUTPUT" == "build" ]; then
+	mkdir -p "$geth_bindir"
+	CGO_LDFLAGS=$LDFLAGS go build -ldflags '-X main.Version='$(git describe --tags) -o $geth_bindir/geth -tags="sputnikvm netgo" ./cmd/geth
 fi
 

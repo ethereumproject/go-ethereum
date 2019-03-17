@@ -22,8 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"math/big"
 	"os"
 	"os/user"
@@ -31,6 +29,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 type mlogFormatT uint

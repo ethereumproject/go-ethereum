@@ -35,7 +35,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/ethereumproject/sputnikvm-ffi"
+  name = "github.com/ETCDEVTeam/sputnikvm-ffi"
 
 [[constraint]]
   name = "github.com/gizak/termui"
@@ -70,8 +70,8 @@
   name = "github.com/rcrowley/go-metrics"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/rjeczalik/notify"
+  revision = "c31e5f2cb22b3e4ef3f882f413847669bf2652b9"
 
 [[constraint]]
   branch = "master"
@@ -118,5 +118,5 @@
   name = "github.com/ethereumproject/benchmark"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/fatih/color"
+  version = "v1.7.0"

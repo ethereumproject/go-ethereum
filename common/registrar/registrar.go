@@ -112,7 +112,7 @@ func (self *Registrar) SetGlobalRegistrar(namereg string, addr common.Address) (
 		return
 	}
 	if zero.MatchString(GlobalRegistrarAddr) {
-		if (addr == common.Address{}) {
+		if addr.IsEmpty() {
 			err = fmt.Errorf("GlobalRegistrar address not found and sender for creation not given")
 			return
 		} else {
@@ -142,7 +142,7 @@ func (self *Registrar) SetHashReg(hashreg string, addr common.Address) (txhash s
 			HashRegAddr = "0x" + res[len(res)-40:]
 		}
 		if err != nil || zero.MatchString(HashRegAddr) {
-			if (addr == common.Address{}) {
+			if addr.IsEmpty() {
 				err = fmt.Errorf("HashReg address not found and sender for creation not given")
 				return
 			}
@@ -177,7 +177,7 @@ func (self *Registrar) SetUrlHint(urlhint string, addr common.Address) (txhash s
 			UrlHintAddr = "0x" + res[len(res)-40:]
 		}
 		if err != nil || zero.MatchString(UrlHintAddr) {
-			if (addr == common.Address{}) {
+			if addr.IsEmpty() {
 				err = fmt.Errorf("UrlHint address not found and sender for creation not given")
 				return
 			}

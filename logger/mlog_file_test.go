@@ -1,15 +1,16 @@
 package logger
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
-	"bytes"
-	"encoding/json"
+
 	"github.com/ethereumproject/go-ethereum/common"
-	"fmt"
 )
 
 var mlogExample1T = &MLogT{
@@ -305,10 +306,10 @@ func TestSend(t *testing.T) {
 
 		// eg. "event":"tester.testing.mlog"
 		wantMap["event"] = strings.Join([]string{
-						strings.ToLower(mlogExample1T.Receiver),
-						strings.ToLower(mlogExample1T.Verb),
-						strings.ToLower(mlogExample1T.Subject),
-						}, ".")
+			strings.ToLower(mlogExample1T.Receiver),
+			strings.ToLower(mlogExample1T.Verb),
+			strings.ToLower(mlogExample1T.Subject),
+		}, ".")
 
 		// eg. "from.udp_address":"sampleAddress"
 		for _, v := range mlogExample1T.Details {

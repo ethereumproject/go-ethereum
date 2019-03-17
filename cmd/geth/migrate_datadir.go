@@ -18,15 +18,16 @@ package main
 
 import (
 	"fmt"
+	"math/big"
+	"os"
+	"path/filepath"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/ethdb"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
-	"math/big"
-	"os"
-	"path/filepath"
 )
 
 // handleIfDataDirSchemaMigrations is a handlers for the conditional logic around
@@ -222,7 +223,7 @@ func migrateToChainSubdirIfNecessary(ctx *cli.Context) error {
 	}
 
 	// 3.3 testnet uses subdir '/testnet'
-	if chainIdentitiesMorden[chainIdentity] {
+	if core.ChainIdentitiesMorden[chainIdentity] {
 		exTestDir := filepath.Join(subdirPath, "../testnet")
 		exTestDirInfo, e := os.Stat(exTestDir)
 		if e != nil && os.IsNotExist(e) {

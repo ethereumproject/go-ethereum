@@ -46,26 +46,27 @@
 package main
 
 import (
-	"time"
 	"fmt"
-	"gopkg.in/urfave/cli.v1"
-	"github.com/gizak/termui"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/logger"
+	"time"
+
 	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/eth"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/metrics"
+	"github.com/gizak/termui"
+	"gopkg.in/urfave/cli.v1"
 )
 
 const (
 	tuiHeaderHeight = 2
-	tuiHeaderStart = 1
-	tuiSmallHeight = 3
+	tuiHeaderStart  = 1
+	tuiSmallHeight  = 3
 	tuiMediumHeight = 5
-	tuiLargeHeight = 8
-	tuiSmallWidth = 20
-	tuiMediumWidth = 50
-	tuiLargeWidth = 100
+	tuiLargeHeight  = 8
+	tuiSmallWidth   = 20
+	tuiMediumWidth  = 50
+	tuiLargeWidth   = 100
 
 	tuiSpaceHeight = 1
 
@@ -76,10 +77,10 @@ var (
 	headerInfo      *termui.Par
 	syncheightGauge *termui.Gauge
 
-	peerCountSpark termui.Sparkline
+	peerCountSpark       termui.Sparkline
 	peerCountSparkHolder *termui.Sparklines
 
-	peerList *termui.List
+	peerList     *termui.List
 	peerListData []string
 
 	mgasSpark             termui.Sparkline
@@ -87,7 +88,6 @@ var (
 	blkSpark              termui.Sparkline
 	blkMgasTxsSparkHolder *termui.Sparklines
 )
-
 
 func tuiDrawDash(e *eth.Ethereum) {
 	if currentMode == lsModeImport || currentMode == lsModeDiscover {
@@ -98,13 +98,13 @@ func tuiDrawDash(e *eth.Ethereum) {
 		cid := e.ChainConfig().GetChainID()
 		cnet := e.NetVersion()
 		cname := ""
-		if cacheChainIdentity != "" {
-			cname = cacheChainIdentity
+		if id := core.GetCacheChainIdentity(); id != "" {
+			cname = id
 		}
-		headerInfo.Text = fmt.Sprintf(" Mode=%s Chain=%v(%d) Chain Id=%d \n" +
+		headerInfo.Text = fmt.Sprintf(" Mode=%s Chain=%v(%d) Chain Id=%d \n"+
 			" local_head ◼ n=%d ⬡=%s txs=%d time=%v ago",
-				currentMode, cname, cnet, cid, currentBlockNumber, cb.Hash().Hex()[:10] + "…", cb.Transactions().Len(),
-					time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
+			currentMode, cname, cnet, cid, currentBlockNumber, cb.Hash().Hex()[:10]+"…", cb.Transactions().Len(),
+			time.Since(time.Unix(cb.Time().Int64(), 0)).Round(time.Second))
 		syncheightGauge.BorderLabel = fmt.Sprintf("Sync")
 
 	}
@@ -174,7 +174,7 @@ func tuiSetupDashComponents() {
 	peerList.X = 0
 	peerList.Y = peerCountSparkHolder.Y + peerCountSparkHolder.Height
 	peerList.Width = peerCountSparkHolder.Width
-	peerList.Height = tuiLargeHeight*2
+	peerList.Height = tuiLargeHeight * 2
 	peerList.BorderTop = false
 }
 
@@ -218,14 +218,14 @@ var dashDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventT: logEventChainInsert,
+		eventT: logEventCoreChainInsert,
 		ev:     core.ChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.ChainInsertEvent:
 					localheight := d.LastNumber
-					_, head, syncheight, _ ,_ := e.Downloader().Progress()
+					_, head, syncheight, _, _ := e.Downloader().Progress()
 					if head > localheight {
 						localheight = head
 					}
@@ -240,7 +240,7 @@ var dashDisplaySystem = displayEventHandlers{
 					}
 
 					if currentBlockNumber != 0 {
-						b :=  e.BlockChain().GetBlockByNumber(localheight)
+						b := e.BlockChain().GetBlockByNumber(localheight)
 						if b == nil {
 							return
 						}

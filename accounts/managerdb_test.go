@@ -2,7 +2,6 @@ package accounts
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 func tmpManager_CacheDB(t *testing.T) (string, *Manager) {

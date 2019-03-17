@@ -30,9 +30,10 @@ import (
 	"time"
 
 	"encoding/json"
+	"path/filepath"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
-	"path/filepath"
 )
 
 var (

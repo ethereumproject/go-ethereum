@@ -62,7 +62,8 @@ type Config struct {
 
 	NetworkId int // Network ID to use for selecting peers to connect to
 	Genesis   *core.GenesisDump
-	FastSync  bool // Enables the state download based fast synchronisation algorithm
+	SyncMode  downloader.SyncMode // Enables the state download based fast synchronisation algorithm
+	MaxPeers  int
 
 	BlockChainVersion  int
 	SkipBcVersionCheck bool // e.g. blockchain export
@@ -81,6 +82,8 @@ type Config struct {
 	MinerThreads   int
 	SolcPath       string
 
+	UseAddrTxIndex bool
+
 	GpoMinGasPrice          *big.Int
 	GpoMaxGasPrice          *big.Int
 	GpoFullBlockRatio       int
@@ -93,13 +96,15 @@ type Config struct {
 }
 
 type Ethereum struct {
+	config      *Config
 	chainConfig *core.ChainConfig
 	// Channel for shutting down the ethereum
 	shutdownChan chan bool
 
 	// DB interfaces
-	chainDb ethdb.Database // Block chain database
-	dappDb  ethdb.Database // Dapp database
+	chainDb   ethdb.Database // Block chain database
+	dappDb    ethdb.Database // Dapp database
+	indexesDb ethdb.Database // Indexes database (optional -- eg. add-tx indexes)
 
 	// Handlers
 	txPool          *core.TxPool
@@ -154,7 +159,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	glog.V(logger.Info).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", ProtocolVersions, config.NetworkId, config.ChainConfig.GetChainID())
-	glog.D(logger.Warn).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", logger.ColorGreen(fmt.Sprintf("%v", ProtocolVersions)), logger.ColorGreen(strconv.Itoa(config.NetworkId)), logger.ColorGreen(func() string { cid := config.ChainConfig.GetChainID().String(); if cid == "0" { cid = "not set" }; return cid }()))
+	glog.D(logger.Warn).Infof("Protocol Versions: %v, Network Id: %v, Chain Id: %v", logger.ColorGreen(fmt.Sprintf("%v", ProtocolVersions)), logger.ColorGreen(strconv.Itoa(config.NetworkId)), logger.ColorGreen(func() string {
+		cid := config.ChainConfig.GetChainID().String()
+		if cid == "0" {
+			cid = "not set"
+		}
+		return cid
+	}()))
 
 	// Load up any custom genesis block if requested
 	if config.Genesis != nil {
@@ -185,6 +196,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	glog.V(logger.Info).Infof("Blockchain DB Version: %d", config.BlockChainVersion)
 
 	eth := &Ethereum{
+		config:                  config,
 		shutdownChan:            make(chan bool),
 		chainDb:                 chainDb,
 		dappDb:                  dappDb,
@@ -218,6 +230,24 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 
 	default:
 		eth.pow = ethash.New()
+	}
+
+	// Initialize indexes db if enabled
+	// Blockchain will be assigned the db and atx enabled after blockchain is initialized below.
+	var indexesDb ethdb.Database
+	if config.UseAddrTxIndex {
+		// TODO: these are arbitrary numbers I just made up. Optimize?
+		// The reason these numbers are different than the atxi-build command is because for "appending" (vs. building)
+		// the atxi database should require far fewer resources since application performance is limited primarily by block import (chaindata db).
+		ethdb.SetCacheRatio("chaindata", 0.95)
+		ethdb.SetHandleRatio("chaindata", 0.95)
+		ethdb.SetCacheRatio("indexes", 0.05)
+		ethdb.SetHandleRatio("indexes", 0.05)
+		indexesDb, err = ctx.OpenDatabase("indexes", config.DatabaseCache, config.DatabaseCache)
+		if err != nil {
+			return nil, err
+		}
+		eth.indexesDb = indexesDb
 	}
 
 	// load the genesis block or write a new one if no genesis
@@ -257,12 +287,19 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		}
 		return nil, err
 	}
+	// Configure enabled atxi for blockchain
+	if config.UseAddrTxIndex {
+		eth.blockchain.SetAtxi(&core.AtxiT{
+			Db: eth.indexesDb,
+		})
+	}
+
 	eth.gpo = NewGasPriceOracle(eth)
 
 	newPool := core.NewTxPool(eth.chainConfig, eth.EventMux(), eth.blockchain.State, eth.blockchain.GasLimit)
 	eth.txPool = newPool
 
-	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.FastSync, config.NetworkId, eth.eventMux, eth.txPool, eth.pow, eth.blockchain, chainDb); err != nil {
+	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, uint64(config.NetworkId), eth.eventMux, eth.txPool, eth.pow, eth.blockchain, chainDb); err != nil {
 		return nil, err
 	}
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.pow)
@@ -345,6 +382,11 @@ func (s *Ethereum) APIs() []rpc.API {
 			Namespace: "admin",
 			Version:   "1.0",
 			Service:   ethreg.NewPrivateRegistarAPI(s.chainConfig, s.blockchain, s.chainDb, s.txPool, s.accountManager),
+		}, {
+			Namespace: "geth",
+			Version:   "1.0",
+			Service:   NewPublicGethAPI(s),
+			Public:    true,
 		},
 	}
 }
@@ -355,7 +397,7 @@ func (s *Ethereum) ResetWithGenesisBlock(gb *types.Block) {
 
 func (s *Ethereum) Etherbase() (eb common.Address, err error) {
 	eb = s.etherbase
-	if (eb == common.Address{}) {
+	if eb.IsEmpty() {
 		firstAccount, err := s.AccountManager().AccountByIndex(0)
 		eb = firstAccount.Address
 		if err != nil {
@@ -399,7 +441,7 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 	if s.AutoDAG {
 		s.StartAutoDAG()
 	}
-	s.protocolManager.Start()
+	s.protocolManager.Start(s.config.MaxPeers)
 	s.netRPCService = NewPublicNetAPI(srvr, s.NetVersion())
 	return nil
 }
@@ -614,7 +656,10 @@ func addMipmapBloomBins(db ethdb.Database) (err error) {
 		if (hash == common.Hash{}) {
 			return fmt.Errorf("chain db corrupted. Could not find block %d.", i)
 		}
-		core.WriteMipmapBloom(db, i, core.GetBlockReceipts(db, hash))
+		err := core.WriteMipmapBloom(db, i, core.GetBlockReceipts(db, hash))
+		if err != nil {
+			return err
+		}
 	}
 	glog.V(logger.Info).Infoln("upgrade completed in", time.Since(tstart))
 	return nil

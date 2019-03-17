@@ -27,6 +27,7 @@ import (
 // Tests that databases are correctly created persistent or ephemeral based on
 // the configured service context.
 func TestContextDatabases(t *testing.T) {
+	// TODO: move to MemMapFS
 	// Create a temporary folder and ensure no database is contained within
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {

@@ -1,12 +1,18 @@
 package core
 
 import (
+	"io"
 	"math/big"
+	"os"
+	"strings"
 	"testing"
 
+	"path/filepath"
+
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/ethdb"
-	"path/filepath"
+	"reflect"
 )
 
 func TestConfigErrorProperties(t *testing.T) {
@@ -512,6 +518,82 @@ func TestChainConfig_SortForks(t *testing.T) {
 	}
 }
 
+func TestChainConfigGetSet(t *testing.T) {
+	c := getDefaultChainConfigSorted()
+	set := SetCacheChainConfig(&SufficientChainConfig{ChainConfig: c})
+
+	if set == nil {
+		t.Fatal("set returned nil")
+	}
+
+	got := GetCacheChainConfig()
+	if got == nil {
+		t.Fatal("get returned nil")
+	}
+
+	// create new "checkpoint" fork for testing
+	checkpoint := &Fork{
+		Name:         "checkpoint",
+		Block:        big.NewInt(1930000),
+		RequiredHash: common.HexToHash("0xabc65e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ad123"),
+	}
+	c.Forks = append(c.Forks, checkpoint)
+
+	got.ChainConfig.Forks = c.Forks
+	didSet := SetCacheChainConfig(got)
+	if !reflect.DeepEqual(got, didSet) {
+		t.Errorf("got: %v, want: %v", didSet, got)
+	}
+
+	if f := set.ChainConfig.ForkByName("checkpoint"); f == nil {
+		t.Errorf("got: %v, want: %v", f, checkpoint)
+	}
+}
+
+func TestChainConfig_GetLastRequiredHashFork(t *testing.T) {
+	c := getDefaultChainConfigSorted()
+
+	daoFork := c.ForkByName("The DAO Hard Fork")
+	got, want := c.GetLatestRequiredHashFork(big.NewInt(1920000)), daoFork
+
+	// sanity check
+	if want == nil {
+		t.Fatal("nil want hard fork")
+	}
+
+	if got == nil {
+		t.Fatalf("got: %v, want: %s", got, want.Name)
+	}
+	if got.RequiredHash.Hex() != "0x94365e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ade7f" {
+		t.Errorf("got: %v, want: %s", got, got.RequiredHash.Hex())
+	}
+	if got.Block.Cmp(big.NewInt(1920000)) != 0 {
+		t.Errorf("got: %d, want: %d", got.Block, 1920000)
+	}
+
+	// create new "checkpoint" fork for testing
+	checkpoint := &Fork{
+		Name:         "checkpoint",
+		Block:        big.NewInt(1930000),
+		RequiredHash: common.HexToHash("0xabc65e3a8c0b35089c1d1195081fe7489b528a84b22199c916180db8b28ad123"),
+	}
+	c.Forks = append(c.Forks, checkpoint)
+
+	// Noting that config forks do not have to be sorted for this function to work.
+	//c.SortForks()
+
+	got, want = c.GetLatestRequiredHashFork(big.NewInt(1930000)), checkpoint
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got: %v, want: %v", got, want)
+	}
+
+	// should use dao fork, not checkpoint since block n has not reached checkpoint
+	got, want = c.GetLatestRequiredHashFork(big.NewInt(1920001)), daoFork
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got: %v, want: %v", got, want)
+	}
+}
+
 func TestChainConfig_GetSigner(t *testing.T) {
 	c := getDefaultChainConfigSorted()
 	var forkBlocks []*big.Int
@@ -547,6 +629,81 @@ func TestChainConfig_GetSigner(t *testing.T) {
 		}
 	}
 
+}
+
+func TestResolvePath(t *testing.T) {
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{
+			args: []string{"./a/b/config.csv", "."},
+			want: filepath.Clean("a/b/config.csv"),
+		},
+		{
+			args: []string{"./a/b/config.csv", ""},
+			want: filepath.Clean("a/b/config.csv"),
+		},
+		{
+			args: []string{"./a/b/config.csv", "./a/b/config.json"},
+			want: filepath.Clean("a/b/a/b/config.csv"),
+		},
+		{
+			args: []string{"config.csv", "a/b"},
+			want: filepath.Clean("a/config.csv"), // since resolvePath expects b|config.csv to be adjacent (neighboring filepaths), ie. 'b' should be a file
+		},
+		{
+			args: []string{"config.csv", "a/b/config.json"},
+			want: filepath.Clean("a/b/config.csv"),
+		},
+		{
+			args: []string{"test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"test.txt", "./some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"./test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"./test.txt", "./some/dir/conf.json"},
+			want: filepath.Clean("some/dir/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "some/dir/conf.json"},
+			want: filepath.Clean("some/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "/some/dir/conf.json"},
+			want: filepath.Clean("/some/test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "some/dir/.././conf.json"},
+			want: filepath.Clean("test.txt"),
+		},
+		{
+			args: []string{"../test.txt", "conf.json"},
+			want: filepath.Clean("../test.txt"),
+		},
+		{
+			args: []string{"../../../../a/b/c/d/test.txt", "conf.json"},
+			want: filepath.Clean("../../../../a/b/c/d/test.txt"),
+		},
+		{
+			args: []string{"../../../../a/b/c/d/test.txt", "a/b/c/d/conf.json"},
+			want: filepath.Clean("a/b/c/d/test.txt"),
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.args[0]+"+"+c.args[1], func(t *testing.T) {
+			if got := resolvePath(c.args[0], c.args[1]); got != c.want {
+				t.Errorf("got: %v, want: %v", got, c.want)
+			}
+		})
+	}
 }
 
 func makeOKSufficientChainConfig(dump *GenesisDump, config *ChainConfig) *SufficientChainConfig {
@@ -682,5 +839,15 @@ func TestSufficientChainConfig_IsValid(t *testing.T) {
 				t.Errorf("unexpected ok: %v @ %v/%v", s, i, j)
 			}
 		}
+	}
+}
+
+func TestGenesisAllocationError(t *testing.T) {
+	_, err := parseExternalChainConfig("testdata/test.json", func(path string) (io.ReadCloser, error) { return os.Open(path) })
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "\"alloc\" values already set") {
+		t.Error("invalid error message")
 	}
 }

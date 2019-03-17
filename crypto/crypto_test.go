@@ -28,11 +28,29 @@ import (
 	"time"
 
 	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
 	"github.com/ethereumproject/go-ethereum/crypto/secp256k1"
 )
 
 var testAddrHex = "970e8128ab834e8eac17ab8e3812f010678cf791"
 var testPrivHex = "289c2857d4598e37fb9647507e47a309d6133539bf21a8b9cb6df88fd5232032"
+
+var (
+	testmsg     = hexutil.MustDecode("0xce0677bb30baa8cf067c88db9811f4333d131bf8bcf12fe7065d211dce971008")
+	testsig     = hexutil.MustDecode("0x90f27b8b488db00b00606796d2987f6a5f59ae62ea05effe84fef5b8b0e549984a691139ad57a3f0b906637673aa2f63d1f55cb1a69199d4009eea23ceaddc9301")
+	testpubkey  = hexutil.MustDecode("0x04e32df42865e97135acfb65f3bae71bdc86f4d49150ad6a440b6f15878109880a0a2b2667f7e725ceea70c673093bf67663e0312623c8e091b13cf2c0f11ef652")
+	testpubkeyc = hexutil.MustDecode("0x02e32df42865e97135acfb65f3bae71bdc86f4d49150ad6a440b6f15878109880a")
+)
+
+func TestEcrecover(t *testing.T) {
+	pubkey, err := Ecrecover(testmsg, testsig)
+	if err != nil {
+		t.Fatalf("recover error: %s", err)
+	}
+	if !bytes.Equal(pubkey, testpubkey) {
+		t.Errorf("pubkey mismatch: want: %x have: %x", testpubkey, pubkey)
+	}
+}
 
 // These tests are sanity checks.
 // They should ensure that we don't e.g. use Sha3-224 instead of Sha3-256
@@ -88,6 +106,9 @@ func TestSign(t *testing.T) {
 	sig, err := Sign(msg, key)
 	if err != nil {
 		t.Errorf("Sign error: %s", err)
+	}
+	if len(sig) != 65 {
+		t.Error("wrong signature length", len(sig))
 	}
 	recoveredPub, err := Ecrecover(msg, sig)
 	if err != nil {
@@ -152,21 +173,42 @@ func TestLoadECDSAFile(t *testing.T) {
 	ioutil.WriteFile(fileName0, []byte(testPrivHex), 0600)
 	defer os.Remove(fileName0)
 
-	key0, err := LoadECDSA(fileName0)
+	f, err := os.Open(fileName0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key0, err := LoadECDSA(f)
+	if e := f.Close(); e != nil {
+		t.Fatal(e)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
 	checkKey(key0)
 
-	// again, this time with SaveECDSA instead of manual save:
-	err = SaveECDSA(fileName1, key0)
+	// again, this time with WriteECDSAKey instead of manual save:
+	f, err = os.Create(fileName1)
 	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = WriteECDSAKey(f, key0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(fileName1)
 
-	key1, err := LoadECDSA(fileName1)
+	f1, err := os.Open(fileName1)
 	if err != nil {
+		t.Fatal(err)
+	}
+	key1, err := LoadECDSA(f1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f1.Close(); err != nil {
 		t.Fatal(err)
 	}
 	checkKey(key1)

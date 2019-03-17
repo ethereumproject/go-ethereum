@@ -76,6 +76,10 @@ var (
 	ErrInvalidMsgLen       = errors.New("invalid message length for signature recovery")
 	ErrInvalidSignatureLen = errors.New("invalid signature length")
 	ErrInvalidRecoveryID   = errors.New("invalid signature recovery id")
+	ErrInvalidKey          = errors.New("invalid private key")
+	ErrInvalidPubkey       = errors.New("invalid public key")
+	ErrSignFailed          = errors.New("signing failed")
+	ErrRecoverFailed       = errors.New("recovery failed")
 )
 
 func GenerateKeyPair() ([]byte, []byte) {
@@ -132,7 +136,9 @@ func GeneratePubKey(seckey []byte) ([]byte, error) {
 	return pubkey, nil
 }
 
-func Sign(msg []byte, seckey []byte) ([]byte, error) {
+// SignNondeterministic generates nondeterministic signature b/c of a random k-value in the ECDSA algorithm. This function is included
+// only for purpose of demonstration and comparison with the deterministic Sign function.
+func SignNondeterministic(msg []byte, seckey []byte) ([]byte, error) {
 	msg_ptr := (*C.uchar)(unsafe.Pointer(&msg[0]))
 	seckey_ptr := (*C.uchar)(unsafe.Pointer(&seckey[0]))
 
@@ -176,6 +182,43 @@ func Sign(msg []byte, seckey []byte) ([]byte, error) {
 
 	return sig_serialized, nil
 
+}
+
+// Sign creates a recoverable ECDSA signature.
+// The produced signature is in the 65-byte [R || S || V] format where V is 0 or 1.
+//
+// The caller is responsible for ensuring that msg cannot be chosen
+// directly by an attacker. It is usually preferable to use a cryptographic
+// hash function on any input before handing it to this function.
+func Sign(msg []byte, seckey []byte) ([]byte, error) {
+	if len(msg) != 32 {
+		return nil, ErrInvalidMsgLen
+	}
+	if len(seckey) != 32 {
+		return nil, ErrInvalidKey
+	}
+	seckeydata := (*C.uchar)(unsafe.Pointer(&seckey[0]))
+	if C.secp256k1_ec_seckey_verify(context, seckeydata) != 1 {
+		return nil, ErrInvalidKey
+	}
+
+	var (
+		msgdata   = (*C.uchar)(unsafe.Pointer(&msg[0]))
+		noncefunc = C.secp256k1_nonce_function_rfc6979
+		sigstruct C.secp256k1_ecdsa_recoverable_signature
+	)
+	if C.secp256k1_ecdsa_sign_recoverable(context, &sigstruct, msgdata, seckeydata, noncefunc, nil) == 0 {
+		return nil, ErrSignFailed
+	}
+
+	var (
+		sig     = make([]byte, 65)
+		sigdata = (*C.uchar)(unsafe.Pointer(&sig[0]))
+		recid   C.int
+	)
+	C.secp256k1_ecdsa_recoverable_signature_serialize_compact(context, sigdata, &recid, &sigstruct)
+	sig[64] = byte(recid) // add back recid to get 65 bytes sig
+	return sig, nil
 }
 
 func VerifySeckeyValidity(seckey []byte) error {

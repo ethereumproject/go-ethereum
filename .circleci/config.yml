@@ -1,7 +1,7 @@
 sputnik_vm_steps: &sputnik_vm_steps
   steps:
     - restore_cache:
-        key: v7-toolchain-{{ arch }}
+        key: v8-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - run:
@@ -9,59 +9,72 @@ sputnik_vm_steps: &sputnik_vm_steps
         command: |
           export GOPATH=$HOME/go
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-          git clone https://github.com/ethereumproject/sputnikvm-ffi $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi
-          cd $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi && cargo build --release
-          cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+          cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+          make -C vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c
     - persist_to_workspace:
         root: ~/
         paths:
-          - go/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
+          - go/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a
 
 deploy_steps: &deploy_steps
   steps:
     - restore_cache:
-        key: v7-toolchain-{{ arch }}
+        key: v8-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - deploy:
         name: Deploy to builds.etcdevteam.com
         command: |
+          if [[ $CIRCLE_PROJECT_USERNAME != ethereumproject ]]; then echo "Deployments only enabled from ethereumproject/ repo. Exiting." && exit 0; fi
           export GOPATH=$HOME/go
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           cp $GOPATH/bin/geth ./
+          export VERSION=`janus version -format TAG_OR_NIGHTLY`
+          ./geth version | awk '/^Version: /{if (ENVIRON["VERSION"] != $2){printf "Expected: \"%s\", got \"%s\"\n",ENVIRON["VERSION"], $2; exit 1}}'
+
           ./scripts/deploy.sh gcloud-circleci.json.enc
 
 unit_tests_steps: &unit_tests_steps
   steps:
     - restore_cache:
-        key: v7-toolchain-{{ arch }}
+        key: v8-toolchain-{{ arch }}
     - attach_workspace:
         at: ~/
     - run:
         name: Run unit tests
         command: |
           export GOPATH=$HOME/go
-          export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
-          if [ "$(uname)" == "Darwin" ]; then
-            export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
+          export GOBIN=$GOPATH/bin
+          export PATH=$PATH:$GOBIN
+          export TAGS="netgo deterministic"
+          if [ $USE_SPUTNIK_VM == true ]; then
+            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            if [ "$(uname)" == "Darwin" ]; then
+              export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
+            fi
+            export TAGS="sputnikvm $TAGS"
           fi
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
           cd $GOPATH/src/github.com/ethereumproject/go-ethereum
           go env
-          go test -tags="sputnikvm netgo" ./...
+          # Since core/ and tests/ packages are run deterministically, we can safely
+          # infer that SputnikVM is functioning the same as the native VM without running
+          # the schroedinger nondeterministic tests with sputnik enabled.
+          go test -ldflags "-X github.com/ethereumproject/go-ethereum/core.UseSputnikVM=$USE_SPUTNIK_VM" -tags="$TAGS" ./...
+          schroedinger -t 5 -f ./schroedinger-tests.txt
 
 bats_tests_steps: &bats_tests_steps
     steps:
       - restore_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
       - attach_workspace:
           at: ~/
       - run:
           name: Run bats tests
           command: |
             export GOPATH=$HOME/go
-            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
             if [ "$(uname)" == "Darwin" ]; then
               export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
             else
@@ -73,7 +86,7 @@ bats_tests_steps: &bats_tests_steps
             go build -tags="sputnikvm netgo" -ldflags "$EXT_LD_FLAGS -X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
             mkdir -p $GOPATH/bin
             mv ./geth $GOPATH/bin/
-            bats cmd/geth
+            bats tests/bats
       - persist_to_workspace:
           root: ~/
           paths:
@@ -86,7 +99,7 @@ jobs:
       xcode: "9.0"
     steps:
       - restore_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
       - run:
           name: Prepare directories
           command: |
@@ -109,13 +122,14 @@ jobs:
               go version
               brew install bats
               brew install gpg2
+              go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
             fi
       - persist_to_workspace:
           root: ~/
           paths:
             - go/src/github.com/ethereumproject/*
       - save_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
           paths:
             - /usr/local/bin/bats
             - /usr/local/bin/go
@@ -128,13 +142,14 @@ jobs:
             - ~/.cargo
             - ~/.rustup
             - ~/janusbin
+            - ~/go/bin
 
   linux_env_setup:
     docker:
       - image: circleci/golang:1.9
     steps:
       - restore_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
       - run:
           name: Prepare directories
           command: |
@@ -155,18 +170,20 @@ jobs:
             if [ ! -x ~/janusbin/janus ]; then
               cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
             fi
+            go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
       - persist_to_workspace:
           root: ~/
           paths:
             - go/src/github.com/ethereumproject/*
       - save_cache:
-          key: v7-toolchain-{{ arch }}
+          key: v8-toolchain-{{ arch }}
           paths:
             - ~/bin
             - ~/libexec
             - ~/.cargo
             - ~/.rustup
             - ~/janusbin
+            - ~/go/bin
 
   mac_sputnik_vm:
     macos:
@@ -178,16 +195,34 @@ jobs:
       - image: circleci/golang:1.9
     <<: *sputnik_vm_steps
 
-  mac_unit_tests:
+  mac_evm_unit_tests:
     macos:
       xcode: "9.0"
+    environment:
+        USE_SPUTNIK_VM: false
     <<: *unit_tests_steps
 
-  linux_unit_tests:
+  linux_evm_unit_tests:
     docker:
       - image: circleci/golang:1.9
-        environment:
-            GOMAXPROCS: 2
+    environment:
+        GOMAXPROCS: 2
+        USE_SPUTNIK_VM: false
+    <<: *unit_tests_steps
+
+  mac_sputnikvm_unit_tests:
+    macos:
+      xcode: "9.0"
+    environment:
+        USE_SPUTNIK_VM: true
+    <<: *unit_tests_steps
+
+  linux_sputnikvm_unit_tests:
+    docker:
+      - image: circleci/golang:1.9
+    environment:
+        GOMAXPROCS: 2
+        USE_SPUTNIK_VM: true
     <<: *unit_tests_steps
 
   mac_bats_tests:
@@ -224,7 +259,13 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - mac_unit_tests:
+      - mac_evm_unit_tests:
+          requires:
+            - mac_env_setup
+          filters:
+            tags:
+              only: /.*/
+      - mac_sputnikvm_unit_tests:
           requires:
             - mac_sputnik_vm
           filters:
@@ -238,7 +279,8 @@ workflows:
               only: /.*/
       - mac_deploy:
           requires:
-            - mac_unit_tests
+            - mac_evm_unit_tests
+            - mac_sputnikvm_unit_tests
             - mac_bats_tests
           filters:
             branches:
@@ -258,7 +300,13 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - linux_unit_tests:
+      - linux_evm_unit_tests:
+          requires:
+            - linux_env_setup
+          filters:
+            tags:
+              only: /.*/
+      - linux_sputnikvm_unit_tests:
           requires:
             - linux_sputnik_vm
           filters:
@@ -272,7 +320,8 @@ workflows:
               only: /.*/
       - linux_deploy:
           requires:
-            - linux_unit_tests
+            - linux_evm_unit_tests
+            - linux_sputnikvm_unit_tests
             - linux_bats_tests
           filters:
             branches:

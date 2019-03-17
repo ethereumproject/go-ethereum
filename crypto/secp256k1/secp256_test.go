@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
 	"github.com/ethereumproject/go-ethereum/crypto/randentropy"
 )
 
@@ -64,6 +65,58 @@ func TestInvalidRecoveryID(t *testing.T) {
 	_, err := RecoverPubkey(msg, sig)
 	if err != ErrInvalidRecoveryID {
 		t.Fatalf("got %q, want %q", err, ErrInvalidRecoveryID)
+	}
+}
+
+func TestSignDeterministic(t *testing.T) {
+	_, seckey := GenerateKeyPair()
+	msg := randentropy.GetEntropyCSPRNG(32)
+	sig1, err := Sign(msg, seckey)
+	if err != nil {
+		t.Errorf("signature 1 error: %s", err)
+	}
+	sig2, err := Sign(msg, seckey)
+	if err != nil {
+		t.Errorf("signature 2 error: %s", err)
+	}
+	if !bytes.Equal(sig1, sig2) {
+		t.Fatal("sig1 != sig2", hexutil.Encode(sig1), hexutil.Encode(sig2))
+	}
+}
+
+// TestSignNondeterministic shows that TestSignNondeterministic does not generate deterministic signatures.
+func TestSignNondeterministic(t *testing.T) {
+	_, seckey := GenerateKeyPair()
+	msg := randentropy.GetEntropyCSPRNG(32)
+	sig1, err := SignNondeterministic(msg, seckey)
+	if err != nil {
+		t.Errorf("signature 1 error: %s", err)
+	}
+	sig2, err := SignNondeterministic(msg, seckey)
+	if err != nil {
+		t.Errorf("signature 2 error: %s", err)
+	}
+	// Of course the signatures should be the same (1:1), but they are not.
+	if bytes.Equal(sig1, sig2) {
+		t.Error("sig1 == sig2", hexutil.Encode(sig1), hexutil.Encode(sig2))
+	}
+}
+
+// TestSignNondeterministic2 shows that TestSignNondeterministic does not generate the same signature as deterministic Sign.
+func TestSignNondeterministic2(t *testing.T) {
+	_, seckey := GenerateKeyPair()
+	msg := randentropy.GetEntropyCSPRNG(32)
+	sig1, err := SignNondeterministic(msg, seckey)
+	if err != nil {
+		t.Errorf("signature 1 error: %s", err)
+	}
+	sig2, err := Sign(msg, seckey)
+	if err != nil {
+		t.Errorf("signature 2 error: %s", err)
+	}
+	// Of course the signatures should be the same (1:1), but they are not.
+	if bytes.Equal(sig1, sig2) {
+		t.Error("sig1 == sig2", hexutil.Encode(sig1), hexutil.Encode(sig2))
 	}
 }
 

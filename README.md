@@ -1,6 +1,6 @@
-[![Linux Build Status](https://travis-ci.org/ethereumproject/go-ethereum.svg?branch=master)](https://travis-ci.org/ethereumproject/go-ethereum)
 [![MacOS Build Status](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master)
 [![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/ethereumproject/go-ethereum?svg=true)](https://ci.appveyor.com/project/splix/go-ethereum)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ethereumproject/go-ethereum)](https://goreportcard.com/report/github.com/ethereumproject/go-ethereum)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/ethereumproject/go-ethereum)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
@@ -25,83 +25,71 @@ $ brew install ethereumproject/classic/geth
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
 #### Dependencies
-Building geth requires both Go >=1.9 and a C compiler.
+Building geth requires both Go >=1.9 and a C compiler. On Linux systems,
+a C compiler can, for example, by installed with `sudo apt-get install
+build-essential`. On Mac: `xcode-select --install`.
 
-#### Get source and dependencies
-`$ go get -v github.com/ethereumproject/go-ethereum/...`
-
-#### Installing command executables
-
-To install...
-
-- the full suite of utilities: `$ go install github.com/ethereumproject/go-ethereum/cmd/...`
-- just __geth__: `$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
-
-Executables built from source will, by default, be installed in `$GOPATH/bin/`.
-
-#### Building specific release
-All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following:
+#### Get source and package dependencies
 ```
+$ go get -v github.com/ethereumproject/go-ethereum/...`
+```
+
+#### Install and build command executables
+
+Executables installed from source will, by default, be installed in `$GOPATH/bin/`.
+
+##### With go:
+
+- the full suite of utilities:
+```
+$ go install github.com/ethereumproject/go-ethereum/cmd/...`
+```
+
+- just __geth__:
+```
+$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
+```
+
+##### With make:
+```
+$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+```
+
+- the full suite of utilities:
+```
+$ make install
+```
+
+- just __geth__:
+```
+$ make install_geth
+```
+
+> For further `make` information, use `make help` to see a list and description of available make
+> commands.
+
+
+##### Building a specific release
+All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following before installing:
+
+```shell
 $ go get -d github.com/ethereumproject/go-ethereum/...
 $ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
 $ git checkout <TAG OR REVISION>
-$ go install -ldflags "-X main.Version="`git describe --tags` ./cmd/...
+# Use a go or make command above.
 ```
 
-#### Using release source code tarball
+##### Using a release source code tarball
 Because of strict Go directory structure, the tarball needs to be extracted into the proper subdirectory under `$GOPATH`.
 The following commands are an example of building the v4.1.1 release:
-```
+
+```shell
 $ mkdir -p $GOPATH/src/github.com/ethereumproject
 $ cd $GOPATH/src/github.com/ethereumproject
 $ tar xzf /path/to/go-ethereum-4.1.1.tar.gz
 $ mv go-ethereum-4.1.1 go-ethereum
 $ cd go-ethereum
-$ go install -ldflags "-X main.Version=v4.1.1" ./cmd/...
-```
-
-#### Building with [SputnikVM](https://github.com/ethereumproject/sputnikvm)
-Have Rust (>= 1.21) and Golang (>= 1.9) installed.
-
-> For __Linux__ and __macOS__:
-
-```
-cd $GOPATH/src/github.com/ethereumproject
-git clone https://github.com/ethereumproject/sputnikvm-ffi
-cd sputnikvm-ffi/c/ffi
-cargo build --release
-cp $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/ffi/target/release/libsputnikvm_ffi.a $GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a
-```
-And then build geth with CGO_LDFLAGS:
-
-- In Linux:
-
-```
-cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
-CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl" go build -tags=sputnikvm .
-```
-
-- In macOS:
-
-```
-cd $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth
-CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/sputnikvm-ffi/c/libsputnikvm.a -ldl -lresolv" go build -tags=sputnikvm .
-```
-
-> For __Windows__:
-
-```
-cd %GOPATH%\src\github.com\ethereumproject
-git clone https://github.com/ethereumproject/sputnikvm-ffi
-cd sputnikvm-ffi\c\ffi
-cargo build --release
-copy %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\ffi\target\release\sputnikvm.lib %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib
-```
-And then build geth with CGO_LDFLAGS:
-```
-cd %GOPATH%\src\github.com\ethereumproject\go-ethereum\cmd\geth
-set CGO_LDFLAGS=-Wl,--allow-multiple-definition %GOPATH%\src\github.com\ethereumproject\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
-go build -tags=sputnikvm .
+# Use a go or make command above.
 ```
 
 ## Executables
@@ -122,6 +110,7 @@ This repository includes several wrappers/executables found in the `cmd` directo
 
 ### Data directory
 By default, geth will store all node and blockchain data in a __parent directory__ depending on your OS:
+
 - Linux: `$HOME/.ethereum-classic/`
 - Mac: `$HOME/Library/EthereumClassic/`
 - Windows: `$HOME/AppData/Roaming/EthereumClassic/`
@@ -129,6 +118,7 @@ By default, geth will store all node and blockchain data in a __parent directory
 __You can specify this directory__ with `--data-dir=$HOME/id/rather/put/it/here`.
 
 Within this parent directory, geth will use a __/subdirectory__ to hold data for each network you run. The defaults are:
+
  - `/mainnet` for the Mainnet
  - `/morden` for the Morden Testnet
 
@@ -155,12 +145,13 @@ $ geth --fast
 Using geth in fast sync mode causes it to download only block _state_ data -- leaving out bulky transaction records -- which avoids a lot of CPU and memory intensive processing.
 
 Fast sync will be automatically __disabled__ (and full sync enabled) when:
+
 - your chain database contains *any* full blocks
 - your node has synced up to the current head of the network blockchain
 
 In case of using `--mine` together with `--fast`, geth will operate as described; syncing in fast mode up to the head, and then begin mining once it has synced its first full block at the head of the chain.
 
-*Note:* To further increase geth's performace, you can use a `--cache=512` flag to bump the memory allowance of the database (e.g. 512MB) which can significantly improve sync times, especially for HDD users. This flag is optional and you can set it as high or as low as you'd like, though we'd recommend the 512MB - 2GB range.
+*Note:* To further increase geth's performace, you can use a `--cache=2054` flag to bump the memory allowance of the database (e.g. 2054MB) which can significantly improve sync times, especially for HDD users. This flag is optional and you can set it as high or as low as you'd like, though we'd recommend the 1GB - 2GB range.
 
 ### Create or manage account(s)
 
@@ -207,10 +198,10 @@ If you'd like to play around with creating Ethereum contracts, you
 almost certainly would like to do that without any real money involved until you get the hang of the entire system. In other words, instead of attaching to the main network, you want to join the **test** network with your node, which is fully equivalent to the main network, but with play-Ether only.
 
 ```
-$ geth --chain=morden --fast --cache=512 console
+$ geth --chain=morden --fast console
 ```
 
-The `--fast`, `--cache` flags and `console` subcommand have the exact same meaning as above and they are equally useful on the testnet too. Please see above for their explanations if you've skipped to here.
+The `--fast` flag and `console` subcommand have the exact same meaning as above and they are equally useful on the testnet too. Please see above for their explanations if you've skipped to here.
 
 Specifying the `--chain=morden` flag will reconfigure your Geth instance a bit:
 
@@ -280,6 +271,7 @@ The external chain configuration file specifies valid settings for the following
 | `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block. If configuring an existing chain database with a different genesis block, it will overwrite it. |
 | `chainConfig` | Determines configuration for fork-based __protocol upgrades__, ie _EIP-150_, _EIP-155_, _EIP-160_, _ECIP-1010_, etc ;-). Subkeys are `forks` and `badHashes`. |
 | `bootstrap` | _Optional_. Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
+| `include` | _Optional_. Other configuration files to include. Paths can be relative (to the config file with `include` field, or absolute). Each of configuration files has the same structure as "main" configuration. Included files are processed after the "main" configuration in the same order as specified in the array; values processed later overwrite the previously defined ones. |
 
 
 *Fields `name`, `state.startingNonce`, and `consensus` are optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain` __incompatible__ with `--testnet`. It remains __compatible__ with `--data-dir`.*
@@ -337,7 +329,7 @@ The core values of democratic engagement, transparency, and integrity run deep w
 
 This project is migrated from the now hard-forked [Ethereum (ETHF) Github project](https://github.com/ethereum), and we will need to incrementally migrate pieces of the infrastructure required to maintain the project.
 
-If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes, please check up with the core devs first on [our Slack channel (#development)](http://ethereumclassic.herokuapp.com/) or [our Discord channel (#development)](https://discord.gg/wpwSGWn) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
+If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes, please check up with the core devs first on [our Discord channel (#development)](https://discord.gg/NgzMPaj) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
 
 Please see the [Wiki](https://github.com/ethereumproject/go-ethereum/wiki) for more details on configuring your environment, managing project dependencies, and testing procedures.
 

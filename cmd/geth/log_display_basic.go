@@ -18,6 +18,10 @@ package main
 
 import (
 	"fmt"
+	"math/big"
+	"strconv"
+	"time"
+
 	"github.com/ethereumproject/go-ethereum/core"
 	"github.com/ethereumproject/go-ethereum/core/types"
 	"github.com/ethereumproject/go-ethereum/eth"
@@ -25,15 +29,12 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"gopkg.in/urfave/cli.v1"
-	"math/big"
-	"strconv"
-	"time"
 )
 
 // basicDisplaySystem is the basic display system spec'd in #127.
 var basicDisplaySystem = displayEventHandlers{
 	{
-		eventT: logEventChainInsert,
+		eventT: logEventCoreChainInsert,
 		ev:     core.ChainInsertEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
@@ -49,19 +50,19 @@ var basicDisplaySystem = displayEventHandlers{
 		},
 	},
 	{
-		eventT: logEventMinedBlock,
-		ev: core.NewMinedBlockEvent{},
+		eventT: logEventCoreMinedBlock,
+		ev:     core.NewMinedBlockEvent{},
 		handlers: displayEventHandlerFns{
 			func(ctx *cli.Context, e *eth.Ethereum, evData interface{}, tickerInterval time.Duration) {
 				switch d := evData.(type) {
 				case core.NewMinedBlockEvent:
 					glog.D(logger.Warn).Infof(basicScanLn,
 						"Mined",
-							formatBlockNumber(d.Block.NumberU64()),
-							d.Block.Hash().Hex()[2 : 2+len(xlocalHeadHashD)],
-							fmt.Sprintf("%3d/%2d", d.Block.Transactions().Len(), new(big.Int).Div(d.Block.GasUsed(), big.NewInt(1000000)).Int64()),
-							"txs/mgas",
-							fmt.Sprintf("%2d/%2d peers", e.Downloader().GetPeers().Len(), ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx))),
+						formatBlockNumber(d.Block.NumberU64()),
+						d.Block.Hash().Hex()[2:2+len(xlocalHeadHashD)],
+						fmt.Sprintf("%3d/%2d", d.Block.Transactions().Len(), new(big.Int).Div(d.Block.GasUsed(), big.NewInt(1000000)).Int64()),
+						"txs/mgas",
+						fmt.Sprintf("%2d/%2d peers", e.Downloader().GetPeers().Len(), ctx.GlobalInt(aliasableName(MaxPeersFlag.Name, ctx))),
 					)
 					currentBlockNumber = d.Block.NumberU64()
 				}
@@ -235,13 +236,13 @@ var PrintStatusBasic = func(e *eth.Ethereum, tickerInterval time.Duration, inser
 	if currentModeLocal == lsModeImport && insertEvent != nil && insertEvent.Processed == 1 {
 		blks, txs, mgas = 1, localHead.Transactions().Len(), int(new(big.Int).Div(localHead.GasUsed(), big.NewInt(1000000)).Uint64())
 	} else if insertEvent != nil && insertEvent.Processed > 1 {
-		blks, txs, mgas = calcBlockDiff(e, localHead.NumberU64() - uint64(insertEvent.Processed), localHead)
+		blks, txs, mgas = calcBlockDiff(e, localHead.NumberU64()-uint64(insertEvent.Processed), localHead)
 	} else if currentBlockNumber == 0 && origin > 0 {
 		blks, txs, mgas = calcBlockDiff(e, origin, localHead)
 	} else if currentBlockNumber != 0 && currentBlockNumber < localHead.NumberU64() {
 		blks, txs, mgas = calcBlockDiff(e, currentBlockNumber, localHead)
 	} else {
-		blks, txs, mgas = calcBlockDiff(e, localHead.NumberU64() - 1, localHead)
+		blks, txs, mgas = calcBlockDiff(e, localHead.NumberU64()-1, localHead)
 	}
 
 	switch currentModeLocal {

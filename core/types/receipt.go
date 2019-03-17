@@ -26,6 +26,14 @@ import (
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
 
+type ReceiptStatus byte
+
+const (
+	TxFailure       ReceiptStatus = 0
+	TxSuccess       ReceiptStatus = 1
+	TxStatusUnknown ReceiptStatus = 0xFF
+)
+
 // Receipt represents the results of a transaction.
 type Receipt struct {
 	// Consensus fields
@@ -38,11 +46,12 @@ type Receipt struct {
 	TxHash          common.Hash
 	ContractAddress common.Address
 	GasUsed         *big.Int
+	Status          ReceiptStatus
 }
 
 // NewReceipt creates a barebone transaction receipt, copying the init fields.
 func NewReceipt(root []byte, cumulativeGasUsed *big.Int) *Receipt {
-	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed)}
+	return &Receipt{PostState: common.CopyBytes(root), CumulativeGasUsed: new(big.Int).Set(cumulativeGasUsed), Status: TxStatusUnknown}
 }
 
 // EncodeRLP implements rlp.Encoder, and flattens the consensus fields of a receipt
@@ -92,13 +101,13 @@ func (r *ReceiptForStorage) EncodeRLP(w io.Writer) error {
 	for i, log := range r.Logs {
 		logs[i] = (*vm.LogForStorage)(log)
 	}
-	return rlp.Encode(w, []interface{}{r.PostState, r.CumulativeGasUsed, r.Bloom, r.TxHash, r.ContractAddress, logs, r.GasUsed})
+	return rlp.Encode(w, []interface{}{r.PostState, r.CumulativeGasUsed, r.Bloom, r.TxHash, r.ContractAddress, logs, r.GasUsed, r.Status})
 }
 
 // DecodeRLP implements rlp.Decoder, and loads both consensus and implementation
 // fields of a receipt from an RLP stream.
 func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
-	var receipt struct {
+	var oldReceipt struct {
 		PostState         []byte
 		CumulativeGasUsed *big.Int
 		Bloom             Bloom
@@ -107,8 +116,36 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 		Logs              []*vm.LogForStorage
 		GasUsed           *big.Int
 	}
-	if err := s.Decode(&receipt); err != nil {
+	var receipt struct {
+		PostState         []byte
+		CumulativeGasUsed *big.Int
+		Bloom             Bloom
+		TxHash            common.Hash
+		ContractAddress   common.Address
+		Logs              []*vm.LogForStorage
+		GasUsed           *big.Int
+		Status            ReceiptStatus
+	}
+	receipt.Status = TxStatusUnknown
+
+	raw, err := s.Raw()
+	if err != nil {
 		return err
+	}
+
+	if err := rlp.DecodeBytes(raw, &receipt); err != nil {
+		if err := rlp.DecodeBytes(raw, &oldReceipt); err != nil {
+			return err
+		}
+		receipt.PostState = oldReceipt.PostState
+		receipt.CumulativeGasUsed = oldReceipt.CumulativeGasUsed
+		receipt.Bloom = oldReceipt.Bloom
+		receipt.TxHash = oldReceipt.TxHash
+		receipt.ContractAddress = oldReceipt.ContractAddress
+		receipt.Logs = oldReceipt.Logs
+		receipt.GasUsed = oldReceipt.GasUsed
+		receipt.Status = TxStatusUnknown
+
 	}
 	// Assign the consensus fields
 	r.PostState, r.CumulativeGasUsed, r.Bloom = receipt.PostState, receipt.CumulativeGasUsed, receipt.Bloom
@@ -117,7 +154,7 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 		r.Logs[i] = (*vm.Log)(log)
 	}
 	// Assign the implementation fields
-	r.TxHash, r.ContractAddress, r.GasUsed = receipt.TxHash, receipt.ContractAddress, receipt.GasUsed
+	r.TxHash, r.ContractAddress, r.GasUsed, r.Status = receipt.TxHash, receipt.ContractAddress, receipt.GasUsed, receipt.Status
 
 	return nil
 }

@@ -234,7 +234,7 @@ func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, 
 			gen(i, b)
 		}
 		AccumulateRewards(config, statedb, h, b.uncles)
-		root, err := statedb.Commit()
+		root, err := statedb.CommitTo(db, false)
 		if err != nil {
 			panic(fmt.Sprintf("state write error: %v", err))
 		}
@@ -242,7 +242,7 @@ func GenerateChain(config *ChainConfig, parent *types.Block, db ethdb.Database, 
 		return types.NewBlock(h, b.txs, b.uncles, b.receipts), b.receipts
 	}
 	for i := 0; i < n; i++ {
-		statedb, err := state.New(parent.Root(), db)
+		statedb, err := state.New(parent.Root(), state.NewDatabase(db))
 		if err != nil {
 			panic(err)
 		}
@@ -263,7 +263,7 @@ func makeHeader(config *ChainConfig, parent *types.Block, state *state.StateDB) 
 		time = new(big.Int).Add(parent.Time(), big.NewInt(10)) // block time is fixed at 10 seconds
 	}
 	return &types.Header{
-		Root:       state.IntermediateRoot(),
+		Root:       state.IntermediateRoot(false),
 		ParentHash: parent.Hash(),
 		Coinbase:   parent.Coinbase(),
 		Difficulty: CalcDifficulty(config, time.Uint64(), new(big.Int).Sub(time, big.NewInt(10)).Uint64(), parent.Number(), parent.Difficulty()),
@@ -304,13 +304,13 @@ func newCanonical(config *ChainConfig, n int, full bool) (ethdb.Database, *Block
 	if full {
 		// Full block-chain requested
 		blocks := makeBlockChain(config, genesis, n, db, canonicalSeed)
-		_, err := blockchain.InsertChain(blocks)
-		return db, blockchain, err
+		res := blockchain.InsertChain(blocks)
+		return db, blockchain, res.Error
 	}
 	// Header-only chain requested
 	headers := makeHeaderChain(config, genesis.Header(), n, db, canonicalSeed)
-	_, err = blockchain.InsertHeaderChain(headers, 1)
-	return db, blockchain, err
+	res := blockchain.InsertHeaderChain(headers, 1)
+	return db, blockchain, res.Error
 }
 
 // makeHeaderChain creates a deterministic chain of headers rooted at parent.

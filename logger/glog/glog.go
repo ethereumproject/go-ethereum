@@ -121,6 +121,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/fatih/color"
 )
 
@@ -218,9 +219,9 @@ var severityColor = []string{"\x1b[2m", "\x1b[33m", "\x1b[31m", "\x1b[35m"} // i
 
 var severityName = []string{
 	infoLog:    "INFO",
-	warningLog: "WARNING",
-	errorLog:   "ERROR",
-	fatalLog:   "FATAL",
+	warningLog: "WARN",
+	errorLog:   "ERR ",
+	fatalLog:   "FAIL",
 }
 
 // these path prefixes are trimmed for display, but not when
@@ -966,14 +967,14 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 	}
 	data := buf.Bytes()
 	if l.toStderr {
-		color.StderrOutput.Write(data)
+		color.Error.Write(data)
 	} else {
 		if alsoToStderr || l.alsoToStderr || s >= l.stderrThreshold.get() {
-			color.StderrOutput.Write(data)
+			color.Error.Write(data)
 		}
 		if l.file[s] == nil {
 			if err := l.createFiles(s); err != nil {
-				color.StderrOutput.Write(data) // Make sure the message appears somewhere.
+				color.Error.Write(data) // Make sure the message appears somewhere.
 				l.exit(err)
 			}
 		}
@@ -1003,7 +1004,7 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 		// If -logtostderr has been specified, the loop below will do that anyway
 		// as the first stack in the full dump.
 		if !l.toStderr {
-			color.StderrOutput.Write(stacks(false))
+			color.Error.Write(stacks(false))
 		}
 		// Write the stack trace for all goroutines to the files.
 		trace := stacks(true)
@@ -1038,7 +1039,7 @@ func timeoutFlush(timeout time.Duration) {
 	select {
 	case <-done:
 	case <-time.After(timeout):
-		fmt.Fprintln(color.StderrOutput, "glog: Flush took longer than", timeout)
+		fmt.Fprintln(color.Error, "glog: Flush took longer than", timeout)
 	}
 }
 
@@ -1071,7 +1072,7 @@ var logExitFunc func(error)
 // It flushes the logs and exits the program; there's no point in hanging around.
 // l.mu is held.
 func (l *loggingT) exit(err error) {
-	fmt.Fprintf(color.StderrOutput, "log: exiting because of error: %s\n", err)
+	fmt.Fprintf(color.Error, "log: exiting because of error: %s\n", err)
 	// If logExitFunc is set, we do that instead of exiting.
 	if logExitFunc != nil {
 		logExitFunc(err)
@@ -1159,8 +1160,8 @@ func (sb *syncBuffer) rotateCurrent(now time.Time) error {
 	// Write header.
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "Log file created at: %s\n", now.Format("2006/01/02 15:04:05"))
-	fmt.Fprintf(&buf, "Running on machine: %s\n", host)
 	fmt.Fprintf(&buf, "Binary: Built with %s %s for %s/%s\n", runtime.Compiler, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	fmt.Fprintf(&buf, "Context: %s\n", common.GetClientSessionIdentity().String())
 	fmt.Fprintf(&buf, "Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg\n")
 	n, err := sb.file.Write(buf.Bytes())
 	sb.nbytes += uint64(n)

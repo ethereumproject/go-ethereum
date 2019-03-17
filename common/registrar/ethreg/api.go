@@ -93,7 +93,7 @@ func (api *PrivateRegistarAPI) SaveInfo(info *compiler.ContractInfo, filename st
 // Register registers a new content hash in the registry.
 func (api *PrivateRegistarAPI) Register(sender common.Address, addr common.Address, contentHashHex string) (bool, error) {
 	block := api.be.bc.CurrentBlock()
-	state, err := state.New(block.Root(), api.be.chainDb)
+	state, err := state.New(block.Root(), state.NewDatabase(api.be.chainDb))
 	if err != nil {
 		return false, err
 	}
@@ -173,7 +173,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 	}
 
 	block := be.bc.CurrentBlock()
-	statedb, err := state.New(block.Root(), be.chainDb)
+	statedb, err := state.New(block.Root(), state.NewDatabase(be.chainDb))
 	if err != nil {
 		return "", "", err
 	}
@@ -209,7 +209,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 	header := be.bc.CurrentBlock().Header()
 	vmenv := core.NewEnv(statedb, be.config, be.bc, msg, header)
 	gp := new(core.GasPool).AddGas(common.MaxBig)
-	res, gas, err := core.ApplyMessage(vmenv, msg, gp)
+	res, gas, _, err := core.ApplyMessage(vmenv, msg, gp)
 
 	return common.ToHex(res), gas.String(), err
 }
@@ -217,7 +217,7 @@ func (be *registryAPIBackend) Call(fromStr, toStr, valueStr, gasStr, gasPriceStr
 // StorageAt returns the data stores in the state for the given address and location.
 func (be *registryAPIBackend) StorageAt(addr string, storageAddr string) string {
 	block := be.bc.CurrentBlock()
-	state, err := state.New(block.Root(), be.chainDb)
+	state, err := state.New(block.Root(), state.NewDatabase(be.chainDb))
 	if err != nil {
 		return ""
 	}

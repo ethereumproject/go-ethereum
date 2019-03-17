@@ -265,7 +265,7 @@ func TestDefaultChainConfigurationVariablesExist(t *testing.T) {
 	if l := len(DefaultConfigMainnet.ParsedBootstrap); l != 10 {
 		t.Errorf("got: %v, want: %v", l, 10)
 	}
-	if l := len(DefaultConfigMorden.ParsedBootstrap); l != 7 {
+	if l := len(DefaultConfigMorden.ParsedBootstrap); l != 15 {
 		t.Errorf("got: %v, want: %v", l, 7)
 	}
 

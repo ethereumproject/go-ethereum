@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/ethereumproject/go-ethereum/accounts"
 	"github.com/ethereumproject/go-ethereum/console"
@@ -178,7 +179,7 @@ geth account import <keyfile>
 				Usage:  "Build persistent account index",
 				Description: `
 
-geth --index-accounts account index
+geth account index
 
 	Create keystore directory index cache database (keystore/accounts.db),
 	which is relevant for use with large amounts of key files (>10,000).
@@ -197,7 +198,9 @@ geth --index-accounts account index
 func accountIndex(ctx *cli.Context) error {
 	n := aliasableName(AccountsIndexFlag.Name, ctx)
 	if !ctx.GlobalBool(n) {
-		log.Fatalf("Use: $ geth --%v account index\n (missing '%v' flag)", n, n)
+		if e := ctx.GlobalSet(n, "true"); e != nil {
+			log.Fatal("err set flag", e)
+		}
 	}
 	am := MakeAccountManager(ctx)
 	errs := am.BuildIndexDB()
@@ -364,9 +367,17 @@ func accountImport(ctx *cli.Context) error {
 	if len(keyfile) == 0 {
 		log.Fatal("keyfile must be given as argument")
 	}
-	key, err := crypto.LoadECDSA(keyfile)
+	f, err := os.Open(keyfile)
+	if err != nil {
+		log.Fatalf("could not open key file: %v", err)
+	}
+	key, err := crypto.LoadECDSA(f)
 	if err != nil {
 		log.Fatalf("unable to decode keyfile '%s': %v", keyfile, err)
+	}
+	err = f.Close()
+	if err != nil {
+		log.Fatalf("could not close key file: %v", err)
 	}
 	accman := MakeAccountManager(ctx)
 	passphrase := getPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, MakePasswordList(ctx))

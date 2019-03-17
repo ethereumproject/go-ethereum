@@ -28,6 +28,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/p2p/distip"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
 	"github.com/ethereumproject/go-ethereum/rlp"
 )
@@ -53,16 +54,16 @@ var (
 	// I expect many of these occasions will be very unlikely.
 	//
 	// IPv4
-	ipv4ReservedRangeThis               = [2]net.IP{net.ParseIP("0.0.0.0"), net.ParseIP("0.255.255.255")}
-	ipv4ReservedRangePrivateNetwork     = [2]net.IP{net.ParseIP("10.0.0.0"), net.ParseIP("10.255.255.255")}
+	Ipv4ReservedRangeThis               = [2]net.IP{net.ParseIP("0.0.0.0"), net.ParseIP("0.255.255.255")}
+	Ipv4ReservedRangePrivateNetwork     = [2]net.IP{net.ParseIP("10.0.0.0"), net.ParseIP("10.255.255.255")}
 	ipv4ReservedRangeProviderSubscriber = [2]net.IP{net.ParseIP("100.64.0.0"), net.ParseIP("100.127.255.255")}
-	ipv4ReservedRangeLoopback           = [2]net.IP{net.ParseIP("127.0.0.0"), net.ParseIP("127.255.255.255")}
+	Ipv4ReservedRangeLoopback           = [2]net.IP{net.ParseIP("127.0.0.0"), net.ParseIP("127.255.255.255")}
 	ipv4ReservedRangeLinkLocal          = [2]net.IP{net.ParseIP("169.254.0.0"), net.ParseIP("169.254.255.255")}
 	ipv4ReservedRangeLocalPrivate1      = [2]net.IP{net.ParseIP("172.16.0.0"), net.ParseIP("172.31.255.255")}
 	ipv4ReservedRangeSpecialPurpose     = [2]net.IP{net.ParseIP("192.0.0.0"), net.ParseIP("192.0.0.255")}
 	ipv4ReservedRangeTestNet1           = [2]net.IP{net.ParseIP("192.0.2.0"), net.ParseIP("192.0.2.255")}
 	ipv4ReservedRange6to4               = [2]net.IP{net.ParseIP("192.88.99.0"), net.ParseIP("192.88.99.255")}
-	ipv4ReservedRangeLocalPrivate2      = [2]net.IP{net.ParseIP("192.168.0.0"), net.ParseIP("192.168.255.255")}
+	Ipv4ReservedRangeLocalPrivate2      = [2]net.IP{net.ParseIP("192.168.0.0"), net.ParseIP("192.168.255.255")}
 	ipv4ReservedRangeSubnets            = [2]net.IP{net.ParseIP("198.18.0.0"), net.ParseIP("198.19.255.255")}
 	ipv4ReservedRangeTestNet2           = [2]net.IP{net.ParseIP("198.51.100.0"), net.ParseIP("198.51.100.255")}
 	ipv4ReservedRangeTestNet3           = [2]net.IP{net.ParseIP("203.0.113.0"), net.ParseIP("203.0.113.255")}
@@ -72,7 +73,7 @@ var (
 
 	// IPv6
 	ipv6ReservedRangeUnspecified   = [2]net.IP{net.ParseIP("::"), net.ParseIP("::")}
-	ipv6ReservedRangeLoopback      = [2]net.IP{net.ParseIP("::1"), net.ParseIP("::1")}
+	Ipv6ReservedRangeLoopback      = [2]net.IP{net.ParseIP("::1"), net.ParseIP("::1")}
 	ipv6ReservedRangeDocumentation = [2]net.IP{net.ParseIP("2001:db8::"), net.ParseIP("2001:db8:ffff:ffff:ffff:ffff:ffff:ffff")}
 	ipv6ReservedRange6to4          = [2]net.IP{net.ParseIP("2002::"), net.ParseIP("2002:ffff:ffff:ffff:ffff:ffff:ffff:ffff")}
 	ipv6ReservedRangeUniqueLocal   = [2]net.IP{net.ParseIP("fc00::"), net.ParseIP("fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")}
@@ -159,8 +160,16 @@ func makeEndpoint(addr *net.UDPAddr, tcpPort uint16) rpcEndpoint {
 	return rpcEndpoint{IP: ip, UDP: uint16(addr.Port), TCP: tcpPort}
 }
 
-func nodeFromRPC(rn rpcNode) (*Node, error) {
-	// TODO: don't accept localhost, LAN addresses from internet hosts
+func (t *udp) nodeFromRPC(sender *net.UDPAddr, rn rpcNode) (*Node, error) {
+	if rn.UDP <= 1024 {
+		return nil, errors.New("low port")
+	}
+	if err := distip.CheckRelayIP(sender.IP, rn.IP); err != nil {
+		return nil, err
+	}
+	if t.netrestrict != nil && !t.netrestrict.Contains(rn.IP) {
+		return nil, errors.New("not contained in netrestrict whitelist")
+	}
 	n := NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
 	err := n.validateComplete()
 	return n, err
@@ -184,6 +193,7 @@ type conn interface {
 // udp implements the RPC protocol.
 type udp struct {
 	conn        conn
+	netrestrict *distip.Netlist
 	priv        *ecdsa.PrivateKey
 	ourEndpoint rpcEndpoint
 
@@ -248,6 +258,7 @@ func ListenUDP(priv *ecdsa.PrivateKey, laddr string, natm nat.Interface, nodeDBP
 	}
 	glog.V(logger.Info).Infoln("Listening,", tab.self)
 	glog.D(logger.Warn).Infoln("UDP listening. Client enode:", logger.ColorGreen(tab.self.String()))
+
 	return tab, nil
 }
 
@@ -314,7 +325,7 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 		reply := r.(*neighbors)
 		for _, rn := range reply.Nodes {
 			nreceived++
-			if n, err := nodeFromRPC(rn); err == nil {
+			if n, err := t.nodeFromRPC(toaddr, rn); err == nil {
 				nodes = append(nodes, n)
 			}
 		}
@@ -740,16 +751,16 @@ func expired(ts uint64) bool {
 
 func isReserved(ip net.IP) bool {
 	reserved := [][2]net.IP{
-		ipv4ReservedRangeThis,
-		ipv4ReservedRangePrivateNetwork,
+		Ipv4ReservedRangeThis,
+		Ipv4ReservedRangePrivateNetwork,
 		ipv4ReservedRangeProviderSubscriber,
-		ipv4ReservedRangeLoopback,
+		Ipv4ReservedRangeLoopback,
 		ipv4ReservedRangeLinkLocal,
 		ipv4ReservedRangeLocalPrivate1,
 		ipv4ReservedRangeSpecialPurpose,
 		ipv4ReservedRangeTestNet1,
 		ipv4ReservedRange6to4,
-		ipv4ReservedRangeLocalPrivate2,
+		Ipv4ReservedRangeLocalPrivate2,
 		ipv4ReservedRangeSubnets,
 		ipv4ReservedRangeTestNet2,
 		ipv4ReservedRangeTestNet3,
@@ -757,7 +768,7 @@ func isReserved(ip net.IP) bool {
 		ipv4ReservedRangeFuture,
 		ipv4ReservedRangeLimitedBroadcast,
 		ipv6ReservedRangeUnspecified,
-		ipv6ReservedRangeLoopback,
+		Ipv6ReservedRangeLoopback,
 		ipv6ReservedRangeDocumentation,
 		ipv6ReservedRange6to4,
 		ipv6ReservedRangeUniqueLocal,

@@ -46,7 +46,6 @@ var (
 		"file",           //
 		"--natspec-dev",  // Request to output the contract's Natspec developer documentation.
 		"file",
-		"--add-std",
 		"1",
 	}
 	paramsNew = []string{
@@ -54,7 +53,6 @@ var (
 		"--abi",      // Request to output the contract's JSON ABI interface.
 		"--userdoc",  // Request to output the contract's Natspec user documentation.
 		"--devdoc",   // Request to output the contract's Natspec developer documentation.
-		"--add-std",  // include standard lib contracts
 		"--optimize", // code optimizer switched on
 		"-o",         // output directory
 	}

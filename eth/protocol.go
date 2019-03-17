@@ -163,7 +163,7 @@ type blockBodiesData []*blockBody
 // announce is received with NewBlockHashesMsg
 type announce struct {
 	Hash   common.Hash // Hash of one particular block being announced
-	Number uint64 // Number of one particular block being announced
+	Number uint64      // Number of one particular block being announced
 }
 
 // newBlockHashesData is the network packet for the block announcements.
@@ -212,4 +212,3 @@ func (hn *hashOrNumber) DecodeRLP(s *rlp.Stream) error {
 	}
 	return err
 }
-

@@ -133,15 +133,40 @@ func TestBucket_bumpNoDuplicates(t *testing.T) {
 	}
 }
 
-// fillBucket inserts nodes into the given bucket until
-// it is full. The node's IDs dont correspond to their
-// hashes.
-func fillBucket(tab *Table, ld int) (last *Node) {
-	b := tab.buckets[ld]
-	for len(b.entries) < bucketSize {
-		b.entries = append(b.entries, nodeAtDistance(tab.self.sha, ld))
+// This checks that the table-wide IP limit is applied correctly.
+func TestTable_IPLimit(t *testing.T) {
+	transport := newPingRecorder()
+	tab, _ := newTable(transport, NodeID{}, &net.UDPAddr{}, "")
+	<-tab.initDone
+	defer tab.Close()
+
+	// iterate through node additions more time than limit allows
+	for i := 0; i < tableIPLimit+1; i++ {
+		n := nodeAtDistance(tab.self.sha, i)
+		n.IP = net.IP{172, 0, 1, byte(i)}
+		tab.add(n)
 	}
-	return b.entries[bucketSize-1]
+	if tab.len() > tableIPLimit {
+		t.Errorf("too many nodes in table; got: %v, want: %v", tab.len(), tableIPLimit)
+	}
+}
+
+// This checks that the table-wide IP limit is applied correctly.
+func TestTable_BucketIPLimit(t *testing.T) {
+	transport := newPingRecorder()
+	tab, _ := newTable(transport, NodeID{}, &net.UDPAddr{}, "")
+	<-tab.initDone
+	defer tab.Close()
+
+	d := 3
+	for i := 0; i < bucketIPLimit+1; i++ {
+		n := nodeAtDistance(tab.self.sha, d)
+		n.IP = net.IP{172, 0, 1, byte(i)}
+		tab.add(n)
+	}
+	if tab.len() > bucketIPLimit {
+		t.Errorf("too many nodes in table; got: %v, want: %v", tab.len(), bucketIPLimit)
+	}
 }
 
 // nodeAtDistance creates a node for which logdist(base, n.sha) == ld.

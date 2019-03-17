@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 
+	"time"
+
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/crypto"
 	"github.com/ethereumproject/go-ethereum/crypto/secp256k1"
@@ -55,6 +57,9 @@ type Node struct {
 	// whether this node is currently being pinged in order to replace
 	// it in a bucket
 	contested bool `json:"contested"`
+
+	// Time when the node was added to the table.
+	addedAt time.Time
 }
 
 // NewNode creates a new node. It is mostly meant to be used for

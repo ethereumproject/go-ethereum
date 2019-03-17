@@ -20,7 +20,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -33,6 +32,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 	"github.com/ethereumproject/go-ethereum/p2p/discover"
 	"github.com/ethereumproject/go-ethereum/p2p/nat"
+	"github.com/spf13/afero"
 )
 
 var (
@@ -41,6 +41,12 @@ var (
 	datadirTrustedNodes = "trusted-nodes.json" // Path within the datadir to the trusted node list
 	datadirNodeDatabase = "nodes"              // Path within the datadir to store the node infos
 )
+
+// fs wraps afero.FS, used as a type of it's own so that we can take it's address
+// and set a zero-value default.
+type fs struct {
+	afero.Fs
+}
 
 // Config represents a small collection of configuration values to fine tune the
 // P2P network layer of a protocol stack. These values can be further extended by
@@ -58,6 +64,13 @@ type Config struct {
 	// pipe path on Windows), whereas if it's a resolvable path name (absolute or
 	// relative), then that specific path is enforced. An empty path disables IPC.
 	IPCPath string
+
+	// fs is an abstracted file system.
+	// In normal use, it points to a thin wrapper around the standard os FS package,
+	// and can be swapped for an abstracted in-mem map during tests, which helps
+	// ensure test reliability by removing sometimes-laggy OS FS R/Ws.
+	// The var is currently private because it is not set to inMem outside of this package tests.
+	fs *fs
 
 	// This field should be a valid secp256k1 private key that will be used for both
 	// remote peer identification as well as network traffic encryption. If no key
@@ -145,6 +158,10 @@ func (c *Config) IPCEndpoint() string {
 	if c.IPCPath == "" {
 		return ""
 	}
+	// just for safety, but should be already initialized
+	if c.fs == nil {
+		c.fs = &fs{afero.NewOsFs()}
+	}
 	// On windows we can only use plain top-level pipes
 	if runtime.GOOS == "windows" {
 		if strings.HasPrefix(c.IPCPath, `\\.\pipe\`) {
@@ -155,7 +172,16 @@ func (c *Config) IPCEndpoint() string {
 	// Resolve names into the data directory full paths otherwise
 	if filepath.Base(c.IPCPath) == c.IPCPath {
 		if c.DataDir == "" {
-			return filepath.Join(os.TempDir(), c.IPCPath)
+			// Use afs.MkdirAll instead of afero.TempDir because with the latter,
+			// afero creates temporary™ sub dir under the normal temp dir. Not sure if bug or expected, but
+			// just using plain os temp dir is ok.
+			// Anyways, all afero ~is doing~ do should do is just mkdir -p the os-specific tmp dir path anyway
+			tempDir := os.TempDir()
+			err := c.fs.MkdirAll(tempDir, os.ModeTemporary)
+			if err != nil && !os.IsExist(err) {
+				glog.Fatal(err)
+			}
+			return filepath.Join(tempDir, c.IPCPath)
 		}
 		return filepath.Join(c.DataDir, c.IPCPath)
 	}
@@ -194,6 +220,10 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	if c.PrivateKey != nil {
 		return c.PrivateKey
 	}
+	// just for safety, but should be already initialized
+	if c.fs == nil {
+		c.fs = &fs{afero.NewOsFs()}
+	}
 	// Generate ephemeral key if no datadir is being used
 	if c.DataDir == "" {
 		key, err := crypto.GenerateKey()
@@ -204,15 +234,36 @@ func (c *Config) NodeKey() *ecdsa.PrivateKey {
 	}
 	// Fall back to persistent key from the data directory
 	keyfile := filepath.Join(c.DataDir, datadirPrivateKey)
-	if key, err := crypto.LoadECDSA(keyfile); err == nil {
-		return key
+	f, err := c.fs.Open(keyfile)
+	if err == nil {
+		// file open error was nil, attempt to load key, fatal on any error
+		defer f.Close()
+		key, err := crypto.LoadECDSA(f)
+		if err == nil {
+			return key
+		}
+
+		glog.Fatalf("could not load key file: %v", err)
 	}
-	// No persistent key found, generate and store a new one
+
+	// there was an error opening an existing key file; there's nothing we can do about this
+	if !os.IsNotExist(err) {
+		glog.Fatalf("could not load key file: %v", err)
+		return nil
+	}
+
+	// No key file found, generate and store a new one
 	key, err := crypto.GenerateKey()
 	if err != nil {
 		glog.Fatalf("Failed to generate node key: %v", err)
 	}
-	if err := crypto.SaveECDSA(keyfile, key); err != nil {
+
+	f, err = c.fs.Create(keyfile)
+	if err != nil {
+		glog.Fatalf("failed to open node key file: %v", err)
+	}
+	defer f.Close()
+	if _, err := crypto.WriteECDSAKey(f, key); err != nil {
 		glog.V(logger.Error).Infof("Failed to persist node key: %v", err)
 	}
 	return key
@@ -235,12 +286,16 @@ func (c *Config) parsePersistentNodes(file string) []*discover.Node {
 	if c.DataDir == "" {
 		return nil
 	}
+	// just for safety, but should be already initialized
+	if c.fs == nil {
+		c.fs = &fs{afero.NewOsFs()}
+	}
 	path := filepath.Join(c.DataDir, file)
-	if _, err := os.Stat(path); err != nil {
+	if _, err := c.fs.Stat(path); err != nil {
 		return nil
 	}
 	// Load the nodes from the config file
-	blob, err := ioutil.ReadFile(path)
+	blob, err := afero.ReadFile(c.fs, path)
 	if err != nil {
 		glog.V(logger.Error).Infof("Failed to access nodes: %v", err)
 		return nil

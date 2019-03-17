@@ -5,7 +5,7 @@ package core
 import (
 	"math/big"
 
-	"github.com/ethereumproject/sputnikvm-ffi/go/sputnikvm"
+	"github.com/ETCDEVTeam/sputnikvm-ffi/go/sputnikvm"
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/core/state"
 	"github.com/ethereumproject/go-ethereum/core/types"
@@ -16,7 +16,11 @@ import (
 )
 
 const SputnikVMExists = true
-var UseSputnikVM = false
+
+// UseSputnikVM determines whether the VM will be Sputnik or Geth's native one.
+// Awkward though it is to use a string variable, go's -ldflags relies on it being a constant string in order to be settable via -X from the command line,
+// eg. -ldflags "-X core.UseSputnikVM=true".
+var UseSputnikVM string = "false"
 
 // Apply a transaction using the SputnikVM processor with the given
 // chain config and state. Note that we use the name of the chain
@@ -29,21 +33,21 @@ func ApplyMultiVmTransaction(config *ChainConfig, bc *BlockChain, gp *GasPool, s
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	vmtx := sputnikvm.Transaction {
-		Caller: from,
+	vmtx := sputnikvm.Transaction{
+		Caller:   from,
 		GasPrice: tx.GasPrice(),
 		GasLimit: tx.Gas(),
-		Address: tx.To(),
-		Value: tx.Value(),
-		Input: tx.Data(),
-		Nonce: new(big.Int).SetUint64(tx.Nonce()),
+		Address:  tx.To(),
+		Value:    tx.Value(),
+		Input:    tx.Data(),
+		Nonce:    new(big.Int).SetUint64(tx.Nonce()),
 	}
-	vmheader := sputnikvm.HeaderParams {
+	vmheader := sputnikvm.HeaderParams{
 		Beneficiary: header.Coinbase,
-		Timestamp: header.Time.Uint64(),
-		Number: header.Number,
-		Difficulty: header.Difficulty,
-		GasLimit: header.GasLimit,
+		Timestamp:   header.Time.Uint64(),
+		Number:      header.Number,
+		Difficulty:  header.Difficulty,
+		GasLimit:    header.GasLimit,
 	}
 
 	currentNumber := header.Number
@@ -111,14 +115,17 @@ Loop:
 			key := common.BigToHash(ret.StorageKey())
 			if statedb.Exist(address) {
 				value := statedb.GetState(address, key).Big()
-				key := ret.StorageKey()
-				vm.CommitAccountStorage(address, key, value)
+				sKey := ret.StorageKey()
+				vm.CommitAccountStorage(address, sKey, value)
 				break
 			}
 			vm.CommitNonexist(address)
 		case sputnikvm.RequireBlockhash:
 			number := ret.BlockNumber()
-			hash := bc.GetBlockByNumber(number.Uint64()).Hash()
+			hash := common.Hash{}
+			if block := bc.GetBlockByNumber(number.Uint64()); block != nil && block.Number().Cmp(number) == 0 {
+				hash = block.Hash()
+			}
 			vm.CommitBlockhash(number, hash)
 		}
 	}
@@ -167,14 +174,19 @@ Loop:
 	}
 	for _, log := range vm.Logs() {
 		statelog := evm.NewLog(log.Address, log.Topics, log.Data, header.Number.Uint64())
-		statedb.AddLog(statelog)
+		statedb.AddLog(*statelog)
 	}
 	usedGas := vm.UsedGas()
 	totalUsedGas.Add(totalUsedGas, usedGas)
 
-	receipt := types.NewReceipt(statedb.IntermediateRoot().Bytes(), totalUsedGas)
+	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), totalUsedGas)
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
+	if vm.Failed() {
+		receipt.Status = types.TxFailure
+	} else {
+		receipt.Status = types.TxSuccess
+	}
 	if MessageCreatesContract(tx) {
 		receipt.ContractAddress = crypto.CreateAddress(from, tx.Nonce())
 	}

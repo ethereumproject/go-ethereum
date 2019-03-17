@@ -21,6 +21,7 @@ import (
 	"log"
 	"sync/atomic"
 	"time"
+
 	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
