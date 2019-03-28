@@ -1,0 +1,8 @@
+=============== May 4, 2017 (CDT) ===============
+07:19:57.042449 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+07:19:57.043033 db@open opening
+07:19:57.044388 version@stat F·[] S·0B[] Sc·[]
+07:19:57.045410 db@janitor F·2 G·0
+07:19:57.045451 db@open done T·2.405756ms
+07:19:57.049140 db@close closing
+07:19:57.049213 db@close done T·71.992µs

@@ -1,0 +1,63 @@
+platform: x64
+clone_folder: c:\gopath\src\github.com\ethereumproject\go-ethereum
+os: Visual Studio 2015
+environment:
+  GOPATH: c:\gopath
+  GCP_PASSWD:
+    secure: erzLJz7qT0kCJa+jZG6Sf9wwkfLYO2UDLzydkKTdwqA=
+install:
+  - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
+
+  # Install janus.
+  - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get-windows.sh | bash
+  - set PATH=./janusbin;%PATH%
+
+  - ps: $env:VERSION_BASE = "$(janus.exe version -format='v%M.%m.x')"
+  - ps: $env:VERSION = "$(janus.exe version -format='TAG_OR_NIGHTLY')"
+
+  # Install schroedinger.
+  - go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
+
+  # Install Rust.
+  - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
+  - rustup-init -yv --default-toolchain stable --default-host x86_64-pc-windows-gnu
+  - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
+  - rustup update
+
+  # Build sputnikvm-ffi from go-ethereum/vendor dir (depend on 'dep' vendoring version control, instead of 'upstream master' vc).
+  - cd c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi
+  - cargo build --release --verbose
+  - copy c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi\target\release\sputnikvm_ffi.lib c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib
+  # Set build flag definitions.
+  - set CGO_LDFLAGS=-Wl,--allow-multiple-definition c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
+
+  - cd c:\gopath\src\github.com\ethereumproject\go-ethereum
+
+  - echo %VERSION_BASE% %VERSION%
+  - echo %PATH%
+  - echo %GOPATH%
+  - go version
+  - go env
+  - go get golang.org/x/sys/windows
+build_script:
+  # See .circleci/config.yml for explanation about SputnikVM nondeterministic tests absence.
+  - go test -tags="deterministic" ./...
+  - go test -ldflags "-X github.com/ethereumproject/go-ethereum/core.UseSputnikVM=true" -tags="sputnikvm deterministic" ./...
+  - schroedinger.exe -t 5 -f .\schroedinger-tests.txt
+  - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" github.com/ethereumproject/go-ethereum/cmd/geth
+  - ps: >-
+      .\geth.exe version | Where {$_ -match "^Version: "} | %{$actual=($_ -split "\s+")[1];If($actual -ne $env:VERSION){"Expected: `"$env:VERSION`", got: `"$ACTUAL`""; exit 1}}
+  - 7z a geth-classic-win64-%VERSION%.zip geth.exe
+before_deploy:
+  # Set up GCP upload.
+  - ps: >-
+      If (($env:APPVEYOR_REPO_NAME -eq 'ethereumproject/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
+        nuget install secure-file -ExcludeVersion
+        secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret "$env:GCP_PASSWD" -out .gcloud.json
+      }
+# Deploy on APPVEYOR_REPO_BRANCH=master or APPVEYOR_REPO_TAG=true
+deploy_script:
+  - ps: >-
+      If (($env:APPVEYOR_REPO_NAME -eq 'ethereumproject/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
+        janus.exe deploy -to="builds.etcdevteam.com/go-ethereum/$env:VERSION_BASE/" -files="./*.zip" -key="./.gcloud.json"
+      }

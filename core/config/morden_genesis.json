@@ -1,0 +1,13 @@
+{
+    "genesis": {
+        "nonce": "0x00006d6f7264656e",
+        "timestamp": "",
+        "parentHash": "",
+        "extraData": "",
+        "gasLimit": "0x2FEFD8",
+        "difficulty": "0x020000",
+        "mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
+        "coinbase": "",
+		"alloc_file": "morden_genesis_alloc.csv"
+    }
+}
