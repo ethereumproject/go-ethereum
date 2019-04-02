@@ -26,9 +26,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/report"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/third_party/svg"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/report"
+	"github.com/eth-classic/benchmark/rtprof/pprof/third_party/svg"
 )
 
 // commands describes the commands accepted by pprof.

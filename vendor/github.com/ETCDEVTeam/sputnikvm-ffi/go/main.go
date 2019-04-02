@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"math/big"
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/sputnikvm-ffi/go/sputnikvm"
+	"github.com/eth-classic/go-ethereum/common"
+	"github.com/eth-classic/sputnikvm-ffi/go/sputnikvm"
 )
 
 func main() {

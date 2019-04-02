@@ -1,9 +1,9 @@
-[![MacOS Build Status](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/ethereumproject/go-ethereum?svg=true)](https://ci.appveyor.com/project/splix/go-ethereum)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ethereumproject/go-ethereum)](https://goreportcard.com/report/github.com/ethereumproject/go-ethereum)
+[![MacOS Build Status](https://circleci.com/gh/eth-classic/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/eth-classic/go-ethereum/tree/master)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/eth-classic/go-ethereum?svg=true)](https://ci.appveyor.com/project/splix/go-ethereum)
+[![Go Report Card](https://goreportcard.com/badge/github.com/eth-classic/go-ethereum)](https://goreportcard.com/report/github.com/eth-classic/go-ethereum)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
-)](https://godoc.org/github.com/ethereumproject/go-ethereum)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+)](https://godoc.org/github.com/eth-classic/go-ethereum)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/eth-classic/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Ethereum Go (Ethereum Classic Blockchain)
 체인을 지원하는 이더리움 프로토콜의 공식언어인 Go 언어로 구현을 진행합니다.
@@ -11,11 +11,11 @@ Ethereum Classic(ETC)은 개발자가 이더리움과 병행하여 강력한 응
 ## Install
 
 ### :rocket: Release Binary
-가장 간단한 방법은 우리의 사이트인 [Releases page](https://github.com/ethereumproject/go-ethereum/releases)를 방문해서 압축파일을 다운로드 후 (사용자의 OS 환경 등에 맞게), 압축 해제된 파일을 사용자의 `$PATH`로 옮겨 줍니다. 그리고 터미널을 열어서 '$ geth help` 이 제대로 동작하는지 확인하니다. 추가 설치지침의 다음의 설치 위키를 확인하십시오. [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Home#Developers).
+가장 간단한 방법은 우리의 사이트인 [Releases page](https://github.com/eth-classic/go-ethereum/releases)를 방문해서 압축파일을 다운로드 후 (사용자의 OS 환경 등에 맞게), 압축 해제된 파일을 사용자의 `$PATH`로 옮겨 줍니다. 그리고 터미널을 열어서 '$ geth help` 이 제대로 동작하는지 확인하니다. 추가 설치지침의 다음의 설치 위키를 확인하십시오. [Installation Wiki](https://github.com/eth-classic/go-ethereum/wiki/Home#Developers).
 
 #### :beers: Using Homebrew (OSX only)
 ```
-$ brew install ethereumproject/classic/geth
+$ brew install eth-classic/classic/geth
 ```
 
 ### :hammer: Building the source
@@ -29,7 +29,7 @@ build-essential`. On Mac: `xcode-select --install`.
 
 #### Get source and package dependencies
 ```
-$ go get -v github.com/ethereumproject/go-ethereum/...
+$ go get -v github.com/eth-classic/go-ethereum/...
 ```
 
 #### Install and build command executables
@@ -40,17 +40,17 @@ $ go get -v github.com/ethereumproject/go-ethereum/...
 
 - the full suite of utilities:
 ```
-$ go install github.com/ethereumproject/go-ethereum/cmd/...
+$ go install github.com/eth-classic/go-ethereum/cmd/...
 ```
 
 - just __geth__:
 ```
-$ go install github.com/ethereumproject/go-ethereum/cmd/geth
+$ go install github.com/eth-classic/go-ethereum/cmd/geth
 ```
 
 ##### With make:
 ```
-$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+$ cd $GOPATH/src/github.com/eth-classic/go-ethereum
 ```
 
 - the full suite of utilities:
@@ -71,8 +71,8 @@ $ make install_geth
 위의 모든 명령은 HEAD의 바이너리를 빌드할 떄 발생합니다. 특정 릴리스/태그를 사용하려면 설치하기전에 명시해야 합니다.
 
 ```shell
-$ go get -d github.com/ethereumproject/go-ethereum/...
-$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+$ go get -d github.com/eth-classic/go-ethereum/...
+$ cd $GOPATH/src/github.com/eth-classic/go-ethereum
 $ git checkout <TAG OR REVISION>
 # Use a go or make command above.
 ```
@@ -82,8 +82,8 @@ GO 디렉토리의 구조 때문에 tarball은 `$GOPATH`. 아래의 적절한 �
 아래의 명령은 v4.1.1 release 빌드를 진행하는 예제입니다.:
 
 ```shell
-$ mkdir -p $GOPATH/src/github.com/ethereumproject
-$ cd $GOPATH/src/github.com/ethereumproject
+$ mkdir -p $GOPATH/src/github.com/eth-classic
+$ cd $GOPATH/src/github.com/eth-classic
 $ tar xzf /path/to/go-ethereum-4.1.1.tar.gz
 $ mv go-ethereum-4.1.1 go-ethereum
 $ cd go-ethereum
@@ -96,13 +96,13 @@ $ cd go-ethereum
 
 | Command    | Description |
 |:----------:|-------------|
-| **`geth`** | 메인 Ethereum CLI 클라이언트 입니다. 이것은 전체 노드(default) 보관 노드(모든 기록 상태 유지) 또는 경량 노드(데이터 검색 진행)로 실행 될 수 있는 이더리움 네트워크(주 네트워크 및 테스트 네트워크, 사설 네트워크)의 진입 점입니다. HTTP,WebSocket 및 IPC 전송위에 노출된 JSON RPC 종점을 통해 이더리움 네트워크에 대한 게이트웨이로 다른 프로세스에서 사용할 수 있습니다. 자세한 내용은 [Command Line Options](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options) 해당 위키페이지를 참조하십시오. |
-| `abigen` | 이더리움 계약 정의를 사용하기 쉽고 컴파일 할 때 사용할 수 있는 유형으로 안전하게 GO 패키지로 변환하는 소스코드 생성기를 말합니다. 여기서 contract 바이트 코드를 사용할 수 있다면 확장 된 기능을 가진 [Ethereum contract ABIs](https://github.com/ethereumproject/wiki/wiki/Ethereum-Contract-ABI)에서 작동합니다. 그러나 Solidity 소스 파일도 받아들이므로 개발 과정이 훨씬 간소화 되었습니다. 자세한 내용은 다음 위키 페이지를 참조하십시오. [Native DApps](https://github.com/ethereumproject/go-ethereum/wiki/Native-DApps-in-Go). |
+| **`geth`** | 메인 Ethereum CLI 클라이언트 입니다. 이것은 전체 노드(default) 보관 노드(모든 기록 상태 유지) 또는 경량 노드(데이터 검색 진행)로 실행 될 수 있는 이더리움 네트워크(주 네트워크 및 테스트 네트워크, 사설 네트워크)의 진입 점입니다. HTTP,WebSocket 및 IPC 전송위에 노출된 JSON RPC 종점을 통해 이더리움 네트워크에 대한 게이트웨이로 다른 프로세스에서 사용할 수 있습니다. 자세한 내용은 [Command Line Options](https://github.com/eth-classic/go-ethereum/wiki/Command-Line-Options) 해당 위키페이지를 참조하십시오. |
+| `abigen` | 이더리움 계약 정의를 사용하기 쉽고 컴파일 할 때 사용할 수 있는 유형으로 안전하게 GO 패키지로 변환하는 소스코드 생성기를 말합니다. 여기서 contract 바이트 코드를 사용할 수 있다면 확장 된 기능을 가진 [Ethereum contract ABIs](https://github.com/eth-classic/wiki/wiki/Ethereum-Contract-ABI)에서 작동합니다. 그러나 Solidity 소스 파일도 받아들이므로 개발 과정이 훨씬 간소화 되었습니다. 자세한 내용은 다음 위키 페이지를 참조하십시오. [Native DApps](https://github.com/eth-classic/go-ethereum/wiki/Native-DApps-in-Go). |
 | `bootnode` | 이더리움 클라이언트 구현의 버전을 없애고 네트워크 노드 탐색 프로토콜에만 참여하지만 더 높은 수준의 응용 프로그램 프로토콜은 실행하지 않습니다. 가벼운 부트 스트랩 노드로 사설 네트워크에서 피어를 찾는데 더 도움이 될 수 있습니다. |
 | `disasm` | EVM 바이트 코드를 보다 사용자 친화적인 어셈블리어와 같은 opcode로 변환하는 바이트 코드 디어셈블리어이다. (예. `echo "6001" | disasm`). For details on the individual opcodes, please see pages 22-30 of the [Ethereum Yellow Paper](http://gavwood.com/paper.pdf). |
 | `evm` | 구성 가능한 환경 및 실행 모드 내에서 바이트 코드 스 니펫을 실행할 수 있는 EVM의 개발자 유틸리티 버전입니다. 그 목적은 EVM opcode의 insoltaed fine graned 디버깅을 허용하는 것입니다. (예. `evm --code 60ff60ff --debug`). |
-| `gethrpctest` | [Ethereum JSON RPC](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) 의 사양에 대한 기준 준수 여부를 검증하는 [ethereum/rpc-test](https://github.com/ethereumproject/rpc-tests) 테스트 슈트를 지원하는 개발자 유틸리티 도구를 말합니다. 자세한 내용은 다음을 참조하시오.[테스트 스위트의 readme](https://github.com/ethereumproject/rpc-tests/blob/master/README.md). |
-| `rlpdump` | 바이너리 RLP ([Recursive Length Prefix](https://github.com/ethereumproject/wiki/wiki/RLP)) 덤프 (이더리움 프로토콜에 의해 사용되는 데이터 인코딩으로 네트워크는 물론 컨센서스가 확실하다.) 를 사용자 친환적으로 표현하도록 변환하는 개발자 유틸리티 도구 (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
+| `gethrpctest` | [Ethereum JSON RPC](https://github.com/eth-classic/wiki/wiki/JSON-RPC) 의 사양에 대한 기준 준수 여부를 검증하는 [ethereum/rpc-test](https://github.com/eth-classic/rpc-tests) 테스트 슈트를 지원하는 개발자 유틸리티 도구를 말합니다. 자세한 내용은 다음을 참조하시오.[테스트 스위트의 readme](https://github.com/eth-classic/rpc-tests/blob/master/README.md). |
+| `rlpdump` | 바이너리 RLP ([Recursive Length Prefix](https://github.com/eth-classic/wiki/wiki/RLP)) 덤프 (이더리움 프로토콜에 의해 사용되는 데이터 인코딩으로 네트워크는 물론 컨센서스가 확실하다.) 를 사용자 친환적으로 표현하도록 변환하는 개발자 유틸리티 도구 (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
 
 ## :green_book: Geth: the basics
 
@@ -122,7 +122,7 @@ __다음과같이 디렉토리 지정이 가능합니다.__ with `--data-dir=$HO
 
 __하위 디렉토리를 지정할 수 있습니다. `--chain=mycustomnet`.
 
-> __Migrating__: 만약 [3.4 Release](https://github.com/ethereumproject/go-ethereum/releases), 이전 데이터가 존재한다면 기존 표준 ETC 데이터가 마이그레이션을 진행합니다. 마이그레이션 관리에 대한 자세한 내용은 [3.4 릴리스 정보를 참조하십시오.](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes).
+> __Migrating__: 만약 [3.4 Release](https://github.com/eth-classic/go-ethereum/releases), 이전 데이터가 존재한다면 기존 표준 ETC 데이터가 마이그레이션을 진행합니다. 마이그레이션 관리에 대한 자세한 내용은 [3.4 릴리스 정보를 참조하십시오.](https://github.com/eth-classic/go-ethereum/wiki/Release-3.4.0-Notes).
 
 ### 기본 이더리움 네트워크의 전체 노드
 
@@ -172,7 +172,7 @@ SUBCOMMANDS:
 
 ```
 
-[Accounts Wiki Page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-Accounts) 페이지에서 자세히 확인 가능합니다. 만약 (~100,000+) 의 많은 계정을 관리하고 싶다면, 다음 사이트에 방문하십시오. [Indexing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Indexing-Accounts).
+[Accounts Wiki Page](https://github.com/eth-classic/go-ethereum/wiki/Managing-Accounts) 페이지에서 자세히 확인 가능합니다. 만약 (~100,000+) 의 많은 계정을 관리하고 싶다면, 다음 사이트에 방문하십시오. [Indexing Accounts Wiki page](https://github.com/eth-classic/go-ethereum/wiki/Indexing-Accounts).
 
 
 ### Javascript 콘솔과 상호 작용
@@ -180,14 +180,14 @@ SUBCOMMANDS:
 $ geth console
 ```
 
-이 명령은Geth의 내장된 대화식 [JavaScript console](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console)을 시작합니다, 이 콘솔을 통해 [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API) 뿐아니라 [management APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs)까지 가능합니다. 이 부분은 모두 선택사항이며 이미 실행중인 Geth 인스턴스에 'geth attch'로 첨부할 수 있습니다.
+이 명령은Geth의 내장된 대화식 [JavaScript console](https://github.com/eth-classic/go-ethereum/wiki/JavaScript-Console)을 시작합니다, 이 콘솔을 통해 [`web3` methods](https://github.com/eth-classic/wiki/wiki/JavaScript-API) 뿐아니라 [management APIs](https://github.com/eth-classic/go-ethereum/wiki/Management-APIs)까지 가능합니다. 이 부분은 모두 선택사항이며 이미 실행중인 Geth 인스턴스에 'geth attch'로 첨부할 수 있습니다.
 
-좀 더 알고싶다면... [Javascript Console 위키 페이지](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console).
+좀 더 알고싶다면... [Javascript Console 위키 페이지](https://github.com/eth-classic/go-ethereum/wiki/JavaScript-Console).
 
 
 ### 추가 정보
 
-명령행 옵션의 전체 목록은 [CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
+명령행 옵션의 전체 목록은 [CLI Wiki page](https://github.com/eth-classic/go-ethereum/wiki/Command-Line-Options).
 
 ## :orange_book: Geth: 개발 및 고급 사용
 
@@ -211,8 +211,8 @@ $ geth --chain=morden --fast console
 
 ### 프로그래밍 방식으로 Geth 노드 인터페이스하기
 
-개발자로서, 나중에는 Geth와 Ethereum 네트워크와 직접 상호 작용하기를 원할 것입니다. 이를 돕기 위해 Geth는 JSON-RPC 바탕의 APIs ([standard APIs](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) 과
-[Geth specific APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs)). HTTP, WebSockets 및 IPC (유닉스 기반 플랫폼에서는 유닉스 소켓, Windows에서는 명명 된 파이프)를 통해 노출 될 수 있습니다.
+개발자로서, 나중에는 Geth와 Ethereum 네트워크와 직접 상호 작용하기를 원할 것입니다. 이를 돕기 위해 Geth는 JSON-RPC 바탕의 APIs ([standard APIs](https://github.com/eth-classic/wiki/wiki/JSON-RPC) 과
+[Geth specific APIs](https://github.com/eth-classic/go-ethereum/wiki/Management-APIs)). HTTP, WebSockets 및 IPC (유닉스 기반 플랫폼에서는 유닉스 소켓, Windows에서는 명명 된 파이프)를 통해 노출 될 수 있습니다.
 
 
 IPC 인터페이스는 기본적으로 활성화되어 있으며 Geth에서 지원하는 모든 API를 제공하지만 HTTP 및 WS 인터페이스는 수동으로 활성화해야하며 보안상의 이유로 일부 API 만 노출해야합니다. 이것들은 켜거나 끌 수 있으며 예상대로 구성 할 수 있습니다.
@@ -240,7 +240,7 @@ HTTP based JSON-RPC API options:
 
 ### 개인 / 사용자 정의 네트워크 작동
 
-[Geth 3.4](https://github.com/ethereumproject/go-ethereum/releases) 부터는 외부 포스 구성 JSON 파일을 지정하여 사설 체인을 구성 할 수 있습니다. 여기에는 프로토콜 포크, 부트 노드 및 chainID에 대한 기능 구성뿐만 아니라 필요한 창시 블록 데이터가 포함됩니다.
+[Geth 3.4](https://github.com/eth-classic/go-ethereum/releases) 부터는 외부 포스 구성 JSON 파일을 지정하여 사설 체인을 구성 할 수 있습니다. 여기에는 프로토콜 포크, 부트 노드 및 chainID에 대한 기능 구성뿐만 아니라 필요한 창시 블록 데이터가 포함됩니다.
 
 [이 저장소의 / config 하위 디렉토리에있는 Mainnet 및 Morden Testnet 사양을 나타내는](). 전체 예제 외부 구성 파일을 찾으십시오. 이러한 파일 중 하나를 사용자 지정의 시작 지점으로 사용할 수 있습니다.
 
@@ -269,12 +269,12 @@ $ geth --chain=customnet [--flags] [command]
 | `consensus` | _선택 과목. "ethash"또는 "ethast-test"(개발 용) 중 사용할 작업 증명 알고리즘 |
 | `genesis` | 기생 상태를 결정합니다. 노드를 처음 실행하면 기원 블록을 작성합니다. 다른 창 블록을 사용하여 기존 체인 데이터베이스를 구성하면 해당 노드를 덮어 씁니다. |
 | `chainConfig` | 포크 기반 프로토콜 업그레이드, 즉 EIP-150, EIP-155, EIP-160, ECIP-1010 등의 구성을 결정합니다. 하위 키는 `forks` 및 `badHashes`입니다. |
-| `bootstrap` | _선택과목 [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format)부트 스트랩 노드를 결정합니다.. |
+| `bootstrap` | _선택과목 [enode format](https://github.com/eth-classic/wiki/wiki/enode-url-format)부트 스트랩 노드를 결정합니다.. |
 | `include` | 선택 과목. 포함 할 기타 구성 파일. 경로는 상대 경로가 될 수 있습니다 ('include' 필드가있는 구성 파일 또는 절대 경로). 구성 파일 각각은 "기본"구성과 동일한 구조를가집니다. 포함 된 파일은 배열에 지정된 것과 동일한 순서로 "기본"구성 뒤에 처리됩니다. 나중에 처리 된 값은 이전에 정의 된 값을 덮어 씁니다.
 
 *필드 이름, state.startingNonce 및 합의는 선택 사항입니다. 필요한 필드가 누락되었거나 잘못되었거나 다른 플래그와 충돌하면 Geth가 당황 할 것입니다. 이렇게하면 --chain이 --testnet과 호환되지 않습니다. --data-dir과 호환됩니다.
 
-외부 체인 구성에 대해 자세히 알려면, [External Command Line Options Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options)에 방문하십시오.
+외부 체인 구성에 대해 자세히 알려면, [External Command Line Options Wiki page](https://github.com/eth-classic/go-ethereum/wiki/Command-Line-Options)에 방문하십시오.
 
 ##### 랑데뷰 포인트 생성
 
@@ -290,7 +290,7 @@ bootnode를 온라인으로 설정하면 다른 노드가 연결하여 피어 �
 
 *Note: 완전한 본격적인 Geth 노드를 부트 노드로 사용할 수 있지만 덜 권장되는 방법입니다..*
 
-enodes 및 enode 형식에 대한 자세한 내용에 대해 알고싶으면 다음 사이트를 방문하시오 [Enode Wiki page](https://github.com/ethereumproject/wiki/wiki/enode-url-format).
+enodes 및 enode 형식에 대한 자세한 내용에 대해 알고싶으면 다음 사이트를 방문하시오 [Enode Wiki page](https://github.com/eth-classic/wiki/wiki/enode-url-format).
 
 ##### 멤버 노드 시작하기
 
@@ -318,7 +318,7 @@ $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x000000000000000000000
 
 단일 CPU 스레드에서 블록 및 트랜잭션 마이닝을 시작하고 모든 절차를 '--etherbase'로 지정된 계정으로 지정합니다. 기본 가스 제한 블록을 ( '--targetgaslimit') 수렴으로 변경하고 가격 거래를 ( '- 가스 요금')에서 허용하여 광업을 더 조정할 수 있습니다.
 
-계정 관리에 대한 추가 정보는 다음 사이트를 참조하십시오 [Managing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-Accounts).
+계정 관리에 대한 추가 정보는 다음 사이트를 참조하십시오 [Managing Accounts Wiki page](https://github.com/eth-classic/go-ethereum/wiki/Managing-Accounts).
 
 
 ## Contribution
@@ -334,7 +334,7 @@ $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x000000000000000000000
 작업에 기여하고 싶다면, 메인 코드베이스를 검토하고 병합하기 위해 유지 보수자를위한 요청을 포크하고 수정하고 커밋하고 보내십시오. 좀더 복잡한 변경사항을 제출하려면 [our Discord channel (#development)](https://discord.gg/NgzMPaj) 의 핵심개발자에게 먼저 확인하십시오. 이러한 변화가 프로젝트의 일반적인 철학과 일치하는지 확인하고 / 또는 조기 피드백을 통해 귀하의 노력을 훨씬 가볍게 만들뿐만 아니라 검토 및 병합 절차를 빠르고 간단하게 수행 할 수 있습니다..
 
 
-환경 구성, 프로젝트 종속성 관리 및 절차 테스트에 대한 자세한 내용은 [Wiki](https://github.com/ethereumproject/go-ethereum/wiki) 를 참조하십시오.
+환경 구성, 프로젝트 종속성 관리 및 절차 테스트에 대한 자세한 내용은 [Wiki](https://github.com/eth-classic/go-ethereum/wiki) 를 참조하십시오.
 
 ## License
 

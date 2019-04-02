@@ -20,9 +20,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/graph"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/measurement"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/report"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/graph"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/measurement"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/report"
 )
 
 type treeNode struct {

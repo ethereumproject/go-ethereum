@@ -8,7 +8,7 @@
                		--display 0 \
                		--port 33333 \
                		--no-discover \
-               		--keystore $GOPATH/src/github.com/ethereumproject/go-ethereum/accounts/testdata/keystore \
+               		--keystore $GOPATH/src/github.com/eth-classic/go-ethereum/accounts/testdata/keystore \
                		--unlock "f466859ead1932d743d622cb74fc058882e8648a" \
     }
 

@@ -65,7 +65,7 @@ teardown() {
 }
 
 @test "account import" {
-	run $GETH_CMD --datadir $DATA_DIR --lightkdf wallet import $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth/testdata/guswallet.json <<< $'foo\n'
+	run $GETH_CMD --datadir $DATA_DIR --lightkdf wallet import $GOPATH/src/github.com/eth-classic/go-ethereum/cmd/geth/testdata/guswallet.json <<< $'foo\n'
 	echo "$output"
 
 	[ "$status" -eq 0 ]
@@ -77,7 +77,7 @@ teardown() {
 }
 
 @test "account import pass mismatch" {
-	run $GETH_CMD --datadir $DATA_DIR --lightkdf wallet import $GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth/testdata/guswallet.json <<< $'wrong\n'
+	run $GETH_CMD --datadir $DATA_DIR --lightkdf wallet import $GOPATH/src/github.com/eth-classic/go-ethereum/cmd/geth/testdata/guswallet.json <<< $'wrong\n'
 	echo "$output"
 
 	[ "$status" -ne 0 ]

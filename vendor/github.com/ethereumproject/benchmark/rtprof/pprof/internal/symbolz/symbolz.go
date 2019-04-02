@@ -26,8 +26,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/profile"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/profile"
 )
 
 var (

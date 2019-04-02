@@ -26,8 +26,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/elfexec"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/elfexec"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
 )
 
 // A Binutils implements plugin.ObjTool by invoking the GNU binutils.

@@ -1,7 +1,7 @@
 package measurement
 
 import(
-	m "github.com/ethereumproject/benchmark/rtprof/pprof/internal/measurement"
+	m "github.com/eth-classic/benchmark/rtprof/pprof/internal/measurement"
 )
 
 var Scale = m.Scale

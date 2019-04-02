@@ -27,10 +27,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/graph"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/measurement"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/profile"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/graph"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/measurement"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/profile"
 )
 
 // Output formats.

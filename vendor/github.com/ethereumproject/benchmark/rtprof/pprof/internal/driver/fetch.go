@@ -31,9 +31,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/measurement"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/profile"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/measurement"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/profile"
 )
 
 // fetchProfiles fetches and symbolizes the profiles specified by s.

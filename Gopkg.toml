@@ -31,7 +31,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/ethereumproject/ethash"
+  name = "github.com/eth-classic/ethash"
 
 [[constraint]]
   branch = "master"
@@ -115,7 +115,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/ethereumproject/benchmark"
+  name = "github.com/eth-classic/benchmark"
 
 [[constraint]]
   name = "github.com/fatih/color"

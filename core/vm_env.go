@@ -19,10 +19,10 @@ package core
 import (
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/state"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/core/vm"
+	"github.com/eth-classic/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/core/state"
+	"github.com/eth-classic/go-ethereum/core/types"
+	"github.com/eth-classic/go-ethereum/core/vm"
 )
 
 // GetHashFn returns a function for which the VM env can query block hashes through

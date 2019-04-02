@@ -33,7 +33,7 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/ethereumproject/benchmark"
+  name = "github.com/eth-classic/benchmark"
   packages = [
     "rtprof",
     "rtprof/pprof/driver",
@@ -57,7 +57,7 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/ethereumproject/ethash"
+  name = "github.com/eth-classic/ethash"
   packages = ["."]
   revision = "65a5b25efc277ff0996160cc3c76a44bec7a11fb"
 

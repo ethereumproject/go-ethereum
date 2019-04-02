@@ -39,8 +39,8 @@ setup(
     author_email="matthew.wampler.doty@gmail.com",
     license='GPL',
     version='0.1.23',
-    url='https://github.com/ethereumproject/ethash',
-    download_url='https://github.com/ethereumproject/ethash/tarball/v23',
+    url='https://github.com/eth-classic/ethash',
+    download_url='https://github.com/eth-classic/ethash/tarball/v23',
     description=('Python wrappers for ethash, the ethereum proof of work'
                  'hashing function'),
     ext_modules=[pyethash],

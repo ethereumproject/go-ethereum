@@ -19,10 +19,11 @@ package vm
 import (
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/eth-classic/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/crypto"
+	"github.com/eth-classic/go-ethereum/crypto/bn256"
+	"github.com/eth-classic/go-ethereum/logger"
+	"github.com/eth-classic/go-ethereum/logger/glog"
 )
 
 // PrecompiledAccount represents a native ethereum contract
@@ -67,6 +68,16 @@ func PrecompiledContracts() map[string]*PrecompiledAccount {
 			n.Mul(n, big.NewInt(3))
 			return n.Add(n, big.NewInt(15))
 		}, memCpy},
+
+		// string(common.LeftPadBytes([]byte{5}, 20)): {func(l int) *big.Int {
+		// 	n := big.NewInt(int64(l+31) / 32)
+		// 	n.Mul(n, big.NewInt(3))
+		// 	return n.Add(n, big.NewInt(20))
+		// }, bigModExp},
+
+		string(common.LeftPadBytes([]byte{6}, 20)): {func(l int) *big.Int {
+			return big.NewInt(500)
+		}, bn256Add},
 	}
 }
 
@@ -111,5 +122,19 @@ func ecrecoverFunc(in []byte) []byte {
 }
 
 func memCpy(in []byte) []byte {
+	return in
+}
+
+// newCurvePoint unmarshals a binary blob into a bn256 elliptic curve point,
+// returning it, or an error if the point is invalid.
+func newCurvePoint(blob []byte) (*bn256.G1, error) {
+	p := new(bn256.G1)
+	if _, err := p.Unmarshal(blob); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func bn256Add(in []byte) []byte {
 	return in
 }

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/profile"
+	"github.com/eth-classic/benchmark/rtprof/pprof/profile"
 )
 
 // ScaleProfiles updates the units in a set of profiles to make them

@@ -49,11 +49,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/eth"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/metrics"
+	"github.com/eth-classic/go-ethereum/core"
+	"github.com/eth-classic/go-ethereum/eth"
+	"github.com/eth-classic/go-ethereum/logger"
+	"github.com/eth-classic/go-ethereum/logger/glog"
+	"github.com/eth-classic/go-ethereum/metrics"
 	"github.com/gizak/termui"
 	"gopkg.in/urfave/cli.v1"
 )

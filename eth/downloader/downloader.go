@@ -25,14 +25,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core"
-	"github.com/ethereumproject/go-ethereum/core/types"
-	"github.com/ethereumproject/go-ethereum/ethdb"
-	"github.com/ethereumproject/go-ethereum/event"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/metrics"
+	"github.com/eth-classic/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/core"
+	"github.com/eth-classic/go-ethereum/core/types"
+	"github.com/eth-classic/go-ethereum/ethdb"
+	"github.com/eth-classic/go-ethereum/event"
+	"github.com/eth-classic/go-ethereum/logger"
+	"github.com/eth-classic/go-ethereum/logger/glog"
+	"github.com/eth-classic/go-ethereum/metrics"
 )
 
 const (

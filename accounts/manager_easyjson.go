@@ -18,7 +18,7 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjsonEd74d837DecodeGithubComEthereumprojectGoEthereumAccounts(in *jlexer.Lexer, out *AccountJSON) {
+func easyjsonEd74d837DecodeGithubCometh_classicGoEthereumAccounts(in *jlexer.Lexer, out *AccountJSON) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -53,7 +53,7 @@ func easyjsonEd74d837DecodeGithubComEthereumprojectGoEthereumAccounts(in *jlexer
 		in.Consumed()
 	}
 }
-func easyjsonEd74d837EncodeGithubComEthereumprojectGoEthereumAccounts(out *jwriter.Writer, in AccountJSON) {
+func easyjsonEd74d837EncodeGithubCometh_classicGoEthereumAccounts(out *jwriter.Writer, in AccountJSON) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -81,23 +81,23 @@ func easyjsonEd74d837EncodeGithubComEthereumprojectGoEthereumAccounts(out *jwrit
 // MarshalJSON supports json.Marshaler interface
 func (v AccountJSON) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonEd74d837EncodeGithubComEthereumprojectGoEthereumAccounts(&w, v)
+	easyjsonEd74d837EncodeGithubCometh_classicGoEthereumAccounts(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v AccountJSON) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonEd74d837EncodeGithubComEthereumprojectGoEthereumAccounts(w, v)
+	easyjsonEd74d837EncodeGithubCometh_classicGoEthereumAccounts(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *AccountJSON) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonEd74d837DecodeGithubComEthereumprojectGoEthereumAccounts(&r, v)
+	easyjsonEd74d837DecodeGithubCometh_classicGoEthereumAccounts(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *AccountJSON) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonEd74d837DecodeGithubComEthereumprojectGoEthereumAccounts(l, v)
+	easyjsonEd74d837DecodeGithubCometh_classicGoEthereumAccounts(l, v)
 }

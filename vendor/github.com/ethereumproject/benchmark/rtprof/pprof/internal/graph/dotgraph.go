@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/measurement"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/measurement"
 )
 
 // DotAttributes contains details about the graph itself, giving

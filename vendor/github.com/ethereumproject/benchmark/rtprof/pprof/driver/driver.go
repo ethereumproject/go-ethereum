@@ -20,9 +20,9 @@ import (
 	"regexp"
 	"time"
 
-	internaldriver "github.com/ethereumproject/benchmark/rtprof/pprof/internal/driver"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/profile"
+	internaldriver "github.com/eth-classic/benchmark/rtprof/pprof/internal/driver"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/profile"
 )
 
 type HTTPServerArgs = plugin.HTTPServerArgs

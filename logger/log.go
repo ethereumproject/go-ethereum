@@ -21,7 +21,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/common"
 )
 
 func openFile(datadir string, filename string) *os.File {

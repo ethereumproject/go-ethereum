@@ -27,9 +27,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/graph"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/measurement"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/graph"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/measurement"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
 )
 
 // printSource prints an annotated source listing, include all

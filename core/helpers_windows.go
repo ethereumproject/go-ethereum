@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ethereumproject/go-ethereum/core/assets"
+	"github.com/eth-classic/go-ethereum/core/assets"
 )
 
 func assetsOpen(path string) (io.ReadCloser, error) {

@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All Rights Reserved.
+w// Copyright 2014 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/binutils"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/symbolizer"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/binutils"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/symbolizer"
 )
 
 // setDefaults returns a new plugin.Options with zero fields sets to

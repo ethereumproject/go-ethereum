@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/internal/plugin"
+	"github.com/eth-classic/benchmark/rtprof/pprof/internal/plugin"
 	"github.com/ianlancetaylor/demangle"
 )
 

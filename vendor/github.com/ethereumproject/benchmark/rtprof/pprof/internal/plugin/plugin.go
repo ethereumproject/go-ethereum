@@ -21,7 +21,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/ethereumproject/benchmark/rtprof/pprof/profile"
+	"github.com/eth-classic/benchmark/rtprof/pprof/profile"
 )
 
 // Options groups all the optional plugins into pprof.

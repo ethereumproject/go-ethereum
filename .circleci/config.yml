@@ -9,12 +9,12 @@ sputnik_vm_steps: &sputnik_vm_steps
         command: |
           export GOPATH=$HOME/go
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-          cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+          cd $GOPATH/src/github.com/eth-classic/go-ethereum
           make -C vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c
     - persist_to_workspace:
         root: ~/
         paths:
-          - go/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a
+          - go/src/github.com/eth-classic/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a
 
 deploy_steps: &deploy_steps
   steps:
@@ -25,10 +25,10 @@ deploy_steps: &deploy_steps
     - deploy:
         name: Deploy to builds.etcdevteam.com
         command: |
-          if [[ $CIRCLE_PROJECT_USERNAME != ethereumproject ]]; then echo "Deployments only enabled from ethereumproject/ repo. Exiting." && exit 0; fi
+          if [[ $CIRCLE_PROJECT_USERNAME != eth-classic ]]; then echo "Deployments only enabled from eth-classic/ repo. Exiting." && exit 0; fi
           export GOPATH=$HOME/go
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-          cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+          cd $GOPATH/src/github.com/eth-classic/go-ethereum
           cp $GOPATH/bin/geth ./
           export VERSION=`janus version -format TAG_OR_NIGHTLY`
           ./geth version | awk '/^Version: /{if (ENVIRON["VERSION"] != $2){printf "Expected: \"%s\", got \"%s\"\n",ENVIRON["VERSION"], $2; exit 1}}'
@@ -49,19 +49,19 @@ unit_tests_steps: &unit_tests_steps
           export PATH=$PATH:$GOBIN
           export TAGS="netgo deterministic"
           if [ $USE_SPUTNIK_VM == true ]; then
-            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            export CGO_LDFLAGS="$GOPATH/src/github.com/eth-classic/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
             if [ "$(uname)" == "Darwin" ]; then
               export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
             fi
             export TAGS="sputnikvm $TAGS"
           fi
           export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-          cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+          cd $GOPATH/src/github.com/eth-classic/go-ethereum
           go env
           # Since core/ and tests/ packages are run deterministically, we can safely
           # infer that SputnikVM is functioning the same as the native VM without running
           # the schroedinger nondeterministic tests with sputnik enabled.
-          go test -ldflags "-X github.com/ethereumproject/go-ethereum/core.UseSputnikVM=$USE_SPUTNIK_VM" -tags="$TAGS" ./...
+          go test -ldflags "-X github.com/eth-classic/go-ethereum/core.UseSputnikVM=$USE_SPUTNIK_VM" -tags="$TAGS" ./...
           schroedinger -t 5 -f ./schroedinger-tests.txt
 
 bats_tests_steps: &bats_tests_steps
@@ -74,14 +74,14 @@ bats_tests_steps: &bats_tests_steps
           name: Run bats tests
           command: |
             export GOPATH=$HOME/go
-            export CGO_LDFLAGS="$GOPATH/src/github.com/ethereumproject/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
+            export CGO_LDFLAGS="$GOPATH/src/github.com/eth-classic/go-ethereum/vendor/github.com/ETCDEVTeam/sputnikvm-ffi/c/libsputnikvm.a -ldl"
             if [ "$(uname)" == "Darwin" ]; then
               export CGO_LDFLAGS="$CGO_LDFLAGS -lresolv"
             else
               export EXT_LD_FLAGS="-extldflags=-static"
             fi
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin:$HOME/bin
-            cd $GOPATH/src/github.com/ethereumproject/go-ethereum
+            cd $GOPATH/src/github.com/eth-classic/go-ethereum
             # go install ... doesn't work with netgo on CircleCI on Linux
             go build -tags="sputnikvm netgo" -ldflags "$EXT_LD_FLAGS -X main.Version=`janus version -format TAG_OR_NIGHTLY`" ./cmd/geth
             mkdir -p $GOPATH/bin
@@ -105,9 +105,9 @@ jobs:
           command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-            mkdir -p $GOPATH/src/github.com/ethereumproject
+            mkdir -p $GOPATH/src/github.com/eth-classic
       - checkout:
-          path:  ~/go/src/github.com/ethereumproject/go-ethereum
+          path:  ~/go/src/github.com/eth-classic/go-ethereum
       - run:
           name: Install required software
           command: |
@@ -115,7 +115,7 @@ jobs:
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin]
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
             if [ ! -x ~/janusbin/janus ]; then
-              cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+              cd $HOME; curl -sL https://raw.githubusercontent.com/eth-classic/janus/master/get.sh | bash
               brew update
               export BDIR="$(brew --repo homebrew/core)" && echo "$BDIR" && git -C "$BDIR" reset --hard master && git -C "$BDIR" fetch origin ac2308d7640e45de0de1dbcbb6d4f42fcdd8adde && git -C "$BDIR" checkout FETCH_HEAD && HOMEBREW_NO_AUTO_UPDATE=1 brew install go && brew switch go 1.9.3 && git -C "$BDIR" checkout master && unset BDIR
               brew info go
@@ -127,7 +127,7 @@ jobs:
       - persist_to_workspace:
           root: ~/
           paths:
-            - go/src/github.com/ethereumproject/*
+            - go/src/github.com/eth-classic/*
       - save_cache:
           key: v8-toolchain-{{ arch }}
           paths:
@@ -155,9 +155,9 @@ jobs:
           command: |
             export GOPATH=$HOME/go
             export PATH=$PATH:$HOME/.cargo/bin:$HOME/janusbin
-            mkdir -p $GOPATH/src/github.com/ethereumproject
+            mkdir -p $GOPATH/src/github.com/eth-classic
       - checkout:
-          path:  ~/go/src/github.com/ethereumproject/go-ethereum
+          path:  ~/go/src/github.com/eth-classic/go-ethereum
       - run:
           name: Install required software
           command: |
@@ -168,13 +168,13 @@ jobs:
             sudo ./install.sh ~/
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
             if [ ! -x ~/janusbin/janus ]; then
-              cd $HOME; curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get.sh | bash
+              cd $HOME; curl -sL https://raw.githubusercontent.com/eth-classic/janus/master/get.sh | bash
             fi
             go get github.com/etcdevteam/go-schroedinger/cmd/schroedinger/...
       - persist_to_workspace:
           root: ~/
           paths:
-            - go/src/github.com/ethereumproject/*
+            - go/src/github.com/eth-classic/*
       - save_cache:
           key: v8-toolchain-{{ arch }}
           paths:
