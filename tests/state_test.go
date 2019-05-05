@@ -17,9 +17,11 @@
 package tests
 
 import (
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -665,5 +667,74 @@ func TestEIP150HomesteadBounds(t *testing.T) {
 	fn := filepath.Join(stateTestDir, "EIP150", "Homestead", "stBoundsTest.json")
 	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
 		t.Error(err)
+	}
+}
+
+// func TestETHRevert(t *testing.T) {
+// 	skipTests := make(map[string]string)
+
+// 	// Bugs in these tests
+// 	skipTests["RevertPrecompiledTouch.json/Byzantium/0"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch.json/Byzantium/3"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch.json/Constantinople/0"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch.json/Constantinople/3"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch.json/ConstantinopleFix/0"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch.json/ConstantinopleFix/3"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch_storage.json/Byzantium/0"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch_storage.json/Byzantium/3"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch_storage.json/Constantinople/0"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch_storage.json/Constantinople/3"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch_storage.json/ConstantinopleFix/0"] = "Bug in Test"
+// 	skipTests["RevertPrecompiledTouch_storage.json/ConstantinopleFix/3"] = "Bug in Test"
+
+// 	fns, _ := filepath.Glob(filepath.Join(ethGeneralStateDir, "stRevertTest", "*"))
+// 	runETHTests(t, fns, skipTests)
+// }
+
+func TestETHHomestead(t *testing.T) {
+	fns, _ := filepath.Glob(filepath.Join(ethGeneralStateDir, "stHomesteadSpecific", "*"))
+	runETHTests(t, fns, make(map[string]string))
+}
+
+func runETHTests(t *testing.T, fileNames []string, skipTests map[string]string) {
+	for _, fn := range fileNames {
+		// Fill StateTest mapping with tests from file
+		stateTests, err := CreateStateTests(fn)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		// JSON file subtest
+		fileName := fn[strings.LastIndex(fn, "/")+1 : len(fn)]
+		t.Run(fileName, func(t *testing.T) {
+			// Check if file is skipped
+			if skipTests[fileName] != "" {
+				t.Skipf("Test file %s skipped: %s", fileName, skipTests[fileName])
+			}
+
+			for _, test := range stateTests {
+				for _, subtest := range test.Subtests() {
+					key := fmt.Sprintf("%s/%d", subtest.Fork, subtest.Index)
+
+					// Not supported implementations to test
+					if subtest.Fork == "Constantinople" || subtest.Fork == "ConstantinopleFix" {
+						continue
+					}
+
+					// Subtest within the JSON file
+					t.Run(key, func(t *testing.T) {
+						// Check if subtest is skipped
+						if skipTests[fileName+"/"+key] != "" {
+							t.Skipf("subtest %s skipped: %s", key, skipTests[fileName+"/"+key])
+						}
+
+						if err := test.runETHSubtest(subtest); err != nil {
+							t.Error(err)
+						}
+					})
+				}
+			}
+		})
 	}
 }

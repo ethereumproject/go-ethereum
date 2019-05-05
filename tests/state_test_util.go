@@ -23,6 +23,7 @@ import (
 	"io"
 	"math/big"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/eth-classic/go-ethereum/common"
@@ -32,7 +33,26 @@ import (
 	"github.com/eth-classic/go-ethereum/crypto"
 	"github.com/eth-classic/go-ethereum/ethdb"
 	"github.com/eth-classic/go-ethereum/logger/glog"
+	"github.com/eth-classic/go-ethereum/rlp"
+	"golang.org/x/crypto/sha3"
 )
+
+// StateSubtest selects a specific configuration of a General State Test.
+type StateSubtest struct {
+	Fork  string
+	Index int
+}
+
+// Subtests returns all valid subtests of the test.
+func (t *StateTest) Subtests() []StateSubtest {
+	var sub []StateSubtest
+	for fork, pss := range t.Post {
+		for i := range pss {
+			sub = append(sub, StateSubtest{fork, i})
+		}
+	}
+	return sub
+}
 
 func RunStateTestWithReader(ruleSet RuleSet, r io.Reader, skipTests []string) error {
 	tests := make(map[string]VmTest)
@@ -59,6 +79,14 @@ func RunStateTest(ruleSet RuleSet, p string, skipTests []string) error {
 
 	return nil
 
+}
+
+func CreateStateTests(f string) (map[string]StateTest, error) {
+	stateTest := make(map[string]StateTest)
+	if err := readJsonFile(f, &stateTest); err != nil {
+		return stateTest, err
+	}
+	return stateTest, nil
 }
 
 func BenchStateTest(ruleSet RuleSet, p string, conf bconf, b *testing.B) error {
@@ -99,6 +127,8 @@ func benchStateTest(ruleSet RuleSet, test VmTest, env map[string]string, b *test
 	b.StartTimer()
 
 	RunState(ruleSet, db, statedb, env, test.Exec)
+
+	statedb.CommitTo(db, false)
 }
 
 func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string) error {
@@ -204,6 +234,77 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 	return nil
 }
 
+func (t *StateTest) runETHSubtest(subtest StateSubtest) error {
+	db, _ := ethdb.NewMemDatabase()
+	statedb := makePreState(db, t.Pre)
+
+	// Putting environment variables into string mapping for running state
+	env := make(map[string]string)
+	env["currentCoinbase"] = t.Env.CurrentCoinbase
+	env["currentDifficulty"] = t.Env.CurrentDifficulty
+	env["currentGasLimit"] = t.Env.CurrentGasLimit
+	env["currentNumber"] = t.Env.CurrentNumber
+	env["previousHash"] = t.Env.PreviousHash
+	if n, ok := t.Env.CurrentTimestamp.(float64); ok {
+		env["currentTimestamp"] = strconv.Itoa(int(n))
+	} else {
+		env["currentTimestamp"] = t.Env.CurrentTimestamp.(string)
+	}
+
+	// Post state object from StateTest based on subtest
+	postState := t.Post[subtest.Fork][subtest.Index]
+
+	// Transaction data from StateTest object
+	vmTx := map[string]string{
+		"data":      t.Tx.Data[postState.Indexes.Data],
+		"gasLimit":  t.Tx.GasLimit[postState.Indexes.Gas],
+		"gasPrice":  t.Tx.GasPrice,
+		"nonce":     t.Tx.Nonce,
+		"secretKey": strings.TrimPrefix(t.Tx.PrivateKey, "0x"),
+		"to":        strings.TrimPrefix(t.Tx.To, "0x"),
+		"value":     t.Tx.Value[postState.Indexes.Value],
+	}
+
+	// Hard coded RuleSet based on previous tests (should change)
+	ruleSet := RuleSet{
+		HomesteadBlock:           new(big.Int),
+		HomesteadGasRepriceBlock: big.NewInt(2457000),
+	}
+
+	var (
+		// ret []byte
+		// gas  *big.Int
+		// err  error
+		logs vm.Logs
+	)
+
+	_, logs, _, _ = RunState(ruleSet, db, statedb, env, vmTx)
+
+	// Only tests that are < EIP158 are Homestead
+	deleteEmptyObjects := subtest.Fork != "Homestead"
+
+	// Commit block
+	statedb.CommitTo(db, deleteEmptyObjects)
+
+	// 0-value mining reward
+	statedb.AddBalance(common.HexToAddress(t.Env.CurrentCoinbase), new(big.Int))
+
+	// Get state root
+	root := statedb.IntermediateRoot(deleteEmptyObjects)
+
+	// Compare Post state root
+	if root != common.BytesToHash(postState.Root.Bytes()) {
+		return fmt.Errorf("Post state root error. Expected: %x have: %x", postState.Root, root)
+	}
+
+	// Compare logs
+	if hashedLogs := rlpHash(logs); hashedLogs != common.Hash(postState.Logs) {
+		return fmt.Errorf("post state logs hash mismatch: Expected: %x have: %x", postState.Logs, logs)
+	}
+
+	return nil
+}
+
 func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, tx map[string]string) ([]byte, vm.Logs, *big.Int, error) {
 	data := common.FromHex(tx["data"])
 	gas, _ := new(big.Int).SetString(tx["gasLimit"], 0)
@@ -243,7 +344,13 @@ func RunState(ruleSet RuleSet, db ethdb.Database, statedb *state.StateDB, env, t
 	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || core.IsGasLimitErr(err) {
 		statedb.RevertToSnapshot(snapshot)
 	}
-	statedb.CommitTo(db, false)
 
 	return ret, vmenv.state.Logs(), vmenv.Gas, err
+}
+
+func rlpHash(x interface{}) (h common.Hash) {
+	hw := sha3.NewLegacyKeccak256()
+	rlp.Encode(hw, x)
+	hw.Sum(h[:0])
+	return h
 }

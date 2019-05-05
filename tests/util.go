@@ -95,10 +95,13 @@ func (self Log) Topics() [][]byte {
 }
 
 func makePreState(db ethdb.Database, accounts map[string]Account) *state.StateDB {
-	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	sdb := state.NewDatabase(db)
+	statedb, _ := state.New(common.Hash{}, sdb)
 	for addr, account := range accounts {
 		insertAccount(statedb, addr, account)
 	}
+	root, _ := statedb.CommitTo(db, false)
+	statedb, _ = state.New(root, sdb)
 	return statedb
 }
 
@@ -151,6 +154,44 @@ type RuleSet struct {
 	HomesteadGasRepriceBlock *big.Int
 	DiehardBlock             *big.Int
 	ExplosionBlock           *big.Int
+}
+
+// StateTest object that matches the General State Test json file
+type StateTest struct {
+	Env  VmEnv                    `json:"env"`
+	Pre  map[string]Account       `json:"pre"`
+	Tx   stTransaction            `json:"transaction"`
+	Out  string                   `json:"out"`
+	Post map[string][]stPostState `json:"post"`
+}
+
+// GenesisAccount is an account in the state of the genesis block.
+type GenesisAccount struct {
+	Code       string            `json:"code,omitempty"`
+	Storage    map[string]string `json:"storage,omitempty"`
+	Balance    string            `json:"balance" gencodec:"required"`
+	Nonce      string            `json:"nonce,omitempty"`
+	PrivateKey string            `json:"secretKey,omitempty"` // for tests
+}
+
+type stPostState struct {
+	Root    common.UnprefixedHash `json:"hash"`
+	Logs    common.UnprefixedHash `json:"logs"`
+	Indexes struct {
+		Data  int `json:"data"`
+		Gas   int `json:"gas"`
+		Value int `json:"value"`
+	}
+}
+
+type stTransaction struct {
+	GasPrice   string   `json:"gasPrice"`
+	Nonce      string   `json:"nonce"`
+	To         string   `json:"to"`
+	Data       []string `json:"data"`
+	GasLimit   []string `json:"gasLimit"`
+	Value      []string `json:"value"`
+	PrivateKey string   `json:"secretKey"`
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {

@@ -35,6 +35,8 @@ var (
 	transactionTestDir = filepath.Join(baseDir, "TransactionTests")
 	vmTestDir          = filepath.Join(baseDir, "VMTests")
 	rlpTestDir         = filepath.Join(baseDir, "RLPTests")
+	ethDir             = filepath.Join(".", "testData")
+	ethGeneralStateDir = filepath.Join(ethDir, "GeneralStateTests")
 
 	BlockSkipTests = initBlockSkipTests()
 
