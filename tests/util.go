@@ -154,6 +154,7 @@ type RuleSet struct {
 	HomesteadGasRepriceBlock *big.Int
 	DiehardBlock             *big.Int
 	ExplosionBlock           *big.Int
+	AtlantisBlock            *big.Int
 }
 
 // StateTest object that matches the General State Test json file
@@ -195,8 +196,13 @@ type stTransaction struct {
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
-	return n.Cmp(r.HomesteadBlock) >= 0
+	return r.HomesteadBlock != nil && n.Cmp(r.HomesteadBlock) >= 0
 }
+
+func (r RuleSet) IsAtlantis(n *big.Int) bool {
+	return r.AtlantisBlock != nil && n.Cmp(r.AtlantisBlock) >= 0
+}
+
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
 		return &vm.GasTable{

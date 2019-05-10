@@ -235,6 +235,12 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 }
 
 func (t *StateTest) runETHSubtest(subtest StateSubtest) error {
+	// Ruleset mapping from ETH network to ETC
+	ruleSet, ok := Forks[subtest.Fork]
+	if !ok {
+		return UnsupportedForkError{subtest.Fork}
+	}
+
 	db, _ := ethdb.NewMemDatabase()
 	statedb := makePreState(db, t.Pre)
 
@@ -263,12 +269,6 @@ func (t *StateTest) runETHSubtest(subtest StateSubtest) error {
 		"secretKey": strings.TrimPrefix(t.Tx.PrivateKey, "0x"),
 		"to":        strings.TrimPrefix(t.Tx.To, "0x"),
 		"value":     t.Tx.Value[postState.Indexes.Value],
-	}
-
-	// Hard coded RuleSet based on previous tests (should change)
-	ruleSet := RuleSet{
-		HomesteadBlock:           new(big.Int),
-		HomesteadGasRepriceBlock: big.NewInt(2457000),
 	}
 
 	var (

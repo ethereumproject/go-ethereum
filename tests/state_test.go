@@ -697,6 +697,17 @@ func TestETHHomestead(t *testing.T) {
 }
 
 func runETHTests(t *testing.T, fileNames []string, skipTests map[string]string) {
+	unsupportedForkConfigs := map[string]bool{
+		"Constantinople":               true,
+		"ConstantinopleFix":            true,
+		"EIP158":                       true,
+		"FrontierToHomesteadAt5":       true,
+		"HomesteadToEIP150At5":         true,
+		"HomesteadToDaoAt5":            true,
+		"EIP158ToByzantiumAt5":         true,
+		"ByzantiumToConstantinopleAt5": true,
+	}
+
 	for _, fn := range fileNames {
 		// Fill StateTest mapping with tests from file
 		stateTests, err := CreateStateTests(fn)
@@ -718,7 +729,7 @@ func runETHTests(t *testing.T, fileNames []string, skipTests map[string]string) 
 					key := fmt.Sprintf("%s/%d", subtest.Fork, subtest.Index)
 
 					// Not supported implementations to test
-					if subtest.Fork == "Constantinople" || subtest.Fork == "ConstantinopleFix" {
+					if unsupportedForkConfigs[subtest.Fork] {
 						continue
 					}
 

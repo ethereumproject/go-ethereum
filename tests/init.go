@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"path/filepath"
 
@@ -121,4 +122,31 @@ func findLine(data []byte, offset int64) (line int) {
 		}
 	}
 	return
+}
+
+// Forks table defines supported forks and their chain config.
+var Forks = map[string]RuleSet{
+	"Frontier": {},
+	"Homestead": {
+		HomesteadBlock: big.NewInt(0),
+	},
+	"EIP150": {
+		HomesteadBlock:           big.NewInt(0),
+		HomesteadGasRepriceBlock: big.NewInt(0),
+	},
+	"Byzantium": {
+		HomesteadBlock:           big.NewInt(0),
+		HomesteadGasRepriceBlock: big.NewInt(0),
+		DiehardBlock:             big.NewInt(0),
+		AtlantisBlock:            big.NewInt(0),
+	},
+}
+
+// UnsupportedForkError is returned when a test requests a fork that isn't implemented.
+type UnsupportedForkError struct {
+	Name string
+}
+
+func (e UnsupportedForkError) Error() string {
+	return fmt.Sprintf("unsupported fork %q", e.Name)
 }
