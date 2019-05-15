@@ -280,8 +280,9 @@ func (t *StateTest) runETHSubtest(subtest StateSubtest) error {
 
 	_, logs, _, _ = RunState(ruleSet, db, statedb, env, vmTx)
 
-	// Only tests that are < EIP158 are Homestead
-	deleteEmptyObjects := subtest.Fork != "Homestead"
+	// Only delete empty objects for forks which have not implemented EIP158/161
+	blockNum, _ := new(big.Int).SetString(t.Env.CurrentNumber, 0)
+	deleteEmptyObjects := ruleSet.IsAtlantis(blockNum)
 
 	// Commit block
 	statedb.CommitTo(db, deleteEmptyObjects)
