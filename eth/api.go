@@ -217,7 +217,8 @@ func (s *PublicMinerAPI) SubmitWork(nonce rpc.HexNumber, solution, digest common
 // result[0], 32 bytes hex encoded current block header pow-hash
 // result[1], 32 bytes hex encoded seed hash used for DAG
 // result[2], 32 bytes hex encoded boundary condition ("target"), 2^256/difficulty
-func (s *PublicMinerAPI) GetWork() (work [3]string, err error) {
+// result[3], height in decimal
+func (s *PublicMinerAPI) GetWork() (work [4]string, err error) {
 	if !s.e.IsMining() {
 		if err := s.e.StartMining(0, ""); err != nil {
 			return work, err

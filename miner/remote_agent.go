@@ -27,6 +27,7 @@ import (
 	"github.com/ethereumproject/go-ethereum/common"
 	"github.com/ethereumproject/go-ethereum/logger"
 	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/rpc"
 )
 
 type hashrate struct {
@@ -103,11 +104,11 @@ func (a *RemoteAgent) GetHashRate() (tot int64) {
 	return
 }
 
-func (a *RemoteAgent) GetWork() ([3]string, error) {
+func (a *RemoteAgent) GetWork() ([4]string, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	var res [3]string
+	var res [4]string
 
 	if a.currentWork != nil {
 		block := a.currentWork.Block
@@ -121,6 +122,7 @@ func (a *RemoteAgent) GetWork() ([3]string, error) {
 		n.Div(n, block.Difficulty())
 		n.Lsh(n, 1)
 		res[2] = common.BytesToHash(n.Bytes()).Hex()
+		res[3] = rpc.NewHexNumber(block.Number()).BigInt().String()
 
 		a.work[block.HashNoNonce()] = a.currentWork
 		return res, nil
