@@ -190,7 +190,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 	// check post state
 	for addr, account := range test.Post {
 		obj := statedb.GetAccount(common.HexToAddress(addr))
-		if obj == nil {
+		if obj == nil || obj.(*state.StateObject) == nil {
 			return fmt.Errorf("did not find expected post-state account: %s", addr)
 		}
 		// Because vm.Account interface does not have Nonce method, so after

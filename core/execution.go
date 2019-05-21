@@ -95,15 +95,26 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 		from = env.Db().GetAccount(caller.Address())
 		to   vm.Account
 	)
+
 	if createAccount {
 		to = env.Db().CreateAccount(*address)
+
+		if env.RuleSet().IsAtlantis(env.BlockNumber()) {
+			env.Db().SetNonce(*address, 1)
+		}
 	} else {
 		if !env.Db().Exist(*address) {
+			//no account may change state from non-existent to existent-but-empty. Refund sender.
+			if vm.Precompiled[(*address).Str()] == nil && env.RuleSet().IsAtlantis(env.BlockNumber()) && value.BitLen() == 0 {
+				caller.ReturnGas(gas, gasPrice)
+				return nil, common.Address{}, nil
+			}
 			to = env.Db().CreateAccount(*address)
 		} else {
 			to = env.Db().GetAccount(*address)
 		}
 	}
+
 	env.Transfer(from, to, value)
 
 	// initialise a new contract and set the code that is to be used by the
@@ -133,8 +144,8 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != vm.CodeStoreOutOfGasError) {
-		contract.UseGas(contract.Gas)
 
+		contract.UseGas(contract.Gas)
 		env.RevertToSnapshot(snapshotPreTransfer)
 	}
 

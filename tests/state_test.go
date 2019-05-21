@@ -670,30 +670,80 @@ func TestEIP150HomesteadBounds(t *testing.T) {
 	}
 }
 
-// func TestETHRevert(t *testing.T) {
-// 	skipTests := make(map[string]string)
+func TestAllETH(t *testing.T) {
+	dirNames, _ := filepath.Glob(filepath.Join(ethGeneralStateDir, "*"))
 
-// 	// Bugs in these tests
-// 	skipTests["RevertPrecompiledTouch.json/Byzantium/0"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch.json/Byzantium/3"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch.json/Constantinople/0"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch.json/Constantinople/3"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch.json/ConstantinopleFix/0"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch.json/ConstantinopleFix/3"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch_storage.json/Byzantium/0"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch_storage.json/Byzantium/3"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch_storage.json/Constantinople/0"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch_storage.json/Constantinople/3"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch_storage.json/ConstantinopleFix/0"] = "Bug in Test"
-// 	skipTests["RevertPrecompiledTouch_storage.json/ConstantinopleFix/3"] = "Bug in Test"
+	skipTests := make(map[string]string)
 
-// 	fns, _ := filepath.Glob(filepath.Join(ethGeneralStateDir, "stRevertTest", "*"))
-// 	runETHTests(t, fns, skipTests)
-// }
+	// Bugs in these tests (Always skip)
+	skipTests["RevertPrecompiledTouch.json/Byzantium/0"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch.json/Byzantium/3"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch.json/Constantinople/0"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch.json/Constantinople/3"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch.json/ConstantinopleFix/0"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch.json/ConstantinopleFix/3"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch_storage.json/Byzantium/0"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch_storage.json/Byzantium/3"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch_storage.json/Constantinople/0"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch_storage.json/Constantinople/3"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch_storage.json/ConstantinopleFix/0"] = "Bug in Test"
+	skipTests["RevertPrecompiledTouch_storage.json/ConstantinopleFix/3"] = "Bug in Test"
 
-func TestETHHomestead(t *testing.T) {
-	fns, _ := filepath.Glob(filepath.Join(ethGeneralStateDir, "stHomesteadSpecific", "*"))
-	runETHTests(t, fns, make(map[string]string))
+	// TODO: Remove following skipped tests:
+
+	// EIP 684 Implementations
+	skipTests["TransactionCollisionToEmptyButCode.json"] = "Not Implemented"
+	skipTests["TransactionCollisionToEmpty.json"] = "Not Implemented"
+	skipTests["TransactionCollisionToEmptyButNonce.json"] = "Not Implemented"
+	skipTests["CreateCollisionToEmpty.json"] = "Not Implemented"
+	skipTests["CreateHashCollision.json"] = "Not Implemented"
+	skipTests["createJS_ExampleContract.json"] = "Not Implemented"
+
+	// StaticCall implementations
+	skipTests["staticcall_createfails.json"] = "STATICCALL Not Implemented"
+
+	// Revert Implementations
+	skipTests["FailedCreateRevertsDeletion.json"] = "REVERT Not Implemented"
+	skipTests["CreateOOGafterInitCodeRevert.json"] = "REVERT Not Implemented"
+	skipTests["CreateOOGafterInitCodeRevert2.json"] = "REVERT Not Implemented"
+
+	// EIP 211 Implementations
+	skipTests["CreateOOGafterInitCodeReturndataSize.json"] = "REVERT Not Implemented"
+	skipTests["CreateOOGafterInitCodeReturndata2.json"] = "REVERT Not Implemented"
+
+	// Random Test failures (REVISIT)
+	skipTests["randomStatetest642.json"] = "random unimplemented"
+	skipTests["randomStatetest644.json"] = "random unimplemented"
+	skipTests["randomStatetest645.json"] = "random unimplemented"
+	skipTests["Opcodes_TransactionInit.json/Byzantium/37"] = "random unimplemented"
+	skipTests["Opcodes_TransactionInit.json/Byzantium/38"] = "random unimplemented"
+	skipTests["Opcodes_TransactionInit.json/Byzantium/125"] = "random unimplemented"
+	skipTests["Opcodes_TransactionInit.json/Byzantium/126"] = "random unimplemented"
+	skipTests["CREATE_ContractRETURNBigOffset.json"] = "random unimplemented"
+
+	unsupportedDirs := map[string]bool{
+		"stStaticCall":            true,
+		"stZeroKnowledge":         true,
+		"stZeroKnowledge2":        true,
+		"stRevertTest":            true,
+		"stReturnDataTest":        true,
+		"stPreCompiledContracts":  true,
+		"stPreCompiledContracts2": true,
+		"stCodeSizeLimit":         true,
+		"stCreate2":               true,
+	}
+
+	for _, dn := range dirNames {
+		dirName := dn[strings.LastIndex(dn, "/")+1 : len(dn)]
+		if unsupportedDirs[dirName] {
+			continue
+		}
+
+		t.Run(dirName, func(t *testing.T) {
+			fns, _ := filepath.Glob(filepath.Join(ethGeneralStateDir, dirName, "*"))
+			runETHTests(t, fns, skipTests)
+		})
+	}
 }
 
 func runETHTests(t *testing.T, fileNames []string, skipTests map[string]string) {
@@ -709,6 +759,12 @@ func runETHTests(t *testing.T, fileNames []string, skipTests map[string]string) 
 	}
 
 	for _, fn := range fileNames {
+		fileName := fn[strings.LastIndex(fn, "/")+1 : len(fn)]
+
+		if fileName[strings.LastIndex(fileName, ".")+1:len(fileName)] != "json" {
+			continue
+		}
+
 		// Fill StateTest mapping with tests from file
 		stateTests, err := CreateStateTests(fn)
 		if err != nil {
@@ -717,7 +773,6 @@ func runETHTests(t *testing.T, fileNames []string, skipTests map[string]string) 
 		}
 
 		// JSON file subtest
-		fileName := fn[strings.LastIndex(fn, "/")+1 : len(fn)]
 		t.Run(fileName, func(t *testing.T) {
 			// Check if file is skipped
 			if skipTests[fileName] != "" {

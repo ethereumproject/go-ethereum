@@ -186,6 +186,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 	var (
 		gas                 = new(big.Int)
 		newMemSize *big.Int = new(big.Int)
+		isAtlantis          = env.RuleSet().IsAtlantis(env.BlockNumber())
 	)
 	err := baseCheck(op, stack, gas)
 	if err != nil {
@@ -195,10 +196,15 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 	// stack Check, memory resize & gas phase
 	switch op {
 	case SUICIDE:
+		address := common.BigToAddress(stack.data[len(stack.data)-1])
 		// if suicide is not nil: homestead gas fork
 		if gasTable.CreateBySuicide != nil {
 			gas.Set(gasTable.Suicide)
-			if !env.Db().Exist(common.BigToAddress(stack.data[len(stack.data)-1])) {
+			if isAtlantis {
+				if env.Db().Empty(address) && env.Db().GetBalance(contract.Address()).Sign() != 0 {
+					gas.Add(gas, gasTable.CreateBySuicide)
+				}
+			} else if !env.Db().Exist(address) {
 				gas.Add(gas, gasTable.CreateBySuicide)
 			}
 		}
@@ -324,7 +330,13 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		gas.Set(gasTable.Calls)
 
 		if op == CALL {
-			if !env.Db().Exist(common.BigToAddress(stack.data[stack.len()-2])) {
+			address := common.BigToAddress(stack.data[stack.len()-2])
+			transfersValue := stack.data[stack.len()-3].Sign() != 0
+			if isAtlantis {
+				if transfersValue && env.Db().Empty(address) {
+					gas.Add(gas, big.NewInt(25000))
+				}
+			} else if !env.Db().Exist(address) {
 				gas.Add(gas, big.NewInt(25000))
 			}
 		}
