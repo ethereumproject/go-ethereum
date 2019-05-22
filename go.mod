@@ -1,6 +1,7 @@
 module github.com/eth-classic/go-ethereum
 
 require (
+	github.com/eth-classic/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-aaaa9d2e032a
 	github.com/boltdb/bolt v1.3.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/denisbrodbeck/machineid v0.8.0 //mark
