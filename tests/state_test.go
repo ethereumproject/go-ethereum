@@ -742,7 +742,6 @@ func TestAllETH(t *testing.T) {
 		"stReturnDataTest":        true,
 		"stPreCompiledContracts":  true,
 		"stPreCompiledContracts2": true,
-		"stCodeSizeLimit":         true,
 		"stCreate2":               true,
 	}
 
@@ -758,6 +757,7 @@ func TestAllETH(t *testing.T) {
 		})
 	}
 }
+
 
 func runETHTests(t *testing.T, fileNames []string, skipTests map[string]string) {
 	unsupportedForkConfigs := map[string]bool{
