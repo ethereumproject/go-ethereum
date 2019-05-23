@@ -37,6 +37,13 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		}
 	}
 
+	if ruleset.IsAtlantis(blockNumber) {
+		jumpTable[REVERT] = jumpPtr{
+			fn:    nil,
+			valid: true,
+		}
+	}
+
 	return jumpTable
 }
 

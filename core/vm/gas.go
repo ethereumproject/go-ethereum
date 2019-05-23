@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-)
 
-const stackLimit = 1024 // maximum size of VM stack allowed.
+	"github.com/eth-classic/go-ethereum/params"
+)
 
 var (
 	GasQuickStep   = big.NewInt(2)
@@ -98,8 +98,8 @@ func baseCheck(op OpCode, stack *stack, gas *big.Int) error {
 			return err
 		}
 
-		if r.stackPush > 0 && stack.len()-r.stackPop+r.stackPush > stackLimit {
-			return fmt.Errorf("stack length %d exceed limit %d", stack.len(), stackLimit)
+		if r.stackPush > 0 && stack.len()-r.stackPop+r.stackPush > int(params.StackLimit) {
+			return fmt.Errorf("stack length %d exceed limit %d", stack.len(), params.StackLimit)
 		}
 
 		gas.Add(gas, r.gas)
@@ -181,6 +181,7 @@ var _baseCheck = map[OpCode]req{
 	CALL:         {7, new(big.Int), 1},
 	CALLCODE:     {7, new(big.Int), 1},
 	DELEGATECALL: {6, new(big.Int), 1},
+	REVERT:       {2, new(big.Int), 0},
 	SUICIDE:      {1, new(big.Int), 0},
 	JUMPDEST:     {0, big.NewInt(1), 0},
 	RETURN:       {2, new(big.Int), 0},

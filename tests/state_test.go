@@ -698,18 +698,23 @@ func TestAllETH(t *testing.T) {
 	skipTests["CreateCollisionToEmpty.json"] = "Not Implemented"
 	skipTests["CreateHashCollision.json"] = "Not Implemented"
 	skipTests["createJS_ExampleContract.json"] = "Not Implemented"
+	skipTests["RevertDepthCreateAddressCollision.json"] = "Not Implemented"
 
 	// StaticCall implementations
 	skipTests["staticcall_createfails.json"] = "STATICCALL Not Implemented"
-
-	// Revert Implementations
-	skipTests["FailedCreateRevertsDeletion.json"] = "REVERT Not Implemented"
-	skipTests["CreateOOGafterInitCodeRevert.json"] = "REVERT Not Implemented"
-	skipTests["CreateOOGafterInitCodeRevert2.json"] = "REVERT Not Implemented"
+	skipTests["RevertInStaticCall.json"] = "STATICCALL Not Implemented"
 
 	// EIP 211 Implementations
 	skipTests["CreateOOGafterInitCodeReturndataSize.json"] = "REVERT Not Implemented"
 	skipTests["CreateOOGafterInitCodeReturndata2.json"] = "REVERT Not Implemented"
+
+	// EIP 214 Implementations
+	skipTests["RevertOpcodeInCallsOnNonEmptyReturnData.json"] = "EIP214 Not Implemented"
+	skipTests["RevertInCallCode.json"] = "EIP214 Not Implemented"
+	skipTests["RevertInCreateInInit.json"] = "EIP214 Not Implemented"
+	skipTests["RevertInDelegateCall.json"] = "EIP214 Not Implemented"
+	skipTests["RevertOpcodeInCreateReturns.json"] = "EIP214 Not Implemented"
+	skipTests["PythonRevertTestTue201814-1430.json"] = "EIP214 Not Implemented"
 
 	// Random Test failures (REVISIT)
 	skipTests["randomStatetest642.json"] = "random unimplemented"
@@ -721,11 +726,19 @@ func TestAllETH(t *testing.T) {
 	skipTests["Opcodes_TransactionInit.json/Byzantium/126"] = "random unimplemented"
 	skipTests["CREATE_ContractRETURNBigOffset.json"] = "random unimplemented"
 
+	skipTests["RevertPrecompiledTouch.json"] = "precompiled unimplemented"
+	skipTests["RevertPrecompiledTouch_nonce.json"] = "precompiled unimplemented"
+	skipTests["RevertPrecompiledTouch_storage.json"] = "precompiled unimplemented"
+	skipTests["RevertPrecompiledTouch_noncestorage.json"] = "precompiled unimplemented"
+
+	// EIP 158/161 skipped tests
+	skipTests["RevertPrefoundEmptyOOG.json"] = "State trie clearing unimplemented"
+	skipTests["FailedCreateRevertsDeletion.json"] = "State trie clearing unimplemented"
+
 	unsupportedDirs := map[string]bool{
 		"stStaticCall":            true,
 		"stZeroKnowledge":         true,
 		"stZeroKnowledge2":        true,
-		"stRevertTest":            true,
 		"stReturnDataTest":        true,
 		"stPreCompiledContracts":  true,
 		"stPreCompiledContracts2": true,
