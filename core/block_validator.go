@@ -25,6 +25,7 @@ import (
 	"github.com/eth-classic/go-ethereum/core/state"
 	"github.com/eth-classic/go-ethereum/core/types"
 	"github.com/eth-classic/go-ethereum/logger/glog"
+	"github.com/eth-classic/go-ethereum/params"
 	"github.com/eth-classic/go-ethereum/pow"
 	"gopkg.in/fatih/set.v0"
 )
@@ -37,11 +38,6 @@ var (
 	TargetGasLimit         = big.NewInt(4712388) // The artificial target
 	DifficultyBoundDivisor = big.NewInt(2048)    // The bound divisor of the difficulty, used in the update calculations.
 	GasLimitBoundDivisor   = big.NewInt(1024)    // The bound divisor of the gas limit, used in update calculations.
-)
-
-var (
-	big10      = big.NewInt(10)
-	bigMinus99 = big.NewInt(-99)
 )
 
 // Difficulty allows passing configurable options to a given difficulty algorithm.
@@ -235,7 +231,7 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 		return BlockEqualTSErr
 	}
 
-	expd := CalcDifficulty(config, header.Time.Uint64(), parent.Time.Uint64(), parent.Number, parent.Difficulty)
+	expd := CalcDifficulty(config, header.Time.Uint64(), parent)
 	if expd.Cmp(header.Difficulty) != 0 {
 		return fmt.Errorf("Difficulty check failed for header %v != %v at %v", header.Difficulty, expd, header.Number)
 	}
@@ -268,7 +264,11 @@ func ValidateHeader(config *ChainConfig, pow pow.PoW, header *types.Header, pare
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
-func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, parentDiff *big.Int) *big.Int {
+func CalcDifficulty(config *ChainConfig, time uint64, parent *types.Header) *big.Int {
+	parentTime := parent.Time.Uint64()
+	parentNumber := parent.Number
+	parentDiff := parent.Difficulty
+
 	if config == nil {
 		glog.Fatalln("missing chain configuration, cannot calculate difficulty")
 	}
@@ -286,6 +286,8 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 		name = ""
 	} // will fall to default panic
 	switch name {
+	case "atlantis":
+		return calcDifficultyAtlantis(time, parent)
 	case "defused":
 		return calcDifficultyDefused(time, parentTime, parentNumber, parentDiff)
 	case "ecip1010":
@@ -308,6 +310,72 @@ func CalcDifficulty(config *ChainConfig, time, parentTime uint64, parentNumber, 
 	default:
 		panic(fmt.Sprintf("Unsupported difficulty '%v' for block: %v", name, num))
 	}
+}
+
+// Some weird constants to avoid constant memory allocs for them.
+var (
+	expDiffPeriod = big.NewInt(100000)
+	big1          = big.NewInt(1)
+	big2          = big.NewInt(2)
+	big9          = big.NewInt(9)
+	big10         = big.NewInt(10)
+	bigMinus99    = big.NewInt(-99)
+)
+
+func calcDifficultyAtlantis(time uint64, parent *types.Header) *big.Int {
+	bombDelayFromParent := new(big.Int).Sub(big.NewInt(3000000), big1)
+	// https://github.com/ethereum/EIPs/issues/100.
+	// algorithm:
+	// diff = (parent_diff +
+	//         (parent_diff / 2048 * max((2 if len(parent.uncles) else 1) - ((timestamp - parent.timestamp) // 9), -99))
+	//        ) + 2^(periodCount - 2)
+
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := parent.Time
+
+	// holds intermediate values to make the algo easier to read & audit
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// (2 if len(parent_uncles) else 1) - (block_timestamp - parent_timestamp) // 9
+	x.Sub(bigTime, bigParentTime)
+	x.Div(x, big9)
+	if parent.UncleHash == types.EmptyUncleHash {
+		x.Sub(big1, x)
+	} else {
+		x.Sub(big2, x)
+	}
+	// max((2 if len(parent_uncles) else 1) - (block_timestamp - parent_timestamp) // 9, -99)
+	if x.Cmp(bigMinus99) < 0 {
+		x.Set(bigMinus99)
+	}
+	// parent_diff + (parent_diff / 2048 * max((2 if len(parent.uncles) else 1) - ((timestamp - parent.timestamp) // 9), -99))
+	y.Div(parent.Difficulty, params.DifficultyBoundDivisor)
+	x.Mul(y, x)
+	x.Add(parent.Difficulty, x)
+
+	// minimum difficulty can ever be (before exponential factor)
+	if x.Cmp(params.MinimumDifficulty) < 0 {
+		x.Set(params.MinimumDifficulty)
+	}
+	// calculate a fake block number for the ice-age delay
+	// Specification: https://eips.ethereum.org/EIPS/eip-1234
+	fakeBlockNumber := new(big.Int)
+	if parent.Number.Cmp(bombDelayFromParent) >= 0 {
+		fakeBlockNumber = fakeBlockNumber.Sub(parent.Number, bombDelayFromParent)
+	}
+	// for the exponential factor
+	periodCount := fakeBlockNumber
+	periodCount.Div(periodCount, expDiffPeriod)
+
+	// the exponential factor, commonly referred to as "the bomb"
+	// diff = diff + 2^(periodCount - 2)
+	if periodCount.Cmp(big1) > 0 {
+		y.Sub(periodCount, big2)
+		y.Exp(big2, y, nil)
+		x.Add(x, y)
+	}
+	return x
 }
 
 func calcDifficultyDiehard(time, parentTime uint64, parentDiff *big.Int, diehardBlock *big.Int) *big.Int {

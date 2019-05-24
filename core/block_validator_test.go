@@ -395,7 +395,13 @@ func TestCalcDifficulty1Mainnet(t *testing.T) {
 	}
 
 	for parentNum, expected := range table {
-		difficulty := CalcDifficulty(config, time, parentTime, parentNum, parentDiff)
+		parent := &types.Header{
+			Number:     parentNum,
+			Time:       new(big.Int).SetUint64(parentTime),
+			Difficulty: parentDiff,
+		}
+
+		difficulty := CalcDifficulty(config, time, parent)
 		if difficulty.Cmp(expected) != 0 {
 			t.Errorf("config: %v, got: %v, want: %v, with parentBlock: %v", "mainnet", difficulty, expected, parentNum)
 		}
@@ -467,7 +473,13 @@ func TestCalcDifficulty1Morden(t *testing.T) {
 	}
 
 	for parentNum, expected := range table {
-		difficulty := CalcDifficulty(config, time, parentTime, parentNum, parentDiff)
+		parent := &types.Header{
+			Number:     parentNum,
+			Time:       new(big.Int).SetUint64(parentTime),
+			Difficulty: parentDiff,
+		}
+
+		difficulty := CalcDifficulty(config, time, parent)
 		if difficulty.Cmp(expected) != 0 {
 			t.Errorf("config: %v, got: %v, want: %v, with parentBlock: %v", "mainnet", difficulty, expected, parentNum)
 		}
