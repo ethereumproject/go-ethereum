@@ -202,9 +202,10 @@ type VMEnv struct {
 	transactor *common.Address
 	value      *big.Int
 
-	depth int
-	Gas   *big.Int
-	time  *big.Int
+	depth      int
+	returnData []byte
+	Gas        *big.Int
+	time       *big.Int
 
 	evm *vm.EVM
 }
@@ -260,6 +261,8 @@ func (self *VMEnv) GasLimit() *big.Int        { return big.NewInt(1000000000) }
 func (self *VMEnv) VmType() vm.Type           { return vm.StdVmTy }
 func (self *VMEnv) Depth() int                { return 0 }
 func (self *VMEnv) SetDepth(i int)            { self.depth = i }
+func (self *VMEnv) ReturnData() []byte        { return self.returnData }
+func (self *VMEnv) SetReturnData(data []byte) { self.returnData = data }
 func (self *VMEnv) GetHash(n uint64) common.Hash {
 	if self.block.Number().Cmp(big.NewInt(int64(n))) == 0 {
 		return self.block.Hash()

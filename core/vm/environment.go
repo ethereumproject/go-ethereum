@@ -69,6 +69,10 @@ type Environment interface {
 	Depth() int
 	// Set the current calling depth
 	SetDepth(i int)
+	// Get previous return data
+	ReturnData() []byte
+	// Set previous return data
+	SetReturnData([]byte)
 	// Call another contract
 	Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
 	// Take another's contract code and execute within our own context

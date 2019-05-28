@@ -21,6 +21,11 @@ import "math/big"
 type jumpPtr struct {
 	fn    instrFn
 	valid bool
+
+	jumps   bool // indicates whether the program counter should not increment
+	halts   bool // indicates whether the operation should halt further execution
+	reverts bool // determines whether the operation reverts state (implicitly halts)
+	returns bool // Indicates whether return data should be overwritten
 }
 
 type vmJumpTable [256]jumpPtr
@@ -32,14 +37,25 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 	// changes.
 	if ruleset.IsHomestead(blockNumber) {
 		jumpTable[DELEGATECALL] = jumpPtr{
-			fn:    opDelegateCall,
-			valid: true,
+			fn:      opDelegateCall,
+			valid:   true,
+			returns: true,
 		}
 	}
 
 	if ruleset.IsAtlantis(blockNumber) {
 		jumpTable[REVERT] = jumpPtr{
-			fn:    nil,
+			fn:      opRevert,
+			valid:   true,
+			reverts: true,
+			returns: true,
+		}
+		jumpTable[RETURNDATASIZE] = jumpPtr{
+			fn:    opReturnDataSize,
+			valid: true,
+		}
+		jumpTable[RETURNDATACOPY] = jumpPtr{
+			fn:    opReturnDataCopy,
 			valid: true,
 		}
 	}
@@ -246,7 +262,7 @@ func newFrontierInstructionSet() vmJumpTable {
 			valid: true,
 		},
 		PC: {
-			fn:    nil,
+			fn:    opPc,
 			valid: true,
 		},
 		MSIZE: {
@@ -258,16 +274,19 @@ func newFrontierInstructionSet() vmJumpTable {
 			valid: true,
 		},
 		CREATE: {
-			fn:    opCreate,
-			valid: true,
+			fn:      opCreate,
+			valid:   true,
+			returns: true,
 		},
 		CALL: {
-			fn:    opCall,
-			valid: true,
+			fn:      opCall,
+			valid:   true,
+			returns: true,
 		},
 		CALLCODE: {
-			fn:    opCallCode,
-			valid: true,
+			fn:      opCallCode,
+			valid:   true,
+			returns: true,
 		},
 		LOG0: {
 			fn:    makeLog(0),
@@ -546,24 +565,29 @@ func newFrontierInstructionSet() vmJumpTable {
 			valid: true,
 		},
 		RETURN: {
-			fn:    nil,
+			fn:    opReturn,
 			valid: true,
+			halts: true,
 		},
 		SUICIDE: {
-			fn:    nil,
+			fn:    opSuicide,
 			valid: true,
+			halts: true,
 		},
 		JUMP: {
-			fn:    nil,
+			fn:    opJump,
 			valid: true,
+			jumps: true,
 		},
 		JUMPI: {
-			fn:    nil,
+			fn:    opJumpi,
 			valid: true,
+			jumps: true,
 		},
 		STOP: {
-			fn:    nil,
+			fn:    opStop,
 			valid: true,
+			halts: true,
 		},
 	}
 }

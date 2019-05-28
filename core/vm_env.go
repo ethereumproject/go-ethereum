@@ -45,7 +45,8 @@ type VMEnv struct {
 	state       *state.StateDB // State to use for executing
 	evm         *vm.EVM        // The Ethereum Virtual Machine
 	depth       int            // Current execution depth
-	msg         Message        // Message appliod
+	returnData  []byte
+	msg         Message // Message applied
 
 	header    *types.Header            // Header information
 	chain     *BlockChain              // Blockchain handle
@@ -66,18 +67,20 @@ func NewEnv(state *state.StateDB, chainConfig *ChainConfig, chain *BlockChain, m
 	return env
 }
 
-func (self *VMEnv) RuleSet() vm.RuleSet      { return self.chainConfig }
-func (self *VMEnv) Vm() vm.Vm                { return self.evm }
-func (self *VMEnv) Origin() common.Address   { f, _ := self.msg.From(); return f }
-func (self *VMEnv) BlockNumber() *big.Int    { return self.header.Number }
-func (self *VMEnv) Coinbase() common.Address { return self.header.Coinbase }
-func (self *VMEnv) Time() *big.Int           { return self.header.Time }
-func (self *VMEnv) Difficulty() *big.Int     { return self.header.Difficulty }
-func (self *VMEnv) GasLimit() *big.Int       { return self.header.GasLimit }
-func (self *VMEnv) Value() *big.Int          { return self.msg.Value() }
-func (self *VMEnv) Db() vm.Database          { return self.state }
-func (self *VMEnv) Depth() int               { return self.depth }
-func (self *VMEnv) SetDepth(i int)           { self.depth = i }
+func (self *VMEnv) RuleSet() vm.RuleSet       { return self.chainConfig }
+func (self *VMEnv) Vm() vm.Vm                 { return self.evm }
+func (self *VMEnv) Origin() common.Address    { f, _ := self.msg.From(); return f }
+func (self *VMEnv) BlockNumber() *big.Int     { return self.header.Number }
+func (self *VMEnv) Coinbase() common.Address  { return self.header.Coinbase }
+func (self *VMEnv) Time() *big.Int            { return self.header.Time }
+func (self *VMEnv) Difficulty() *big.Int      { return self.header.Difficulty }
+func (self *VMEnv) GasLimit() *big.Int        { return self.header.GasLimit }
+func (self *VMEnv) Value() *big.Int           { return self.msg.Value() }
+func (self *VMEnv) Db() vm.Database           { return self.state }
+func (self *VMEnv) Depth() int                { return self.depth }
+func (self *VMEnv) SetDepth(i int)            { self.depth = i }
+func (self *VMEnv) ReturnData() []byte        { return self.returnData }
+func (self *VMEnv) SetReturnData(data []byte) { self.returnData = data }
 func (self *VMEnv) GetHash(n uint64) common.Hash {
 	return self.getHashFn(n)
 }

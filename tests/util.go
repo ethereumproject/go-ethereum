@@ -244,6 +244,7 @@ func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 type Env struct {
 	ruleSet      RuleSet
 	depth        int
+	returnData   []byte
 	state        *state.StateDB
 	skipTransfer bool
 	initial      bool
@@ -316,8 +317,10 @@ func (self *Env) GetHash(n uint64) common.Hash {
 func (self *Env) AddLog(log *vm.Log) {
 	self.state.AddLog(*log)
 }
-func (self *Env) Depth() int     { return self.depth }
-func (self *Env) SetDepth(i int) { self.depth = i }
+func (self *Env) Depth() int                { return self.depth }
+func (self *Env) SetDepth(i int)            { self.depth = i }
+func (self *Env) ReturnData() []byte        { return self.returnData }
+func (self *Env) SetReturnData(data []byte) { self.returnData = data }
 func (self *Env) CanTransfer(from common.Address, balance *big.Int) bool {
 	if self.skipTransfer {
 		if self.initial {

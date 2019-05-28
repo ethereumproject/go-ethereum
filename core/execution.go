@@ -29,7 +29,7 @@ var (
 	callCreateDepthMax = 1024 // limit call/create stack
 	errCallCreateDepth = fmt.Errorf("Max call depth exceeded (%d)", callCreateDepthMax)
 
-	maxCodeSize = 24576
+	maxCodeSize            = 24576
 	errMaxCodeSizeExceeded = fmt.Errorf("Max Code Size exceeded (%d)", maxCodeSize)
 )
 
@@ -63,7 +63,7 @@ func Create(env vm.Environment, caller vm.ContractRef, code []byte, gas, gasPric
 	// and YP definitions for CREATE
 
 	//if there's an error we return nothing
-	if err != nil {
+	if err != nil && err != vm.ErrRevert {
 		return nil, address, err
 	}
 	return ret, address, err
@@ -131,8 +131,6 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 
 	ret, err = evm.Run(contract, input)
 
-	//will need to add  && env.RuleSet().isAtlantis(evm.Blocknumber) to this after that gets merged
-
 	maxCodeSizeExceeded := len(ret) > maxCodeSize && env.RuleSet().IsAtlantis(env.BlockNumber())
 	// if the contract creation ran successfully and no errors were returned
 	// calculate the gas required to store the code. If the code could not
@@ -152,7 +150,7 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
-	if createAccount && maxCodeSizeExceeded ||(err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != vm.CodeStoreOutOfGasError)) {
+	if createAccount && maxCodeSizeExceeded || (err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != vm.CodeStoreOutOfGasError)) {
 		env.RevertToSnapshot(snapshotPreTransfer)
 		if err != vm.ErrRevert {
 			contract.UseGas(contract.Gas)

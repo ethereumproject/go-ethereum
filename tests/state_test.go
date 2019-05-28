@@ -703,10 +703,14 @@ func TestAllETH(t *testing.T) {
 	// StaticCall implementations
 	skipTests["staticcall_createfails.json"] = "STATICCALL Not Implemented"
 	skipTests["RevertInStaticCall.json"] = "STATICCALL Not Implemented"
+	skipTests["returndatasize_after_successful_staticcall.json"] = "STATICCALL Not Implemented"
+	skipTests["returndatacopy_after_revert_in_staticcall.json"] = "STATICCALL Not Implemented"
+	skipTests["returndatacopy_after_successful_staticcall.json"] = "STATICCALL Not Implemented"
+	skipTests["returndatasize_after_failing_staticcall.json"] = "STATICCALL Not Implemented"
 
 	// EIP 211 Implementations
-	skipTests["CreateOOGafterInitCodeReturndataSize.json"] = "REVERT Not Implemented"
-	skipTests["CreateOOGafterInitCodeReturndata2.json"] = "REVERT Not Implemented"
+	// skipTests["CreateOOGafterInitCodeReturndataSize.json"] = "REVERT Not Implemented"
+	// skipTests["CreateOOGafterInitCodeReturndata2.json"] = "REVERT Not Implemented"
 
 	// EIP 214 Implementations
 	skipTests["RevertOpcodeInCallsOnNonEmptyReturnData.json"] = "EIP214 Not Implemented"
@@ -730,6 +734,8 @@ func TestAllETH(t *testing.T) {
 	skipTests["RevertPrecompiledTouch_nonce.json"] = "precompiled unimplemented"
 	skipTests["RevertPrecompiledTouch_storage.json"] = "precompiled unimplemented"
 	skipTests["RevertPrecompiledTouch_noncestorage.json"] = "precompiled unimplemented"
+	skipTests["create_callprecompile_returndatasize.json"] = "precompiled unimplemented"
+	skipTests["modexp_modsize0_returndatasize.json"] = "precompiled unimplemented"
 
 	// EIP 158/161 skipped tests
 	skipTests["RevertPrefoundEmptyOOG.json"] = "State trie clearing unimplemented"
@@ -739,7 +745,6 @@ func TestAllETH(t *testing.T) {
 		"stStaticCall":            true,
 		"stZeroKnowledge":         true,
 		"stZeroKnowledge2":        true,
-		"stReturnDataTest":        true,
 		"stPreCompiledContracts":  true,
 		"stPreCompiledContracts2": true,
 		"stCreate2":               true,
@@ -757,7 +762,6 @@ func TestAllETH(t *testing.T) {
 		})
 	}
 }
-
 
 func runETHTests(t *testing.T, fileNames []string, skipTests map[string]string) {
 	unsupportedForkConfigs := map[string]bool{
