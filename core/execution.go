@@ -110,7 +110,7 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	} else {
 		if !env.Db().Exist(*address) {
 			//no account may change state from non-existent to existent-but-empty. Refund sender.
-			if vm.Precompiled[(*address).Str()] == nil && env.RuleSet().IsAtlantis(env.BlockNumber()) && value.BitLen() == 0 {
+			if vm.PrecompiledAtlantis[(*address).Str()] == nil && env.RuleSet().IsAtlantis(env.BlockNumber()) && value.BitLen() == 0 {
 				caller.ReturnGas(gas, gasPrice)
 				return nil, common.Address{}, nil
 			}

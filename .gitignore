@@ -33,3 +33,5 @@ coverage.txt
 .vscode
 
 accounts/testdata/keystore/accounts.db
+*sublime-project
+*sublime-workspace

@@ -101,3 +101,12 @@ func useGas(gas, amount *big.Int) bool {
 	gas.Sub(gas, amount)
 	return true
 }
+
+func allZero(b []byte) bool {
+	for _, byte := range b {
+		if byte != 0 {
+			return false
+		}
+	}
+	return true
+}
