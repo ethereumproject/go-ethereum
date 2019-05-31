@@ -375,6 +375,15 @@ func (self *Env) DelegateCall(caller vm.ContractRef, addr common.Address, data [
 	return core.DelegateCall(self, caller, addr, data, gas, price)
 }
 
+func (self *Env) StaticCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	if self.vmTest && self.depth > 0 {
+		caller.ReturnGas(gas, price)
+
+		return nil, nil
+	}
+	return core.StaticCall(self, caller, addr, data, gas, price)
+}
+
 func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	if self.vmTest {
 		caller.ReturnGas(gas, price)

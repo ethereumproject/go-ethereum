@@ -47,6 +47,7 @@ type EVM struct {
 	env       Environment
 	jumpTable vmJumpTable
 	gasTable  GasTable
+	readOnly  bool
 }
 
 // New returns a new instance of the EVM.
@@ -59,9 +60,16 @@ func New(env Environment) *EVM {
 }
 
 // Run loops and evaluates the contract's code with the given input data
-func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
+func (evm *EVM) Run(contract *Contract, input []byte, readOnly bool) (ret []byte, err error) {
 	evm.env.SetDepth(evm.env.Depth() + 1)
 	defer evm.env.SetDepth(evm.env.Depth() - 1)
+
+	// Make sure the readOnly is only set if we aren't in readOnly yet.
+	// This makes also sure that the readOnly flag isn't removed for child calls.
+	if readOnly && !evm.readOnly {
+		evm.readOnly = true
+		defer func() { evm.readOnly = false }()
+	}
 
 	// Reset the previous call's return data. It's unimportant to preserve the old buffer
 	// as every returning call will return new data anyway.
@@ -94,6 +102,8 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 		caller     = contract.caller
 		instrCount = 0
 
+		isAtlantis = evm.env.RuleSet().IsAtlantis(evm.env.BlockNumber())
+
 		op      OpCode         // current opcode
 		mem     = NewMemory()  // bound memory
 		stack   = newstack()   // local stack
@@ -118,10 +128,23 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 	for ; ; instrCount++ {
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
+		operation := evm.jumpTable[op]
 		// calculate the new memory size and gas price for the current executing opcode
 		newMemSize, cost, err = calculateGasAndSize(&evm.gasTable, evm.env, contract, caller, op, statedb, mem, stack)
 		if err != nil {
 			return nil, err
+		}
+
+		// If the operation is valid, enforce and write restrictions
+		if evm.readOnly && isAtlantis {
+			// If the interpreter is operating in readonly mode, make sure no
+			// state-modifying operation is performed. The 3rd stack item
+			// for a call operation is the value. Transferring value from one
+			// account to the others means the state is modified and should also
+			// return with an error.
+			if operation.writes || (op == CALL && stack.back(2).Sign() != 0) {
+				return nil, errWriteProtection
+			}
 		}
 
 		// Use the calculated gas. When insufficient gas is present, use all gas and return an
@@ -132,7 +155,6 @@ func (evm *EVM) Run(contract *Contract, input []byte) (ret []byte, err error) {
 
 		// Resize the memory calculated previously
 		mem.Resize(newMemSize.Uint64())
-		operation := evm.jumpTable[op]
 		if !operation.valid {
 			return nil, fmt.Errorf("Invalid opcode %x", op)
 		}
@@ -365,7 +387,24 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 		// called.
 		stack.data[stack.len()-1] = cg
 		gas.Add(gas, cg)
+	case STATICCALL:
+		gas.Set(gasTable.Calls)
 
+		x := calcMemSize(stack.back(4), stack.back(5))
+		y := calcMemSize(stack.back(2), stack.back(3))
+
+		newMemSize = common.BigMax(x, y)
+
+		quadMemGas(mem, newMemSize, gas)
+
+		cg := callGas(gasTable, contract.Gas, gas, stack.back(0))
+		// Replace the stack item with the new gas calculation. This means that
+		// either the original item is left on the stack or the item is replaced by:
+		// (availableGas - gas) * 63 / 64
+		// We replace the stack item so that it's available when the opCall instruction is
+		// called.
+		stack.data[stack.len()-1] = cg
+		gas.Add(gas, cg)
 	}
 
 	return newMemSize, gas, nil

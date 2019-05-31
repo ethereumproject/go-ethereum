@@ -79,6 +79,8 @@ type Environment interface {
 	CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
 	// Same as CallCode except sender and value is propagated from parent to child scope
 	DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
+	// Call another contract and disallow any state changing operations
+	StaticCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
 	// Create a new contract
 	Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error)
 }
@@ -88,7 +90,7 @@ type Vm interface {
 	// Run should execute the given contract with the input given in in
 	// and return the contract execution return bytes or an error if it
 	// failed.
-	Run(c *Contract, in []byte) ([]byte, error)
+	Run(c *Contract, in []byte, readOnly bool) ([]byte, error)
 }
 
 // Database is a EVM database for full state querying.

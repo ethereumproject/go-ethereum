@@ -26,6 +26,7 @@ type jumpPtr struct {
 	halts   bool // indicates whether the operation should halt further execution
 	reverts bool // determines whether the operation reverts state (implicitly halts)
 	returns bool // Indicates whether return data should be overwritten
+	writes  bool // determines whether this a state modifying operation
 }
 
 type vmJumpTable [256]jumpPtr
@@ -57,6 +58,11 @@ func newJumpTable(ruleset RuleSet, blockNumber *big.Int) vmJumpTable {
 		jumpTable[RETURNDATACOPY] = jumpPtr{
 			fn:    opReturnDataCopy,
 			valid: true,
+		}
+		jumpTable[STATICCALL] = jumpPtr{
+			fn:      opStaticCall,
+			valid:   true,
+			returns: true,
 		}
 	}
 
@@ -254,8 +260,9 @@ func newFrontierInstructionSet() vmJumpTable {
 			valid: true,
 		},
 		SSTORE: {
-			fn:    opSstore,
-			valid: true,
+			fn:     opSstore,
+			valid:  true,
+			writes: true,
 		},
 		JUMPDEST: {
 			fn:    opJumpdest,
@@ -276,6 +283,7 @@ func newFrontierInstructionSet() vmJumpTable {
 		CREATE: {
 			fn:      opCreate,
 			valid:   true,
+			writes:  true,
 			returns: true,
 		},
 		CALL: {
@@ -289,24 +297,29 @@ func newFrontierInstructionSet() vmJumpTable {
 			returns: true,
 		},
 		LOG0: {
-			fn:    makeLog(0),
-			valid: true,
+			fn:     makeLog(0),
+			valid:  true,
+			writes: true,
 		},
 		LOG1: {
-			fn:    makeLog(1),
-			valid: true,
+			fn:     makeLog(1),
+			valid:  true,
+			writes: true,
 		},
 		LOG2: {
-			fn:    makeLog(2),
-			valid: true,
+			fn:     makeLog(2),
+			valid:  true,
+			writes: true,
 		},
 		LOG3: {
-			fn:    makeLog(3),
-			valid: true,
+			fn:     makeLog(3),
+			valid:  true,
+			writes: true,
 		},
 		LOG4: {
-			fn:    makeLog(4),
-			valid: true,
+			fn:     makeLog(4),
+			valid:  true,
+			writes: true,
 		},
 		SWAP1: {
 			fn:    makeSwap(1),
@@ -570,9 +583,10 @@ func newFrontierInstructionSet() vmJumpTable {
 			halts: true,
 		},
 		SUICIDE: {
-			fn:    opSuicide,
-			valid: true,
-			halts: true,
+			fn:     opSuicide,
+			valid:  true,
+			halts:  true,
+			writes: true,
 		},
 		JUMP: {
 			fn:    opJump,

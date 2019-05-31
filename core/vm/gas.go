@@ -182,6 +182,7 @@ var _baseCheck = map[OpCode]req{
 	CALL:           {7, new(big.Int), 1},
 	CALLCODE:       {7, new(big.Int), 1},
 	DELEGATECALL:   {6, new(big.Int), 1},
+	STATICCALL:     {6, new(big.Int), 1},
 	REVERT:         {2, new(big.Int), 0},
 	RETURNDATACOPY: {3, new(big.Int), 0},
 	SUICIDE:        {1, new(big.Int), 0},

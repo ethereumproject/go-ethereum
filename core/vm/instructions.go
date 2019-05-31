@@ -42,6 +42,7 @@ type instruction struct {
 }
 
 var (
+	errWriteProtection       = errors.New("evm: write protection")
 	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
 	errInvalidJump           = errors.New("evm: invalid jump destination")
 )
@@ -594,6 +595,23 @@ func opDelegateCall(pc *uint64, env Environment, contract *Contract, memory *Mem
 	toAddr := common.BigToAddress(to)
 	args := memory.Get(inOffset.Int64(), inSize.Int64())
 	ret, err := env.DelegateCall(contract, toAddr, args, gas, contract.Price)
+	if err != nil {
+		stack.push(new(big.Int))
+	} else {
+		stack.push(big.NewInt(1))
+	}
+	if err == nil || err == ErrRevert {
+		memory.Set(outOffset.Uint64(), outSize.Uint64(), ret)
+	}
+	return ret, nil
+}
+
+func opStaticCall(pc *uint64, env Environment, contract *Contract, memory *Memory, stack *stack) ([]byte, error) {
+	gas, addr, inOffset, inSize, outOffset, outSize := stack.pop(), stack.pop(), stack.pop(), stack.pop(), stack.pop(), stack.pop()
+
+	toAddr := common.BigToAddress(addr)
+	args := memory.Get(inOffset.Int64(), inSize.Int64())
+	ret, err := env.StaticCall(contract, toAddr, args, gas, contract.Price)
 	if err != nil {
 		stack.push(new(big.Int))
 	} else {

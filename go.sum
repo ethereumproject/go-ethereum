@@ -10,8 +10,8 @@ github.com/eth-classic/benchmark v0.0.0-20190401191651-0f5bf26f7cd8/go.mod h1:/H
 github.com/eth-classic/ethash v0.0.0-20190401191819-b3fdb17512de h1:pITmUG7+V+zKZuytaz1p92qJafw5tQDOdp5ir5L9Eic=
 github.com/eth-classic/ethash v0.0.0-20190401191819-b3fdb17512de/go.mod h1:W/nJfwtfsIfe4wL6cn4/MB251HfunQ+2YspZFvQ1lXA=
 github.com/eth-classic/go-ethereum v0.0.0-20190521151733-61b178b4deeb/go.mod h1:SE2Tm8M3TSoN2s9L1cJvCNQoY0mzUxV3Do8/nsNbrWQ=
-github.com/eth-classic/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-aaaa9d2e032a h1:YW6bRzag/8DZo3gNlpbhcpbUuZ77WdcOfvZl5SBYkRw=
-github.com/eth-classic/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-aaaa9d2e032a/go.mod h1:N45ToIEdDjjzHVQq1I7qeyg+X3Mz76sA5FdIaPwquGU=
+github.com/eth-classic/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce h1:s4NMPGFYsBRX+LGJAFZP4HG6DzZMhvQ++H0/Y712pFw=
+github.com/eth-classic/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce/go.mod h1:N45ToIEdDjjzHVQq1I7qeyg+X3Mz76sA5FdIaPwquGU=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
@@ -40,11 +40,13 @@ github.com/maruel/panicparse v1.1.1 h1:k62YPcEoLncEEpjMt92GtG5ugb8WL/510Ys3/h5Ik
 github.com/maruel/panicparse v1.1.1/go.mod h1:nty42YY5QByNC5MM7q/nj938VbgPU7avs45z6NClpxI=
 github.com/maruel/panicparse v1.2.0 h1:lcFfc3+EidyWRSHT1OPIIQYzCmZ30u0Z+qio+IL9KFQ=
 github.com/maruel/panicparse v1.2.0/go.mod h1:vszMjr5QQ4F5FSRfraldcIA/BCw5xrdLL+zEcU2nRBs=
-github.com/mattn/go-colorable v0.1.1 h1:G1f5SKeVxmagw/IyvzvtZE4Gybcc4Tr1tf7I8z0XgOg=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
+github.com/mattn/go-colorable v0.1.2 h1:/bC9yWikZXAL9uJdulbSfyVNIR3n3trXl+v8+1sx8mU=
+github.com/mattn/go-colorable v0.1.2/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
 github.com/mattn/go-isatty v0.0.5/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
-github.com/mattn/go-isatty v0.0.7 h1:UvyT9uN+3r7yLEYSlJsbQGdsaB/a0DlgWP3pql6iwOc=
 github.com/mattn/go-isatty v0.0.7/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
+github.com/mattn/go-isatty v0.0.8 h1:HLtExJ+uU2HOZ+wI0Tt5DtUDrx8yhUqDcp7fYERX4CE=
+github.com/mattn/go-isatty v0.0.8/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
 github.com/mattn/go-runewidth v0.0.3 h1:a+kO+98RDGEfo6asOGMmpodZq4FNtnGP54yps8BzLR4=
 github.com/mattn/go-runewidth v0.0.3/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=
