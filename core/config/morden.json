@@ -97,6 +97,18 @@
                         }
                     }
                 ]
+            },
+            {
+                "name": "Atlantis",
+                "block": 4729274,
+                "features": [
+                    {
+                        "id": "difficulty",
+                        "options": {
+                            "type": "atlantis"
+                        }
+                    }
+                ]
             }
         ],
         "badHashes": [
