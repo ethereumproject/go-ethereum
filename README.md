@@ -1,5 +1,4 @@
-[![MacOS Build Status](https://circleci.com/gh/eth-classic/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/eth-classic/go-ethereum/tree/master)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/eth-classic/go-ethereum?svg=true)](https://ci.appveyor.com/project/splix/go-ethereum)
+<!-- [![MacOS Build Status](https://circleci.com/gh/eth-classic/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/eth-classic/go-ethereum/tree/master) -->
 [![Go Report Card](https://goreportcard.com/badge/github.com/eth-classic/go-ethereum)](https://goreportcard.com/report/github.com/eth-classic/go-ethereum)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/eth-classic/go-ethereum)
@@ -12,84 +11,61 @@ _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and power
 
 ## Install
 
-### :rocket: From a release binary
-The simplest way to get started running a node is to visit our [Releases page](https://github.com/eth-classic/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/eth-classic/go-ethereum/wiki/Home#Developers).
-
-#### :beers: Using Homebrew (OSX only)
-```
-$ brew install eth-classic/classic/geth
-```
-
 ### :hammer: Building the source
 
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
 #### Dependencies
-Building geth requires both Go >=1.9 and a C compiler. On Linux systems,
+Building geth requires both Go >=1.12 and a C compiler. On Linux systems,
 a C compiler can, for example, by installed with `sudo apt-get install
 build-essential`. On Mac: `xcode-select --install`.
 
-#### Get source and package dependencies
-```
-$ go get -v github.com/eth-classic/go-ethereum/...
-```
-
 #### Install and build command executables
 
-Executables installed from source will, by default, be installed in `$GOPATH/bin/`.
+With [go modules](https://github.com/golang/go/wiki/Modules), dependencies will be downloaded and cached when running build or test commands automatically. If running outside of `$GOPATH` or GO111MODULE=on variable is exported, GO111MODULE=on does not need to be specified when running the following commands.
 
-##### With go:
+Clone the repository:
 
-- the full suite of utilities:
 ```
-$ go install github.com/eth-classic/go-ethereum/cmd/...
-```
-
-- just __geth__:
-```
-$ go install github.com/eth-classic/go-ethereum/cmd/geth
+git clone https://github.com/eth-classic/go-ethereum.git
 ```
 
-##### With make:
-```
-$ cd $GOPATH/src/github.com/eth-classic/go-ethereum
-```
+Build executables simply with:
 
-- the full suite of utilities:
 ```
-$ make install
+make build
 ```
 
 - just __geth__:
 ```
-$ make install_geth
+make cmd/geth
 ```
 
 > For further `make` information, use `make help` to see a list and description of available make
 > commands.
+
+##### With go:
+
+```shell
+mkdir -p ./bin
+
+GO111MODULE=on go build -o ./bin/geth -tags="netgo" ./cmd/geth
+GO111MODULE=on go build -o ./bin/abigen ./cmd/abigen
+GO111MODULE=on go build -o ./bin/bootnode ./cmd/bootnode
+GO111MODULE=on go build -o ./bin/disasm ./cmd/disasm
+GO111MODULE=on go build -o ./bin/ethtest ./cmd/ethtest
+GO111MODULE=on go build -o ./bin/evm ./cmd/evm
+GO111MODULE=on go build -o ./bin/gethrpctest ./cmd/gethrpctest
+GO111MODULE=on go build -o ./bin/rlpdump ./cmd/rlpdump
+```
+
 
 
 ##### Building a specific release
 All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following before installing:
 
 ```shell
-$ go get -d github.com/eth-classic/go-ethereum/...
-$ cd $GOPATH/src/github.com/eth-classic/go-ethereum
-$ git checkout <TAG OR REVISION>
-# Use a go or make command above.
-```
-
-##### Using a release source code tarball
-Because of strict Go directory structure, the tarball needs to be extracted into the proper subdirectory under `$GOPATH`.
-The following commands are an example of building the v4.1.1 release:
-
-```shell
-$ mkdir -p $GOPATH/src/github.com/eth-classic
-$ cd $GOPATH/src/github.com/eth-classic
-$ tar xzf /path/to/go-ethereum-4.1.1.tar.gz
-$ mv go-ethereum-4.1.1 go-ethereum
-$ cd go-ethereum
-# Use a go or make command above.
+git checkout <TAG OR REVISION>
 ```
 
 ## Executables
@@ -98,13 +74,13 @@ This repository includes several wrappers/executables found in the `cmd` directo
 
 | Command    | Description |
 |:----------:|-------------|
-| **`geth`** | The main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test-, or private net), capable of running as a full node (default) archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. Please see our [Command Line Options](https://github.com/eth-classic/go-ethereum/wiki/Command-Line-Options) wiki page for details. |
-| `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Ethereum contract ABIs](https://github.com/eth-classic/wiki/wiki/Ethereum-Contract-ABI) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/eth-classic/go-ethereum/wiki/Native-DApps-in-Go) wiki page for details. |
+| **`geth`** | The main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test-, or private net), capable of running as a full node (default) archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. Please see our [Command Line Options](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options) wiki page for details. |
+| `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Ethereum contract ABIs](https://github.com/ethereumproject/wiki/wiki/Ethereum-Contract-ABI) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/ethereumproject/go-ethereum/wiki/Native-DApps-in-Go) wiki page for details. |
 | `bootnode` | Stripped down version of our Ethereum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks. |
 | `disasm` | Bytecode disassembler to convert EVM (Ethereum Virtual Machine) bytecode into more user friendly assembly-like opcodes (e.g. `echo "6001" | disasm`). For details on the individual opcodes, please see pages 22-30 of the [Ethereum Yellow Paper](http://gavwood.com/paper.pdf). |
 | `evm` | Developer utility version of the EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode. Its purpose is to allow insolated, fine graned debugging of EVM opcodes (e.g. `evm --code 60ff60ff --debug`). |
-| `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/eth-classic/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/eth-classic/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/eth-classic/rpc-tests/blob/master/README.md) for details. |
-| `rlpdump` | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://github.com/eth-classic/wiki/wiki/RLP)) dumps (data encoding used by the Ethereum protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
+| `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/eth-classic/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/eth-classic/rpc-tests/blob/master/README.md) for details. |
+| `rlpdump` | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://github.com/ethereumproject/wiki/wiki/RLP)) dumps (data encoding used by the Ethereum protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
 
 ## :green_book: Geth: the basics
 
@@ -124,7 +100,7 @@ Within this parent directory, geth will use a __/subdirectory__ to hold data for
 
 __You can specify this subdirectory__ with `--chain=mycustomnet`.
 
-> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/eth-classic/go-ethereum/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/eth-classic/go-ethereum/wiki/Release-3.4.0-Notes).
+> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/eth-classic/go-ethereum/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes).
 
 ### Full node on the main Ethereum network
 
@@ -174,7 +150,7 @@ SUBCOMMANDS:
 
 ```
 
-Learn more at the [Accounts Wiki Page](https://github.com/eth-classic/go-ethereum/wiki/Managing-Accounts). If you're interested in using geth to manage a lot (~100,000+) of accounts, please visit the [Indexing Accounts Wiki page](https://github.com/eth-classic/go-ethereum/wiki/Indexing-Accounts).
+Learn more at the [Accounts Wiki Page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-Accounts). If you're interested in using geth to manage a lot (~100,000+) of accounts, please visit the [Indexing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Indexing-Accounts).
 
 
 ### Interact with the Javascript console
@@ -182,14 +158,14 @@ Learn more at the [Accounts Wiki Page](https://github.com/eth-classic/go-ethereu
 $ geth console
 ```
 
-This command will start up Geth's built-in interactive [JavaScript console](https://github.com/eth-classic/go-ethereum/wiki/JavaScript-Console), through which you can invoke all official [`web3` methods](https://github.com/eth-classic/wiki/wiki/JavaScript-API) as well as Geth's own [management APIs](https://github.com/eth-classic/go-ethereum/wiki/Management-APIs). This too is optional and if you leave it out you can always attach to an already running Geth instance with `geth attach`.
+This command will start up Geth's built-in interactive [JavaScript console](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console), through which you can invoke all official [`web3` methods](https://github.com/ethereumproject/wiki/wiki/JavaScript-API) as well as Geth's own [management APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs). This too is optional and if you leave it out you can always attach to an already running Geth instance with `geth attach`.
 
-Learn more at the [Javascript Console Wiki page](https://github.com/eth-classic/go-ethereum/wiki/JavaScript-Console).
+Learn more at the [Javascript Console Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/JavaScript-Console).
 
 
 ### And so much more!
 
-For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/eth-classic/go-ethereum/wiki/Command-Line-Options).
+For a comprehensive list of command line options, please consult our [CLI Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
 
 ## :orange_book: Geth: developing and advanced useage
 
@@ -215,8 +191,8 @@ will by default correctly separate the two networks and will not make any accoun
 
 ### Programatically interfacing Geth nodes
 
-As a developer, sooner rather than later you'll want to start interacting with Geth and the Ethereum network via your own programs and not manually through the console. To aid this, Geth has built in support for a JSON-RPC based APIs ([standard APIs](https://github.com/eth-classic/wiki/wiki/JSON-RPC) and
-[Geth specific APIs](https://github.com/eth-classic/go-ethereum/wiki/Management-APIs)). These can be exposed via HTTP, WebSockets and IPC (unix sockets on unix based platroms, and named pipes on Windows).
+As a developer, sooner rather than later you'll want to start interacting with Geth and the Ethereum network via your own programs and not manually through the console. To aid this, Geth has built in support for a JSON-RPC based APIs ([standard APIs](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) and
+[Geth specific APIs](https://github.com/ethereumproject/go-ethereum/wiki/Management-APIs)). These can be exposed via HTTP, WebSockets and IPC (unix sockets on unix based platroms, and named pipes on Windows).
 
 The IPC interface is enabled by default and exposes all the APIs supported by Geth, whereas the HTTP and WS interfaces need to manually be enabled and only expose a subset of APIs due to security reasons. These can be turned on/off and configured as you'd expect.
 
@@ -270,13 +246,13 @@ The external chain configuration file specifies valid settings for the following
 | `consensus` | _Optional_. Proof of work algorithm to use, either "ethash" or "ethast-test" (for development) |
 | `genesis` | Determines __genesis state__. If running the node for the first time, it will write the genesis block. If configuring an existing chain database with a different genesis block, it will overwrite it. |
 | `chainConfig` | Determines configuration for fork-based __protocol upgrades__, ie _EIP-150_, _EIP-155_, _EIP-160_, _ECIP-1010_, etc ;-). Subkeys are `forks` and `badHashes`. |
-| `bootstrap` | _Optional_. Determines __bootstrap nodes__ in [enode format](https://github.com/eth-classic/wiki/wiki/enode-url-format). |
+| `bootstrap` | _Optional_. Determines __bootstrap nodes__ in [enode format](https://github.com/ethereumproject/wiki/wiki/enode-url-format). |
 | `include` | _Optional_. Other configuration files to include. Paths can be relative (to the config file with `include` field, or absolute). Each of configuration files has the same structure as "main" configuration. Included files are processed after the "main" configuration in the same order as specified in the array; values processed later overwrite the previously defined ones. |
 
 
 *Fields `name`, `state.startingNonce`, and `consensus` are optional. Geth will panic if any required field is missing, invalid, or in conflict with another flag. This renders `--chain` __incompatible__ with `--testnet`. It remains __compatible__ with `--data-dir`.*
 
-To learn more about external chain configuration, please visit the [External Command Line Options Wiki page](https://github.com/eth-classic/go-ethereum/wiki/Command-Line-Options).
+To learn more about external chain configuration, please visit the [External Command Line Options Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Command-Line-Options).
 
 ##### Create the rendezvous point
 
@@ -292,7 +268,7 @@ displayed IP address information (most probably `[::]`) with your externally acc
 
 *Note: You could also use a full fledged Geth node as a bootnode, but it's the less recommended way.*
 
-To learn more about enodes and enode format, visit the [Enode Wiki page](https://github.com/eth-classic/wiki/wiki/enode-url-format).
+To learn more about enodes and enode format, visit the [Enode Wiki page](https://github.com/ethereumproject/wiki/wiki/enode-url-format).
 
 ##### Starting up your member nodes
 
@@ -318,7 +294,7 @@ $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x000000000000000000000
 
 Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to the account specified by `--etherbase`. You can further tune the mining by changing the default gas limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
 
-For more information about managing accounts, please see the [Managing Accounts Wiki page](https://github.com/eth-classic/go-ethereum/wiki/Managing-Accounts).
+For more information about managing accounts, please see the [Managing Accounts Wiki page](https://github.com/ethereumproject/go-ethereum/wiki/Managing-Accounts).
 
 
 ## Contribution
@@ -331,7 +307,7 @@ This project is migrated from the now hard-forked [Ethereum (ETHF) Github projec
 
 If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes, please check up with the core devs first on [our Discord channel (#development)](https://discord.gg/NgzMPaj) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
 
-Please see the [Wiki](https://github.com/eth-classic/go-ethereum/wiki) for more details on configuring your environment, managing project dependencies, and testing procedures.
+Please see the [Wiki](https://github.com/ethereumproject/go-ethereum/wiki) for more details on configuring your environment, managing project dependencies, and testing procedures.
 
 ## License
 
