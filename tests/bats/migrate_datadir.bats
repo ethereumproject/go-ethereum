@@ -68,7 +68,7 @@ setup() {
 		mv "$TMP_DIR/geth-$TEST_OS_HF-amd64-1.5.0-c3c58eb6/geth" "$CMD_DIR/gethf1.5"
 
 		# Install 3.3 of EthereumClassic Geth
-		curl -L -o "$TMP_DIR/gethc3.3.zip" https://github.com/ethereumproject/go-ethereum/releases/download/v3.3.0/geth-classic-"$TEST_OS_C"-v3.3.0-1-gdd95f05.zip
+		curl -L -o "$TMP_DIR/gethc3.3.zip" https://github.com/eth-classic/go-ethereum/releases/download/v3.3.0/geth-classic-"$TEST_OS_C"-v3.3.0-1-gdd95f05.zip
 		unzip "$TMP_DIR/gethc3.3.zip" -d "$TMP_DIR"
 		mv "$TMP_DIR/geth" "$CMD_DIR/gethc3.3"
 
@@ -259,7 +259,7 @@ teardown() {
 
 		# Set up custom net config.
 	mkdir -p $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty
-	cp "$GOPATH/src/github.com/ethereumproject/go-ethereum/cmd/geth/testdata/chain_config_dump-invalid-coinbase.json" $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
+	cp "$GOPATH/src/github.com/eth-classic/go-ethereum/cmd/geth/testdata/chain_config_dump-invalid-coinbase.json" $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
 	sed -i.bak s/mainnet/kitty/ $DATA_DIR_PARENT/$DATA_DIR_NAME/kitty/chain.json
 
 	run $GETH_CMD --fast --verbosity 5 --chain kitty --exec='exit' console

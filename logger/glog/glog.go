@@ -121,7 +121,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/common"
 	"github.com/fatih/color"
 )
 
@@ -227,13 +227,18 @@ var severityName = []string{
 // these path prefixes are trimmed for display, but not when
 // matching vmodule filters.
 var trimPrefixes = []string{
-	"/github.com/ethereumproject/go-ethereum",
-	"/github.com/ethereumproject/ethash",
+	"/github.com/eth-classic/go-ethereum",
+	"/github.com/eth-classic/ethash",
 }
 
 func trimToImportPath(file string) string {
 	if root := strings.LastIndex(file, "src/"); root != 0 {
 		file = file[root+3:]
+		re := regexp.MustCompile(`^.*\bgo-ethereum\b`)
+		index := re.FindStringIndex(file)
+		if index != nil {
+			file = file[index[1]:]
+		}
 	}
 	return file
 }
@@ -796,6 +801,7 @@ func (l *loggingT) header(s severity, depth int) (*buffer, string, int) {
 		}
 		file = file[1:] // drop '/'
 	}
+
 	return l.formatHeader(s, file, line), file, line
 }
 

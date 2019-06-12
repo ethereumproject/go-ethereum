@@ -19,7 +19,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/common"
 )
 
 // Type is the VM type accepted by **NewVm**
@@ -99,5 +99,14 @@ func useGas(gas, amount *big.Int) bool {
 
 	// Sub the amount of gas from the remaining
 	gas.Sub(gas, amount)
+	return true
+}
+
+func allZero(b []byte) bool {
+	for _, byte := range b {
+		if byte != 0 {
+			return false
+		}
+	}
 	return true
 }

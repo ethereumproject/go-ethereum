@@ -23,13 +23,13 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ethereumproject/go-ethereum/common"
-	"github.com/ethereumproject/go-ethereum/core/vm"
-	"github.com/ethereumproject/go-ethereum/crypto"
-	"github.com/ethereumproject/go-ethereum/logger"
-	"github.com/ethereumproject/go-ethereum/logger/glog"
-	"github.com/ethereumproject/go-ethereum/rlp"
-	"github.com/ethereumproject/go-ethereum/trie"
+	"github.com/eth-classic/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/core/vm"
+	"github.com/eth-classic/go-ethereum/crypto"
+	"github.com/eth-classic/go-ethereum/logger"
+	"github.com/eth-classic/go-ethereum/logger/glog"
+	"github.com/eth-classic/go-ethereum/rlp"
+	"github.com/eth-classic/go-ethereum/trie"
 )
 
 // The starting nonce determines the default nonce when new accounts are being
@@ -189,6 +189,12 @@ func (self *StateDB) Logs() vm.Logs {
 func (self *StateDB) AddRefund(gas *big.Int) {
 	self.journal = append(self.journal, refundChange{prev: new(big.Int).Set(self.refund)})
 	self.refund.Add(self.refund, gas)
+}
+
+//Empty returns if the account address is considered non-existant or empty
+//(balance, nonce, and code all equal 0)
+func (self *StateDB) Empty(addr common.Address) bool {
+	return self.getStateObject(addr) == nil || self.getStateObject(addr).empty()
 }
 
 // Exist reports whether the given account address exists in the state.
@@ -525,13 +531,18 @@ func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 // and clears the journal as well as the refunds.
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	for addr := range s.stateObjectsDirty {
-		stateObject := s.stateObjects[addr]
+		stateObject, exist := s.stateObjects[addr]
+		if !exist {
+			continue
+		}
+
 		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
 			s.deleteStateObject(stateObject)
 		} else {
 			stateObject.updateRoot(s.db)
 			s.updateStateObject(stateObject)
 		}
+		s.stateObjectsDirty[addr] = struct{}{}
 	}
 	// Invalidate journal because reverting across transactions is not allowed.
 	s.clearJournalAndRefund()

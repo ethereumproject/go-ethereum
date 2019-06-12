@@ -18,7 +18,7 @@ package node
 
 import (
 	"bytes"
-	"github.com/ethereumproject/go-ethereum/crypto"
+	"github.com/eth-classic/go-ethereum/crypto"
 	"os"
 	"path/filepath"
 	"runtime"

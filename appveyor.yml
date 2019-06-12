@@ -1,5 +1,5 @@
 platform: x64
-clone_folder: c:\gopath\src\github.com\ethereumproject\go-ethereum
+clone_folder: c:\gopath\src\github.com\eth-classic\go-ethereum
 os: Visual Studio 2015
 environment:
   GOPATH: c:\gopath
@@ -9,7 +9,7 @@ install:
   - set PATH=%GOPATH%\bin;c:\go\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin\;%PATH%
 
   # Install janus.
-  - curl -sL https://raw.githubusercontent.com/ethereumproject/janus/master/get-windows.sh | bash
+  - curl -sL https://raw.githubusercontent.com/eth-classic/janus/master/get-windows.sh | bash
   - set PATH=./janusbin;%PATH%
 
   - ps: $env:VERSION_BASE = "$(janus.exe version -format='v%M.%m.x')"
@@ -25,13 +25,13 @@ install:
   - rustup update
 
   # Build sputnikvm-ffi from go-ethereum/vendor dir (depend on 'dep' vendoring version control, instead of 'upstream master' vc).
-  - cd c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi
+  - cd c:\gopath\src\github.com\eth-classic\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi
   - cargo build --release --verbose
-  - copy c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi\target\release\sputnikvm_ffi.lib c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib
+  - copy c:\gopath\src\github.com\eth-classic\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\ffi\target\release\sputnikvm_ffi.lib c:\gopath\src\github.com\eth-classic\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib
   # Set build flag definitions.
-  - set CGO_LDFLAGS=-Wl,--allow-multiple-definition c:\gopath\src\github.com\ethereumproject\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
+  - set CGO_LDFLAGS=-Wl,--allow-multiple-definition c:\gopath\src\github.com\eth-classic\go-ethereum\vendor\github.com\ETCDEVTeam\sputnikvm-ffi\c\sputnikvm.lib -lws2_32 -luserenv
 
-  - cd c:\gopath\src\github.com\ethereumproject\go-ethereum
+  - cd c:\gopath\src\github.com\eth-classic\go-ethereum
 
   - echo %VERSION_BASE% %VERSION%
   - echo %PATH%
@@ -42,22 +42,22 @@ install:
 build_script:
   # See .circleci/config.yml for explanation about SputnikVM nondeterministic tests absence.
   - go test -tags="deterministic" ./...
-  - go test -ldflags "-X github.com/ethereumproject/go-ethereum/core.UseSputnikVM=true" -tags="sputnikvm deterministic" ./...
+  - go test -ldflags "-X github.com/eth-classic/go-ethereum/core.UseSputnikVM=true" -tags="sputnikvm deterministic" ./...
   - schroedinger.exe -t 5 -f .\schroedinger-tests.txt
-  - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" github.com/ethereumproject/go-ethereum/cmd/geth
+  - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" github.com/eth-classic/go-ethereum/cmd/geth
   - ps: >-
       .\geth.exe version | Where {$_ -match "^Version: "} | %{$actual=($_ -split "\s+")[1];If($actual -ne $env:VERSION){"Expected: `"$env:VERSION`", got: `"$ACTUAL`""; exit 1}}
   - 7z a geth-classic-win64-%VERSION%.zip geth.exe
 before_deploy:
   # Set up GCP upload.
   - ps: >-
-      If (($env:APPVEYOR_REPO_NAME -eq 'ethereumproject/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
+      If (($env:APPVEYOR_REPO_NAME -eq 'eth-classic/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
         nuget install secure-file -ExcludeVersion
         secure-file\tools\secure-file -decrypt gcloud-appveyor.json.enc -secret "$env:GCP_PASSWD" -out .gcloud.json
       }
 # Deploy on APPVEYOR_REPO_BRANCH=master or APPVEYOR_REPO_TAG=true
 deploy_script:
   - ps: >-
-      If (($env:APPVEYOR_REPO_NAME -eq 'ethereumproject/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
+      If (($env:APPVEYOR_REPO_NAME -eq 'eth-classic/go-ethereum') -and (($env:APPVEYOR_REPO_BRANCH -eq 'master') -or ($env:APPVEYOR_REPO_TAG -eq 'true'))) {
         janus.exe deploy -to="builds.etcdevteam.com/go-ethereum/$env:VERSION_BASE/" -files="./*.zip" -key="./.gcloud.json"
       }

@@ -17,8 +17,8 @@
 package eth
 
 import (
-	"github.com/ethereumproject/go-ethereum/metrics"
-	"github.com/ethereumproject/go-ethereum/p2p"
+	"github.com/eth-classic/go-ethereum/metrics"
+	"github.com/eth-classic/go-ethereum/p2p"
 )
 
 // meteredMsgReadWriter is a wrapper around a p2p.MsgReadWriter, capable of

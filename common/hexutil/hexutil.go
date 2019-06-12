@@ -237,3 +237,34 @@ func mapError(err error) error {
 	}
 	return err
 }
+
+// HexOrDecimalToUint64 parses ambiguous string of hex/decimal into *big.Int
+func HexOrDecimalToUint64(s string) (uint64, bool) {
+	if s == "" {
+		return 0, true
+	}
+	if len(s) >= 2 && (s[:2] == "0x" || s[:2] == "0X") {
+		v, err := strconv.ParseUint(s[2:], 16, 64)
+		return v, err == nil
+	}
+	v, err := strconv.ParseUint(s, 10, 64)
+	return v, err == nil
+}
+
+// HexOrDecimalToBigInt parses ambiguous string of hex/decimal into *big.Int
+func HexOrDecimalToBigInt(s string) (*big.Int, bool) {
+	if s == "" {
+		return new(big.Int), true
+	}
+	var bigint *big.Int
+	var ok bool
+	if len(s) >= 2 && (s[:2] == "0x" || s[:2] == "0X") {
+		bigint, ok = new(big.Int).SetString(s[2:], 16)
+	} else {
+		bigint, ok = new(big.Int).SetString(s, 10)
+	}
+	if ok && bigint.BitLen() > 256 {
+		bigint, ok = nil, false
+	}
+	return bigint, ok
+}
