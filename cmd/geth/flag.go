@@ -458,7 +458,7 @@ func MakePasswordList(ctx *cli.Context) []string {
 
 // makeName makes the node name, which can be (in part) customized by the NodeNameFlag
 func makeNodeName(version string, ctx *cli.Context) string {
-	name := fmt.Sprintf("Geth/%s/%s/%s", version, runtime.GOOS, runtime.Version())
+	name := fmt.Sprintf("Getc/%s/%s/%s", version, runtime.GOOS, runtime.Version())
 	if identity := ctx.GlobalString(aliasableName(NodeNameFlag.Name, ctx)); len(identity) > 0 {
 		name += "/" + identity
 	}

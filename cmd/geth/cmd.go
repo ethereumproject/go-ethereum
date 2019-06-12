@@ -793,7 +793,7 @@ func gpubench(ctx *cli.Context) error {
 }
 
 func version(ctx *cli.Context) error {
-	fmt.Println("Geth")
+	fmt.Println("Geth Classic")
 	fmt.Println("Version:", Version)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", ctx.GlobalInt(aliasableName(NetworkIdFlag.Name, ctx)))
