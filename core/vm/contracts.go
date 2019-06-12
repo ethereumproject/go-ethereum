@@ -17,6 +17,7 @@
 package vm
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/eth-classic/go-ethereum/common"
@@ -59,11 +60,11 @@ const (
 // PrecompiledAccount represents a native ethereum contract
 type PrecompiledAccount struct {
 	Gas func(in []byte) *big.Int
-	fn  func(in []byte) []byte
+	fn  func(in []byte) ([]byte, error)
 }
 
 // Call calls the native function
-func (self PrecompiledAccount) Call(in []byte) []byte {
+func (self PrecompiledAccount) Call(in []byte) ([]byte, error) {
 	return self.fn(in)
 }
 
@@ -201,15 +202,15 @@ func PrecompiledContractsAtlantis() map[string]*PrecompiledAccount {
 	}
 }
 
-func sha256Func(in []byte) []byte {
-	return crypto.Sha256(in)
+func sha256Func(in []byte) ([]byte, error) {
+	return crypto.Sha256(in), nil
 }
 
-func ripemd160Func(in []byte) []byte {
-	return common.LeftPadBytes(crypto.Ripemd160(in), 32)
+func ripemd160Func(in []byte) ([]byte, error) {
+	return common.LeftPadBytes(crypto.Ripemd160(in), 32), nil
 }
 
-func ecrecoverFunc(in []byte) []byte {
+func ecrecoverFunc(in []byte) ([]byte, error) {
 	in = common.RightPadBytes(in, 128)
 	// "in" is (hash, v, r, s), each 32 bytes
 	// but for ecrecover we want (r, s, v)
@@ -223,7 +224,7 @@ func ecrecoverFunc(in []byte) []byte {
 	// tighter sig s values in homestead only apply to tx sigs
 	if !allZero(in[32:63]) || !crypto.ValidateSignatureValues(v, r, s, false) {
 		glog.V(logger.Detail).Infof("ECRECOVER error: v, r or s value invalid")
-		return nil
+		return nil, nil
 	}
 
 	// v needs to be at the end and normalized for libsecp256k1
@@ -234,18 +235,18 @@ func ecrecoverFunc(in []byte) []byte {
 	// make sure the public key is a valid one
 	if err != nil {
 		glog.V(logger.Detail).Infoln("ECRECOVER error: ", err)
-		return nil
+		return nil, nil
 	}
 
 	// the first byte of pubkey is bitcoin heritage
-	return common.LeftPadBytes(crypto.Keccak256(pubKey[1:])[12:], 32)
+	return common.LeftPadBytes(crypto.Keccak256(pubKey[1:])[12:], 32), nil
 }
 
-func memCpy(in []byte) []byte {
-	return in
+func memCpy(in []byte) ([]byte, error) {
+	return in, nil
 }
 
-func bigModExp(in []byte) []byte {
+func bigModExp(in []byte) ([]byte, error) {
 	var (
 		baseLen = new(big.Int).SetBytes(getData(in, big0, big32))
 		expLen  = new(big.Int).SetBytes(getData(in, big32, big32))
@@ -260,7 +261,7 @@ func bigModExp(in []byte) []byte {
 
 	// Handle a special case when both the base and mod length is zero
 	if baseLen.Cmp(big0) == 0 && modLen.Cmp(big0) == 0 {
-		return []byte{}
+		return []byte{}, nil
 	}
 	// Retrieve the operands and execute the exponentiation
 	var (
@@ -270,9 +271,9 @@ func bigModExp(in []byte) []byte {
 	)
 	if mod.BitLen() == 0 {
 		// Modulo 0 is undefined, return zero
-		return common.LeftPadBytes([]byte{}, int(modLen.Int64()))
+		return common.LeftPadBytes([]byte{}, int(modLen.Int64())), nil
 	}
-	return common.LeftPadBytes(base.Exp(base, exp, mod).Bytes(), int(modLen.Int64()))
+	return common.LeftPadBytes(base.Exp(base, exp, mod).Bytes(), int(modLen.Int64())), nil
 }
 
 var (
@@ -283,7 +284,7 @@ var (
 	false32Byte = make([]byte, 32)
 
 	// errBadPairingInput is returned if the bn256 pairing input is invalid.
-	//errBadPairingInput = errors.New("bad elliptic curve pairing size")
+	errBadPairingInput = errors.New("bad elliptic curve pairing size")
 )
 
 // newCurvePoint unmarshals a binary blob into a bn256 elliptic curve point,
@@ -306,34 +307,34 @@ func newTwistPoint(blob []byte) (*bn256.G2, error) {
 	return p, nil
 }
 
-func bn256Add(in []byte) []byte {
+func bn256Add(in []byte) ([]byte, error) {
 	x, err := newCurvePoint(getData(in, big.NewInt(0), big.NewInt(64)))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	y, err := newCurvePoint(getData(in, big.NewInt(64), big.NewInt(64)))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	res := new(bn256.G1)
 	res.Add(x, y)
-	return res.Marshal()
+	return res.Marshal(), nil
 }
 
-func bn256ScalarMul(in []byte) []byte {
+func bn256ScalarMul(in []byte) ([]byte, error) {
 	p, err := newCurvePoint(getData(in, big.NewInt(0), big.NewInt(64)))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	res := new(bn256.G1)
 	res.ScalarMult(p, new(big.Int).SetBytes(getData(in, big.NewInt(64), big.NewInt(32))))
-	return res.Marshal()
+	return res.Marshal(), nil
 }
 
-func bn256Pairing(in []byte) []byte {
+func bn256Pairing(in []byte) ([]byte, error) {
 	// Handle some corner cases cheaply
 	if len(in)%192 > 0 {
-		return nil
+		return nil, errBadPairingInput
 	}
 	// Convert the input into a set of coordinates
 	var (
@@ -343,18 +344,18 @@ func bn256Pairing(in []byte) []byte {
 	for i := 0; i < len(in); i += 192 {
 		c, err := newCurvePoint(in[i : i+64])
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		t, err := newTwistPoint(in[i+64 : i+192])
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		cs = append(cs, c)
 		ts = append(ts, t)
 	}
 	// Execute the pairing checks and return the results
 	if bn256.PairingCheck(cs, ts) {
-		return true32Byte
+		return true32Byte, nil
 	}
-	return false32Byte
+	return false32Byte, nil
 }

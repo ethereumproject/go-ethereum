@@ -414,9 +414,7 @@ func calculateGasAndSize(gasTable *GasTable, env Environment, contract *Contract
 func (evm *EVM) RunPrecompiled(p *PrecompiledAccount, input []byte, contract *Contract) (ret []byte, err error) {
 	gas := p.Gas(input)
 	if contract.UseGas(gas) {
-		ret = p.Call(input)
-
-		return ret, nil
+		return p.Call(input)
 	} else {
 		return nil, OutOfGasError
 	}
