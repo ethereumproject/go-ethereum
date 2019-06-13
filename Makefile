@@ -6,12 +6,13 @@ TEST_PATTERN?=.
 TEST_OPTIONS?=-race
 
 GO_MOD=GO111MODULE=on
+LDFLAGS=-ldflags "-X main.Version="`git describe --tags`
 
 BINARY=bin
 BUILD_TIME=`date +%FT%T%z`
 COMMIT=`git log --pretty=format:'%h' -n 1`
 
-# Provide default value of GOPATH, if it's not set in environment 
+# Provide default value of GOPATH, if it's not set in environment
 export GOPATH?=${HOME}/go
 
 build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cmd/rlpdump cmd/geth ## Build a local snapshot binary version of all commands
@@ -19,42 +20,42 @@ build: cmd/abigen cmd/bootnode cmd/disasm cmd/ethtest cmd/evm cmd/gethrpctest cm
 
 cmd/geth: chainconfig ## Build a local snapshot binary version of geth.
 	mkdir -p ./${BINARY}
-	${GO_MOD} go build -o ${BINARY}/geth -tags="netgo" ./cmd/geth
+	${GO_MOD} go build ${LDFLAGS} -o ${BINARY}/geth -tags="netgo" ./cmd/geth
 	@echo "Done building geth."
 	@echo "Run \"$(BINARY)/geth\" to launch geth."
 
 cmd/abigen: ## Build a local snapshot binary version of abigen.
-	mkdir -p ./${BINARY} && ${GO_MOD} go build -o ${BINARY}/abigen ./cmd/abigen
+	mkdir -p ./${BINARY} && ${GO_MOD} go build ${LDFLAGS} -o ${BINARY}/abigen ./cmd/abigen
 	@echo "Done building abigen."
 	@echo "Run \"$(BINARY)/abigen\" to launch abigen."
 
 cmd/bootnode: ## Build a local snapshot of bootnode.
-	mkdir -p ./${BINARY} && ${GO_MOD} go build -o ${BINARY}/bootnode ./cmd/bootnode
+	mkdir -p ./${BINARY} && ${GO_MOD} go build ${LDFLAGS} -o ${BINARY}/bootnode ./cmd/bootnode
 	@echo "Done building bootnode."
 	@echo "Run \"$(BINARY)/bootnode\" to launch bootnode."
 
 cmd/disasm: ## Build a local snapshot of disasm.
-	mkdir -p ./${BINARY} && ${GO_MOD} go build -o ${BINARY}/disasm ./cmd/disasm
+	mkdir -p ./${BINARY} && ${GO_MOD} go build ${LDFLAGS} -o ${BINARY}/disasm ./cmd/disasm
 	@echo "Done building disasm."
 	@echo "Run \"$(BINARY)/disasm\" to launch disasm."
 
 cmd/ethtest: ## Build a local snapshot of ethtest.
-	mkdir -p ./${BINARY} && ${GO_MOD} go build -o ${BINARY}/ethtest ./cmd/ethtest
+	mkdir -p ./${BINARY} && ${GO_MOD} go build ${LDFLAGS} -o ${BINARY}/ethtest ./cmd/ethtest
 	@echo "Done building ethtest."
 	@echo "Run \"$(BINARY)/ethtest\" to launch ethtest."
 
 cmd/evm: ## Build a local snapshot of evm.
-	mkdir -p ./${BINARY} && ${GO_MOD} go build -o ${BINARY}/evm ./cmd/evm
+	mkdir -p ./${BINARY} && ${GO_MOD} go build ${LDFLAGS} -o ${BINARY}/evm ./cmd/evm
 	@echo "Done building evm."
 	@echo "Run \"$(BINARY)/evm\" to launch evm."
 
 cmd/gethrpctest: ## Build a local snapshot of gethrpctest.
-	mkdir -p ./${BINARY} && ${GO_MOD} go build -o ${BINARY}/gethrpctest ./cmd/gethrpctest
+	mkdir -p ./${BINARY} && ${GO_MOD} go build ${LDFLAGS} -o ${BINARY}/gethrpctest ./cmd/gethrpctest
 	@echo "Done building gethrpctest."
 	@echo "Run \"$(BINARY)/gethrpctest\" to launch gethrpctest."
 
 cmd/rlpdump: ## Build a local snapshot of rlpdump.
-	mkdir -p ./${BINARY} && ${GO_MOD} go build -o ${BINARY}/rlpdump ./cmd/rlpdump
+	mkdir -p ./${BINARY} && ${GO_MOD} go build ${LDFLAGS} -o ${BINARY}/rlpdump ./cmd/rlpdump
 	@echo "Done building rlpdump."
 	@echo "Run \"$(BINARY)/rlpdump\" to launch rlpdump."
 
@@ -64,7 +65,7 @@ install: ## Install all packages to $GOPATH/bin
 
 install_geth: chainconfig ## Install geth to $GOPATH/bin
 	$(info Installing $$GOPATH/bin/geth)
-	${GO_MOD} go install -tags="netgo" ./cmd/geth
+	${GO_MOD} go install ${LDFLAGS} -tags="netgo" ./cmd/geth
 
 fmt: ## gofmt and goimports all go files
 	find . -name '*.go' -not -wholename './vendor/*' -not -wholename './_vendor*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
