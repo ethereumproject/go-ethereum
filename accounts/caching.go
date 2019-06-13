@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eth-classic/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Minimum amount of time between cache reloads. This limit applies if the platform does

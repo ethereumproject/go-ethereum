@@ -26,7 +26,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/eth-classic/go-ethereum/common/hexutil"
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
 )
 
 const (

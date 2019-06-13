@@ -1,12 +1,12 @@
-module github.com/eth-classic/go-ethereum
+module github.com/ethereumproject/go-ethereum
 
 require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/denisbrodbeck/machineid v0.8.0 //mark
-	github.com/eth-classic/benchmark v0.0.0-20190401191651-0f5bf26f7cd8
-	github.com/eth-classic/ethash v0.0.0-20190401191819-b3fdb17512de
-	github.com/eth-classic/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce
+	github.com/ethereumproject/benchmark v0.0.0-20190401191651-0f5bf26f7cd8
+	github.com/ethereumproject/ethash v0.0.0-20190401191819-b3fdb17512de
+	github.com/ethereumproject/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce
 	github.com/fatih/color v1.7.0
 	github.com/gizak/termui v2.3.0+incompatible
 	github.com/hashicorp/golang-lru v0.5.1

@@ -1,7 +1,7 @@
 package downloader
 
 import (
-	"github.com/eth-classic/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core"
 )
 
 type InsertChainEvent struct {

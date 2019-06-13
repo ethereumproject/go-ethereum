@@ -19,7 +19,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/eth-classic/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // Type is the VM type accepted by **NewVm**

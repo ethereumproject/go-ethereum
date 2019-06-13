@@ -12,7 +12,7 @@ if [ $OS_NAME == "darwin" ]; then
 	OS_NAME="osx"
 fi
 
-GETH_ARCHIVE_NAME="geth-classic-$OS_NAME-$(janus version -format='TAG_OR_NIGHTLY')"
+GETH_ARCHIVE_NAME="gethereumproject-$OS_NAME-$(janus version -format='TAG_OR_NIGHTLY')"
 zip "$GETH_ARCHIVE_NAME.zip" geth
 tar -zcf "$GETH_ARCHIVE_NAME.tar.gz" geth
 

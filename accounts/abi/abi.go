@@ -24,7 +24,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/eth-classic/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/common"
 )
 
 // The ABI holds information about a contract's context and available

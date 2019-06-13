@@ -2,10 +2,10 @@ github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx2
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/denisbrodbeck/machineid v0.8.0/go.mod h1:dJUwb7PTidGDeYyUBmXZ2GphQBbjJCrnectwCyxcUSI=
-github.com/eth-classic/benchmark v0.0.0-20190401191651-0f5bf26f7cd8/go.mod h1:/HC5hx0QxBbuFLsGiesBHuu8bAvHcGHA6ELxY8UCwBE=
-github.com/eth-classic/ethash v0.0.0-20190401191819-b3fdb17512de/go.mod h1:W/nJfwtfsIfe4wL6cn4/MB251HfunQ+2YspZFvQ1lXA=
-github.com/eth-classic/go-ethereum v0.0.0-20190521151733-61b178b4deeb h1:6nQFOL+K/mkgn7e/jDO1NcPHJpbl5fQRw2IUgyu4/rE=
-github.com/eth-classic/go-ethereum v0.0.0-20190521151733-61b178b4deeb/go.mod h1:SE2Tm8M3TSoN2s9L1cJvCNQoY0mzUxV3Do8/nsNbrWQ=
+github.com/ethereumproject/benchmark v0.0.0-20190401191651-0f5bf26f7cd8/go.mod h1:/HC5hx0QxBbuFLsGiesBHuu8bAvHcGHA6ELxY8UCwBE=
+github.com/ethereumproject/ethash v0.0.0-20190401191819-b3fdb17512de/go.mod h1:W/nJfwtfsIfe4wL6cn4/MB251HfunQ+2YspZFvQ1lXA=
+github.com/ethereumproject/go-ethereum v0.0.0-20190521151733-61b178b4deeb h1:6nQFOL+K/mkgn7e/jDO1NcPHJpbl5fQRw2IUgyu4/rE=
+github.com/ethereumproject/go-ethereum v0.0.0-20190521151733-61b178b4deeb/go.mod h1:SE2Tm8M3TSoN2s9L1cJvCNQoY0mzUxV3Do8/nsNbrWQ=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
