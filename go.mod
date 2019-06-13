@@ -4,8 +4,8 @@ require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/denisbrodbeck/machineid v0.8.0 //mark
-	github.com/ethereumproject/benchmark v0.0.0-20190401191651-0f5bf26f7cd8
-	github.com/ethereumproject/ethash v0.0.0-20190401191819-b3fdb17512de
+	github.com/ethereumproject/benchmark v0.0.0-20180113190147-8eff34efba25
+	github.com/ethereumproject/ethash v0.0.0-20180109211943-65a5b25efc27
 	github.com/ethereumproject/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce
 	github.com/fatih/color v1.7.0
 	github.com/gizak/termui v2.3.0+incompatible
@@ -32,3 +32,5 @@ require (
 	gopkg.in/karalabe/cookiejar.v2 v2.0.0-20150724131613-8dcd6a7f4951
 	gopkg.in/urfave/cli.v1 v1.17.0
 )
+
+replace github.com/ethereumproject/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce => ./accounts/abi/bind
