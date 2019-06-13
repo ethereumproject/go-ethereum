@@ -24,8 +24,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereumproject/go-ethereum/accounts/abi/bind"
-	"github.com/ethereumproject/go-ethereum/common/compiler"
+	"github.com/eth-classic/go-ethereum/accounts/abi/bind"
+	"github.com/eth-classic/go-ethereum/common/compiler"
 )
 
 // Version is the application revision identifier. It can be set with the linker

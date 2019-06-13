@@ -1,9 +1,8 @@
-[![MacOS Build Status](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/ethereumproject/go-ethereum?svg=true)](https://ci.appveyor.com/project/splix/go-ethereum)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ethereumproject/go-ethereum)](https://goreportcard.com/report/github.com/ethereumproject/go-ethereum)
+<!-- [![MacOS Build Status](https://circleci.com/gh/eth-classic/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/eth-classic/go-ethereum/tree/master) -->
+[![Go Report Card](https://goreportcard.com/badge/github.com/eth-classic/go-ethereum)](https://goreportcard.com/report/github.com/eth-classic/go-ethereum)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
-)](https://godoc.org/github.com/ethereumproject/go-ethereum)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereumproject/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+)](https://godoc.org/github.com/eth-classic/go-ethereum)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/eth-classic/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Ethereum Go (Ethereum Classic Blockchain)
 
@@ -12,84 +11,61 @@ _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and power
 
 ## Install
 
-### :rocket: From a release binary
-The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Home#Developers).
-
-#### :beers: Using Homebrew (OSX only)
-```
-$ brew install ethereumproject/classic/geth
-```
-
 ### :hammer: Building the source
 
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
 #### Dependencies
-Building geth requires both Go >=1.9 and a C compiler. On Linux systems,
+Building geth requires both Go >=1.12 and a C compiler. On Linux systems,
 a C compiler can, for example, by installed with `sudo apt-get install
 build-essential`. On Mac: `xcode-select --install`.
 
-#### Get source and package dependencies
-```
-$ go get -v github.com/ethereumproject/go-ethereum/...`
-```
-
 #### Install and build command executables
 
-Executables installed from source will, by default, be installed in `$GOPATH/bin/`.
+With [go modules](https://github.com/golang/go/wiki/Modules), dependencies will be downloaded and cached when running build or test commands automatically. If running outside of `$GOPATH` or GO111MODULE=on variable is exported, GO111MODULE=on does not need to be specified when running the following commands.
 
-##### With go:
+Clone the repository:
 
-- the full suite of utilities:
 ```
-$ go install github.com/ethereumproject/go-ethereum/cmd/...`
-```
-
-- just __geth__:
-```
-$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
+git clone https://github.com/eth-classic/go-ethereum.git
 ```
 
-##### With make:
-```
-$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
-```
+Build executables simply with:
 
-- the full suite of utilities:
 ```
-$ make install
+make build
 ```
 
 - just __geth__:
 ```
-$ make install_geth
+make cmd/geth
 ```
 
 > For further `make` information, use `make help` to see a list and description of available make
 > commands.
+
+##### With go:
+
+```shell
+mkdir -p ./bin
+
+GO111MODULE=on go build -o ./bin/geth -tags="netgo" ./cmd/geth
+GO111MODULE=on go build -o ./bin/abigen ./cmd/abigen
+GO111MODULE=on go build -o ./bin/bootnode ./cmd/bootnode
+GO111MODULE=on go build -o ./bin/disasm ./cmd/disasm
+GO111MODULE=on go build -o ./bin/ethtest ./cmd/ethtest
+GO111MODULE=on go build -o ./bin/evm ./cmd/evm
+GO111MODULE=on go build -o ./bin/gethrpctest ./cmd/gethrpctest
+GO111MODULE=on go build -o ./bin/rlpdump ./cmd/rlpdump
+```
+
 
 
 ##### Building a specific release
 All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following before installing:
 
 ```shell
-$ go get -d github.com/ethereumproject/go-ethereum/...
-$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
-$ git checkout <TAG OR REVISION>
-# Use a go or make command above.
-```
-
-##### Using a release source code tarball
-Because of strict Go directory structure, the tarball needs to be extracted into the proper subdirectory under `$GOPATH`.
-The following commands are an example of building the v4.1.1 release:
-
-```shell
-$ mkdir -p $GOPATH/src/github.com/ethereumproject
-$ cd $GOPATH/src/github.com/ethereumproject
-$ tar xzf /path/to/go-ethereum-4.1.1.tar.gz
-$ mv go-ethereum-4.1.1 go-ethereum
-$ cd go-ethereum
-# Use a go or make command above.
+git checkout <TAG OR REVISION>
 ```
 
 ## Executables
@@ -103,7 +79,7 @@ This repository includes several wrappers/executables found in the `cmd` directo
 | `bootnode` | Stripped down version of our Ethereum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks. |
 | `disasm` | Bytecode disassembler to convert EVM (Ethereum Virtual Machine) bytecode into more user friendly assembly-like opcodes (e.g. `echo "6001" | disasm`). For details on the individual opcodes, please see pages 22-30 of the [Ethereum Yellow Paper](http://gavwood.com/paper.pdf). |
 | `evm` | Developer utility version of the EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode. Its purpose is to allow insolated, fine graned debugging of EVM opcodes (e.g. `evm --code 60ff60ff --debug`). |
-| `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/ethereumproject/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/ethereumproject/rpc-tests/blob/master/README.md) for details. |
+| `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/eth-classic/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/eth-classic/rpc-tests/blob/master/README.md) for details. |
 | `rlpdump` | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://github.com/ethereumproject/wiki/wiki/RLP)) dumps (data encoding used by the Ethereum protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
 
 ## :green_book: Geth: the basics
@@ -124,7 +100,7 @@ Within this parent directory, geth will use a __/subdirectory__ to hold data for
 
 __You can specify this subdirectory__ with `--chain=mycustomnet`.
 
-> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/ethereumproject/go-ethereum/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes).
+> __Migrating__: If you have existing data created prior to the [3.4 Release](https://github.com/eth-classic/go-ethereum/releases), geth will attempt to migrate your existing standard ETC data to this structure. To learn more about managing this migration please read our [3.4 release notes on our Releases page](https://github.com/ethereumproject/go-ethereum/wiki/Release-3.4.0-Notes).
 
 ### Full node on the main Ethereum network
 
@@ -242,7 +218,7 @@ You'll need to use your own programming environments' capabilities (libraries, t
 
 ### Operating a private/custom network
 
-As of [Geth 3.4](https://github.com/ethereumproject/go-ethereum/releases) you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID.
+As of [Geth 3.4](https://github.com/eth-classic/go-ethereum/releases) you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID.
 
 Please find full [example  external configuration files representing the Mainnet and Morden Testnet specs in the /config subdirectory of this repo](). You can use either of these files as a starting point for your own customizations.
 

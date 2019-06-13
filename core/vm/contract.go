@@ -19,7 +19,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/common"
 )
 
 // ContractRef is a reference to the contract's backing object
@@ -161,4 +161,12 @@ func (self *Contract) SetCallCode(addr *common.Address, hash common.Hash, code [
 // value pair.
 func (self *Contract) ForEachStorage(cb func(key, value common.Hash) bool) {
 	self.caller.ForEachStorage(cb)
+}
+
+func (c *Contract) isValidJump(pc *uint64, to *big.Int) bool {
+	if !c.jumpdests.has(c.CodeHash, c.Code, to) {
+		return false
+	}
+
+	return true
 }
