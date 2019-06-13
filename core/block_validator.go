@@ -21,12 +21,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/eth-classic/go-ethereum/common"
-	"github.com/eth-classic/go-ethereum/core/state"
-	"github.com/eth-classic/go-ethereum/core/types"
-	"github.com/eth-classic/go-ethereum/logger/glog"
-	"github.com/eth-classic/go-ethereum/params"
-	"github.com/eth-classic/go-ethereum/pow"
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/core/state"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
+	"github.com/ethereumproject/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/pow"
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -379,7 +379,7 @@ func calcDifficultyAtlantis(time uint64, parent *types.Header) *big.Int {
 }
 
 func calcDifficultyDiehard(time, parentTime uint64, parentDiff *big.Int, diehardBlock *big.Int) *big.Int {
-	// https://github.com/eth-classic/ECIPs/blob/master/ECIPS/ECIP-1010.md
+	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPS/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
 	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
@@ -427,7 +427,7 @@ func calcDifficultyDiehard(time, parentTime uint64, parentDiff *big.Int, diehard
 }
 
 func calcDifficultyExplosion(time, parentTime uint64, parentNumber, parentDiff *big.Int, delayBlock *big.Int, continueBlock *big.Int) *big.Int {
-	// https://github.com/eth-classic/ECIPs/blob/master/ECIPs/ECIP-1010.md
+	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1010.md
 	// algorithm:
 	// diff = (parent_diff +
 	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))

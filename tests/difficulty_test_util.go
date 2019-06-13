@@ -21,11 +21,11 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/eth-classic/go-ethereum/common"
-	"github.com/eth-classic/go-ethereum/common/hexutil"
-	"github.com/eth-classic/go-ethereum/core"
-	"github.com/eth-classic/go-ethereum/core/types"
-	"github.com/eth-classic/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/common/hexutil"
+	"github.com/ethereumproject/go-ethereum/core"
+	"github.com/ethereumproject/go-ethereum/core/types"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 // DifficultyTest is the structure of JSON from test files

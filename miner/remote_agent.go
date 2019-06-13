@@ -23,10 +23,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/eth-classic/ethash"
-	"github.com/eth-classic/go-ethereum/common"
-	"github.com/eth-classic/go-ethereum/logger"
-	"github.com/eth-classic/go-ethereum/logger/glog"
+	"github.com/ethereumproject/ethash"
+	"github.com/ethereumproject/go-ethereum/common"
+	"github.com/ethereumproject/go-ethereum/logger"
+	"github.com/ethereumproject/go-ethereum/logger/glog"
 )
 
 type hashrate struct {

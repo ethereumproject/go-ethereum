@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/eth-classic/go-ethereum/params"
+	"github.com/ethereumproject/go-ethereum/params"
 )
 
 var (
