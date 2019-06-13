@@ -29,7 +29,7 @@ build-essential`. On Mac: `xcode-select --install`.
 
 #### Get source and package dependencies
 ```
-$ go get -v github.com/ethereumproject/go-ethereum/...`
+$ go get -v github.com/ethereumproject/go-ethereum/...
 ```
 
 #### Install and build command executables
@@ -40,12 +40,12 @@ $ go get -v github.com/ethereumproject/go-ethereum/...`
 
 - the full suite of utilities:
 ```
-$ go install github.com/ethereumproject/go-ethereum/cmd/...`
+$ go install github.com/ethereumproject/go-ethereum/cmd/...
 ```
 
 - just __geth__:
 ```
-$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
+$ go install github.com/ethereumproject/go-ethereum/cmd/geth
 ```
 
 ##### With make:

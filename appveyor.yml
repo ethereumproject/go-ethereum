@@ -47,7 +47,7 @@ build_script:
   - go build -tags=sputnikvm -ldflags "-X main.Version=%VERSION%" github.com/ethereumproject/go-ethereum/cmd/geth
   - ps: >-
       .\geth.exe version | Where {$_ -match "^Version: "} | %{$actual=($_ -split "\s+")[1];If($actual -ne $env:VERSION){"Expected: `"$env:VERSION`", got: `"$ACTUAL`""; exit 1}}
-  - 7z a geth-classic-win64-%VERSION%.zip geth.exe
+  - 7z a gethereumproject-win64-%VERSION%.zip geth.exe
 before_deploy:
   # Set up GCP upload.
   - ps: >-

@@ -234,6 +234,11 @@ var trimPrefixes = []string{
 func trimToImportPath(file string) string {
 	if root := strings.LastIndex(file, "src/"); root != 0 {
 		file = file[root+3:]
+		re := regexp.MustCompile(`^.*\bgo-ethereum\b`)
+		index := re.FindStringIndex(file)
+		if index != nil {
+			file = file[index[1]:]
+		}
 	}
 	return file
 }
@@ -796,6 +801,7 @@ func (l *loggingT) header(s severity, depth int) (*buffer, string, int) {
 		}
 		file = file[1:] // drop '/'
 	}
+
 	return l.formatHeader(s, file, line), file, line
 }
 

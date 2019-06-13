@@ -95,10 +95,13 @@ func (self Log) Topics() [][]byte {
 }
 
 func makePreState(db ethdb.Database, accounts map[string]Account) *state.StateDB {
-	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	sdb := state.NewDatabase(db)
+	statedb, _ := state.New(common.Hash{}, sdb)
 	for addr, account := range accounts {
 		insertAccount(statedb, addr, account)
 	}
+	root, _ := statedb.CommitTo(db, false)
+	statedb, _ = state.New(root, sdb)
 	return statedb
 }
 
@@ -151,11 +154,55 @@ type RuleSet struct {
 	HomesteadGasRepriceBlock *big.Int
 	DiehardBlock             *big.Int
 	ExplosionBlock           *big.Int
+	AtlantisBlock            *big.Int
+}
+
+// StateTest object that matches the General State Test json file
+type StateTest struct {
+	Env  VmEnv                    `json:"env"`
+	Pre  map[string]Account       `json:"pre"`
+	Tx   stTransaction            `json:"transaction"`
+	Out  string                   `json:"out"`
+	Post map[string][]stPostState `json:"post"`
+}
+
+// GenesisAccount is an account in the state of the genesis block.
+type GenesisAccount struct {
+	Code       string            `json:"code,omitempty"`
+	Storage    map[string]string `json:"storage,omitempty"`
+	Balance    string            `json:"balance" gencodec:"required"`
+	Nonce      string            `json:"nonce,omitempty"`
+	PrivateKey string            `json:"secretKey,omitempty"` // for tests
+}
+
+type stPostState struct {
+	Root    common.UnprefixedHash `json:"hash"`
+	Logs    common.UnprefixedHash `json:"logs"`
+	Indexes struct {
+		Data  int `json:"data"`
+		Gas   int `json:"gas"`
+		Value int `json:"value"`
+	}
+}
+
+type stTransaction struct {
+	GasPrice   string   `json:"gasPrice"`
+	Nonce      string   `json:"nonce"`
+	To         string   `json:"to"`
+	Data       []string `json:"data"`
+	GasLimit   []string `json:"gasLimit"`
+	Value      []string `json:"value"`
+	PrivateKey string   `json:"secretKey"`
 }
 
 func (r RuleSet) IsHomestead(n *big.Int) bool {
-	return n.Cmp(r.HomesteadBlock) >= 0
+	return r.HomesteadBlock != nil && n.Cmp(r.HomesteadBlock) >= 0
 }
+
+func (r RuleSet) IsAtlantis(n *big.Int) bool {
+	return r.AtlantisBlock != nil && n.Cmp(r.AtlantisBlock) >= 0
+}
+
 func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 	if r.HomesteadGasRepriceBlock == nil || num == nil || num.Cmp(r.HomesteadGasRepriceBlock) < 0 {
 		return &vm.GasTable{
@@ -197,6 +244,7 @@ func (r RuleSet) GasTable(num *big.Int) *vm.GasTable {
 type Env struct {
 	ruleSet      RuleSet
 	depth        int
+	returnData   []byte
 	state        *state.StateDB
 	skipTransfer bool
 	initial      bool
@@ -269,8 +317,10 @@ func (self *Env) GetHash(n uint64) common.Hash {
 func (self *Env) AddLog(log *vm.Log) {
 	self.state.AddLog(*log)
 }
-func (self *Env) Depth() int     { return self.depth }
-func (self *Env) SetDepth(i int) { self.depth = i }
+func (self *Env) Depth() int                { return self.depth }
+func (self *Env) SetDepth(i int)            { self.depth = i }
+func (self *Env) ReturnData() []byte        { return self.returnData }
+func (self *Env) SetReturnData(data []byte) { self.returnData = data }
 func (self *Env) CanTransfer(from common.Address, balance *big.Int) bool {
 	if self.skipTransfer {
 		if self.initial {
@@ -323,6 +373,15 @@ func (self *Env) DelegateCall(caller vm.ContractRef, addr common.Address, data [
 		return nil, nil
 	}
 	return core.DelegateCall(self, caller, addr, data, gas, price)
+}
+
+func (self *Env) StaticCall(caller vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	if self.vmTest && self.depth > 0 {
+		caller.ReturnGas(gas, price)
+
+		return nil, nil
+	}
+	return core.StaticCall(self, caller, addr, data, gas, price)
 }
 
 func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {

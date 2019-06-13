@@ -211,7 +211,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, 
 		panic("malformed gas, price or value")
 	}
 	// Reset the pre-compiled contracts for VM tests.
-	vm.Precompiled = make(map[string]*vm.PrecompiledAccount)
+	vm.PrecompiledAtlantis = make(map[string]*vm.PrecompiledAccount)
 
 	caller := state.GetOrNewStateObject(from)
 

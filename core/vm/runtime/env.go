@@ -27,9 +27,10 @@ import (
 
 // Env is a basic runtime environment required for running the EVM.
 type Env struct {
-	ruleSet vm.RuleSet
-	depth   int
-	state   *state.StateDB
+	ruleSet    vm.RuleSet
+	depth      int
+	returnData []byte
+	state      *state.StateDB
 
 	origin   common.Address
 	coinbase common.Address
@@ -77,8 +78,11 @@ func (self *Env) GetHash(n uint64) common.Hash {
 func (self *Env) AddLog(log *vm.Log) {
 	self.state.AddLog(*log)
 }
-func (self *Env) Depth() int     { return self.depth }
-func (self *Env) SetDepth(i int) { self.depth = i }
+func (self *Env) Depth() int                { return self.depth }
+func (self *Env) SetDepth(i int)            { self.depth = i }
+func (self *Env) ReturnData() []byte        { return self.returnData }
+func (self *Env) SetReturnData(data []byte) { self.returnData = data }
+
 func (self *Env) CanTransfer(from common.Address, balance *big.Int) bool {
 	return self.state.GetBalance(from).Cmp(balance) >= 0
 }
@@ -102,6 +106,10 @@ func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byt
 
 func (self *Env) DelegateCall(me vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
 	return core.DelegateCall(self, me, addr, data, gas, price)
+}
+
+func (self *Env) StaticCall(me vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
+	return core.StaticCall(self, me, addr, data, gas, price)
 }
 
 func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {

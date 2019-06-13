@@ -24,7 +24,7 @@ type Memory struct {
 }
 
 func NewMemory() *Memory {
-	return &Memory{nil}
+	return &Memory{}
 }
 
 // Set sets offset + size to value

@@ -1,5 +1,4 @@
-[![MacOS Build Status](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/ethereumproject/go-ethereum?svg=true)](https://ci.appveyor.com/project/splix/go-ethereum)
+<!-- [![MacOS Build Status](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master.svg?style=shield)](https://circleci.com/gh/ethereumproject/go-ethereum/tree/master) -->
 [![Go Report Card](https://goreportcard.com/badge/github.com/ethereumproject/go-ethereum)](https://goreportcard.com/report/github.com/ethereumproject/go-ethereum)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/ethereumproject/go-ethereum)
@@ -12,84 +11,61 @@ _original_ chain. Ethereum Classic (ETC) offers a censorship-resistant and power
 
 ## Install
 
-### :rocket: From a release binary
-The simplest way to get started running a node is to visit our [Releases page](https://github.com/ethereumproject/go-ethereum/releases) and download a zipped executable binary (matching your operating system, of course), then moving the unzipped file `geth` to somewhere in your `$PATH`. Now you should be able to open a terminal and run `$ geth help` to make sure it's working. For additional installation instructions please check out the [Installation Wiki](https://github.com/ethereumproject/go-ethereum/wiki/Home#Developers).
-
-#### :beers: Using Homebrew (OSX only)
-```
-$ brew install ethereumproject/classic/geth
-```
-
 ### :hammer: Building the source
 
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
 
 #### Dependencies
-Building geth requires both Go >=1.9 and a C compiler. On Linux systems,
+Building geth requires both Go >=1.12 and a C compiler. On Linux systems,
 a C compiler can, for example, by installed with `sudo apt-get install
 build-essential`. On Mac: `xcode-select --install`.
 
-#### Get source and package dependencies
-```
-$ go get -v github.com/ethereumproject/go-ethereum/...`
-```
-
 #### Install and build command executables
 
-Executables installed from source will, by default, be installed in `$GOPATH/bin/`.
+With [go modules](https://github.com/golang/go/wiki/Modules), dependencies will be downloaded and cached when running build or test commands automatically. If running outside of `$GOPATH` or GO111MODULE=on variable is exported, GO111MODULE=on does not need to be specified when running the following commands.
 
-##### With go:
+Clone the repository:
 
-- the full suite of utilities:
 ```
-$ go install github.com/ethereumproject/go-ethereum/cmd/...`
-```
-
-- just __geth__:
-```
-$ go install github.com/ethereumproject/go-ethereum/cmd/geth`
+git clone https://github.com/ethereumproject/go-ethereum.git
 ```
 
-##### With make:
-```
-$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
-```
+Build executables simply with:
 
-- the full suite of utilities:
 ```
-$ make install
+make build
 ```
 
 - just __geth__:
 ```
-$ make install_geth
+make cmd/geth
 ```
 
 > For further `make` information, use `make help` to see a list and description of available make
 > commands.
+
+##### With go:
+
+```shell
+mkdir -p ./bin
+
+GO111MODULE=on go build -o ./bin/geth -tags="netgo" ./cmd/geth
+GO111MODULE=on go build -o ./bin/abigen ./cmd/abigen
+GO111MODULE=on go build -o ./bin/bootnode ./cmd/bootnode
+GO111MODULE=on go build -o ./bin/disasm ./cmd/disasm
+GO111MODULE=on go build -o ./bin/ethtest ./cmd/ethtest
+GO111MODULE=on go build -o ./bin/evm ./cmd/evm
+GO111MODULE=on go build -o ./bin/gethrpctest ./cmd/gethrpctest
+GO111MODULE=on go build -o ./bin/rlpdump ./cmd/rlpdump
+```
+
 
 
 ##### Building a specific release
 All the above commands results with building binaries from `HEAD`. To use a specific release/tag, use the following before installing:
 
 ```shell
-$ go get -d github.com/ethereumproject/go-ethereum/...
-$ cd $GOPATH/src/github.com/ethereumproject/go-ethereum
-$ git checkout <TAG OR REVISION>
-# Use a go or make command above.
-```
-
-##### Using a release source code tarball
-Because of strict Go directory structure, the tarball needs to be extracted into the proper subdirectory under `$GOPATH`.
-The following commands are an example of building the v4.1.1 release:
-
-```shell
-$ mkdir -p $GOPATH/src/github.com/ethereumproject
-$ cd $GOPATH/src/github.com/ethereumproject
-$ tar xzf /path/to/go-ethereum-4.1.1.tar.gz
-$ mv go-ethereum-4.1.1 go-ethereum
-$ cd go-ethereum
-# Use a go or make command above.
+git checkout <TAG OR REVISION>
 ```
 
 ## Executables

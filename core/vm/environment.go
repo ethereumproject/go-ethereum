@@ -26,6 +26,7 @@ import (
 // execution of the EVM instructions (e.g. whether it's homestead)
 type RuleSet interface {
 	IsHomestead(*big.Int) bool
+	IsAtlantis(*big.Int) bool
 	// GasTable returns the gas prices for this phase, which is based on
 	// block number passed in.
 	GasTable(*big.Int) *GasTable
@@ -68,12 +69,18 @@ type Environment interface {
 	Depth() int
 	// Set the current calling depth
 	SetDepth(i int)
+	// Get previous return data
+	ReturnData() []byte
+	// Set previous return data
+	SetReturnData([]byte)
 	// Call another contract
 	Call(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
 	// Take another's contract code and execute within our own context
 	CallCode(me ContractRef, addr common.Address, data []byte, gas, price, value *big.Int) ([]byte, error)
 	// Same as CallCode except sender and value is propagated from parent to child scope
 	DelegateCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
+	// Call another contract and disallow any state changing operations
+	StaticCall(me ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error)
 	// Create a new contract
 	Create(me ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error)
 }
@@ -83,7 +90,7 @@ type Vm interface {
 	// Run should execute the given contract with the input given in in
 	// and return the contract execution return bytes or an error if it
 	// failed.
-	Run(c *Contract, in []byte) ([]byte, error)
+	Run(c *Contract, in []byte, readOnly bool) ([]byte, error)
 }
 
 // Database is a EVM database for full state querying.
@@ -114,6 +121,7 @@ type Database interface {
 	// Exist reports whether the given account exists in state.
 	// Notably this should also return true for suicided accounts.
 	Exist(common.Address) bool
+	Empty(common.Address) bool
 }
 
 // Account represents a contract or basic ethereum account.
