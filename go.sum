@@ -5,13 +5,11 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/denisbrodbeck/machineid v0.8.0 h1:RLNt/ZG4IHF3Q0JS5oDITRmiEYgddmEkTO5dOa06d0U=
 github.com/denisbrodbeck/machineid v0.8.0/go.mod h1:dJUwb7PTidGDeYyUBmXZ2GphQBbjJCrnectwCyxcUSI=
-github.com/ethereumproject/benchmark v0.0.0-20190401191651-0f5bf26f7cd8 h1:GIDGsatfTO/DG+y1QFgTrcxR0XdC0HYojL1Rh1UYa3I=
-github.com/ethereumproject/benchmark v0.0.0-20190401191651-0f5bf26f7cd8/go.mod h1:/HC5hx0QxBbuFLsGiesBHuu8bAvHcGHA6ELxY8UCwBE=
-github.com/ethereumproject/ethash v0.0.0-20190401191819-b3fdb17512de h1:pITmUG7+V+zKZuytaz1p92qJafw5tQDOdp5ir5L9Eic=
-github.com/ethereumproject/ethash v0.0.0-20190401191819-b3fdb17512de/go.mod h1:W/nJfwtfsIfe4wL6cn4/MB251HfunQ+2YspZFvQ1lXA=
-github.com/ethereumproject/go-ethereum v0.0.0-20190521151733-61b178b4deeb/go.mod h1:SE2Tm8M3TSoN2s9L1cJvCNQoY0mzUxV3Do8/nsNbrWQ=
-github.com/ethereumproject/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce h1:s4NMPGFYsBRX+LGJAFZP4HG6DzZMhvQ++H0/Y712pFw=
-github.com/ethereumproject/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce/go.mod h1:N45ToIEdDjjzHVQq1I7qeyg+X3Mz76sA5FdIaPwquGU=
+github.com/ethereumproject/benchmark v0.0.0-20180113190147-8eff34efba25 h1:ZEfDopMiJCB3BiA90t9tMTx4WQtC0PpB4NheR0aqDzU=
+github.com/ethereumproject/benchmark v0.0.0-20180113190147-8eff34efba25/go.mod h1:YiSza/iCwF4jZK5euftNHCef3jwbxZAw5pogH05EuDg=
+github.com/ethereumproject/ethash v0.0.0-20180109211943-65a5b25efc27 h1:DhNr6sdNhf1pMpKq+rN9JowCN/SFAgzh1m70tedJPCM=
+github.com/ethereumproject/ethash v0.0.0-20180109211943-65a5b25efc27/go.mod h1:yZFgW+nKiAXQxe7ovrFWbiukpKrEItJ4VpZx53UeSc8=
+github.com/ethereumproject/go-ethereum v5.5.2+incompatible/go.mod h1:jjkgFD4EpU8cN6fQZIg0jbY/gYNHjeFOmHurvDOsqyw=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
@@ -54,6 +52,8 @@ github.com/mitchellh/go-wordwrap v1.0.0 h1:6GlHJ/LTGMrIJbwgdqdl2eEH8o+Exx/0m8ir9
 github.com/mitchellh/go-wordwrap v1.0.0/go.mod h1:ZXFpozHsX6DPmq2I0TCekCxypsnAUbP2oI0UX1GXzOo=
 github.com/nsf/termbox-go v0.0.0-20190325093121-288510b9734e h1:Vbib8wJAaMEF9jusI/kMSYMr/LtRzM7+F9MJgt/nH8k=
 github.com/nsf/termbox-go v0.0.0-20190325093121-288510b9734e/go.mod h1:IuKpRQcYE1Tfu+oAQqaLisqDeXgjyyltCfsaoYN18NQ=
+github.com/omeid/go-resources v0.0.0-20190324090249-46f4269d8abd h1:VxcHM9xpZ4BHxQPYWAavsxPciBZITxmnGNyIO7hsUfk=
+github.com/omeid/go-resources v0.0.0-20190324090249-46f4269d8abd/go.mod h1:SIESmZeFlCKsQZcd2NEiX8spNNmCWB1V/RbM/eBKDfo=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
