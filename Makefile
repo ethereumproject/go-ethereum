@@ -93,7 +93,7 @@ lint: ## Run all the linters
 
 test: ## Run all the tests
 	echo 'mode: atomic' > coverage.txt && \
-	${GO_MOD} go list ./... | xargs -n1 -I{} sh -c 'go test -covermode=atomic -coverprofile=coverage.tmp {} && \
+	${GO_MOD} go list ./... | xargs -n1 -I{} sh -c '${GO_MOD} go test -covermode=atomic -coverprofile=coverage.tmp {} && \
 	tail -n +2 coverage.tmp >> coverage.txt' && \
 	rm coverage.tmp
 
