@@ -138,7 +138,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	}
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
-	if root := statedb.IntermediateRoot(false); header.Root != root {
+	if root := statedb.IntermediateRoot(v.config.IsAtlantis(header.Number)); header.Root != root {
 		return fmt.Errorf("invalid merkle root: header=%x computed=%x", header.Root, root)
 	}
 	return nil

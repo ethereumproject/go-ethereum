@@ -556,7 +556,7 @@ func (self *worker) commitNewWork() {
 	if atomic.LoadInt32(&self.mining) == 1 {
 		// commit state root after all state transitions.
 		core.AccumulateRewards(work.config, work.state, header, uncles)
-		header.Root = work.state.IntermediateRoot(false)
+		header.Root = work.state.IntermediateRoot(self.config.IsAtlantis(header.Number))
 	}
 
 	// create the new block whose nonce will be mined.

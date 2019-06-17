@@ -179,7 +179,7 @@ Loop:
 	usedGas := vm.UsedGas()
 	totalUsedGas.Add(totalUsedGas, usedGas)
 
-	receipt := types.NewReceipt(statedb.IntermediateRoot(false).Bytes(), totalUsedGas)
+	receipt := types.NewReceipt(statedb.IntermediateRoot(config.IsAtlantis(header.Number)).Bytes(), totalUsedGas)
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = new(big.Int).Set(totalUsedGas)
 	if vm.Failed() {

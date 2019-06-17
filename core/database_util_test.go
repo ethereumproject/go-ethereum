@@ -28,6 +28,8 @@ import (
 
 	"crypto/ecdsa"
 	"encoding/binary"
+	"strings"
+
 	"github.com/eth-classic/go-ethereum/common"
 	"github.com/eth-classic/go-ethereum/core/types"
 	"github.com/eth-classic/go-ethereum/core/vm"
@@ -35,7 +37,6 @@ import (
 	"github.com/eth-classic/go-ethereum/crypto/sha3"
 	"github.com/eth-classic/go-ethereum/ethdb"
 	"github.com/eth-classic/go-ethereum/rlp"
-	"strings"
 )
 
 type diffTest struct {
@@ -647,7 +648,7 @@ func TestReceiptStorage(t *testing.T) {
 	db, _ := ethdb.NewMemDatabase()
 
 	receipt1 := &types.Receipt{
-		PostState:         []byte{0x01},
+		Status:            types.TxFailure,
 		CumulativeGasUsed: big.NewInt(1),
 		Logs: vm.Logs{
 			&vm.Log{Address: common.BytesToAddress([]byte{0x11})},
@@ -658,7 +659,7 @@ func TestReceiptStorage(t *testing.T) {
 		GasUsed:         big.NewInt(111111),
 	}
 	receipt2 := &types.Receipt{
-		PostState:         []byte{0x02},
+		PostState:         []byte{},
 		CumulativeGasUsed: big.NewInt(2),
 		Logs: vm.Logs{
 			&vm.Log{Address: common.BytesToAddress([]byte{0x22})},
@@ -706,7 +707,7 @@ func TestBlockReceiptStorage(t *testing.T) {
 	db, _ := ethdb.NewMemDatabase()
 
 	receipt1 := &types.Receipt{
-		PostState:         []byte{0x01},
+		Status:            types.TxFailure,
 		CumulativeGasUsed: big.NewInt(1),
 		Logs: vm.Logs{
 			&vm.Log{Address: common.BytesToAddress([]byte{0x11})},
@@ -717,7 +718,7 @@ func TestBlockReceiptStorage(t *testing.T) {
 		GasUsed:         big.NewInt(111111),
 	}
 	receipt2 := &types.Receipt{
-		PostState:         []byte{0x02},
+		PostState:         []byte{},
 		CumulativeGasUsed: big.NewInt(2),
 		Logs: vm.Logs{
 			&vm.Log{Address: common.BytesToAddress([]byte{0x22})},

@@ -263,7 +263,7 @@ func makeHeader(config *ChainConfig, parent *types.Block, state *state.StateDB) 
 		time = new(big.Int).Add(parent.Time(), big.NewInt(10)) // block time is fixed at 10 seconds
 	}
 	return &types.Header{
-		Root:       state.IntermediateRoot(false),
+		Root:       state.IntermediateRoot(config.IsAtlantis(parent.Number())),
 		ParentHash: parent.Hash(),
 		Coinbase:   parent.Coinbase(),
 		Difficulty: CalcDifficulty(config, time.Uint64(), parent.Header()),
