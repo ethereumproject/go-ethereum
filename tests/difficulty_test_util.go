@@ -52,6 +52,10 @@ func (test *DifficultyTest) runDifficulty(t *testing.T, config *core.ChainConfig
 		UncleHash:  test.UncleHash,
 	}
 
+	if config.IsAtlantis(parentNumber) && parent.Number.Cmp(big.NewInt(3199999)) >= 0 {
+		return nil
+	}
+
 	// Check to make sure difficulty is above minimum
 	if parentDifficulty.Cmp(params.MinimumDifficulty) < 0 {
 		t.Skip("difficulty below minimum")
