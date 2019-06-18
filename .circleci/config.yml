@@ -12,6 +12,41 @@ jobs:
       - run:
           name: Compile Binaries
           command: make build
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+  tests-linux-go-1.12:
+    working_directory: ~/go-ethereum
+    docker:
+      - image: circleci/golang:1.12
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
+      - run:
+          name: Initialize Ethereum Testsuite
+          command: git submodule update --init --recursive
+      - run:
+          name: Run All Tests
+          command: make test
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+  release-linux-go-1.12:
+    working_directory: ~/go-ethereum
+    docker:
+      - image: circleci/golang:1.12
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
+      - run:
+          name: Compile Binaries
+          command: make build
       - run:
           name: Release Artifacts
           command: |
@@ -38,29 +73,26 @@ jobs:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
-  tests-linux-go-1.12:
-    working_directory: ~/go-ethereum
-    docker:
-      - image: circleci/golang:1.12
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-      - run:
-          name: Initialize Ethereum Testsuite
-          command: git submodule update --init --recursive
-      - run:
-          name: Run All Tests
-          command: make test
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
 
 workflows:
   version: 2
   release:
     jobs:
-      - tests-linux-go-1.12
-      - build-linux-go-1.12
+      - build-linux-go-1.12:
+          filters:
+            tags:
+              only: /.*/
+      - tests-linux-go-1.12:
+          requires:
+            - build-linux-go-1.12
+          filters:
+            tags:
+              only: /.*/
+      - release-linux-go-1.12:
+          requires:
+            - tests-linux-go-1.12
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
