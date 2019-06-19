@@ -352,7 +352,7 @@ func TestCalcDifficulty1Mainnet(t *testing.T) {
 
 	// Atlantis
 	atlantisBlock := config.ForkByName("Atlantis").Block
-	if defuseBlock == nil {
+	if atlantisBlock == nil {
 		t.Error("missing Atlantis fork block")
 	}
 
@@ -401,7 +401,7 @@ func TestCalcDifficulty1Mainnet(t *testing.T) {
 		new(big.Int).Add(atlantisBlock, big.NewInt(0)):  calcDifficultyAtlantis(time, &types.Header{Number: new(big.Int).Add(atlantisBlock, big.NewInt(0)), Time: new(big.Int).SetUint64(parentTime), Difficulty: parentDiff}),
 		new(big.Int).Add(atlantisBlock, big.NewInt(1)):  calcDifficultyAtlantis(time, &types.Header{Number: new(big.Int).Add(atlantisBlock, big.NewInt(1)), Time: new(big.Int).SetUint64(parentTime), Difficulty: parentDiff}),
 
-		big.NewInt(10000000): calcDifficultyAtlantis(time, &types.Header{Number: big.NewInt(10000000), Time: new(big.Int).SetUint64(parentTime), Difficulty: parentDiff}),
+		new(big.Int).Add(atlantisBlock, big.NewInt(1000000)): calcDifficultyAtlantis(time, &types.Header{Number: new(big.Int).Add(atlantisBlock, big.NewInt(1000000)), Time: new(big.Int).SetUint64(parentTime), Difficulty: parentDiff}),
 	}
 
 	for parentNum, expected := range table {
@@ -447,7 +447,7 @@ func TestCalcDifficulty1Morden(t *testing.T) {
 
 	// Atlantis
 	atlantisBlock := config.ForkByName("Atlantis").Block
-	if defuseBlock == nil {
+	if atlantisBlock == nil {
 		t.Error("missing Atlantis fork block")
 	}
 
@@ -489,7 +489,7 @@ func TestCalcDifficulty1Morden(t *testing.T) {
 		new(big.Int).Add(atlantisBlock, big.NewInt(0)):  calcDifficultyAtlantis(time, &types.Header{Number: new(big.Int).Add(atlantisBlock, big.NewInt(0)), Time: new(big.Int).SetUint64(parentTime), Difficulty: parentDiff}),
 		new(big.Int).Add(atlantisBlock, big.NewInt(1)):  calcDifficultyAtlantis(time, &types.Header{Number: new(big.Int).Add(atlantisBlock, big.NewInt(1)), Time: new(big.Int).SetUint64(parentTime), Difficulty: parentDiff}),
 
-		big.NewInt(10000000): calcDifficultyAtlantis(time, &types.Header{Number: big.NewInt(10000000), Time: new(big.Int).SetUint64(parentTime), Difficulty: parentDiff}),
+		new(big.Int).Add(atlantisBlock, big.NewInt(1000000)): calcDifficultyAtlantis(time, &types.Header{Number: new(big.Int).Add(atlantisBlock, big.NewInt(1000000)), Time: new(big.Int).SetUint64(parentTime), Difficulty: parentDiff}),
 	}
 
 	for parentNum, expected := range table {

@@ -266,9 +266,6 @@ func expectedEraFromBlockNumber(i, eralen *big.Int, t *testing.T) expectedEraFor
 	ePlusOne := new(big.Int).Add(e, big.NewInt(1)) // since expectedEraForTesting is not 0-indexed; iota + 1
 	ei := ePlusOne.Int64()
 	expEra := int(ei)
-	if expEra > 4 || expEra < 1 {
-		t.Fatalf("Unexpected era value, want 1 < e < 5, got: %d", expEra)
-	}
 	return expectedEraForTesting(expEra)
 }
 
