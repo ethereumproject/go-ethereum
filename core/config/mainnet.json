@@ -98,7 +98,7 @@
             },
             {
                 "name": "Atlantis",
-                "block": 2147483647,
+                "block": 8772000,
                 "features": [
                     {
                         "id": "difficulty",
