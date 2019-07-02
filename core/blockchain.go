@@ -46,7 +46,7 @@ import (
 	"github.com/eth-classic/go-ethereum/pow"
 	"github.com/eth-classic/go-ethereum/rlp"
 	"github.com/eth-classic/go-ethereum/trie"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 var (
@@ -1655,7 +1655,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (res *ChainInsertResult) {
 			return
 		}
 		// Write state changes to database
-		_, err = bc.stateCache.CommitTo(bc.chainDb, false)
+		_, err = bc.stateCache.CommitTo(bc.chainDb, bc.config.IsAtlantis(block.Number()))
 		if err != nil {
 			res.Error = err
 			return
