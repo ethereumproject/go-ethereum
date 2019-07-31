@@ -84,8 +84,8 @@ func (ms *ManagedState) NewNonce(addr common.Address) uint64 {
 
 // GetNonce returns the canonical nonce for the managed or unmanaged account
 func (ms *ManagedState) GetNonce(addr common.Address) uint64 {
-	ms.mu.RLock()
-	defer ms.mu.RUnlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 
 	if ms.hasAccount(addr) {
 		account := ms.getAccount(addr)

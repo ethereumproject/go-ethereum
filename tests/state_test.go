@@ -702,10 +702,6 @@ func TestAllETH(t *testing.T) {
 	skipTests["randomStatetest644.json"] = "random unimplemented"
 	skipTests["randomStatetest645.json"] = "random unimplemented"
 
-	// EIP 158/161 skipped tests
-	skipTests["RevertPrefoundEmptyOOG.json"] = "State trie clearing unimplemented"
-	skipTests["FailedCreateRevertsDeletion.json"] = "State trie clearing unimplemented"
-
 	unsupportedDirs := map[string]bool{
 		"stZeroKnowledge":  true,
 		"stZeroKnowledge2": true,

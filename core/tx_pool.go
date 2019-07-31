@@ -124,6 +124,13 @@ func (pool *TxPool) eventLoop() {
 	}
 }
 
+func (pool *TxPool) lockedReset() {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	pool.resetState()
+}
+
 func (pool *TxPool) resetState() {
 	currentState, err := pool.currentState()
 	if err != nil {

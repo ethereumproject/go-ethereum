@@ -41,7 +41,7 @@ func setupTxPool() (*TxPool, *ecdsa.PrivateKey) {
 	var m event.TypeMux
 	key, _ := crypto.GenerateKey()
 	newPool := NewTxPool(testChainConfig(), &m, func() (*state.StateDB, error) { return statedb, nil }, func() *big.Int { return big.NewInt(1000000) })
-	newPool.resetState()
+	newPool.lockedReset()
 	return newPool, key
 }
 
@@ -184,7 +184,7 @@ func TestTransactionChainFork(t *testing.T) {
 		pool.currentState = func() (*state.StateDB, error) { return statedb, nil }
 		currentState, _ := pool.currentState()
 		currentState.AddBalance(addr, big.NewInt(100000000000000))
-		pool.resetState()
+		pool.lockedReset()
 	}
 	resetState()
 
@@ -210,7 +210,7 @@ func TestTransactionDoubleNonce(t *testing.T) {
 		pool.currentState = func() (*state.StateDB, error) { return statedb, nil }
 		currentState, _ := pool.currentState()
 		currentState.AddBalance(addr, big.NewInt(100000000000000))
-		pool.resetState()
+		pool.lockedReset()
 	}
 	resetState()
 
@@ -253,14 +253,14 @@ func TestNonceRecovery(t *testing.T) {
 	currentState, _ := pool.currentState()
 	currentState.SetNonce(addr, n)
 	currentState.AddBalance(addr, big.NewInt(100000000000000))
-	pool.resetState()
+	pool.lockedReset()
 	tx := transaction(n, big.NewInt(100000), key)
 	if err := pool.Add(tx); err != nil {
 		t.Error(err)
 	}
 	// simulate some weird re-order of transactions and missing nonce(s)
 	currentState.SetNonce(addr, n-1)
-	pool.resetState()
+	pool.lockedReset()
 	if fn := pool.pendingState.GetNonce(addr); fn != n+1 {
 		t.Errorf("expected nonce to be %d, got %d", n+1, fn)
 	}
@@ -308,7 +308,7 @@ func TestTransactionDropping(t *testing.T) {
 	if len(pool.queue[account]) != 2 {
 		t.Errorf("queued transaction mismatch: have %d, want %d", len(pool.queue), 2)
 	}
-	pool.resetState()
+	pool.lockedReset()
 	if len(pool.pending) != 2 {
 		t.Errorf("pending transaction mismatch: have %d, want %d", len(pool.pending), 2)
 	}
@@ -317,7 +317,7 @@ func TestTransactionDropping(t *testing.T) {
 	}
 	// Reduce the balance of the account, and check that invalidated transactions are dropped
 	state.AddBalance(account, big.NewInt(-750))
-	pool.resetState()
+	pool.lockedReset()
 
 	if _, ok := pool.pending[tx0.Hash()]; !ok {
 		t.Errorf("funded pending transaction missing: %v", tx0)
@@ -363,7 +363,7 @@ func TestTransactionPostponing(t *testing.T) {
 	if len(pool.queue[account]) != 0 {
 		t.Errorf("queued transaction mismatch: have %d, want %d", len(pool.queue), 0)
 	}
-	pool.resetState()
+	pool.lockedReset()
 	if len(pool.pending) != len(txns) {
 		t.Errorf("pending transaction mismatch: have %d, want %d", len(pool.pending), len(txns))
 	}
@@ -372,7 +372,7 @@ func TestTransactionPostponing(t *testing.T) {
 	}
 	// Reduce the balance of the account, and check that transactions are reorganised
 	state.AddBalance(account, big.NewInt(-750))
-	pool.resetState()
+	pool.lockedReset()
 
 	if _, ok := pool.pending[txns[0].Hash()]; !ok {
 		t.Errorf("tx %d: valid and funded transaction missing from pending pool: %v", 0, txns[0])
