@@ -17,53 +17,217 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/eth-classic/go-ethereum/common"
+	"github.com/eth-classic/go-ethereum/core/state"
 	"github.com/eth-classic/go-ethereum/core/vm"
 	"github.com/eth-classic/go-ethereum/crypto"
+	"github.com/eth-classic/go-ethereum/params"
 )
 
 var (
+	emptyCodeHash = crypto.Keccak256Hash(nil)
+
 	callCreateDepthMax = 1024 // limit call/create stack
 	errCallCreateDepth = fmt.Errorf("Max call depth exceeded (%d)", callCreateDepthMax)
 
 	maxCodeSize            = 24576
 	errMaxCodeSizeExceeded = fmt.Errorf("Max Code Size exceeded (%d)", maxCodeSize)
+
+	errContractAddressCollision = errors.New("contract address collision")
 )
 
-// Call executes within the given contract
+// Call executes the contract associated with the addr with the given input as
+// parameters. It also handles any necessary value transfer required and takes
+// the necessary steps to create accounts and reverses the state in case of an
+// execution error or failed value transfer.
 func Call(env vm.Environment, caller vm.ContractRef, addr common.Address, input []byte, gas, gasPrice, value *big.Int) (ret []byte, err error) {
-	ret, _, err = exec(env, caller, &addr, &addr, env.Db().GetCodeHash(addr), input, env.Db().GetCode(addr), gas, gasPrice, value, false)
+	evm := env.Vm()
+	// Depth check execution. Fail if we're trying to execute above the limit.
+	if env.Depth() > callCreateDepthMax {
+		caller.ReturnGas(gas, gasPrice)
+
+		return nil, errCallCreateDepth
+	}
+
+	if !env.CanTransfer(caller.Address(), value) {
+		caller.ReturnGas(gas, gasPrice)
+
+		return nil, ValueTransferErr("insufficient funds to transfer value. Req %v, has %v", value, env.Db().GetBalance(caller.Address()))
+	}
+
+	var (
+		from       = env.Db().GetAccount(caller.Address())
+		to         vm.Account
+		snapshot   = env.SnapshotDatabase()
+		isAtlantis = env.RuleSet().IsAtlantis(env.BlockNumber())
+	)
+	if !env.Db().Exist(addr) {
+		precompiles := vm.PrecompiledPreAtlantis
+		if isAtlantis {
+			precompiles = vm.PrecompiledAtlantis
+		}
+		if precompiles[addr.Str()] == nil && isAtlantis && value.BitLen() == 0 {
+			caller.ReturnGas(gas, gasPrice)
+			return nil, nil
+		}
+		to = env.Db().CreateAccount(addr)
+	} else {
+		to = env.Db().GetAccount(addr)
+	}
+	env.Transfer(from, to, value)
+	// Initialise a new contract and set the code that is to be used by the EVM.
+	// The contract is a scoped environment for this execution context only.
+	contract := vm.NewContract(caller, to, value, gas, gasPrice)
+	contract.SetCallCode(&addr, env.Db().GetCodeHash(addr), env.Db().GetCode(addr))
+	defer contract.Finalise()
+
+	// Even if the account has no code, we need to continue because it might be a precompile
+	ret, err = evm.Run(contract, input, false)
+
+	// When an error was returned by the EVM or when setting the creation code
+	// above we revert to the snapshot and consume any gas remaining. Additionally
+	// when we're in homestead this also counts for code storage gas errors.
+	if err != nil {
+		env.RevertToSnapshot(snapshot)
+		if err != vm.ErrRevert {
+			contract.UseGas(contract.Gas)
+		}
+	}
 	return ret, err
 }
 
 // CallCode executes the given address' code as the given contract address
 func CallCode(env vm.Environment, caller vm.ContractRef, addr common.Address, input []byte, gas, gasPrice, value *big.Int) (ret []byte, err error) {
-	callerAddr := caller.Address()
-	ret, _, err = exec(env, caller, &callerAddr, &addr, env.Db().GetCodeHash(addr), input, env.Db().GetCode(addr), gas, gasPrice, value, false)
+	evm := env.Vm()
+	// Depth check execution. Fail if we're trying to execute above the limit.
+	if env.Depth() > callCreateDepthMax {
+		caller.ReturnGas(gas, gasPrice)
+
+		return nil, errCallCreateDepth
+	}
+
+	if !env.CanTransfer(caller.Address(), value) {
+		caller.ReturnGas(gas, gasPrice)
+
+		return nil, ValueTransferErr("insufficient funds to transfer value. Req %v, has %v", value, env.Db().GetBalance(caller.Address()))
+	}
+
+	var (
+		to       = env.Db().GetAccount(caller.Address())
+		snapshot = env.SnapshotDatabase()
+	)
+	// Initialise a new contract and set the code that is to be used by the EVM.
+	// The contract is a scoped environment for this execution context only.
+	contract := vm.NewContract(caller, to, value, gas, gasPrice)
+	contract.SetCallCode(&addr, env.Db().GetCodeHash(addr), env.Db().GetCode(addr))
+	defer contract.Finalise()
+
+	// Even if the account has no code, we need to continue because it might be a precompile
+	ret, err = evm.Run(contract, input, false)
+
+	if err != nil {
+		env.RevertToSnapshot(snapshot)
+		if err != vm.ErrRevert {
+			contract.UseGas(contract.Gas)
+		}
+	}
 	return ret, err
 }
 
 // DelegateCall is equivalent to CallCode except that sender and value propagates from parent scope to child scope
 func DelegateCall(env vm.Environment, caller vm.ContractRef, addr common.Address, input []byte, gas, gasPrice *big.Int) (ret []byte, err error) {
-	callerAddr := caller.Address()
-	originAddr := env.Origin()
-	callerValue := caller.Value()
-	ret, _, err = execDelegateCall(env, caller, &originAddr, &callerAddr, &addr, env.Db().GetCodeHash(addr), input, env.Db().GetCode(addr), gas, gasPrice, callerValue)
+	evm := env.Vm()
+	// Depth check execution. Fail if we're trying to execute above the limit.
+	if env.Depth() > callCreateDepthMax {
+		caller.ReturnGas(gas, gasPrice)
+
+		return nil, errCallCreateDepth
+	}
+
+	var (
+		to       vm.Account
+		snapshot = env.SnapshotDatabase()
+	)
+	if !env.Db().Exist(caller.Address()) {
+		to = env.Db().CreateAccount(caller.Address())
+	} else {
+		to = env.Db().GetAccount(caller.Address())
+	}
+
+	// Initialise a new contract and set the code that is to be used by the EVM.
+	// The contract is a scoped environment for this execution context only.
+	contract := vm.NewContract(caller, to, caller.Value(), gas, gasPrice).AsDelegate()
+	contract.SetCallCode(&addr, env.Db().GetCodeHash(addr), env.Db().GetCode(addr))
+	defer contract.Finalise()
+
+	// Even if the account has no code, we need to continue because it might be a precompile
+	ret, err = evm.Run(contract, input, false)
+
+	// When an error was returned by the EVM or when setting the creation code
+	// above we revert to the snapshot and consume any gas remaining. Additionally
+	// when we're in homestead this also counts for code storage gas errors.
+	if err != nil {
+		env.RevertToSnapshot(snapshot)
+		if err != vm.ErrRevert {
+			contract.UseGas(contract.Gas)
+		}
+	}
 	return ret, err
 }
 
 // StaticCall executes within the given contract and throws exception if state is attempted to be changed
 func StaticCall(env vm.Environment, caller vm.ContractRef, addr common.Address, input []byte, gas, gasPrice *big.Int) (ret []byte, err error) {
-	ret, _, err = exec(env, caller, &addr, &addr, env.Db().GetCodeHash(addr), input, env.Db().GetCode(addr), gas, gasPrice, new(big.Int), true)
+	evm := env.Vm()
+	// Depth check execution. Fail if we're trying to execute above the limit.
+	if env.Depth() > callCreateDepthMax {
+		caller.ReturnGas(gas, gasPrice)
+
+		return nil, errCallCreateDepth
+	}
+
+	var (
+		to       vm.Account
+		snapshot = env.SnapshotDatabase()
+	)
+	if !env.Db().Exist(addr) {
+		to = env.Db().CreateAccount(addr)
+	} else {
+		to = env.Db().GetAccount(addr)
+	}
+
+	// Initialise a new contract and set the code that is to be used by the EVM.
+	// The contract is a scoped environment for this execution context only.
+	contract := vm.NewContract(caller, to, new(big.Int), gas, gasPrice)
+	contract.SetCallCode(&addr, env.Db().GetCodeHash(addr), env.Db().GetCode(addr))
+	defer contract.Finalise()
+
+	// We do an AddBalance of zero here, just in order to trigger a touch.
+	// This is done to keep consensus with other clients since empty objects
+	// get touched to be deleted even in a StaticCall context
+	env.Db().AddBalance(addr, big.NewInt(0))
+
+	// Even if the account has no code, we need to continue because it might be a precompile
+	ret, err = evm.Run(contract, input, true)
+
+	// When an error was returned by the EVM or when setting the creation code
+	// above we revert to the snapshot and consume any gas remaining. Additionally
+	// when we're in homestead this also counts for code storage gas errors.
+	if err != nil {
+		env.RevertToSnapshot(snapshot)
+		if err != vm.ErrRevert {
+			contract.UseGas(contract.Gas)
+		}
+	}
 	return ret, err
 }
 
 // Create creates a new contract with the given code
 func Create(env vm.Environment, caller vm.ContractRef, code []byte, gas, gasPrice, value *big.Int) (ret []byte, address common.Address, err error) {
-	ret, address, err = exec(env, caller, nil, nil, crypto.Keccak256Hash(code), nil, code, gas, gasPrice, value, false)
+	ret, address, err = create(env, caller, crypto.Keccak256Hash(code), code, gas, gasPrice, value)
 	// Here we get an error if we run into maximum stack depth,
 	// See: https://github.com/ethereum/yellowpaper/pull/131
 	// and YP definitions for CREATE
@@ -75,10 +239,9 @@ func Create(env vm.Environment, caller vm.ContractRef, code []byte, gas, gasPric
 	return ret, address, err
 }
 
-func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value *big.Int, readOnly bool) (ret []byte, addr common.Address, err error) {
+func create(env vm.Environment, caller vm.ContractRef, codeHash common.Hash, code []byte, gas, gasPrice, value *big.Int) (ret []byte, address common.Address, err error) {
 	evm := env.Vm()
-	// Depth check execution. Fail if we're trying to execute above the
-	// limit.
+	// Depth check execution. Fail if we're trying to execute above the limit.
 	if env.Depth() > callCreateDepthMax {
 		caller.ReturnGas(gas, gasPrice)
 
@@ -91,39 +254,25 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 		return nil, common.Address{}, ValueTransferErr("insufficient funds to transfer value. Req %v, has %v", value, env.Db().GetBalance(caller.Address()))
 	}
 
-	var createAccount bool
-	if address == nil {
-		// Create a new account on the state
-		nonce := env.Db().GetNonce(caller.Address())
-		env.Db().SetNonce(caller.Address(), nonce+1)
-		addr = crypto.CreateAddress(caller.Address(), nonce)
-		address = &addr
-		createAccount = true
+	// Create a new account on the state
+	nonce := env.Db().GetNonce(caller.Address())
+	env.Db().SetNonce(caller.Address(), nonce+1)
+	address = crypto.CreateAddress(caller.Address(), nonce)
+
+	// Ensure there's no existing contract already at the designated address
+	contractHash := env.Db().GetCodeHash(address)
+	if env.Db().GetNonce(address) != state.StartingNonce || (contractHash != (common.Hash{}) && contractHash != emptyCodeHash) {
+		return nil, common.Address{}, errContractAddressCollision
 	}
 
-	snapshotPreTransfer := env.SnapshotDatabase()
 	var (
-		from = env.Db().GetAccount(caller.Address())
-		to   vm.Account
+		snapshot = env.SnapshotDatabase()
+		from     = env.Db().GetAccount(caller.Address())
+		to       = env.Db().CreateAccount(address)
 	)
 
-	if createAccount {
-		to = env.Db().CreateAccount(*address)
-
-		if env.RuleSet().IsAtlantis(env.BlockNumber()) {
-			env.Db().SetNonce(*address, 1)
-		}
-	} else {
-		if !env.Db().Exist(*address) {
-			//no account may change state from non-existent to existent-but-empty. Refund sender.
-			if vm.PrecompiledAtlantis[(*address).Str()] == nil && env.RuleSet().IsAtlantis(env.BlockNumber()) && value.BitLen() == 0 {
-				caller.ReturnGas(gas, gasPrice)
-				return nil, common.Address{}, nil
-			}
-			to = env.Db().CreateAccount(*address)
-		} else {
-			to = env.Db().GetAccount(*address)
-		}
+	if env.RuleSet().IsAtlantis(env.BlockNumber()) {
+		env.Db().SetNonce(address, state.StartingNonce+1)
 	}
 
 	env.Transfer(from, to, value)
@@ -132,22 +281,22 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	// EVM. The contract is a scoped environment for this execution context
 	// only.
 	contract := vm.NewContract(caller, to, value, gas, gasPrice)
-	contract.SetCallCode(codeAddr, codeHash, code)
+	contract.SetCallCode(nil, codeHash, code)
 	defer contract.Finalise()
 
-	ret, err = evm.Run(contract, input, readOnly)
+	ret, err = evm.Run(contract, nil, false)
 
 	maxCodeSizeExceeded := len(ret) > maxCodeSize && env.RuleSet().IsAtlantis(env.BlockNumber())
 	// if the contract creation ran successfully and no errors were returned
 	// calculate the gas required to store the code. If the code could not
 	// be stored due to not enough gas set an error and let it be handled
 	// by the error checking condition below.
-	if err == nil && createAccount && !maxCodeSizeExceeded {
+	if err == nil && !maxCodeSizeExceeded {
 		dataGas := big.NewInt(int64(len(ret)))
 		// create data gas
-		dataGas.Mul(dataGas, big.NewInt(200))
+		dataGas.Mul(dataGas, params.CreateDataGas)
 		if contract.UseGas(dataGas) {
-			env.Db().SetCode(*address, ret)
+			env.Db().SetCode(address, ret)
 		} else {
 			err = vm.CodeStoreOutOfGasError
 		}
@@ -156,8 +305,8 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in homestead this also counts for code storage gas errors.
-	if createAccount && maxCodeSizeExceeded || (err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != vm.CodeStoreOutOfGasError)) {
-		env.RevertToSnapshot(snapshotPreTransfer)
+	if maxCodeSizeExceeded || (err != nil && (env.RuleSet().IsHomestead(env.BlockNumber()) || err != vm.CodeStoreOutOfGasError)) {
+		env.RevertToSnapshot(snapshot)
 		if err != vm.ErrRevert {
 			contract.UseGas(contract.Gas)
 		}
@@ -168,42 +317,7 @@ func exec(env vm.Environment, caller vm.ContractRef, address, codeAddr *common.A
 		err = errMaxCodeSizeExceeded
 	}
 
-	return ret, addr, err
-}
-
-func execDelegateCall(env vm.Environment, caller vm.ContractRef, originAddr, toAddr, codeAddr *common.Address, codeHash common.Hash, input, code []byte, gas, gasPrice, value *big.Int) (ret []byte, addr common.Address, err error) {
-	evm := env.Vm()
-	// Depth check execution. Fail if we're trying to execute above the
-	// limit.
-	if env.Depth() > callCreateDepthMax {
-		caller.ReturnGas(gas, gasPrice)
-		return nil, common.Address{}, errCallCreateDepth
-	}
-
-	snapshot := env.SnapshotDatabase()
-
-	var to vm.Account
-	if !env.Db().Exist(*toAddr) {
-		to = env.Db().CreateAccount(*toAddr)
-	} else {
-		to = env.Db().GetAccount(*toAddr)
-	}
-
-	// Iinitialise a new contract and make initialise the delegate values
-	contract := vm.NewContract(caller, to, value, gas, gasPrice).AsDelegate()
-	contract.SetCallCode(codeAddr, codeHash, code)
-	defer contract.Finalise()
-
-	ret, err = evm.Run(contract, input, false)
-
-	if err != nil {
-		env.RevertToSnapshot(snapshot)
-		if err != vm.ErrRevert {
-			contract.UseGas(contract.Gas)
-		}
-	}
-
-	return ret, addr, err
+	return ret, address, err
 }
 
 // generic transfer method

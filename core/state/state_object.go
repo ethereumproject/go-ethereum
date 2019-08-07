@@ -28,6 +28,7 @@ import (
 	"github.com/eth-classic/go-ethereum/logger/glog"
 	"github.com/eth-classic/go-ethereum/rlp"
 	"github.com/eth-classic/go-ethereum/trie"
+
 )
 
 var emptyCodeHash = crypto.Keccak256(nil)
@@ -93,7 +94,7 @@ type StateObject struct {
 
 // empty returns whether the account is considered empty.
 func (s *StateObject) empty() bool {
-	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0 && bytes.Equal(s.data.CodeHash, emptyCodeHash)
+	return s.data.Nonce == StartingNonce && s.data.Balance.Sign() == 0 && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }
 
 // Account is the Ethereum consensus representation of accounts.

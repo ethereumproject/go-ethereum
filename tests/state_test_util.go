@@ -200,7 +200,7 @@ func runStateTest(ruleSet RuleSet, test VmTest) error {
 		if balance, ok := new(big.Int).SetString(account.Balance, 0); !ok {
 			panic("malformed test account balance")
 		} else if balance.Cmp(obj.Balance()) != 0 {
-			return fmt.Errorf("(%x) balance failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], account.Balance, obj.Balance())
+			return fmt.Errorf("(%x) balance failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], account.Balance, "0x"+obj.Balance().Text(16))
 		}
 
 		if nonce, err := strconv.ParseUint(account.Nonce, 0, 64); err != nil {

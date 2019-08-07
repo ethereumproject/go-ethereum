@@ -17,7 +17,7 @@
 package core
 
 import (
-	"fmt"
+	"errors"
 	"math/big"
 
 	"github.com/eth-classic/go-ethereum/common"
@@ -27,10 +27,11 @@ import (
 )
 
 var (
-	TxGas                 = big.NewInt(21000) // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
-	TxGasContractCreation = big.NewInt(53000) // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
-	TxDataZeroGas         = big.NewInt(4)     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
-	TxDataNonZeroGas      = big.NewInt(68)    // Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions.
+	TxGas                        = big.NewInt(21000) // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
+	TxGasContractCreation        = big.NewInt(53000) // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
+	TxDataZeroGas                = big.NewInt(4)     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
+	TxDataNonZeroGas             = big.NewInt(68)    // Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions.
+	errInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 )
 
 /*
@@ -134,83 +135,64 @@ func ApplyMessage(env vm.Environment, msg Message, gp *GasPool) ([]byte, *big.In
 	return ret, gasUsed, failed, err
 }
 
-func (self *StateTransition) from() (vm.Account, error) {
-	var (
-		f   common.Address
-		err error
-	)
-	f, err = self.msg.From()
-	if err != nil {
-		return nil, err
+// to returns the recipient of the message.
+func (st *StateTransition) to() common.Address {
+	if st.msg == nil || st.msg.To() == nil /* contract creation */ {
+		return common.Address{}
 	}
-	if !self.state.Exist(f) {
-		return self.state.CreateAccount(f), nil
-	}
-	return self.state.GetAccount(f), nil
+	return *st.msg.To()
 }
 
-func (self *StateTransition) to() vm.Account {
-	if self.msg == nil {
-		return nil
-	}
-	to := self.msg.To()
-	if to == nil {
-		return nil // contract creation
-	}
-
-	if !self.state.Exist(*to) {
-		return self.state.CreateAccount(*to)
-	}
-	return self.state.GetAccount(*to)
-}
-
-func (self *StateTransition) useGas(amount *big.Int) error {
-	if self.gas.Cmp(amount) < 0 {
+func (st *StateTransition) useGas(amount *big.Int) error {
+	if st.gas.Cmp(amount) < 0 {
 		return vm.OutOfGasError
 	}
-	self.gas.Sub(self.gas, amount)
+	st.gas.Sub(st.gas, amount)
 
 	return nil
 }
 
-func (self *StateTransition) addGas(amount *big.Int) {
-	self.gas.Add(self.gas, amount)
+func (st *StateTransition) addGas(amount *big.Int) {
+	st.gas.Add(st.gas, amount)
 }
 
-func (self *StateTransition) buyGas() error {
-	mgas := self.msg.Gas()
-	mgval := new(big.Int).Mul(mgas, self.gasPrice)
+func (st *StateTransition) buyGas() error {
+	mgas := st.msg.Gas()
+	mgval := new(big.Int).Mul(mgas, st.gasPrice)
 
-	sender, err := self.from()
+	address, err := st.msg.From()
 	if err != nil {
 		return err
 	}
-	if sender.Balance().Cmp(mgval) < 0 {
-		return fmt.Errorf("insufficient ETH for gas (%x). Req %v, has %v", sender.Address().Bytes()[:4], mgval, sender.Balance())
+	sender := st.state.GetAccount(address)
+
+	if st.state.GetBalance(address).Cmp(mgval) < 0 {
+		return errInsufficientBalanceForGas
 	}
-	if err = self.gp.SubGas(mgas); err != nil {
+
+	if err = st.gp.SubGas(mgas); err != nil {
 		return err
 	}
-	self.addGas(mgas)
-	self.initialGas.Set(mgas)
+	st.addGas(mgas)
+	st.initialGas.Set(mgas)
 	sender.SubBalance(mgval)
 	return nil
 }
 
-func (self *StateTransition) preCheck() (err error) {
-	msg := self.msg
-	sender, err := self.from()
+func (st *StateTransition) preCheck() (err error) {
+	msg := st.msg
+	address, err := st.msg.From()
 	if err != nil {
 		return err
 	}
 
 	// Make sure this transaction's nonce is correct
-	if n := self.state.GetNonce(sender.Address()); n != msg.Nonce() {
+	if n := st.state.GetNonce(address); n != msg.Nonce() {
 		return NonceError(msg.Nonce(), n)
 	}
 
 	// Pre-pay gas
-	if err = self.buyGas(); err != nil {
+	if err = st.buyGas(); err != nil {
 		if IsGasLimitErr(err) {
 			return err
 		}
@@ -221,27 +203,39 @@ func (self *StateTransition) preCheck() (err error) {
 }
 
 // TransitionDb will move the state by applying the message against the given environment.
-func (self *StateTransition) TransitionDb() (ret []byte, gas *big.Int, failed bool, err error) {
-	if err = self.preCheck(); err != nil {
+func (st *StateTransition) TransitionDb() (ret []byte, gas *big.Int, failed bool, err error) {
+	if err = st.preCheck(); err != nil {
 		return
 	}
-	msg := self.msg
-	sender, _ := self.from() // err checked in preCheck
-
-	homestead := self.env.RuleSet().IsHomestead(self.env.BlockNumber())
+	msg := st.msg
+	address, err := st.msg.From()
+	if err != nil {
+		return nil, nil, false, err
+	}
+	var sender vm.Account
+	if !st.state.Exist(address) {
+		sender = st.state.CreateAccount(address)
+	} else {
+		sender = st.state.GetAccount(address)
+	}
+	homestead := st.env.RuleSet().IsHomestead(st.env.BlockNumber())
 	contractCreation := MessageCreatesContract(msg)
 	// Pay intrinsic gas
-	if err = self.useGas(IntrinsicGas(self.data, contractCreation, homestead)); err != nil {
+	if err = st.useGas(IntrinsicGas(st.data, contractCreation, homestead)); err != nil {
 		return nil, nil, false, InvalidTxError(err)
 	}
 
-	vmenv := self.env
+	vmenv := st.env
 	//var addr common.Address
 	var vmerr error
 	if contractCreation {
-		ret, _, vmerr = vmenv.Create(sender, self.data, self.gas, self.gasPrice, self.value)
+		ret, _, vmerr = vmenv.Create(sender, st.data, st.gas, st.gasPrice, st.value)
+
+		if vmerr == errContractAddressCollision {
+			st.gas = big.NewInt(0)
+		}
 		if homestead && vmerr == vm.CodeStoreOutOfGasError {
-			self.gas = big.NewInt(0)
+			st.gas = big.NewInt(0)
 		}
 
 		if vmerr != nil {
@@ -249,8 +243,8 @@ func (self *StateTransition) TransitionDb() (ret []byte, gas *big.Int, failed bo
 		}
 	} else {
 		// Increment the nonce for the next transaction
-		self.state.SetNonce(sender.Address(), self.state.GetNonce(sender.Address())+1)
-		ret, vmerr = vmenv.Call(sender, self.to().Address(), self.data, self.gas, self.gasPrice, self.value)
+		st.state.SetNonce(address, st.state.GetNonce(sender.Address())+1)
+		ret, vmerr = vmenv.Call(sender, st.to(), st.data, st.gas, st.gasPrice, st.value)
 		if vmerr != nil {
 			glog.V(logger.Core).Infoln("VM call err:", vmerr)
 		}
@@ -262,29 +256,33 @@ func (self *StateTransition) TransitionDb() (ret []byte, gas *big.Int, failed bo
 		return nil, nil, false, InvalidTxError(vmerr)
 	}
 
-	self.refundGas()
-	self.state.AddBalance(self.env.Coinbase(), new(big.Int).Mul(self.gasUsed(), self.gasPrice))
+	st.refundGas()
+	st.state.AddBalance(st.env.Coinbase(), new(big.Int).Mul(st.gasUsed(), st.gasPrice))
 
-	return ret, self.gasUsed(), vmerr != nil, err
+	return ret, st.gasUsed(), vmerr != nil, err
 }
 
-func (self *StateTransition) refundGas() {
+func (st *StateTransition) refundGas() {
 	// Return eth for remaining gas to the sender account,
 	// exchanged at the original rate.
-	sender, _ := self.from() // err already checked
-	remaining := new(big.Int).Mul(self.gas, self.gasPrice)
-	sender.AddBalance(remaining)
+	address, err := st.msg.From()
+	if err != nil {
+		return
+	}
+
+	remaining := new(big.Int).Mul(st.gas, st.gasPrice)
+	st.state.AddBalance(address, remaining)
 
 	// Apply refund counter, capped to half of the used gas.
-	uhalf := remaining.Div(self.gasUsed(), common.Big2)
-	refund := common.BigMin(uhalf, self.state.GetRefund())
-	self.gas.Add(self.gas, refund)
-	self.state.AddBalance(sender.Address(), refund.Mul(refund, self.gasPrice))
+	uhalf := remaining.Div(st.gasUsed(), common.Big2)
+	refund := common.BigMin(uhalf, st.state.GetRefund())
+	st.gas.Add(st.gas, refund)
+	st.state.AddBalance(address, refund.Mul(refund, st.gasPrice))
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.
-	self.gp.AddGas(self.gas)
+	st.gp.AddGas(st.gas)
 }
 
-func (self *StateTransition) gasUsed() *big.Int {
-	return new(big.Int).Sub(self.initialGas, self.gas)
+func (st *StateTransition) gasUsed() *big.Int {
+	return new(big.Int).Sub(st.initialGas, st.gas)
 }

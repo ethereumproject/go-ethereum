@@ -13,4 +13,5 @@ var (
 	DifficultyBoundDivisor = big.NewInt(2048) // The bound divisor of the difficulty, used in the update calculations.
 
 	MinimumDifficulty = big.NewInt(131072) // The minimum that the difficulty may ever be.
+	CreateDataGas     = big.NewInt(200)
 )
