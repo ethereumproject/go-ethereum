@@ -87,7 +87,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 		if UseSputnikVM != "true" {
 			receipt, logs, _, err := ApplyTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
 			if err != nil {
-				return nil, nil, totalUsedGas, err
+				return nil, nil, nil, err
 			}
 			receipts = append(receipts, receipt)
 			allLogs = append(allLogs, logs...)
@@ -95,7 +95,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB) (ty
 		}
 		receipt, logs, _, err := ApplyMultiVmTransaction(p.config, p.bc, gp, statedb, header, tx, totalUsedGas)
 		if err != nil {
-			return nil, nil, totalUsedGas, err
+			return nil, nil, nil, err
 		}
 		receipts = append(receipts, receipt)
 		allLogs = append(allLogs, logs...)

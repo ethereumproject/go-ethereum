@@ -1,20 +1,19 @@
 # Geth Classic 
 
-[![GitHub release](https://img.shields.io/github/release-pre/eth-classic/go-ethereum.svg)](https://github.com/eth-classic/go-ethereum/releases/latest)
-![GitHub All Releases](https://img.shields.io/github/downloads/eth-classic/go-ethereum/total.svg)
-![LICENSE](https://img.shields.io/github/license/eth-classic/go-ethereum.svg)
+[![GitHub release](https://img.shields.io/github/release-pre/etclabscore/go-ethereum.svg)](https://github.com/etclabscore/go-ethereum/releases/latest)
+![GitHub All Releases](https://img.shields.io/github/downloads/etclabscore/go-ethereum/total.svg)
+![LICENSE](https://img.shields.io/github/license/etclabscore/go-ethereum.svg)
 
-
-[![CircleCI](https://img.shields.io/circleci/build/gh/eth-classic/go-ethereum/development.svg)](https://circleci.com/gh/eth-classic/go-ethereum/tree/development) 
-![GitHub last commit](https://img.shields.io/github/last-commit/eth-classic/go-ethereum.svg)
-[![Join the chat at https://gitter.im/eth-classic/go-ethereum](https://badges.gitter.im/eth-classic/go-ethereum.svg)](https://gitter.im/eth-classic/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![CircleCI](https://img.shields.io/circleci/build/gh/etclabscore/go-ethereum/development.svg)](https://circleci.com/gh/etclabscore/go-ethereum/tree/development) 
+![GitHub last commit](https://img.shields.io/github/last-commit/etclabscore/go-ethereum.svg)
+[![Join the chat at https://gitter.im/etclabscore/go-ethereum](https://badges.gitter.im/etclabscore/go-ethereum.svg)](https://gitter.im/etclabscore/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Official Go-language implementation of the Ethereum Classic protocol. Ethereum Classic (ETC) offers a censorship-resistant and powerful application platform for developers in parallel to the Ethereum Foundation network (ETH), while differentially rejecting the DAO transition.
 
 ## Install Geth Classic
 
 ### :gift: Official Releases
-Regular releases will be published on the [release page](https://github.com/eth-classic/go-ethereum/releases). Binaries will be provided for all releases that are considered fairly stable.
+Regular releases will be published on the [release page](https://github.com/etclabscore/go-ethereum/releases). Binaries will be provided for all releases that are considered fairly stable.
 
 ### :hammer: Building the source
 If your heart is set on the bleeding edge, install from source. However, please be advised that you may encounter some strange things, and we can't prioritize support beyond the release versions. Recommended for developers only.
@@ -28,7 +27,7 @@ With [Go modules](https://github.com/golang/go/wiki/Modules), dependencies will 
 Clone the repository:
 
 ```
-git clone https://github.com/eth-classic/go-ethereum.git getc && cd getc
+git clone https://github.com/etclabscore/go-ethereum.git getc && cd getc
 ```
 
 Build all executables:
@@ -79,7 +78,7 @@ This repository includes several wrappers/executables found in the `cmd` directo
 | `bootnode` | Stripped down version of our Ethereum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks. |
 | `disasm` | Bytecode disassembler to convert EVM (Ethereum Virtual Machine) bytecode into more user friendly assembly-like opcodes (e.g. `echo "6001" | disasm`). For details on the individual opcodes, please see pages 22-30 of the [Ethereum Yellow Paper](http://gavwood.com/paper.pdf). |
 | `evm` | Developer utility version of the EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode. Its purpose is to allow insolated, fine graned debugging of EVM opcodes (e.g. `evm --code 60ff60ff --debug`). |
-| `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/eth-classic/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/eth-classic/rpc-tests/blob/master/README.md) for details. |
+| `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/etclabscore/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereumproject/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/etclabscore/rpc-tests/blob/master/README.md) for details. |
 | `rlpdump` | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://github.com/ethereumproject/wiki/wiki/RLP)) dumps (data encoding used by the Ethereum protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
 
 ## :green_book: Getting started with Geth Classic
@@ -207,7 +206,7 @@ You'll need to use your own programming environments' capabilities (libraries, t
 > Note: Please understand the security implications of opening up an HTTP/WS based transport before doing so! Hackers on the internet are actively trying to subvert Ethereum nodes with exposed APIs! Further, all browser tabs can access locally running webservers, so malicious webpages could try to subvert locally available APIs!*
 
 ### Operating a private/custom network
-As of [Geth 3.4](https://github.com/eth-classic/go-ethereum/releases) you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID.
+As of [Geth 3.4](https://github.com/etclabscore/go-ethereum/releases) you are now able to configure a private chain by specifying an __external chain configuration__ JSON file, which includes necessary genesis block data as well as feature configurations for protocol forks, bootnodes, and chainID.
 
 Please find full [example  external configuration files representing the Mainnet and Morden Testnet specs in the /config subdirectory of this repo](). You can use either of these files as a starting point for your own customizations.
 

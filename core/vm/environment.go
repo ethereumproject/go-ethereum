@@ -134,6 +134,6 @@ type Account interface {
 	Address() common.Address
 	ReturnGas(*big.Int, *big.Int)
 	SetCode(common.Hash, []byte)
-	ForEachStorage(cb func(key, value common.Hash) bool)
+	ForEachStorage(cb func(key, value common.Hash) bool) error
 	Value() *big.Int
 }

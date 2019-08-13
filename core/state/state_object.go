@@ -386,18 +386,27 @@ func (self *StateObject) Value() *big.Int {
 	panic("Value on StateObject should never be called")
 }
 
-func (self *StateObject) ForEachStorage(cb func(key, value common.Hash) bool) {
-	// When iterating over the storage check the cache first
-	for h, value := range self.cachedStorage {
-		cb(h, value)
-	}
-
-	it := trie.NewIterator(self.getTrie(self.db.db).NodeIterator(nil))
+func (s *StateObject) ForEachStorage(cb func(key, value common.Hash) bool) error {
+	it := trie.NewIterator(s.getTrie(s.db.db).NodeIterator(nil))
 	for it.Next() {
 		// ignore cached values
-		key := common.BytesToHash(self.trie.GetKey(it.Key))
-		if _, ok := self.cachedStorage[key]; !ok {
-			cb(key, common.BytesToHash(it.Value))
+		key := common.BytesToHash(s.trie.GetKey(it.Key))
+		if value, dirty := s.dirtyStorage[key]; dirty {
+			if cb(key, value) {
+				return nil
+			}
+			continue
+		}
+
+		if len(it.Value) > 0 {
+			_, content, _, err := rlp.Split(it.Value)
+			if err != nil {
+				return err
+			}
+			if !cb(key, common.BytesToHash(content)) {
+				return nil
+			}
 		}
 	}
+	return nil
 }

@@ -568,14 +568,14 @@ type PublicBlockChainAPI struct {
 // NewPublicBlockChainAPI creates a new Etheruem blockchain API.
 func NewPublicBlockChainAPI(config *core.ChainConfig, bc *core.BlockChain, m *miner.Miner, chainDb ethdb.Database, gpo *GasPriceOracle, eventMux *event.TypeMux, am *accounts.Manager) *PublicBlockChainAPI {
 	api := &PublicBlockChainAPI{
-		config:   config,
-		bc:       bc,
-		miner:    m,
-		chainDb:  chainDb,
-		eventMux: eventMux,
-		am:       am,
+		config:                config,
+		bc:                    bc,
+		miner:                 m,
+		chainDb:               chainDb,
+		eventMux:              eventMux,
+		am:                    am,
 		newBlockSubscriptions: make(map[string]func(core.ChainEvent) error),
-		gpo: gpo,
+		gpo:                   gpo,
 	}
 
 	go api.subscriptionLoop()
@@ -2154,7 +2154,7 @@ func (s *PublicDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.
 		if err != nil {
 			return nil, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)
 		}
-		statedb.DeleteSuicides()
+		statedb.Finalise(true)
 	}
 	return nil, nil, fmt.Errorf("tx index %d out of range for block %x", txIndex, blockHash)
 }

@@ -33,3 +33,5 @@ require (
 	gopkg.in/karalabe/cookiejar.v2 v2.0.0-20150724131613-8dcd6a7f4951
 	gopkg.in/urfave/cli.v1 v1.17.0
 )
+
+replace github.com/eth-classic/go-ethereum/accounts/abi/bind v0.0.0-20190521151733-fe17e9e1e2ce => ./accounts/abi/bind

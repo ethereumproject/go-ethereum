@@ -481,8 +481,12 @@ func (self *StateDB) Copy() *StateDB {
 	}
 
 	for hash, logs := range self.logs {
-		state.logs[hash] = make(vm.Logs, len(logs))
-		copy(state.logs[hash], logs)
+		cpy := make([]*vm.Log, len(logs))
+		for i, l := range logs {
+			cpy[i] = new(vm.Log)
+			*cpy[i] = *l
+		}
+		state.logs[hash] = cpy
 	}
 	for hash, preimage := range self.preimages {
 		state.preimages[hash] = preimage
@@ -558,27 +562,6 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	s.clearJournalAndRefund()
 }
 
-// DeleteSuicides flags the suicided objects for deletion so that it
-// won't be referenced again when called / queried up on.
-//
-// DeleteSuicides should not be used for consensus related updates
-// under any circumstances.
-func (s *StateDB) DeleteSuicides() {
-	// Reset refund so that any used-gas calculations can use this method.
-	s.clearJournalAndRefund()
-
-	for addr := range s.stateObjectsDirty {
-		stateObject := s.stateObjects[addr]
-
-		// If the object has been removed by a suicide
-		// flag the object as deleted.
-		if stateObject.suicided {
-			stateObject.deleted = true
-		}
-		delete(s.stateObjectsDirty, addr)
-	}
-}
-
 func (s *StateDB) clearJournalAndRefund() {
 	s.journal = newJournal()
 	s.validRevisions = s.validRevisions[:0]
@@ -624,23 +607,32 @@ func (s *StateDB) CommitTo(dbw trie.DatabaseWriter, deleteEmptyObjects bool) (ro
 	return root, err
 }
 
-func (db *StateDB) ForEachStorage(addr common.Address, cb func(key, value common.Hash) bool) {
+func (db *StateDB) ForEachStorage(addr common.Address, cb func(key, value common.Hash) bool) error {
 	so := db.getStateObject(addr)
 	if so == nil {
-		return
-	}
-
-	// When iterating over the storage check the cache first
-	for h, value := range so.cachedStorage {
-		cb(h, value)
+		return nil
 	}
 
 	it := trie.NewIterator(so.getTrie(db.db).NodeIterator(nil))
 	for it.Next() {
 		// ignore cached values
 		key := common.BytesToHash(db.trie.GetKey(it.Key))
-		if _, ok := so.cachedStorage[key]; !ok {
-			cb(key, common.BytesToHash(it.Value))
+		if value, dirty := so.dirtyStorage[key]; dirty {
+			if cb(key, value) {
+				return nil
+			}
+			continue
+		}
+
+		if len(it.Value) > 0 {
+			_, content, _, err := rlp.Split(it.Value)
+			if err != nil {
+				return err
+			}
+			if !cb(key, common.BytesToHash(content)) {
+				return nil
+			}
 		}
 	}
+	return nil
 }
